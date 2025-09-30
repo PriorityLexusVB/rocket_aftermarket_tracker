@@ -1,23 +1,17 @@
 import React from 'react';
-import { BrowserRouter, Routes as RouterRoutes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes as RouterRoutes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import ScrollToTop from './components/ScrollToTop';
 
-// Import existing pages
+// Import only the 4 consolidated pages
 import NotFound from './pages/NotFound';
 import AuthenticationPortal from './pages/authentication-portal';
-import ExecutiveAnalyticsDashboard from './pages/executive-analytics-dashboard';
-import SalesTracker from './pages/sales-tracker';
-import VehicleManagementHub from './pages/vehicle-management-hub';
-import VehicleDetailWorkstation from './pages/vehicle-detail-workstation';
-import VendorOperationsCenter from './pages/vendor-operations-center';
-import VendorJobDashboard from './pages/vendor-job-dashboard';
-import SalesTransactionInterface from './pages/sales-transaction-interface';
-import AdministrativeConfigurationCenter from './pages/administrative-configuration-center';
-import BusinessIntelligenceReports from './pages/business-intelligence-reports';
-import CalendarSchedulingCenter from './pages/calendar-scheduling-center';
-import KanbanStatusBoard from './pages/kanban-status-board';
-import PhotoDocumentationCenter from './pages/photo-documentation-center';
+
+// 4 Main Pages - Calendar-First Design
+import CalendarPage from './pages/calendar';
+import DealsPage from './pages/deals';
+import VehiclesPage from './pages/vehicles'; 
+import AdminPage from './pages/admin';
 
 const Routes = () => {
   return (
@@ -28,26 +22,26 @@ const Routes = () => {
           {/* Authentication */}
           <Route path="/" element={<AuthenticationPortal />} />
 
-          {/* Primary Dashboard Landing - Executive Analytics */}
-          <Route path="/dashboard" element={<ExecutiveAnalyticsDashboard />} />
-          <Route path="/executive-analytics-dashboard" element={<ExecutiveAnalyticsDashboard />} />
+          {/* 4 MAIN PAGES - Calendar-First Tracker */}
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/deals" element={<DealsPage />} />
+          <Route path="/vehicles" element={<VehiclesPage />} />
+          <Route path="/admin" element={<AdminPage />} />
 
-          {/* Operations - Daily Tasks */}
-          <Route path="/sales-tracker" element={<SalesTracker />} />
-          <Route path="/vehicle-management-hub" element={<VehicleManagementHub />} />
-          <Route path="/vehicle-detail-workstation" element={<VehicleDetailWorkstation />} />
-          <Route path="/calendar-scheduling-center" element={<CalendarSchedulingCenter />} />
-          <Route path="/kanban-status-board" element={<KanbanStatusBoard />} />
-
-          {/* Management - Admin Tasks */}
-          <Route path="/vendor-operations-center" element={<VendorOperationsCenter />} />
-          <Route path="/vendor-job-dashboard" element={<VendorJobDashboard />} />
-          <Route path="/sales-transaction-interface" element={<SalesTransactionInterface />} />
-          <Route path="/administrative-configuration-center" element={<AdministrativeConfigurationCenter />} />
-
-          {/* Reporting - Analysis */}
-          <Route path="/business-intelligence-reports" element={<BusinessIntelligenceReports />} />
-          <Route path="/photo-documentation-center" element={<PhotoDocumentationCenter />} />
+          {/* Redirects from old routes to new consolidated pages */}
+          <Route path="/dashboard" element={<Navigate to="/calendar" replace />} />
+          <Route path="/executive-analytics-dashboard" element={<Navigate to="/calendar" replace />} />
+          <Route path="/calendar-scheduling-center" element={<Navigate to="/calendar" replace />} />
+          <Route path="/kanban-status-board" element={<Navigate to="/deals" replace />} />
+          <Route path="/sales-tracker" element={<Navigate to="/deals" replace />} />
+          <Route path="/sales-transaction-interface" element={<Navigate to="/deals" replace />} />
+          <Route path="/vehicle-management-hub" element={<Navigate to="/vehicles" replace />} />
+          <Route path="/vehicle-detail-workstation" element={<Navigate to="/vehicles" replace />} />
+          <Route path="/vendor-operations-center" element={<Navigate to="/admin" replace />} />
+          <Route path="/vendor-job-dashboard" element={<Navigate to="/admin" replace />} />
+          <Route path="/administrative-configuration-center" element={<Navigate to="/admin" replace />} />
+          <Route path="/business-intelligence-reports" element={<Navigate to="/admin" replace />} />
+          <Route path="/photo-documentation-center" element={<Navigate to="/admin" replace />} />
 
           {/* Catch all route */}
           <Route path="*" element={<NotFound />} />

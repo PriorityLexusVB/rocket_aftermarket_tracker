@@ -7,6 +7,7 @@ import VendorManagement from './components/VendorManagement';
 import ProductCatalog from './components/ProductCatalog';
 import ServiceCategories from './components/ServiceCategories';
 import UserManagement from './components/UserManagement';
+import SmsTemplateManager from './components/SmsTemplateManager';
 
 const TABS = [
   { id: 'vendors', label: 'Vendor Management', icon: '👥' },
@@ -21,6 +22,9 @@ const AdministrativeConfigurationCenter = () => {
   const [activeTab, setActiveTab] = useState('vendors');
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalVendors, setTotalVendors] = useState(0);
 
   useEffect(() => {
     const initializeConfigCenter = async () => {
@@ -124,68 +128,63 @@ const AdministrativeConfigurationCenter = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header onMenuToggle={handleMenuToggle} />
-      <div className="flex">
-        <Sidebar onClose={handleSidebarClose} />
-        
-        <main className="flex-1 ml-64 p-6">
-          {/* Header Section */}
+    <div className="min-h-screen bg-background">
+      <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} isMenuOpen={sidebarOpen} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      
+      <main className="lg:ml-60 pt-16">
+        <div className="p-6 max-w-7xl mx-auto">
+          {/* Page Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  Administrative Configuration Center
-                </h1>
-                <p className="text-gray-600">
-                  Comprehensive system management for aftermarket department administrators
-                </p>
+            <h1 className="text-2xl font-bold text-foreground mb-2">Administrative Configuration Center</h1>
+            <p className="text-muted-foreground">
+              Manage system settings, templates, users, and organizational data
+            </p>
+          </div>
+
+          {/* Configuration Sections */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+            <UserManagement className="xl:col-span-1" />
+            <ProductCatalog className="xl:col-span-1" />
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+            <VendorManagement className="xl:col-span-1" />
+            <ServiceCategories className="xl:col-span-1" />
+          </div>
+
+          {/* SMS Template Management - Full width */}
+          <SmsTemplateManager className="mb-8" />
+
+          {/* System Information */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">System Information</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-primary mb-1">
+                  {totalUsers}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Users</div>
               </div>
               
-              <div className="flex items-center space-x-4">
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Welcome back</p>
-                  <p className="font-medium text-gray-800">{userProfile?.full_name}</p>
-                  <span className="inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                    {userProfile?.role}
-                  </span>
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-primary mb-1">
+                  {totalProducts}
                 </div>
+                <div className="text-sm text-muted-foreground">Active Products</div>
+              </div>
+              
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <div className="text-2xl font-bold text-primary mb-1">
+                  {totalVendors}
+                </div>
+                <div className="text-sm text-muted-foreground">Active Vendors</div>
               </div>
             </div>
           </div>
-
-          {/* Tabs Navigation */}
-          <div className="mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                {TABS?.map((tab) => (
-                  <button
-                    key={tab?.id}
-                    onClick={() => handleTabChange(tab?.id)}
-                    className={`
-                      group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm
-                      ${activeTab === tab?.id
-                        ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }
-                    `}
-                  >
-                    <span className="mr-2 text-lg">{tab?.icon}</span>
-                    {tab?.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
-
-          {/* Tab Content */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-96">
-            {activeTab === 'vendors' && <VendorManagement />}
-            {activeTab === 'products' && <ProductCatalog />}
-            {activeTab === 'services' && <ServiceCategories />}
-            {activeTab === 'users' && <UserManagement />}
-          </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

@@ -59,71 +59,113 @@ const UserManagement = () => {
     }
   };
 
-  const handleCreateUser = async (e) => {
-    e?.preventDefault();
-    if (!isAdmin) return;
+  // Add this block - handleFormChange function
+  const handleFormChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-    try {
-      setCreating(true);
-      setError(null);
+  // Add this block - resetForm function
+  const resetForm = () => {
+    setFormData({
+      email: '',
+      full_name: '',
+      role: 'staff',
+      vendor_id: '',
+      password: ''
+    });
+    setShowCreateForm(false);
+  };
 
-      // Validate required fields
-      if (!formData?.email || !formData?.full_name || !formData?.password) {
-        setError('Email, full name, and password are required');
-        return;
-      }
-
-      // Create auth user
-      const { data: authData, error: authError } = await supabase?.auth?.signUp({
-        email: formData?.email,
-        password: formData?.password,
-        options: {
-          data: {
-            full_name: formData?.full_name,
-            role: formData?.role
-          }
-        }
+  // Add this block - authService replacement
+  const authService = {
+    createUser: async (userData) => {
+      // Create user in Supabase Auth
+      const { data: authUser, error: authError } = await supabase?.auth?.signUp({
+        email: userData?.email,
+        password: userData?.password,
       });
 
       if (authError) throw authError;
 
-      if (authData?.user) {
-        // Create user profile
-        const profileData = {
-          id: authData?.user?.id,
-          email: formData?.email,
-          full_name: formData?.full_name,
-          role: formData?.role,
-          is_active: true
-        };
+      // Create user profile
+      const { data: profile, error: profileError } = await supabase?.from('user_profiles')?.insert([{
+          id: authUser?.user?.id,
+          email: userData?.email,
+          full_name: userData?.full_name,
+          role: userData?.role,
+          vendor_id: userData?.vendor_id,
+          phone: userData?.phone,
+          is_active: userData?.is_active !== false
+        }])?.select()?.single();
 
-        // Add vendor_id if vendor role is selected
-        if (formData?.role === 'vendor' && formData?.vendor_id) {
-          profileData.vendor_id = formData?.vendor_id;
-        }
+      if (profileError) throw profileError;
 
-        const { error: profileError } = await supabase
-          ?.from('user_profiles')
-          ?.insert(profileData);
+      return profile;
+    }
+  };
 
-        if (profileError) throw profileError;
+  // Add this block - logger replacement
+  const logger = {
+    logSuccess: async (action, type, id, message, data) => {
+      console.log(`Success: ${action}`, { type, id, message, data });
+    },
+    logError: async (error, data) => {
+      console.error('Error logged:', error, data);
+    }
+  };
 
-        setSuccess(`User ${formData?.email} created successfully`);
-        setFormData({
-          email: '',
-          full_name: '',
-          role: 'staff',
-          vendor_id: '',
-          password: ''
-        });
-        setShowCreateForm(false);
-        loadData();
-      }
+  const handleCreateUser = async (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
+    if (!formData?.email || !formData?.password) {
+      alert('Email and password are required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Create the user profile data
+      const userData = {
+        email: formData?.email,
+        password: formData?.password,
+        full_name: formData?.full_name,
+        role: formData?.role,
+        vendor_id: formData?.role === 'vendor' ? formData?.vendor_id : null,
+        phone: formData?.phone,
+        is_active: formData?.is_active
+      };
+
+      const newUser = await authService?.createUser(userData);
+      setUsers(prev => [newUser, ...prev]);
+      
+      alert('User created successfully!');
+      resetForm();
+      
+      await logger?.logSuccess(
+        'user_created',
+        'USER',
+        newUser?.id,
+        `New user created: ${newUser?.email}`,
+        { userData: newUser }
+      );
     } catch (error) {
       console.error('Error creating user:', error);
-      setError(error?.message || 'Failed to create user');
+      alert(`Error creating user: ${error?.message}`);
+      
+      await logger?.logError(
+        error,
+        { 
+          action: 'user_create_error',
+          formData
+        }
+      );
     } finally {
-      setCreating(false);
+      setLoading(false);
     }
   };
 
@@ -146,11 +188,13 @@ const UserManagement = () => {
     }
   };
 
-  const handleFormChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // Enhanced form validation
+  const isFormValid = () => {
+    return formData?.email?.trim() && 
+           formData?.full_name?.trim() && 
+           formData?.password?.trim() &&
+           formData?.password?.length >= 6 &&
+           /^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email);
   };
 
   if (!isAdmin) {
@@ -173,25 +217,28 @@ const UserManagement = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="bg-card border border-border rounded-lg p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
-          <p className="text-gray-600">Create and manage system users with role-based access</p>
+          <h2 className="text-xl font-semibold text-foreground">User Management</h2>
+          <p className="text-sm text-muted-foreground">Create and manage system users with role-based access</p>
         </div>
         <Button
           onClick={() => setShowCreateForm(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          disabled={!isAdmin}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
+          <span className="mr-2">➕</span>
           Create New User
         </Button>
       </div>
-      {/* Error and Success Messages */}
+      {/* Enhanced Error and Success Messages */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex">
-            <div className="text-red-800">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-destructive">⚠️</span>
+            <div className="text-destructive">
               <strong>Error:</strong> {error}
             </div>
           </div>
@@ -199,54 +246,61 @@ const UserManagement = () => {
       )}
       {success && (
         <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex">
+          <div className="flex items-center">
+            <span className="mr-2 text-green-600">✅</span>
             <div className="text-green-800">
               <strong>Success:</strong> {success}
             </div>
           </div>
         </div>
       )}
-      {/* Create User Form */}
+      {/* Enhanced Create User Form */}
       {showCreateForm && (
-        <div className="mb-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
-          <h3 className="text-lg font-medium text-gray-800 mb-4">Create New User</h3>
+        <div className="mb-6 p-6 bg-muted/50 border border-border rounded-lg">
+          <h3 className="text-lg font-medium text-foreground mb-4">Create New User</h3>
           <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Email Address *
               </label>
               <input
                 type="email"
-                value={formData?.email}
+                value={formData?.email || ''}
                 onChange={(e) => handleFormChange('email', e?.target?.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
                 placeholder="user@example.com"
                 required
+                disabled={creating}
               />
+              {formData?.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email) && (
+                <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Full Name *
               </label>
               <input
                 type="text"
-                value={formData?.full_name}
+                value={formData?.full_name || ''}
                 onChange={(e) => handleFormChange('full_name', e?.target?.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
                 placeholder="John Doe"
                 required
+                disabled={creating}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Role *
               </label>
               <select
-                value={formData?.role}
+                value={formData?.role || 'staff'}
                 onChange={(e) => handleFormChange('role', e?.target?.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
+                disabled={creating}
               >
                 <option value="staff">Staff</option>
                 <option value="manager">Manager</option>
@@ -257,13 +311,14 @@ const UserManagement = () => {
 
             {formData?.role === 'vendor' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Associated Vendor
                 </label>
                 <select
-                  value={formData?.vendor_id}
+                  value={formData?.vendor_id || ''}
                   onChange={(e) => handleFormChange('vendor_id', e?.target?.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
+                  disabled={creating}
                 >
                   <option value="">Select a vendor...</option>
                   {vendors?.map(vendor => (
@@ -276,32 +331,42 @@ const UserManagement = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Password *
               </label>
               <input
                 type="password"
-                value={formData?.password}
+                value={formData?.password || ''}
                 onChange={(e) => handleFormChange('password', e?.target?.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
                 placeholder="Minimum 6 characters"
                 required
                 minLength={6}
+                disabled={creating}
               />
+              {formData?.password && formData?.password?.length < 6 && (
+                <p className="text-xs text-destructive mt-1">Password must be at least 6 characters</p>
+              )}
             </div>
 
-            <div className="md:col-span-2 flex items-center space-x-4">
+            <div className="md:col-span-2 flex items-center space-x-4 pt-4">
               <Button
                 type="submit"
-                disabled={creating}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                disabled={!isFormValid() || loading}
+                onClick={handleCreateUser}
               >
-                {creating ? 'Creating...' : 'Create User'}
+                {loading ? 'Creating...' : 'Create User'}
               </Button>
               <Button
                 type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2"
+                onClick={(e) => {
+                  e?.preventDefault();
+                  e?.stopPropagation();
+                  resetForm();
+                }}
+                className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
+                disabled={loading}
               >
                 Cancel
               </Button>

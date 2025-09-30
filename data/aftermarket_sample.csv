@@ -1,0 +1,10 @@
+Stock,Year,Make,Model,Color,Customer,Phone,Email,Date,Services,Status,Processing_Type,Priority,Vendor,Notes
+P12345,2018,Honda,Civic,Blue,John Smith,+15550123,john.smith@email.com,2024-01-15,"Brake Pad Replacement, Brake Fluid Change",pending,IN HOUSE,medium,,Front brake pads worn
+P12346,2020,Toyota,Camry,White,Sarah Johnson,+15550456,sarah.j@email.com,2024-01-16,Oil Change Service,scheduled,IN HOUSE,low,,Regular maintenance
+P12347,2019,Ford,F-150,Black,Mike Davis,+15550789,mike.d@email.com,2024-01-17,"Engine Tune-up, Air Filter Replacement, Spark Plugs",in progress,VENDOR,high,Premium Auto Parts,Customer requested premium parts
+P12348,2021,Chevrolet,Equinox,Silver,Lisa Brown,+15550321,lisa.brown@email.com,2024-01-18,Tire Rotation and Balance,completed,IN HOUSE,low,,Completed on time
+P12349,2017,Nissan,Altima,Red,David Wilson,+15550654,david.w@email.com,2024-01-19,"Transmission Service, Filter Change",scheduled,VENDOR,medium,Premium Auto Parts,Transmission service due
+P12350,2022,BMW,X3,Gray,Jennifer Lee,+15550987,jennifer.lee@email.com,2024-01-20,Annual Inspection,pending,IN HOUSE,medium,,State inspection due
+P12351,2016,Subaru,Outback,Green,Robert Garcia,+15550147,robert.g@email.com,2024-01-21,"Brake Inspection, Rotor Resurfacing",quality_check,VENDOR,high,Premium Auto Parts,Brake system overhaul
+P12352,2019,Mazda,CX-5,Blue,Emily Martinez,+15550258,emily.m@email.com,2024-01-22,Battery Replacement,completed,IN HOUSE,medium,,Battery failed load test
+P12353,2020,Hyundai,Elantra,White,Christopher Taylor,+15550369,chris.t@email.com,2024-01-23,"Coolant System Flush, Thermostat Replacement",scheduled,VENDOR,medium,Premium Auto Parts,Overheating issue resolved P12354,2018,Volkswagen,Jetta,Black,Amanda Anderson,+15550741,amanda.a@email.com,2024-01-24,"AC System Service, Cabin Filter Replacement",in progress,IN HOUSE,low,,Summer prep service

@@ -76,8 +76,11 @@ const VendorManagement = () => {
 
   const handleFormSubmit = async (e) => {
     e?.preventDefault();
+    e?.stopPropagation();
     
     try {
+      setLoading(true);
+      
       if (formMode === 'add') {
         const newVendor = await vendorService?.createVendor(formData);
         setVendors(prev => [newVendor, ...prev]);
@@ -89,6 +92,9 @@ const VendorManagement = () => {
           `New vendor added: ${newVendor?.name}`,
           { vendorData: newVendor }
         );
+        
+        // Show success feedback
+        alert('Vendor added successfully!');
       } else {
         const updatedVendor = await vendorService?.updateVendor(selectedVendor?.id, formData);
         setVendors(prev => prev?.map(v => v?.id === updatedVendor?.id ? updatedVendor : v));
@@ -100,11 +106,16 @@ const VendorManagement = () => {
           `Vendor updated: ${updatedVendor?.name}`,
           { vendorData: updatedVendor }
         );
+        
+        // Show success feedback
+        alert('Vendor updated successfully!');
       }
       
       resetForm();
     } catch (error) {
       console.error('Error saving vendor:', error);
+      alert(`Error ${formMode === 'add' ? 'adding' : 'updating'} vendor: ${error?.message}`);
+      
       await logger?.logError(
         error,
         { 
@@ -113,32 +124,46 @@ const VendorManagement = () => {
           formData 
         }
       );
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEditVendor = (vendor) => {
-    setSelectedVendor(vendor);
-    setFormData({
-      name: vendor?.name || '',
-      contact_person: vendor?.contact_person || '',
-      email: vendor?.email || '',
-      phone: vendor?.phone || '',
-      address: vendor?.address || '',
-      specialty: vendor?.specialty || '',
-      rating: vendor?.rating || '',
-      notes: vendor?.notes || '',
-      is_active: vendor?.is_active !== undefined ? vendor?.is_active : true
-    });
-    setFormMode('edit');
-    setShowForm(true);
+    console.log('Edit button clicked for vendor:', vendor?.name);
+    
+    try {
+      setSelectedVendor(vendor);
+      setFormData({
+        name: vendor?.name || '',
+        contact_person: vendor?.contact_person || '',
+        email: vendor?.email || '',
+        phone: vendor?.phone || '',
+        address: vendor?.address || '',
+        specialty: vendor?.specialty || '',
+        rating: vendor?.rating || '',
+        notes: vendor?.notes || '',
+        is_active: vendor?.is_active !== undefined ? vendor?.is_active : true
+      });
+      setFormMode('edit');
+      setShowForm(true);
+    } catch (error) {
+      console.error('Error in handleEditVendor:', error);
+      alert('Error opening vendor for editing');
+    }
   };
 
   const handleDeleteVendor = async (vendorId) => {
+    console.log('Delete button clicked for vendor ID:', vendorId);
+    
     if (!window.confirm('Are you sure you want to delete this vendor?')) return;
     
     try {
+      setLoading(true);
       await vendorService?.deleteVendor(vendorId);
       setVendors(prev => prev?.filter(v => v?.id !== vendorId));
+      
+      alert('Vendor deleted successfully!');
       
       await logger?.logSuccess(
         'vendor_deleted',
@@ -149,6 +174,8 @@ const VendorManagement = () => {
       );
     } catch (error) {
       console.error('Error deleting vendor:', error);
+      alert(`Error deleting vendor: ${error?.message}`);
+      
       await logger?.logError(
         error,
         { 
@@ -156,6 +183,32 @@ const VendorManagement = () => {
           entityId: vendorId 
         }
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddNewVendor = () => {
+    console.log('Add New Vendor button clicked');
+    
+    try {
+      setFormMode('add');
+      setSelectedVendor(null);
+      setFormData({
+        name: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        address: '',
+        specialty: '',
+        rating: '',
+        notes: '',
+        is_active: true
+      });
+      setShowForm(true);
+    } catch (error) {
+      console.error('Error in handleAddNewVendor:', error);
+      alert('Error opening add vendor form');
     }
   };
 
@@ -261,13 +314,11 @@ const VendorManagement = () => {
           </div>
 
           <Button
-            onClick={() => {
-              setFormMode('add');
-              setShowForm(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={handleAddNewVendor}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
+            disabled={loading}
           >
-            Add New Vendor
+            {loading ? 'Loading...' : 'Add New Vendor'}
           </Button>
         </div>
 
@@ -361,21 +412,33 @@ const VendorManagement = () => {
                     <td className="px-6 py-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                         vendor?.is_active 
-                          ? 'bg-green-100 text-green-800' :'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {vendor?.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <Button
-                        onClick={() => handleEditVendor(vendor)}
-                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={(e) => {
+                          e?.preventDefault();
+                          e?.stopPropagation();
+                          handleEditVendor(vendor);
+                        }}
+                        className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1"
+                        disabled={loading}
+                        type="button"
                       >
                         Edit
                       </Button>
                       <Button
-                        onClick={() => handleDeleteVendor(vendor?.id)}
-                        className="text-xs bg-red-600 hover:bg-red-700 text-white"
+                        onClick={(e) => {
+                          e?.preventDefault();
+                          e?.stopPropagation();
+                          handleDeleteVendor(vendor?.id);
+                        }}
+                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1"
+                        disabled={loading}
+                        type="button"
                       >
                         Delete
                       </Button>
@@ -527,14 +590,21 @@ const VendorManagement = () => {
               <div className="flex space-x-3 pt-4">
                 <Button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  onClick={() => {}}
+                  disabled={loading}
                 >
-                  {formMode === 'add' ? 'Add Vendor' : 'Update Vendor'}
+                  {loading ? 'Saving...' : (formMode === 'add' ? 'Add Vendor' : 'Update Vendor')}
                 </Button>
                 <Button
                   type="button"
-                  onClick={resetForm}
+                  onClick={(e) => {
+                    e?.preventDefault();
+                    e?.stopPropagation();
+                    resetForm();
+                  }}
                   className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
@@ -544,7 +614,7 @@ const VendorManagement = () => {
         ) : (
           <div className="text-center text-gray-500 mt-20">
             <div className="text-4xl mb-4">👥</div>
-            <p>Select a vendor to edit or click "Add New Vendor" to get started.</p>
+            <p>Select a vendor to edit or click &quot;Add New Vendor&quot; to get started.</p>
           </div>
         )}
       </div>

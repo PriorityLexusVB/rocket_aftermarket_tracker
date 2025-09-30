@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useLogger } from '../../../hooks/useLogger';
-import Button from '../../../components/ui/Button';
+import UIButton from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import productService from '../../../services/productService';
@@ -241,15 +241,17 @@ const ProductCatalog = () => {
           </Select>
         </div>
 
-        <Button
+        <UIButton
           onClick={() => {
             setFormMode('add');
             setShowForm(true);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
+          disabled={loading}
+          type="button"
         >
-          Add New Product
-        </Button>
+          {loading ? 'Loading...' : 'Add Product'}
+        </UIButton>
       </div>
 
       {/* Product Grid */}
@@ -304,18 +306,30 @@ const ProductCatalog = () => {
             </div>
 
             <div className="flex space-x-2">
-              <Button
-                onClick={() => handleEditProduct(product)}
-                className="flex-1 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+              <UIButton
+                onClick={(e) => {
+                  e?.preventDefault();
+                  e?.stopPropagation();
+                  handleEditProduct(product);
+                }}
+                className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1"
+                disabled={loading}
+                type="button"
               >
                 Edit
-              </Button>
-              <Button
-                onClick={() => handleDeleteProduct(product?.id)}
-                className="text-xs bg-red-600 hover:bg-red-700 text-white px-3"
+              </UIButton>
+              <UIButton
+                onClick={(e) => {
+                  e?.preventDefault();
+                  e?.stopPropagation();
+                  handleDeleteProduct(product?.id);
+                }}
+                className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1"
+                disabled={loading}
+                type="button"
               >
                 Delete
-              </Button>
+              </UIButton>
             </div>
           </div>
         ))}
@@ -336,12 +350,13 @@ const ProductCatalog = () => {
               <h3 className="text-lg font-medium text-gray-900">
                 {formMode === 'add' ? 'Add New Product' : 'Edit Product'}
               </h3>
-              <Button
+              <UIButton
                 onClick={resetForm}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 bg-transparent border-none p-1"
+                type="button"
               >
                 ✕
-              </Button>
+              </UIButton>
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
@@ -479,19 +494,25 @@ const ProductCatalog = () => {
               </div>
 
               <div className="flex space-x-3 pt-4">
-                <Button
+                <UIButton
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  disabled={loading}
                 >
-                  {formMode === 'add' ? 'Add Product' : 'Update Product'}
-                </Button>
-                <Button
+                  {loading ? 'Saving...' : (formMode === 'add' ? 'Add Product' : 'Update Product')}
+                </UIButton>
+                <UIButton
                   type="button"
-                  onClick={resetForm}
+                  onClick={(e) => {
+                    e?.preventDefault();
+                    e?.stopPropagation();
+                    resetForm();
+                  }}
                   className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
+                  disabled={loading}
                 >
                   Cancel
-                </Button>
+                </UIButton>
               </div>
             </form>
           </div>

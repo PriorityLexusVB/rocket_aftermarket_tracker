@@ -9,6 +9,8 @@ import VendorPerformanceMatrix from './components/VendorPerformanceMatrix';
 import FilterControls from './components/FilterControls';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import OverdueJobsWidget from './components/OverdueJobsWidget';
+import OverdueAlertBar from '../../components/common/OverdueAlertBar';
 
 const ExecutiveAnalyticsDashboard = () => {
   const navigate = useNavigate();
@@ -270,6 +272,9 @@ const ExecutiveAnalyticsDashboard = () => {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <main className="lg:ml-60 pt-16">
         <div className="p-6 max-w-7xl mx-auto">
+          {/* Overdue Alert Bar */}
+          <OverdueAlertBar />
+
           {/* Page Header */}
           <div className="mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -287,6 +292,7 @@ const ExecutiveAnalyticsDashboard = () => {
                   onClick={() => handleQuickNavigation('/business-intelligence-reports')}
                   iconName="FileText"
                   iconPosition="left"
+                  className=""
                 >
                   Reports
                 </Button>
@@ -297,6 +303,7 @@ const ExecutiveAnalyticsDashboard = () => {
                   onClick={() => handleQuickNavigation('/sales-transaction-interface')}
                   iconName="Plus"
                   iconPosition="left"
+                  className=""
                 >
                   New Sale
                 </Button>
@@ -319,21 +326,18 @@ const ExecutiveAnalyticsDashboard = () => {
             ))}
           </div>
 
-          {/* Charts Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <ProfitChart
-              data={profitChartData}
-              type="line"
-              title="Monthly Profit Trend"
-              height={300}
-            />
+          {/* Charts and Overdue Jobs Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="lg:col-span-2">
+              <ProfitChart
+                data={profitChartData}
+                type="line"
+                title="Monthly Profit Trend"
+                height={300}
+              />
+            </div>
             
-            <ProfitChart
-              data={profitChartData?.slice(-6)}
-              type="bar"
-              title="Recent Performance"
-              height={300}
-            />
+            <OverdueJobsWidget />
           </div>
 
           {/* Product Performance Table */}
