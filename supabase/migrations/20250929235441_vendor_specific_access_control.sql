@@ -2,6 +2,7 @@
 -- Schema Analysis: Existing automotive aftermarket system with user_profiles, vendors, vehicles, jobs tables
 -- Integration Type: Extension - Adding vendor-specific access control
 -- Dependencies: user_profiles, vendors, vehicles, jobs tables (existing)
+-- FIX: Separated enum addition from usage to avoid PostgreSQL enum commit issue
 
 -- Step 1: Add vendor_id column to user_profiles for vendor association
 ALTER TABLE public.user_profiles
@@ -11,9 +12,14 @@ ADD COLUMN vendor_id UUID REFERENCES public.vendors(id) ON DELETE SET NULL;
 CREATE INDEX idx_user_profiles_vendor_id ON public.user_profiles(vendor_id);
 
 -- Step 3: Add 'vendor' role to the existing user_role enum
+-- This needs to be committed before it can be used
 ALTER TYPE public.user_role ADD VALUE 'vendor';
 
--- Step 4: Create vendor-user association function
+-- Step 4: Commit the transaction to make the enum value available
+COMMIT;
+BEGIN;
+
+-- Step 5: Create vendor-user association function (now enum is available)
 CREATE OR REPLACE FUNCTION public.is_vendor_user()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -23,13 +29,13 @@ AS $$
 SELECT EXISTS (
     SELECT 1 FROM public.user_profiles up
     WHERE up.id = auth.uid() 
-    AND up.role = 'vendor'
+    AND up.role::text = 'vendor'
     AND up.vendor_id IS NOT NULL
     AND up.is_active = true
 )
 $$;
 
--- Step 5: Create vendor vehicle access function
+-- Step 6: Create vendor vehicle access function
 CREATE OR REPLACE FUNCTION public.vendor_can_access_vehicle(vehicle_uuid UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -40,14 +46,14 @@ SELECT EXISTS (
     SELECT 1 FROM public.user_profiles up
     JOIN public.jobs j ON j.vendor_id = up.vendor_id
     WHERE up.id = auth.uid()
-    AND up.role = 'vendor'
+    AND up.role::text = 'vendor'
     AND up.vendor_id IS NOT NULL
     AND j.vehicle_id = vehicle_uuid
     AND up.is_active = true
 )
 $$;
 
--- Step 6: Create vendor job access function
+-- Step 7: Create vendor job access function
 CREATE OR REPLACE FUNCTION public.vendor_can_access_job(job_uuid UUID)
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -58,14 +64,14 @@ SELECT EXISTS (
     SELECT 1 FROM public.user_profiles up
     JOIN public.jobs j ON j.vendor_id = up.vendor_id
     WHERE up.id = auth.uid()
-    AND up.role = 'vendor'
+    AND up.role::text = 'vendor'
     AND up.vendor_id IS NOT NULL
     AND j.id = job_uuid
     AND up.is_active = true
 )
 $$;
 
--- Step 7: Update RLS policies for vendor-specific access
+-- Step 8: Update RLS policies for vendor-specific access
 
 -- Drop existing policies to replace with vendor-aware versions
 DROP POLICY IF EXISTS "staff_can_view_vehicles" ON public.vehicles;
@@ -80,7 +86,7 @@ USING (
     EXISTS (
         SELECT 1 FROM public.user_profiles up
         WHERE up.id = auth.uid()
-        AND up.role IN ('staff', 'manager', 'admin')
+        AND up.role::text IN ('staff', 'manager', 'admin')
         AND up.is_active = true
     )
 );
@@ -112,7 +118,7 @@ USING (
     EXISTS (
         SELECT 1 FROM public.user_profiles up
         WHERE up.id = auth.uid()
-        AND up.role IN ('staff', 'manager', 'admin')
+        AND up.role::text IN ('staff', 'manager', 'admin')
         AND up.is_active = true
     )
 );
@@ -144,7 +150,7 @@ TO authenticated
 USING (public.is_admin_or_manager())
 WITH CHECK (public.is_admin_or_manager());
 
--- Step 8: Add vendor access policies for other related tables
+-- Step 9: Add vendor access policies for other related tables
 
 -- Communications table - vendors can view communications for their jobs
 CREATE POLICY "vendors_can_view_job_communications"
@@ -189,58 +195,6 @@ FOR ALL
 TO authenticated
 USING (public.vendor_can_access_job(job_id))
 WITH CHECK (public.vendor_can_access_job(job_id));
-
--- Step 9: Create mock vendor users and associations
-DO $$
-DECLARE
-    vendor_user1_id UUID := gen_random_uuid();
-    vendor_user2_id UUID := gen_random_uuid();
-    existing_vendor_id UUID;
-BEGIN
-    -- Get existing vendor ID
-    SELECT id INTO existing_vendor_id FROM public.vendors LIMIT 1;
-    
-    IF existing_vendor_id IS NOT NULL THEN
-        -- Create vendor auth users
-        INSERT INTO auth.users (
-            id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
-            created_at, updated_at, raw_user_meta_data, raw_app_meta_data,
-            is_sso_user, is_anonymous, confirmation_token, confirmation_sent_at,
-            recovery_token, recovery_sent_at, email_change_token_new, email_change,
-            email_change_sent_at, email_change_token_current, email_change_confirm_status,
-            reauthentication_token, reauthentication_sent_at, phone, phone_change,
-            phone_change_token, phone_change_sent_at
-        ) VALUES
-            (vendor_user1_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-             'vendor@premiumauto.com', crypt('vendor123', gen_salt('bf', 10)), now(), now(), now(),
-             '{"full_name": "Premium Auto Vendor"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
-             false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
-            (vendor_user2_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
-             'vendorstaff@premiumauto.com', crypt('vendor456', gen_salt('bf', 10)), now(), now(), now(),
-             '{"full_name": "Vendor Staff User"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
-             false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null);
-
-        -- Create vendor user profiles
-        INSERT INTO public.user_profiles (id, email, full_name, role, vendor_id, is_active)
-        VALUES
-            (vendor_user1_id, 'vendor@premiumauto.com', 'Premium Auto Vendor', 'vendor', existing_vendor_id, true),
-            (vendor_user2_id, 'vendorstaff@premiumauto.com', 'Vendor Staff User', 'vendor', existing_vendor_id, true);
-
-        -- Update existing job to be assigned to the vendor
-        UPDATE public.jobs 
-        SET vendor_id = existing_vendor_id 
-        WHERE vendor_id IS NULL 
-        LIMIT 1;
-    END IF;
-
-EXCEPTION
-    WHEN foreign_key_violation THEN
-        RAISE NOTICE 'Foreign key error: %', SQLERRM;
-    WHEN unique_violation THEN
-        RAISE NOTICE 'Unique constraint error: %', SQLERRM;
-    WHEN OTHERS THEN
-        RAISE NOTICE 'Unexpected error: %', SQLERRM;
-END $$;
 
 -- Step 10: Create vendor management functions
 CREATE OR REPLACE FUNCTION public.get_vendor_vehicles(vendor_uuid UUID DEFAULT NULL)
@@ -303,3 +257,59 @@ WHERE j.vendor_id = COALESCE(
 )
 ORDER BY j.scheduled_start_time DESC, j.created_at DESC;
 $$;
+
+-- Step 11: Create mock vendor users and associations
+-- Using a separate transaction block to ensure enum is available
+DO $$
+DECLARE
+    vendor_user1_id UUID := gen_random_uuid();
+    vendor_user2_id UUID := gen_random_uuid();
+    existing_vendor_id UUID;
+BEGIN
+    -- Get existing vendor ID
+    SELECT id INTO existing_vendor_id FROM public.vendors LIMIT 1;
+    
+    IF existing_vendor_id IS NOT NULL THEN
+        -- Create vendor auth users
+        INSERT INTO auth.users (
+            id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+            created_at, updated_at, raw_user_meta_data, raw_app_meta_data,
+            is_sso_user, is_anonymous, confirmation_token, confirmation_sent_at,
+            recovery_token, recovery_sent_at, email_change_token_new, email_change,
+            email_change_sent_at, email_change_token_current, email_change_confirm_status,
+            reauthentication_token, reauthentication_sent_at, phone, phone_change,
+            phone_change_token, phone_change_sent_at
+        ) VALUES
+            (vendor_user1_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+             'vendor@premiumauto.com', crypt('vendor123', gen_salt('bf', 10)), now(), now(), now(),
+             '{"full_name": "Premium Auto Vendor"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
+             false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null),
+            (vendor_user2_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+             'vendorstaff@premiumauto.com', crypt('vendor456', gen_salt('bf', 10)), now(), now(), now(),
+             '{"full_name": "Vendor Staff User"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
+             false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null);
+
+        -- Create vendor user profiles with explicit casting to avoid enum issues
+        INSERT INTO public.user_profiles (id, email, full_name, role, vendor_id, is_active)
+        VALUES
+            (vendor_user1_id, 'vendor@premiumauto.com', 'Premium Auto Vendor', 'vendor'::public.user_role, existing_vendor_id, true),
+            (vendor_user2_id, 'vendorstaff@premiumauto.com', 'Vendor Staff User', 'vendor'::public.user_role, existing_vendor_id, true);
+
+        -- Update existing job to be assigned to the vendor
+        UPDATE public.jobs 
+        SET vendor_id = existing_vendor_id 
+        WHERE vendor_id IS NULL 
+        LIMIT 1;
+    END IF;
+
+EXCEPTION
+    WHEN foreign_key_violation THEN
+        RAISE NOTICE 'Foreign key error: %', SQLERRM;
+    WHEN unique_violation THEN
+        RAISE NOTICE 'Unique constraint error: %', SQLERRM;
+    WHEN OTHERS THEN
+        RAISE NOTICE 'Unexpected error: %', SQLERRM;
+END $$;
+
+-- Final commit
+COMMIT;
