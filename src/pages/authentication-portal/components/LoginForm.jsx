@@ -226,12 +226,28 @@ const LoginForm = () => {
 
         {/* Demo Credentials */}
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
-          <div className="space-y-1 text-xs text-blue-700">
-            <div><strong>Admin:</strong> admin@rocketaftermarket.com / admin123</div>
-            <div><strong>Manager:</strong> manager@rocketaftermarket.com / manager123</div>
-            <div><strong>Vendor:</strong> vendor@premiumauto.com / vendor123</div>
-            <div><strong>Vendor Staff:</strong> vendorstaff@premiumauto.com / vendor456</div>
+          <h3 className="text-sm font-medium text-blue-800 mb-3">Demo Credentials (Click to Auto-Fill)</h3>
+          <div className="space-y-2 text-xs">
+            <button
+              type="button" 
+              onClick={() => fillDemoCredentials('admin')}
+              className="block w-full text-left p-2 bg-blue-100 hover:bg-blue-200 rounded text-blue-700 transition-colors"
+            >
+              <div><strong>Admin:</strong> admin@rocketaftermarket.com</div>
+              <div className="text-blue-600">Password: Admin123!</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => fillDemoCredentials('manager')} 
+              className="block w-full text-left p-2 bg-blue-100 hover:bg-blue-200 rounded text-blue-700 transition-colors"
+            >
+              <div><strong>Manager:</strong> manager@rocketaftermarket.com</div>
+              <div className="text-blue-600">Password: Manager123!</div>
+            </button>
+          </div>
+          <div className="mt-3 text-xs text-blue-600">
+            <p>• Click any credential above to auto-fill the form</p>
+            <p>• If login fails, the auth users may need to be created in Supabase</p>
           </div>
         </div>
       </form>

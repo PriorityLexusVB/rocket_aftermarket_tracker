@@ -2,18 +2,26 @@
 -- Schema Analysis: Existing automotive aftermarket system with user_profiles, vendors, vehicles, jobs tables
 -- Integration Type: Extension - Adding vendor-specific access control
 -- Dependencies: user_profiles, vendors, vehicles, jobs tables (existing)
--- FIX: Separated enum addition from usage to avoid PostgreSQL enum commit issue
+-- FIX: Corrected LIMIT syntax error and enum transaction handling
 
 -- Step 1: Add vendor_id column to user_profiles for vendor association
 ALTER TABLE public.user_profiles
-ADD COLUMN vendor_id UUID REFERENCES public.vendors(id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS vendor_id UUID REFERENCES public.vendors(id) ON DELETE SET NULL;
 
 -- Step 2: Create index for vendor_id lookup
-CREATE INDEX idx_user_profiles_vendor_id ON public.user_profiles(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_vendor_id ON public.user_profiles(vendor_id);
 
 -- Step 3: Add 'vendor' role to the existing user_role enum
 -- This needs to be committed before it can be used
-ALTER TYPE public.user_role ADD VALUE 'vendor';
+DO $$
+BEGIN
+    -- Check if 'vendor' enum value already exists
+    IF NOT EXISTS (SELECT 1 FROM pg_enum e 
+                   JOIN pg_type t ON e.enumtypid = t.oid 
+                   WHERE t.typname = 'user_role' AND e.enumlabel = 'vendor') THEN
+        ALTER TYPE public.user_role ADD VALUE 'vendor';
+    END IF;
+END $$;
 
 -- Step 4: Commit the transaction to make the enum value available
 COMMIT;
@@ -265,9 +273,10 @@ DECLARE
     vendor_user1_id UUID := gen_random_uuid();
     vendor_user2_id UUID := gen_random_uuid();
     existing_vendor_id UUID;
+    job_to_update_id UUID;
 BEGIN
     -- Get existing vendor ID
-    SELECT id INTO existing_vendor_id FROM public.vendors LIMIT 1;
+    SELECT id INTO existing_vendor_id FROM public.vendors ORDER BY created_at LIMIT 1;
     
     IF existing_vendor_id IS NOT NULL THEN
         -- Create vendor auth users
@@ -287,19 +296,32 @@ BEGIN
             (vendor_user2_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
              'vendorstaff@premiumauto.com', crypt('vendor456', gen_salt('bf', 10)), now(), now(), now(),
              '{"full_name": "Vendor Staff User"}'::jsonb, '{"provider": "email", "providers": ["email"]}'::jsonb,
-             false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null);
+             false, false, '', null, '', null, '', '', null, '', 0, '', null, null, '', '', null)
+        ON CONFLICT (id) DO NOTHING;
 
         -- Create vendor user profiles with explicit casting to avoid enum issues
         INSERT INTO public.user_profiles (id, email, full_name, role, vendor_id, is_active)
         VALUES
             (vendor_user1_id, 'vendor@premiumauto.com', 'Premium Auto Vendor', 'vendor'::public.user_role, existing_vendor_id, true),
-            (vendor_user2_id, 'vendorstaff@premiumauto.com', 'Vendor Staff User', 'vendor'::public.user_role, existing_vendor_id, true);
+            (vendor_user2_id, 'vendorstaff@premiumauto.com', 'Vendor Staff User', 'vendor'::public.user_role, existing_vendor_id, true)
+        ON CONFLICT (id) DO UPDATE SET 
+            role = EXCLUDED.role,
+            vendor_id = EXCLUDED.vendor_id,
+            is_active = EXCLUDED.is_active;
 
-        -- Update existing job to be assigned to the vendor
-        UPDATE public.jobs 
-        SET vendor_id = existing_vendor_id 
+        -- Get one job ID that needs vendor assignment (FIXED: Remove LIMIT from UPDATE)
+        SELECT id INTO job_to_update_id 
+        FROM public.jobs 
         WHERE vendor_id IS NULL 
+        ORDER BY created_at 
         LIMIT 1;
+        
+        -- Update the specific job (PostgreSQL compliant syntax)
+        IF job_to_update_id IS NOT NULL THEN
+            UPDATE public.jobs 
+            SET vendor_id = existing_vendor_id 
+            WHERE id = job_to_update_id;
+        END IF;
     END IF;
 
 EXCEPTION
