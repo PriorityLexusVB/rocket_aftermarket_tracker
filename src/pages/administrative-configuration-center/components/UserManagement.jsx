@@ -59,7 +59,7 @@ const UserManagement = () => {
     }
   };
 
-  // Add this block - handleFormChange function
+  // handleFormChange function
   const handleFormChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -67,7 +67,7 @@ const UserManagement = () => {
     }));
   };
 
-  // Add this block - resetForm function
+  // resetForm function
   const resetForm = () => {
     setFormData({
       email: '',
@@ -79,7 +79,7 @@ const UserManagement = () => {
     setShowCreateForm(false);
   };
 
-  // Add this block - authService replacement
+  // authService replacement
   const authService = {
     createUser: async (userData) => {
       // Create user in Supabase Auth
@@ -107,7 +107,7 @@ const UserManagement = () => {
     }
   };
 
-  // Add this block - logger replacement
+  // logger replacement
   const logger = {
     logSuccess: async (action, type, id, message, data) => {
       console.log(`Success: ${action}`, { type, id, message, data });
@@ -450,7 +450,7 @@ const UserManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium ${
                       user?.is_active 
-                        ? 'bg-green-100 text-green-800' :'bg-red-100 text-red-800'
+                        ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
                       {user?.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -463,7 +463,7 @@ const UserManagement = () => {
                       onClick={() => handleToggleUserStatus(user?.id, user?.is_active)}
                       className={`${
                         user?.is_active
-                          ? 'text-red-600 hover:text-red-900' :'text-green-600 hover:text-green-900'
+                          ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
                       }`}
                     >
                       {user?.is_active ? 'Deactivate' : 'Activate'}

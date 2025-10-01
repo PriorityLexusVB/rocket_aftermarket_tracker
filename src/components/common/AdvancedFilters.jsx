@@ -247,7 +247,7 @@ const AdvancedFilters = ({
             onClick={() => setIsExpanded(!isExpanded)}
             iconName={isExpanded ? 'ChevronUp' : 'ChevronDown'}
             iconPosition="left"
-            className=""
+            className="flex items-center space-x-2"
           >
             Advanced Filters
           </Button>
@@ -268,7 +268,7 @@ const AdvancedFilters = ({
                 onClick={() => setShowSaveDialog(true)}
                 iconName="Save"
                 iconPosition="left"
-                className=""
+                className="flex items-center space-x-2"
               >
                 Save Preset
               </Button>
@@ -279,7 +279,7 @@ const AdvancedFilters = ({
                 onClick={handleClearAll}
                 iconName="X"
                 iconPosition="left"
-                className=""
+                className="flex items-center space-x-2"
               >
                 Clear All
               </Button>
@@ -287,6 +287,7 @@ const AdvancedFilters = ({
           )}
         </div>
       </div>
+
       {/* Filter Presets */}
       {presets?.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -296,7 +297,7 @@ const AdvancedFilters = ({
               variant="outline"
               size="sm"
               onClick={() => handleLoadPreset(preset)}
-              className="relative group"
+              className="relative group flex items-center"
             >
               <span>{preset?.name}</span>
               {preset?.is_public && (
@@ -316,6 +317,7 @@ const AdvancedFilters = ({
           ))}
         </div>
       )}
+
       {/* Filter Controls */}
       {isExpanded && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-border">
@@ -329,6 +331,7 @@ const AdvancedFilters = ({
           ))}
         </div>
       )}
+
       {/* Save Preset Dialog */}
       {showSaveDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -368,7 +371,7 @@ const AdvancedFilters = ({
               <Button
                 variant="outline"
                 onClick={() => setShowSaveDialog(false)}
-                className=""
+                className="px-4 py-2"
               >
                 Cancel
               </Button>
@@ -376,7 +379,7 @@ const AdvancedFilters = ({
               <Button
                 onClick={handleSavePreset}
                 disabled={!presetName?.trim()}
-                className=""
+                className="px-4 py-2"
               >
                 Save Preset
               </Button>

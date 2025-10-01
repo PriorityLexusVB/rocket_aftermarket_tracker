@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, recoverSession } from '../lib/supabase';
 
 
 const AuthContext = createContext({})
@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [profileLoading, setProfileLoading] = useState(false)
 
-  // Simplified profile operations
+  // Enhanced profile operations with error handling
   const profileOperations = {
     async load(userId) {
       if (!userId) return
@@ -54,6 +54,7 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Profile load error:', error);
+        // Don't throw error, just log it
       } finally {
         setProfileLoading(false)
       }
@@ -67,10 +68,28 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  // Simplified auth state handlers
+  // Enhanced auth state handlers with refresh token error handling
   const authStateHandlers = {
     onChange: async (event, session) => {
       console.log('Auth state changed:', { event, hasSession: !!session, hasUser: !!session?.user });
+      
+      // Handle refresh token errors specifically
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        console.error('Token refresh failed - clearing auth state');
+        setUser(null);
+        profileOperations?.clear();
+        setLoading(false);
+        return;
+      }
+      
+      // Handle signed out events
+      if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+        setUser(null);
+        profileOperations?.clear();
+        setLoading(false);
+        return;
+      }
       
       setUser(session?.user ?? null)
       setLoading(false)
@@ -85,27 +104,82 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
     
-    // Initial session check
+    // Enhanced initial auth check with retry logic
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase?.auth?.getSession()
+        console.log('Initializing auth...', { retryCount });
+        
+        const { data: { session }, error } = await supabase?.auth?.getSession()
+        
+        if (error && error?.message?.includes('refresh_token_not_found')) {
+          console.warn('Refresh token not found - attempting session recovery...');
+          
+          // Try session recovery first
+          const recoveredSession = await recoverSession();
+          if (mounted) {
+            authStateHandlers?.onChange('RECOVERED', recoveredSession);
+          }
+          return;
+        }
+        
+        if (error) {
+          console.error('Auth initialization error:', error);
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(() => initAuth(), 1000 * retryCount); // Exponential backoff
+            return;
+          }
+        }
+        
         if (mounted) {
-          authStateHandlers?.onChange(null, session)
+          authStateHandlers?.onChange('INITIAL_SESSION', session);
         }
       } catch (error) {
         console.error('Initial auth check failed:', error);
-        if (mounted) {
-          setLoading(false)
+        
+        // If it's a refresh token error, try recovery
+        if (error?.message?.includes('refresh_token') || error?.message?.includes('Invalid Refresh Token')) {
+          console.log('Attempting session recovery due to refresh token error...');
+          try {
+            const recoveredSession = await recoverSession();
+            if (mounted) {
+              authStateHandlers?.onChange('RECOVERED', recoveredSession);
+            }
+          } catch (recoveryError) {
+            console.error('Session recovery failed:', recoveryError);
+            if (mounted) {
+              setLoading(false);
+            }
+          }
+        } else if (mounted) {
+          setLoading(false);
         }
       }
     }
 
     initAuth();
 
-    // Auth state change listener
+    // Enhanced auth state change listener with error handling
     const { data: { subscription } } = supabase?.auth?.onAuthStateChange(
-      authStateHandlers?.onChange
+      (event, session) => {
+        console.log('Auth state change event:', event);
+        
+        // Handle specific error events
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.error('Token refresh failed - will attempt recovery');
+          recoverSession()?.then(recoveredSession => {
+            if (mounted) {
+              authStateHandlers?.onChange('RECOVERED', recoveredSession);
+            }
+          });
+          return;
+        }
+        
+        authStateHandlers?.onChange(event, session);
+      }
     )
 
     return () => {
@@ -114,7 +188,7 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  // Completely redesigned signIn method to fix hanging issue
+  // Enhanced signIn method with refresh token error handling
   const signIn = async (email, password, rememberMe = false) => {
     console.log('=== AUTHENTICATION DEBUG START ===');
     console.log('Email:', email);
@@ -136,15 +210,20 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: 'Authentication service unavailable. Please refresh the page.' };
       }
 
-      console.log('Starting simplified auth process...');
+      // Clear any existing corrupted session before signing in
+      try {
+        await recoverSession();
+      } catch (recoveryError) {
+        console.warn('Session recovery failed, continuing with sign in:', recoveryError);
+      }
+
+      console.log('Starting enhanced auth process...');
       
-      // COMPLETELY SIMPLIFIED APPROACH - Direct call with aggressive timeout
       let authResult = null;
       let timeoutId = null;
       let isResolved = false;
 
       try {
-        // Create a more aggressive timeout that actually cancels the request
         const authPromise = new Promise(async (resolve, reject) => {
           try {
             console.log('Making direct Supabase auth call...');
@@ -164,17 +243,15 @@ export const AuthProvider = ({ children }) => {
           }
         });
 
-        // Ultra-aggressive timeout with cleanup
         const timeoutPromise = new Promise((_, reject) => {
           timeoutId = setTimeout(() => {
             if (!isResolved) {
               console.error('=== AUTHENTICATION TIMEOUT ===');
               reject(new Error('TIMEOUT_15_SECONDS'));
             }
-          }, 15000); // Reduced to 15 seconds
+          }, 15000);
         });
 
-        // Race with immediate cleanup
         authResult = await Promise.race([authPromise, timeoutPromise]);
         isResolved = true;
         if (timeoutId) clearTimeout(timeoutId);
@@ -188,11 +265,10 @@ export const AuthProvider = ({ children }) => {
         if (raceError?.message === 'TIMEOUT_15_SECONDS') {
           return { 
             success: false, 
-            error: 'Authentication timeout. This indicates a connection issue with the authentication server. Please refresh the page and try again.' 
+            error: 'Authentication timeout. Please refresh the page and try again.' 
           };
         }
         
-        // Handle other race errors
         return { 
           success: false, 
           error: 'Authentication request failed. Please check your internet connection and try again.' 
@@ -205,15 +281,18 @@ export const AuthProvider = ({ children }) => {
       if (error) {
         console.error('Supabase auth error:', error?.message);
         
-        // Simplified error handling
         let userFriendlyError = 'Login failed. Please check your credentials.';
         
         if (error?.message?.includes('Invalid login credentials')) {
-          userFriendlyError = 'Invalid email or password. Please use the demo credentials below.';
+          userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
         } else if (error?.message?.includes('Email not confirmed')) {
-          userFriendlyError = 'Email not confirmed. For demo users, please refresh the page.';
+          userFriendlyError = 'Email not confirmed. Please check your email for confirmation instructions.';
         } else if (error?.message?.includes('Too many requests')) {
-          userFriendlyError = 'Too many attempts. Please wait a few minutes.';
+          userFriendlyError = 'Too many login attempts. Please wait a few minutes before trying again.';
+        } else if (error?.message?.includes('refresh_token') || error?.message?.includes('Invalid Refresh Token')) {
+          userFriendlyError = 'Session expired. The page will refresh automatically.';
+          // Auto-refresh page to clear corrupted state
+          setTimeout(() => window.location?.reload(), 2000);
         } else if (error?.status === 500) {
           userFriendlyError = 'Server error. Please refresh the page and try again.';
         }
@@ -248,7 +327,10 @@ export const AuthProvider = ({ children }) => {
       
       let errorMessage = 'Authentication failed. Please refresh the page and try again.';
       
-      if (error?.message?.includes('fetch') || error?.name === 'TypeError') {
+      if (error?.message?.includes('refresh_token') || error?.message?.includes('Invalid Refresh Token')) {
+        errorMessage = 'Session corrupted. The page will refresh automatically to fix this.';
+        setTimeout(() => window.location?.reload(), 2000);
+      } else if (error?.message?.includes('fetch') || error?.name === 'TypeError') {
         errorMessage = 'Network connection failed. Please check your internet connection.';
       } else if (error?.message?.includes('timeout')) {
         errorMessage = 'Request timeout. Please try again or refresh the page.';
@@ -273,21 +355,33 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Enhanced signOut with session cleanup
   const signOut = async () => {
     try {
+      // Clear local storage first to prevent any issues
+      localStorage.removeItem('rememberMe')
+      localStorage.removeItem('userRole')
+      localStorage.removeItem('userEmail')
+      
+      // Clear any Supabase session storage
+      const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
+      if (supabaseUrl) {
+        localStorage.removeItem('supabase.auth.token');
+        localStorage.removeItem('sb-' + supabaseUrl?.split('//')?.[1] + '-auth-token');
+      }
+      
       const { error } = await supabase?.auth?.signOut()
       
-      if (!error) {
-        setUser(null)
-        profileOperations?.clear()
-        localStorage.removeItem('rememberMe')
-        localStorage.removeItem('userRole')
-        localStorage.removeItem('userEmail')
-      }
+      // Clear state regardless of API success
+      setUser(null)
+      profileOperations?.clear()
       
       return { error }
     } catch (error) {
-      return { error: { message: 'Network error. Please try again.' } }
+      // Still clear local state even if API call fails
+      setUser(null)
+      profileOperations?.clear()
+      return { error: { message: 'Network error during sign out. Local session cleared.' } }
     }
   }
 

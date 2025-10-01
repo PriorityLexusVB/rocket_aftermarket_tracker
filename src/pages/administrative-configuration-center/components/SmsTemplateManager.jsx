@@ -423,6 +423,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                 
                 <Button 
                   type="submit"
+                  onClick={() => {}}
                   className=""
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}

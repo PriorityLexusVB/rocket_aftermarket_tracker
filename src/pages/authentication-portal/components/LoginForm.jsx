@@ -97,9 +97,8 @@ const LoginForm = () => {
   // Demo credentials
   const fillDemoCredentials = (role) => {
     const credentials = {
-      admin: { email: 'admin@rocketaftermarket.com', password: 'Admin123!' },
-      manager: { email: 'manager@rocketaftermarket.com', password: 'Manager123!' },
-      staff: { email: 'staff@rocketaftermarket.com', password: 'Staff123!' }
+      ashley: { email: 'ashley.terminello@priorityautomotive.com', password: 'Rocket123!' },
+      rob: { email: 'rob.brasco@priorityautomotive.com', password: 'Rocket123!' }
     };
     
     const cred = credentials?.[role];
@@ -208,6 +207,7 @@ const LoginForm = () => {
         {/* Submit Button */}
         <Button
           type="submit"
+          onClick={handleSubmit}
           disabled={isLoading}
           className="w-full flex items-center justify-center space-x-2 transition-all duration-200"
         >
@@ -224,30 +224,30 @@ const LoginForm = () => {
           )}
         </Button>
 
-        {/* Demo Credentials */}
+        {/* Admin Credentials */}
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-800 mb-3">Demo Credentials (Click to Auto-Fill)</h3>
+          <h3 className="text-sm font-medium text-blue-800 mb-3">Admin Credentials (Click to Auto-Fill)</h3>
           <div className="space-y-2 text-xs">
             <button
               type="button" 
-              onClick={() => fillDemoCredentials('admin')}
+              onClick={() => fillDemoCredentials('ashley')}
               className="block w-full text-left p-2 bg-blue-100 hover:bg-blue-200 rounded text-blue-700 transition-colors"
             >
-              <div><strong>Admin:</strong> admin@rocketaftermarket.com</div>
-              <div className="text-blue-600">Password: Admin123!</div>
+              <div><strong>Ashley Terminello:</strong> ashley.terminello@priorityautomotive.com</div>
+              <div className="text-blue-600">Password: Rocket123!</div>
             </button>
             <button
               type="button"
-              onClick={() => fillDemoCredentials('manager')} 
+              onClick={() => fillDemoCredentials('rob')} 
               className="block w-full text-left p-2 bg-blue-100 hover:bg-blue-200 rounded text-blue-700 transition-colors"
             >
-              <div><strong>Manager:</strong> manager@rocketaftermarket.com</div>
-              <div className="text-blue-600">Password: Manager123!</div>
+              <div><strong>Rob Brasco:</strong> rob.brasco@priorityautomotive.com</div>
+              <div className="text-blue-600">Password: Rocket123!</div>
             </button>
           </div>
           <div className="mt-3 text-xs text-blue-600">
             <p>• Click any credential above to auto-fill the form</p>
-            <p>• If login fails, the auth users may need to be created in Supabase</p>
+            <p>• Both users have full administrator privileges</p>
           </div>
         </div>
       </form>

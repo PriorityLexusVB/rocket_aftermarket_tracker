@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useLogger } from '../../../hooks/useLogger';
-import Button from '../../../components/ui/Button';
+import UIButton from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import vendorService from '../../../services/vendorService';
@@ -313,13 +313,13 @@ const VendorManagement = () => {
             </Select>
           </div>
 
-          <Button
+          <UIButton
             onClick={handleAddNewVendor}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
             disabled={loading}
           >
             {loading ? 'Loading...' : 'Add New Vendor'}
-          </Button>
+          </UIButton>
         </div>
 
         {/* Bulk Actions */}
@@ -329,18 +329,18 @@ const VendorManagement = () => {
               {selectedCount} vendor{selectedCount > 1 ? 's' : ''} selected
             </span>
             <div className="space-x-2">
-              <Button
+              <UIButton
                 onClick={() => handleBulkToggleActive(true)}
                 className="text-xs bg-green-600 hover:bg-green-700 text-white"
               >
                 Activate
-              </Button>
-              <Button
+              </UIButton>
+              <UIButton
                 onClick={() => handleBulkToggleActive(false)}
                 className="text-xs bg-red-600 hover:bg-red-700 text-white"
               >
                 Deactivate
-              </Button>
+              </UIButton>
             </div>
           </div>
         )}
@@ -418,7 +418,7 @@ const VendorManagement = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <Button
+                      <UIButton
                         onClick={(e) => {
                           e?.preventDefault();
                           e?.stopPropagation();
@@ -429,8 +429,8 @@ const VendorManagement = () => {
                         type="button"
                       >
                         Edit
-                      </Button>
-                      <Button
+                      </UIButton>
+                      <UIButton
                         onClick={(e) => {
                           e?.preventDefault();
                           e?.stopPropagation();
@@ -441,7 +441,7 @@ const VendorManagement = () => {
                         type="button"
                       >
                         Delete
-                      </Button>
+                      </UIButton>
                     </td>
                   </tr>
                 ))}
@@ -464,12 +464,12 @@ const VendorManagement = () => {
               <h3 className="text-lg font-medium text-gray-900">
                 {formMode === 'add' ? 'Add New Vendor' : 'Edit Vendor'}
               </h3>
-              <Button
+              <UIButton
                 onClick={resetForm}
                 className="text-xs bg-gray-500 hover:bg-gray-600 text-white"
               >
                 Cancel
-              </Button>
+              </UIButton>
             </div>
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
@@ -588,15 +588,14 @@ const VendorManagement = () => {
               </div>
 
               <div className="flex space-x-3 pt-4">
-                <Button
+                <UIButton
                   type="submit"
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                  onClick={() => {}}
                   disabled={loading}
                 >
                   {loading ? 'Saving...' : (formMode === 'add' ? 'Add Vendor' : 'Update Vendor')}
-                </Button>
-                <Button
+                </UIButton>
+                <UIButton
                   type="button"
                   onClick={(e) => {
                     e?.preventDefault();
@@ -607,7 +606,7 @@ const VendorManagement = () => {
                   disabled={loading}
                 >
                   Cancel
-                </Button>
+                </UIButton>
               </div>
             </form>
           </div>

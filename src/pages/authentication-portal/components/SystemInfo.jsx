@@ -47,17 +47,17 @@ const SystemInfo = () => {
               Need Help?
             </h4>
             <p className="text-xs text-muted-foreground mb-2">
-              Contact your system administrator or IT support team for assistance with login issues.
+              Contact your system administrator or support team for assistance with login issues.
             </p>
             <div className="flex items-center space-x-4 text-xs">
               <a 
-                href="mailto:support@rocketaftermarket.com" 
+                href="mailto:ashley.terminello@priorityautomotive.com" 
                 className="text-primary hover:text-primary/80 transition-colors"
               >
-                support@rocketaftermarket.com
+                ashley.terminello@priorityautomotive.com
               </a>
               <span className="text-muted-foreground">•</span>
-              <span className="text-muted-foreground">Ext: 2847</span>
+              <span className="text-muted-foreground">Support</span>
             </div>
           </div>
         </div>

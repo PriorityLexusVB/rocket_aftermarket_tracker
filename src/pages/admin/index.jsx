@@ -10,8 +10,9 @@ const AdminPage = () => {
   const { userProfile, isManager } = useAuth();
   const [activeTab, setActiveTab] = useState('vendors');
   const [vendors, setVendors] = useState([]);
-  const [services, setServices] = useState([]);
+  const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [csvFile, setCsvFile] = useState(null);
   const [csvPreview, setCsvPreview] = useState([]);
@@ -23,7 +24,7 @@ const AdminPage = () => {
 
   const tabs = [
     { key: 'vendors', label: 'Vendors', icon: Building2 },
-    { key: 'services', label: 'Services/Catalog', icon: Package },
+    { key: 'products', label: 'Aftermarket Products', icon: Package },
     { key: 'users', label: 'Users/Roles', icon: Users },
     { key: 'sms', label: 'SMS Templates', icon: MessageSquare },
     { key: 'import', label: 'CSV Import', icon: Upload }
@@ -44,8 +45,8 @@ const AdminPage = () => {
         case 'vendors':
           await loadVendors();
           break;
-        case 'services':
-          await loadServices();
+        case 'products':
+          await loadProducts();
           break;
         case 'users':
           await loadUsers();
@@ -60,24 +61,24 @@ const AdminPage = () => {
 
   const loadVendors = async () => {
     const { data, error } = await supabase?.from('vendors')?.select('*')?.order('name');
-    
     if (error) throw error;
     setVendors(data || []);
   };
 
-  const loadServices = async () => {
+  const loadProducts = async () => {
     const { data, error } = await supabase?.from('products')?.select(`
         *,
         vendors (name)
       `)?.order('name');
-    
     if (error) throw error;
-    setServices(data || []);
+    setProducts(data || []);
   };
 
   const loadUsers = async () => {
-    const { data, error } = await supabase?.from('user_profiles')?.select('*')?.order('full_name');
-    
+    const { data, error } = await supabase?.from('user_profiles')?.select(`
+        *,
+        vendors (name)
+      `)?.order('full_name');
     if (error) throw error;
     setUsers(data || []);
   };
@@ -85,7 +86,7 @@ const AdminPage = () => {
   const handleAdd = (type) => {
     setModalType(type);
     setEditingItem(null);
-    setFormData({});
+    setFormData(getDefaultFormData(type));
     setShowModal(true);
   };
 
@@ -105,7 +106,7 @@ const AdminPage = () => {
         case 'vendor':
           table = 'vendors';
           break;
-        case 'service':
+        case 'product':
           table = 'products';
           break;
         case 'user':
@@ -116,10 +117,76 @@ const AdminPage = () => {
       const { error } = await supabase?.from(table)?.delete()?.eq('id', id);
       if (error) throw error;
 
-      // Reload data
       await loadTabData();
     } catch (error) {
       console.error('Error deleting item:', error);
+      alert(`Error deleting item: ${error?.message}`);
+    }
+  };
+
+  const getDefaultFormData = (type) => {
+    switch (type) {
+      case 'vendor':
+        return {
+          name: '',
+          contact_person: '',
+          phone: '',
+          email: '',
+          specialty: '',
+          address: '',
+          rating: '',
+          is_active: true
+        };
+      case 'product':
+        return {
+          name: '',
+          description: '',
+          part_number: '',
+          unit_price: '',
+          category: '',
+          brand: '',
+          quantity_in_stock: '0',
+          minimum_stock_level: '0',
+          vendor_id: '',
+          is_active: true
+        };
+      case 'user':
+        return {
+          full_name: '',
+          email: '',
+          phone: '',
+          role: 'staff',
+          department: '',
+          vendor_id: '',
+          is_active: true,
+          password: ''
+        };
+      case 'job':
+        return {
+          title: '',
+          description: '',
+          customer_name: '',
+          customer_email: '',
+          customer_phone: '',
+          vehicle_make: '',
+          vehicle_model: '',
+          vehicle_year: '',
+          vehicle_color: '',
+          stock_number: '',
+          scheduled_start_time: '',
+          scheduled_end_time: '',
+          assigned_to: '',
+          delivery_coordinator_id: '',
+          vendor_id: '',
+          needs_loaner: false,
+          is_offsite: false,
+          priority: 'medium',
+          estimated_cost: '',
+          estimated_hours: '',
+          job_status: 'pending'
+        };
+      default:
+        return {};
     }
   };
 
@@ -134,21 +201,79 @@ const AdminPage = () => {
       switch (modalType) {
         case 'vendor':
           table = 'vendors';
+          if (data?.rating) data.rating = parseFloat(data?.rating);
           break;
-        case 'service':
+        case 'product':
           table = 'products';
+          data.unit_price = parseFloat(data?.unit_price);
+          data.quantity_in_stock = parseInt(data?.quantity_in_stock) || 0;
+          data.minimum_stock_level = parseInt(data?.minimum_stock_level) || 0;
+          if (!data?.vendor_id) data.vendor_id = null;
           break;
         case 'user':
           table = 'user_profiles';
+          if (!data?.vendor_id) data.vendor_id = null;
+          
+          // Handle user creation with Supabase Auth
+          if (!editingItem && data?.password) {
+            const { data: authUser, error: authError } = await supabase?.auth?.signUp({
+              email: data?.email,
+              password: data?.password
+            });
+            if (authError) throw authError;
+            data.id = authUser?.user?.id;
+          }
+          
+          // Remove password from profile data
+          delete data?.password;
+          break;
+        case 'job':
+          table = 'jobs';
+          // Handle vehicle creation first if needed
+          if (data?.vehicle_make && data?.vehicle_model && data?.vehicle_year) {
+            const vehicleData = {
+              make: data?.vehicle_make,
+              model: data?.vehicle_model,
+              year: parseInt(data?.vehicle_year),
+              color: data?.vehicle_color || null,
+              stock_number: data?.stock_number || null,
+              owner_name: data?.customer_name,
+              owner_email: data?.customer_email || null,
+              owner_phone: data?.customer_phone || null
+            };
+
+            const { data: vehicle, error: vehicleError } = await supabase
+              ?.from('vehicles')?.insert([vehicleData])?.select()?.single();
+            
+            if (vehicleError) throw vehicleError;
+            data.vehicle_id = vehicle?.id;
+          }
+
+          // Clean job data
+          const jobData = {
+            title: data?.title,
+            description: data?.description,
+            vehicle_id: data?.vehicle_id || null,
+            assigned_to: data?.assigned_to || null,
+            delivery_coordinator_id: data?.delivery_coordinator_id || null,
+            vendor_id: data?.vendor_id || null,
+            scheduled_start_time: data?.scheduled_start_time || null,
+            scheduled_end_time: data?.scheduled_end_time || null,
+            priority: data?.priority || 'medium',
+            job_status: data?.job_status || 'pending',
+            estimated_cost: data?.estimated_cost ? parseFloat(data?.estimated_cost) : null,
+            estimated_hours: data?.estimated_hours ? parseInt(data?.estimated_hours) : null,
+            calendar_notes: `${data?.needs_loaner ? 'Needs Loaner Vehicle. ' : ''}${data?.is_offsite ? 'Offsite Job. ' : ''}${data?.description || ''}`
+          };
+
+          data = jobData;
           break;
       }
 
       if (editingItem) {
-        // Update existing
         const { error } = await supabase?.from(table)?.update(data)?.eq('id', editingItem?.id);
         if (error) throw error;
       } else {
-        // Create new
         const { error } = await supabase?.from(table)?.insert([data]);
         if (error) throw error;
       }
@@ -157,12 +282,17 @@ const AdminPage = () => {
       await loadTabData();
     } catch (error) {
       console.error('Error saving item:', error);
+      alert(`Error saving item: ${error?.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // CSV Import Functions
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // CSV Import Functions (keeping existing functionality)
   const handleFileUpload = (event) => {
     const file = event?.target?.files?.[0];
     if (!file) return;
@@ -200,7 +330,6 @@ const AdminPage = () => {
         const lines = text?.split('\n')?.filter(line => line?.trim());
         const headers = lines?.[0]?.split(',')?.map(h => h?.trim()?.toLowerCase());
         
-        // Stock-first dedupe logic
         const processedVehicles = new Map();
         const processedJobs = [];
         
@@ -211,7 +340,6 @@ const AdminPage = () => {
             return obj;
           }, {});
 
-          // Map CSV headers to database columns (case-insensitive)
           const stockNumber = record?.['stock'] || record?.['stock_number'] || record?.['stock #'];
           const customerName = record?.['customer'] || record?.['customer_name'] || record?.['owner'];
           const vehicleYear = record?.['year'] || record?.['vehicle_year'];
@@ -220,7 +348,6 @@ const AdminPage = () => {
           const serviceDate = record?.['date'] || record?.['service_date'] || record?.['appointment_date'];
           const services = record?.['services'] || record?.['service_list'] || '';
           
-          // Stock-first vehicle deduplication
           if (stockNumber && !processedVehicles?.has(stockNumber)) {
             processedVehicles?.set(stockNumber, {
               stock_number: stockNumber,
@@ -232,7 +359,6 @@ const AdminPage = () => {
             });
           }
 
-          // Create job entry (stock + date + customer = unique work order)
           if (stockNumber && serviceDate && customerName) {
             const jobKey = `${stockNumber}-${serviceDate}-${customerName}`;
             
@@ -248,17 +374,13 @@ const AdminPage = () => {
           }
         }
 
-        // Insert vehicles first
         const vehiclesArray = Array.from(processedVehicles?.values());
         if (vehiclesArray?.length > 0) {
           const { error: vehiclesError } = await supabase?.from('vehicles')?.upsert(vehiclesArray, { onConflict: 'stock_number' });
-          
           if (vehiclesError) throw vehiclesError;
         }
 
-        // Then insert jobs with vehicle references
         for (const job of processedJobs) {
-          // Get vehicle ID by stock number
           const { data: vehicle } = await supabase?.from('vehicles')?.select('id')?.eq('stock_number', job?.stock_number)?.single();
 
           if (vehicle) {
@@ -286,10 +408,47 @@ const AdminPage = () => {
 
   const handleBackupData = async () => {
     try {
-      // This would implement a data backup functionality
-      console.log('Backup data functionality would be implemented here');
+      setLoading(true);
+      
+      const backupData = {};
+      
+      const { data: vendorsData } = await supabase?.from('vendors')?.select('*');
+      backupData.vendors = vendorsData || [];
+      
+      const { data: productsData } = await supabase?.from('products')?.select('*');
+      backupData.products = productsData || [];
+      
+      const { data: usersData } = await supabase?.from('user_profiles')?.select('*');
+      backupData.user_profiles = usersData || [];
+      
+      const { data: vehiclesData } = await supabase?.from('vehicles')?.select('*')?.limit(100);
+      backupData.vehicles = vehiclesData || [];
+      
+      const { data: jobsData } = await supabase?.from('jobs')?.select('*')?.limit(500);
+      backupData.jobs = jobsData || [];
+      
+      const backup = {
+        timestamp: new Date()?.toISOString(),
+        version: '1.0',
+        data: backupData
+      };
+      
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = window.URL?.createObjectURL(blob);
+      const a = document.createElement('a');
+      a?.setAttribute('hidden', '');
+      a?.setAttribute('href', url);
+      a?.setAttribute('download', `backup-${new Date()?.toISOString()?.split('T')?.[0]}.json`);
+      document.body?.appendChild(a);
+      a?.click();
+      document.body?.removeChild(a);
+      
+      console.log('Backup completed successfully');
     } catch (error) {
       console.error('Error backing up data:', error);
+      alert('Error creating backup');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -329,28 +488,29 @@ const AdminPage = () => {
           </div>
         </div>
       </div>
+
       {/* Tab Navigation */}
       <div className="bg-white border-b border-gray-200 px-6">
         <nav className="-mb-px flex space-x-8">
           {tabs?.map((tab) => {
             const Icon = tab?.icon;
             return (
-              <Button
+              <button
                 key={tab?.key}
                 onClick={() => setActiveTab(tab?.key)}
-                variant="ghost"
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 rounded-none ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 rounded-none bg-transparent hover:bg-gray-50 ${
                   activeTab === tab?.key
                     ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab?.label}</span>
-              </Button>
+              </button>
             );
           })}
         </nav>
       </div>
+
       {/* Tab Content */}
       <div className="flex-1 overflow-auto p-6">
         {activeTab === 'vendors' && (
@@ -437,50 +597,50 @@ const AdminPage = () => {
           </div>
         )}
 
-        {activeTab === 'services' && (
+        {activeTab === 'products' && (
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
-                <h2 className="text-lg font-medium">Service Catalog</h2>
+                <h2 className="text-lg font-medium">Aftermarket Products</h2>
                 <Button
-                  onClick={() => handleAdd('service')}
+                  onClick={() => handleAdd('product')}
                   className="flex items-center space-x-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add Service</span>
+                  <span>Add Product</span>
                 </Button>
               </div>
             </div>
             
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {services?.map((service) => (
-                  <div key={service?.id} className="border border-gray-200 rounded-lg p-4">
+                {products?.map((product) => (
+                  <div key={product?.id} className="border border-gray-200 rounded-lg p-4">
                     <h3 className="font-medium text-gray-900">
-                      {service?.name === 'RG' ? 'RUSTGUARD' : service?.name}
+                      {product?.name}
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">{service?.description}</p>
+                    <p className="text-sm text-gray-500 mt-1">{product?.description}</p>
                     
                     <div className="mt-4 flex justify-between items-center">
                       <div>
                         <span className="text-sm text-gray-500">Price: </span>
-                        <span className="font-medium">${service?.price}</span>
+                        <span className="font-medium">${product?.unit_price}</span>
                       </div>
                       <div>
-                        <span className="text-sm text-gray-500">Cost: </span>
-                        <span className="font-medium">${service?.cost}</span>
+                        <span className="text-sm text-gray-500">Stock: </span>
+                        <span className="font-medium">{product?.quantity_in_stock}</span>
                       </div>
                     </div>
                     
-                    {service?.vendors && (
+                    {product?.vendors && (
                       <div className="mt-2 text-xs text-gray-500">
-                        Vendor: {service?.vendors?.name}
+                        Vendor: {product?.vendors?.name}
                       </div>
                     )}
                     
                     <div className="mt-4 flex space-x-2">
                       <Button
-                        onClick={() => handleEdit('service', service)}
+                        onClick={() => handleEdit('product', product)}
                         variant="ghost"
                         size="sm"
                         className="text-blue-600 hover:text-blue-900"
@@ -489,7 +649,7 @@ const AdminPage = () => {
                         Edit
                       </Button>
                       <Button
-                        onClick={() => handleDelete('service', service?.id)}
+                        onClick={() => handleDelete('product', product?.id)}
                         variant="ghost"
                         size="sm"
                         className="text-red-600 hover:text-red-900"
@@ -603,7 +763,7 @@ const AdminPage = () => {
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium text-sm">Appointment Confirmation</h4>
                     <p className="text-sm text-gray-600 mt-2">
-                      "Stock {`{STOCK}`} service confirmed for {`{DATE}`}. Reply YES to confirm or CALL {`{PHONE}`}"
+                      "Stock {"{STOCK}"} service confirmed for {"{DATE}"}. Reply YES to confirm or CALL {"{PHONE}"}"
                     </p>
                     <div className="text-xs text-gray-500 mt-2">Character count: 85/160</div>
                   </div>
@@ -611,17 +771,17 @@ const AdminPage = () => {
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium text-sm">Service Complete</h4>
                     <p className="text-sm text-gray-600 mt-2">
-                      "Stock {`{STOCK}`} service complete! Total: ${`{AMOUNT}`}. Ready for pickup. Call {`{PHONE}`}"
+                      "Stock {"{STOCK}"} service complete! Total: ${"{AMOUNT}"}. Ready for pickup. Call {"{PHONE}"}"
                     </p>
                     <div className="text-xs text-gray-500 mt-2">Character count: 78/160</div>
                   </div>
                   
                   <div className="border border-gray-200 rounded-lg p-4">
-                    <h4 className="font-medium text-sm">Appointment Change</h4>
+                    <h4 className="font-medium text-sm">Need Loaner Reminder</h4>
                     <p className="text-sm text-gray-600 mt-2">
-                      "Stock {`{STOCK}`} appointment moved to {`{NEW_DATE}`} {`{NEW_TIME}`}. Reply C to confirm"
+                      "Your loaner vehicle is ready for pickup. Stock {"{STOCK}"} - Service scheduled for {"{DATE}"}."
                     </p>
-                    <div className="text-xs text-gray-500 mt-2">Character count: 82/160</div>
+                    <div className="text-xs text-gray-500 mt-2">Character count: 92/160</div>
                   </div>
                 </div>
                 
@@ -636,7 +796,7 @@ const AdminPage = () => {
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">1h Before Appointment</span>
+                        <span className="text-sm font-medium">Loaner Vehicle Ready</span>
                         <input type="checkbox" defaultChecked className="rounded" />
                       </div>
                       
@@ -646,13 +806,16 @@ const AdminPage = () => {
                       </div>
                       
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">No-Show Auto (T+15min)</span>
+                        <span className="text-sm font-medium">Offsite Job Reminder</span>
                         <input type="checkbox" defaultChecked className="rounded" />
                       </div>
                     </div>
                   </div>
                   
-                  <Button className="w-full">
+                  <Button 
+                    onClick={() => console.log('Save SMS settings')} 
+                    className="w-full"
+                  >
                     Save SMS Settings
                   </Button>
                 </div>
@@ -670,7 +833,6 @@ const AdminPage = () => {
             
             <div className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Upload Section */}
                 <div className="space-y-4">
                   <h3 className="font-medium">Upload CSV File</h3>
                   
@@ -716,14 +878,13 @@ const AdminPage = () => {
                   {importStatus && (
                     <div className={`border rounded-lg p-4 ${
                       importStatus?.includes('Error') 
-                        ? 'bg-red-50 border-red-200 text-red-700' :'bg-blue-50 border-blue-200 text-blue-700'
+                        ? 'bg-red-50 border-red-200 text-red-700' : 'bg-blue-50 border-blue-200 text-blue-700'
                     }`}>
                       {importStatus}
                     </div>
                   )}
                 </div>
                 
-                {/* Preview Section */}
                 <div className="space-y-4">
                   <h3 className="font-medium">Column Mapping Guide</h3>
                   
@@ -782,67 +943,303 @@ const AdminPage = () => {
           </div>
         )}
       </div>
-      {/* Modal for Add/Edit */}
+
+      {/* Enhanced Modal for Add/Edit */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-medium mb-4">
               {editingItem ? `Edit ${modalType}` : `Add New ${modalType}`}
             </h3>
             
             <form onSubmit={handleSubmit}>
               {modalType === 'vendor' && (
-                <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                     <input
                       type="text"
                       value={formData?.name || ''}
-                      onChange={(e) => setFormData({...formData, name: e?.target?.value})}
+                      onChange={(e) => handleInputChange('name', e?.target?.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       required
                     />
                   </div>
-                  <div className="mb-4">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Contact Person</label>
                     <input
                       type="text"
                       value={formData?.contact_person || ''}
-                      onChange={(e) => setFormData({...formData, contact_person: e?.target?.value})}
+                      onChange={(e) => handleInputChange('contact_person', e?.target?.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div className="mb-4">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                     <input
                       type="text"
                       value={formData?.phone || ''}
-                      onChange={(e) => setFormData({...formData, phone: e?.target?.value})}
+                      onChange={(e) => handleInputChange('phone', e?.target?.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div className="mb-4">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                     <input
                       type="email"
                       value={formData?.email || ''}
-                      onChange={(e) => setFormData({...formData, email: e?.target?.value})}
+                      onChange={(e) => handleInputChange('email', e?.target?.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div className="mb-4">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
                     <input
                       type="text"
                       value={formData?.specialty || ''}
-                      onChange={(e) => setFormData({...formData, specialty: e?.target?.value})}
+                      onChange={(e) => handleInputChange('specialty', e?.target?.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                </>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="5"
+                      step="0.1"
+                      value={formData?.rating || ''}
+                      onChange={(e) => handleInputChange('rating', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <textarea
+                      value={formData?.address || ''}
+                      onChange={(e) => handleInputChange('address', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      rows="2"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData?.is_active !== false}
+                        onChange={(e) => handleInputChange('is_active', e?.target?.checked)}
+                        className="mr-2"
+                      />
+                      Active
+                    </label>
+                  </div>
+                </div>
               )}
 
-              <div className="flex justify-end space-x-3">
+              {modalType === 'product' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+                    <input
+                      type="text"
+                      value={formData?.name || ''}
+                      onChange={(e) => handleInputChange('name', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Part Number</label>
+                    <input
+                      type="text"
+                      value={formData?.part_number || ''}
+                      onChange={(e) => handleInputChange('part_number', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData?.unit_price || ''}
+                      onChange={(e) => handleInputChange('unit_price', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                    <input
+                      type="text"
+                      value={formData?.category || ''}
+                      onChange={(e) => handleInputChange('category', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+                    <input
+                      type="text"
+                      value={formData?.brand || ''}
+                      onChange={(e) => handleInputChange('brand', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData?.quantity_in_stock || '0'}
+                      onChange={(e) => handleInputChange('quantity_in_stock', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
+                    <select
+                      value={formData?.vendor_id || ''}
+                      onChange={(e) => handleInputChange('vendor_id', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select Vendor</option>
+                      {vendors?.map(vendor => (
+                        <option key={vendor?.id} value={vendor?.id}>{vendor?.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Stock Level</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData?.minimum_stock_level || '0'}
+                      onChange={(e) => handleInputChange('minimum_stock_level', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={formData?.description || ''}
+                      onChange={(e) => handleInputChange('description', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      rows="3"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData?.is_active !== false}
+                        onChange={(e) => handleInputChange('is_active', e?.target?.checked)}
+                        className="mr-2"
+                      />
+                      Active
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {modalType === 'user' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input
+                      type="text"
+                      value={formData?.full_name || ''}
+                      onChange={(e) => handleInputChange('full_name', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                    <input
+                      type="email"
+                      value={formData?.email || ''}
+                      onChange={(e) => handleInputChange('email', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
+                  </div>
+                  {!editingItem && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                      <input
+                        type="password"
+                        value={formData?.password || ''}
+                        onChange={(e) => handleInputChange('password', e?.target?.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required={!editingItem}
+                        minLength="6"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input
+                      type="text"
+                      value={formData?.phone || ''}
+                      onChange={(e) => handleInputChange('phone', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                    <select
+                      value={formData?.role || 'staff'}
+                      onChange={(e) => handleInputChange('role', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                      <option value="vendor">Vendor</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                    <input
+                      type="text"
+                      value={formData?.department || ''}
+                      onChange={(e) => handleInputChange('department', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  {formData?.role === 'vendor' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Associated Vendor</label>
+                      <select
+                        value={formData?.vendor_id || ''}
+                        onChange={(e) => handleInputChange('vendor_id', e?.target?.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select Vendor</option>
+                        {vendors?.map(vendor => (
+                          <option key={vendor?.id} value={vendor?.id}>{vendor?.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData?.is_active !== false}
+                        onChange={(e) => handleInputChange('is_active', e?.target?.checked)}
+                        className="mr-2"
+                      />
+                      Active
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-3 mt-6">
                 <Button
                   type="button"
                   variant="outline"
