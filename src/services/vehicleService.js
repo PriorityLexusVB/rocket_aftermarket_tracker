@@ -26,7 +26,7 @@ export const vehicleService = {
       }
 
       if (filters?.search) {
-        query = query?.or(`vin.ilike.%${filters?.search}%,make.ilike.%${filters?.search}%,model.ilike.%${filters?.search}%,license_plate.ilike.%${filters?.search}%,owner_name.ilike.%${filters?.search}%`);
+        query = query?.or(`vin.ilike.%${filters?.search}%,make.ilike.%${filters?.search}%,model.ilike.%${filters?.search}%,license_plate.ilike.%${filters?.search}%,owner_name.ilike.%${filters?.search}%,owner_phone.ilike.%${filters?.search}%,owner_email.ilike.%${filters?.search}%,stock_number.ilike.%${filters?.search}%`);
       }
 
       const { data, error } = await query;
@@ -130,6 +130,40 @@ export const vehicleService = {
       return data;
     } catch (error) {
       console.error('Error in vehicleService.create:', error);
+      throw error;
+    }
+  },
+
+  async createVehicleWithProducts(vehicleData) {
+    try {
+      console.log('Creating vehicle with products:', vehicleData);
+      
+      // In a real implementation, this would:
+      // 1. Create the vehicle record in the vehicles table
+      // 2. Create vehicle_products records for each selected product
+      // 3. Optionally create initial job records if vendor is assigned
+      // 4. Return the created vehicle with all relationships
+      
+      // Mock implementation for now
+      const mockVehicleId = `vehicle_${Date.now()}`;
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock successful response
+      const createdVehicle = {
+        id: mockVehicleId,
+        ...vehicleData,
+        created_at: new Date()?.toISOString(),
+        initial_products_count: vehicleData?.initial_products?.length || 0,
+        estimated_aftermarket_value: vehicleData?.total_initial_product_value || 0
+      };
+      
+      console.log('Vehicle created successfully:', createdVehicle);
+      return createdVehicle;
+      
+    } catch (error) {
+      console.error('Error creating vehicle with products:', error);
       throw error;
     }
   },
@@ -279,15 +313,15 @@ export const getVehicles = async (options = {}) => {
 
     // Apply filters if provided
     if (options?.status) {
-      query = query?.eq('vehicle_status', options.status);
+      query = query?.eq('vehicle_status', options?.status);
     }
 
     if (options?.search) {
       query = query?.or(`
-        make.ilike.%${options.search}%,
-        model.ilike.%${options.search}%,
-        vin.ilike.%${options.search}%,
-        license_plate.ilike.%${options.search}%
+        make.ilike.%${options?.search}%,
+        model.ilike.%${options?.search}%,
+        vin.ilike.%${options?.search}%,
+        license_plate.ilike.%${options?.search}%
       `);
     }
 
@@ -321,3 +355,10 @@ export const getVendorAccessibleVehicles = async (vendorId) => {
     throw error;
   }
 };
+function createVehicleWithProducts(...args) {
+  // eslint-disable-next-line no-console
+  console.warn('Placeholder: createVehicleWithProducts is not implemented yet.', args);
+  return null;
+}
+
+export { createVehicleWithProducts };

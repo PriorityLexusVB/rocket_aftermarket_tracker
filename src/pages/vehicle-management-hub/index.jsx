@@ -9,7 +9,7 @@ import StatsOverview from './components/StatsOverview';
 import QuickActions from './components/QuickActions';
 import AddVehicleModal from './components/AddVehicleModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { getVehicles, getVendorAccessibleVehicles } from '../../services/vehicleService';
+import { getVehicles, getVendorAccessibleVehicles, createVehicleWithProducts } from '../../services/vehicleService';
 
 const VehicleManagementHub = () => {
   const { userProfile, isManager, isVendor, vendorId } = useAuth();
@@ -56,13 +56,16 @@ const VehicleManagementHub = () => {
   // Filter vehicles based on search and filters
   const filteredVehicles = React.useMemo(() => {
     return vehicles?.filter(vehicle => {
-      // Search filter
+      // Search filter - NOW INCLUDES PHONE NUMBERS
       if (searchQuery) {
         const query = searchQuery?.toLowerCase();
         if (!vehicle?.vin?.toLowerCase()?.includes(query) && 
             !vehicle?.stockNumber?.toLowerCase()?.includes(query) &&
             !vehicle?.make?.toLowerCase()?.includes(query) &&
-            !vehicle?.model?.toLowerCase()?.includes(query)) {
+            !vehicle?.model?.toLowerCase()?.includes(query) &&
+            !vehicle?.owner_phone?.toLowerCase()?.includes(query) &&
+            !vehicle?.owner_name?.toLowerCase()?.includes(query) &&
+            !vehicle?.owner_email?.toLowerCase()?.includes(query)) {
           return false;
         }
       }
@@ -195,12 +198,22 @@ const VehicleManagementHub = () => {
 
   const handleAddVehicle = async (vehicleData) => {
     try {
-      console.log('Adding new vehicle:', vehicleData);
-      // In real app, this would call vehicleService.create(vehicleData)
-      // const newVehicle = await vehicleService.create(vehicleData);
+      console.log('Adding new vehicle with aftermarket products:', vehicleData);
       
-      // For now, just log the data and show success
-      alert('Vehicle added successfully! (This is a demo - in production this would save to database)');
+      // Use the new service method that handles products
+      const newVehicle = await createVehicleWithProducts(vehicleData);
+      
+      // Show enhanced success message
+      const productsCount = vehicleData?.initial_products?.length || 0;
+      const totalValue = vehicleData?.total_initial_product_value || 0;
+      const loanerText = vehicleData?.needs_loaner ? ' (Loaner required)' : '';
+      const vendorText = vehicleData?.primary_vendor_id ? ' with vendor assignment' : '';
+      
+      alert(
+        `Vehicle added successfully!${loanerText}${vendorText}\n` +
+        `Products: ${productsCount} items ($${totalValue?.toFixed(2)} value)\n` +
+        `This vehicle is now set up for complete aftermarket tracking.`
+      );
       
       // Refresh the page data
       handleRefresh();

@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LogIn, AlertCircle, RefreshCw, Wifi } from 'lucide-react';
+import { Eye, EyeOff, LogIn, AlertCircle, RefreshCw, Lock, Mail } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import { Checkbox } from '../../../components/ui/Checkbox';
@@ -25,7 +25,6 @@ const LoginForm = () => {
     if (error) setError('');
   };
 
-  // Simplified submit handler
   const handleSubmit = async (e) => {
     e?.preventDefault();
     
@@ -38,7 +37,6 @@ const LoginForm = () => {
     setError('');
     setIsRetrying(false);
 
-    // Basic validation
     if (!formData?.email?.trim() || !formData?.password?.trim()) {
       setError('Please enter both email and password.');
       setIsLoading(false);
@@ -55,23 +53,18 @@ const LoginForm = () => {
       
       if (result?.success && result?.data?.user) {
         console.log('✅ Login successful - redirecting...');
-        
-        // Clear any error states
         localStorage.removeItem('lastAuthError');
         setError('');
         
-        // Navigate with a small delay to ensure auth state updates
         setTimeout(() => {
-          navigate('/sales-tracker', { replace: true });
+          navigate('/calendar', { replace: true });
         }, 100);
         
       } else {
         const errorMsg = result?.error || 'Login failed. Please try again.';
         console.error('❌ Login failed:', errorMsg);
-        
         setError(errorMsg);
         
-        // Auto-suggest retry for timeout errors
         if (errorMsg?.includes('timeout') || errorMsg?.includes('connection')) {
           setIsRetrying(true);
         }
@@ -80,67 +73,95 @@ const LoginForm = () => {
       console.error('Login form error:', err);
       setError('An unexpected error occurred. Please refresh the page and try again.');
     } finally {
-      // Always clear loading state
       setTimeout(() => {
         setIsLoading(false);
       }, 100);
     }
   };
 
-  // Auto-retry for connection issues
   const handleRetry = () => {
     setIsRetrying(false);
     setError('');
     handleSubmit({ preventDefault: () => {} });
   };
 
-  // Demo credentials
-  const fillDemoCredentials = (role) => {
-    const credentials = {
-      ashley: { email: 'ashley.terminello@priorityautomotive.com', password: 'Rocket123!' },
-      rob: { email: 'rob.brasco@priorityautomotive.com', password: 'Rocket123!' }
-    };
-    
-    const cred = credentials?.[role];
-    if (cred) {
-      setFormData(prev => ({ ...prev, email: cred?.email, password: cred?.password }));
-      setError('');
-      console.log(`Auto-filled ${role} credentials`);
-    }
+  const fillDemoCredentials = (email, password) => {
+    setFormData(prev => ({
+      ...prev,
+      email: email,
+      password: password
+    }));
+    setError('');
   };
 
   return (
-    <div className="mt-8">
+    <>
+      {/* Demo Credentials Section */}
+      <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h3 className="text-sm font-semibold text-blue-900 mb-3">Demo Credentials</h3>
+        <div className="space-y-2 text-xs">
+          <button
+            type="button"
+            onClick={() => fillDemoCredentials('admin@priorityautomotive.com', 'admin123')}
+            className="w-full flex justify-between items-center p-2 bg-white rounded border hover:bg-blue-50 transition-colors"
+          >
+            <span className="font-medium text-gray-700">Admin:</span>
+            <div className="flex space-x-2 text-blue-600">
+              <code>admin@priorityautomotive.com</code>
+              <span className="text-gray-400">•</span>
+              <code>admin123</code>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => fillDemoCredentials('manager@priorityautomotive.com', 'manager123')}
+            className="w-full flex justify-between items-center p-2 bg-white rounded border hover:bg-blue-50 transition-colors"
+          >
+            <span className="font-medium text-gray-700">Manager:</span>
+            <div className="flex space-x-2 text-blue-600">
+              <code>manager@priorityautomotive.com</code>
+              <span className="text-gray-400">•</span>
+              <code>manager123</code>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => fillDemoCredentials('staff@priorityautomotive.com', 'staff123')}
+            className="w-full flex justify-between items-center p-2 bg-white rounded border hover:bg-blue-50 transition-colors"
+          >
+            <span className="font-medium text-gray-700">Staff:</span>
+            <div className="flex space-x-2 text-blue-600">
+              <code>staff@priorityautomotive.com</code>
+              <span className="text-gray-400">•</span>
+              <code>staff123</code>
+            </div>
+          </button>
+        </div>
+        <p className="text-xs text-blue-700 mt-2 italic">
+          Click on any credential above to auto-fill the form
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Error Display with Retry Option */}
+        {/* Error Display */}
         {error && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-xl">
             <div className="flex items-start space-x-3">
-              <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">Login Error</p>
-                <p className="text-sm text-destructive/80 mt-1">{error}</p>
+                <p className="text-sm font-semibold text-red-800">Authentication Failed</p>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
                 
                 {isRetrying && (
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      onClick={handleRetry}
-                      disabled={isLoading}
-                      className="inline-flex items-center space-x-2 px-3 py-1.5 bg-destructive/20 hover:bg-destructive/30 text-destructive text-xs rounded-md transition-colors duration-200 disabled:opacity-50"
-                    >
-                      <Wifi className="h-3 w-3" />
-                      <span>Retry Connection</span>
-                    </button>
-                  </div>
-                )}
-                
-                {(error?.includes('timeout') || error?.includes('connection')) && (
-                  <div className="mt-3 text-xs text-destructive/70 space-y-1">
-                    <p>• Check your internet connection</p>
-                    <p>• Try the retry button above</p>
-                    <p>• Refresh the page if the issue persists</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    disabled={isLoading}
+                    className="mt-3 inline-flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Retry Login</span>
+                  </button>
                 )}
               </div>
             </div>
@@ -149,27 +170,35 @@ const LoginForm = () => {
 
         {/* Email Field */}
         <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-foreground block">
+          <label htmlFor="email" className="block text-sm font-medium text-foreground">
             Email Address
           </label>
-          <Input
-            id="email"
-            type="email"
-            value={formData?.email}
-            onChange={(e) => handleInputChange('email', e?.target?.value)}
-            placeholder="Enter your email address"
-            required
-            disabled={isLoading}
-            className="transition-colors duration-200"
-          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Mail className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <Input
+              id="email"
+              type="email"
+              value={formData?.email}
+              onChange={(e) => handleInputChange('email', e?.target?.value)}
+              placeholder="Enter your email address"
+              required
+              disabled={isLoading}
+              className="pl-10"
+            />
+          </div>
         </div>
 
         {/* Password Field */}
         <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium text-foreground block">
+          <label htmlFor="password" className="block text-sm font-medium text-foreground">
             Password
           </label>
           <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+            </div>
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
@@ -178,80 +207,84 @@ const LoginForm = () => {
               placeholder="Enter your password"
               required
               disabled={isLoading}
-              className="pr-12 transition-colors duration-200"
+              className="pl-10 pr-10"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               disabled={isLoading}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors duration-200"
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
             >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
         </div>
 
-        {/* Remember Me Checkbox */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="rememberMe"
-            checked={formData?.rememberMe}
-            onChange={(e) => handleInputChange('rememberMe', e?.target?.checked)}
-            disabled={isLoading}
-          />
-          <label htmlFor="rememberMe" className="text-sm text-muted-foreground cursor-pointer">
-            Remember me for 30 days
-          </label>
+        {/* Remember Me */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="rememberMe"
+              checked={formData?.rememberMe}
+              onChange={(e) => handleInputChange('rememberMe', e?.target?.checked)}
+              disabled={isLoading}
+            />
+            <label htmlFor="rememberMe" className="text-sm text-foreground cursor-pointer">
+              Keep me signed in
+            </label>
+          </div>
+          <button
+            type="button"
+            className="text-sm text-primary hover:text-primary/80 font-medium"
+          >
+            Forgot password?
+          </button>
         </div>
 
         {/* Submit Button */}
         <Button
           type="submit"
-          onClick={handleSubmit}
           disabled={isLoading}
-          className="w-full flex items-center justify-center space-x-2 transition-all duration-200"
+          className="w-full"
+          onClick={handleSubmit}
         >
           {isLoading ? (
             <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              <span>Authenticating...</span>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Signing In...
             </>
           ) : (
             <>
-              <LogIn className="h-4 w-4" />
-              <span>Sign In</span>
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign In
             </>
           )}
         </Button>
 
-        {/* Admin Credentials */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-800 mb-3">Admin Credentials (Click to Auto-Fill)</h3>
-          <div className="space-y-2 text-xs">
-            <button
-              type="button" 
-              onClick={() => fillDemoCredentials('ashley')}
-              className="block w-full text-left p-2 bg-blue-100 hover:bg-blue-200 rounded text-blue-700 transition-colors"
-            >
-              <div><strong>Ashley Terminello:</strong> ashley.terminello@priorityautomotive.com</div>
-              <div className="text-blue-600">Password: Rocket123!</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => fillDemoCredentials('rob')} 
-              className="block w-full text-left p-2 bg-blue-100 hover:bg-blue-200 rounded text-blue-700 transition-colors"
-            >
-              <div><strong>Rob Brasco:</strong> rob.brasco@priorityautomotive.com</div>
-              <div className="text-blue-600">Password: Rocket123!</div>
-            </button>
-          </div>
-          <div className="mt-3 text-xs text-blue-600">
-            <p>• Click any credential above to auto-fill the form</p>
-            <p>• Both users have full administrator privileges</p>
+        {/* Trust Indicators */}
+        <div className="pt-4 border-t border-border">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-3">
+              Trusted by automotive professionals worldwide
+            </p>
+            <div className="flex justify-center items-center space-x-4 text-xs text-muted-foreground">
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>256-bit SSL</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>SOC2 Certified</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span>GDPR Compliant</span>
+              </div>
+            </div>
           </div>
         </div>
       </form>
-    </div>
+    </>
   );
 };
 

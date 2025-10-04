@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Calendar, Car, Users, BarChart3, Settings, Package } from 'lucide-react';
+import { Search, Calendar, Car, BarChart3, Settings, Package } from 'lucide-react';
 import Icon from '../AppIcon';
 
 
@@ -34,25 +34,18 @@ const QuickNavigation = () => {
       keywords: ['deals', 'sales', 'transactions', 'money']
     },
     { 
-      name: 'Vendor Operations', 
-      path: '/vendor-operations-center', 
-      icon: Users, 
-      description: 'Manage vendor relationships',
-      keywords: ['vendors', 'partners', 'suppliers']
-    },
-    { 
-      name: 'Analytics Dashboard', 
-      path: '/executive-analytics-dashboard', 
-      icon: BarChart3, 
-      description: 'Business intelligence and reports',
-      keywords: ['analytics', 'reports', 'dashboard', 'insights']
-    },
-    { 
       name: 'Administration', 
       path: '/admin', 
       icon: Settings, 
-      description: 'System administration and config',
-      keywords: ['admin', 'settings', 'configuration', 'users']
+      description: 'Vendor management and system config',
+      keywords: ['vendors', 'partners', 'suppliers', 'admin', 'settings', 'configuration', 'users']
+    },
+    { 
+      name: 'Analytics Dashboard', 
+      path: '/calendar', 
+      icon: BarChart3, 
+      description: 'Business intelligence and reports',
+      keywords: ['analytics', 'reports', 'dashboard', 'insights']
     }
   ];
 

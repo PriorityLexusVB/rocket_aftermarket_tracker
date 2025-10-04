@@ -12,14 +12,35 @@ const UserManagement = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
+  // Simplified form state - starts minimal
   const [formData, setFormData] = useState({
-    email: '',
     full_name: '',
+    job_title: '', // Stores in department field
+    needs_login: false, // Checkbox that reveals more fields
+    // Login fields only visible when needed
+    email: '',
+    password: '',
     role: 'staff',
     vendor_id: '',
-    password: ''
+    phone: ''
   });
+
+  // Updated job title options with "Delivery Coordinator"
+  const jobTitleOptions = [
+    'Sales Person',
+    'Delivery Coordinator', // Changed from BDC Manager
+    'Finance Manager',
+    'Service Advisor',
+    'Technician',
+    'Parts Manager',
+    'General Manager',
+    'Assistant Manager',
+    'Receptionist',
+    'Quality Inspector',
+    'Detailer'
+  ];
 
   useEffect(() => {
     loadData();
@@ -30,22 +51,15 @@ const UserManagement = () => {
       setLoading(true);
       
       // Load users with vendor information
-      const { data: usersData, error: usersError } = await supabase
-        ?.from('user_profiles')
-        ?.select(`
+      const { data: usersData, error: usersError } = await supabase?.from('user_profiles')?.select(`
           *,
           vendor:vendors(id, name)
-        `)
-        ?.order('created_at', { ascending: false });
+        `)?.order('created_at', { ascending: false });
 
       if (usersError) throw usersError;
 
       // Load vendors for the dropdown
-      const { data: vendorsData, error: vendorsError } = await supabase
-        ?.from('vendors')
-        ?.select('id, name, is_active')
-        ?.eq('is_active', true)
-        ?.order('name');
+      const { data: vendorsData, error: vendorsError } = await supabase?.from('vendors')?.select('id, name, is_active')?.eq('is_active', true)?.order('name');
 
       if (vendorsError) throw vendorsError;
 
@@ -59,7 +73,6 @@ const UserManagement = () => {
     }
   };
 
-  // handleFormChange function
   const handleFormChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -67,105 +80,102 @@ const UserManagement = () => {
     }));
   };
 
-  // resetForm function
   const resetForm = () => {
     setFormData({
-      email: '',
       full_name: '',
+      job_title: '',
+      needs_login: false,
+      email: '',
+      password: '',
       role: 'staff',
       vendor_id: '',
-      password: ''
+      phone: ''
     });
     setShowCreateForm(false);
-  };
-
-  // authService replacement
-  const authService = {
-    createUser: async (userData) => {
-      // Create user in Supabase Auth
-      const { data: authUser, error: authError } = await supabase?.auth?.signUp({
-        email: userData?.email,
-        password: userData?.password,
-      });
-
-      if (authError) throw authError;
-
-      // Create user profile
-      const { data: profile, error: profileError } = await supabase?.from('user_profiles')?.insert([{
-          id: authUser?.user?.id,
-          email: userData?.email,
-          full_name: userData?.full_name,
-          role: userData?.role,
-          vendor_id: userData?.vendor_id,
-          phone: userData?.phone,
-          is_active: userData?.is_active !== false
-        }])?.select()?.single();
-
-      if (profileError) throw profileError;
-
-      return profile;
-    }
-  };
-
-  // logger replacement
-  const logger = {
-    logSuccess: async (action, type, id, message, data) => {
-      console.log(`Success: ${action}`, { type, id, message, data });
-    },
-    logError: async (error, data) => {
-      console.error('Error logged:', error, data);
-    }
+    setError(null);
+    setSuccess(null);
   };
 
   const handleCreateUser = async (e) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+    e && e?.preventDefault();
+    e && e?.stopPropagation();
     
-    if (!formData?.email || !formData?.password) {
-      alert('Email and password are required');
+    if (!formData?.full_name || !formData?.full_name?.trim()) {
+      setError('Name is required');
       return;
     }
 
-    try {
-      setLoading(true);
-      
-      // Create the user profile data
-      const userData = {
-        email: formData?.email,
-        password: formData?.password,
-        full_name: formData?.full_name,
-        role: formData?.role,
-        vendor_id: formData?.role === 'vendor' ? formData?.vendor_id : null,
-        phone: formData?.phone,
-        is_active: formData?.is_active
-      };
+    // Only require login fields if needs_login is checked
+    if (formData?.needs_login) {
+      if (!formData?.email || !formData?.email?.trim()) {
+        setError('Email is required for login access');
+        return;
+      }
+      if (!formData?.password || !formData?.password?.trim() || formData?.password?.length < 6) {
+        setError('Password must be at least 6 characters for login access');
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email)) {
+        setError('Please enter a valid email address');
+        return;
+      }
+    }
 
-      const newUser = await authService?.createUser(userData);
-      setUsers(prev => [newUser, ...prev]);
+    try {
+      setCreating(true);
+      setError(null);
       
-      alert('User created successfully!');
+      if (formData?.needs_login) {
+        // Create user with authentication
+        const { data: authUser, error: authError } = await supabase?.auth?.signUp({
+          email: formData?.email,
+          password: formData?.password,
+        });
+
+        if (authError) throw authError;
+
+        // Create user profile with login access
+        const { data: profile, error: profileError } = await supabase?.from('user_profiles')?.insert([{
+            id: authUser?.user?.id,
+            email: formData?.email,
+            full_name: formData?.full_name,
+            role: formData?.role,
+            vendor_id: formData?.role === 'vendor' ? formData?.vendor_id : null,
+            phone: formData?.phone,
+            department: formData?.job_title,
+            is_active: true
+          }])?.select()?.single();
+
+        if (profileError) throw profileError;
+
+        setUsers(prev => [profile, ...prev]);
+        setSuccess(`${formData?.full_name} created with login access!`);
+      } else {
+        // Create staff-only record (no authentication needed)
+        const { data: staffRecord, error: staffError } = await supabase?.from('user_profiles')?.insert([{
+            id: crypto.randomUUID(),
+            full_name: formData?.full_name,
+            email: null, // No email for staff-only
+            phone: formData?.phone || null,
+            role: 'staff',
+            department: formData?.job_title,
+            is_active: true,
+            vendor_id: null
+          }])?.select()?.single();
+
+        if (staffError) throw staffError;
+
+        setUsers(prev => [staffRecord, ...prev]);
+        setSuccess(`${formData?.full_name} added to staff!`);
+      }
+      
       resetForm();
       
-      await logger?.logSuccess(
-        'user_created',
-        'USER',
-        newUser?.id,
-        `New user created: ${newUser?.email}`,
-        { userData: newUser }
-      );
     } catch (error) {
-      console.error('Error creating user:', error);
-      alert(`Error creating user: ${error?.message}`);
-      
-      await logger?.logError(
-        error,
-        { 
-          action: 'user_create_error',
-          formData
-        }
-      );
+      console.error('Error creating staff member:', error);
+      setError(`Error: ${error?.message}`);
     } finally {
-      setLoading(false);
+      setCreating(false);
     }
   };
 
@@ -173,10 +183,7 @@ const UserManagement = () => {
     if (!isAdmin) return;
 
     try {
-      const { error } = await supabase
-        ?.from('user_profiles')
-        ?.update({ is_active: !currentStatus })
-        ?.eq('id', userId);
+      const { error } = await supabase?.from('user_profiles')?.update({ is_active: !currentStatus })?.eq('id', userId);
 
       if (error) throw error;
 
@@ -186,15 +193,6 @@ const UserManagement = () => {
       console.error('Error updating user status:', error);
       setError('Failed to update user status');
     }
-  };
-
-  // Enhanced form validation
-  const isFormValid = () => {
-    return formData?.email?.trim() && 
-           formData?.full_name?.trim() && 
-           formData?.password?.trim() &&
-           formData?.password?.length >= 6 &&
-           /^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email);
   };
 
   if (!isAdmin) {
@@ -218,11 +216,11 @@ const UserManagement = () => {
 
   return (
     <div className="bg-card border border-border rounded-lg p-6">
-      {/* Header */}
+      {/* Header with User/Roles info moved here */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">User Management</h2>
-          <p className="text-sm text-muted-foreground">Create and manage system users with role-based access</p>
+          <h2 className="text-xl font-semibold text-foreground">Staff Management &amp; User Access</h2>
+          <p className="text-sm text-muted-foreground">Manage staff members - add name only or create login access as needed</p>
         </div>
         <Button
           onClick={() => setShowCreateForm(true)}
@@ -230,172 +228,208 @@ const UserManagement = () => {
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <span className="mr-2">➕</span>
-          Create New User
+          Add Staff
         </Button>
       </div>
-      {/* Enhanced Error and Success Messages */}
+      
+      {/* Error and Success Messages */}
       {error && (
-        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-          <div className="flex items-center">
-            <span className="mr-2 text-destructive">⚠️</span>
-            <div className="text-destructive">
-              <strong>Error:</strong> {error}
-            </div>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="text-red-800 text-sm">
+            <strong>Error:</strong> {error}
           </div>
         </div>
       )}
+      
       {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center">
-            <span className="mr-2 text-green-600">✅</span>
-            <div className="text-green-800">
-              <strong>Success:</strong> {success}
-            </div>
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="text-green-800 text-sm">
+            <strong>Success:</strong> {success}
           </div>
         </div>
       )}
-      {/* Enhanced Create User Form */}
+
+      {/* Simplified Create Form - Starts Minimal */}
       {showCreateForm && (
-        <div className="mb-6 p-6 bg-muted/50 border border-border rounded-lg">
-          <h3 className="text-lg font-medium text-foreground mb-4">Create New User</h3>
-          <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Email Address *
-              </label>
-              <input
-                type="email"
-                value={formData?.email || ''}
-                onChange={(e) => handleFormChange('email', e?.target?.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
-                placeholder="user@example.com"
-                required
-                disabled={creating}
-              />
-              {formData?.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email) && (
-                <p className="text-xs text-destructive mt-1">Please enter a valid email address</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                value={formData?.full_name || ''}
-                onChange={(e) => handleFormChange('full_name', e?.target?.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
-                placeholder="John Doe"
-                required
-                disabled={creating}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Role *
-              </label>
-              <select
-                value={formData?.role || 'staff'}
-                onChange={(e) => handleFormChange('role', e?.target?.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
-                disabled={creating}
-              >
-                <option value="staff">Staff</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Administrator</option>
-                <option value="vendor">Vendor</option>
-              </select>
-            </div>
-
-            {formData?.role === 'vendor' && (
+        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <h3 className="text-lg font-medium mb-4">Add Staff Member</h3>
+          
+          <form onSubmit={handleCreateUser} className="space-y-4">
+            
+            {/* Name and Job Title - Always visible */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Associated Vendor
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData?.full_name || ''}
+                  onChange={(e) => handleFormChange('full_name', e?.target?.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter full name"
+                  required
+                  disabled={creating}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Job Title
                 </label>
                 <select
-                  value={formData?.vendor_id || ''}
-                  onChange={(e) => handleFormChange('vendor_id', e?.target?.value)}
-                  className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
+                  value={formData?.job_title || ''}
+                  onChange={(e) => handleFormChange('job_title', e?.target?.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={creating}
                 >
-                  <option value="">Select a vendor...</option>
-                  {vendors?.map(vendor => (
-                    <option key={vendor?.id} value={vendor?.id}>
-                      {vendor?.name}
-                    </option>
+                  <option value="">Select job title</option>
+                  {jobTitleOptions?.map(title => (
+                    <option key={title} value={title}>{title}</option>
                   ))}
                 </select>
               </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Password *
-              </label>
-              <input
-                type="password"
-                value={formData?.password || ''}
-                onChange={(e) => handleFormChange('password', e?.target?.value)}
-                className="w-full px-3 py-2 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent"
-                placeholder="Minimum 6 characters"
-                required
-                minLength={6}
-                disabled={creating}
-              />
-              {formData?.password && formData?.password?.length < 6 && (
-                <p className="text-xs text-destructive mt-1">Password must be at least 6 characters</p>
-              )}
             </div>
 
-            <div className="md:col-span-2 flex items-center space-x-4 pt-4">
-              <Button
-                type="submit"
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                disabled={!isFormValid() || loading}
-                onClick={handleCreateUser}
-              >
-                {loading ? 'Creating...' : 'Create User'}
-              </Button>
+            {/* Login Access Checkbox */}
+            <div className="border-l-4 border-blue-500 bg-blue-50 p-3">
+              <div className="flex items-start space-x-2">
+                <input
+                  type="checkbox"
+                  id="needs_login"
+                  checked={formData?.needs_login}
+                  onChange={(e) => handleFormChange('needs_login', e?.target?.checked)}
+                  className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  disabled={creating}
+                />
+                <label htmlFor="needs_login" className="text-sm font-medium text-gray-900 cursor-pointer">
+                  This person needs login access to the system
+                </label>
+              </div>
+            </div>
+
+            {/* Login Fields - Only visible when checkbox is checked */}
+            {formData?.needs_login && (
+              <div className="bg-white border border-blue-200 rounded-lg p-4 mt-4">
+                <h4 className="text-md font-medium text-gray-900 mb-3">User Access Setup</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      value={formData?.email || ''}
+                      onChange={(e) => handleFormChange('email', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="user@company.com"
+                      required={formData?.needs_login}
+                      disabled={creating}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Password *
+                    </label>
+                    <input
+                      type="password"
+                      value={formData?.password || ''}
+                      onChange={(e) => handleFormChange('password', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Minimum 6 characters"
+                      required={formData?.needs_login}
+                      minLength={6}
+                      disabled={creating}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      System Role
+                    </label>
+                    <select
+                      value={formData?.role || 'staff'}
+                      onChange={(e) => handleFormChange('role', e?.target?.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={creating}
+                    >
+                      <option value="staff">Staff Member</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Administrator</option>
+                      <option value="vendor">Vendor</option>
+                    </select>
+                  </div>
+
+                  {formData?.role === 'vendor' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vendor
+                      </label>
+                      <select
+                        value={formData?.vendor_id || ''}
+                        onChange={(e) => handleFormChange('vendor_id', e?.target?.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={creating}
+                      >
+                        <option value="">Select vendor...</option>
+                        {vendors?.map(vendor => (
+                          <option key={vendor?.id} value={vendor?.id}>
+                            {vendor?.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Form Actions */}
+            <div className="flex items-center justify-end space-x-3 pt-4">
               <Button
                 type="button"
-                onClick={(e) => {
-                  e?.preventDefault();
-                  e?.stopPropagation();
-                  resetForm();
-                }}
-                className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
-                disabled={loading}
+                onClick={resetForm}
+                variant="secondary"
+                disabled={creating}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800"
               >
                 Cancel
+              </Button>
+              <Button
+                type="submit"
+                onClick={handleCreateUser}
+                disabled={creating || !formData?.full_name || !formData?.full_name?.trim()}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {creating ? 'Adding...' : 'Add Staff'}
               </Button>
             </div>
           </form>
         </div>
       )}
-      {/* Demo Credentials Section */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <h3 className="text-lg font-medium text-blue-800 mb-2">Demo Credentials</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <strong className="text-blue-700">Admin:</strong> admin@rocketaftermarket.com / admin123
-          </div>
-          <div>
-            <strong className="text-blue-700">Manager:</strong> manager@rocketaftermarket.com / manager123
-          </div>
-          <div>
-            <strong className="text-blue-700">Vendor:</strong> vendor@premiumauto.com / vendor123
-          </div>
-          <div>
-            <strong className="text-blue-700">Vendor Staff:</strong> vendorstaff@premiumauto.com / vendor456
-          </div>
-        </div>
-      </div>
-      {/* Users List */}
+
+      {/* Staff List */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-800">System Users ({users?.length})</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">All Staff ({users?.length})</h3>
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <input
+                  type="search"
+                  placeholder="Search by name, phone, email..."
+                  value={searchQuery || ''}
+                  onChange={(e) => setSearchQuery(e?.target?.value)}
+                  className="pl-8 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <svg className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -403,19 +437,16 @@ const UserManagement = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
+                  Name & Contact
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
+                  Department
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vendor
+                  Access Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -423,51 +454,65 @@ const UserManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users?.map((user) => (
+              {users?.filter(user => {
+                if (!searchQuery) return true;
+                const query = searchQuery?.toLowerCase();
+                return user?.full_name?.toLowerCase()?.includes(query) ||
+                       user?.email?.toLowerCase()?.includes(query) ||
+                       user?.phone?.toLowerCase()?.includes(query) ||
+                       user?.department?.toLowerCase()?.includes(query);
+              })?.map((user) => (
                 <tr key={user?.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {user?.full_name}
-                      </div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {user?.full_name}
+                    </div>
+                    {user?.email && (
                       <div className="text-sm text-gray-500">
                         {user?.email}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium ${
-                      user?.role === 'admin' ? 'bg-red-100 text-red-800' :
-                      user?.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                      user?.role === 'vendor'? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {user?.role}
-                    </span>
+                    )}
+                    {user?.phone && (
+                      <div className="text-sm text-blue-600">
+                        📞 {user?.phone}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user?.vendor?.name || '-'}
+                    {user?.department || 'Not specified'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs rounded-full font-medium ${
+                    {user?.email && user?.role ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        Can Login
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                        Name Only
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                       user?.is_active 
                         ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
                       {user?.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(user?.created_at)?.toLocaleDateString()}
-                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleToggleUserStatus(user?.id, user?.is_active)}
-                      className={`${
-                        user?.is_active
-                          ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                      }`}
-                    >
-                      {user?.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
+                    {user?.email && user?.role && (
+                      <button
+                        onClick={() => handleToggleUserStatus(user?.id, user?.is_active)}
+                        className={`${
+                          user?.is_active
+                            ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
+                        }`}
+                        disabled={!isAdmin}
+                      >
+                        {user?.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -476,7 +521,7 @@ const UserManagement = () => {
 
           {users?.length === 0 && (
             <div className="text-center py-12">
-              <div className="text-gray-500">No users found</div>
+              <div className="text-gray-500">No staff members found</div>
             </div>
           )}
         </div>

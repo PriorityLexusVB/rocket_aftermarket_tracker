@@ -292,7 +292,7 @@ const ExecutiveAnalyticsDashboard = () => {
                   onClick={() => handleQuickNavigation('/business-intelligence-reports')}
                   iconName="FileText"
                   iconPosition="left"
-                  className=""
+                  className="flex items-center"
                 >
                   Reports
                 </Button>
@@ -303,7 +303,7 @@ const ExecutiveAnalyticsDashboard = () => {
                   onClick={() => handleQuickNavigation('/sales-transaction-interface')}
                   iconName="Plus"
                   iconPosition="left"
-                  className=""
+                  className="flex items-center"
                 >
                   New Sale
                 </Button>
@@ -358,7 +358,7 @@ const ExecutiveAnalyticsDashboard = () => {
               <Button
                 variant="outline"
                 onClick={() => handleQuickNavigation('/vehicle-management-hub')}
-                className="h-auto p-4 flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2"
               >
                 <Icon name="Car" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Vehicle Hub</span>
@@ -368,7 +368,7 @@ const ExecutiveAnalyticsDashboard = () => {
               <Button
                 variant="outline"
                 onClick={() => handleQuickNavigation('/vendor-operations-center')}
-                className="h-auto p-4 flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2"
               >
                 <Icon name="Users" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Vendor Center</span>
@@ -378,7 +378,7 @@ const ExecutiveAnalyticsDashboard = () => {
               <Button
                 variant="outline"
                 onClick={() => handleQuickNavigation('/sales-transaction-interface')}
-                className="h-auto p-4 flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2"
               >
                 <Icon name="DollarSign" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Sales Interface</span>
@@ -388,7 +388,7 @@ const ExecutiveAnalyticsDashboard = () => {
               <Button
                 variant="outline"
                 onClick={() => handleQuickNavigation('/business-intelligence-reports')}
-                className="h-auto p-4 flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2"
               >
                 <Icon name="BarChart3" size={24} className="text-primary" />
                 <span className="text-sm font-medium">BI Reports</span>

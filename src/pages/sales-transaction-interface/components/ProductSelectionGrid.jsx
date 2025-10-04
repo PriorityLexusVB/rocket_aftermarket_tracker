@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import vendorService from '../../../services/vendorService';
+import { vendorService } from '../../../services/vendorService';
 
 const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpdate }) => {
   const [customService, setCustomService] = useState({ name: '', category: 'Other' });
@@ -82,7 +82,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
       icon: 'Palette',
       popular: false,
       estimatedTime: '8-12 hours',
-      vendorSpecialities: ['Vinyl Installation', 'Custom Graphics']
+      vendorSpecialties: ['Vinyl Installation', 'Custom Graphics']
     }
   ];
 
@@ -254,6 +254,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               onClick={() => setShowCustomForm(false)}
               iconName="X"
             >
+              Cancel
             </Button>
           </div>
         </div>
@@ -269,7 +270,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               key={service?.id}
               className={`relative p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-elevation-1 ${
                 isSelected
-                  ? 'border-primary bg-primary/5' :'border-border hover:border-primary/50'
+                  ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
               }`}
               onClick={() => handleServiceSelect(service)}
             >

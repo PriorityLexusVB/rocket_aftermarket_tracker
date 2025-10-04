@@ -123,7 +123,7 @@ const SmsTemplateManager = ({ className = '' }) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this template?')) {
+    if (!window.confirm('Are you sure you want to delete this template?')) {
       return;
     }
 
@@ -203,7 +203,7 @@ const SmsTemplateManager = ({ className = '' }) => {
           onClick={() => setShowCreateModal(true)}
           iconName="Plus"
           iconPosition="left"
-          className=""
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           Create Template
         </Button>
@@ -240,7 +240,7 @@ const SmsTemplateManager = ({ className = '' }) => {
             onClick={() => setShowCreateModal(true)}
             iconName="Plus"
             iconPosition="left"
-            className=""
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             Create First Template
           </Button>
@@ -301,17 +301,17 @@ const SmsTemplateManager = ({ className = '' }) => {
                     size="sm"
                     onClick={() => handleEdit(template)}
                     iconName="Edit"
-                    className=""
+                    className="hover:bg-muted"
                   >
                     Edit
                   </Button>
                   
                   <Button
+                    onClick={() => handleDelete(template?.id)}
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(template?.id)}
                     iconName="Trash"
-                    className="text-red-600 hover:text-red-700"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     Delete
                   </Button>
@@ -341,6 +341,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     value={formData?.name}
                     onChange={(e) => setFormData({ ...formData, name: e?.target?.value })}
                     placeholder="e.g., Job Status Update"
+                    className=""
                     required
                   />
                 </div>
@@ -353,6 +354,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     value={formData?.template_type}
                     onChange={(value) => setFormData({ ...formData, template_type: value })}
                     options={templateTypes}
+                    className=""
                   />
                 </div>
               </div>
@@ -366,6 +368,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   value={formData?.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e?.target?.value })}
                   placeholder="e.g., Service Update"
+                  className=""
                 />
               </div>
               
@@ -416,15 +419,14 @@ const SmsTemplateManager = ({ className = '' }) => {
                   variant="outline" 
                   type="button" 
                   onClick={handleCancel}
-                  className=""
+                  className="border-border hover:bg-muted"
                 >
                   Cancel
                 </Button>
                 
                 <Button 
                   type="submit"
-                  onClick={() => {}}
-                  className=""
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}
                 </Button>

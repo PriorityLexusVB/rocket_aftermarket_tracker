@@ -1,0 +1,57 @@
+@layer components {
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+  }
+  .kpi {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: var(--pad-3);
+  }
+  .kpi .label {
+    color: var(--muted);
+    font-size: var(--size-sm);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .kpi .value {
+    color: var(--text);
+    font-feature-settings: "tnum";
+    font-size: 28px;
+    line-height: 1.1;
+  }
+  .btn {
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--text);
+  }
+  .btn--primary { border-color: var(--accent); color: var(--text); background: color-mix(in oklab, var(--accent) 18%, black); }
+  .btn--ghost { border-color: var(--line); background: transparent; }
+  .btn--warn { border-color: var(--warn); color: var(--warn); }
+  .table {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    overflow: clip;
+  }
+  .table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: var(--size-sm);
+    font-weight: 600;
+  }
+  .table tr + tr td { border-top: 1px solid var(--line); }
+  .badge {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    font-size: var(--size-xs);
+    color: var(--muted);
+  }
+  .badge--accent { border-color: var(--accent); color: var(--accent); }
+  .badge--ok { border-color: var(--ok); color: var(--ok); }
+  .badge--bad { border-color: var(--bad); color: var(--bad); }
+}

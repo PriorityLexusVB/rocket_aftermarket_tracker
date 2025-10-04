@@ -1,94 +1,438 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Import theme files */
+@import './theme-neutral.css';
+@import './util-neutral.css';
+
+/* Import Google Fonts for consistency */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* Mobile-first responsive design improvements */
 @layer base {
-  :root {
-    /* Core Colors */
-    --color-background: #F8FAFC; /* slate-50 */
-    --color-foreground: #0F172A; /* slate-900 */
-    --color-border: #E2E8F0; /* slate-200 */
-    --color-input: #FFFFFF; /* white */
-    --color-ring: #1E40AF; /* blue-700 */
-    
-    /* Card Colors */
-    --color-card: #FFFFFF; /* white */
-    --color-card-foreground: #0F172A; /* slate-900 */
-    
-    /* Popover Colors */
-    --color-popover: #FFFFFF; /* white */
-    --color-popover-foreground: #0F172A; /* slate-900 */
-    
-    /* Muted Colors */
-    --color-muted: #F1F5F9; /* slate-100 */
-    --color-muted-foreground: #64748B; /* slate-500 */
-    
-    /* Primary Colors */
-    --color-primary: #1E40AF; /* blue-700 */
-    --color-primary-foreground: #FFFFFF; /* white */
-    
-    /* Secondary Colors */
-    --color-secondary: #64748B; /* slate-500 */
-    --color-secondary-foreground: #FFFFFF; /* white */
-    
-    /* Destructive Colors */
-    --color-destructive: #DC2626; /* red-600 */
-    --color-destructive-foreground: #FFFFFF; /* white */
-    
-    /* Accent Colors */
-    --color-accent: #F59E0B; /* amber-500 */
-    --color-accent-foreground: #FFFFFF; /* white */
-    
-    /* Success Colors */
-    --color-success: #059669; /* emerald-600 */
-    --color-success-foreground: #FFFFFF; /* white */
-    
-    /* Warning Colors */
-    --color-warning: #F59E0B; /* amber-500 */
-    --color-warning-foreground: #FFFFFF; /* white */
-    
-    /* Error Colors */
-    --color-error: #DC2626; /* red-600 */
-    --color-error-foreground: #FFFFFF; /* white */
-    
-    /* Border Radius */
-    --radius: 0.5rem;
+  /* Enhanced typography and font configuration */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-family: var(--font-ui, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-variation-settings: normal;
+    text-rendering: optimizeLegibility;
   }
 
-  * {
-    @apply border-border;
-  }
-  
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: inherit;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+    font-weight: 400;
+    text-rendering: optimizeLegibility;
+    background: var(--bg, #ffffff);
+    color: var(--text, #000000);
   }
-  
+
+  /* Ensure all elements inherit font consistently */
+  *, *::before, *::after {
+    font-family: inherit;
+  }
+
+  /* Enhanced touch targets for mobile */
+  button, [role="button"], input[type="submit"], input[type="button"] {
+    -webkit-appearance: none;
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    font-family: inherit;
+  }
+
+  /* Improve form elements on mobile */
+  input, textarea, select {
+    -webkit-appearance: none;
+    border-radius: 0;
+    font-family: inherit;
+  }
+
+  input[type="search"] {
+    -webkit-appearance: none;
+    font-family: inherit;
+  }
+
+  /* Focus states for accessibility */
+  *:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+
+  /* Typography improvements */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif;
+    font-family: inherit;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.025em;
   }
-  
-  .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+
+  p, span, div, label {
+    font-family: inherit;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 }
 
 @layer components {
-  .shadow-elevation-1 {
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  /* Neutral Theme Global Styles */
+  .theme-neutral-luxe {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
   }
+
+  .theme-neutral-luxe .text-neutral {
+    color: var(--text);
+  }
+
+  .theme-neutral-luxe .text-muted {
+    color: var(--muted);
+  }
+
+  .theme-neutral-luxe .bg-surface {
+    background: var(--surface);
+  }
+
+  .theme-neutral-luxe .border-line {
+    border-color: var(--line);
+  }
+
+  /* Override gradients and shadows for neutral theme */
+  .theme-neutral-luxe .shadow-2xl,
+  .theme-neutral-luxe .shadow-xl,
+  .theme-neutral-luxe .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  .theme-neutral-luxe .bg-gradient-to-r,
+  .theme-neutral-luxe .bg-gradient-to-br,
+  .theme-neutral-luxe .bg-gradient-to-b {
+    background: var(--surface) !important;
+  }
+
+  .theme-neutral-luxe .rounded-3xl {
+    border-radius: var(--radius-md) !important;
+  }
+
+  .theme-neutral-luxe .rounded-2xl {
+    border-radius: var(--radius-md) !important;
+  }
+
+  /* Mobile-first button styles with proper font inheritance */
+  .btn-mobile {
+    @apply inline-flex items-center justify-center px-4 py-3 text-base font-medium rounded-lg transition-colors min-h-[44px];
+    font-family: inherit;
+  }
+
+  .btn-mobile-sm {
+    @apply inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg transition-colors min-h-[36px];
+    font-family: inherit;
+  }
+
+  /* Card styles optimized for mobile */
+  .card-mobile {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+  }
+
+  /* Input styles for mobile with font consistency */
+  .input-mobile {
+    @apply block w-full px-3 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] placeholder-gray-400;
+    font-family: inherit;
+  }
+
+  /* Mobile-first table alternatives */
+  .table-mobile-card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3;
+  }
+
+  /* Mobile navigation helpers */
+  .nav-mobile-item {
+    @apply flex flex-col items-center justify-center space-y-1 p-2 transition-colors min-h-[60px];
+    font-family: inherit;
+  }
+
+  /* Safe area for mobile devices with notches */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Theme Preset Styles - NEW */
   
-  .shadow-elevation-2 {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  /* Enhanced Carded Theme Styles */
+  .theme-carded .card-enhanced {
+    @apply bg-white rounded-2xl shadow-xl border-2 border-slate-200 hover:border-indigo-300 transition-all duration-300 hover:shadow-2xl;
   }
-  
-  .shadow-elevation-3 {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  .theme-carded .stats-card-enhanced {
+    @apply rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-slate-100 hover:border-indigo-200 transform hover:-translate-y-1;
   }
-  
-  .shadow-elevation-4 {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  .theme-carded .button-enhanced {
+    @apply bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200;
   }
+
+  .theme-carded .button-outline-enhanced {
+    @apply border-2 border-slate-300 hover:border-indigo-500 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 transition-all duration-200;
+  }
+
+  /* Compact Theme Styles */
+  .theme-compact .card-compact {
+    @apply bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-200 p-3;
+  }
+
+  .theme-compact .stats-card-compact {
+    @apply rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-200 p-4;
+  }
+
+  .theme-compact .button-compact {
+    @apply bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow-md transition-all duration-150 py-2 px-4;
+  }
+
+  /* Zebra Theme Styles */
+  .theme-zebra .card-zebra {
+    @apply bg-white rounded-xl shadow-lg border border-gray-300 hover:bg-gray-50 transition-colors duration-200;
+  }
+
+  .theme-zebra .stats-card-zebra {
+    @apply rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 border-2 border-gray-300 odd:bg-white even:bg-gray-50;
+  }
+
+  .theme-zebra .button-zebra {
+    @apply bg-gray-900 hover:bg-black text-white shadow-md hover:shadow-lg transition-all duration-200;
+  }
+
+  .theme-zebra .table-row-zebra {
+    @apply even:bg-gray-50 odd:bg-white hover:bg-blue-50 transition-colors duration-150;
+  }
+}
+
+@layer utilities {
+  /* Font-specific utilities */
+  .font-inter {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+
+  /* Mobile-specific utilities */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  .tap-highlight-transparent {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mobile-first responsive text with proper font inheritance */
+  .text-mobile-h1 {
+    @apply text-2xl font-bold leading-tight md:text-3xl lg:text-4xl;
+    font-family: inherit;
+  }
+
+  .text-mobile-h2 {
+    @apply text-xl font-semibold leading-tight md:text-2xl lg:text-3xl;
+    font-family: inherit;
+  }
+
+  .text-mobile-h3 {
+    @apply text-lg font-semibold leading-tight md:text-xl lg:text-2xl;
+    font-family: inherit;
+  }
+
+  /* Mobile spacing utilities */
+  .p-mobile {
+    @apply p-4 md:p-6 lg:p-8;
+  }
+
+  .px-mobile {
+    @apply px-4 md:px-6 lg:px-8;
+  }
+
+  .py-mobile {
+    @apply py-4 md:py-6 lg:p-8;
+  }
+
+  /* Mobile-friendly shadows */
+  .shadow-mobile {
+    @apply shadow-sm md:shadow-md;
+  }
+
+  /* Better mobile focus states */
+  .focus-mobile {
+    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  }
+
+  /* Theme Preset Utilities - NEW */
+  .theme-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .card-elevation-1 {
+    @apply shadow-sm hover:shadow-md;
+  }
+
+  .card-elevation-2 {
+    @apply shadow-md hover:shadow-lg;
+  }
+
+  .card-elevation-3 {
+    @apply shadow-lg hover:shadow-xl;
+  }
+
+  .card-elevation-4 {
+    @apply shadow-xl hover:shadow-2xl;
+  }
+
+  /* Enhanced Material Design Shadows */
+  .material-shadow-1 {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+  }
+
+  .material-shadow-2 {
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+  }
+
+  .material-shadow-3 {
+    box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+  }
+
+  .material-shadow-4 {
+    box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+  }
+
+  .material-shadow-5 {
+    box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
+  }
+
+  /* Neutral theme specific utilities */
+  .neutral-text {
+    color: var(--text);
+  }
+
+  .neutral-muted {
+    color: var(--muted);
+  }
+
+  .neutral-surface {
+    background: var(--surface);
+  }
+
+  .neutral-accent {
+    color: var(--accent);
+  }
+
+  .neutral-border {
+    border-color: var(--line);
+  }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-mobile {
+    @apply border-2 border-current;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .nav-mobile-item,
+  .btn-mobile,
+  .card-mobile {
+    @apply shadow-none border border-gray-300;
+  }
+}
+
+/* Theme Preset Animation Support */
+@keyframes theme-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-hover-lift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+.theme-animation-fade-in {
+  animation: theme-fade-in 0.3s ease-out forwards;
+}
+
+.theme-animation-hover-lift {
+  transition: transform 0.2s ease-out;
+}
+
+.theme-animation-hover-lift:hover {
+  animation: card-hover-lift 0.2s ease-out forwards;
 }

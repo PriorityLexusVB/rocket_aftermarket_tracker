@@ -120,7 +120,7 @@ const EnhancedVehicleTable = ({
   const sortedVehicles = useMemo(() => {
     if (!sortConfig?.key) return vehicles;
     
-    return [...vehicles]?.sort((a, b) => {
+    return [...(vehicles || [])]?.sort((a, b) => {
       const aValue = a?.[sortConfig?.key];
       const bValue = b?.[sortConfig?.key];
       
@@ -218,7 +218,7 @@ const EnhancedVehicleTable = ({
                     onClick={() => setShowBulkActions(!showBulkActions)}
                     iconName="Settings"
                     iconPosition="left"
-                    className=""
+                    className="text-sm"
                   >
                     Bulk Actions
                   </Button>
@@ -242,9 +242,9 @@ const EnhancedVehicleTable = ({
                 iconName="Plus"
                 iconPosition="left"
                 onClick={() => navigate('/sales-transaction-interface')}
-                className=""
+                className="text-sm"
               >
-                Add Sale
+                Add Vehicle
               </Button>
             </div>
           </div>
@@ -263,7 +263,7 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => handleBulkStatusUpdate('maintenance')}
                     disabled={isLoading}
-                    className=""
+                    className="text-sm"
                   >
                     Mark as Maintenance
                   </Button>
@@ -273,7 +273,7 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => handleBulkStatusUpdate('sold')}
                     disabled={isLoading}
-                    className=""
+                    className="text-sm"
                   >
                     Mark as Sold
                   </Button>
@@ -283,7 +283,7 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => setShowBulkActions(false)}
                     iconName="X"
-                    className=""
+                    className="text-sm"
                   >
                     Close
                   </Button>
@@ -428,7 +428,7 @@ const EnhancedVehicleTable = ({
                           variant="ghost"
                           size="icon"
                           onClick={() => handleRowClick(vehicle?.id)}
-                          className="w-6 h-6"
+                          className="w-6 h-6 hover:bg-muted"
                         >
                           <Icon name="Eye" size={12} />
                         </Button>
@@ -456,7 +456,7 @@ const EnhancedVehicleTable = ({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRowClick(vehicle?.id)}
-                        className="w-8 h-8"
+                        className="w-8 h-8 hover:bg-muted"
                         aria-label="View details"
                       >
                         <Icon name="Eye" size={16} />
@@ -467,7 +467,7 @@ const EnhancedVehicleTable = ({
                           variant="ghost"
                           size="icon"
                           onClick={() => console.log('Edit vehicle', vehicle?.id)}
-                          className="w-8 h-8"
+                          className="w-8 h-8 hover:bg-muted"
                           aria-label="Edit vehicle"
                         >
                           <Icon name="Edit" size={16} />
@@ -487,7 +487,7 @@ const EnhancedVehicleTable = ({
             <Icon name="Car" size={48} className="mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No vehicles found</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery || Object.values(filters)?.some(f => f) 
+              {searchQuery || Object.values(filters || {})?.some(f => f) 
                 ? 'Try adjusting your search or filters' : 'Start by adding your first vehicle to the system'
               }
             </p>
@@ -496,7 +496,7 @@ const EnhancedVehicleTable = ({
               iconName="Plus"
               iconPosition="left"
               onClick={() => navigate('/sales-transaction-interface')}
-              className=""
+              className="text-sm"
             >
               Add Vehicle
             </Button>

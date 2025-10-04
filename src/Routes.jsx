@@ -7,7 +7,7 @@ import ScrollToTop from './components/ScrollToTop';
 import NotFound from './pages/NotFound';
 import AuthenticationPortal from './pages/authentication-portal';
 
-// 4 Main Pages - Calendar-First Design
+// 4 Main Pages - Deals-First Design (Changed from Calendar-First)
 import CalendarPage from './pages/calendar';
 import DealsPage from './pages/deals';
 import VehiclesPage from './pages/vehicles'; 
@@ -20,17 +20,18 @@ const Routes = () => {
         <ScrollToTop />
         <RouterRoutes>
           {/* Authentication */}
-          <Route path="/" element={<AuthenticationPortal />} />
+          <Route path="/auth" element={<AuthenticationPortal />} />
 
-          {/* 4 MAIN PAGES - Calendar-First Tracker */}
-          <Route path="/calendar" element={<CalendarPage />} />
+          {/* 4 MAIN PAGES - Deals Dashboard as Main Page */}
+          <Route path="/" element={<DealsPage />} />
           <Route path="/deals" element={<DealsPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/vehicles" element={<VehiclesPage />} />
           <Route path="/admin" element={<AdminPage />} />
 
-          {/* Redirects from old routes to new consolidated pages */}
-          <Route path="/dashboard" element={<Navigate to="/calendar" replace />} />
-          <Route path="/executive-analytics-dashboard" element={<Navigate to="/calendar" replace />} />
+          {/* Legacy Route Redirects - All redirect to deals now */}
+          <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
+          <Route path="/executive-analytics-dashboard" element={<Navigate to="/deals" replace />} />
           <Route path="/calendar-scheduling-center" element={<Navigate to="/calendar" replace />} />
           <Route path="/kanban-status-board" element={<Navigate to="/deals" replace />} />
           <Route path="/sales-tracker" element={<Navigate to="/deals" replace />} />
@@ -40,9 +41,7 @@ const Routes = () => {
           <Route path="/vendor-operations-center" element={<Navigate to="/admin" replace />} />
           <Route path="/vendor-job-dashboard" element={<Navigate to="/admin" replace />} />
           <Route path="/administrative-configuration-center" element={<Navigate to="/admin" replace />} />
-          <Route path="/business-intelligence-reports" element={<Navigate to="/admin" replace />} />
-          <Route path="/photo-documentation-center" element={<Navigate to="/admin" replace />} />
-
+          
           {/* Catch all route */}
           <Route path="*" element={<NotFound />} />
         </RouterRoutes>

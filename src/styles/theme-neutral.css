@@ -1,0 +1,33 @@
+:root {
+  /* Core */
+  --bg: #0f1113;           /* app background */
+  --surface: #111417;      /* panel/card bg */
+  --surface-2: #0c0e10;    /* header/alt */
+  --text: #e7eaee;
+  --muted: #a9b0b8;
+  --line: #23272c;
+
+  /* Accent (pick one) */
+  --accent: #c59d5f;       /* Lexus gold */
+  /* --accent: #4aa3ff;   Electric blue (alt) */
+
+  /* States */
+  --ok: #4fb477;
+  --warn: #e6b34f;
+  --bad: #e26d6d;
+
+  /* Shape & spacing */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --pad-1: 8px;
+  --pad-2: 12px;
+  --pad-3: 16px;
+
+  /* Type */
+  --font-ui: Inter, "SF Pro Text", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --size-xs: 11px;
+  --size-sm: 12px;
+  --size-md: 14px;
+  --size-lg: 18px;
+}

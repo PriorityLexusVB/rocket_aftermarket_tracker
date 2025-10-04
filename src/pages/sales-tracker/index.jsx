@@ -8,7 +8,7 @@ import SummaryCards from './components/SummaryCards';
 import NewSaleModal from './components/NewSaleModal';
 import salesTrackerService from '../../services/salesTrackerService';
 import { useLogger } from '../../hooks/useLogger';
-import vendorService from '../../services/vendorService';
+import { vendorService } from '../../services/vendorService';
 
 const SalesTracker = () => {
   const [salesData, setSalesData] = useState([]);

@@ -3,7 +3,7 @@ import { X, User, Car, DollarSign, Plus, Trash2, Calendar } from 'lucide-react';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import vendorService from '../../../services/vendorService';
+import { vendorService } from '../../../services/vendorService';
 import productService from '../../../services/productService';
 
 const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {

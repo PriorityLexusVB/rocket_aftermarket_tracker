@@ -82,6 +82,7 @@ const FilterPanel = ({
                 onClick={onClearFilters}
                 iconName="X"
                 iconPosition="left"
+                className=""
               >
                 Clear All
               </Button>
@@ -93,6 +94,7 @@ const FilterPanel = ({
               onClick={() => setIsExpanded(!isExpanded)}
               iconName={isExpanded ? "ChevronUp" : "ChevronDown"}
               iconPosition="right"
+              className=""
             >
               {isExpanded ? 'Collapse' : 'Expand'}
             </Button>
@@ -104,7 +106,7 @@ const FilterPanel = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Input
             type="search"
-            placeholder="Search VIN, Stock #..."
+            placeholder="Search VIN, Stock #, Owner Phone..."
             value={filters?.search || ''}
             onChange={(e) => handleFilterChange('search', e?.target?.value)}
             className="w-full"
@@ -209,6 +211,7 @@ const FilterPanel = ({
                 iconName="Save"
                 iconPosition="left"
                 disabled={!hasActiveFilters}
+                className=""
               >
                 Save Current
               </Button>
@@ -228,6 +231,7 @@ const FilterPanel = ({
                   size="sm"
                   onClick={handleSavePreset}
                   disabled={!presetName?.trim()}
+                  className=""
                 >
                   Save
                 </Button>
@@ -238,6 +242,7 @@ const FilterPanel = ({
                     setShowPresetInput(false);
                     setPresetName('');
                   }}
+                  className=""
                 >
                   Cancel
                 </Button>

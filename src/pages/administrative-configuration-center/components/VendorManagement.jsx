@@ -4,7 +4,8 @@ import { useLogger } from '../../../hooks/useLogger';
 import UIButton from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import vendorService from '../../../services/vendorService';
+import Search from '../../../components/ui/Search';
+import { vendorService } from '../../../services/vendorService';
 
 const VendorManagement = () => {
   const { userProfile } = useAuth();
@@ -14,7 +15,8 @@ const VendorManagement = () => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState('add'); // 'add' or 'edit'
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [filterSpecialty, setFilterSpecialty] = useState('');
 
   // Form state
@@ -267,13 +269,18 @@ const VendorManagement = () => {
   };
 
   const filteredVendors = vendors?.filter(vendor => {
-    const matchesSearch = vendor?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-                         vendor?.contact_person?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-                         vendor?.email?.toLowerCase()?.includes(searchTerm?.toLowerCase());
+    const matchesSearch = !searchQuery || 
+      vendor?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+      vendor?.specialty?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+      vendor?.contact_person?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+      vendor?.email?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+      vendor?.phone?.toLowerCase()?.includes(searchQuery?.toLowerCase());
     
-    const matchesSpecialty = filterSpecialty === '' || vendor?.specialty === filterSpecialty;
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'active' && vendor?.is_active) ||
+      (filterStatus === 'inactive' && !vendor?.is_active);
     
-    return matchesSearch && matchesSpecialty;
+    return matchesSearch && matchesStatus;
   });
 
   const selectedCount = vendors?.filter(v => v?.selected)?.length || 0;
@@ -294,12 +301,26 @@ const VendorManagement = () => {
         {/* Controls */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-4">
-            <Input
-              placeholder="Search vendors..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e?.target?.value)}
-              className="w-64"
-            />
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                type="search"
+                placeholder="Search vendors by name, phone, specialty, contact person..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e?.target?.value)}
+                className="pl-10 w-full"
+              />
+            </div>
+            
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e?.target?.value)}
+              className="w-48"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active Only</option>
+              <option value="inactive">Inactive Only</option>
+            </Select>
             
             <Select
               value={filterSpecialty}
