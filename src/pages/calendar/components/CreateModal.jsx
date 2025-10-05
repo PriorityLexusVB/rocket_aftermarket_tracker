@@ -13,6 +13,13 @@ const CreateModal = ({
   onStockSearch, 
   onSMSEnqueue 
 }) => {
+  // Omnibox search state
+  const [omniboxQuery, setOmniboxQuery] = useState('');
+  const [dealSuggestions, setDealSuggestions] = useState([]);
+  const [showDealSuggestions, setShowDealSuggestions] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState(null);
+  const omniboxInputRef = useRef(null);
+
   // Customer Section
   const [customerData, setCustomerData] = useState({
     name: '',
@@ -77,6 +84,19 @@ const CreateModal = ({
   
   const stockInputRef = useRef(null);
 
+  // Enhanced Line Item Form State - Add Deal Number
+  const [dealForm, setDealForm] = useState({
+    dealNumber: '', // NEW: Deal # field (not required)
+    stockNumber: '', 
+    vehicleId: '',
+    // ... keep existing vehicle fields ...
+    vehicleYear: '',
+    vehicleMake: '',
+    vehicleModel: '',
+    new_used: 'used',
+    customer_needs_loaner: false
+  });
+
   // Load initial data
   useEffect(() => {
     loadProducts();
@@ -89,11 +109,189 @@ const CreateModal = ({
       }));
     }
     
-    // Focus on stock number field (FIRST field)
-    if (stockInputRef?.current) {
-      stockInputRef?.current?.focus();
+    // Focus on omnibox search field first
+    if (omniboxInputRef?.current) {
+      omniboxInputRef?.current?.focus();
     }
   }, [initialData]);
+
+  // Omnibox search for existing deals
+  const handleOmniboxSearch = async (query) => {
+    if (!query?.trim() || query?.length < 2) {
+      setDealSuggestions([]);
+      setShowDealSuggestions(false);
+      return;
+    }
+
+    try {
+      // Normalize phone number for search (digits only)
+      const phoneQuery = query?.replace(/\D/g, '');
+      
+      // Search across vehicles and transactions for existing deals
+      // Priority: Stock Number (exact) > Customer Phone (normalized) > Customer Name (partial)
+      let dealResults = [];
+
+      // 1. Search by stock number (exact match first, then partial)
+      const { data: stockMatches } = await supabase
+        ?.from('vehicles')
+        ?.select(`
+          *,
+          transactions!inner(
+            id,
+            transaction_number,
+            customer_name,
+            customer_phone,
+            customer_email,
+            created_at
+          ),
+          jobs!inner(
+            id,
+            job_number,
+            title,
+            assigned_to,
+            delivery_coordinator_id,
+            vendor_id,
+            customer_needs_loaner
+          )
+        `)
+        ?.or(`stock_number.eq.${query},stock_number.ilike.%${query}%`)
+        ?.limit(10);
+
+      if (stockMatches?.length > 0) {
+        dealResults = [...dealResults, ...stockMatches];
+      }
+
+      // 2. Search by customer phone (normalized digits only)
+      if (phoneQuery?.length >= 4) {
+        const { data: phoneMatches } = await supabase
+          ?.from('vehicles')
+          ?.select(`
+            *,
+            transactions!inner(
+              id,
+              transaction_number,
+              customer_name,
+              customer_phone,
+              customer_email,
+              created_at
+            ),
+            jobs!inner(
+              id,
+              job_number,
+              title,
+              assigned_to,
+              delivery_coordinator_id,
+              vendor_id,
+              customer_needs_loaner
+            )
+          `)
+          ?.or(`owner_phone.like.%${phoneQuery}%,transactions.customer_phone.like.%${phoneQuery}%`)
+          ?.limit(10);
+
+        if (phoneMatches?.length > 0) {
+          dealResults = [...dealResults, ...phoneMatches];
+        }
+      }
+
+      // 3. Search by customer name (case-insensitive, partial)
+      const { data: nameMatches } = await supabase
+        ?.from('vehicles')
+        ?.select(`
+          *,
+          transactions!inner(
+            id,
+            transaction_number,
+            customer_name,
+            customer_phone,
+            customer_email,
+            created_at
+          ),
+          jobs!inner(
+            id,
+            job_number,
+            title,
+            assigned_to,
+            delivery_coordinator_id,
+            vendor_id,
+            customer_needs_loaner
+          )
+        `)
+        ?.or(`owner_name.ilike.%${query}%,transactions.customer_name.ilike.%${query}%`)
+        ?.limit(10);
+
+      if (nameMatches?.length > 0) {
+        dealResults = [...dealResults, ...nameMatches];
+      }
+
+      // Remove duplicates and format results
+      const uniqueDeals = dealResults?.filter((deal, index, self) => 
+        index === self?.findIndex(d => d?.id === deal?.id)
+      );
+
+      setDealSuggestions(uniqueDeals || []);
+      setShowDealSuggestions(true);
+
+    } catch (error) {
+      console.error('Deal search error:', error);
+      setError('Failed to search existing deals');
+    }
+  };
+
+  // Debounced omnibox search
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      handleOmniboxSearch(omniboxQuery);
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [omniboxQuery]);
+
+  // Handle deal selection from omnibox
+  const handleDealSelect = async (deal) => {
+    setSelectedDeal(deal);
+    setOmniboxQuery(`${deal?.stock_number || 'N/A'} • ${deal?.transactions?.[0]?.customer_name || deal?.owner_name} • ${deal?.year} ${deal?.make} ${deal?.model}`);
+    setShowDealSuggestions(false);
+
+    // Pre-populate all known data from the selected deal
+    const transaction = deal?.transactions?.[0];
+    const job = deal?.jobs?.[0];
+
+    // Vehicle data
+    setVehicleData({
+      stock_number: deal?.stock_number || '',
+      year: deal?.year || '',
+      make: deal?.make || '',
+      model: deal?.model || '',
+      new_used: 'used', // Default, could be enhanced
+      customer_needs_loaner: job?.customer_needs_loaner || false
+    });
+
+    // Customer data (prioritize transaction data over vehicle data)
+    setCustomerData({
+      name: transaction?.customer_name || deal?.owner_name || '',
+      phone: transaction?.customer_phone || deal?.owner_phone || '',
+      email: transaction?.customer_email || deal?.owner_email || ''
+    });
+
+    // Staff assignments from existing job
+    if (job) {
+      setStaffData({
+        sales_person: job?.assigned_to || '',
+        delivery_coordinator: job?.delivery_coordinator_id || '',
+        finance_manager: '' // Would need to be stored in job if available
+      });
+
+      // If job has vendor assigned, pre-fill vendor for new line item
+      if (job?.vendor_id) {
+        setLineItems(prev => prev?.map((item, index) => 
+          index === 0 ? { ...item, vendor_id: job?.vendor_id, off_site_work: true } : item
+        ));
+      }
+    }
+
+    // Set selected vehicle for form processing
+    setSelectedVehicle(deal);
+  };
 
   // Load products for dropdown
   const loadProducts = async () => {
@@ -134,7 +332,7 @@ const CreateModal = ({
     }
   };
 
-  // Stock-first vehicle search with exact match priority
+  // Stock-first vehicle search with exact match priority (fallback if omnibox not used)
   const handleStockSearch = async (query) => {
     if (!query?.trim() || query?.length < 2) {
       setVehicleSuggestions([]);
@@ -394,14 +592,14 @@ const CreateModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-2xl font-semibold text-gray-900">Deal Creation Form</h3>
+              <h3 className="text-2xl font-semibold text-gray-900">Add to Calendar</h3>
               <p className="text-sm text-gray-600 mt-1">
-                Single scrollable form - Stock Number first, all sections visible
+                Search existing deals or create new - all data auto-filled upon selection
               </p>
             </div>
             <button
@@ -415,475 +613,596 @@ const CreateModal = ({
 
         {/* Error Alert */}
         {error && (
-          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-3">
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-3 flex-shrink-0">
             <AlertTriangle className="w-5 h-5 text-red-600" />
             <span className="text-sm text-red-700">{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col max-h-full">
-          <div className="flex-1 overflow-y-auto p-6 space-y-8">
-            
-            {/* Vehicle Section - Stock Number FIRST */}
-            <div className="bg-blue-50 p-6 rounded-lg">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Car className="w-5 h-5 mr-2" />
-                Vehicle Section
-              </h4>
+        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+          {/* FIXED: Make content area scrollable */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-8">
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* FIRST FIELD - Stock Number - Made Smaller (1/3 width) */}
+              {/* Deal Number Section - NEW */}
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg border-2 border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Calendar className="w-5 h-5 mr-2 text-purple-600" />
+                  Deal Information
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Deal # (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={dealForm?.dealNumber}
+                      onChange={(e) => setDealForm(prev => ({ ...prev, dealNumber: e?.target?.value }))}
+                      className="w-full px-3 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
+                      placeholder="Enter deal number..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Internal deal tracking number (can be searched later)
+                    </p>
+                  </div>
+                  <div className="flex items-end">
+                    <div className="p-3 bg-purple-100 rounded-lg border border-purple-200">
+                      <p className="text-xs text-purple-700 font-medium">Searchable Field</p>
+                      <p className="text-xs text-purple-600">This field will be searchable in calendar and other areas</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Omnibox Search Section */}
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-lg border-2 border-orange-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Search className="w-5 h-5 mr-2 text-orange-600" />
+                  Search Existing Deals
+                </h4>
+                
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <span className="text-red-500">*</span> Stock Number
+                    Search by Stock Number, Customer Phone, Customer Name, or Deal #
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <input
-                      ref={stockInputRef}
+                      ref={omniboxInputRef}
                       type="text"
-                      value={vehicleData?.stock_number}
+                      value={omniboxQuery}
                       onChange={(e) => {
-                        setVehicleData(prev => ({ ...prev, stock_number: e?.target?.value }));
+                        setOmniboxQuery(e?.target?.value);
                         if (!e?.target?.value) {
-                          setSelectedVehicle(null);
+                          setSelectedDeal(null);
                         }
                       }}
-                      className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter Stock # - exact match first, then partial..."
+                      className="pl-10 w-full px-3 py-3 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
+                      placeholder="Enter stock #, phone number, customer name, or deal #..."
+                    />
+                  </div>
+
+                  {/* Deal Suggestions - Enhanced with Deal # display */}
+                  {showDealSuggestions && dealSuggestions?.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+                      <div className="p-2 bg-gray-50 border-b border-gray-200">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                          Existing Deals Found ({dealSuggestions?.length}) - Pre-Population Confirmed ✓
+                        </div>
+                      </div>
+                      {dealSuggestions?.map((deal) => {
+                        const transaction = deal?.transactions?.[0];
+                        const job = deal?.jobs?.[0];
+                        const customerName = transaction?.customer_name || deal?.owner_name || 'N/A';
+                        const phone = transaction?.customer_phone || deal?.owner_phone || 'N/A';
+                        const dealNumber = transaction?.deal_number || job?.deal_number || transaction?.transaction_number || job?.job_number || '';
+                        
+                        return (
+                          <button
+                            key={deal?.id}
+                            type="button"
+                            onClick={() => handleDealSelect(deal)}
+                            className="w-full text-left p-4 hover:bg-orange-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                          >
+                            <div className="font-medium text-orange-700 text-sm">
+                              {deal?.stock_number || 'N/A'} • {customerName} • {phone} • {deal?.year} {deal?.make} {deal?.model}
+                              {dealNumber && (
+                                <span className="ml-2 text-purple-600 font-semibold">• Deal #{dealNumber}</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {deal?.jobs?.length > 0 && (
+                                <span>Jobs: {deal?.jobs?.length} | </span>
+                              )}
+                              Last Activity: {transaction?.created_at ? format(new Date(transaction?.created_at), 'MMM dd, yyyy') : 'N/A'}
+                              <span className="ml-2 text-green-600 font-medium">✓ Will auto-fill all fields</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {showDealSuggestions && dealSuggestions?.length === 0 && omniboxQuery?.length >= 2 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+                      <div className="p-4 text-gray-500 text-sm text-center">
+                        No existing deals found. Continue with manual entry below.
+                        <div className="text-xs text-green-600 mt-1">✓ All fields below will be pre-populated when deal is found</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-500 mt-2">
+                    <strong>Search Priority:</strong> Deal # (exact) → Stock Number (exact → partial) → Customer Phone → Customer Name
+                    <br />
+                    <strong className="text-green-600">✓ Confirmed:</strong> Selecting a result pre-populates ALL fields except line items
+                  </p>
+                </div>
+              </div>
+
+              {/* Vehicle Section - Stock Number FIRST */}
+              <div className="bg-blue-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Car className="w-5 h-5 mr-2" />
+                  Vehicle Section
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* FIRST FIELD - Stock Number - Made Smaller (1/3 width) */}
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <span className="text-red-500">*</span> Stock Number
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <input
+                        ref={stockInputRef}
+                        type="text"
+                        value={vehicleData?.stock_number}
+                        onChange={(e) => {
+                          setVehicleData(prev => ({ ...prev, stock_number: e?.target?.value }));
+                          if (!e?.target?.value) {
+                            setSelectedVehicle(null);
+                          }
+                        }}
+                        className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter Stock # - exact match first, then partial..."
+                        required
+                      />
+                    </div>
+
+                    {/* Vehicle Suggestions */}
+                    {showSuggestions && vehicleSuggestions?.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {vehicleSuggestions?.map((vehicle) => (
+                          <button
+                            key={vehicle?.id}
+                            type="button"
+                            onClick={() => handleVehicleSelect(vehicle)}
+                            className="w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                          >
+                            <div className="font-medium text-blue-600">
+                              Stock: {vehicle?.stock_number || 'N/A'}
+                            </div>
+                            <div className="text-sm text-gray-700">
+                              {vehicle?.year} {vehicle?.make} {vehicle?.model}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Empty divs to maintain grid layout and spacing */}
+                  <div></div>
+                  <div></div>
+
+                  {/* Year, Make, Model - All Required */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <span className="text-red-500">*</span> Year
+                    </label>
+                    <input
+                      type="number"
+                      min="1900"
+                      max="2030"
+                      value={vehicleData?.year}
+                      onChange={(e) => setVehicleData(prev => ({ ...prev, year: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       required
                     />
                   </div>
 
-                  {/* Vehicle Suggestions */}
-                  {showSuggestions && vehicleSuggestions?.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {vehicleSuggestions?.map((vehicle) => (
-                        <button
-                          key={vehicle?.id}
-                          type="button"
-                          onClick={() => handleVehicleSelect(vehicle)}
-                          className="w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
-                        >
-                          <div className="font-medium text-blue-600">
-                            Stock: {vehicle?.stock_number || 'N/A'}
-                          </div>
-                          <div className="text-sm text-gray-700">
-                            {vehicle?.year} {vehicle?.make} {vehicle?.model}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Empty divs to maintain grid layout and spacing */}
-                <div></div>
-                <div></div>
-
-                {/* Year, Make, Model - All Required */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <span className="text-red-500">*</span> Year
-                  </label>
-                  <input
-                    type="number"
-                    min="1900"
-                    max="2030"
-                    value={vehicleData?.year}
-                    onChange={(e) => setVehicleData(prev => ({ ...prev, year: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <span className="text-red-500">*</span> Make
-                  </label>
-                  <input
-                    type="text"
-                    value={vehicleData?.make}
-                    onChange={(e) => setVehicleData(prev => ({ ...prev, make: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <span className="text-red-500">*</span> Model
-                  </label>
-                  <input
-                    type="text"
-                    value={vehicleData?.model}
-                    onChange={(e) => setVehicleData(prev => ({ ...prev, model: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                {/* New/Used Toggle with Clear Visual */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">New/Used</label>
-                  <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                      type="button"
-                      onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'new' }))}
-                      className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                        vehicleData?.new_used === 'new' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600'
-                      }`}
-                    >
-                      New
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'used' }))}
-                      className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                        vehicleData?.new_used === 'used' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600'
-                      }`}
-                    >
-                      Used
-                    </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <span className="text-red-500">*</span> Make
+                    </label>
+                    <input
+                      type="text"
+                      value={vehicleData?.make}
+                      onChange={(e) => setVehicleData(prev => ({ ...prev, make: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
                   </div>
-                </div>
 
-                {/* Empty div to maintain spacing */}
-                <div></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <span className="text-red-500">*</span> Model
+                    </label>
+                    <input
+                      type="text"
+                      value={vehicleData?.model}
+                      onChange={(e) => setVehicleData(prev => ({ ...prev, model: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
 
-                {/* Customer Needs Loaner Vehicle - Proper UI Library Checkbox */}
-                <div className="md:col-span-3">
-                  <Checkbox
-                    checked={vehicleData?.customer_needs_loaner}
-                    onChange={(checked) => setVehicleData(prev => ({ 
-                      ...prev, 
-                      customer_needs_loaner: checked 
-                    }))}
-                    label="Customer Needs Loaner Vehicle"
-                    className="text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Section */}
-            <div className="bg-green-50 p-6 rounded-lg">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <UserPlus className="w-5 h-5 mr-2" />
-                Customer Section
-              </h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <span className="text-red-500">*</span> Customer Name
-                  </label>
-                  <input
-                    type="text"
-                    value={customerData?.name}
-                    onChange={(e) => setCustomerData(prev => ({ ...prev, name: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone (optional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={customerData?.phone}
-                    onChange={(e) => setCustomerData(prev => ({ ...prev, phone: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email (optional)
-                  </label>
-                  <input
-                    type="email"
-                    value={customerData?.email}
-                    onChange={(e) => setCustomerData(prev => ({ ...prev, email: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Staff Assignment */}
-            <div className="bg-purple-50 p-6 rounded-lg">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <User className="w-5 h-5 mr-2" />
-                Staff Assignment
-              </h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sales Person
-                  </label>
-                  <select
-                    value={staffData?.sales_person}
-                    onChange={(e) => setStaffData(prev => ({ ...prev, sales_person: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Select Sales Person</option>
-                    {staffMembers?.sales_people?.map((staff) => (
-                      <option key={staff?.id} value={staff?.id}>
-                        {staff?.full_name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">General Sales Manager does not appear here</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Delivery Coordinator
-                  </label>
-                  <select
-                    value={staffData?.delivery_coordinator}
-                    onChange={(e) => setStaffData(prev => ({ ...prev, delivery_coordinator: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Select Delivery Coordinator</option>
-                    {staffMembers?.delivery_coordinators?.map((staff) => (
-                      <option key={staff?.id} value={staff?.id}>
-                        {staff?.full_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Finance Manager
-                  </label>
-                  <select
-                    value={staffData?.finance_manager}
-                    onChange={(e) => setStaffData(prev => ({ ...prev, finance_manager: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Select Finance Manager</option>
-                    {staffMembers?.finance_managers?.map((staff) => (
-                      <option key={staff?.id} value={staff?.id}>
-                        {staff?.full_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Date Section */}
-            <div className="bg-yellow-50 p-6 rounded-lg">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Calendar className="w-5 h-5 mr-2" />
-                Date Section
-              </h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Today's Date (auto-filled, editable)
-                  </label>
-                  <input
-                    type="date"
-                    value={dateData?.todays_date}
-                    onChange={(e) => setDateData(prev => ({ ...prev, todays_date: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <span className="text-red-500">*</span> Promised Date (no time component)
-                  </label>
-                  <input
-                    type="date"
-                    value={dateData?.promised_date}
-                    onChange={(e) => setDateData(prev => ({ ...prev, promised_date: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Line Items Section */}
-            <div className="bg-indigo-50 p-6 rounded-lg">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-between">
-                <span className="flex items-center">
-                  <MapPin className="w-5 h-5 mr-2" />
-                  Line Items
-                </span>
-                <button
-                  type="button"
-                  onClick={addLineItem}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center space-x-2 text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Another Line Item</span>
-                </button>
-              </h4>
-              
-              {lineItems?.map((item, index) => (
-                <div key={item?.id} className="bg-white p-4 rounded-lg border-2 border-indigo-200 mb-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h5 className="font-medium text-gray-900">Line Item #{index + 1}</h5>
-                    {lineItems?.length > 1 && (
+                  {/* New/Used Toggle with Clear Visual */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">New/Used</label>
+                    <div className="flex bg-gray-100 rounded-lg p-1">
                       <button
                         type="button"
-                        onClick={() => removeLineItem(index)}
-                        className="text-red-600 hover:text-red-800"
+                        onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'new' }))}
+                        className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                          vehicleData?.new_used === 'new' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600'
+                        }`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        New
                       </button>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Product Name Dropdown - Remove "Add New" option */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <span className="text-red-500">*</span> Product Name
-                      </label>
-                      <select
-                        value={item?.product_id}
-                        onChange={(e) => {
-                          const selectedProduct = products?.find(p => p?.id === e?.target?.value);
-                          updateLineItem(index, 'product_id', e?.target?.value);
-                          updateLineItem(index, 'product_name', selectedProduct?.name || '');
-                          updateLineItem(index, 'cost', selectedProduct?.cost || '');
-                          updateLineItem(index, 'sold_price', selectedProduct?.unit_price || '');
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        required
+                      <button
+                        type="button"
+                        onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'used' }))}
+                        className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
+                          vehicleData?.new_used === 'used' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600'
+                        }`}
                       >
-                        <option value="">Select Product</option>
-                        {products?.map((product) => (
-                          <option key={product?.id} value={product?.id}>
-                            {product?.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Sold Price (required) */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <span className="text-red-500">*</span> Sold Price
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item?.sold_price}
-                        onChange={(e) => updateLineItem(index, 'sold_price', e?.target?.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        required
-                      />
-                    </div>
-
-                    {/* Cost (required) */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        <span className="text-red-500">*</span> Cost
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item?.cost}
-                        onChange={(e) => updateLineItem(index, 'cost', e?.target?.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        required
-                      />
-                    </div>
-
-                    {/* Profit (auto-calculated, read-only) */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Profit (auto-calculated)
-                      </label>
-                      <input
-                        type="text"
-                        value={`$${item?.profit?.toFixed(2) || '0.00'}`}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                        readOnly
-                      />
+                        Used
+                      </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                    {/* Off-Site Work Checkbox with Visible Checkmark */}
-                    <div>
-                      <Checkbox
-                        checked={item?.off_site_work}
-                        onChange={(checked) => updateLineItem(index, 'off_site_work', checked)}
-                        label="Off-Site Work"
-                        className="text-sm"
-                      />
-                    </div>
+                  {/* Empty div to maintain spacing */}
+                  <div></div>
 
-                    {/* Vendor Dropdown (only when Off-Site is checked) */}
-                    {item?.off_site_work && (
+                  {/* Customer Needs Loaner Vehicle - Proper UI Library Checkbox */}
+                  <div className="md:col-span-3">
+                    <Checkbox
+                      checked={vehicleData?.customer_needs_loaner}
+                      onChange={(checked) => setVehicleData(prev => ({ 
+                        ...prev, 
+                        customer_needs_loaner: checked 
+                      }))}
+                      label="Customer Needs Loaner Vehicle"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Section */}
+              <div className="bg-green-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Customer Section
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <span className="text-red-500">*</span> Customer Name
+                    </label>
+                    <input
+                      type="text"
+                      value={customerData?.name}
+                      onChange={(e) => setCustomerData(prev => ({ ...prev, name: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone (optional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={customerData?.phone}
+                      onChange={(e) => setCustomerData(prev => ({ ...prev, phone: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email (optional)
+                    </label>
+                    <input
+                      type="email"
+                      value={customerData?.email}
+                      onChange={(e) => setCustomerData(prev => ({ ...prev, email: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Staff Assignment */}
+              <div className="bg-purple-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <User className="w-5 h-5 mr-2" />
+                  Staff Assignment
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sales Person
+                    </label>
+                    <select
+                      value={staffData?.sales_person}
+                      onChange={(e) => setStaffData(prev => ({ ...prev, sales_person: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">Select Sales Person</option>
+                      {staffMembers?.sales_people?.map((staff) => (
+                        <option key={staff?.id} value={staff?.id}>
+                          {staff?.full_name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">General Sales Manager does not appear here</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Delivery Coordinator
+                    </label>
+                    <select
+                      value={staffData?.delivery_coordinator}
+                      onChange={(e) => setStaffData(prev => ({ ...prev, delivery_coordinator: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">Select Delivery Coordinator</option>
+                      {staffMembers?.delivery_coordinators?.map((staff) => (
+                        <option key={staff?.id} value={staff?.id}>
+                          {staff?.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Finance Manager
+                    </label>
+                    <select
+                      value={staffData?.finance_manager}
+                      onChange={(e) => setStaffData(prev => ({ ...prev, finance_manager: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">Select Finance Manager</option>
+                      {staffMembers?.finance_managers?.map((staff) => (
+                        <option key={staff?.id} value={staff?.id}>
+                          {staff?.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Date Section */}
+              <div className="bg-yellow-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Date Section
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Today's Date (auto-filled, editable)
+                    </label>
+                    <input
+                      type="date"
+                      value={dateData?.todays_date}
+                      onChange={(e) => setDateData(prev => ({ ...prev, todays_date: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <span className="text-red-500">*</span> Promised Date (no time component)
+                    </label>
+                    <input
+                      type="date"
+                      value={dateData?.promised_date}
+                      onChange={(e) => setDateData(prev => ({ ...prev, promised_date: e?.target?.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Line Items Section */}
+              <div className="bg-indigo-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-between">
+                  <span className="flex items-center">
+                    <MapPin className="w-5 h-5 mr-2" />
+                    Line Items
+                  </span>
+                  <button
+                    type="button"
+                    onClick={addLineItem}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center space-x-2 text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Another Line Item</span>
+                  </button>
+                </h4>
+                
+                {lineItems?.map((item, index) => (
+                  <div key={item?.id} className="bg-white p-4 rounded-lg border-2 border-indigo-200 mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="font-medium text-gray-900">Line Item #{index + 1}</h5>
+                      {lineItems?.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeLineItem(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Product Name Dropdown - Remove "Add New" option */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Vendor
+                          <span className="text-red-500">*</span> Product Name
                         </label>
                         <select
-                          value={item?.vendor_id}
-                          onChange={(e) => updateLineItem(index, 'vendor_id', e?.target?.value)}
+                          value={item?.product_id}
+                          onChange={(e) => {
+                            const selectedProduct = products?.find(p => p?.id === e?.target?.value);
+                            updateLineItem(index, 'product_id', e?.target?.value);
+                            updateLineItem(index, 'product_name', selectedProduct?.name || '');
+                            updateLineItem(index, 'cost', selectedProduct?.cost || '');
+                            updateLineItem(index, 'sold_price', selectedProduct?.unit_price || '');
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          required
                         >
-                          <option value="">Select Vendor</option>
-                          {vendors?.map((vendor) => (
-                            <option key={vendor?.id} value={vendor?.id}>
-                              {vendor?.name}
+                          <option value="">Select Product</option>
+                          {products?.map((product) => (
+                            <option key={product?.id} value={product?.id}>
+                              {product?.name}
                             </option>
                           ))}
                         </select>
                       </div>
-                    )}
 
-                    {/* Per-line Promised Date (optional) */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Per-line Promised Date (optional)
-                      </label>
-                      <input
-                        type="date"
-                        value={item?.promised_date}
-                        onChange={(e) => updateLineItem(index, 'promised_date', e?.target?.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                      />
+                      {/* Sold Price (required) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <span className="text-red-500">*</span> Sold Price
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item?.sold_price}
+                          onChange={(e) => updateLineItem(index, 'sold_price', e?.target?.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          required
+                        />
+                      </div>
+
+                      {/* Cost (required) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <span className="text-red-500">*</span> Cost
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item?.cost}
+                          onChange={(e) => updateLineItem(index, 'cost', e?.target?.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          required
+                        />
+                      </div>
+
+                      {/* Profit (auto-calculated, read-only) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Profit (auto-calculated)
+                        </label>
+                        <input
+                          type="text"
+                          value={`$${item?.profit?.toFixed(2) || '0.00'}`}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                          readOnly
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                      {/* Off-Site Work Checkbox with Visible Checkmark */}
+                      <div>
+                        <Checkbox
+                          checked={item?.off_site_work}
+                          onChange={(checked) => updateLineItem(index, 'off_site_work', checked)}
+                          label="Off-Site Work"
+                          className="text-sm"
+                        />
+                      </div>
+
+                      {/* Vendor Dropdown (only when Off-Site is checked) */}
+                      {item?.off_site_work && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Vendor
+                          </label>
+                          <select
+                            value={item?.vendor_id}
+                            onChange={(e) => updateLineItem(index, 'vendor_id', e?.target?.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Select Vendor</option>
+                            {vendors?.map((vendor) => (
+                              <option key={vendor?.id} value={vendor?.id}>
+                                {vendor?.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Per-line Promised Date (optional) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Per-line Promised Date (optional)
+                        </label>
+                        <input
+                          type="date"
+                          value={item?.promised_date}
+                          onChange={(e) => updateLineItem(index, 'promised_date', e?.target?.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Notes Section */}
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Notes</h4>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e?.target?.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500"
-                rows="4"
-                placeholder="Free text area for additional notes and details..."
-              />
+              {/* Notes Section */}
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4">Notes</h4>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e?.target?.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500"
+                  rows="4"
+                  placeholder="Free text area for additional notes and details..."
+                />
+              </div>
             </div>
           </div>
 
-          {/* Footer - Single Save Deal Button */}
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
+          {/* Footer - Fixed at bottom */}
+          <div className="p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-500">
                 <span className="text-red-500">*</span> Required fields | 
-                Form saves via single Save Deal button
+                <span className="text-green-600 font-medium">✓ Omnibox pre-fills all known data automatically</span>
               </div>
               <div className="flex space-x-3">
                 <button

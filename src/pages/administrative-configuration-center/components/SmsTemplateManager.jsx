@@ -404,7 +404,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                 </div>
               </div>
               
-              <label className="flex items-center space-x-2 cursor-pointer">
+              <div className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData?.is_active}
@@ -412,7 +412,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-ring focus:ring-2"
                 />
                 <span className="text-sm text-foreground">Template is active</span>
-              </label>
+              </div>
               
               <div className="flex justify-end space-x-2 pt-4 border-t border-border">
                 <Button 
@@ -426,6 +426,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                 
                 <Button 
                   type="submit"
+                  onClick={handleSubmit}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}

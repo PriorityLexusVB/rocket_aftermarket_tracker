@@ -45,8 +45,9 @@ const DealsPage = () => {
   const [dealCalendarEvents, setDealCalendarEvents] = useState([]);
   const [showCalendarView, setShowCalendarView] = useState(false);
 
-  // Enhanced Line Item Form State - Enhanced with dates and vehicle details
+  // Enhanced Line Item Form State - Add Deal Number field
   const [lineItemForm, setLineItemForm] = useState({
+    dealNumber: '', // NEW: Deal # field (not required) 
     stockNumber: '', 
     vehicleId: '',
     // NEW: Manual vehicle details
@@ -295,7 +296,7 @@ const DealsPage = () => {
     }
   };
 
-  // Filter and search functionality
+  // Filter and search functionality - Add Deal # search
   useEffect(() => {
     let filtered = deals;
     
@@ -311,7 +312,8 @@ const DealsPage = () => {
         deal?.customer?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
         deal?.vehicleInfo?.make?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
         deal?.vehicleInfo?.model?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-        deal?.salesperson?.toLowerCase()?.includes(searchTerm?.toLowerCase())
+        deal?.salesperson?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+        deal?.dealNumber?.toLowerCase()?.includes(searchTerm?.toLowerCase()) // NEW: Add Deal # search
       );
     }
     
@@ -330,6 +332,7 @@ const DealsPage = () => {
     
     // Initialize edit form with deal data
     setLineItemForm({
+      dealNumber: deal?.dealNumber || '',
       stockNumber: deal?.vehicleInfo?.stockNumber || '',
       vehicleId: deal?.vehicleInfo?.vehicleId || '',
       // NEW: Auto-populate manual vehicle fields from deal
@@ -453,6 +456,7 @@ const DealsPage = () => {
 
   const handleNewDeal = () => {
     setLineItemForm({
+      dealNumber: '', // NEW: Reset deal number
       stockNumber: '', // NEW: Reset stock number
       vehicleId: '',
       // NEW: Reset manual vehicle details
@@ -803,7 +807,7 @@ const DealsPage = () => {
         calendarSummary?.push(`📅 1 On-Site Calendar Event (Green) - ${onSiteCount} items grouped`);
       }
 
-      const successMessage = `✅ Aftermarket Deal Created with Calendar Integration!
+      const successMessage = `✅ Aftermarket Deal Created with Deal # & Calendar Integration!
 
 📅 TODAY'S DATE: ${todaysDate?.toLocaleDateString()}
 🎯 PROMISED DATE: ${promisedDate?.toLocaleDateString()}
@@ -825,6 +829,7 @@ ${offSiteVendorCount > 0 ? '🔸 Each off-site vendor gets separate calendar ent
 ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : ''}
 
 ✅ Color coding: Orange for off-site, Green for on-site
+✅ Deal # tracking: Internal deal number is now searchable everywhere
 ✅ Ready for calendar scheduling and vendor coordination`;
 
       alert(successMessage);
@@ -1383,7 +1388,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
         <MobileModal
           isOpen={showNewDealModal}
           onClose={() => setShowNewDealModal(false)}
-          title="Create New Deal with Dates &amp; Calendar"
+          title="Create New Deal with Deal # &amp; Calendar"
           size="full"
           fullScreen={true}
         >
@@ -1398,11 +1403,36 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
               </div>
             )}
 
-            {/* Enhanced Line Item Form with Date Fields */}
+            {/* Enhanced Line Item Form with Deal Number and Date Fields */}
             <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
               <div className="flex items-center mb-6">
                 <Icon name="Calendar" size={20} className="text-blue-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Deal Information &amp; Dates</h3>
+                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Deal Information &amp; Details</h3>
+              </div>
+
+              {/* NEW: Deal Number Section - TOP PRIORITY FIELD */}
+              <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                      🔖 Deal # (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={lineItemForm?.dealNumber}
+                      onChange={(e) => setLineItemForm({...lineItemForm, dealNumber: e?.target?.value})}
+                      className={`w-full p-3 text-sm rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent ${themeClasses?.input}`}
+                      placeholder="Enter deal number..."
+                    />
+                    <p className="text-xs text-gray-600 mt-1">Internal deal tracking number</p>
+                  </div>
+                  <div className="flex items-end">
+                    <div className="p-3 bg-purple-100 rounded-lg border border-purple-200 w-full">
+                      <p className="text-xs text-purple-700 font-medium">✓ Searchable Everywhere</p>
+                      <p className="text-xs text-purple-600">This Deal # will be searchable in calendar, deals list, and all other search areas</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* NEW: Date Information Section (NO PROMISED TIME) - MOVED TO TOP */}
@@ -1906,7 +1936,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   disabled={!lineItemForm?.customerName || !lineItemForm?.productId || (!lineItemForm?.vehicleId && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel))}
                 >
                   <Icon name="Plus" size={16} className="mr-2" />
-                  Add Line Item to Deal (Reorganized Flow)
+                  Add Line Item to Deal (with Deal # tracking)
                 </Button>
               </div>
             </div>
@@ -2083,12 +2113,12 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                 {isSubmittingDeal ? (
                   <>
                     <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Creating Deal with Dates...
+                    Creating Deal with Deal #...
                   </>
                 ) : (
                   <>
                     <Icon name="Plus" size={16} className="mr-2" />
-                    Create Deal ({dealLineItems?.length} items) + Calendar
+                    Create Deal ({dealLineItems?.length} items) + Deal # + Calendar
                   </>
                 )}
               </Button>

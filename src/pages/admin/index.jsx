@@ -796,8 +796,8 @@ const AdminPage = () => {
               <div className="space-y-4">
                 <Button
                   onClick={forceProfileReload}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
                   disabled={submitting}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
                   {submitting ? 'Checking Access...' : 'Retry Access Check'}
