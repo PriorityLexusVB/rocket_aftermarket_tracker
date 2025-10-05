@@ -186,6 +186,10 @@ const LoginForm = () => {
               required
               disabled={isLoading}
               className="pl-10"
+              label=""
+              helperText=""
+              maxLength={255}
+              style={{}}
             />
           </div>
         </div>
@@ -208,6 +212,10 @@ const LoginForm = () => {
               required
               disabled={isLoading}
               className="pl-10 pr-10"
+              label=""
+              helperText=""
+              maxLength={255}
+              style={{}}
             />
             <button
               type="button"

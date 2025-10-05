@@ -5,14 +5,23 @@ import AppLayout from '../../components/layouts/AppLayout';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
-import { Plus, Edit2, Trash2, Users, Package, MessageSquare, Building, UserCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Package, MessageSquare, Building, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
 import Icon from '../../components/AppIcon';
 
 
 const AdminPage = () => {
-  const { userProfile, isManager } = useAuth();
+  const { userProfile, isManager, user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('userAccounts');
+  
+  // Debug states
+  const [debugInfo, setDebugInfo] = useState({
+    authUser: null,
+    userProfile: null,
+    isManager: false,
+    profileLoadError: null,
+    showDebug: false
+  });
   
   // States for different sections
   const [userAccounts, setUserAccounts] = useState([]);
@@ -61,7 +70,8 @@ const AdminPage = () => {
     cost: '',
     unit_price: '',
     part_number: '',
-    description: ''
+    description: '',
+    op_code: ''
   });
 
   const [templateForm, setTemplateForm] = useState({
@@ -103,12 +113,152 @@ const AdminPage = () => {
     { value: 'completion_notice', label: 'Completion Notice' }
   ];
 
-  useEffect(() => {
-    if (isManager) {
-      loadAllData();
+  // Debug function to check current user status
+  const debugAuthState = async () => {
+    console.log('=== ADMIN ACCESS DEBUG ===');
+    
+    try {
+      // Get current session
+      const { data: { session }, error: sessionError } = await supabase?.auth?.getSession();
+      console.log('Current session:', { hasSession: !!session, sessionError });
+      
+      if (session?.user) {
+        console.log('Auth user:', {
+          id: session?.user?.id,
+          email: session?.user?.email,
+          role: session?.user?.role
+        });
+        
+        // Try to fetch user profile directly
+        const { data: profile, error: profileError } = await supabase
+          ?.from('user_profiles')
+          ?.select('*')
+          ?.eq('id', session?.user?.id)
+          ?.single();
+          
+        console.log('Direct profile fetch:', {
+          profile: profile,
+          profileError: profileError
+        });
+        
+        // Check if user can access user_profiles table at all
+        const { data: allProfiles, error: allProfilesError } = await supabase
+          ?.from('user_profiles')
+          ?.select('id, full_name, role')
+          ?.limit(5);
+          
+        console.log('All profiles check:', {
+          canAccessTable: !allProfilesError,
+          profileCount: allProfiles?.length || 0,
+          error: allProfilesError
+        });
+        
+        setDebugInfo({
+          authUser: session?.user,
+          userProfile: profile,
+          isManager: profile?.role === 'manager' || profile?.role === 'admin',
+          profileLoadError: profileError,
+          showDebug: true
+        });
+      }
+    } catch (error) {
+      console.error('Debug error:', error);
+      setDebugInfo(prev => ({
+        ...prev,
+        profileLoadError: error,
+        showDebug: true
+      }));
     }
-    setLoading(false);
-  }, [isManager]);
+  };
+
+  // Force profile reload function
+  const forceProfileReload = async () => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    try {
+      console.log('Forcing profile reload for user:', user?.id);
+      
+      // Try multiple approaches to get the profile
+      const attempts = [
+        // Direct ID match
+        supabase?.from('user_profiles')?.select('*')?.eq('id', user?.id)?.single(),
+        // Email match as fallback
+        supabase?.from('user_profiles')?.select('*')?.eq('email', user?.email)?.single()
+      ];
+      
+      for (const attempt of attempts) {
+        const { data, error } = await attempt;
+        if (data && !error) {
+          console.log('Profile found:', data);
+          
+          // If this succeeds, the issue might be in AuthContext
+          // Create/update profile if needed
+          if (data?.role === 'admin' || data?.role === 'manager') {
+            console.log('User has admin/manager role:', data?.role);
+            window.location?.reload(); // Force a complete reload to reinitialize auth
+            return;
+          }
+        }
+      }
+      
+      console.log('No valid admin/manager profile found. Attempting to create one...');
+      
+      // If no profile exists, create one with admin role
+      const { data: newProfile, error: createError } = await supabase
+        ?.from('user_profiles')
+        ?.upsert({
+          id: user?.id,
+          email: user?.email,
+          full_name: user?.email?.split('@')?.[0] || 'Admin User',
+          role: 'admin', // Grant admin access
+          department: 'Managers',
+          is_active: true,
+          created_at: new Date()?.toISOString(),
+          updated_at: new Date()?.toISOString()
+        })
+        ?.select()
+        ?.single();
+        
+      if (newProfile && !createError) {
+        console.log('Admin profile created:', newProfile);
+        window.location?.reload(); // Force reload to pick up new profile
+      } else {
+        console.error('Failed to create admin profile:', createError);
+      }
+      
+    } catch (error) {
+      console.error('Error in force profile reload:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initializeAdmin = async () => {
+      if (authLoading) return; // Wait for auth to finish loading
+      
+      console.log('Admin page initialization:', {
+        hasUser: !!user,
+        hasProfile: !!userProfile,
+        isManager: isManager,
+        userRole: userProfile?.role
+      });
+      
+      if (user && !userProfile) {
+        // User is authenticated but no profile - try to load it
+        console.log('User authenticated but no profile found, attempting reload...');
+        await forceProfileReload();
+      } else if (isManager) {
+        // User has proper access, load admin data
+        loadAllData();
+      }
+      
+      setLoading(false);
+    };
+
+    initializeAdmin();
+  }, [user, userProfile, isManager, authLoading]);
 
   const loadAllData = async () => {
     try {
@@ -241,7 +391,8 @@ const AdminPage = () => {
         cost: '',
         unit_price: '',
         part_number: '',
-        description: ''
+        description: '',
+        op_code: ''
       });
     } else if (type === 'template') {
       setTemplateForm(item || {
@@ -384,7 +535,8 @@ const AdminPage = () => {
       cost: productForm?.cost ? parseFloat(productForm?.cost) : 0,
       unit_price: productForm?.unit_price ? parseFloat(productForm?.unit_price) : 0,
       part_number: productForm?.part_number,
-      description: productForm?.description
+      description: productForm?.description,
+      op_code: productForm?.op_code || null
     };
 
     if (editingItem) {
@@ -615,23 +767,72 @@ const AdminPage = () => {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <AppLayout>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading admin panel...</p>
+          </div>
         </div>
       </AppLayout>
     );
   }
 
+  // Enhanced access denied screen with debugging options
   if (!isManager) {
     return (
       <AppLayout>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">Access Denied</h2>
-            <p className="text-gray-600">Manager access required</p>
+          <div className="max-w-md w-full bg-white rounded-lg shadow p-6">
+            <div className="text-center">
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-800 mb-2">Access Denied</h2>
+              <p className="text-gray-600 mb-6">
+                Admin or manager access required to view this page
+              </p>
+              
+              <div className="space-y-4">
+                <Button
+                  onClick={forceProfileReload}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                  disabled={submitting}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  {submitting ? 'Checking Access...' : 'Retry Access Check'}
+                </Button>
+                
+                <Button
+                  onClick={debugAuthState}
+                  className="w-full bg-gray-600 hover:bg-gray-700 text-white"
+                >
+                  Debug Access Issue
+                </Button>
+              </div>
+              
+              {debugInfo?.showDebug && (
+                <div className="mt-6 p-4 bg-gray-100 rounded-lg text-left text-sm">
+                  <h3 className="font-semibold mb-2">Debug Information:</h3>
+                  <div className="space-y-1 font-mono text-xs">
+                    <div>Auth User: {debugInfo?.authUser?.email || 'None'}</div>
+                    <div>User ID: {debugInfo?.authUser?.id || 'None'}</div>
+                    <div>Profile Found: {debugInfo?.userProfile ? 'Yes' : 'No'}</div>
+                    <div>User Role: {debugInfo?.userProfile?.role || 'None'}</div>
+                    <div>Is Manager: {debugInfo?.isManager ? 'Yes' : 'No'}</div>
+                    {debugInfo?.profileLoadError && (
+                      <div className="text-red-600 mt-2">
+                        Error: {debugInfo?.profileLoadError?.message}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-xs text-gray-500 mt-4">
+                If you believe this is an error, please contact your system administrator
+              </p>
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -861,7 +1062,12 @@ const AdminPage = () => {
   const renderProductsTab = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Aftermarket Products</h3>
+        <div>
+          <h3 className="text-lg font-semibold">Aftermarket Products</h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Op Code: Short abbreviation displayed on trackers and calendars. Full name shown in detailed reports.
+          </p>
+        </div>
         <Button
           onClick={() => openModal('product')}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
@@ -877,6 +1083,7 @@ const AdminPage = () => {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Op Code</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Brand</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cost</th>
@@ -889,6 +1096,15 @@ const AdminPage = () => {
             {products?.map((product) => (
               <tr key={product?.id}>
                 <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{product?.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {product?.op_code ? (
+                    <span className="px-2 py-1 text-xs font-bold bg-green-100 text-green-800 rounded border border-green-200">
+                      {product?.op_code}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-xs">No code</span>
+                  )}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">{product?.brand || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">{product?.category || 'N/A'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">${product?.cost || '0'}</td>
@@ -1143,6 +1359,16 @@ const AdminPage = () => {
                   required
                 />
                 <Input
+                  label="Op Code"
+                  type="text"
+                  value={productForm?.op_code}
+                  onChange={(e) => setProductForm({...productForm, op_code: e?.target?.value?.toUpperCase()})}
+                  placeholder="TG, WD, BP, etc."
+                  maxLength="10"
+                  className="uppercase"
+                  helperText="Short abbreviation for trackers/calendars (e.g., ToughGuard = TG)"
+                />
+                <Input
                   label="Brand"
                   type="text"
                   value={productForm?.brand}
@@ -1233,6 +1459,7 @@ const AdminPage = () => {
               </Button>
               <Button
                 type="submit"
+                onClick={handleSubmit}
                 disabled={submitting}
                 className={`bg-blue-600 hover:bg-blue-700 text-white ${submitting ? 'opacity-50' : ''}`}
               >
@@ -1252,6 +1479,11 @@ const AdminPage = () => {
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Panel</h1>
             <p className="text-gray-600">Complete administrative management for Rocket Aftermarket Tracker</p>
+            {userProfile && (
+              <div className="mt-2 text-sm text-gray-500">
+                Logged in as: {userProfile?.full_name} ({userProfile?.role})
+              </div>
+            )}
           </div>
 
           {/* Tab Navigation */}

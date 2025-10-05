@@ -1383,7 +1383,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
         <MobileModal
           isOpen={showNewDealModal}
           onClose={() => setShowNewDealModal(false)}
-          title="Create New Deal with Dates & Calendar"
+          title="Create New Deal with Dates &amp; Calendar"
           size="full"
           fullScreen={true}
         >

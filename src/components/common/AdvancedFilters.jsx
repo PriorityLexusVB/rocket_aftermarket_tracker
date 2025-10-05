@@ -141,6 +141,10 @@ const AdvancedFilters = ({
             onChange={(e) => handleFilterChange(filterKey, e?.target?.value)}
             placeholder={`Filter by ${config?.label?.toLowerCase()}`}
             className="w-full"
+            label=""
+            helperText=""
+            maxLength={100}
+            style={{}}
           />
         );
 
@@ -178,6 +182,10 @@ const AdvancedFilters = ({
               onChange={(e) => handleFilterChange(filterKey, { ...value, start: e?.target?.value })}
               placeholder="Start date"
               className="flex-1"
+              label=""
+              helperText=""
+              maxLength={100}
+              style={{}}
             />
             <Input
               type="date"
@@ -185,6 +193,10 @@ const AdvancedFilters = ({
               onChange={(e) => handleFilterChange(filterKey, { ...value, end: e?.target?.value })}
               placeholder="End date"
               className="flex-1"
+              label=""
+              helperText=""
+              maxLength={100}
+              style={{}}
             />
           </div>
         );
@@ -201,6 +213,10 @@ const AdvancedFilters = ({
               max={config?.max}
               step={config?.step}
               className="flex-1"
+              label=""
+              helperText=""
+              maxLength={100}
+              style={{}}
             />
             <Input
               type="number"
@@ -211,6 +227,10 @@ const AdvancedFilters = ({
               max={config?.max}
               step={config?.step}
               className="flex-1"
+              label=""
+              helperText=""
+              maxLength={100}
+              style={{}}
             />
           </div>
         );
@@ -351,6 +371,10 @@ const AdvancedFilters = ({
                   onChange={(e) => setPresetName(e?.target?.value)}
                   placeholder="Enter preset name"
                   className="w-full"
+                  label=""
+                  helperText=""
+                  maxLength={100}
+                  style={{}}
                 />
               </div>
               

@@ -110,6 +110,9 @@ const FilterPanel = ({
             value={filters?.search || ''}
             onChange={(e) => handleFilterChange('search', e?.target?.value)}
             className="w-full"
+            helperText=""
+            maxLength={undefined}
+            style={{}}
           />
           
           <Select
@@ -142,15 +145,23 @@ const FilterPanel = ({
             <Input
               type="date"
               label="Added From"
+              placeholder=""
               value={filters?.dateFrom || ''}
               onChange={(e) => handleFilterChange('dateFrom', e?.target?.value)}
+              helperText=""
+              maxLength={undefined}
+              style={{}}
             />
             
             <Input
               type="date"
               label="Added To"
+              placeholder=""
               value={filters?.dateTo || ''}
               onChange={(e) => handleFilterChange('dateTo', e?.target?.value)}
+              helperText=""
+              maxLength={undefined}
+              style={{}}
             />
             
             <Input
@@ -159,6 +170,9 @@ const FilterPanel = ({
               placeholder="0.00"
               value={filters?.minProfit || ''}
               onChange={(e) => handleFilterChange('minProfit', e?.target?.value)}
+              helperText=""
+              maxLength={undefined}
+              style={{}}
             />
           </div>
 
@@ -182,6 +196,9 @@ const FilterPanel = ({
               placeholder="Enter model name..."
               value={filters?.model || ''}
               onChange={(e) => handleFilterChange('model', e?.target?.value)}
+              helperText=""
+              maxLength={undefined}
+              style={{}}
             />
             
             <Select
@@ -225,6 +242,9 @@ const FilterPanel = ({
                   value={presetName}
                   onChange={(e) => setPresetName(e?.target?.value)}
                   className="flex-1"
+                  helperText=""
+                  maxLength={undefined}
+                  style={{}}
                 />
                 <Button
                   variant="default"

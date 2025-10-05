@@ -303,6 +303,11 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="date"
                   required
+                  label="Sale Date"
+                  placeholder=""
+                  helperText=""
+                  maxLength={50}
+                  style={{}}
                   value={formData?.saleDate}
                   onChange={(e) => handleInputChange('saleDate', e?.target?.value)}
                 />
@@ -353,9 +358,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="text"
                   required
+                  label="Customer Name"
+                  placeholder="Enter customer name"
+                  helperText=""
+                  maxLength={100}
+                  style={{}}
                   value={formData?.customerName}
                   onChange={(e) => handleInputChange('customerName', e?.target?.value)}
-                  placeholder="Enter customer name"
                 />
               </div>
               <div>
@@ -364,9 +373,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="email"
+                  label="Email"
+                  placeholder="customer@email.com"
+                  helperText=""
+                  maxLength={100}
+                  style={{}}
                   value={formData?.customerEmail}
                   onChange={(e) => handleInputChange('customerEmail', e?.target?.value)}
-                  placeholder="customer@email.com"
                 />
               </div>
               <div>
@@ -375,9 +388,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="tel"
+                  label="Phone"
+                  placeholder="(555) 123-4567"
+                  helperText=""
+                  maxLength={20}
+                  style={{}}
                   value={formData?.customerPhone}
                   onChange={(e) => handleInputChange('customerPhone', e?.target?.value)}
-                  placeholder="(555) 123-4567"
                 />
               </div>
             </div>
@@ -397,9 +414,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="text"
+                  label="Stock Number"
+                  placeholder="STK-2024-001"
+                  helperText=""
+                  maxLength={50}
+                  style={{}}
                   value={formData?.vehicle?.stockNumber}
                   onChange={(e) => handleInputChange('vehicle.stockNumber', e?.target?.value)}
-                  placeholder="STK-2024-001"
                 />
               </div>
               <div>
@@ -411,9 +432,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                   min="1980"
                   max="2025"
                   required
+                  label="Year"
+                  placeholder="2020"
+                  helperText=""
+                  maxLength={4}
+                  style={{}}
                   value={formData?.vehicle?.year}
                   onChange={(e) => handleInputChange('vehicle.year', e?.target?.value)}
-                  placeholder="2020"
                 />
               </div>
               <div>
@@ -423,9 +448,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="text"
                   required
+                  label="Make"
+                  placeholder="Honda, Toyota, Ford, etc."
+                  helperText=""
+                  maxLength={50}
+                  style={{}}
                   value={formData?.vehicle?.make}
                   onChange={(e) => handleInputChange('vehicle.make', e?.target?.value)}
-                  placeholder="Honda, Toyota, Ford, etc."
                 />
               </div>
               <div>
@@ -435,9 +464,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="text"
                   required
+                  label="Model"
+                  placeholder="Civic, Camry, F-150, etc."
+                  helperText=""
+                  maxLength={50}
+                  style={{}}
                   value={formData?.vehicle?.model}
                   onChange={(e) => handleInputChange('vehicle.model', e?.target?.value)}
-                  placeholder="Civic, Camry, F-150, etc."
                 />
               </div>
               <div className="md:col-span-2">
@@ -446,9 +479,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="text"
+                  label="Color"
+                  placeholder="Red, Blue, White, Silver, etc."
+                  helperText=""
+                  maxLength={30}
+                  style={{}}
                   value={formData?.vehicle?.color}
                   onChange={(e) => handleInputChange('vehicle.color', e?.target?.value)}
-                  placeholder="Red, Blue, White, Silver, etc."
                 />
               </div>
             </div>
@@ -481,7 +518,11 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         {item?.isCustomItem && (
                           <Input
                             type="text"
+                            label="Custom Item Name"
                             placeholder="Enter custom item name"
+                            helperText=""
+                            maxLength={100}
+                            style={{}}
                             value={item?.itemName}
                             onChange={(e) => handleLineItemChange(index, 'itemName', e?.target?.value)}
                             required
@@ -499,9 +540,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         step="0.01"
                         min="0"
                         required
+                        label="Cost"
+                        placeholder="0.00"
+                        helperText=""
+                        maxLength={10}
+                        style={{}}
                         value={item?.cost}
                         onChange={(e) => handleLineItemChange(index, 'cost', e?.target?.value)}
-                        placeholder="0.00"
                       />
                     </div>
 
@@ -514,9 +559,13 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         step="0.01"
                         min="0"
                         required
+                        label="Price"
+                        placeholder="0.00"
+                        helperText=""
+                        maxLength={10}
+                        style={{}}
                         value={item?.price}
                         onChange={(e) => handleLineItemChange(index, 'price', e?.target?.value)}
-                        placeholder="0.00"
                       />
                     </div>
 
@@ -569,6 +618,11 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         type="date"
                         required={item?.processingType === 'vendor'}
                         disabled={item?.processingType !== 'vendor'}
+                        label="Date for Vendor"
+                        placeholder=""
+                        helperText=""
+                        maxLength={50}
+                        style={{}}
                         value={item?.vendorDate}
                         onChange={(e) => handleLineItemChange(index, 'vendorDate', e?.target?.value)}
                       />
@@ -582,6 +636,11 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         type="date"
                         required={item?.processingType === 'vendor'}
                         disabled={item?.processingType !== 'vendor'}
+                        label="ETA Return"
+                        placeholder=""
+                        helperText=""
+                        maxLength={50}
+                        style={{}}
                         value={item?.etaReturn}
                         onChange={(e) => handleLineItemChange(index, 'etaReturn', e?.target?.value)}
                       />
@@ -701,6 +760,7 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
               variant="outline"
               onClick={onClose}
               disabled={loading}
+              className=""
             >
               Cancel
             </Button>
@@ -708,6 +768,7 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
               type="submit"
               disabled={loading}
               className="flex items-center space-x-2"
+              onClick={() => {}}
             >
               {loading && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

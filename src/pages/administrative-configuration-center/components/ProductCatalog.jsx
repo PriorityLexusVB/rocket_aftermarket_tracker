@@ -20,13 +20,13 @@ const ProductCatalog = () => {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterVendor, setFilterVendor] = useState('');
 
-  // Form state
+  // Form state - removed part_number
   const [formData, setFormData] = useState({
     name: '',
     brand: '',
     category: '',
     description: '',
-    part_number: '',
+    op_code: '',
     unit_price: '',
     quantity_in_stock: '',
     minimum_stock_level: '',
@@ -131,7 +131,7 @@ const ProductCatalog = () => {
       brand: product?.brand || '',
       category: product?.category || '',
       description: product?.description || '',
-      part_number: product?.part_number || '',
+      op_code: product?.op_code || '',
       unit_price: product?.unit_price || '',
       quantity_in_stock: product?.quantity_in_stock || '',
       minimum_stock_level: product?.minimum_stock_level || '',
@@ -174,7 +174,7 @@ const ProductCatalog = () => {
       brand: '',
       category: '',
       description: '',
-      part_number: '',
+      op_code: '',
       unit_price: '',
       quantity_in_stock: '',
       minimum_stock_level: '',
@@ -188,7 +188,7 @@ const ProductCatalog = () => {
 
   const filteredProducts = products?.filter(product => {
     const matchesSearch = product?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-                         product?.part_number?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+                         product?.op_code?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
                          product?.brand?.toLowerCase()?.includes(searchTerm?.toLowerCase());
     
     const matchesCategory = filterCategory === '' || product?.category === filterCategory;
@@ -262,7 +262,11 @@ const ProductCatalog = () => {
               <div className="flex-1">
                 <h3 className="font-medium text-gray-900 truncate">{product?.name}</h3>
                 <p className="text-sm text-gray-500">{product?.brand}</p>
-                <p className="text-xs text-gray-400">{product?.part_number}</p>
+                {product?.op_code && (
+                  <p className="text-xs text-blue-600 font-mono bg-blue-50 px-2 py-1 rounded inline-block mt-1">
+                    {product?.op_code}
+                  </p>
+                )}
               </div>
               <div className="flex items-center space-x-1">
                 <span className={`w-2 h-2 rounded-full ${
@@ -401,12 +405,14 @@ const ProductCatalog = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Part Number
+                    Op Code
                   </label>
                   <Input
-                    value={formData?.part_number}
-                    onChange={(e) => setFormData(prev => ({ ...prev, part_number: e?.target?.value }))}
-                    placeholder="Enter part number"
+                    value={formData?.op_code}
+                    onChange={(e) => setFormData(prev => ({ ...prev, op_code: e?.target?.value?.toUpperCase() }))}
+                    placeholder="Enter operation code (e.g., TG)"
+                    style={{ textTransform: 'uppercase' }}
+                    helperText="Short abbreviation for display on tracker and calendar"
                   />
                 </div>
 
