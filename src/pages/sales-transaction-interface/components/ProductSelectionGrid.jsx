@@ -216,6 +216,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
             onClick={() => setShowCustomForm(!showCustomForm)}
             iconName="Plus"
             iconPosition="left"
+            className=""
           >
             Add Custom Service
           </Button>
@@ -246,6 +247,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               onClick={handleCustomServiceAdd}
               iconName="Plus"
               disabled={!customService?.name?.trim()}
+              className=""
             >
               Add
             </Button>
@@ -253,6 +255,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               variant="ghost"
               onClick={() => setShowCustomForm(false)}
               iconName="X"
+              className=""
             >
               Cancel
             </Button>

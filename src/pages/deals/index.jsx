@@ -28,6 +28,7 @@ const DealsPage = () => {
   const [products, setProducts] = useState([]);
   const [salespeople, setSalespeople] = useState([]);
   const [deliveryCoordinators, setDeliveryCoordinators] = useState([]);
+  const [financeManagers, setFinanceManagers] = useState([]); // NEW: Separate state for finance managers
   const [showEditModal, setShowEditModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -120,6 +121,7 @@ const DealsPage = () => {
     loadProducts();
     loadSalespeople();
     loadDeliveryCoordinators();
+    loadFinanceManagers(); // NEW: Load finance managers separately
   }, []);
 
   const loadDeals = async () => {
@@ -241,13 +243,13 @@ const DealsPage = () => {
 
   const loadSalespeople = async () => {
     try {
-      // Load staff specifically for salesperson roles - match the admin page filtering
+      // Load staff from Staff Records specifically - match the admin page filtering
       // This ensures we get the same sales people that are shown in the admin staff page
       const { data, error } = await supabase
         ?.from('user_profiles')
         ?.select('*')
-        ?.or('department.ilike.%sales%,department.eq.Sales Person')
-        ?.not('department', 'eq', 'General Sales Manager') // Exclude General Sales Manager like in admin
+        ?.eq('role', 'staff') // Only staff role (directory entries)
+        ?.eq('department', 'Sales Consultants') // Only Sales Consultants department
         ?.eq('is_active', true)
         ?.order('full_name');
       if (error) throw error;
@@ -257,15 +259,39 @@ const DealsPage = () => {
     }
   };
 
-  // NEW: Load delivery coordinators separately - FILTER OUT General Sales Manager
+  // UPDATED: Load delivery coordinators from User Accounts (people with login access)
   const loadDeliveryCoordinators = async () => {
     try {
-      // Load staff specifically for delivery coordinator roles - EXCLUDE General Sales Manager
-      const { data, error } = await supabase?.from('user_profiles')?.select('*')?.in('role', ['staff', 'manager', 'admin'])?.eq('is_active', true)?.not('department', 'ilike', '%General Sales Manager%')?.order('full_name');
+      // Load delivery coordinators from User Accounts - people with actual login access
+      const { data, error } = await supabase
+        ?.from('user_profiles')
+        ?.select('*')
+        ?.in('role', ['admin', 'manager']) // Only admin and managers have login
+        ?.eq('department', 'Delivery Coordinator') // Only Delivery Coordinator department
+        ?.eq('is_active', true)
+        ?.order('full_name');
       if (error) throw error;
       setDeliveryCoordinators(data || []);
     } catch (error) {
       console.error('Error loading delivery coordinators:', error);
+    }
+  };
+
+  // NEW: Load finance managers from Staff Records (directory only - no login access)
+  const loadFinanceManagers = async () => {
+    try {
+      // Load finance managers from Staff Records - directory only, no login access
+      const { data, error } = await supabase
+        ?.from('user_profiles')
+        ?.select('*')
+        ?.eq('role', 'staff') // Only staff role (directory entries)
+        ?.eq('department', 'Finance Manager') // Only Finance Manager department
+        ?.eq('is_active', true)
+        ?.order('full_name');
+      if (error) throw error;
+      setFinanceManagers(data || []);
+    } catch (error) {
+      console.error('Error loading finance managers:', error);
     }
   };
 
@@ -1676,7 +1702,8 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
                     >
                       <option value="">Select Finance Manager</option>
-                      {salespeople?.filter(person => person?.department?.toLowerCase()?.includes('finance') || person?.role === 'manager')?.map(person => (
+                      {/* UPDATED: Load Finance Managers from Staff Records only */}
+                      {financeManagers?.map(person => (
                         <option key={person?.id} value={person?.id}>
                           {person?.full_name}
                         </option>

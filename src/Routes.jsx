@@ -13,6 +13,9 @@ import DealsPage from './pages/deals';
 import VehiclesPage from './pages/vehicles'; 
 import AdminPage from './pages/admin';
 
+// NEW: Calendar Flow Management Center
+import CalendarFlowManagementCenter from './pages/calendar-flow-management-center';
+
 const Routes = () => {
   return (
     <BrowserRouter>
@@ -21,6 +24,9 @@ const Routes = () => {
         <RouterRoutes>
           {/* Authentication */}
           <Route path="/auth" element={<AuthenticationPortal />} />
+
+          {/* NEW: Calendar Flow Management Center */}
+          <Route path="/calendar-flow-management-center" element={<CalendarFlowManagementCenter />} />
 
           {/* 4 MAIN PAGES - Deals Dashboard as Main Page */}
           <Route path="/" element={<DealsPage />} />

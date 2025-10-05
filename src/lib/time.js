@@ -76,3 +76,177 @@ export const estToUTC = (estDate) => {
     return new Date()?.toISOString();
   }
 };
+
+// Time formatting utilities
+export const formatTime = (timeString) => {
+  if (!timeString) return '';
+  
+  const date = new Date(timeString);
+  if (isNaN(date?.getTime())) return '';
+  
+  return date?.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
+// Check if a promise date is overdue
+export const isOverdue = (promiseDate) => {
+  if (!promiseDate) return false;
+  
+  const promise = new Date(promiseDate);
+  const now = new Date();
+  
+  return promise < now;
+};
+
+// Get status badge configuration
+export const getStatusBadge = (status) => {
+  const statusMap = {
+    'pending': {
+      label: 'PENDING',
+      bg: 'bg-gray-100',
+      textColor: 'text-gray-800',
+      color: 'bg-gray-500'
+    },
+    'scheduled': {
+      label: 'BOOKED',
+      bg: 'bg-blue-100',
+      textColor: 'text-blue-800',
+      color: 'bg-blue-500'
+    },
+    'in_progress': {
+      label: 'IP',
+      bg: 'bg-yellow-100',
+      textColor: 'text-yellow-800',
+      color: 'bg-yellow-500'
+    },
+    'quality_check': {
+      label: 'W/P',
+      bg: 'bg-purple-100',
+      textColor: 'text-purple-800',
+      color: 'bg-purple-500'
+    },
+    'completed': {
+      label: 'DONE',
+      bg: 'bg-green-100',
+      textColor: 'text-green-800',
+      color: 'bg-green-500'
+    },
+    'delivered': {
+      label: 'DONE',
+      bg: 'bg-teal-100',
+      textColor: 'text-teal-800',
+      color: 'bg-teal-500'
+    },
+    'cancelled': {
+      label: 'CANCELED',
+      bg: 'bg-red-100',
+      textColor: 'text-red-800',
+      color: 'bg-red-500'
+    },
+    'no_show': {
+      label: 'NS',
+      bg: 'bg-gray-100',
+      textColor: 'text-gray-800',
+      color: 'bg-gray-400'
+    }
+  };
+
+  return statusMap?.[status] || statusMap?.['pending'];
+};
+
+// Get location-based colors
+export const getLocationColor = (isOnSite) => {
+  return isOnSite ? 'bg-green-500' : 'bg-orange-500';
+};
+
+// Format date ranges for calendar views
+export const getDateRange = (date, viewMode) => {
+  const start = new Date(date);
+  const end = new Date(date);
+
+  switch (viewMode) {
+    case 'day':
+      start?.setHours(0, 0, 0, 0);
+      end?.setHours(23, 59, 59, 999);
+      break;
+    case 'week':
+      // Start on Monday
+      const dayOfWeek = start?.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      start?.setDate(start?.getDate() - daysToMonday);
+      start?.setHours(0, 0, 0, 0);
+      end?.setDate(start?.getDate() + 5); // Monday to Saturday
+      end?.setHours(23, 59, 59, 999);
+      break;
+    default:
+      break;
+  }
+
+  return { start, end };
+};
+
+// Calculate business hours array
+export const getBusinessHours = () => {
+  return Array.from({ length: 10 }, (_, i) => 8 + i); // 8AM to 6PM
+};
+
+// Check if time slot conflicts with existing job
+export const hasTimeConflict = (newStart, newEnd, existingJobs) => {
+  const newStartTime = new Date(newStart);
+  const newEndTime = new Date(newEnd);
+
+  return existingJobs?.some(job => {
+    if (!job?.scheduled_start_time || !job?.scheduled_end_time) return false;
+    
+    const jobStart = new Date(job.scheduled_start_time);
+    const jobEnd = new Date(job.scheduled_end_time);
+    
+    return (
+      (newStartTime <= jobStart && newEndTime > jobStart) ||
+      (newStartTime < jobEnd && newEndTime >= jobEnd) ||
+      (newStartTime >= jobStart && newEndTime <= jobEnd)
+    );
+  });
+};
+
+// Get day name from date
+export const getDayName = (date) => {
+  return date?.toLocaleDateString('en-US', { weekday: 'long' });
+};
+
+// Get short day name from date
+export const getShortDayName = (date) => {
+  return date?.toLocaleDateString('en-US', { weekday: 'short' });
+};
+
+// Calculate duration between two times
+export const calculateDuration = (startTime, endTime) => {
+  if (!startTime || !endTime) return 0;
+  
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  
+  return Math.round((end - start) / (1000 * 60 * 60)); // Hours
+};
+
+// Format duration as readable string
+export const formatDuration = (hours) => {
+  if (!hours) return '';
+  
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return `${minutes}min`;
+  }
+  
+  const wholeHours = Math.floor(hours);
+  const remainingMinutes = Math.round((hours - wholeHours) * 60);
+  
+  if (remainingMinutes === 0) {
+    return `${wholeHours}h`;
+  }
+  
+  return `${wholeHours}h ${remainingMinutes}min`;
+};
