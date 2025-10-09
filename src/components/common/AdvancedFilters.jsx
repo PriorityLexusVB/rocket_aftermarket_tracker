@@ -6,10 +6,10 @@ import Select from '../ui/Select';
 import { useFilterPresets } from '../../services/advancedFeaturesService';
 
 const AdvancedFilters = ({
-  filters,
-  onFiltersChange,
-  onClearFilters,
-  pageType,
+  filters = {},
+  onFiltersChange = () => {},
+  onClearFilters = () => {},
+  pageType = 'default',
   filterConfig = {},
   className = ''
 }) => {
@@ -89,6 +89,44 @@ const AdvancedFilters = ({
       active: {
         type: 'checkbox',
         label: 'Active Only'
+      }
+    },
+    claims: {
+      priority: {
+        type: 'select',
+        label: 'Priority',
+        options: [
+          { value: 'low', label: 'Low' },
+          { value: 'medium', label: 'Medium' },
+          { value: 'high', label: 'High' },
+          { value: 'urgent', label: 'Urgent' }
+        ]
+      },
+      status: {
+        type: 'multiselect',
+        label: 'Status',
+        options: [
+          { value: 'pending', label: 'Pending' },
+          { value: 'approved', label: 'Approved' },
+          { value: 'denied', label: 'Denied' },
+          { value: 'resolved', label: 'Resolved' }
+        ]
+      },
+      vendor: {
+        type: 'text',
+        label: 'Vendor'
+      },
+      product_category: {
+        type: 'select',
+        label: 'Product Category',
+        options: [
+          { value: 'engine', label: 'Engine' },
+          { value: 'transmission', label: 'Transmission' },
+          { value: 'brakes', label: 'Brakes' },
+          { value: 'suspension', label: 'Suspension' },
+          { value: 'electrical', label: 'Electrical' },
+          { value: 'body', label: 'Body' }
+        ]
       }
     }
   };
@@ -253,7 +291,8 @@ const AdvancedFilters = ({
     }
   };
 
-  const activeFilterCount = Object.keys(filters)?.length;
+  // Safely get active filter count
+  const activeFilterCount = Object.keys(filters || {})?.length || 0;
   const hasActiveFilters = activeFilterCount > 0;
 
   return (
@@ -341,7 +380,7 @@ const AdvancedFilters = ({
       {/* Filter Controls */}
       {isExpanded && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-border">
-          {Object.entries(currentFilterConfig)?.map(([filterKey, config]) => (
+          {Object.entries(currentFilterConfig || {})?.map(([filterKey, config]) => (
             <div key={filterKey} className="space-y-2">
               <label className="text-sm font-medium text-foreground">
                 {config?.label}

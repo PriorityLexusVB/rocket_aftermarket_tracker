@@ -5,7 +5,8 @@ import {
   AlertTriangle, 
   UserX, 
   CheckCircle,
-  Filter
+  Filter,
+  Check
 } from 'lucide-react';
 import Icon from '../../../components/AppIcon';
 
@@ -88,9 +89,24 @@ const QuickFilters = ({ filters, onFiltersChange, jobCounts }) => {
                 className={`
                   flex items-center px-3 py-2 rounded-lg border text-sm font-medium transition-all duration-200
                   ${isActive ? chip?.activeColor : chip?.color}
-                  hover:shadow-sm
+                  hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
                 `}
               >
+                {/* Improved checkbox with better contrast and visibility */}
+                <div className={`
+                  flex items-center justify-center w-4 h-4 mr-2 rounded border-2 transition-all duration-200
+                  ${isActive 
+                    ? 'bg-white border-white' :'bg-transparent border-gray-400 border-opacity-60'
+                  }
+                `}>
+                  <Check 
+                    className={`h-3 w-3 transition-all duration-200 ${
+                      isActive 
+                        ? 'text-gray-700 opacity-100' :'text-transparent opacity-0'
+                    }`} 
+                  />
+                </div>
+                
                 <Icon className="h-4 w-4 mr-2" />
                 {chip?.label}
                 {chip?.count > 0 && (
@@ -114,17 +130,17 @@ const QuickFilters = ({ filters, onFiltersChange, jobCounts }) => {
             Show:
           </div>
           
-          <label className="flex items-center">
+          <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
-              checked={filters?.showUnassigned}
+              checked={filters?.showUnassigned || false}
               onChange={(e) => onFiltersChange?.({ 
                 ...filters, 
                 showUnassigned: e?.target?.checked 
               })}
-              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2 h-4 w-4"
             />
-            <span className="ml-2 text-sm text-gray-700">Unassigned</span>
+            <span className="ml-2 text-sm text-gray-700">Unassigned Jobs</span>
           </label>
         </div>
       </div>

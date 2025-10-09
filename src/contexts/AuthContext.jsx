@@ -29,14 +29,14 @@ export const AuthProvider = ({ children }) => {
           setUserProfile(data)
           localStorage.setItem('userRole', data?.role)
         } else {
-          // Create basic profile for auth.users
+          // Create basic profile for auth.users with admin role by default
           const { data: { user } } = await supabase?.auth?.getUser()
           if (user) {
             const basicProfile = {
               id: user?.id,
               email: user?.email,
               full_name: user?.email?.split('@')?.[0] || 'User',
-              role: 'staff',
+              role: 'admin', // Updated to default to admin role
               is_active: true
             }
             
@@ -423,8 +423,8 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     updateProfile,
     isAuthenticated: !!user,
-    isAdmin: userProfile?.role === 'admin',
-    isManager: userProfile?.role === 'manager' || userProfile?.role === 'admin',
+    isAdmin: true, // All users now have admin access
+    isManager: true, // All users now have manager access (admin includes manager)
     isStaff: !!userProfile?.role,
     isVendor: userProfile?.role === 'vendor',
     vendorId: userProfile?.vendor_id

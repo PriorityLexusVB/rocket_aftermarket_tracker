@@ -7,14 +7,25 @@ import ScrollToTop from './components/ScrollToTop';
 import NotFound from './pages/NotFound';
 import AuthenticationPortal from './pages/authentication-portal';
 
-// 4 Main Pages - Deals-First Design (Changed from Calendar-First)
+// 4 Main Pages - Updated with Currently Active Appointments
 import CalendarPage from './pages/calendar';
 import DealsPage from './pages/deals';
-import VehiclesPage from './pages/vehicles'; 
+import CurrentlyActiveAppointments from './pages/currently-active-appointments'
+; // NEW: Replaces vehicles
 import AdminPage from './pages/admin';
 
 // NEW: Calendar Flow Management Center
 import CalendarFlowManagementCenter from './pages/calendar-flow-management-center';
+
+// NEW: Advanced Business Intelligence Analytics
+import AdvancedBusinessIntelligenceAnalytics from './pages/advanced-business-intelligence-analytics';
+
+// NEW: Claims Management Pages
+import CustomerClaimsPortal from './pages/customer-claims-portal';
+import ClaimsManagementCenter from './pages/claims-management-center';
+
+// NEW: Claims Analytics Dashboard
+import ClaimsAnalyticsDashboard from './pages/claims-analytics-dashboard';
 
 const Routes = () => {
   return (
@@ -25,25 +36,42 @@ const Routes = () => {
           {/* Authentication */}
           <Route path="/auth" element={<AuthenticationPortal />} />
 
+          {/* NEW: Claims Analytics Dashboard */}
+          <Route path="/claims-analytics-dashboard" element={<ClaimsAnalyticsDashboard />} />
+
           {/* NEW: Calendar Flow Management Center */}
           <Route path="/calendar-flow-management-center" element={<CalendarFlowManagementCenter />} />
 
-          {/* 4 MAIN PAGES - Deals Dashboard as Main Page */}
+          {/* NEW: Currently Active Appointments (replaces vehicles) */}
+          <Route path="/currently-active-appointments" element={<CurrentlyActiveAppointments />} />
+
+          {/* NEW: Advanced Business Intelligence Analytics */}
+          <Route path="/advanced-business-intelligence-analytics" element={<AdvancedBusinessIntelligenceAnalytics />} />
+
+          {/* NEW: Claims Management Pages */}
+          <Route path="/customer-claims-portal" element={<CustomerClaimsPortal />} />
+          <Route path="/claims-management-center" element={<ClaimsManagementCenter />} />
+
+          {/* 4 MAIN PAGES - Updated routing */}
           <Route path="/" element={<DealsPage />} />
           <Route path="/deals" element={<DealsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/vehicles" element={<VehiclesPage />} />
+          <Route path="/appointments" element={<CurrentlyActiveAppointments />} /> {/* Alternative route */}
           <Route path="/admin" element={<AdminPage />} />
 
-          {/* Legacy Route Redirects - All redirect to deals now */}
+          {/* Legacy Route Redirects - Updated */}
           <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
-          <Route path="/executive-analytics-dashboard" element={<Navigate to="/deals" replace />} />
+          <Route path="/executive-analytics-dashboard" element={<Navigate to="/advanced-business-intelligence-analytics" replace />} />
           <Route path="/calendar-scheduling-center" element={<Navigate to="/calendar" replace />} />
           <Route path="/kanban-status-board" element={<Navigate to="/deals" replace />} />
           <Route path="/sales-tracker" element={<Navigate to="/deals" replace />} />
           <Route path="/sales-transaction-interface" element={<Navigate to="/deals" replace />} />
-          <Route path="/vehicle-management-hub" element={<Navigate to="/vehicles" replace />} />
-          <Route path="/vehicle-detail-workstation" element={<Navigate to="/vehicles" replace />} />
+          
+          {/* REMOVED: Vehicles page redirects to appointments */}
+          <Route path="/vehicles" element={<Navigate to="/currently-active-appointments" replace />} />
+          <Route path="/vehicle-management-hub" element={<Navigate to="/currently-active-appointments" replace />} />
+          <Route path="/vehicle-detail-workstation" element={<Navigate to="/currently-active-appointments" replace />} />
+          
           <Route path="/vendor-operations-center" element={<Navigate to="/admin" replace />} />
           <Route path="/vendor-job-dashboard" element={<Navigate to="/admin" replace />} />
           <Route path="/administrative-configuration-center" element={<Navigate to="/admin" replace />} />

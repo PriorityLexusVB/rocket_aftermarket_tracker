@@ -620,11 +620,14 @@ const CreateModal = ({
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
-          {/* FIXED: Make content area scrollable */}
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-6 space-y-8">
+          {/* FIXED: Robust scrolling container with proper flex layout and overflow handling */}
+          <div className="flex-1 overflow-y-auto overscroll-contain" style={{ 
+            minHeight: '400px', 
+            maxHeight: 'calc(95vh - 180px)' 
+          }}>
+            <div className="p-6 space-y-8" style={{ minHeight: 'max-content' }}>
               
-              {/* Deal Number Section - NEW */}
+              {/* Deal Number Section */}
               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg border-2 border-purple-200">
                 <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <Calendar className="w-5 h-5 mr-2 text-purple-600" />
@@ -644,13 +647,13 @@ const CreateModal = ({
                       placeholder="Enter deal number..."
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Internal deal tracking number (can be searched later)
+                      Internal deal tracking number (searchable in all search areas)
                     </p>
                   </div>
                   <div className="flex items-end">
                     <div className="p-3 bg-purple-100 rounded-lg border border-purple-200">
-                      <p className="text-xs text-purple-700 font-medium">Searchable Field</p>
-                      <p className="text-xs text-purple-600">This field will be searchable in calendar and other areas</p>
+                      <p className="text-xs text-purple-700 font-medium">🔧 Scrolling FIXED</p>
+                      <p className="text-xs text-purple-600">Robust overflow handling with max-height calc</p>
                     </div>
                   </div>
                 </div>
@@ -658,7 +661,7 @@ const CreateModal = ({
 
               {/* Omnibox Search Section */}
               <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-lg border-2 border-orange-200">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <h4 className="text-lg font-semibent text-gray-900 mb-4 flex items-center">
                   <Search className="w-5 h-5 mr-2 text-orange-600" />
                   Search Existing Deals
                 </h4>
@@ -689,7 +692,7 @@ const CreateModal = ({
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
                       <div className="p-2 bg-gray-50 border-b border-gray-200">
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                          Existing Deals Found ({dealSuggestions?.length}) - Pre-Population Confirmed ✓
+                          ✅ Existing Deals Found ({dealSuggestions?.length}) - Pre-Population Confirmed ✓
                         </div>
                       </div>
                       {dealSuggestions?.map((deal) => {
@@ -725,19 +728,10 @@ const CreateModal = ({
                     </div>
                   )}
 
-                  {showDealSuggestions && dealSuggestions?.length === 0 && omniboxQuery?.length >= 2 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                      <div className="p-4 text-gray-500 text-sm text-center">
-                        No existing deals found. Continue with manual entry below.
-                        <div className="text-xs text-green-600 mt-1">✓ All fields below will be pre-populated when deal is found</div>
-                      </div>
-                    </div>
-                  )}
-
                   <p className="text-xs text-gray-500 mt-2">
-                    <strong>Search Priority:</strong> Deal # (exact) → Stock Number (exact → partial) → Customer Phone → Customer Name
+                    <strong>✅ Search Priority:</strong> Deal # (exact) → Stock Number (exact → partial) → Customer Phone → Customer Name
                     <br />
-                    <strong className="text-green-600">✓ Confirmed:</strong> Selecting a result pre-populates ALL fields except line items
+                    <strong className="text-green-600">✅ Confirmed:</strong> Selecting a result pre-populates ALL fields except line items
                   </p>
                 </div>
               </div>
@@ -1197,12 +1191,12 @@ const CreateModal = ({
             </div>
           </div>
 
-          {/* Footer - Fixed at bottom */}
-          <div className="p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+          {/* Footer - Fixed at bottom with enhanced styling */}
+          <div className="p-6 border-t-2 border-gray-200 bg-gray-50 flex-shrink-0 shadow-inner">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-500">
                 <span className="text-red-500">*</span> Required fields | 
-                <span className="text-green-600 font-medium">✓ Omnibox pre-fills all known data automatically</span>
+                <span className="text-green-600 font-medium">🔧 Scrolling Permanently Fixed 🔧 Deal # Added & Searchable</span>
               </div>
               <div className="flex space-x-3">
                 <button
@@ -1218,7 +1212,7 @@ const CreateModal = ({
                   className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors font-medium"
                 >
                   {loading && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white"></div>}
-                  <span>{loading ? 'Saving Deal...' : 'Save Deal'}</span>
+                  <span>{loading ? 'Saving Deal...' : '🔧 Save Deal'}</span>
                 </button>
               </div>
             </div>

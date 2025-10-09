@@ -232,6 +232,7 @@ const VehicleManagementHub = () => {
       <Sidebar 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        setIsOpen={setIsSidebarOpen}
       />
       <main className={`pt-16 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-60' : 'lg:ml-16'}`}>
         <div className="p-6 max-w-full">

@@ -234,6 +234,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               value={customService?.name}
               onChange={(e) => setCustomService(prev => ({ ...prev, name: e?.target?.value }))}
               className="flex-1"
+              helperText=""
+              maxLength={100}
+              style={{}}
             />
             <Input
               type="text"
@@ -241,6 +244,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               value={customService?.category}
               onChange={(e) => setCustomService(prev => ({ ...prev, category: e?.target?.value }))}
               className="w-32"
+              helperText=""
+              maxLength={50}
+              style={{}}
             />
             <Button
               variant="default"
@@ -355,6 +361,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   value={service?.cost}
                   onChange={(e) => handleServiceFieldUpdate(service?.id, 'cost', parseFloat(e?.target?.value) || 0)}
                   placeholder="0.00"
+                  helperText=""
+                  maxLength={10}
+                  style={{}}
                 />
 
                 {/* Price */}
@@ -367,6 +376,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   value={service?.price}
                   onChange={(e) => handleServiceFieldUpdate(service?.id, 'price', parseFloat(e?.target?.value) || 0)}
                   placeholder="0.00"
+                  helperText=""
+                  maxLength={10}
+                  style={{}}
                 />
 
                 {/* Profit Display */}
@@ -412,6 +424,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   value={service?.startDate}
                   onChange={(e) => handleServiceFieldUpdate(service?.id, 'startDate', e?.target?.value)}
                   placeholder=""
+                  helperText=""
+                  maxLength={10}
+                  style={{}}
                 />
 
                 {/* Days to Complete */}
@@ -423,6 +438,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   value={service?.daysToComplete}
                   onChange={(e) => handleServiceFieldUpdate(service?.id, 'daysToComplete', e?.target?.value)}
                   placeholder="5"
+                  helperText=""
+                  maxLength={3}
+                  style={{}}
                 />
 
                 {/* Auto-calculated End Date */}
@@ -443,6 +461,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                     value={service?.notes}
                     onChange={(e) => handleServiceFieldUpdate(service?.id, 'notes', e?.target?.value)}
                     placeholder="Special instructions or notes..."
+                    helperText=""
+                    maxLength={500}
+                    style={{}}
                   />
                 </div>
               </div>

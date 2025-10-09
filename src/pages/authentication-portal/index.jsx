@@ -14,8 +14,8 @@ const AuthenticationPortal = () => {
     const rememberMe = localStorage.getItem('rememberMe');
     
     if (userRole && rememberMe === 'true') {
-      // Redirect to Executive Analytics Dashboard as primary landing page
-      navigate('/dashboard');
+      // Redirect to Deals Dashboard as primary landing page
+      navigate('/deals');
     }
   }, [navigate]);
 
@@ -52,19 +52,19 @@ const AuthenticationPortal = () => {
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-primary rounded-full"></div>
-                  <span>Dashboard Overview</span>
+                  <span>Deals Management</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Sales Tracker</span>
+                  <span>Quick Add Deal</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>Vehicle Management</span>
+                  <span>Calendar Scheduling</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span>Vendor Operations</span>
+                  <span>Vehicle Management</span>
                 </div>
               </div>
             </div>

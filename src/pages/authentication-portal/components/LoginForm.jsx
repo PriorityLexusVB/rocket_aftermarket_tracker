@@ -57,7 +57,7 @@ const LoginForm = () => {
         setError('');
         
         setTimeout(() => {
-          navigate('/calendar', { replace: true });
+          navigate('/deals', { replace: true });
         }, 100);
         
       } else {

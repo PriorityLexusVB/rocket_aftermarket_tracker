@@ -120,6 +120,7 @@ const FilterPanel = ({
             options={makeOptions}
             value={filters?.make || ''}
             onChange={(value) => handleFilterChange('make', value)}
+            className=""
           />
           
           <Select
@@ -127,6 +128,7 @@ const FilterPanel = ({
             options={statusOptions}
             value={filters?.status || ''}
             onChange={(value) => handleFilterChange('status', value)}
+            className=""
           />
           
           <Select
@@ -134,9 +136,11 @@ const FilterPanel = ({
             options={yearOptions}
             value={filters?.year || ''}
             onChange={(value) => handleFilterChange('year', value)}
+            className=""
           />
         </div>
       </div>
+
       {/* Advanced Filters - Expandable */}
       {isExpanded && (
         <div className="px-6 py-4 space-y-4">
@@ -151,6 +155,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
+              className=""
             />
             
             <Input
@@ -162,6 +167,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
+              className=""
             />
             
             <Input
@@ -173,6 +179,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
+              className=""
             />
           </div>
 
@@ -188,6 +195,7 @@ const FilterPanel = ({
               ]}
               value={filters?.hasAftermarket || ''}
               onChange={(value) => handleFilterChange('hasAftermarket', value)}
+              className=""
             />
             
             <Input
@@ -199,6 +207,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
+              className=""
             />
             
             <Select
@@ -214,6 +223,7 @@ const FilterPanel = ({
               ]}
               value={filters?.sortBy || ''}
               onChange={(value) => handleFilterChange('sortBy', value)}
+              className=""
             />
           </div>
 

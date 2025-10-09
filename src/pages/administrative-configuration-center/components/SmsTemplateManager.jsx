@@ -307,9 +307,9 @@ const SmsTemplateManager = ({ className = '' }) => {
                   </Button>
                   
                   <Button
-                    onClick={() => handleDelete(template?.id)}
-                    variant="ghost"
+                    variant="ghost" 
                     size="sm"
+                    onClick={() => handleDelete(template?.id)}
                     iconName="Trash"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
@@ -380,7 +380,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   id="message_template"
                   value={formData?.message_template}
                   onChange={(e) => setFormData({ ...formData, message_template: e?.target?.value })}
-                  placeholder="Your message with {{variables}}"
+                  placeholder="Your message with variables"
                   className="w-full h-32 px-3 py-2 border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                   required
                 />
@@ -404,7 +404,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2 cursor-pointer">
+              <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   checked={formData?.is_active}
@@ -426,7 +426,6 @@ const SmsTemplateManager = ({ className = '' }) => {
                 
                 <Button 
                   type="submit"
-                  onClick={handleSubmit}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}

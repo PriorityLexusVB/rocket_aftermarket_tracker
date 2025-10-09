@@ -45,6 +45,17 @@ const DealsPage = () => {
   const [dealCalendarEvents, setDealCalendarEvents] = useState([]);
   const [showCalendarView, setShowCalendarView] = useState(false);
 
+  // NEW: Enhanced state for line item editing
+  const [editingLineItem, setEditingLineItem] = useState(null);
+  const [showEditLineItemModal, setShowEditLineItemModal] = useState(false);
+  const [updatingLineItems, setUpdatingLineItems] = useState(false);
+  const [deletingLineItemId, setDeletingLineItemId] = useState(null);
+
+  // NEW: Enhanced state for deal deletion
+  const [deletingDealId, setDeletingDealId] = useState(null);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [dealToDelete, setDealToDelete] = useState(null);
+
   // Enhanced Line Item Form State - Add Deal Number field
   const [lineItemForm, setLineItemForm] = useState({
     dealNumber: '', // NEW: Deal # field (not required) 
@@ -71,6 +82,16 @@ const DealsPage = () => {
     // NEW: Date fields (NO PROMISED TIME)
     todaysDate: new Date()?.toISOString()?.split('T')?.[0],
     promisedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)?.toISOString()?.split('T')?.[0] // 7 days from today
+  });
+
+  // NEW: Edit Line Item Form State
+  const [editLineItemForm, setEditLineItemForm] = useState({
+    id: '',
+    productId: '',
+    unitPrice: 0,
+    quantityUsed: 1,
+    description: '',
+    promisedDate: '' // NEW: Add promised date field
   });
 
   const [stockSearchResults, setStockSearchResults] = useState([]);
@@ -166,7 +187,8 @@ const DealsPage = () => {
           make: job?.vehicles?.make,
           model: job?.vehicles?.model,
           vin: job?.vehicles?.vin,
-          stockNumber: job?.vehicles?.stock_number
+          stockNumber: job?.vehicles?.stock_number,
+          vehicleId: job?.vehicle_id
         },
         customer: {
           name: job?.transactions?.[0]?.customer_name || 'N/A',
@@ -176,13 +198,15 @@ const DealsPage = () => {
         salesperson: job?.sales_person?.full_name || 'Unassigned',
         deliveryCoordinator: job?.delivery_coordinator?.full_name || 'Unassigned',
         items: job?.job_parts?.map(part => ({
-          id: part?.products?.id,
+          id: part?.id, // NEW: Include the actual job_parts ID
+          productId: part?.products?.id,
           name: part?.products?.name,
           price: part?.unit_price || part?.products?.unit_price,
           category: part?.products?.category,
           brand: part?.products?.brand,
           partNumber: part?.products?.part_number,
           quantity: part?.quantity_used,
+          totalPrice: part?.total_price,
           status: 'Active'
         })) || [],
         totalValue: job?.transactions?.[0]?.total_amount || 
@@ -326,7 +350,7 @@ const DealsPage = () => {
     setShowDealDetails(true);
   };
 
-  // FIXED: handleEditDeal - Now implements actual edit functionality
+  // ENHANCED: handleEditDeal - Now with improved line item editing support
   const handleEditDeal = (deal) => {
     setSelectedDeal(deal);
     
@@ -354,9 +378,10 @@ const DealsPage = () => {
       promisedDate: deal?.promisedDate ? new Date(deal?.promisedDate)?.toISOString()?.split('T')?.[0] : ''
     });
     
-    // Set deal line items for editing
+    // ENHANCED: Set deal line items for editing with proper structure
     setDealLineItems(deal?.items?.map(item => ({
-      id: item?.id || Date.now() + Math.random(),
+      id: item?.id, // Keep the actual job_parts ID for updates/deletes
+      jobPartId: item?.id, // Store job_parts ID separately
       vehicle: {
         id: deal?.vehicleInfo?.vehicleId,
         stock_number: deal?.vehicleInfo?.stockNumber,
@@ -372,7 +397,7 @@ const DealsPage = () => {
       deliveryCoordinator: deliveryCoordinators?.find(d => d?.full_name === deal?.deliveryCoordinator),
       vendor: vendors?.find(v => v?.name === deal?.vendor),
       product: {
-        id: item?.id,
+        id: item?.productId,
         name: item?.name,
         unit_price: item?.price,
         category: item?.category,
@@ -380,17 +405,218 @@ const DealsPage = () => {
         part_number: item?.partNumber
       },
       unitPrice: item?.price || 0,
-      totalPrice: item?.price * (item?.quantity || 1),
+      quantityUsed: item?.quantity || 1,
+      totalPrice: item?.totalPrice || (item?.price * item?.quantity),
       priority: deal?.priority,
       description: deal?.description,
       serviceType: deal?.serviceType,
-      hasValidClassification: true
+      hasValidClassification: true,
+      isExisting: true // Mark as existing item for update/delete operations
     })) || []);
     
     setShowEditModal(true);
   };
 
-  // NEW: Enhanced save function for editing deals
+  // NEW: Handle edit line item
+  const handleEditLineItem = (lineItem) => {
+    setEditingLineItem(lineItem);
+    setEditLineItemForm({
+      id: lineItem?.jobPartId || lineItem?.id,
+      productId: lineItem?.product?.id || '',
+      unitPrice: lineItem?.unitPrice || 0,
+      quantityUsed: lineItem?.quantityUsed || 1,
+      description: lineItem?.description || '',
+      promisedDate: selectedDeal?.promisedDate ? new Date(selectedDeal?.promisedDate)?.toISOString()?.split('T')?.[0] : '' // NEW: Include promised date from parent deal
+    });
+    setShowEditLineItemModal(true);
+  };
+
+  // NEW: Save updated line item
+  const handleSaveUpdatedLineItem = async () => {
+    if (!editingLineItem?.jobPartId) {
+      setSubmitError('Invalid line item for update');
+      return;
+    }
+
+    setUpdatingLineItems(true);
+    setSubmitError('');
+
+    try {
+      const selectedProduct = products?.find(p => p?.id === editLineItemForm?.productId);
+      const unitPrice = editLineItemForm?.unitPrice || selectedProduct?.unit_price || 0;
+      const quantityUsed = editLineItemForm?.quantityUsed || 1;
+
+      // Update the job_parts record in database
+      const updateData = {
+        product_id: editLineItemForm?.productId,
+        unit_price: unitPrice,
+        quantity_used: quantityUsed
+        // total_price is auto-calculated by trigger
+      };
+
+      const { error } = await supabase
+        ?.from('job_parts')
+        ?.update(updateData)
+        ?.eq('id', editingLineItem?.jobPartId);
+
+      if (error) throw error;
+
+      // NEW: Update promised date on the parent job if it was changed
+      if (editLineItemForm?.promisedDate && editLineItemForm?.promisedDate !== (selectedDeal?.promisedDate ? new Date(selectedDeal?.promisedDate)?.toISOString()?.split('T')?.[0] : '')) {
+        const { error: jobError } = await supabase
+          ?.from('jobs')
+          ?.update({ 
+            promised_date: new Date(editLineItemForm?.promisedDate)?.toISOString() 
+          })
+          ?.eq('id', selectedDeal?.id);
+
+        if (jobError) throw jobError;
+
+        // Update local deal state
+        setSelectedDeal({
+          ...selectedDeal,
+          promisedDate: new Date(editLineItemForm?.promisedDate)?.toLocaleDateString()
+        });
+      }
+
+      // Update local state
+      const updatedLineItems = dealLineItems?.map(item => 
+        item?.jobPartId === editingLineItem?.jobPartId
+          ? {
+              ...item,
+              product: selectedProduct || item?.product,
+              unitPrice: unitPrice,
+              quantityUsed: quantityUsed,
+              totalPrice: unitPrice * quantityUsed
+            }
+          : item
+      );
+
+      setDealLineItems(updatedLineItems);
+      setShowEditLineItemModal(false);
+      setEditingLineItem(null);
+      
+      // Show success message with promised date update info
+      alert(`✅ Line Item Updated Successfully!\n\n📋 Product, price, and quantity updated\n📊 Total amount recalculated${editLineItemForm?.promisedDate && editLineItemForm?.promisedDate !== (selectedDeal?.promisedDate ? new Date(selectedDeal?.promisedDate)?.toISOString()?.split('T')?.[0] : '') ? '\n🎯 Promised date updated for entire deal' : ''}`);
+
+    } catch (error) {
+      console.error('Error updating line item:', error);
+      setSubmitError(`Failed to update line item: ${error?.message}`);
+    } finally {
+      setUpdatingLineItems(false);
+    }
+  };
+
+  // NEW: Delete line item
+  const handleDeleteLineItem = async (lineItem) => {
+    if (!lineItem?.jobPartId) {
+      setSubmitError('Invalid line item for deletion');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `🗑️ Delete Line Item?\n\nProduct: ${lineItem?.product?.name}\nPrice: $${lineItem?.totalPrice?.toFixed(2)}\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    setDeletingLineItemId(lineItem?.jobPartId);
+    setSubmitError('');
+
+    try {
+      // Delete the job_parts record from database
+      const { error } = await supabase
+        ?.from('job_parts')
+        ?.delete()
+        ?.eq('id', lineItem?.jobPartId);
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedLineItems = dealLineItems?.filter(item => item?.jobPartId !== lineItem?.jobPartId);
+      setDealLineItems(updatedLineItems);
+
+      // Show success message
+      alert('✅ Line Item Deleted Successfully!\n\n🗑️ Item removed from deal\n📊 Total amount recalculated');
+
+      // If no items left, show warning
+      if (updatedLineItems?.length === 0) {
+        alert('⚠️ Warning: No line items remaining in this deal!\n\nConsider adding new items or closing the deal.');
+      }
+
+    } catch (error) {
+      console.error('Error deleting line item:', error);
+      setSubmitError(`Failed to delete line item: ${error?.message}`);
+    } finally {
+      setDeletingLineItemId(null);
+    }
+  };
+
+  // NEW: Handle delete entire deal
+  const handleDeleteDeal = (deal) => {
+    setDealToDelete(deal);
+    setShowDeleteConfirmModal(true);
+  };
+
+  // NEW: Confirm and execute deal deletion
+  const handleConfirmDeleteDeal = async () => {
+    if (!dealToDelete?.id) {
+      setSubmitError('Invalid deal for deletion');
+      return;
+    }
+
+    setDeletingDealId(dealToDelete?.id);
+    setSubmitError('');
+
+    try {
+      // Delete job_parts first (due to foreign key constraints)
+      const { error: partsError } = await supabase
+        ?.from('job_parts')
+        ?.delete()
+        ?.eq('job_id', dealToDelete?.id);
+
+      if (partsError) throw partsError;
+
+      // Delete transactions
+      const { error: transactionError } = await supabase
+        ?.from('transactions')
+        ?.delete()
+        ?.eq('job_id', dealToDelete?.id);
+
+      if (transactionError) throw transactionError;
+
+      // Delete communications
+      const { error: commError } = await supabase
+        ?.from('communications')
+        ?.delete()
+        ?.eq('job_id', dealToDelete?.id);
+
+      if (commError) throw commError;
+
+      // Finally delete the main job record
+      const { error: jobError } = await supabase
+        ?.from('jobs')
+        ?.delete()
+        ?.eq('id', dealToDelete?.id);
+
+      if (jobError) throw jobError;
+
+      // Update local state
+      setDeals(deals?.filter(deal => deal?.id !== dealToDelete?.id));
+      setShowDeleteConfirmModal(false);
+      setDealToDelete(null);
+      
+      alert(`✅ Deal Deleted Successfully!\n\n🗑️ Removed: ${dealToDelete?.vehicleInfo?.year} ${dealToDelete?.vehicleInfo?.make} ${dealToDelete?.vehicleInfo?.model}\n📊 Total Value: $${dealToDelete?.totalValue?.toFixed(2)}\n✅ All related records cleaned up`);
+
+    } catch (error) {
+      console.error('Error deleting deal:', error);
+      setSubmitError(`Failed to delete deal: ${error?.message}`);
+    } finally {
+      setDeletingDealId(null);
+    }
+  };
+
+  // ENHANCED: Save function for editing deals with line item support
   const handleSaveEditedDeal = async () => {
     if (!selectedDeal?.id || !dealLineItems?.length) {
       setSubmitError('Invalid deal data or no line items');
@@ -420,6 +646,21 @@ const DealsPage = () => {
       const { error: jobError } = await supabase?.from('jobs')?.update(dealUpdateData)?.eq('id', selectedDeal?.id);
       if (jobError) throw jobError;
 
+      // Handle new line items - insert them into database
+      const newItems = dealLineItems?.filter(item => item?.isNewItem);
+      if (newItems?.length > 0) {
+        const jobPartsData = newItems?.map(item => ({
+          job_id: selectedDeal?.id,
+          product_id: item?.product?.id,
+          quantity_used: item?.quantityUsed || 1,
+          unit_price: item?.unitPrice,
+          // total_price is auto-calculated by trigger
+        }));
+
+        const { error: newPartsError } = await supabase?.from('job_parts')?.insert(jobPartsData);
+        if (newPartsError) throw newPartsError;
+      }
+
       // Update transaction record
       const transactionUpdateData = {
         total_amount: totalDealValue,
@@ -436,9 +677,11 @@ const DealsPage = () => {
 
       setShowEditModal(false);
       setSelectedDeal(null);
+      setDealLineItems([]);
       loadDeals(); // Reload deals to show updates
       
-      alert('✅ Deal Updated Successfully!\n\n📋 Changes saved to database\n📊 Financial totals recalculated\n✅ Customer information updated');
+      const newItemsCount = newItems?.length;
+      alert(`✅ Deal Updated Successfully!\n\n📋 Changes saved to database\n📊 Financial totals recalculated\n✅ Customer information updated\n🔧 Line items can be updated individually${newItemsCount > 0 ? `\n🆕 ${newItemsCount} new line item${newItemsCount > 1 ? 's' : ''} added` : ''}`);
 
     } catch (error) {
       console.error('Error updating deal:', error);
@@ -446,6 +689,91 @@ const DealsPage = () => {
     } finally {
       setIsSubmittingDeal(false);
     }
+  };
+
+  // ENHANCED: Add new line item to existing deal during editing
+  const handleAddLineItemToEditingDeal = () => {
+    // Enhanced validation to include delivery coordinator as mandatory
+    if (!lineItemForm?.customerName || !lineItemForm?.productId || !lineItemForm?.deliveryCoordinatorId) {
+      setSubmitError('Customer Name, Product, and Delivery Coordinator are required for each line item');
+      return;
+    }
+
+    // Use existing deal vehicle information or manual entry validation
+    const dealVehicle = selectedDeal?.vehicleInfo;
+    if (!dealVehicle && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel)) {
+      setSubmitError('Vehicle information is required. Either use existing deal vehicle or enter Year, Make, and Model manually.');
+      return;
+    }
+
+    const isVendorService = !!lineItemForm?.vendorId;
+    const isOffSite = isVendorService || lineItemForm?.isOffSite;
+
+    // Use deal's existing vehicle info or manual entry
+    const vehicleInfo = dealVehicle || {
+      year: lineItemForm?.vehicleYear,
+      make: lineItemForm?.vehicleMake,
+      model: lineItemForm?.vehicleModel,
+      stock_number: lineItemForm?.stockNumber || 'Manual Entry',
+      condition: lineItemForm?.vehicleCondition || 'used',
+      vehicleId: lineItemForm?.vehicleId
+    };
+    
+    const selectedProduct = products?.find(p => p?.id === lineItemForm?.productId);
+    const selectedVendor = vendors?.find(v => v?.id === lineItemForm?.vendorId);
+    const selectedSalesperson = salespeople?.find(s => s?.id === lineItemForm?.salespersonId);
+    const selectedDeliveryCoordinator = deliveryCoordinators?.find(d => d?.id === lineItemForm?.deliveryCoordinatorId);
+
+    // Calculate totals
+    const unitPrice = lineItemForm?.unitPrice || selectedProduct?.unit_price || 0;
+    const unitCost = lineItemForm?.cost || selectedProduct?.cost || 0;
+    const totalPrice = unitPrice;
+    const totalCost = unitCost;
+
+    const newLineItem = {
+      id: Date.now(), // Temporary ID for UI
+      jobPartId: null, // Will be set after database insertion
+      vehicle: {
+        id: vehicleInfo?.vehicleId || dealVehicle?.vehicleId,
+        stock_number: vehicleInfo?.stock_number || dealVehicle?.stockNumber,
+        year: vehicleInfo?.year || dealVehicle?.year,
+        make: vehicleInfo?.make || dealVehicle?.make,
+        model: vehicleInfo?.model || dealVehicle?.model
+      },
+      customerName: lineItemForm?.customerName,
+      customerPhone: lineItemForm?.customerPhone,
+      customerEmail: lineItemForm?.customerEmail,
+      needsLoaner: lineItemForm?.needsLoaner,
+      salesperson: selectedSalesperson,
+      deliveryCoordinator: selectedDeliveryCoordinator,
+      vendor: selectedVendor || null,
+      isOffSite: isOffSite,
+      product: selectedProduct,
+      unitPrice: unitPrice,
+      unitCost: unitCost,
+      quantityUsed: 1, // Default quantity
+      totalPrice: totalPrice,
+      totalCost: totalCost,
+      priority: lineItemForm?.priority,
+      description: lineItemForm?.description,
+      serviceType: isVendorService ? 'vendor' : 'in_house',
+      hasValidClassification: true,
+      isNewItem: true // Mark as new for database insertion
+    };
+
+    setDealLineItems([...dealLineItems, newLineItem]);
+    
+    // Reset form but keep customer info and vehicle details
+    setLineItemForm({
+      ...lineItemForm,
+      productId: '',
+      vendorId: '',
+      isOffSite: false,
+      unitPrice: 0,
+      cost: 0,
+      description: ''
+    });
+    setSubmitError('');
   };
 
   const handleMessageCustomer = (deal) => {
@@ -535,9 +863,9 @@ const DealsPage = () => {
 
   // Enhanced Add line item - Include vehicle condition and manual details validation
   const handleAddLineItem = () => {
-    // Enhanced validation to include vehicle details
-    if (!lineItemForm?.customerName || !lineItemForm?.productId) {
-      setSubmitError('Customer Name and Product are required for each line item');
+    // Enhanced validation - Updated to include delivery coordinator as mandatory
+    if (!lineItemForm?.customerName || !lineItemForm?.productId || !lineItemForm?.deliveryCoordinatorId) {
+      setSubmitError('Customer Name, Product, and Delivery Coordinator are required for each line item');
       return;
     }
 
@@ -1018,7 +1346,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
   const averageDealValue = filteredDeals?.length > 0 ? (totalRevenue / filteredDeals?.length) : 0;
   const highPriorityDeals = filteredDeals?.filter(deal => deal?.priority?.toLowerCase() === 'high' || deal?.priority?.toLowerCase() === 'urgent')?.length;
 
-  // Enhanced Deal Card Renderer to show calendar integration info
+  // Enhanced Deal Card Renderer with delete option
   const renderDealCard = (deal, index) => (
     <div key={deal?.id} className={`${themeClasses?.card} p-4 mb-4 rounded-lg border shadow-sm`}>
       <div className="space-y-3">
@@ -1109,7 +1437,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 pt-2">
+        <div className="grid grid-cols-4 gap-2 pt-2">
           <Button onClick={() => handleViewDeal(deal)} size="sm" variant="ghost" className="text-xs py-1">
             <Icon name="Eye" size={12} className="mr-1" />View
           </Button>
@@ -1119,12 +1447,15 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           <Button onClick={() => handleMessageCustomer(deal)} size="sm" variant="primary" className="text-xs py-1">
             <Icon name="MessageSquare" size={12} className="mr-1" />SMS
           </Button>
+          <Button onClick={() => handleDeleteDeal(deal)} size="sm" variant="ghost" className="text-xs py-1 text-red-600 hover:bg-red-50">
+            <Icon name="Trash2" size={12} className="mr-1" />Del
+          </Button>
         </div>
       </div>
     </div>
   );
 
-  // Original Desktop Table Row Renderer
+  // Enhanced Desktop Table Row Renderer with delete option
   const renderDesktopRow = (deal, index) => (
     <>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -1189,6 +1520,9 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           </Button>
           <Button onClick={() => handleMessageCustomer(deal)} size="sm" variant="primary" className="">
             <Icon name="MessageSquare" size={14} />
+          </Button>
+          <Button onClick={() => handleDeleteDeal(deal)} size="sm" variant="ghost" className="text-red-600 hover:bg-red-50">
+            <Icon name="Trash2" size={14} />
           </Button>
         </div>
       </td>
@@ -1388,7 +1722,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
         <MobileModal
           isOpen={showNewDealModal}
           onClose={() => setShowNewDealModal(false)}
-          title="Create New Deal with Deal # &amp; Calendar"
+          title="Create New Deal with Deal # & Calendar"
           size="full"
           fullScreen={true}
         >
@@ -1408,31 +1742,6 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
               <div className="flex items-center mb-6">
                 <Icon name="Calendar" size={20} className="text-blue-600 mr-3" />
                 <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Deal Information &amp; Details</h3>
-              </div>
-
-              {/* NEW: Deal Number Section - TOP PRIORITY FIELD */}
-              <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      🔖 Deal # (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={lineItemForm?.dealNumber}
-                      onChange={(e) => setLineItemForm({...lineItemForm, dealNumber: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border border-purple-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent ${themeClasses?.input}`}
-                      placeholder="Enter deal number..."
-                    />
-                    <p className="text-xs text-gray-600 mt-1">Internal deal tracking number</p>
-                  </div>
-                  <div className="flex items-end">
-                    <div className="p-3 bg-purple-100 rounded-lg border border-purple-200 w-full">
-                      <p className="text-xs text-purple-700 font-medium">✓ Searchable Everywhere</p>
-                      <p className="text-xs text-purple-600">This Deal # will be searchable in calendar, deals list, and all other search areas</p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* NEW: Date Information Section (NO PROMISED TIME) - MOVED TO TOP */}
@@ -1505,28 +1814,46 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
               <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Vehicle Information</h4>
                 
-                {/* Stock Number Search */}
+                {/* UPDATED: Stock Number and Deal Number Row - Side by Side */}
                 <div className="mb-4">
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                    Stock Number
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={lineItemForm?.stockNumber}
-                      onChange={(e) => {
-                        const value = e?.target?.value;
-                        setLineItemForm({...lineItemForm, stockNumber: value, vehicleId: ''});
-                        handleStockSearch(value);
-                      }}
-                      placeholder="Enter stock number..."
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    />
-                    {isSearchingStock && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <Icon name="Loader2" size={16} className="animate-spin text-blue-600" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                        Stock Number
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={lineItemForm?.stockNumber}
+                          onChange={(e) => {
+                            const value = e?.target?.value;
+                            setLineItemForm({...lineItemForm, stockNumber: value, vehicleId: ''});
+                            handleStockSearch(value);
+                          }}
+                          placeholder="Enter stock number..."
+                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                        />
+                        {isSearchingStock && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <Icon name="Loader2" size={16} className="animate-spin text-blue-600" />
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                    
+                    {/* MOVED: Deal Number next to Stock Number */}
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                        🔖 Deal #
+                      </label>
+                      <input
+                        type="text"
+                        value={lineItemForm?.dealNumber}
+                        onChange={(e) => setLineItemForm({...lineItemForm, dealNumber: e?.target?.value})}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                        placeholder="Enter deal number..."
+                      />
+                    </div>
                   </div>
 
                   {/* Stock Search Results */}
@@ -1676,6 +2003,9 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                           <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
                             Customer requires loaner vehicle
                           </label>
+                          <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
+                            Customer requires a loaner vehicle during service
+                          </p>
                         </div>
                         {lineItemForm?.needsLoaner && (
                           <div className="flex-shrink-0">
@@ -1693,11 +2023,12 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                 <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Staff Assignment</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Delivery Coordinator</label>
+                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Delivery Coordinator *</label>
                     <select
                       value={lineItemForm?.deliveryCoordinatorId}
                       onChange={(e) => setLineItemForm({...lineItemForm, deliveryCoordinatorId: e?.target?.value})}
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                      required
                     >
                       <option value="">Select Delivery Coordinator</option>
                       {deliveryCoordinators?.map(coordinator => (
@@ -1709,11 +2040,12 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   </div>
 
                   <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Sales Person</label>
+                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Sales Person *</label>
                     <select
                       value={lineItemForm?.salespersonId}
                       onChange={(e) => setLineItemForm({...lineItemForm, salespersonId: e?.target?.value})}
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                      required
                     >
                       <option value="">Select Salesperson</option>
                       {salespeople?.map(person => (
@@ -1933,7 +2265,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   onClick={handleAddLineItem}
                   variant="primary"
                   className="w-full py-3 text-base font-medium bg-blue-600 hover:bg-blue-700"
-                  disabled={!lineItemForm?.customerName || !lineItemForm?.productId || (!lineItemForm?.vehicleId && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel))}
+                  disabled={!lineItemForm?.customerName || !lineItemForm?.productId || !lineItemForm?.deliveryCoordinatorId || (!lineItemForm?.vehicleId && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel))}
                 >
                   <Icon name="Plus" size={16} className="mr-2" />
                   Add Line Item to Deal (with Deal # tracking)
@@ -2126,7 +2458,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           </div>
         </MobileModal>
 
-        {/* ENHANCED EDIT DEAL MODAL - Now fully functional */}
+        {/* ENHANCED EDIT DEAL MODAL - Now with full line item update/delete/add functionality */}
         <MobileModal
           isOpen={showEditModal}
           onClose={() => {
@@ -2180,7 +2512,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     <div>
                       <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Current Value</p>
                       <p className="text-blue-600 text-xl font-bold">
-                        ${selectedDeal?.totalValue?.toLocaleString()}
+                        ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -2323,27 +2655,38 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
 
                     {/* Loaner Vehicle Setting */}
                     <div className="md:col-span-2 lg:col-span-1">
-                      <div className="flex items-center space-x-3 p-4 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30">
-                        <input
-                          type="checkbox"
-                          id="editNeedsLoaner"
-                          checked={lineItemForm?.needsLoaner}
-                          onChange={(e) => setLineItemForm({...lineItemForm, needsLoaner: e?.target?.checked})}
-                          className="h-5 w-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                        />
-                        <div className="flex-1">
-                          <label htmlFor="editNeedsLoaner" className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
-                            Needs Loaner Vehicle
-                          </label>
-                          <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
-                            Customer requires a loaner vehicle during service
-                          </p>
-                        </div>
-                        {lineItemForm?.needsLoaner && (
-                          <div className="flex-shrink-0">
-                            <Icon name="Car" size={16} className="text-blue-600" />
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
+                        Customer Loaner Vehicle
+                      </label>
+                      <div 
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                          lineItemForm?.needsLoaner ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        onClick={() => setLineItemForm({...lineItemForm, needsLoaner: !lineItemForm?.needsLoaner})}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-6 h-6 flex items-center justify-center rounded border-2 transition-all duration-200 ${
+                            lineItemForm?.needsLoaner 
+                              ? 'bg-blue-600 border-blue-600' :'bg-white border-gray-300 hover:border-gray-400'
+                          }`}>
+                            {lineItemForm?.needsLoaner && (
+                              <Icon name="Check" size={14} className="text-white" />
+                            )}
                           </div>
-                        )}
+                          <div className="flex-1">
+                            <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
+                              Customer requires loaner vehicle
+                            </label>
+                            <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
+                              Customer requires a loaner vehicle during service
+                            </p>
+                          </div>
+                          {lineItemForm?.needsLoaner && (
+                            <div className="flex-shrink-0">
+                              <Icon name="Car" size={16} className="text-blue-600" />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -2360,38 +2703,173 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   </div>
                 </div>
 
-                {/* Current Line Items Display */}
+                {/* NEW: Add New Line Item Section */}
+                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm bg-green-50`}>
+                  <div className="flex items-center mb-6">
+                    <Icon name="Plus" size={20} className="text-green-600 mr-3" />
+                    <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Add New Line Item</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product Name *</label>
+                      <select
+                        value={lineItemForm?.productId}
+                        onChange={(e) => {
+                          const productId = e?.target?.value;
+                          const product = products?.find(p => p?.id === productId);
+                          setLineItemForm({
+                            ...lineItemForm, 
+                            productId,
+                            unitPrice: product?.unit_price || 0,
+                            cost: product?.cost || 0
+                          });
+                        }}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                      >
+                        <option value="">Select Product</option>
+                        {products?.map(product => (
+                          <option key={product?.id} value={product?.id}>
+                            {product?.name} - ${product?.unit_price} ({product?.category})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={lineItemForm?.unitPrice}
+                        onChange={(e) => setLineItemForm({...lineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Vendor (Optional)</label>
+                      <select
+                        value={lineItemForm?.vendorId}
+                        onChange={(e) => setLineItemForm({...lineItemForm, vendorId: e?.target?.value, isOffSite: !!e?.target?.value})}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                      >
+                        <option value="">In-House Service</option>
+                        {vendors?.map(vendor => (
+                          <option key={vendor?.id} value={vendor?.id}>
+                            {vendor?.name} - {vendor?.specialty}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>&nbsp;</label>
+                      <Button 
+                        onClick={handleAddLineItemToEditingDeal}
+                        variant="primary"
+                        className="w-full p-3 text-sm bg-green-600 hover:bg-green-700"
+                        disabled={!lineItemForm?.productId}
+                      >
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        Add to Deal
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-gray-600 bg-white p-3 rounded border">
+                    💡 <strong>Quick Add:</strong> Select product and price, optionally choose vendor for off-site service. Uses existing deal's vehicle and customer info.
+                  </div>
+                </div>
+
+                {/* ENHANCED: Current Line Items Display with Update/Delete functionality */}
                 {dealLineItems?.length > 0 && (
                   <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-                    <div className="flex items-center mb-4">
-                      <Icon name="List" size={20} className="text-blue-600 mr-3" />
-                      <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Current Line Items ({dealLineItems?.length})</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center">
+                        <Icon name="List" size={20} className="text-blue-600 mr-3" />
+                        <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Line Items ({dealLineItems?.length})</h3>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        ✏️ Edit | 🗑️ Delete | 🆕 New items will be added to database
+                      </div>
                     </div>
                     
                     <div className="space-y-3">
                       {dealLineItems?.map(item => (
-                        <div key={item?.id} className={`p-4 rounded-lg border ${themeClasses?.border} bg-gray-50`}>
+                        <div key={item?.jobPartId || item?.id} className={`p-4 rounded-lg border ${themeClasses?.border} ${item?.isNewItem ? 'bg-green-50 border-green-200' : 'bg-gray-50'} hover:bg-gray-100 transition-colors`}>
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <p className={`${themeClasses?.text} text-sm font-medium`}>
-                                {item?.product?.name}
-                              </p>
-                              <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
-                                Category: {item?.product?.category} | Brand: {item?.product?.brand}
-                              </p>
-                              <div className="flex items-center space-x-4 mt-2">
-                                <p className="text-blue-600 text-sm font-medium">
-                                  ${item?.totalPrice?.toFixed(2)}
-                                </p>
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  item?.serviceType === 'vendor' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
-                                }`}>
-                                  {item?.serviceType === 'vendor' ? '🏢 Vendor Service' : '🏠 In-House Service'}
-                                </span>
+                              <div className="flex items-start space-x-4">
+                                <div className="flex-1">
+                                  {item?.isNewItem && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mb-2">
+                                      🆕 New Item
+                                    </span>
+                                  )}
+                                  <p className={`${themeClasses?.text} text-sm font-medium mb-1`}>
+                                    {item?.product?.name}
+                                  </p>
+                                  <p className={`${themeClasses?.textSecondary} text-xs mb-2`}>
+                                    Category: {item?.product?.category} | Brand: {item?.product?.brand}
+                                    {item?.product?.part_number && ` | Part #: ${item?.product?.part_number}`}
+                                  </p>
+                                  
+                                  <div className="flex items-center space-x-4">
+                                    <div className="text-xs">
+                                      <span className="text-gray-500">Unit Price:</span>
+                                      <span className="font-medium ml-1">${item?.unitPrice?.toFixed(2)}</span>
+                                    </div>
+                                    <div className="text-xs">
+                                      <span className="text-gray-500">Qty:</span>
+                                      <span className="font-medium ml-1">{item?.quantityUsed}</span>
+                                    </div>
+                                    <div className="text-xs">
+                                      <span className="text-gray-500">Total:</span>
+                                      <span className="font-bold ml-1 text-blue-600">${item?.totalPrice?.toFixed(2)}</span>
+                                    </div>
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      item?.serviceType === 'vendor' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                                    }`}>
+                                      {item?.serviceType === 'vendor' ? '🏢 Vendor Service' : '🏠 In-House Service'}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-xs text-gray-500">Status: Active</p>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-2 ml-4">
+                              {!item?.isNewItem && (
+                                <Button
+                                  onClick={() => handleEditLineItem(item)}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="p-2 hover:bg-blue-50"
+                                  disabled={updatingLineItems}
+                                  title={item?.isNewItem ? "Edit new item (will be saved when deal is saved)" : "Edit existing item"}
+                                >
+                                  <Icon name="Edit" size={14} className="text-blue-600" />
+                                </Button>
+                              )}
+                              <Button
+                                onClick={() => item?.isNewItem ? 
+                                  setDealLineItems(dealLineItems?.filter(i => i?.id !== item?.id)) : 
+                                  handleDeleteLineItem(item)
+                                }
+                                size="sm"
+                                variant="ghost"
+                                className="p-2 hover:bg-red-50"
+                                disabled={deletingLineItemId === (item?.jobPartId || item?.id)}
+                                title={item?.isNewItem ? "Remove new item from deal" : "Delete item from database"}
+                              >
+                                {deletingLineItemId === (item?.jobPartId || item?.id) ? (
+                                  <Icon name="Loader2" size={14} className="animate-spin text-red-600" />
+                                ) : (
+                                  <Icon name="Trash2" size={14} className="text-red-600" />
+                                )}
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -2402,9 +2880,12 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       <div className="flex items-center justify-between">
                         <span className={`${themeClasses?.text} font-medium`}>Updated Total Value:</span>
                         <span className="text-blue-600 text-2xl font-bold">
-                          ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
+                          ${dealLineItems?.reduce((sum, item) => sum + (item?.totalPrice || 0), 0)?.toFixed(2)}
                         </span>
                       </div>
+                      <p className="text-xs text-gray-600 mt-2">
+                        ✅ Total automatically updates | 🆕 New items will be saved to database when you save deal
+                      </p>
                     </div>
                   </div>
                 )}
@@ -2446,11 +2927,274 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           </div>
         </MobileModal>
 
+        {/* NEW: Delete Confirmation Modal */}
+        <MobileModal
+          isOpen={showDeleteConfirmModal}
+          onClose={() => {
+            setShowDeleteConfirmModal(false);
+            setDealToDelete(null);
+          }}
+          title="Delete Deal - Confirm"
+          size="medium"
+        >
+          <div className="space-y-6 p-1">
+            {dealToDelete && (
+              <div className="space-y-4">
+                {/* Warning Section */}
+                <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Icon name="AlertTriangle" size={20} className="text-red-600" />
+                    <h3 className="text-red-800 font-semibold">Permanent Deletion Warning</h3>
+                  </div>
+                  <p className="text-red-700 text-sm">
+                    This action cannot be undone. All associated data will be permanently deleted.
+                  </p>
+                </div>
+
+                {/* Deal Details */}
+                <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
+                  <h4 className={`${themeClasses?.text} font-semibold mb-3`}>Deal to be deleted:</h4>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Vehicle:</span>
+                      <span className={`${themeClasses?.text} font-medium`}>
+                        {dealToDelete?.vehicleInfo?.year} {dealToDelete?.vehicleInfo?.make} {dealToDelete?.vehicleInfo?.model}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Stock:</span>
+                      <span className={`${themeClasses?.text}`}>{dealToDelete?.vehicleInfo?.stockNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Customer:</span>
+                      <span className={`${themeClasses?.text}`}>{dealToDelete?.customer?.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Value:</span>
+                      <span className="text-red-600 font-bold text-lg">${dealToDelete?.totalValue?.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Line Items:</span>
+                      <span className={`${themeClasses?.text}`}>{dealToDelete?.items?.length} items</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* What will be deleted */}
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                  <h4 className={`${themeClasses?.text} font-semibold mb-2 text-sm`}>The following will be deleted:</h4>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    <li>🗑️ Main deal/job record</li>
+                    <li>🗑️ All line items ({dealToDelete?.items?.length} items)</li>
+                    <li>🗑️ Transaction records</li>
+                    <li>🗑️ Communication history</li>
+                    <li>🗑️ Calendar events (if any)</li>
+                  </ul>
+                </div>
+
+                {/* Confirmation Input */}
+                <div>
+                  <p className="text-sm font-medium text-gray-800 mb-2">
+                    To confirm deletion, type <span className="font-bold text-red-600">DELETE</span> in the box below:
+                  </p>
+                  <input
+                    type="text"
+                    id="deleteConfirmation"
+                    className={`w-full p-3 text-sm rounded-lg border focus:ring-2 focus:ring-red-500 focus:border-red-500`}
+                    placeholder="Type DELETE to confirm"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex space-x-3 pt-4">
+                  <Button 
+                    onClick={() => {
+                      setShowDeleteConfirmModal(false);
+                      setDealToDelete(null);
+                    }}
+                    variant="ghost" 
+                    className="flex-1"
+                    disabled={deletingDealId}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      const confirmInput = document.getElementById('deleteConfirmation');
+                      if (confirmInput?.value === 'DELETE') {
+                        handleConfirmDeleteDeal();
+                      } else {
+                        alert('Please type DELETE to confirm deletion');
+                      }
+                    }}
+                    variant="primary"
+                    className="flex-1 bg-red-600 hover:bg-red-700"
+                    disabled={deletingDealId}
+                  >
+                    {deletingDealId === dealToDelete?.id ? (
+                      <>
+                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="Trash2" size={16} className="mr-2" />
+                        Delete Deal Permanently
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </MobileModal>
+
+        {/* NEW: Edit Line Item Modal */}
+        <MobileModal
+          isOpen={showEditLineItemModal}
+          onClose={() => setShowEditLineItemModal(false)}
+          title="Edit Line Item"
+          size="medium"
+        >
+          <div className="space-y-4 p-1">
+            {editingLineItem && (
+              <div className="space-y-4">
+                <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
+                  <h4 className={`${themeClasses?.text} font-semibold mb-3`}>
+                    Editing: {editingLineItem?.product?.name}
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product</label>
+                      <select
+                        value={editLineItemForm?.productId}
+                        onChange={(e) => {
+                          const productId = e?.target?.value;
+                          const product = products?.find(p => p?.id === productId);
+                          setEditLineItemForm({
+                            ...editLineItemForm,
+                            productId,
+                            unitPrice: product?.unit_price || editLineItemForm?.unitPrice
+                          });
+                        }}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                      >
+                        <option value="">Select Product</option>
+                        {products?.map(product => (
+                          <option key={product?.id} value={product?.id}>
+                            {product?.name} - ${product?.unit_price} ({product?.category})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Unit Price</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editLineItemForm?.unitPrice}
+                          onChange={(e) => setEditLineItemForm({...editLineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
+                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Quantity</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={editLineItemForm?.quantityUsed}
+                          onChange={(e) => setEditLineItemForm({...editLineItemForm, quantityUsed: parseInt(e?.target?.value) || 1})}
+                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                          placeholder="1"
+                        />
+                      </div>
+                    </div>
+
+                    {/* NEW: Promised Date Field */}
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                        🎯 Promised Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editLineItemForm?.promisedDate}
+                        onChange={(e) => setEditLineItemForm({...editLineItemForm, promisedDate: e?.target?.value})}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                        min={new Date()?.toISOString()?.split('T')?.[0]}
+                      />
+                      <p className="text-xs text-gray-600 mt-1">
+                        Customer promised completion date (updates entire deal)
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-blue-50 rounded border border-blue-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Updated Total:</span>
+                        <span className="text-blue-600 text-lg font-bold">
+                          ${((editLineItemForm?.unitPrice || 0) * (editLineItemForm?.quantityUsed || 1))?.toFixed(2)}
+                        </span>
+                      </div>
+                      {/* NEW: Show promised date info */}
+                      {editLineItemForm?.promisedDate && (
+                        <div className="mt-2 pt-2 border-t border-blue-200">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-blue-700">Promised Date:</span>
+                            <span className="text-blue-800 font-medium">
+                              {new Date(editLineItemForm?.promisedDate)?.toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 pt-4">
+                  <Button 
+                    onClick={() => {
+                      setShowEditLineItemModal(false);
+                      setEditingLineItem(null);
+                    }}
+                    variant="ghost" 
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSaveUpdatedLineItem}
+                    disabled={updatingLineItems || !editLineItemForm?.productId}
+                    variant="primary"
+                    className="flex-1"
+                  >
+                    {updatingLineItems ? (
+                      <>
+                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="Save" size={16} className="mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </MobileModal>
+
         {/* Deal Details Bottom Sheet - Mobile */}
         <MobileBottomSheet
           isOpen={showDealDetails && selectedDeal}
           onClose={() => setShowDealDetails(false)}
           title={selectedDeal ? `${selectedDeal?.vehicleInfo?.year || ''} ${selectedDeal?.vehicleInfo?.make || ''} ${selectedDeal?.vehicleInfo?.model || ''}`?.trim() || 'Deal Details' : 'Deal Details'}
+          size="medium"
         >
           {selectedDeal && (
             <div className="space-y-4">
@@ -2475,10 +3219,18 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                 <p className={`${themeClasses?.text} text-2xl font-bold`}>${selectedDeal?.totalValue?.toLocaleString()}</p>
               </div>
               <div className="space-y-2">
-                <Button onClick={() => { setShowDealDetails(false); handleEditDeal(selectedDeal); }} variant="primary" className="w-full py-2">
+                <Button 
+                  onClick={() => { setShowDealDetails(false); handleEditDeal(selectedDeal); }} 
+                  variant="primary" 
+                  className="w-full py-2"
+                >
                   <Icon name="Edit" size={14} className="mr-2" />Edit Deal
                 </Button>
-                <Button onClick={() => { setShowDealDetails(false); handleMessageCustomer(selectedDeal); }} variant="ghost" className="w-full py-2">
+                <Button 
+                  onClick={() => { setShowDealDetails(false); handleMessageCustomer(selectedDeal); }} 
+                  variant="ghost" 
+                  className="w-full py-2"
+                >
                   <Icon name="MessageSquare" size={14} className="mr-2" />Message Customer
                 </Button>
               </div>
@@ -2491,6 +3243,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           isOpen={showMessageModal}
           onClose={() => setShowMessageModal(false)}
           title="Message Customer"
+          size="medium"
         >
           <div className="space-y-4">
             <div>
@@ -2625,6 +3378,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           isOpen={showAddVendorModal}
           onClose={() => setShowAddVendorModal(false)}
           title="Add New Vendor"
+          size="medium"
         >
           <div className="space-y-4">
             <div>
@@ -2693,6 +3447,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           isOpen={showAddProductModal}
           onClose={() => setShowAddProductModal(false)}
           title="Add New Product"
+          size="medium"
         >
           <div className="space-y-4">
             <div>
@@ -2785,6 +3540,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           isOpen={showAddSalespersonModal}
           onClose={() => setShowAddSalespersonModal(false)}
           title="Add New Salesperson"
+          size="medium"
         >
           <div className="space-y-4">
             <div>
@@ -2833,6 +3589,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
           isOpen={showAddDeliveryCoordinatorModal}
           onClose={() => setShowAddDeliveryCoordinatorModal(false)}
           title="Add New Delivery Coordinator"
+          size="medium"
         >
           <div className="space-y-4">
             <div>

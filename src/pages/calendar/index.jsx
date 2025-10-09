@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, addDays, parseISO, isSameDay } from 'date-fns';
-import { CalendarDays, Search, Plus, Filter, ChevronLeft, ChevronRight, User, X, Menu } from 'lucide-react';
+import { CalendarDays, Search, Plus, Filter, ChevronLeft, ChevronRight, User, X, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toUTC, estLabel } from '../../lib/time';
 import { buildICS } from '../../lib/ics';
 import AppLayout from '../../components/layouts/AppLayout';
 import CalendarGrid from './components/CalendarGrid';
-import UnassignedQueue from './components/UnassignedQueue';
 import AppointmentDrawer from './components/AppointmentDrawer';
 import CreateModal from './components/CreateModal';
+import { Link } from 'react-router-dom';
 
 const CalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -20,21 +20,18 @@ const CalendarPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [showDrawer, setShowDrawer] = useState(false);
-  const [unassignedJobs, setUnassignedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dragging, setDragging] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalData, setCreateModalData] = useState(null);
   
   // Mobile & responsive states
-  const [showUnassignedQueue, setShowUnassignedQueue] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   
   // Filter states
   const [selectedVendors, setSelectedVendors] = useState([]);
   const [selectedStatuses, setSelectedStatuses] = useState([]);
-  const [showUnassigned, setShowUnassigned] = useState(true);
   const [activeFilters, setActiveFilters] = useState({
     today: false,
     inProgress: false,
@@ -56,13 +53,6 @@ const CalendarPage = () => {
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
-      // On desktop, show unassigned queue by default
-      if (window.innerWidth >= 1024) {
-        setShowUnassignedQueue(true);
-      } else {
-        // On mobile/tablet, hide by default to maximize calendar space
-        setShowUnassignedQueue(false);
-      }
     };
 
     checkMobile();
@@ -142,7 +132,6 @@ const CalendarPage = () => {
   useEffect(() => {
     loadAppointments();
     loadVendors();
-    loadUnassignedJobs();
     
     // Set up real-time subscription
     const { start, end } = getDateRange();
@@ -194,20 +183,6 @@ const CalendarPage = () => {
       setVendorCapacity(capacity);
     } catch (error) {
       console.error('Error loading vendors:', error);
-    }
-  };
-
-  const loadUnassignedJobs = async () => {
-    try {
-      const { data, error } = await supabase?.from('jobs')?.select(`
-          *,
-          vehicles (stock_number, year, make, model, color, vin)
-        `)?.is('vendor_id', null)?.in('job_status', ['pending', 'scheduled'])?.order('created_at', { ascending: false })?.limit(20);
-
-      if (error) throw error;
-      setUnassignedJobs(data || []);
-    } catch (error) {
-      console.error('Error loading unassigned jobs:', error);
     }
   };
 
@@ -281,7 +256,6 @@ const CalendarPage = () => {
         
         // Reload data
         loadAppointments();
-        loadUnassignedJobs();
       } else {
         // Show error message
         alert(guardrailsPassed?.error);
@@ -469,18 +443,12 @@ const CalendarPage = () => {
           setShowCreateModal(false);
           setShowMobileFilters(false);
           break;
-        case 'q':
-          if (!isMobile) {
-            e?.preventDefault();
-            setShowUnassignedQueue(!showUnassignedQueue);
-          }
-          break;
       }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [showUnassignedQueue, isMobile]);
+  }, []);
 
   const getStatusColor = (status) => {
     const colors = {
@@ -507,14 +475,14 @@ const CalendarPage = () => {
   return (
     <AppLayout>
       <div className="h-screen flex bg-gray-50 overflow-hidden">
-        {/* Main Calendar Area - Now Uses Full Space */}
+        {/* Main Calendar Area - Full Screen */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Mobile-Optimized Header */}
           <div className="bg-white border-b border-gray-200 px-3 md:px-6 py-3 md:py-4 flex-shrink-0">
             {/* Mobile Layout */}
             {isMobile ? (
               <div className="space-y-3">
-                {/* Top Row: Title + Queue Toggle */}
+                {/* Top Row: Title */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <CalendarDays className="w-5 h-5 text-blue-600" />
@@ -525,17 +493,6 @@ const CalendarPage = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    {/* Queue Toggle Button */}
-                    <button
-                      onClick={() => setShowUnassignedQueue(!showUnassignedQueue)}
-                      className={`p-2 rounded-md text-sm font-medium transition-all ${
-                        showUnassignedQueue
-                          ? 'bg-blue-600 text-white' :'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      <Menu className="w-4 h-4" />
-                    </button>
-                    
                     {/* Mobile Filter Toggle */}
                     <button
                       onClick={() => setShowMobileFilters(!showMobileFilters)}
@@ -551,6 +508,15 @@ const CalendarPage = () => {
                     >
                       <Plus className="w-4 h-4" />
                     </button>
+                    
+                    {/* Workflow Hub Link */}
+                    <Link
+                      to="/calendar-flow-management-center"
+                      className="bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700 flex items-center"
+                      title="Open Workflow Hub"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Link>
                   </div>
                 </div>
 
@@ -634,15 +600,14 @@ const CalendarPage = () => {
                       ))}
                     </div>
                     
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
+                    <div className="flex items-center justify-center mt-3 pt-3 border-t border-gray-200 text-xs text-gray-600">
                       <span>{appointments?.length} appointments</span>
-                      <span>{unassignedJobs?.length} unassigned</span>
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              // Desktop Layout (keep existing)
+              // Desktop Layout
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-6">
@@ -727,18 +692,6 @@ const CalendarPage = () => {
                       Resource by Vendor
                     </button>
 
-                    {/* Queue Toggle for Desktop */}
-                    <button
-                      onClick={() => setShowUnassignedQueue(!showUnassignedQueue)}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
-                        showUnassignedQueue
-                          ? 'bg-blue-100 text-blue-700 border border-blue-300' :'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <Menu className="w-4 h-4 mr-1 inline" />
-                      Queue {!showUnassignedQueue ? '(Q)' : ''}
-                    </button>
-
                     {/* Create Button */}
                     <button 
                       onClick={() => handleCreateClick()}
@@ -747,6 +700,15 @@ const CalendarPage = () => {
                       <Plus className="w-4 h-4" />
                       <span className="font-medium">New</span>
                     </button>
+                    
+                    {/* Workflow Hub Link - Desktop */}
+                    <Link
+                      to="/calendar-flow-management-center"
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center space-x-2 text-sm shadow-sm transition-all duration-200"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span className="font-medium">Workflow Hub</span>
+                    </Link>
                   </div>
                 </div>
 
@@ -771,8 +733,6 @@ const CalendarPage = () => {
 
                   <div className="flex items-center space-x-3 text-sm text-gray-600">
                     <span>{appointments?.length} appointments</span>
-                    <span>•</span>
-                    <span>{unassignedJobs?.length} unassigned</span>
                   </div>
                 </div>
               </div>
@@ -802,56 +762,6 @@ const CalendarPage = () => {
           </div>
         </div>
 
-        {/* Responsive Unassigned Queue */}
-        {showUnassignedQueue && (
-          <>
-            {/* Mobile: Overlay */}
-            {isMobile ? (
-              <>
-                {/* Backdrop */}
-                <div 
-                  className="fixed inset-0 bg-black bg-opacity-50 z-40"
-                  onClick={() => setShowUnassignedQueue(false)}
-                />
-                {/* Sliding Panel */}
-                <div className="fixed right-0 top-0 h-full w-80 bg-white z-50 transform transition-transform duration-300 ease-in-out shadow-xl">
-                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                    <h3 className="text-lg font-medium text-gray-900">Unassigned Queue</h3>
-                    <button
-                      onClick={() => setShowUnassignedQueue(false)}
-                      className="p-1 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="h-full pb-16 overflow-hidden">
-                    <UnassignedQueue
-                      jobs={unassignedJobs}
-                      onDragStart={handleDragStart}
-                      getStatusColor={getStatusColor}
-                      isMobile={true}
-                      onAssignJob={() => {}}
-                      onScheduleJob={() => {}}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              // Desktop: Sidebar
-              <div className="w-80 flex-shrink-0">
-                <UnassignedQueue
-                  jobs={unassignedJobs}
-                  onDragStart={handleDragStart}
-                  getStatusColor={getStatusColor}
-                  isMobile={false}
-                  onAssignJob={() => {}}
-                  onScheduleJob={() => {}}
-                />
-              </div>
-            )}
-          </>
-        )}
-
         {/* Appointment Drawer */}
         {showDrawer && selectedAppointment && (
           <AppointmentDrawer
@@ -874,7 +784,6 @@ const CalendarPage = () => {
               setShowCreateModal(false);
               setCreateModalData(null);
               loadAppointments();
-              loadUnassignedJobs();
             }}
             vendors={vendors}
             onStockSearch={handleStockSearch}

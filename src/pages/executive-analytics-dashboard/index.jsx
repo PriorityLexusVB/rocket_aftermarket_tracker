@@ -252,7 +252,7 @@ const ExecutiveAnalyticsDashboard = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} setIsOpen={setIsSidebarOpen} />
         
         <main className="lg:ml-60 pt-16">
           <div className="flex items-center justify-center h-96">
@@ -269,7 +269,8 @@ const ExecutiveAnalyticsDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} setIsOpen={setIsSidebarOpen} />
+      
       <main className="lg:ml-60 pt-16">
         <div className="p-6 max-w-7xl mx-auto">
           {/* Overdue Alert Bar */}
@@ -355,45 +356,41 @@ const ExecutiveAnalyticsDashboard = () => {
             <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Button
-                variant="outline"
+              <button
                 onClick={() => handleQuickNavigation('/vehicle-management-hub')}
-                className="h-auto p-4 flex flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
               >
                 <Icon name="Car" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Vehicle Hub</span>
                 <span className="text-xs text-muted-foreground">Manage inventory</span>
-              </Button>
+              </button>
 
-              <Button
-                variant="outline"
+              <button
                 onClick={() => handleQuickNavigation('/vendor-operations-center')}
-                className="h-auto p-4 flex flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
               >
                 <Icon name="Users" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Vendor Center</span>
                 <span className="text-xs text-muted-foreground">Manage vendors</span>
-              </Button>
+              </button>
 
-              <Button
-                variant="outline"
+              <button
                 onClick={() => handleQuickNavigation('/sales-transaction-interface')}
-                className="h-auto p-4 flex flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
               >
                 <Icon name="DollarSign" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Sales Interface</span>
                 <span className="text-xs text-muted-foreground">Log transactions</span>
-              </Button>
+              </button>
 
-              <Button
-                variant="outline"
+              <button
                 onClick={() => handleQuickNavigation('/business-intelligence-reports')}
-                className="h-auto p-4 flex flex-col space-y-2"
+                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
               >
                 <Icon name="BarChart3" size={24} className="text-primary" />
                 <span className="text-sm font-medium">BI Reports</span>
                 <span className="text-xs text-muted-foreground">Generate reports</span>
-              </Button>
+              </button>
             </div>
           </div>
         </div>

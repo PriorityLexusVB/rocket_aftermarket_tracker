@@ -130,7 +130,7 @@ const AdministrativeConfigurationCenter = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} isMenuOpen={sidebarOpen} />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} setIsOpen={setSidebarOpen} />
       
       <main className="lg:ml-60 pt-16">
         <div className="p-6 max-w-7xl mx-auto">
