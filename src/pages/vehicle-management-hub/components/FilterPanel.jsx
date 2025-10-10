@@ -101,6 +101,7 @@ const FilterPanel = ({
           </div>
         </div>
       </div>
+
       {/* Quick Filters - Always Visible */}
       <div className="px-6 py-4 border-b border-border bg-muted/30">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -120,7 +121,7 @@ const FilterPanel = ({
             options={makeOptions}
             value={filters?.make || ''}
             onChange={(value) => handleFilterChange('make', value)}
-            className=""
+            className="w-full"
           />
           
           <Select
@@ -128,7 +129,7 @@ const FilterPanel = ({
             options={statusOptions}
             value={filters?.status || ''}
             onChange={(value) => handleFilterChange('status', value)}
-            className=""
+            className="w-full"
           />
           
           <Select
@@ -136,7 +137,7 @@ const FilterPanel = ({
             options={yearOptions}
             value={filters?.year || ''}
             onChange={(value) => handleFilterChange('year', value)}
-            className=""
+            className="w-full"
           />
         </div>
       </div>
@@ -155,7 +156,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className=""
+              className="w-full"
             />
             
             <Input
@@ -167,7 +168,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className=""
+              className="w-full"
             />
             
             <Input
@@ -179,7 +180,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className=""
+              className="w-full"
             />
           </div>
 
@@ -195,7 +196,7 @@ const FilterPanel = ({
               ]}
               value={filters?.hasAftermarket || ''}
               onChange={(value) => handleFilterChange('hasAftermarket', value)}
-              className=""
+              className="w-full"
             />
             
             <Input
@@ -207,7 +208,7 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className=""
+              className="w-full"
             />
             
             <Select
@@ -223,7 +224,7 @@ const FilterPanel = ({
               ]}
               value={filters?.sortBy || ''}
               onChange={(value) => handleFilterChange('sortBy', value)}
-              className=""
+              className="w-full"
             />
           </div>
 

@@ -234,6 +234,7 @@ const EnhancedVehicleTable = ({
                 onExportStart={() => setIsLoading(true)}
                 onExportComplete={() => setIsLoading(false)}
                 onExportError={() => setIsLoading(false)}
+                className=""
               />
               
               <Button

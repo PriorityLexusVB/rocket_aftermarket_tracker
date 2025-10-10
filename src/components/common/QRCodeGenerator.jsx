@@ -243,7 +243,7 @@ const QRCodeGenerator = ({
           <div className="flex items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
             <div className="text-center">
               <QrCode className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Click "Generate QR Code" to create QR code</p>
+              <p className="text-gray-500">Click &quot;Generate QR Code&quot; to create QR code</p>
             </div>
           </div>
         )}
@@ -275,7 +275,8 @@ const QRCodeGenerator = ({
             variant="secondary"
             className={`flex items-center gap-2 ${
               copied 
-                ? 'bg-green-100 text-green-800 border-green-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-green-100 text-green-800 border-green-300' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
             {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}

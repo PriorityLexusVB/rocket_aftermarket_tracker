@@ -19,21 +19,19 @@ import { formatTime, getStatusBadge } from '../../../lib/time';
 const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set());
 
-  const groupedJobs = useMemo(() => {
-    if (!jobs?.length) return {};
+  // Helper function to group jobs by vendor
+  const groupByVendor = (jobList) => {
+    return jobList?.reduce((acc, job) => {
+      const vendorName = job?.vendor_name || 'Unassigned';
+      if (!acc?.[vendorName]) {
+        acc[vendorName] = [];
+      }
+      acc?.[vendorName]?.push(job);
+      return acc;
+    }, {});
+  };
 
-    switch (type) {
-      case 'daily':
-        return groupJobsByDay(jobs);
-      case 'weekly':
-        return groupJobsByWeek(jobs);
-      case 'monthly':
-        return groupJobsByMonth(jobs);
-      default:
-        return groupJobsByDay(jobs);
-    }
-  }, [jobs, type]);
-
+  // Helper function to group jobs by day
   const groupJobsByDay = (jobList) => {
     const today = new Date();
     today?.setHours(0, 0, 0, 0);
@@ -51,6 +49,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
     };
   };
 
+  // Helper function to group jobs by week
   const groupJobsByWeek = (jobList) => {
     const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const result = {};
@@ -74,6 +73,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
     return result;
   };
 
+  // Helper function to group jobs by month
   const groupJobsByMonth = (jobList) => {
     const weeks = {};
     jobList?.forEach(job => {
@@ -101,16 +101,20 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
     return weeks;
   };
 
-  const groupByVendor = (jobList) => {
-    return jobList?.reduce((acc, job) => {
-      const vendorName = job?.vendor_name || 'Unassigned';
-      if (!acc?.[vendorName]) {
-        acc[vendorName] = [];
-      }
-      acc?.[vendorName]?.push(job);
-      return acc;
-    }, {});
-  };
+  const groupedJobs = useMemo(() => {
+    if (!jobs?.length) return {};
+
+    switch (type) {
+      case 'daily':
+        return groupJobsByDay(jobs);
+      case 'weekly':
+        return groupJobsByWeek(jobs);
+      case 'monthly':
+        return groupJobsByMonth(jobs);
+      default:
+        return groupJobsByDay(jobs);
+    }
+  }, [jobs, type]);
 
   const handleJobAction = (jobId, action) => {
     console.log(`${action} job ${jobId}`);

@@ -347,7 +347,6 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   className="w-6 h-6"
                   iconName="X"
                 >
-                  <Icon name="X" size={14} />
                 </Button>
               </div>
               

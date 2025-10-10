@@ -233,7 +233,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
             <MetricCard
               icon={<ShoppingCart className="w-5 h-5" />}
               title="Total Deals"
-              value={dashboardData?.summary_stats?.total_deals || 0}
+              value={dashboardData?.summary_stats?.total_deals?.toString() || "0"}
               trend="+12%"
               trendUp={true}
               description="Total deals processed"
@@ -241,7 +241,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
             <MetricCard
               icon={<Package className="w-5 h-5" />}
               title="Products Sold"
-              value={dashboardData?.summary_stats?.total_products_sold || 0}
+              value={dashboardData?.summary_stats?.total_products_sold?.toString() || "0"}
               trend="+8%"
               trendUp={true}
               description="Total products sold"
@@ -249,7 +249,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
             <MetricCard
               icon={<DollarSign className="w-5 h-5" />}
               title="Total Revenue"
-              value={`$${parseFloat(dashboardData?.summary_stats?.total_revenue || 0)?.toLocaleString()}`}
+              value={`$${parseFloat(dashboardData?.summary_stats?.total_revenue || 0).toLocaleString()}`}
               trend="+15%"
               trendUp={true}
               description="Total sales revenue"
@@ -257,7 +257,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
             <MetricCard
               icon={<Users className="w-5 h-5" />}
               title="Active Vendors"
-              value={dashboardData?.summary_stats?.active_vendors || 0}
+              value={dashboardData?.summary_stats?.active_vendors?.toString() || "0"}
               trend="+3%"
               trendUp={true}
               description="Active vendor partners"
