@@ -82,7 +82,7 @@ const FilterPanel = ({
                 onClick={onClearFilters}
                 iconName="X"
                 iconPosition="left"
-                className=""
+                className="text-muted-foreground hover:text-foreground"
               >
                 Clear All
               </Button>
@@ -94,7 +94,7 @@ const FilterPanel = ({
               onClick={() => setIsExpanded(!isExpanded)}
               iconName={isExpanded ? "ChevronUp" : "ChevronDown"}
               iconPosition="right"
-              className=""
+              className="text-muted-foreground hover:text-foreground"
             >
               {isExpanded ? 'Collapse' : 'Expand'}
             </Button>
@@ -238,7 +238,7 @@ const FilterPanel = ({
                 iconName="Save"
                 iconPosition="left"
                 disabled={!hasActiveFilters}
-                className=""
+                className="text-sm"
               >
                 Save Current
               </Button>
@@ -261,7 +261,7 @@ const FilterPanel = ({
                   size="sm"
                   onClick={handleSavePreset}
                   disabled={!presetName?.trim()}
-                  className=""
+                  className="px-3"
                 >
                   Save
                 </Button>
@@ -272,7 +272,7 @@ const FilterPanel = ({
                     setShowPresetInput(false);
                     setPresetName('');
                   }}
-                  className=""
+                  className="px-3 text-muted-foreground"
                 >
                   Cancel
                 </Button>
@@ -287,7 +287,7 @@ const FilterPanel = ({
                     variant="outline"
                     size="sm"
                     onClick={() => onLoadPreset(preset)}
-                    className="text-xs"
+                    className="text-xs px-2"
                   >
                     {preset?.name}
                   </Button>

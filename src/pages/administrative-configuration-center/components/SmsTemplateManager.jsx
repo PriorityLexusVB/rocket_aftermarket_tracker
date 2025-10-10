@@ -426,6 +426,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                 
                 <Button 
                   type="submit"
+                  onClick={() => {}}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}

@@ -345,6 +345,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   size="icon"
                   onClick={() => onProductToggle(service?.id, false)}
                   className="w-6 h-6"
+                  iconName="X"
                 >
                   <Icon name="X" size={14} />
                 </Button>
