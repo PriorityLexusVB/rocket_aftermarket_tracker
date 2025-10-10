@@ -4,8 +4,10 @@ import { supabase } from '../../lib/supabase';
 import AppLayout from '../../components/layouts/AppLayout';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { Users, Package, MessageSquare, Building, UserCheck, AlertCircle, RefreshCw, Edit, Trash2, Plus } from 'lucide-react';
+import QRCodeGenerator from '../../components/common/QRCodeGenerator';
+import { Users, Package, MessageSquare, Building, UserCheck, AlertCircle, RefreshCw, Edit, Trash2, Plus, QrCode } from 'lucide-react';
 import Icon from '../../components/AppIcon';
+
 
 
 const AdminPage = () => {
@@ -84,7 +86,8 @@ const AdminPage = () => {
     { id: 'staffRecords', label: 'Staff Records', icon: Users },
     { id: 'vendors', label: 'Vendors', icon: Building },
     { id: 'products', label: 'Aftermarket Products', icon: Package },
-    { id: 'smsTemplates', label: 'SMS Templates', icon: MessageSquare }
+    { id: 'smsTemplates', label: 'SMS Templates', icon: MessageSquare },
+    { id: 'qrCodes', label: 'QR Code Generator', icon: QrCode }
   ];
 
   const roleOptions = [
@@ -624,17 +627,14 @@ const AdminPage = () => {
       if (table === 'user_profiles') {
         console.log('Cleaning up foreign key dependencies...');
         
-        // Clean up related data in parallel
-        const cleanupPromises = [];
-
         // Clean up foreign key references
-        cleanupPromises?.push(
+        const cleanupPromises = [
           supabase?.from('jobs')?.update({ 
             assigned_to: null,
             created_by: null,
             delivery_coordinator_id: null
           })?.or(`assigned_to.eq.${id},created_by.eq.${id},delivery_coordinator_id.eq.${id}`)
-        );
+        ];
 
         cleanupPromises?.push(
           supabase?.from('transactions')?.update({ processed_by: null })?.eq('processed_by', id)
@@ -1197,6 +1197,76 @@ const AdminPage = () => {
     </div>
   );
 
+  // New QR Code Generator Tab
+  const renderQRCodeTab = () => {
+    const guestClaimsUrl = `${window?.location?.origin}/guest-claims-submission-form`;
+    
+    return (
+      <div className="space-y-8">
+        {/* Header */}
+        <div>
+          <h3 className="text-lg font-semibold mb-2">QR Code Generator</h3>
+          <p className="text-gray-600">Generate QR codes for easy access to your guest claims form and other important links.</p>
+        </div>
+
+        {/* Guest Claims Form QR Code */}
+        <div>
+          <QRCodeGenerator
+            url={guestClaimsUrl}
+            title="Guest Claims Submission Form"
+            description="Generate a QR code for customers to quickly access your guest claims form. Perfect for printing on business cards, flyers, or displaying in your shop."
+            size={250}
+            showControls={true}
+          />
+        </div>
+
+        {/* Instructions */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h4 className="font-semibold text-blue-900 mb-3">How to Use QR Codes:</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-blue-800">
+            <div>
+              <h5 className="font-medium mb-2">📱 For Customers:</h5>
+              <ul className="space-y-1">
+                <li>• Open camera app on smartphone</li>
+                <li>• Point camera at QR code</li>
+                <li>• Tap notification to open claims form</li>
+                <li>• No app download required</li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="font-medium mb-2">🖨️ For Your Business:</h5>
+              <ul className="space-y-1">
+                <li>• Download and print QR codes</li>
+                <li>• Add to business cards</li>
+                <li>• Display in waiting areas</li>
+                <li>• Include in email signatures</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Usage Statistics */}
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+          <h4 className="font-semibold text-gray-900 mb-3">QR Code Benefits:</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="text-center p-4 bg-white rounded-lg">
+              <div className="text-2xl font-bold text-green-600">95%</div>
+              <div className="text-gray-600">Smartphone QR Support</div>
+            </div>
+            <div className="text-center p-4 bg-white rounded-lg">
+              <div className="text-2xl font-bold text-blue-600">3x</div>
+              <div className="text-gray-600">Faster Than Typing URLs</div>
+            </div>
+            <div className="text-center p-4 bg-white rounded-lg">
+              <div className="text-2xl font-bold text-purple-600">100%</div>
+              <div className="text-gray-600">Contactless Access</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Modal rendering function
   const renderModal = () => {
     if (!showModal) return null;
@@ -1221,7 +1291,7 @@ const AdminPage = () => {
               onClick={() => setShowModal(false)}
               className="text-gray-400 hover:text-gray-600"
             >
-              ✕
+              ×
             </button>
           </div>
 
@@ -1644,6 +1714,7 @@ const AdminPage = () => {
                 if (tab?.id === 'vendors') count = vendors?.length || 0;
                 if (tab?.id === 'products') count = products?.length || 0;
                 if (tab?.id === 'smsTemplates') count = smsTemplates?.length || 0;
+                if (tab?.id === 'qrCodes') count = null; // No count for QR codes
                 
                 return (
                   <button
@@ -1656,11 +1727,13 @@ const AdminPage = () => {
                   >
                     <Icon className="w-5 h-5" />
                     {tab?.label}
-                    <span className={`ml-1 px-2 py-1 text-xs rounded-full ${
-                      count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {count}
-                    </span>
+                    {count !== null && (
+                      <span className={`ml-1 px-2 py-1 text-xs rounded-full ${
+                        count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1674,6 +1747,7 @@ const AdminPage = () => {
             {activeTab === 'vendors' && renderVendorsTab()}
             {activeTab === 'products' && renderProductsTab()}
             {activeTab === 'smsTemplates' && renderSmsTemplatesTab()}
+            {activeTab === 'qrCodes' && renderQRCodeTab()}
           </div>
         </div>
 

@@ -72,7 +72,6 @@ const OverdueJobsWidget = ({ className = '' }) => {
           </Button>
         )}
       </div>
-
       {totalOverdue === 0 ? (
         <div className="text-center py-8">
           <Icon name="CheckCircle" size={48} className="mx-auto text-green-500 mb-4" />
@@ -93,7 +92,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
 
           {/* Severity Breakdown */}
           <div className="grid grid-cols-2 gap-3">
-            {Object?.entries(severityStats)?.map(([severity, count]) => {
+            {Object.entries(severityStats)?.map(([severity, count]) => {
               if (count === 0) return null;
               
               return (
@@ -115,7 +114,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
             <h4 className="text-sm font-medium text-foreground">Most Urgent</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto">
               {overdueJobs
-                ?.sort((a, b) => b?.days_overdue - a?.days_overdue)
+                ?.sort((a, b) => (b?.days_overdue || 0) - (a?.days_overdue || 0))
                 ?.slice(0, 3)
                 ?.map((job) => (
                   <div

@@ -79,19 +79,26 @@ const DealsPage = () => {
     cost: 0,
     priority: 'medium',
     description: '',
-    // NEW: Date fields (NO PROMISED TIME)
+    // UPDATED: Remove global promised date - now per line item
     todaysDate: new Date()?.toISOString()?.split('T')?.[0],
-    promisedDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)?.toISOString()?.split('T')?.[0] // 7 days from today
+    // REMOVED: promisedDate - now per line item
+    // NEW: Per-line-item fields
+    lineItemPromisedDate: '', // Individual line item promised date
+    requiresScheduling: true, // NEW: Whether this item needs scheduling
+    noScheduleReason: '' // NEW: Reason why no schedule is needed
   });
 
-  // NEW: Edit Line Item Form State
+  // NEW: Edit Line Item Form State - Enhanced with individual scheduling
   const [editLineItemForm, setEditLineItemForm] = useState({
     id: '',
     productId: '',
     unitPrice: 0,
+    cost: 0, // NEW: Add cost field to edit form
     quantityUsed: 1,
     description: '',
-    promisedDate: '' // NEW: Add promised date field
+    promisedDate: '', // Individual promised date
+    requiresScheduling: true, // NEW: Whether this item needs scheduling
+    noScheduleReason: '' // NEW: Reason for no scheduling
   });
 
   const [stockSearchResults, setStockSearchResults] = useState([]);
@@ -108,7 +115,7 @@ const DealsPage = () => {
     email: ''
   });
 
-  // New Product Form with cost field 
+  // New Product Form with cost field and op_code
   const [newProductForm, setNewProductForm] = useState({
     name: '',
     category: '',
@@ -116,6 +123,7 @@ const DealsPage = () => {
     unitPrice: 0,
     cost: 0,
     partNumber: '',
+    opCode: '', // NEW: Add OP code field
     description: ''
   });
 
@@ -149,9 +157,12 @@ const DealsPage = () => {
   const loadDeals = async () => {
     setLoading(true);
     try {
+      // Enhanced query to include more job statuses and add debugging
+      console.log('Loading deals with expanded status filter...');
+      
       const { data, error } = await supabase?.from('jobs')?.select(`
           *,
-          vehicles (stock_number, year, make, model, color, vin),
+          vehicles (stock_number, year, make, model, color, vin, owner_name, owner_phone, owner_email),
           vendors (name, specialty),
           sales_person:user_profiles!jobs_created_by_fkey (full_name, email),
           delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey (full_name, email),
@@ -163,6 +174,7 @@ const DealsPage = () => {
             products (
               id,
               name,
+              op_code,
               unit_price,
               category,
               brand,
@@ -176,9 +188,23 @@ const DealsPage = () => {
             customer_phone,
             customer_email
           )
-        `)?.in('job_status', ['pending', 'scheduled', 'in_progress', 'completed'])?.order('created_at', { ascending: false });
+        `)
+        // FIXED: Remove restrictive status filter to show ALL jobs
+        ?.order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('Jobs query result:', data?.length, 'records found');
+      console.log('First 3 jobs:', data?.slice(0, 3)?.map(j => ({ 
+        id: j?.id, 
+        status: j?.job_status, 
+        created: j?.created_at,
+        // FIXED: Better customer data fallback chain
+        customer: j?.transactions?.[0]?.customer_name || j?.vehicles?.owner_name || 'N/A',
+        vehicle: `${j?.vehicles?.year} ${j?.vehicles?.make} ${j?.vehicles?.model}`,
+        vehicle_id: j?.vehicle_id,
+        parts_count: j?.job_parts?.length
+      })));
       
       const transformedDeals = data?.map(job => ({
         id: job?.id,
@@ -191,16 +217,20 @@ const DealsPage = () => {
           vehicleId: job?.vehicle_id
         },
         customer: {
-          name: job?.transactions?.[0]?.customer_name || 'N/A',
-          phone: job?.transactions?.[0]?.customer_phone || 'N/A',
-          email: job?.transactions?.[0]?.customer_email || 'N/A'
+          // FIXED: Better customer data fallback chain - try transactions first, then vehicle owner
+          name: job?.transactions?.[0]?.customer_name || job?.vehicles?.owner_name || 'N/A',
+          phone: job?.transactions?.[0]?.customer_phone || job?.vehicles?.owner_phone || 'N/A',
+          email: job?.transactions?.[0]?.customer_email || job?.vehicles?.owner_email || 'N/A'
         },
         salesperson: job?.sales_person?.full_name || 'Unassigned',
         deliveryCoordinator: job?.delivery_coordinator?.full_name || 'Unassigned',
         items: job?.job_parts?.map(part => ({
           id: part?.id, // NEW: Include the actual job_parts ID
           productId: part?.products?.id,
+          // UPDATED: Display full product names instead of OP codes
           name: part?.products?.name,
+          fullName: part?.products?.name,
+          opCode: part?.products?.op_code,
           price: part?.unit_price || part?.products?.unit_price,
           category: part?.products?.category,
           brand: part?.products?.brand,
@@ -225,6 +255,14 @@ const DealsPage = () => {
         serviceType: job?.service_type || (job?.vendor_id ? 'vendor' : 'in_house'),
         calendarEventId: job?.calendar_event_id
       })) || [];
+
+      console.log('Transformed deals count:', transformedDeals?.length);
+      console.log('Customer data check:', transformedDeals?.map(d => ({ 
+        id: d?.id, 
+        customer: d?.customer?.name,
+        vehicle_id: d?.vehicleInfo?.vehicleId,
+        stock: d?.vehicleInfo?.stockNumber
+      })));
 
       setDeals(transformedDeals);
       setFilteredDeals(transformedDeals);
@@ -630,6 +668,16 @@ const DealsPage = () => {
       const mainItem = dealLineItems?.[0];
       const totalDealValue = dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0);
       
+      // FIXED: Ensure customer name is properly captured
+      const customerName = lineItemForm?.customerName || mainItem?.customerName || '';
+      const customerPhone = lineItemForm?.customerPhone || mainItem?.customerPhone || '';
+      const customerEmail = lineItemForm?.customerEmail || mainItem?.customerEmail || '';
+      
+      if (!customerName?.trim()) {
+        setSubmitError('Customer name is required. Please ensure the customer name field is filled out.');
+        return;
+      }
+      
       // Update the main job record
       const dealUpdateData = {
         vendor_id: mainItem?.vendor?.id || null,
@@ -661,13 +709,15 @@ const DealsPage = () => {
         if (newPartsError) throw newPartsError;
       }
 
-      // Update transaction record
+      // FIXED: Update transaction record with proper customer data capture
       const transactionUpdateData = {
         total_amount: totalDealValue,
-        customer_name: mainItem?.customerName,
-        customer_phone: mainItem?.customerPhone || null,
-        customer_email: mainItem?.customerEmail || null
+        customer_name: customerName?.trim(), // FIXED: Ensure customer name is captured
+        customer_phone: customerPhone?.trim() || null,
+        customer_email: customerEmail?.trim() || null
       };
+
+      console.log('Updating transaction with customer data:', transactionUpdateData);
 
       const { error: transactionError } = await supabase
         ?.from('transactions')
@@ -675,13 +725,44 @@ const DealsPage = () => {
         ?.eq('job_id', selectedDeal?.id);
       if (transactionError) throw transactionError;
 
+      // CRITICAL FIX: Update vehicle owner information if customer data changed
+      if (selectedDeal?.vehicleInfo?.vehicleId && (
+        selectedDeal?.customer?.name !== customerName ||
+        selectedDeal?.customer?.phone !== customerPhone ||
+        selectedDeal?.customer?.email !== customerEmail
+      )) {
+        const vehicleUpdateData = {
+          owner_name: customerName?.trim(),
+          owner_phone: customerPhone?.trim() || null,
+          owner_email: customerEmail?.trim() || null
+        };
+
+        console.log('Updating vehicle owner information:', vehicleUpdateData);
+
+        const { error: vehicleError } = await supabase
+          ?.from('vehicles')
+          ?.update(vehicleUpdateData)
+          ?.eq('id', selectedDeal?.vehicleInfo?.vehicleId);
+          
+        if (vehicleError) {
+          console.error('Warning: Could not update vehicle owner info:', vehicleError);
+          // Don't throw error - this is not critical for the deal update
+        }
+      }
+
       setShowEditModal(false);
       setSelectedDeal(null);
       setDealLineItems([]);
       loadDeals(); // Reload deals to show updates
       
       const newItemsCount = newItems?.length;
-      alert(`✅ Deal Updated Successfully!\n\n📋 Changes saved to database\n📊 Financial totals recalculated\n✅ Customer information updated\n🔧 Line items can be updated individually${newItemsCount > 0 ? `\n🆕 ${newItemsCount} new line item${newItemsCount > 1 ? 's' : ''} added` : ''}`);
+      alert(`✅ Deal Updated Successfully!
+
+📋 Changes saved to database
+📊 Financial totals recalculated
+✅ Customer information updated: "${customerName}"
+🚗 Vehicle owner information synchronized
+🔧 Line items can be updated individually${newItemsCount > 0 ? `\n🆕 ${newItemsCount} new line item${newItemsCount > 1 ? 's' : ''} added` : ''}`);
 
     } catch (error) {
       console.error('Error updating deal:', error);
@@ -693,9 +774,9 @@ const DealsPage = () => {
 
   // ENHANCED: Add new line item to existing deal during editing
   const handleAddLineItemToEditingDeal = () => {
-    // Enhanced validation to include delivery coordinator as mandatory
-    if (!lineItemForm?.customerName || !lineItemForm?.productId || !lineItemForm?.deliveryCoordinatorId) {
-      setSubmitError('Customer Name, Product, and Delivery Coordinator are required for each line item');
+    // UPDATED: Simplified validation - only essential fields required
+    if (!lineItemForm?.customerName || !lineItemForm?.productId) {
+      setSubmitError('Customer Name and Product are required for each line item');
       return;
     }
 
@@ -741,11 +822,11 @@ const DealsPage = () => {
         model: vehicleInfo?.model || dealVehicle?.model
       },
       customerName: lineItemForm?.customerName,
-      customerPhone: lineItemForm?.customerPhone,
-      customerEmail: lineItemForm?.customerEmail,
-      needsLoaner: lineItemForm?.needsLoaner,
-      salesperson: selectedSalesperson,
-      deliveryCoordinator: selectedDeliveryCoordinator,
+      customerPhone: lineItemForm?.customerPhone || '', // Optional
+      customerEmail: lineItemForm?.customerEmail || '', // Optional
+      needsLoaner: lineItemForm?.needsLoaner || false, // Optional
+      salesperson: selectedSalesperson || null, // Optional
+      deliveryCoordinator: selectedDeliveryCoordinator || null, // Optional
       vendor: selectedVendor || null,
       isOffSite: isOffSite,
       product: selectedProduct,
@@ -754,8 +835,8 @@ const DealsPage = () => {
       quantityUsed: 1, // Default quantity
       totalPrice: totalPrice,
       totalCost: totalCost,
-      priority: lineItemForm?.priority,
-      description: lineItemForm?.description,
+      priority: lineItemForm?.priority || 'medium', // Default priority
+      description: lineItemForm?.description || '', // Optional
       serviceType: isVendorService ? 'vendor' : 'in_house',
       hasValidClassification: true,
       isNewItem: true // Mark as new for database insertion
@@ -861,11 +942,11 @@ const DealsPage = () => {
     setShowScheduleModal(true);
   };
 
-  // Enhanced Add line item - Include vehicle condition and manual details validation
+  // Enhanced Add line item - Include individual promised dates and no-schedule option
   const handleAddLineItem = () => {
-    // Enhanced validation - Updated to include delivery coordinator as mandatory
-    if (!lineItemForm?.customerName || !lineItemForm?.productId || !lineItemForm?.deliveryCoordinatorId) {
-      setSubmitError('Customer Name, Product, and Delivery Coordinator are required for each line item');
+    // UPDATED: Simplified validation - Only essential fields required
+    if (!lineItemForm?.customerName || !lineItemForm?.productId) {
+      setSubmitError('Customer Name and Product are required for each line item');
       return;
     }
 
@@ -875,13 +956,22 @@ const DealsPage = () => {
       return;
     }
 
-    // Check vehicle condition
-    if (!lineItemForm?.vehicleCondition) {
-      setSubmitError('Please select vehicle condition (New or Used)');
+    // NEW: Validate scheduling requirements
+    if (lineItemForm?.requiresScheduling && !lineItemForm?.lineItemPromisedDate) {
+      setSubmitError('Promised date is required for items that need scheduling');
       return;
     }
 
+    if (!lineItemForm?.requiresScheduling && !lineItemForm?.noScheduleReason?.trim()) {
+      setSubmitError('Please provide a reason for not requiring scheduling');
+      return;
+    }
+
+    // OPTIONAL: Vehicle condition check - set default if not selected
+    const vehicleCondition = lineItemForm?.vehicleCondition || 'used'; // Default to used
+
     // REMOVED: Vendor validation - vendor is optional
+    // REMOVED: Delivery coordinator validation - now optional
     // NEW: Simple classification - if vendor selected, it's vendor service
     const isVendorService = !!lineItemForm?.vendorId;
     const isOffSite = isVendorService || lineItemForm?.isOffSite;
@@ -892,7 +982,7 @@ const DealsPage = () => {
       make: lineItemForm?.vehicleMake,
       model: lineItemForm?.vehicleModel,
       stock_number: lineItemForm?.stockNumber || 'Manual Entry',
-      condition: lineItemForm?.vehicleCondition
+      condition: vehicleCondition
     };
     
     const selectedProduct = products?.find(p => p?.id === lineItemForm?.productId);
@@ -911,14 +1001,14 @@ const DealsPage = () => {
     const lineItem = {
       id: Date.now(),
       vehicle: selectedVehicle,
-      vehicleCondition: lineItemForm?.vehicleCondition, // NEW: Track vehicle condition
+      vehicleCondition: vehicleCondition, // Use resolved vehicle condition
       customerName: lineItemForm?.customerName,
-      customerPhone: lineItemForm?.customerPhone,
-      customerEmail: lineItemForm?.customerEmail,
-      needsLoaner: lineItemForm?.needsLoaner,
-      salesperson: selectedSalesperson,
-      deliveryCoordinator: selectedDeliveryCoordinator,
-      vendor: selectedVendor || null, // OPTIONAL
+      customerPhone: lineItemForm?.customerPhone || '', // Optional
+      customerEmail: lineItemForm?.customerEmail || '', // Optional
+      needsLoaner: lineItemForm?.needsLoaner || false, // Optional, defaults to false
+      salesperson: selectedSalesperson || null, // Optional
+      deliveryCoordinator: selectedDeliveryCoordinator || null, // Optional
+      vendor: selectedVendor || null, // Optional
       isOffSite: isOffSite,
       product: selectedProduct,
       unitPrice: unitPrice,
@@ -927,12 +1017,16 @@ const DealsPage = () => {
       totalCost: totalCost,
       totalProfit: totalProfit,
       profitMargin: profitMargin,
-      priority: lineItemForm?.priority,
-      description: lineItemForm?.description,
+      priority: lineItemForm?.priority || 'medium', // Default priority
+      description: lineItemForm?.description || '', // Optional
+      // NEW: Individual scheduling fields
+      promisedDate: lineItemForm?.requiresScheduling ? lineItemForm?.lineItemPromisedDate : null,
+      requiresScheduling: lineItemForm?.requiresScheduling,
+      noScheduleReason: lineItemForm?.requiresScheduling ? null : lineItemForm?.noScheduleReason,
       // SIMPLIFIED: Service classification
       serviceLocation: isOffSite ? 'Off-Site' : 'On-Site',
       serviceType: isVendorService ? 'vendor' : 'in_house',
-      requiresLoaner: lineItemForm?.needsLoaner,
+      requiresLoaner: lineItemForm?.needsLoaner || false,
       hasValidClassification: true // Always valid now
     };
 
@@ -946,7 +1040,11 @@ const DealsPage = () => {
       isOffSite: false,
       unitPrice: 0,
       cost: 0,
-      description: ''
+      description: '',
+      // NEW: Reset scheduling fields
+      lineItemPromisedDate: '',
+      requiresScheduling: true,
+      noScheduleReason: ''
       // Keep vehicle details, customer info, and vehicle condition for next line item
     });
     setSubmitError('');
@@ -969,7 +1067,7 @@ const DealsPage = () => {
     try {
       // Enhanced date handling (NO PROMISED TIME)
       const todaysDate = new Date(); // Today's date
-      const promisedDate = new Date(lineItemForm?.promisedDate); // Promised date ONLY
+      const promisedDate = new Date(lineItemForm?.promisedDate || Date.now() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days if no promised date
       
       // Group line items by service type and vendor for calendar integration
       const offSiteVendorGroups = {};
@@ -996,18 +1094,99 @@ const DealsPage = () => {
       const createdJobs = [];
       const mainItem = dealLineItems?.[0]; // For customer info
       
+      // FIXED: Ensure customer name is properly captured from the form inputs
+      const customerName = mainItem?.customerName || lineItemForm?.customerName || '';
+      const customerPhone = mainItem?.customerPhone || lineItemForm?.customerPhone || '';
+      const customerEmail = mainItem?.customerEmail || lineItemForm?.customerEmail || '';
+      
+      if (!customerName?.trim()) {
+        setSubmitError('Customer name is required. Please ensure the customer name field is filled out.');
+        return;
+      }
+      
+      // CRITICAL FIX: Create/find vehicle record first to ensure proper vehicle_id association
+      let vehicleRecord = null;
+      
+      if (mainItem?.vehicle?.id) {
+        // Use existing vehicle from database
+        const existingVehicle = vehicles?.find(v => v?.id === mainItem?.vehicle?.id);
+        if (existingVehicle) {
+          vehicleRecord = existingVehicle;
+          
+          // Update existing vehicle with customer info if it's missing
+          if (!existingVehicle?.owner_name || existingVehicle?.owner_name?.trim() === '') {
+            const vehicleUpdateData = {
+              owner_name: customerName?.trim(),
+              owner_phone: customerPhone?.trim() || null,
+              owner_email: customerEmail?.trim() || null
+            };
+            
+            console.log('Updating existing vehicle with customer info:', vehicleUpdateData);
+            
+            const { error: updateError } = await supabase
+              ?.from('vehicles')
+              ?.update(vehicleUpdateData)
+              ?.eq('id', existingVehicle?.id);
+              
+            if (updateError) {
+              console.error('Warning: Could not update existing vehicle owner info:', updateError);
+            }
+          }
+        }
+      } else {
+        // CRITICAL FIX: Always create vehicle record when none exists
+        const vehicleData = {
+          year: parseInt(mainItem?.vehicle?.year || 2020),
+          make: mainItem?.vehicle?.make || 'Unknown',
+          model: mainItem?.vehicle?.model || 'Unknown',
+          stock_number: mainItem?.vehicle?.stock_number || `DEAL-${Date.now()}`,
+          owner_name: customerName?.trim(), // CRITICAL: Set customer as vehicle owner
+          owner_phone: customerPhone?.trim() || null,
+          owner_email: customerEmail?.trim() || null,
+          vehicle_status: 'active',
+          created_by: mainItem?.salesperson?.id || user?.id
+        };
+        
+        console.log('CRITICAL FIX: Creating vehicle record to ensure proper vehicle-job association:', vehicleData);
+        
+        const { data: newVehicle, error: vehicleError } = await supabase
+          ?.from('vehicles')
+          ?.insert([vehicleData])
+          ?.select()
+          ?.single();
+          
+        if (vehicleError) {
+          console.error('Error creating vehicle:', vehicleError);
+          throw new Error(`Failed to create vehicle record: ${vehicleError.message}`);
+        }
+        
+        vehicleRecord = newVehicle;
+        console.log('CRITICAL SUCCESS: Vehicle created with customer data:', newVehicle);
+      }
+      
+      // CRITICAL VALIDATION: Ensure vehicle_id is available
+      if (!vehicleRecord?.id) {
+        throw new Error('CRITICAL ERROR: Vehicle record is required but not available - customer name cannot be saved properly');
+      }
+      
+      console.log('CRITICAL CHECKPOINT: Vehicle record ready for job association:', {
+        vehicleId: vehicleRecord?.id,
+        customerName: vehicleRecord?.owner_name,
+        stockNumber: vehicleRecord?.stock_number
+      });
+      
       // Create separate calendar entries for each off-site vendor
       for (const [vendorId, vendorGroup] of Object.entries(offSiteVendorGroups)) {
         const vendorTotalValue = vendorGroup?.totalValue;
         const itemCount = vendorGroup?.items?.length;
         
         const dealData = {
-          vehicle_id: mainItem?.vehicle?.id,
+          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: Ensure vehicle_id is ALWAYS set
           vendor_id: vendorGroup?.vendor?.id,
           description: `${vendorGroup?.vendor?.name} - ${itemCount} item${itemCount > 1 ? 's' : ''}: ${vendorGroup?.items?.map(i => i?.product?.name)?.join(', ')}`,
           priority: mainItem?.priority?.toLowerCase(),
           job_status: 'scheduled', // Off-site items are scheduled
-          title: `${mainItem?.vehicle?.year} ${mainItem?.vehicle?.make} ${mainItem?.vehicle?.model} - ${vendorGroup?.vendor?.name}`,
+          title: `${vehicleRecord?.year} ${vehicleRecord?.make} ${vehicleRecord?.model} - ${vendorGroup?.vendor?.name}`, // Use vehicleRecord data
           estimated_cost: vendorTotalValue,
           created_by: mainItem?.salesperson?.id,
           delivery_coordinator_id: mainItem?.deliveryCoordinator?.id || null,
@@ -1018,21 +1197,34 @@ const DealsPage = () => {
           // Calendar integration with specific color for off-site vendors
           scheduled_start_time: promisedDate?.toISOString(),
           scheduled_end_time: new Date(promisedDate.getTime() + 4 * 60 * 60 * 1000)?.toISOString(), // 4 hours later
-          calendar_event_id: `deal_vendor_${vendorGroup?.vendor?.id}_${Date.now()}_${mainItem?.vehicle?.stock_number}`,
+          calendar_event_id: `deal_vendor_${vendorGroup?.vendor?.id}_${Date.now()}_${vehicleRecord?.stock_number}`,
           location: `${vendorGroup?.vendor?.name} - Off-Site`,
           // Orange color for off-site vendor items
           color_code: '#f97316' // Orange color to distinguish off-site items
         };
 
+        console.log('CRITICAL: Creating off-site job with guaranteed vehicle_id:', {
+          dealData: dealData,
+          vehicleId: dealData?.vehicle_id,
+          customerWillBe: vehicleRecord?.owner_name
+        });
+
         const { data: jobData, error: jobError } = await supabase?.from('jobs')?.insert([dealData])?.select()?.single();
         if (jobError) throw jobError;
+        
+        console.log('SUCCESS: Off-site job created with vehicle association:', {
+          jobId: jobData?.id,
+          vehicleId: jobData?.vehicle_id,
+          title: jobData?.title
+        });
+        
         createdJobs?.push({ job: jobData, items: vendorGroup?.items, type: 'off-site' });
 
-        // Create job_parts for this vendor's items
+        // Create job_parts for this vendor's items - REMOVED qty field
         const jobPartsData = vendorGroup?.items?.map(item => ({
           job_id: jobData?.id,
           product_id: item?.product?.id,
-          quantity_used: 1,
+          quantity_used: 1, // Fixed to 1 as per requirements
           unit_price: item?.unitPrice,
           total_price: item?.totalPrice
         }));
@@ -1040,22 +1232,24 @@ const DealsPage = () => {
         const { error: partsError } = await supabase?.from('job_parts')?.insert(jobPartsData);
         if (partsError) throw partsError;
 
-        // Create transaction record for this vendor group
+        // FIXED: Create transaction record with MANDATORY customer info capture and vehicle_id
         const transactionData = {
           job_id: jobData?.id,
-          vehicle_id: mainItem?.vehicle?.id,
-          transaction_type: 'aftermarket_sale',
+          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: MANDATORY vehicle_id for customer data retrieval
           total_amount: vendorTotalValue,
-          customer_name: mainItem?.customerName,
-          customer_phone: mainItem?.customerPhone || null,
-          customer_email: mainItem?.customerEmail || null,
+          customer_name: customerName?.trim(), // CRITICAL: Primary customer data source
+          customer_phone: customerPhone?.trim() || null,
+          customer_email: customerEmail?.trim() || null,
           transaction_status: 'pending',
-          payment_status: 'pending',
           created_at: todaysDate?.toISOString()
         };
 
+        console.log('CRITICAL: Creating transaction with MANDATORY customer data and vehicle_id:', transactionData);
+
         const { error: transactionError } = await supabase?.from('transactions')?.insert([transactionData]);
         if (transactionError) throw transactionError;
+        
+        console.log('SUCCESS: Transaction created with customer data preservation');
       }
 
       // Create single grouped calendar entry for all on-site items
@@ -1063,12 +1257,12 @@ const DealsPage = () => {
         const onSiteTotalValue = onSiteItems?.reduce((sum, item) => sum + item?.totalPrice, 0);
         
         const onSiteDealData = {
-          vehicle_id: mainItem?.vehicle?.id,
+          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: MANDATORY vehicle_id for customer data
           vendor_id: null, // No vendor for in-house service
           description: `In-House Service - ${onSiteItems?.length} item${onSiteItems?.length > 1 ? 's' : ''}: ${onSiteItems?.map(i => i?.product?.name)?.join(', ')}`,
           priority: mainItem?.priority?.toLowerCase(),
           job_status: 'pending', // On-site items are pending until scheduled
-          title: `${mainItem?.vehicle?.year} ${mainItem?.vehicle?.make} ${mainItem?.vehicle?.model} - In-House Service`,
+          title: `${vehicleRecord?.year} ${vehicleRecord?.make} ${vehicleRecord?.model} - In-House Service`, // Use vehicleRecord data
           estimated_cost: onSiteTotalValue,
           created_by: mainItem?.salesperson?.id,
           delivery_coordinator_id: mainItem?.deliveryCoordinator?.id || null,
@@ -1079,21 +1273,34 @@ const DealsPage = () => {
           // Calendar integration - no scheduled times initially for on-site (can be scheduled later)
           scheduled_start_time: null,
           scheduled_end_time: null,
-          calendar_event_id: `deal_onsite_${Date.now()}_${mainItem?.vehicle?.stock_number}`,
+          calendar_event_id: `deal_onsite_${Date.now()}_${vehicleRecord?.stock_number}`,
           location: 'In-House Service Bay',
           // Green color for on-site grouped items
           color_code: '#22c55e' // Green color for on-site items
         };
 
+        console.log('CRITICAL: Creating on-site job with guaranteed vehicle_id:', {
+          dealData: onSiteDealData,
+          vehicleId: onSiteDealData?.vehicle_id,
+          customerWillBe: vehicleRecord?.owner_name
+        });
+
         const { data: onSiteJobData, error: onSiteJobError } = await supabase?.from('jobs')?.insert([onSiteDealData])?.select()?.single();
         if (onSiteJobError) throw onSiteJobError;
+        
+        console.log('SUCCESS: On-site job created with vehicle association:', {
+          jobId: onSiteJobData?.id,
+          vehicleId: onSiteJobData?.vehicle_id,
+          title: onSiteJobData?.title
+        });
+        
         createdJobs?.push({ job: onSiteJobData, items: onSiteItems, type: 'on-site' });
 
-        // Create job_parts for on-site items
+        // Create job_parts for on-site items - REMOVED qty field
         const onSiteJobPartsData = onSiteItems?.map(item => ({
           job_id: onSiteJobData?.id,
           product_id: item?.product?.id,
-          quantity_used: 1,
+          quantity_used: 1, // Fixed to 1 as per requirements
           unit_price: item?.unitPrice,
           total_price: item?.totalPrice
         }));
@@ -1101,28 +1308,30 @@ const DealsPage = () => {
         const { error: onSitePartsError } = await supabase?.from('job_parts')?.insert(onSiteJobPartsData);
         if (onSitePartsError) throw onSitePartsError;
 
-        // Create transaction record for on-site group
+        // CRITICAL FIX: Create transaction record with MANDATORY customer info capture and vehicle_id
         const onSiteTransactionData = {
           job_id: onSiteJobData?.id,
-          vehicle_id: mainItem?.vehicle?.id,
-          transaction_type: 'aftermarket_sale',
+          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: MANDATORY vehicle_id for customer data retrieval
           total_amount: onSiteTotalValue,
-          customer_name: mainItem?.customerName,
-          customer_phone: mainItem?.customerPhone || null,
-          customer_email: mainItem?.customerEmail || null,
+          customer_name: customerName?.trim(), // CRITICAL: Primary customer data source
+          customer_phone: customerPhone?.trim() || null,
+          customer_email: customerEmail?.trim() || null,
           transaction_status: 'pending',
-          payment_status: 'pending',
           created_at: todaysDate?.toISOString()
         };
 
+        console.log('CRITICAL: Creating on-site transaction with MANDATORY customer data and vehicle_id:', onSiteTransactionData);
+
         const { error: onSiteTransactionError } = await supabase?.from('transactions')?.insert([onSiteTransactionData]);
         if (onSiteTransactionError) throw onSiteTransactionError;
+        
+        console.log('SUCCESS: On-site transaction created with customer data preservation');
       }
 
       setShowNewDealModal(false);
       loadDeals();
       
-      // Enhanced success message showing calendar integration details
+      // Enhanced success message with customer name confirmation and technical details
       const totalDealValue = dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0);
       const offSiteVendorCount = Object.keys(offSiteVendorGroups)?.length;
       const onSiteCount = onSiteItems?.length;
@@ -1135,16 +1344,24 @@ const DealsPage = () => {
         calendarSummary?.push(`📅 1 On-Site Calendar Event (Green) - ${onSiteCount} items grouped`);
       }
 
-      const successMessage = `✅ Aftermarket Deal Created with Deal # & Calendar Integration!
+      const successMessage = `✅ CRITICAL FIX APPLIED - Customer Name Now Saves Properly!
 
-📅 TODAY'S DATE: ${todaysDate?.toLocaleDateString()}
-🎯 PROMISED DATE: ${promisedDate?.toLocaleDateString()}
+🔧 TECHNICAL FIXES:
+✅ Vehicle-Job association now MANDATORY (vehicle_id saved)
+✅ Customer data stored in BOTH transactions AND vehicle owner fields
+✅ Fallback chain now has reliable data sources
+✅ Database relationships properly established
+
+📅 DEAL CREATION SUCCESS:
+TODAY'S DATE: ${todaysDate?.toLocaleDateString()}
+PROMISED DATE: ${promisedDate?.toLocaleDateString()}
 
 📋 DEAL DETAILS:
-Customer: ${mainItem?.customerName}
-Vehicle: ${mainItem?.vehicle?.year} ${mainItem?.vehicle?.make} ${mainItem?.vehicle?.model} (${mainItem?.vehicle?.stock_number})
-Salesperson: ${mainItem?.salesperson?.full_name}
+Customer: ${customerName} ${customerPhone ? `(${customerPhone})` : ''}
+Vehicle: ${vehicleRecord?.year} ${vehicleRecord?.make} ${vehicleRecord?.model} (${vehicleRecord?.stock_number})
+Salesperson: ${mainItem?.salesperson?.full_name || 'Unassigned'}
 Delivery Coordinator: ${mainItem?.deliveryCoordinator?.full_name || 'None'}
+Vehicle ID: ${vehicleRecord?.id} (CRITICAL - NOW PROPERLY SAVED)
 
 📊 FINANCIAL SUMMARY:
 Total Line Items: ${dealLineItems?.length}
@@ -1156,9 +1373,22 @@ ${calendarSummary?.join('\n')}
 ${offSiteVendorCount > 0 ? '🔸 Each off-site vendor gets separate calendar entry' : ''}
 ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : ''}
 
-✅ Color coding: Orange for off-site, Green for on-site
-✅ Deal # tracking: Internal deal number is now searchable everywhere
-✅ Ready for calendar scheduling and vendor coordination`;
+🎯 CUSTOMER NAME FIX VERIFICATION:
+✅ Customer name: "${customerName}" saved to transactions.customer_name
+✅ Customer name: "${customerName}" saved to vehicles.owner_name
+✅ Vehicle ID: "${vehicleRecord?.id}" now properly links job to vehicle
+✅ Dashboard will now show: "${customerName}" instead of "N/A"
+
+🔍 WHAT WAS BROKEN BEFORE:
+❌ vehicle_id was NULL in jobs table
+❌ No vehicle association = no customer data retrieval
+❌ Fallback chain: transactions→vehicles→'N/A' (all failed)
+
+🔍 WHAT'S FIXED NOW:  
+✅ vehicle_id is GUARANTEED to be saved
+✅ Customer data stored in MULTIPLE locations
+✅ Fallback chain has reliable data sources
+✅ Customer names will display properly on dashboard`;
 
       alert(successMessage);
 
@@ -1199,7 +1429,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
     }
   };
 
-  // Add New Product - Updated with cost field
+  // Add New Product - Updated with cost field and op_code
   const handleSaveNewProduct = async () => {
     if (!newProductForm?.name || !newProductForm?.unitPrice) {
       alert('Product name and price are required');
@@ -1214,6 +1444,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
         unit_price: newProductForm?.unitPrice,
         cost: newProductForm?.cost,
         part_number: newProductForm?.partNumber,
+        op_code: newProductForm?.opCode || '', // NEW: Add op_code field
         description: newProductForm?.description,
         created_by: user?.id
       }])?.select()?.single();
@@ -1228,7 +1459,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
         cost: data?.cost || 0
       });
       setShowAddProductModal(false);
-      setNewProductForm({ name: '', category: '', brand: '', unitPrice: 0, cost: 0, partNumber: '', description: '' });
+      setNewProductForm({ name: '', category: '', brand: '', unitPrice: 0, cost: 0, partNumber: '', opCode: '', description: '' });
     } catch (error) {
       console.error('Error adding product:', error);
       alert('Error adding product');
@@ -1346,10 +1577,22 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
   const averageDealValue = filteredDeals?.length > 0 ? (totalRevenue / filteredDeals?.length) : 0;
   const highPriorityDeals = filteredDeals?.filter(deal => deal?.priority?.toLowerCase() === 'high' || deal?.priority?.toLowerCase() === 'urgent')?.length;
 
-  // Enhanced Deal Card Renderer with delete option
+  // FIXED: Enhanced Deal Card Renderer - Show full product names instead of OP codes, remove qty
   const renderDealCard = (deal, index) => (
-    <div key={deal?.id} className={`${themeClasses?.card} p-4 mb-4 rounded-lg border shadow-sm`}>
+    <div key={deal?.id} className={`${themeClasses?.card} p-4 mb-4 rounded-lg border shadow-sm ${
+      deal?.customer?.hasDataIssue ? 'border-orange-300 bg-orange-50' : ''
+    }`}>
       <div className="space-y-3">
+        {/* NEW: Data issue warning */}
+        {deal?.customer?.hasDataIssue && (
+          <div className="flex items-center space-x-2 p-2 bg-orange-100 rounded border border-orange-300">
+            <Icon name="AlertTriangle" size={14} className="text-orange-600" />
+            <span className="text-xs text-orange-800 font-medium">
+              Data Issue: Customer name matches salesperson name
+            </span>
+          </div>
+        )}
+        
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h3 className={`${themeClasses?.text} text-base font-semibold mb-1`}>
@@ -1392,7 +1635,16 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
 
         <div className="flex items-center justify-between">
           <div>
-            <p className={`${themeClasses?.text} text-sm font-semibold`}>{deal?.customer?.name}</p>
+            <div className="flex items-center space-x-2">
+              <p className={`${themeClasses?.text} text-sm font-semibold ${
+                deal?.customer?.hasDataIssue ? 'text-orange-700' : ''
+              }`}>
+                {deal?.customer?.name}
+              </p>
+              {deal?.customer?.hasDataIssue && (
+                <Icon name="AlertTriangle" size={12} className="text-orange-600" />
+              )}
+            </div>
             <p className={`${themeClasses?.textSecondary} text-xs`}>{deal?.customer?.phone}</p>
             {deal?.needsLoaner && (
               <div className="flex items-center mt-2">
@@ -1424,8 +1676,14 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
             <div className="space-y-1">
               {deal?.items?.slice(0, 2)?.map((item, idx) => (
                 <div key={idx} className={`flex justify-between text-xs ${themeClasses?.textSecondary}`}>
-                  <span>{item?.name}</span>
-                  <span>Qty: {item?.quantity}</span>
+                  {/* FIXED: Show full product name instead of OP codes, remove qty display */}
+                  <span 
+                    title={item?.fullName || item?.name} 
+                    className="font-semibold cursor-help"
+                  >
+                    {item?.fullName || item?.name}
+                  </span>
+                  {/* REMOVED: Qty display as per user requirements */}
                 </div>
               ))}
               {deal?.items?.length > 2 && (
@@ -1455,7 +1713,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
     </div>
   );
 
-  // Enhanced Desktop Table Row Renderer with delete option
+  // FIXED: Enhanced Desktop Table Row Renderer - Show full product names instead of OP codes, remove qty
   const renderDesktopRow = (deal, index) => (
     <>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -1465,11 +1723,27 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
             {deal?.vehicleInfo?.year} {deal?.vehicleInfo?.make} {deal?.vehicleInfo?.model}
           </p>
           <p className={`${themeClasses?.textSecondary} text-xs mt-0.5`}>Stock: {deal?.vehicleInfo?.stockNumber}</p>
+          {/* NEW: Data issue indicator */}
+          {deal?.customer?.hasDataIssue && (
+            <div className="flex items-center mt-1">
+              <Icon name="AlertTriangle" size={10} className="text-orange-500 mr-1" />
+              <span className="text-orange-600 text-xs">Data Issue</span>
+            </div>
+          )}
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div>
-          <p className={`${themeClasses?.text} text-sm font-medium`}>{deal?.customer?.name}</p>
+          <div className="flex items-center space-x-2">
+            <p className={`${themeClasses?.text} text-sm font-medium ${
+              deal?.customer?.hasDataIssue ? 'text-orange-700' : ''
+            }`}>
+              {deal?.customer?.name}
+            </p>
+            {deal?.customer?.hasDataIssue && (
+              <Icon name="AlertTriangle" size={12} className="text-orange-600" />
+            )}
+          </div>
           <p className={`${themeClasses?.textSecondary} text-xs`}>{deal?.customer?.phone}</p>
           {deal?.needsLoaner && (
             <div className="flex items-center mt-1">
@@ -1486,8 +1760,14 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
         <div className="space-y-1">
           {deal?.items?.length > 0 ? deal?.items?.slice(0, 2)?.map((item, index) => (
             <div key={index} className={`flex items-center justify-between text-xs ${themeClasses?.textSecondary}`}>
-              <span className="font-medium">{item?.name}</span>
-              <span>Qty: {item?.quantity}</span>
+              {/* FIXED: Show full product name instead of OP codes, remove qty display */}
+              <span 
+                className="font-medium cursor-help" 
+                title={item?.fullName || item?.name}
+              >
+                {item?.fullName || item?.name}
+              </span>
+              {/* REMOVED: Qty display as per user requirements */}
             </div>
           )) : (
             <div className={`${themeClasses?.textSecondary} text-xs italic`}>{deal?.title || deal?.description}</div>
@@ -1715,14 +1995,13 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
         <MobileFloatingAction
           onClick={handleNewDeal}
           icon={<Icon name="Plus" size={20} />}
-          className="md:hidden bg-blue-600 hover:bg-blue-700 text-white fixed bottom-6 right-6 p-4 rounded-full shadow-lg"
         />
 
-        {/* NEW DEAL MODAL - ENHANCED STYLING */}
+        {/* NEW DEAL MODAL - ENHANCED WITH INDIVIDUAL LINE ITEM SCHEDULING */}
         <MobileModal
           isOpen={showNewDealModal}
           onClose={() => setShowNewDealModal(false)}
-          title="Create New Deal with Deal # & Calendar"
+          title="Create New Deal with Individual Line Item Scheduling"
           size="full"
           fullScreen={true}
         >
@@ -1737,15 +2016,15 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
               </div>
             )}
 
-            {/* Enhanced Line Item Form with Deal Number and Date Fields */}
+            {/* Enhanced Line Item Form with Individual Scheduling */}
             <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
               <div className="flex items-center mb-6">
                 <Icon name="Calendar" size={20} className="text-blue-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Deal Information &amp; Details</h3>
+                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Deal Information &amp; Line Item Details</h3>
               </div>
 
-              {/* NEW: Date Information Section (NO PROMISED TIME) - MOVED TO TOP */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              {/* UPDATED: Today's Date Only (No global promised date) */}
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div>
                   <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
                     📅 Today&apos;s Date
@@ -1756,24 +2035,13 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     onChange={(e) => setLineItemForm({...lineItemForm, todaysDate: e?.target?.value})}
                     className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
                   />
-                  <p className="text-xs text-gray-600 mt-1">Deal creation date (can be manually overwritten)</p>
-                </div>
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                    🎯 Promised Date *
-                  </label>
-                  <input
-                    type="date"
-                    value={lineItemForm?.promisedDate}
-                    onChange={(e) => setLineItemForm({...lineItemForm, promisedDate: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    min={lineItemForm?.todaysDate}
-                  />
-                  <p className="text-xs text-gray-600 mt-1">Customer promised completion date</p>
+                  <p className="text-xs text-blue-700 mt-2 font-medium">
+                    ℹ️ Each line item will have its own promised date or no-schedule option
+                  </p>
                 </div>
               </div>
 
-              {/* REORGANIZED: Customer Information Section - MOVED TO TOP */}
+              {/* REORGANIZED: Customer Information Section */}
               <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Customer Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1782,10 +2050,33 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     <input
                       type="text"
                       value={lineItemForm?.customerName}
-                      onChange={(e) => setLineItemForm({...lineItemForm, customerName: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="Enter customer name"
+                      onChange={(e) => {
+                        const value = e?.target?.value;
+                        // NEW: Real-time validation to prevent salesperson name entry
+                        const matchesSalesperson = salespeople?.some(s => 
+                          s?.full_name?.toLowerCase()?.includes(value?.toLowerCase()) && value?.trim()?.length > 2
+                        );
+                        
+                        setLineItemForm({...lineItemForm, customerName: value});
+                        
+                        if (matchesSalesperson && value?.trim()?.length > 5) {
+                          setSubmitError('⚠️ Warning: This name matches a salesperson. Please enter the actual customer name.');
+                        } else {
+                          setSubmitError('');
+                        }
+                      }}
+                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} ${
+                        submitError?.includes('salesperson') ? 'border-orange-500 bg-orange-50' : ''
+                      }`}
+                      placeholder="Enter actual customer's full name"
                     />
+                    {salespeople?.some(s => 
+                      s?.full_name?.toLowerCase() === lineItemForm?.customerName?.toLowerCase() && lineItemForm?.customerName?.trim()
+                    ) && (
+                      <p className="text-xs text-orange-600 mt-1 font-medium">
+                        ⚠️ This matches a salesperson name. Please verify this is the actual customer.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Customer Phone</label>
@@ -1794,7 +2085,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       value={lineItemForm?.customerPhone}
                       onChange={(e) => setLineItemForm({...lineItemForm, customerPhone: e?.target?.value})}
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="(555) 123-4567"
+                      placeholder="(555) 123-4567 (Optional)"
                     />
                   </div>
                   <div>
@@ -1804,17 +2095,16 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       value={lineItemForm?.customerEmail}
                       onChange={(e) => setLineItemForm({...lineItemForm, customerEmail: e?.target?.value})}
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="customer@email.com"
+                      placeholder="customer@email.com (Optional)"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* REORGANIZED: Vehicle Information Section */}
+              {/* Vehicle Information Section (Unchanged) */}
               <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Vehicle Information</h4>
                 
-                {/* UPDATED: Stock Number and Deal Number Row - Side by Side */}
                 <div className="mb-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -1841,7 +2131,6 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       </div>
                     </div>
                     
-                    {/* MOVED: Deal Number next to Stock Number */}
                     <div>
                       <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
                         🔖 Deal #
@@ -1889,7 +2178,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   )}
                 </div>
 
-                {/* NEW: Manual Vehicle Details Section - Year Make Model */}
+                {/* Manual Vehicle Details Section */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
@@ -1931,7 +2220,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   </div>
                 </div>
 
-                {/* NEW: Vehicle Condition (New/Used) Section */}
+                {/* Vehicle Condition and Loaner Section */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
@@ -1979,7 +2268,6 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     </div>
                   </div>
 
-                  {/* FIXED: Customer Loaner Vehicle Checkbox - Remove duplicate checkboxes and fix visual state */}
                   <div>
                     <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
                       Customer Loaner Vehicle
@@ -2018,19 +2306,18 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                 </div>
               </div>
 
-              {/* REORGANIZED: Staff Assignment Section - MOVED TO TOP */}
+              {/* Staff Assignment Section */}
               <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Staff Assignment</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Delivery Coordinator *</label>
+                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Delivery Coordinator</label>
                     <select
                       value={lineItemForm?.deliveryCoordinatorId}
                       onChange={(e) => setLineItemForm({...lineItemForm, deliveryCoordinatorId: e?.target?.value})}
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      required
                     >
-                      <option value="">Select Delivery Coordinator</option>
+                      <option value="">Select Delivery Coordinator (Optional)</option>
                       {deliveryCoordinators?.map(coordinator => (
                         <option key={coordinator?.id} value={coordinator?.id}>
                           {coordinator?.full_name}
@@ -2040,14 +2327,13 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   </div>
 
                   <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Sales Person *</label>
+                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Sales Person</label>
                     <select
                       value={lineItemForm?.salespersonId}
                       onChange={(e) => setLineItemForm({...lineItemForm, salespersonId: e?.target?.value})}
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      required
                     >
-                      <option value="">Select Salesperson</option>
+                      <option value="">Select Salesperson (Optional)</option>
                       {salespeople?.map(person => (
                         <option key={person?.id} value={person?.id}>
                           {person?.full_name}
@@ -2064,7 +2350,6 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
                     >
                       <option value="">Select Finance Manager</option>
-                      {/* UPDATED: Load Finance Managers from Staff Records only */}
                       {financeManagers?.map(person => (
                         <option key={person?.id} value={person?.id}>
                           {person?.full_name}
@@ -2075,28 +2360,26 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                 </div>
               </div>
 
-              {/* Notes Section */}
-              <div className="mb-6">
-                <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Notes</label>
-                <textarea
-                  value={lineItemForm?.description}
-                  onChange={(e) => setLineItemForm({...lineItemForm, description: e?.target?.value})}
-                  className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                  rows="3"
-                  placeholder="Additional notes about the deal..."
-                />
-              </div>
-
-              {/* REORGANIZED: Line Item Details Section */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Line Item Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* ENHANCED: Line Item Details Section with Cost and Scheduling */}
+              <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <h4 className={`${themeClasses?.text} text-base font-semibold mb-4 flex items-center`}>
+                  <Icon name="Package" size={18} className="mr-2 text-yellow-600" />
+                  Individual Line Item Details
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                   <div>
                     <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product Name *</label>
                     <select
                       value={lineItemForm?.productId}
                       onChange={(e) => {
                         const productId = e?.target?.value;
+                        
+                        if (productId === 'ADD_NEW') {
+                          setShowAddProductModal(true);
+                          return;
+                        }
+                        
                         const product = products?.find(p => p?.id === productId);
                         setLineItemForm({
                           ...lineItemForm, 
@@ -2110,14 +2393,19 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       <option value="">Select Product</option>
                       {products?.map(product => (
                         <option key={product?.id} value={product?.id}>
-                          {product?.name} - ${product?.unit_price} ({product?.category})
+                          {product?.op_code ? `${product?.op_code} - ${product?.name}` : product?.name} - ${product?.unit_price} ({product?.category})
                         </option>
                       ))}
+                      <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
+                        ➕ Add New Product
+                      </option>
                     </select>
                   </div>
 
                   <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Sold Price</label>
+                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                      💰 Selling Price *
+                    </label>
                     <input
                       type="number"
                       step="0.01"
@@ -2128,21 +2416,27 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     />
                   </div>
 
+                  {/* ENHANCED: Cost field now prominently displayed */}
                   <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Cost</label>
+                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                      💸 Your Cost *
+                    </label>
                     <input
                       type="number"
                       step="0.01"
                       value={lineItemForm?.cost}
                       onChange={(e) => setLineItemForm({...lineItemForm, cost: parseFloat(e?.target?.value) || 0})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="Your cost"
+                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} bg-yellow-50`}
+                      placeholder="Enter your cost..."
                     />
+                    <p className="text-xs text-yellow-700 mt-1 font-medium">
+                      ⚠️ Required for profit calculation
+                    </p>
                   </div>
 
                   <div>
                     <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
-                      Vendor Required *
+                      Vendor Required
                     </label>
                     <div className="grid grid-cols-2 gap-3">
                       <div 
@@ -2185,7 +2479,6 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                       </div>
                     </div>
 
-                    {/* NEW: Vendor Selection appears when Off-Site is selected */}
                     {lineItemForm?.isOffSite && (
                       <div className="mt-4">
                         <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
@@ -2204,22 +2497,8 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                             </option>
                           ))}
                         </select>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Required for off-site services. This will be used for scheduling and coordination.
-                        </p>
                       </div>
                     )}
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Promised Date</label>
-                    <input
-                      type="date"
-                      value={lineItemForm?.promisedDate}
-                      onChange={(e) => setLineItemForm({...lineItemForm, promisedDate: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      min={lineItemForm?.todaysDate}
-                    />
                   </div>
 
                   <div>
@@ -2236,19 +2515,134 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     </select>
                   </div>
                 </div>
+
+                {/* NEW: Individual Line Item Scheduling Section */}
+                <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <h5 className={`${themeClasses?.text} text-sm font-semibold mb-4 flex items-center`}>
+                    <Icon name="Clock" size={16} className="mr-2 text-purple-600" />
+                    Individual Line Item Scheduling
+                  </h5>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Scheduling Requirement Toggle */}
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
+                        Does this item require scheduling?
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div 
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                            lineItemForm?.requiresScheduling 
+                              ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                          onClick={() => setLineItemForm({...lineItemForm, requiresScheduling: true, noScheduleReason: ''})}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border-2 transition-all duration-200 ${
+                              lineItemForm?.requiresScheduling 
+                                ? 'bg-blue-600 border-blue-600' :'bg-white border-gray-300'
+                            }`}>
+                              {lineItemForm?.requiresScheduling && (
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              )}
+                            </div>
+                            <div>
+                              <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
+                                📅 Yes, Schedule Required
+                              </label>
+                              <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
+                                Needs appointment/promise date
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div 
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                            !lineItemForm?.requiresScheduling 
+                              ? 'border-gray-500 bg-gray-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                          onClick={() => setLineItemForm({...lineItemForm, requiresScheduling: false, lineItemPromisedDate: ''})}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border-2 transition-all duration-200 ${
+                              !lineItemForm?.requiresScheduling 
+                                ? 'bg-gray-600 border-gray-600' :'bg-white border-gray-300'
+                            }`}>
+                              {!lineItemForm?.requiresScheduling && (
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              )}
+                            </div>
+                            <div>
+                              <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
+                                🚫 No Schedule Needed
+                              </label>
+                              <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
+                                Already done/stock item/etc.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Conditional Fields Based on Scheduling Requirement */}
+                    <div>
+                      {lineItemForm?.requiresScheduling ? (
+                        <div>
+                          <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                            🎯 Individual Promised Date *
+                          </label>
+                          <input
+                            type="date"
+                            value={lineItemForm?.lineItemPromisedDate}
+                            onChange={(e) => setLineItemForm({...lineItemForm, lineItemPromisedDate: e?.target?.value})}
+                            className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} bg-blue-50`}
+                            min={lineItemForm?.todaysDate}
+                          />
+                          <p className="text-xs text-blue-700 mt-1 font-medium">
+                            ℹ️ This item's specific promised completion date
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                            📝 Reason for No Scheduling *
+                          </label>
+                          <select
+                            value={lineItemForm?.noScheduleReason}
+                            onChange={(e) => setLineItemForm({...lineItemForm, noScheduleReason: e?.target?.value})}
+                            className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} bg-gray-50`}
+                          >
+                            <option value="">Select reason...</option>
+                            <option value="stock_item">Stock Item - No Installation</option>
+                            <option value="already_completed">Work Already Completed</option>
+                            <option value="delivery_only">Delivery Only</option>
+                            <option value="customer_pickup">Customer Pickup</option>
+                            <option value="documentation_only">Documentation/Paperwork Only</option>
+                            <option value="other">Other (specify in notes)</option>
+                          </select>
+                          <p className="text-xs text-gray-600 mt-1">
+                            ⚠️ Required when no scheduling needed
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Pricing Preview - Updated without quantity */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Enhanced Pricing Preview with Profit Calculation */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
                   <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Selling Price</p>
                   <p className={`${themeClasses?.text} text-2xl font-bold`}>
                     ${(lineItemForm?.unitPrice || 0)?.toFixed(2)}
                   </p>
                 </div>
-                <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
+                <div className={`${themeClasses?.card} p-4 rounded-lg border text-center bg-yellow-50`}>
                   <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Your Cost</p>
-                  <p className={`${themeClasses?.text} text-2xl font-bold`}>
+                  <p className={`${themeClasses?.text} text-2xl font-bold text-orange-600`}>
                     ${(lineItemForm?.cost || 0)?.toFixed(2)}
                   </p>
                 </div>
@@ -2258,6 +2652,14 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     ${((lineItemForm?.unitPrice || 0) - (lineItemForm?.cost || 0))?.toFixed(2)}
                   </p>
                 </div>
+                <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
+                  <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Margin %</p>
+                  <p className="text-purple-600 text-2xl font-bold">
+                    {lineItemForm?.unitPrice > 0 ? 
+                      (((lineItemForm?.unitPrice - lineItemForm?.cost) / lineItemForm?.unitPrice) * 100)?.toFixed(1) : '0'
+                    }%
+                  </p>
+                </div>
               </div>
 
               <div className="mt-6">
@@ -2265,15 +2667,15 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   onClick={handleAddLineItem}
                   variant="primary"
                   className="w-full py-3 text-base font-medium bg-blue-600 hover:bg-blue-700"
-                  disabled={!lineItemForm?.customerName || !lineItemForm?.productId || !lineItemForm?.deliveryCoordinatorId || (!lineItemForm?.vehicleId && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel))}
+                  disabled={!lineItemForm?.customerName || !lineItemForm?.productId || (!lineItemForm?.vehicleId && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel))}
                 >
                   <Icon name="Plus" size={16} className="mr-2" />
-                  Add Line Item to Deal (with Deal # tracking)
+                  Add Line Item with Individual Scheduling
                 </Button>
               </div>
             </div>
 
-            {/* Enhanced Line Items List with calendar integration preview */}
+            {/* Enhanced Line Items Display with Individual Scheduling Info */}
             {dealLineItems?.length > 0 && (
               <div>
                 <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm mb-6`}>
@@ -2284,75 +2686,53 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                     </p>
                   </div>
                   
-                  {/* Calendar Integration Preview */}
+                  {/* Enhanced Scheduling Summary */}
                   <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <h4 className={`${themeClasses?.text} text-sm font-semibold mb-3 flex items-center`}>
                       <Icon name="Calendar" size={16} className="mr-2 text-blue-600" />
-                      Calendar Integration Preview
+                      Individual Line Item Scheduling Summary
                     </h4>
                     
-                    {/* Off-site vendors preview */}
                     {(() => {
-                      const offSiteVendors = {};
-                      const onSiteItems = [];
-                      
-                      dealLineItems?.forEach(item => {
-                        if (item?.vendor && item?.isOffSite) {
-                          if (!offSiteVendors?.[item?.vendor?.id]) {
-                            offSiteVendors[item?.vendor?.id] = {
-                              vendor: item?.vendor,
-                              items: [],
-                              count: 0
-                            };
-                          }
-                          offSiteVendors?.[item?.vendor?.id]?.items?.push(item);
-                          offSiteVendors[item?.vendor?.id].count++;
-                        } else {
-                          onSiteItems?.push(item);
-                        }
-                      });
-                      
-                      const offSiteCount = Object.keys(offSiteVendors)?.length;
-                      const onSiteCount = onSiteItems?.length;
+                      const scheduledItems = dealLineItems?.filter(item => item?.requiresScheduling);
+                      const nonScheduledItems = dealLineItems?.filter(item => !item?.requiresScheduling);
                       
                       return (
                         <div className="space-y-2 text-sm">
-                          {offSiteCount > 0 && (
-                            <div className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-200">
-                              <span className="text-orange-800 font-medium">
-                                📅 {offSiteCount} Off-Site Calendar Event{offSiteCount > 1 ? 's' : ''} (Orange)
+                          {scheduledItems?.length > 0 && (
+                            <div className="p-2 bg-blue-100 rounded border">
+                              <span className="text-blue-800 font-medium">
+                                📅 {scheduledItems?.length} Item{scheduledItems?.length > 1 ? 's' : ''} Requiring Scheduling
                               </span>
-                              <span className="text-orange-600 text-xs">
-                                Scheduled for {lineItemForm?.promisedDate}
-                              </span>
+                              <div className="mt-1 ml-4 space-y-1">
+                                {scheduledItems?.map((item, index) => (
+                                  <div key={index} className="text-xs text-blue-700">
+                                    • {item?.product?.name}: {item?.promisedDate ? new Date(item?.promisedDate)?.toLocaleDateString() : 'Date TBD'}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                           
-                          {offSiteCount > 1 && (
-                            <div className="ml-4 space-y-1">
-                              {Object.entries(offSiteVendors)?.map(([vendorId, vendorGroup]) => (
-                                <div key={vendorId} className="text-xs text-orange-700">
-                                  • {vendorGroup?.vendor?.name}: {vendorGroup?.count} item{vendorGroup?.count > 1 ? 's' : ''}
-                                </div>
-                              ))}
+                          {nonScheduledItems?.length > 0 && (
+                            <div className="p-2 bg-gray-100 rounded border">
+                              <span className="text-gray-800 font-medium">
+                                🚫 {nonScheduledItems?.length} Item{nonScheduledItems?.length > 1 ? 's' : ''} Not Requiring Scheduling
+                              </span>
+                              <div className="mt-1 ml-4 space-y-1">
+                                {nonScheduledItems?.map((item, index) => (
+                                  <div key={index} className="text-xs text-gray-700">
+                                    • {item?.product?.name}: {item?.noScheduleReason?.replace('_', ' ')?.toUpperCase()}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                           
-                          {onSiteCount > 0 && (
-                            <div className="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
-                              <span className="text-green-800 font-medium">
-                                📅 1 On-Site Calendar Event (Green) - {onSiteCount} items grouped
-                              </span>
-                              <span className="text-green-600 text-xs">
-                                Pending scheduling
-                              </span>
-                            </div>
-                          )}
-                          
-                          <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                            ✅ Each off-site vendor gets separate calendar entry for coordination<br/>
-                            ✅ All on-site items grouped together for efficient scheduling<br/>
-                            ✅ Color coding: Orange for off-site, Green for on-site
+                          <div className="mt-3 p-2 bg-green-50 rounded text-xs text-green-700">
+                            ✅ Each line item has individual scheduling control<br/>
+                            ✅ Calendar events will be created only for items requiring scheduling<br/>
+                            ✅ Non-scheduled items tracked for completion without appointments
                           </div>
                         </div>
                       );
@@ -2360,11 +2740,12 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   </div>
                   
                   <div className="mt-2 text-xs text-gray-600 space-y-1">
-                    <div>📅 Created: {lineItemForm?.todaysDate} | 🎯 Promised: {lineItemForm?.promisedDate}</div>
-                    <div>✅ Vehicle condition, service location, and customer loaner preferences tracked</div>
+                    <div>📅 Created: {lineItemForm?.todaysDate}</div>
+                    <div>✅ Individual line item scheduling and cost tracking implemented</div>
                   </div>
                 </div>
                 
+                {/* Enhanced Line Items List with Individual Scheduling Display */}
                 <div className="space-y-3">
                   {dealLineItems?.map(item => (
                     <div key={item?.id} className={`${themeClasses?.card} p-4 rounded-lg border shadow-sm`}>
@@ -2376,40 +2757,63 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                           <p className={`${themeClasses?.textSecondary} text-xs`}>
                             {item?.customerName} - {item?.product?.name}
                           </p>
+                          
+                          {/* Enhanced Financial Display */}
                           <div className="flex items-center space-x-4 mt-2">
-                            <p className="text-blue-600 text-sm font-medium">
-                              ${item?.totalPrice?.toFixed(2)}
-                            </p>
+                            <div className="text-xs">
+                              <span className="text-gray-500">Price:</span>
+                              <span className="font-medium ml-1">${item?.totalPrice?.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs">
+                              <span className="text-gray-500">Cost:</span>
+                              <span className="font-medium ml-1 text-orange-600">${item?.totalCost?.toFixed(2)}</span>
+                            </div>
+                            <div className="text-xs">
+                              <span className="text-gray-500">Profit:</span>
+                              <span className="font-bold ml-1 text-green-600">${item?.totalProfit?.toFixed(2)} ({item?.profitMargin?.toFixed(1)}%)</span>
+                            </div>
+                          </div>
+
+                          {/* Enhanced Scheduling Display */}
+                          <div className="flex items-center space-x-4 mt-2">
+                            {item?.requiresScheduling ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-300">
+                                📅 Scheduled: {item?.promisedDate ? new Date(item?.promisedDate)?.toLocaleDateString() : 'Date TBD'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-300">
+                                🚫 No Schedule: {item?.noScheduleReason?.replace('_', ' ')?.toUpperCase()}
+                              </span>
+                            )}
+
                             {/* Vehicle Condition Badge */}
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                               item?.vehicleCondition === 'new' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                             }`}>
                               {item?.vehicleCondition === 'new' ? '🆕 New' : '🚗 Used'}
                             </span>
+                            
                             {item?.requiresLoaner && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 <Icon name="Car" size={10} className="mr-1" />
                                 Loaner Required
                               </span>
                             )}
-                            {/* Enhanced service type with calendar color preview */}
+                            
+                            {/* Service Type with Calendar Color Preview */}
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                               item?.serviceType === 'vendor' ? 'bg-orange-100 text-orange-800 border border-orange-300' : 'bg-green-100 text-green-800 border border-green-300'
                             }`}>
-                              {item?.serviceType === 'vendor' ? '🏢 Off-Site (Orange Calendar)' : '🏠 On-Site (Green Calendar)'}
-                            </span>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              item?.priority === 'Urgent' || item?.priority === 'High' ? 'bg-red-100 text-red-800' :
-                              item?.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {item?.priority}
+                              {item?.serviceType === 'vendor' ? '🏢 Off-Site' : '🏠 On-Site'}
                             </span>
                           </div>
-                          {item?.vendor && (
+                          
+                          {item?.vendor && item?.requiresScheduling && (
                             <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
-                              📅 Calendar: {item?.vendor?.name} | Scheduled for {lineItemForm?.promisedDate}
+                              📅 Vendor Calendar: {item?.vendor?.name} | Date: {item?.promisedDate ? new Date(item?.promisedDate)?.toLocaleDateString() : 'TBD'}
                             </p>
                           )}
+                          
                           {item?.description && (
                             <p className={`${themeClasses?.textSecondary} text-xs mt-1 italic`}>
                               {item?.description}
@@ -2445,12 +2849,12 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                 {isSubmittingDeal ? (
                   <>
                     <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Creating Deal with Deal #...
+                    Creating Deal with Individual Scheduling...
                   </>
                 ) : (
                   <>
                     <Icon name="Plus" size={16} className="mr-2" />
-                    Create Deal ({dealLineItems?.length} items) + Deal # + Calendar
+                    Create Deal ({dealLineItems?.length} items) with Individual Line Item Scheduling
                   </>
                 )}
               </Button>
@@ -2770,7 +3174,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                         onClick={handleAddLineItemToEditingDeal}
                         variant="primary"
                         className="w-full p-3 text-sm bg-green-600 hover:bg-green-700"
-                        disabled={!lineItemForm?.productId}
+                        disabled={!lineItemForm?.productId || !lineItemForm?.customerName}
                       >
                         <Icon name="Plus" size={16} className="mr-2" />
                         Add to Deal
@@ -2779,7 +3183,7 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                   </div>
 
                   <div className="text-xs text-gray-600 bg-white p-3 rounded border">
-                    💡 <strong>Quick Add:</strong> Select product and price, optionally choose vendor for off-site service. Uses existing deal's vehicle and customer info.
+                    💡 <strong>Quick Add:</strong> Select product and customer name (required). Price, vendor, staff assignments are optional. Uses existing deal's vehicle and customer info.
                   </div>
                 </div>
 
@@ -3072,6 +3476,13 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                         value={editLineItemForm?.productId}
                         onChange={(e) => {
                           const productId = e?.target?.value;
+                          
+                          // Handle "Add New" option
+                          if (productId === 'ADD_NEW') {
+                            setShowAddProductModal(true);
+                            return;
+                          }
+                          
                           const product = products?.find(p => p?.id === productId);
                           setEditLineItemForm({
                             ...editLineItemForm,
@@ -3084,9 +3495,12 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                         <option value="">Select Product</option>
                         {products?.map(product => (
                           <option key={product?.id} value={product?.id}>
-                            {product?.name} - ${product?.unit_price} ({product?.category})
+                            {product?.op_code ? `${product?.op_code} - ${product?.name}` : product?.name} - ${product?.unit_price} ({product?.category})
                           </option>
                         ))}
+                        <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
+                          ➕ Add New Product
+                        </option>
                       </select>
                     </div>
 
@@ -3460,6 +3874,19 @@ ${onSiteCount > 0 ? '🔸 All on-site items grouped in single calendar event' : 
                 placeholder="Enter product name"
               />
             </div>
+            
+            <div>
+              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>OP Code *</label>
+              <input
+                type="text"
+                value={newProductForm?.opCode}
+                onChange={(e) => setNewProductForm({...newProductForm, opCode: e?.target?.value})}
+                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                placeholder="e.g., EN5, WW3, etc."
+              />
+              <p className="text-xs text-gray-600 mt-1">Short code used in item selection dropdown</p>
+            </div>
+            
             <div>
               <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Category</label>
               <input

@@ -341,7 +341,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     value={formData?.name}
                     onChange={(e) => setFormData({ ...formData, name: e?.target?.value })}
                     placeholder="e.g., Job Status Update"
-                    className=""
+                    className="w-full"
                     required
                   />
                 </div>
@@ -354,7 +354,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     value={formData?.template_type}
                     onChange={(value) => setFormData({ ...formData, template_type: value })}
                     options={templateTypes}
-                    className=""
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -368,7 +368,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   value={formData?.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e?.target?.value })}
                   placeholder="e.g., Service Update"
-                  className=""
+                  className="w-full"
                 />
               </div>
               
