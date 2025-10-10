@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import AppLayout from '../../components/layouts/AppLayout';
-import Button from '../../components/ui/Button';
+import UIButton from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import QRCodeGenerator from '../../components/common/QRCodeGenerator';
 import { Users, Package, MessageSquare, Building, UserCheck, AlertCircle, RefreshCw, Edit, Trash2, Plus, QrCode } from 'lucide-react';
@@ -791,13 +791,13 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">User Accounts ({userAccounts?.length || 0})</h3>
-        <Button
+        <UIButton
           onClick={() => openModal('userAccount')}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add User Account
-        </Button>
+        </UIButton>
       </div>
 
       <div className="overflow-x-auto">
@@ -873,13 +873,13 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">Staff Records ({staffRecords?.length || 0})</h3>
-        <Button
+        <UIButton
           onClick={() => openModal('staff')}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Staff Member
-        </Button>
+        </UIButton>
       </div>
 
       <div className="overflow-x-auto">
@@ -955,13 +955,13 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">Vendors ({vendors?.length || 0})</h3>
-        <Button
+        <UIButton
           onClick={() => openModal('vendor')}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Vendor
-        </Button>
+        </UIButton>
       </div>
 
       <div className="overflow-x-auto">
@@ -1037,13 +1037,13 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">Aftermarket Products ({products?.length || 0})</h3>
-        <Button
+        <UIButton
           onClick={() => openModal('product')}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Product
-        </Button>
+        </UIButton>
       </div>
 
       <div className="overflow-x-auto">
@@ -1125,13 +1125,13 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">SMS Templates ({smsTemplates?.length || 0})</h3>
-        <Button
+        <UIButton
           onClick={() => openModal('template')}
           className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Template
-        </Button>
+        </UIButton>
       </div>
 
       <div className="overflow-x-auto">
@@ -1536,20 +1536,20 @@ const AdminPage = () => {
             )}
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button
+              <UIButton
                 type="button"
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200"
               >
                 Cancel
-              </Button>
-              <Button
+              </UIButton>
+              <UIButton
                 type="submit"
                 disabled={submitting}
                 className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {submitting ? 'Saving...' : (editingItem ? 'Update' : 'Create')}
-              </Button>
+              </UIButton>
             </div>
           </form>
         </div>
@@ -1581,27 +1581,27 @@ const AdminPage = () => {
               <p className="text-gray-600 mb-6">{error}</p>
               
               <div className="space-y-4">
-                <Button
+                <UIButton
                   onClick={() => window.location?.reload()}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Refresh Page
-                </Button>
+                </UIButton>
                 
-                <Button
+                <UIButton
                   onClick={debugAuthState}
                   className="w-full bg-gray-600 hover:bg-gray-700 text-white"
                 >
                   Debug Connection
-                </Button>
+                </UIButton>
                 
-                <Button
+                <UIButton
                   onClick={() => window.location.href = '/authentication-portal'}
                   className="w-full bg-green-600 hover:bg-green-700 text-white"
                 >
                   Go to Login
-                </Button>
+                </UIButton>
               </div>
               
               {debugInfo?.showDebug && (

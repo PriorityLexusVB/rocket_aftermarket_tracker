@@ -72,6 +72,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
           </Button>
         )}
       </div>
+      
       {totalOverdue === 0 ? (
         <div className="text-center py-8">
           <Icon name="CheckCircle" size={48} className="mx-auto text-green-500 mb-4" />

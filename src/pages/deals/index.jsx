@@ -162,7 +162,7 @@ const DealsPage = () => {
       
       const { data, error } = await supabase?.from('jobs')?.select(`
           *,
-          vehicles (stock_number, year, make, model, color, vin, owner_name, owner_phone, owner_email),
+          vehicles:vehicles!jobs_vehicle_id_fkey (stock_number, year, make, model, color, vin, owner_name, owner_phone, owner_email),
           vendors (name, specialty),
           sales_person:user_profiles!jobs_created_by_fkey (full_name, email),
           delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey (full_name, email),
@@ -181,14 +181,15 @@ const DealsPage = () => {
               part_number
             )
           ),
-          transactions (
-            id,
-            total_amount,
-            customer_name,
-            customer_phone,
-            customer_email
+          transactions:transactions!transactions_job_id_fkey (
+            id, created_at, total_amount,
+            customer_name, customer_phone, customer_email
           )
         `)
+        // NEW: newest transaction first
+        ?.order('created_at', { foreignTable: 'transactions', ascending: false })
+        // NEW: only need the newest one per job
+        ?.limit(1, { foreignTable: 'transactions' })
         // FIXED: Remove restrictive status filter to show ALL jobs
         ?.order('created_at', { ascending: false });
 
@@ -205,6 +206,9 @@ const DealsPage = () => {
         vehicle_id: j?.vehicle_id,
         parts_count: j?.job_parts?.length
       })));
+
+      // NEW: Helper function to normalize empty strings and set safe fallbacks
+      const val = (v) => (v === '' || v === undefined || v === null ? null : v);
       
       const transformedDeals = data?.map(job => ({
         id: job?.id,
@@ -217,10 +221,10 @@ const DealsPage = () => {
           vehicleId: job?.vehicle_id
         },
         customer: {
-          // FIXED: Better customer data fallback chain - try transactions first, then vehicle owner
-          name: job?.transactions?.[0]?.customer_name || job?.vehicles?.owner_name || 'N/A',
-          phone: job?.transactions?.[0]?.customer_phone || job?.vehicles?.owner_phone || 'N/A',
-          email: job?.transactions?.[0]?.customer_email || job?.vehicles?.owner_email || 'N/A'
+          // FIXED: Use helper function and improved fallback chain
+          name: val(job?.transactions?.[0]?.customer_name) || val(job?.vehicles?.owner_name) || 'N/A',
+          phone: val(job?.transactions?.[0]?.customer_phone) || val(job?.vehicles?.owner_phone) || 'N/A',
+          email: val(job?.transactions?.[0]?.customer_email) || val(job?.vehicles?.owner_email) || 'N/A'
         },
         salesperson: job?.sales_person?.full_name || 'Unassigned',
         deliveryCoordinator: job?.delivery_coordinator?.full_name || 'Unassigned',
@@ -1630,7 +1634,8 @@ ${calendarSummary?.join('\n')}
               <p className={`${themeClasses?.text} text-sm font-semibold ${
                 deal?.customer?.hasDataIssue ? 'text-orange-700' : ''
               }`}>
-                {deal?.customer?.name}
+                {/* FIXED: Render logic to avoid "N/A N/A" */}
+                {deal?.customer?.name === 'N/A' ? 'N/A' : deal?.customer?.name}
               </p>
               {deal?.customer?.hasDataIssue && (
                 <Icon name="AlertTriangle" size={12} className="text-orange-600" />
@@ -1729,7 +1734,8 @@ ${calendarSummary?.join('\n')}
             <p className={`${themeClasses?.text} text-sm font-medium ${
               deal?.customer?.hasDataIssue ? 'text-orange-700' : ''
             }`}>
-              {deal?.customer?.name}
+              {/* FIXED: Render logic to avoid "N/A N/A" */}
+              {deal?.customer?.name === 'N/A' ? 'N/A' : deal?.customer?.name}
             </p>
             {deal?.customer?.hasDataIssue && (
               <Icon name="AlertTriangle" size={12} className="text-orange-600" />
