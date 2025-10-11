@@ -42,7 +42,12 @@ const Button = ({
       return false;
     }
     
-    // Only call onClick if it exists and is a function
+    // For submit buttons in forms, let the form handle submission
+    if (type === 'submit') {
+      return;
+    }
+    
+    // Only call onClick if it exists and is a function for non-submit buttons
     if (onClick && typeof onClick === 'function') {
       try {
         onClick(e);
@@ -64,7 +69,7 @@ const Button = ({
         className
       )}
       disabled={disabled}
-      onClick={handleClick}
+      onClick={type === 'submit' ? undefined : handleClick}
       onMouseDown={(e) => e?.preventDefault()}
       {...props}
     >

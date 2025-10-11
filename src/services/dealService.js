@@ -1,14 +1,9 @@
-// PHASE 2: Deal Service - Centralized CRUD operations with schema-accurate queries
+// PHASE 2: Deal Service - Enhanced with vehicle creation support
 import { supabase } from '../lib/supabase';
 
 class DealService {
   /**
    * List deals with pagination, query, and filters
-   * @param {Object} options - Query options
-   * @param {number} options.page - Page number (0-based)
-   * @param {number} options.limit - Items per page
-   * @param {string} options.query - Search query
-   * @param {Object} options.filters - Filter criteria
    */
   async listDeals({ page = 0, limit = 50, query = '', filters = {} }) {
     try {
@@ -21,6 +16,7 @@ class DealService {
           vendors (id, name, specialty),
           sales_person:user_profiles!jobs_created_by_fkey (id, full_name, email),
           delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey (id, full_name, email),
+          assigned_user:user_profiles!jobs_assigned_to_fkey (id, full_name, email),
           job_parts (
             id, quantity_used, unit_price, total_price,
             products (
@@ -87,7 +83,6 @@ class DealService {
 
   /**
    * Get single deal by ID with full details
-   * @param {string} dealId - Deal ID
    */
   async getDeal(dealId) {
     try {
@@ -100,7 +95,8 @@ class DealService {
           vendors (id, name, specialty, phone, email),
           sales_person:user_profiles!jobs_created_by_fkey (id, full_name, email),
           delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey (id, full_name, email),
-          assigned_user:user_profiles!jobs_assigned_to_fkey (id, full_name, email)
+          assigned_user:user_profiles!jobs_assigned_to_fkey (id, full_name, email),
+          finance_manager:user_profiles!jobs_finance_manager_id_fkey (id, full_name, email)
         `)?.eq('id', dealId)?.single();
 
       if (error) throw error;
@@ -113,14 +109,13 @@ class DealService {
 
   /**
    * Get deal line items (job_parts) by deal ID
-   * @param {string} dealId - Deal ID
    */
   async getDealItems(dealId) {
     try {
       const { data, error } = await supabase?.from('job_parts')?.select(`
           id, job_id, product_id, quantity_used, unit_price, total_price, created_at,
           products (
-            id, name, op_code, unit_price, category, brand, part_number, description
+            id, name, op_code, unit_price, category, brand, part_number, description, cost
           )
         `)?.eq('job_id', dealId)?.order('created_at', { ascending: true });
 
@@ -133,44 +128,95 @@ class DealService {
   }
 
   /**
-   * Create new deal with line items
-   * @param {Object} payload - Deal creation payload
-   * @param {Object} payload.deal - Deal data
-   * @param {Array} payload.items - Line items array
-   * @param {Object} payload.transaction - Optional transaction data
+   * PHASE 2: Enhanced createDeal with vehicle creation support - FIXED timestamp validation
    */
   async createDeal(payload) {
     try {
-      // Start transaction
-      const { deal, items = [], transaction } = payload;
+      const { vehicle, deal, items = [], transaction } = payload;
+      
+      let vehicleId = deal?.vehicle_id;
 
-      // Step 1: Create the job (deal)
-      const { data: createdDeal, error: dealError } = await supabase?.from('jobs')?.insert({
-          title: deal?.title,
-          description: deal?.description,
-          vehicle_id: deal?.vehicle_id,
-          vendor_id: deal?.vendor_id || null,
-          created_by: deal?.created_by,
-          delivery_coordinator_id: deal?.delivery_coordinator_id,
-          assigned_to: deal?.assigned_to,
-          job_status: deal?.job_status || 'pending',
-          priority: deal?.priority || 'medium',
-          service_type: deal?.service_type || 'in_house',
-          customer_needs_loaner: deal?.customer_needs_loaner || false,
-          promised_date: deal?.promised_date,
-          scheduled_start_time: deal?.scheduled_start_time,
-          scheduled_end_time: deal?.scheduled_end_time,
-          estimated_cost: deal?.estimated_cost,
-          estimated_hours: deal?.estimated_hours,
-          location: deal?.location,
-          calendar_notes: deal?.calendar_notes
-        })?.select('id')?.single();
+      // Step 1: Create or find vehicle if vehicle data provided
+      if (vehicle && (!vehicleId || vehicleId === 'new')) {
+        // Check if vehicle exists by stock_number or VIN
+        let existingVehicle = null;
+        
+        if (vehicle?.stock_number) {
+          const { data: stockCheck } = await supabase
+            ?.from('vehicles')
+            ?.select('id')
+            ?.eq('stock_number', vehicle?.stock_number)
+            ?.single();
+          existingVehicle = stockCheck;
+        }
+        
+        if (!existingVehicle && vehicle?.vin) {
+          const { data: vinCheck } = await supabase
+            ?.from('vehicles')
+            ?.select('id')
+            ?.eq('vin', vehicle?.vin)
+            ?.single();
+          existingVehicle = vinCheck;
+        }
+
+        if (existingVehicle) {
+          vehicleId = existingVehicle?.id;
+        } else {
+          // Create new vehicle
+          const { data: createdVehicle, error: vehicleError } = await supabase
+            ?.from('vehicles')
+            ?.insert({
+              year: vehicle?.year,
+              make: vehicle?.make,
+              model: vehicle?.model,
+              color: vehicle?.color,
+              vin: vehicle?.vin,
+              mileage: vehicle?.mileage,
+              stock_number: vehicle?.stock_number,
+              owner_name: vehicle?.owner_name,
+              owner_phone: vehicle?.owner_phone,
+              owner_email: vehicle?.owner_email,
+              created_by: deal?.created_by
+            })
+            ?.select('id')
+            ?.single();
+
+          if (vehicleError) throw vehicleError;
+          vehicleId = createdVehicle?.id;
+        }
+      }
+
+      // PHASE 2 FIX: Clean timestamp fields to prevent PostgreSQL 22007 errors
+      const cleanDealData = {
+        title: deal?.title,
+        description: deal?.description,
+        vehicle_id: vehicleId,
+        vendor_id: deal?.vendor_id || null,
+        created_by: deal?.created_by,
+        delivery_coordinator_id: deal?.delivery_coordinator_id,
+        assigned_to: deal?.assigned_to, // Sales consultant
+        job_status: deal?.job_status || 'pending',
+        priority: deal?.priority || 'medium',
+        service_type: deal?.service_type || 'in_house',
+        customer_needs_loaner: deal?.customer_needs_loaner || false,
+        // FIX: Convert empty strings to null for timestamp fields
+        promised_date: deal?.promised_date && deal?.promised_date?.trim() !== '' ? deal?.promised_date : null,
+        scheduled_start_time: deal?.scheduled_start_time && deal?.scheduled_start_time?.trim() !== '' ? deal?.scheduled_start_time : null,
+        scheduled_end_time: deal?.scheduled_end_time && deal?.scheduled_end_time?.trim() !== '' ? deal?.scheduled_end_time : null,
+        estimated_cost: deal?.estimated_cost,
+        estimated_hours: deal?.estimated_hours,
+        location: deal?.location,
+        calendar_notes: deal?.calendar_notes
+      };
+
+      // Step 2: Create the job (deal) with cleaned data
+      const { data: createdDeal, error: dealError } = await supabase?.from('jobs')?.insert(cleanDealData)?.select('id')?.single();
 
       if (dealError) throw dealError;
 
       const dealId = createdDeal?.id;
 
-      // Step 2: Create line items if provided
+      // Step 3: Create line items if provided
       if (items?.length > 0) {
         const lineItems = items?.map(item => ({
           job_id: dealId,
@@ -184,11 +230,11 @@ class DealService {
         if (itemsError) throw itemsError;
       }
 
-      // Step 3: Create transaction record if provided
+      // Step 4: Create transaction record if provided
       if (transaction) {
         const { error: transactionError } = await supabase?.from('transactions')?.insert({
             job_id: dealId,
-            vehicle_id: deal?.vehicle_id,
+            vehicle_id: vehicleId,
             customer_name: transaction?.customer_name,
             customer_phone: transaction?.customer_phone,
             customer_email: transaction?.customer_email,
@@ -211,9 +257,7 @@ class DealService {
   }
 
   /**
-   * Update existing deal with partial data
-   * @param {string} dealId - Deal ID
-   * @param {Object} patch - Partial deal data to update
+   * Update existing deal with partial data - FIXED timestamp validation
    */
   async updateDeal(dealId, patch) {
     try {
@@ -227,6 +271,17 @@ class DealService {
       delete cleanPatch?.created_at;
       delete cleanPatch?.updated_at;
       delete cleanPatch?.job_number;
+
+      // PHASE 2 FIX: Clean timestamp fields to prevent PostgreSQL 22007 errors
+      if ('promised_date' in cleanPatch) {
+        cleanPatch.promised_date = cleanPatch?.promised_date && cleanPatch?.promised_date?.trim() !== '' ? cleanPatch?.promised_date : null;
+      }
+      if ('scheduled_start_time' in cleanPatch) {
+        cleanPatch.scheduled_start_time = cleanPatch?.scheduled_start_time && cleanPatch?.scheduled_start_time?.trim() !== '' ? cleanPatch?.scheduled_start_time : null;
+      }
+      if ('scheduled_end_time' in cleanPatch) {
+        cleanPatch.scheduled_end_time = cleanPatch?.scheduled_end_time && cleanPatch?.scheduled_end_time?.trim() !== '' ? cleanPatch?.scheduled_end_time : null;
+      }
 
       const { data, error } = await supabase?.from('jobs')?.update(cleanPatch)?.eq('id', dealId)?.select('id')?.single();
 
@@ -242,11 +297,6 @@ class DealService {
 
   /**
    * Mutate deal line items with insert/update/delete operations
-   * @param {string} dealId - Deal ID
-   * @param {Object} mutations - Mutations object
-   * @param {Array} mutations.insert - Items to insert
-   * @param {Array} mutations.update - Items to update
-   * @param {Array} mutations.delete - Item IDs to delete
    */
   async mutateItems(dealId, mutations) {
     try {
@@ -254,7 +304,7 @@ class DealService {
 
       // Delete items first
       if (deleteIds?.length > 0) {
-        const { error: deleteError } = await supabase?.from('job_parts')?.delete()?.in('id', deleteIds)?.eq('job_id', dealId); // Safety check
+        const { error: deleteError } = await supabase?.from('job_parts')?.delete()?.in('id', deleteIds)?.eq('job_id', dealId);
 
         if (deleteError) throw deleteError;
       }
@@ -282,7 +332,7 @@ class DealService {
           delete updateData?.created_at;
           delete updateData?.total_price; // Auto-generated
           
-          const { error: updateError } = await supabase?.from('job_parts')?.update(updateData)?.eq('id', id)?.eq('job_id', dealId); // Safety check
+          const { error: updateError } = await supabase?.from('job_parts')?.update(updateData)?.eq('id', id)?.eq('job_id', dealId);
 
           if (updateError) throw updateError;
         }
@@ -298,14 +348,10 @@ class DealService {
 
   /**
    * Delete deal and associated data
-   * @param {string} dealId - Deal ID
    */
   async deleteDeal(dealId) {
     try {
-      // Note: Supabase RLS and foreign key constraints should handle cascading deletes
-      // But we'll be explicit for safety
-      
-      // Delete associated records first
+      // Delete associated records first (explicit cascading)
       await supabase?.from('job_parts')?.delete()?.eq('job_id', dealId);
       await supabase?.from('transactions')?.delete()?.eq('job_id', dealId);
       await supabase?.from('communications')?.delete()?.eq('job_id', dealId);
@@ -324,7 +370,6 @@ class DealService {
 
   /**
    * Get deal statistics and metrics
-   * @param {Object} filters - Optional filters for statistics
    */
   async getDealStats(filters = {}) {
     try {

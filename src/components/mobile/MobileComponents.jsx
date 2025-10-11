@@ -111,7 +111,8 @@ const MobileModal = ({
 
   const getModalSize = () => {
     if (fullScreen || size === 'full') return 'min-h-screen w-full';
-    if (size === 'lg') return 'mx-2 mt-4 mb-4 rounded-xl max-w-4xl sm:mx-auto';
+    // CHANGE 1: Made 'large' size significantly wider and taller for better form readability
+    if (size === 'large') return 'mx-1 mt-2 mb-2 rounded-xl max-w-7xl w-[95vw] sm:mx-auto min-h-[85vh]';
     if (size === 'xl') return 'mx-1 mt-2 mb-2 rounded-xl max-w-6xl sm:mx-auto';
     return 'mx-4 mt-8 mb-4 rounded-lg max-w-lg sm:mx-auto'; // default 'md'
   };

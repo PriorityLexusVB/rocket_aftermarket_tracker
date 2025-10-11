@@ -190,7 +190,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
             onClick={() => setShowCustomForm(!showCustomForm)}
             iconName="Plus"
             iconPosition="left"
-            className=""
+            className="flex-shrink-0"
           >
             Add Custom
           </Button>

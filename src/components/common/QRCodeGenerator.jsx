@@ -203,7 +203,8 @@ const QRCodeGenerator = ({
               onClick={() => generateQRCode(customUrl, customSize)}
               disabled={loading || !customUrl?.trim()}
               variant="primary"
-              className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              size="md"
+              className=""
             >
               {loading ? 'Generating...' : 'Generate QR Code'}
             </Button>
@@ -211,7 +212,8 @@ const QRCodeGenerator = ({
             <Button
               onClick={resetToDefault}
               variant="secondary"
-              className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              size="md"
+              className=""
             >
               Reset
             </Button>
@@ -264,21 +266,20 @@ const QRCodeGenerator = ({
           <Button
             onClick={downloadQRCode}
             variant="primary"
-            className="bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
+            size="md"
+            className=""
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-4 h-4 mr-1" />
             Download PNG
           </Button>
 
           <Button
             onClick={copyToClipboard}
             variant="secondary"
-            className={`flex items-center gap-2 ${
-              copied 
-                ? 'bg-green-100 text-green-800 border-green-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            size="md"
+            className=""
           >
-            {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
             {copied ? 'Copied!' : 'Copy'}
           </Button>
 
@@ -286,9 +287,10 @@ const QRCodeGenerator = ({
             <Button
               onClick={shareQRCode}
               variant="secondary"
-              className="bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center gap-2"
+              size="md"
+              className=""
             >
-              <Share className="w-4 h-4" />
+              <Share className="w-4 h-4 mr-1" />
               Share
             </Button>
           )}

@@ -72,6 +72,9 @@ const DealForm = ({
   const [errors, setErrors] = useState({});
   const [warnings, setWarnings] = useState({});
 
+  // CHANGE 2 & 3: New state for scheduling functionality
+  const [schedulingEnabled, setSchedulingEnabled] = useState({});
+
   // Initialize form data for edit mode - Optimized with useEffect dependencies
   useEffect(() => {
     if (mode === 'edit' && initialData?.deal) {
@@ -284,6 +287,21 @@ const DealForm = ({
     });
   }, []);
 
+  // CHANGE 2 & 3: Toggle scheduling for individual line items
+  const toggleScheduling = useCallback((index, enabled) => {
+    setSchedulingEnabled(prev => ({
+      ...prev,
+      [index]: enabled
+    }));
+    
+    // Auto-set promise date when scheduling is enabled
+    if (enabled && !lineItems?.[index]?.promised_date) {
+      const tomorrow = new Date();
+      tomorrow?.setDate(tomorrow?.getDate() + 1);
+      updateLineItem(index, 'promised_date', tomorrow?.toISOString()?.slice(0, 10));
+    }
+  }, [lineItems, updateLineItem]);
+
   // Load product details when selected - Optimized callback
   const handleProductSelect = useCallback(async (itemIndex, productId) => {
     const product = products?.find(p => p?.id === productId);
@@ -432,32 +450,33 @@ const DealForm = ({
     }
   };
 
-  // PHASE 3: Simplified line item rendering - Optimized with useCallback
+  // CHANGE 5: Enhanced line item rendering with improved "Need to Schedule" visibility
   const renderLineItem = useCallback((item, index) => (
-    <div key={`${item?.id || 'new'}-${index}`} className="border rounded-lg p-4 bg-gray-50 space-y-4">
+    <div key={`${item?.id || 'new'}-${index}`} className="border-2 border-gray-300 rounded-xl p-6 bg-gradient-to-r from-gray-50 to-white space-y-6">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-700">
+        <span className="text-lg font-bold text-gray-800 flex items-center">
+          <Icon name="Package" size={16} className="mr-2 text-blue-600" />
           Item #{index + 1}
         </span>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           {lineItems?.length > 1 && (
             <Button
               type="button"
               onClick={() => removeLineItem(index)}
               size="sm"
               variant="ghost"
-              className="text-red-600 hover:bg-red-50"
+              className="text-red-600 hover:bg-red-50 p-2 rounded-lg"
             >
-              <Icon name="Trash2" size={12} />
+              <Icon name="Trash2" size={16} />
             </Button>
           )}
         </div>
       </div>
 
       {/* Product Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-base font-semibold text-gray-700 mb-2">
             Product *
           </label>
           <Select
@@ -472,9 +491,9 @@ const DealForm = ({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-semibold text-gray-700 mb-2">
               Unit Price *
             </label>
             <Input
@@ -487,13 +506,14 @@ const DealForm = ({
               error={errors?.[`lineItem_${index}_price`]}
               label=""
               helperText=""
+              className="text-base p-3"
               maxLength={undefined}
               style={{}}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-semibold text-gray-700 mb-2">
               Cost
             </label>
             <Input
@@ -506,6 +526,7 @@ const DealForm = ({
               error={errors?.[`lineItem_${index}_cost`]}
               label=""
               helperText=""
+              className="text-base p-3"
               maxLength={undefined}
               style={{}}
             />
@@ -513,16 +534,84 @@ const DealForm = ({
         </div>
       </div>
 
-      {/* Simplified service configuration per line item */}
-      <div className="bg-white border border-blue-200 rounded-lg p-3">
-        <h4 className="text-sm font-semibold text-blue-900 mb-3 flex items-center">
-          <Icon name="Settings" size={14} className="mr-2" />
+      {/* ENHANCED Service Configuration per line item */}
+      <div className="bg-white border-2 border-blue-300 rounded-xl p-5 shadow-sm">
+        <h4 className="text-lg font-bold text-blue-900 mb-4 flex items-center">
+          <Icon name="Settings" size={16} className="mr-2" />
           Service Configuration
         </h4>
+
+        {/* CHANGE 6: PROMINENT "Need to Schedule" bar with enhanced styling */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-300 rounded-xl shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="relative flex items-center">
+                <input
+                  type="checkbox"
+                  id={`need_schedule_${index}`}
+                  checked={schedulingEnabled?.[index] || false}
+                  onChange={(e) => toggleScheduling(index, e?.target?.checked)}
+                  className="w-6 h-6 text-purple-600 bg-white border-3 border-purple-400 rounded-lg focus:ring-purple-500 focus:ring-3 cursor-pointer"
+                />
+                {schedulingEnabled?.[index] && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <Icon name="Check" size={16} className="text-purple-700 font-bold" />
+                  </div>
+                )}
+              </div>
+              <label htmlFor={`need_schedule_${index}`} className="text-lg font-bold text-purple-900 cursor-pointer">
+                Need to Schedule
+                {schedulingEnabled?.[index] && (
+                  <span className="text-purple-700 ml-3 px-3 py-1 bg-purple-200 rounded-full font-bold text-sm">
+                    ✓ SCHEDULING ACTIVE
+                  </span>
+                )}
+              </label>
+            </div>
+            {schedulingEnabled?.[index] && (
+              <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border border-purple-300">
+                <Icon name="Calendar" size={16} className="text-purple-600" />
+                <span className="font-bold text-purple-800">Promise Date Required</span>
+              </div>
+            )}
+          </div>
+
+          {/* CHANGE 7: Enhanced promise date section with better visibility */}
+          {schedulingEnabled?.[index] && (
+            <div className="mt-4 pt-4 border-t-2 border-purple-300">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-lg font-bold text-purple-900 mb-2">
+                    Promise Date *
+                  </label>
+                  <Input
+                    value={item?.promised_date}
+                    onChange={(e) => updateLineItem(index, 'promised_date', e?.target?.value)}
+                    type="date"
+                    placeholder=""
+                    className="border-2 border-purple-400 focus:border-purple-600 focus:ring-purple-500 text-base p-3"
+                    label=""
+                    helperText=""
+                    maxLength={undefined}
+                    style={{}}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <div className="p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                    <div className="flex items-center space-x-2 text-base text-purple-800">
+                      <Icon name="Clock" size={16} className="text-purple-700" />
+                      <span className="font-bold">Auto-scheduled when enabled</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-semibold text-gray-700 mb-2">
               Service Type *
             </label>
             <Select
@@ -536,7 +625,7 @@ const DealForm = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-semibold text-gray-700 mb-2">
               Vendor {item?.service_type === 'vendor' && '*'}
             </label>
             <Select
@@ -554,84 +643,88 @@ const DealForm = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Promise Date (Auto End Date)
+            <label className="block text-base font-semibold text-gray-700 mb-2">
+              Service Notes
             </label>
             <Input
-              value={item?.promised_date}
-              onChange={(e) => updateLineItem(index, 'promised_date', e?.target?.value)}
-              type="date"
-              placeholder=""
+              value={item?.notes || ''}
+              onChange={(e) => updateLineItem(index, 'notes', e?.target?.value)}
+              placeholder="Optional notes..."
               label=""
               helperText=""
+              className="text-base p-3"
               maxLength={undefined}
               style={{}}
             />
           </div>
         </div>
 
-        {/* Simplified loaner checkbox - no return tracking */}
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-center space-x-3">
+        {/* Enhanced loaner checkbox - positioned below service configuration */}
+        <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
+          <div className="flex items-center space-x-4">
             <div className="relative flex items-center">
               <input
                 type="checkbox"
                 id={`customer_needs_loaner_${index}`}
                 checked={item?.customer_needs_loaner || false}
                 onChange={(e) => updateLineItem(index, 'customer_needs_loaner', e?.target?.checked)}
-                className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                className="w-5 h-5 text-blue-600 bg-white border-2 border-gray-400 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
               />
-              {/* Enhanced visibility when checked */}
               {item?.customer_needs_loaner && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-green-100 rounded">
-                  <Icon name="Check" size={12} className="text-blue-600" />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-green-200 rounded">
+                  <Icon name="Check" size={14} className="text-blue-700 font-bold" />
                 </div>
               )}
             </div>
-            <label htmlFor={`customer_needs_loaner_${index}`} className="text-sm font-medium text-gray-700 cursor-pointer">
+            <label htmlFor={`customer_needs_loaner_${index}`} className="text-base font-semibold text-gray-800 cursor-pointer">
               Customer needs loaner
               {item?.customer_needs_loaner && (
-                <span className="text-green-600 ml-2 font-semibold">✓ Enabled</span>
+                <span className="text-green-700 ml-3 px-2 py-1 bg-green-200 rounded-full font-bold text-sm">
+                  ✓ ENABLED
+                </span>
               )}
             </label>
           </div>
         </div>
       </div>
     </div>
-  ), [lineItems?.length, removeLineItem, handleProductSelect, updateLineItem, products, vendors, errors]);
+  ), [lineItems?.length, removeLineItem, handleProductSelect, updateLineItem, products, vendors, errors, schedulingEnabled, toggleScheduling]);
 
   return (
-    <div className="max-h-[80vh] overflow-y-auto">
-      <form onSubmit={handleSubmit} className="space-y-6 p-1">
+    <div className="max-h-[85vh] overflow-y-auto">
+      <form onSubmit={handleSubmit} className="space-y-6 p-2">
         
-        {/* Header with mode indicator */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Header with mode indicator - ENHANCED VISIBILITY */}
+        <div className="flex items-center justify-between mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
           <div>
-            <h3 className={`${themeClasses?.text} text-lg font-semibold`}>
+            <h3 className={`${themeClasses?.text} text-2xl font-bold mb-2`}>
               {mode === 'create' ? 'Create New Deal' : 'Edit Deal'}
-              <span className="text-green-600 text-sm ml-2">ResizeObserver Fixed</span>
+              <span className="text-green-600 text-sm ml-3 px-2 py-1 bg-green-100 rounded-full font-semibold">
+                ✓ Enhanced Layout
+              </span>
             </h3>
-            <p className={`${themeClasses?.textSecondary} text-sm`}>
-              Vehicle entry, customer info, dealer reps, and simplified line items
+            <p className={`${themeClasses?.textSecondary} text-base`}>
+              Vehicle entry, customer info, dealer reps, and line items with individual scheduling
             </p>
           </div>
-          <div className="flex items-center space-x-2">
-            <Icon name="DollarSign" size={16} className="text-green-600" />
-            <span className="text-green-600 font-bold text-lg">
+          <div className="flex items-center space-x-3 bg-white p-4 rounded-lg border-2 border-green-200">
+            <Icon name="DollarSign" size={20} className="text-green-600" />
+            <span className="text-green-600 font-bold text-2xl">
               ${totalAmount?.toFixed(2)}
             </span>
           </div>
         </div>
 
-        {/* CHANGE 1: NEW Vehicle Entry Section - No searching, just entry */}
-        <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-          <h4 className={`${themeClasses?.text} text-sm font-semibold mb-3 uppercase tracking-wide`}>
+        {/* CHANGE 1: NEW Vehicle Entry Section - Enhanced spacing and layout */}
+        <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
+          <h4 className={`${themeClasses?.text} text-lg font-bold mb-4 uppercase tracking-wide flex items-center`}>
+            <Icon name="Car" size={18} className="mr-2 text-blue-600" />
             Vehicle Information
           </h4>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 New/Used *
               </label>
               <Select
@@ -646,7 +739,7 @@ const DealForm = ({
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Stock # *
               </label>
               <Input
@@ -656,13 +749,14 @@ const DealForm = ({
                 error={errors?.stock_number}
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Deal # *
               </label>
               <Input
@@ -672,13 +766,14 @@ const DealForm = ({
                 error={errors?.deal_number}
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Year *
               </label>
               <Input
@@ -691,13 +786,14 @@ const DealForm = ({
                 error={errors?.year}
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Make *
               </label>
               <Input
@@ -707,13 +803,14 @@ const DealForm = ({
                 error={errors?.make}
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Model *
               </label>
               <Input
@@ -723,6 +820,7 @@ const DealForm = ({
                 error={errors?.model}
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
@@ -730,15 +828,16 @@ const DealForm = ({
           </div>
         </div>
 
-        {/* CHANGE 2: Customer Information Section - First/Last name, spouse */}
-        <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-          <h4 className={`${themeClasses?.text} text-sm font-semibold mb-3 uppercase tracking-wide`}>
+        {/* CHANGE 2: Customer Information Section - Enhanced spacing */}
+        <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
+          <h4 className={`${themeClasses?.text} text-lg font-bold mb-4 uppercase tracking-wide flex items-center`}>
+            <Icon name="User" size={18} className="mr-2 text-blue-600" />
             Customer Information
           </h4>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 First Name *
               </label>
               <Input
@@ -748,13 +847,14 @@ const DealForm = ({
                 error={errors?.customer_first_name}
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Last Name *
               </label>
               <Input
@@ -764,13 +864,14 @@ const DealForm = ({
                 error={errors?.customer_last_name}
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Phone Number
               </label>
               <Input
@@ -780,13 +881,14 @@ const DealForm = ({
                 type="tel"
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Email
               </label>
               <Input
@@ -796,13 +898,14 @@ const DealForm = ({
                 type="email"
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Spouse
               </label>
               <Input
@@ -811,6 +914,7 @@ const DealForm = ({
                 placeholder="Spouse name (optional)"
                 label=""
                 helperText=""
+                className="text-base p-3"
                 maxLength={undefined}
                 style={{}}
               />
@@ -818,15 +922,16 @@ const DealForm = ({
           </div>
         </div>
 
-        {/* CHANGE 3: Dealer Representatives Section */}
-        <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-          <h4 className={`${themeClasses?.text} text-sm font-semibold mb-3 uppercase tracking-wide`}>
+        {/* CHANGE 3: Dealer Representatives Section - Enhanced spacing */}
+        <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
+          <h4 className={`${themeClasses?.text} text-lg font-bold mb-4 uppercase tracking-wide flex items-center`}>
+            <Icon name="Users" size={18} className="mr-2 text-blue-600" />
             Dealer Representatives Involved
           </h4>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Delivery Coordinator *
               </label>
               <Select
@@ -842,7 +947,7 @@ const DealForm = ({
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Sales Consultant *
               </label>
               <Select
@@ -858,7 +963,7 @@ const DealForm = ({
             </div>
 
             <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-1`}>
+              <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Finance Manager *
               </label>
               <Select
@@ -875,58 +980,69 @@ const DealForm = ({
           </div>
         </div>
 
-        {/* CHANGE 4: Line Items Section - Service type, vendor, promise date per item */}
-        <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className={`${themeClasses?.text} text-sm font-semibold uppercase tracking-wide`}>
+        {/* CHANGE 4: Enhanced Line Items Section with improved layout */}
+        <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
+          <div className="flex items-center justify-between mb-6">
+            <h4 className={`${themeClasses?.text} text-lg font-bold uppercase tracking-wide flex items-center`}>
+              <Icon name="ShoppingCart" size={18} className="mr-2 text-blue-600" />
               Line Items with Individual Settings ({lineItems?.length})
             </h4>
             <Button
               type="button"
               onClick={addLineItem}
-              size="sm"
-              variant="ghost"
-              className="flex items-center"
+              size="lg"
+              variant="outline"
+              className="flex items-center bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 px-6 py-3"
             >
-              <Icon name="Plus" size={14} className="mr-1" />
+              <Icon name="Plus" size={16} className="mr-2" />
               Add Item
             </Button>
           </div>
 
           {errors?.lineItems && (
-            <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs">
+            <div className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg text-red-700">
+              <Icon name="AlertTriangle" size={16} className="inline mr-2" />
               {errors?.lineItems}
             </div>
           )}
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {lineItems?.map((item, index) => renderLineItem(item, index))}
           </div>
 
-          {/* Total Display */}
-          <div className="mt-6 pt-4 border-t">
-            <div className="flex justify-between items-center">
-              <span className={`${themeClasses?.text} font-semibold`}>
-                Total Estimated Cost:
-              </span>
-              <span className="text-green-600 font-bold text-xl">
-                ${totalAmount?.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between items-center mt-1 text-sm text-gray-600">
-              <span>Line Items: {lineItems?.length}</span>
-              <span>Requiring Loaner: {lineItems?.filter(item => item?.customer_needs_loaner)?.length}</span>
+          {/* Enhanced Total Display */}
+          <div className="mt-8 pt-6 border-t-2 border-gray-300">
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-xl border-2 border-green-200">
+              <div className="flex justify-between items-center mb-3">
+                <span className={`${themeClasses?.text} text-xl font-bold`}>
+                  Total Estimated Cost:
+                </span>
+                <span className="text-green-600 font-bold text-3xl">
+                  ${totalAmount?.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-base text-gray-700">
+                <span className="flex items-center">
+                  <Icon name="Package" size={16} className="mr-2" />
+                  Line Items: {lineItems?.length}
+                </span>
+                <span className="flex items-center">
+                  <Icon name="Car" size={16} className="mr-2" />
+                  Requiring Loaner: {lineItems?.filter(item => item?.customer_needs_loaner)?.length}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Form Actions */}
-        <div className="flex space-x-3 pt-4 border-t">
+        {/* Enhanced Form Actions */}
+        <div className="flex space-x-4 pt-6 border-t-2 border-gray-300">
           <Button
             type="button"
             onClick={onCancel}
-            variant="ghost"
-            className="flex-1"
+            variant="outline"
+            size="lg"
+            className="flex-1 py-4 text-lg"
             disabled={loading}
           >
             Cancel
@@ -934,29 +1050,30 @@ const DealForm = ({
           <Button
             type="submit"
             variant="primary"
-            className="flex-1"
+            size="lg"
+            className="flex-1 py-4 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             disabled={loading}
           >
             {loading ? (
               <>
-                <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                {mode === 'create' ? 'Creating...' : 'Updating...'}
+                <Icon name="Loader2" size={20} className="mr-3 animate-spin" />
+                {mode === 'create' ? 'Creating Deal...' : 'Updating Deal...'}
               </>
             ) : (
               <>
-                <Icon name={mode === 'create' ? 'Plus' : 'Save'} size={16} className="mr-2" />
+                <Icon name={mode === 'create' ? 'Plus' : 'Save'} size={20} className="mr-3" />
                 {mode === 'create' ? 'Create Deal' : 'Update Deal'}
               </>
             )}
           </Button>
         </div>
 
-        {/* Form-level errors */}
+        {/* Enhanced Form-level errors */}
         {errors?.submit && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Icon name="AlertTriangle" size={16} className="text-red-600" />
-              <p className="text-red-800 text-sm">{errors?.submit}</p>
+          <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+            <div className="flex items-center space-x-3">
+              <Icon name="AlertTriangle" size={20} className="text-red-600" />
+              <p className="text-red-800 text-base font-medium">{errors?.submit}</p>
             </div>
           </div>
         )}

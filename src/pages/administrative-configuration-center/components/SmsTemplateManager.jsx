@@ -297,24 +297,20 @@ const SmsTemplateManager = ({ className = '' }) => {
                 
                 <div className="flex items-center space-x-2 ml-4">
                   <Button
+                    onClick={() => handleEdit(template)}
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleEdit(template)}
                     iconName="Edit"
                     className="hover:bg-muted"
-                  >
-                    Edit
-                  </Button>
+                  />
                   
                   <Button
+                    onClick={() => handleDelete(template?.id)}
                     variant="ghost" 
                     size="sm"
-                    onClick={() => handleDelete(template?.id)}
                     iconName="Trash"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    Delete
-                  </Button>
+                  />
                 </div>
               </div>
             </div>
@@ -426,6 +422,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                 
                 <Button 
                   type="submit"
+                  onClick={handleSubmit}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}

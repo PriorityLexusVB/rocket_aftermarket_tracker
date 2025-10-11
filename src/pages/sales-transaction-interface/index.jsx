@@ -140,16 +140,13 @@ const SalesTransactionInterface = () => {
       
       if (result) {
         // Show success message
-        const successMessage = `
-Deal saved successfully!
+        const successMessage = `Deal saved successfully!
 Deal ID: ${result?.job_number || 'Generated'}
 Customer: ${customerData?.name}
 Vehicle: ${selectedVehicle?.year} ${selectedVehicle?.make} ${selectedVehicle?.model}
 Services: ${selectedServices?.length} items
 Total: $${totalPrice?.toFixed(2)}
-Profit: $${totalProfit?.toFixed(2)}
-${hasScheduledServices ? `\nScheduled: ${primaryScheduledService?.startDate}` : ''}
-        `;
+Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${primaryScheduledService?.startDate}` : ''}`;
         
         alert(successMessage);
         

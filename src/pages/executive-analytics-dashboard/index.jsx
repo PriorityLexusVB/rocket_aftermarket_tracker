@@ -270,7 +270,6 @@ const ExecutiveAnalyticsDashboard = () => {
     <div className="min-h-screen bg-background">
       <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} setIsOpen={setIsSidebarOpen} />
-      
       <main className="lg:ml-60 pt-16">
         <div className="p-6 max-w-7xl mx-auto">
           {/* Overdue Alert Bar */}
