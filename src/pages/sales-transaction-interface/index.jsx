@@ -209,7 +209,7 @@ ${hasScheduledServices ? `\nScheduled: ${primaryScheduledService?.startDate}` : 
                   onClick={handleResetForm}
                   iconName="RotateCcw"
                   iconPosition="left"
-                  className=""
+                  className="flex items-center space-x-2"
                 >
                   Reset Form
                 </Button>
@@ -220,7 +220,7 @@ ${hasScheduledServices ? `\nScheduled: ${primaryScheduledService?.startDate}` : 
                   disabled={!canSave}
                   iconName="Save"
                   iconPosition="left"
-                  className=""
+                  className="flex items-center space-x-2"
                 >
                   {isSaving ? 'Saving...' : 'Save Sale'}
                 </Button>

@@ -219,7 +219,7 @@ const EnhancedVehicleTable = ({
                     onClick={() => setShowBulkActions(!showBulkActions)}
                     iconName="Settings"
                     iconPosition="left"
-                    className="text-sm"
+                    className="flex items-center"
                   >
                     Bulk Actions
                   </Button>

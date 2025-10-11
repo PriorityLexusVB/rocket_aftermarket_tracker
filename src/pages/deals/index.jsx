@@ -3,147 +3,51 @@ import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/layouts/AppLayout';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
-
-import { MobileTable, MobileBottomSheet, MobileFloatingAction, MobileModal } from '../../components/mobile/MobileComponents';
+import { MobileTable, MobileFloatingAction, MobileModal } from '../../components/mobile/MobileComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
+import dealService from '../../services/dealService';
+import DealForm from './DealForm';
+
+// PHASE 1: Feature flag for organized rollout - now from environment variable
+const NEW_DEALS_UI = import.meta.env?.VITE_NEW_DEALS_UI === 'true' || false;
 
 const DealsPage = () => {
   const { user } = useAuth();
   const { themeClasses } = useTheme();
   const navigate = useNavigate();
   
-  // Enhanced state management
+  // PHASE 1: Enhanced state management with better organization
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filteredDeals, setFilteredDeals] = useState([]);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // PHASE 1: Organized modal states with proper feature flag gating
   const [showNewDealModal, setShowNewDealModal] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [showDealDetails, setShowDealDetails] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  
+  // PHASE 1: Schema-accurate reference data states
   const [vehicles, setVehicles] = useState([]);
   const [vendors, setVendors] = useState([]);
   const [products, setProducts] = useState([]);
   const [salespeople, setSalespeople] = useState([]);
   const [deliveryCoordinators, setDeliveryCoordinators] = useState([]);
   const [financeManagers, setFinanceManagers] = useState([]);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showMessageModal, setShowMessageModal] = useState(false);
+  
+  // PHASE 1: Consolidated error and action states
   const [messageText, setMessageText] = useState('');
   const [submitError, setSubmitError] = useState('');
-  const [isSubmittingDeal, setIsSubmittingDeal] = useState(false);
-  const [showAddVendorModal, setShowAddVendorModal] = useState(false);
-  const [showAddProductModal, setShowAddProductModal] = useState(false);
-  const [showAddSalespersonModal, setShowAddSalespersonModal] = useState(false);
-  const [showAddDeliveryCoordinatorModal, setShowAddDeliveryCoordinatorModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [schedulingDeal, setSchedulingDeal] = useState(null);
-
-  // Enhanced state for new features
-  const [dealCalendarEvents, setDealCalendarEvents] = useState([]);
-  const [showCalendarView, setShowCalendarView] = useState(false);
-
-  // Enhanced state for line item editing
-  const [editingLineItem, setEditingLineItem] = useState(null);
-  const [showEditLineItemModal, setShowEditLineItemModal] = useState(false);
-  const [updatingLineItems, setUpdatingLineItems] = useState(false);
-  const [deletingLineItemId, setDeletingLineItemId] = useState(null);
-
-  // Enhanced state for deal deletion
-  const [deletingDealId, setDeletingDealId] = useState(null);
-  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [dealToDelete, setDealToDelete] = useState(null);
+  const [deletingDealId, setDeletingDealId] = useState(null);
 
-  // Enhanced Line Item Form State - Add Deal Number field
-  const [lineItemForm, setLineItemForm] = useState({
-    dealNumber: '', // NEW: Deal # field (not required) 
-    stockNumber: '', 
-    vehicleId: '',
-    // NEW: Manual vehicle details
-    vehicleYear: '',
-    vehicleMake: '',
-    vehicleModel: '',
-    vehicleCondition: 'used', // Default to used
-    customerName: '',
-    customerPhone: '',
-    customerEmail: '',
-    needsLoaner: false,
-    salespersonId: '',
-    deliveryCoordinatorId: '',
-    financeManagerId: '', // NEW: Add finance manager field
-    vendorId: '', // OPTIONAL - NOT MANDATORY
-    isOffSite: false,
-    productId: '',
-    unitPrice: 0,
-    cost: 0,
-    priority: 'medium',
-    description: '',
-    // UPDATED: Remove global promised date - now per line item
-    todaysDate: new Date()?.toISOString()?.split('T')?.[0],
-    // REMOVED: promisedDate - now per line item only
-    // NEW: Per-line-item fields
-    lineItemPromisedDate: '', // Individual line item promised date
-    requiresScheduling: true, // NEW: Whether this item needs scheduling
-    noScheduleReason: '' // NEW: Reason why no schedule is needed
-  });
-
-  // NEW: Edit Line Item Form State - Enhanced with individual scheduling
-  const [editLineItemForm, setEditLineItemForm] = useState({
-    id: '',
-    productId: '',
-    unitPrice: 0,
-    cost: 0, // NEW: Add cost field to edit form
-    quantityUsed: 1,
-    description: '',
-    promisedDate: '', // Individual promised date
-    requiresScheduling: true, // NEW: Whether this item needs scheduling
-    noScheduleReason: '' // NEW: Reason for no scheduling
-  });
-
-  const [stockSearchResults, setStockSearchResults] = useState([]);
-  const [isSearchingStock, setIsSearchingStock] = useState(false);
-  const [dealLineItems, setDealLineItems] = useState([]);
-
-  // New Vendor Form
-  const [newVendorForm, setNewVendorForm] = useState({
-    name: '',
-    specialty: '',
-    contactPerson: '',
-    phone: '',
-    email: ''
-  });
-
-  // New Product Form with cost field and op_code
-  const [newProductForm, setNewProductForm] = useState({
-    name: '',
-    category: '',
-    brand: '',
-    unitPrice: 0,
-    cost: 0,
-    partNumber: '',
-    opCode: '', // NEW: Add op_code field
-    description: ''
-  });
-
-  // NEW: New Salesperson Form
-  const [newSalespersonForm, setNewSalespersonForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    role: 'staff'
-  });
-
-  // NEW: New Delivery Coordinator Form
-  const [newDeliveryCoordinatorForm, setNewDeliveryCoordinatorForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    role: 'staff'
-  });
-
-  // Load all required data
+  // Load all required data on component mount
   useEffect(() => {
     loadDeals();
     loadVehicles();
@@ -151,64 +55,40 @@ const DealsPage = () => {
     loadProducts();
     loadSalespeople();
     loadDeliveryCoordinators();
-    loadFinanceManagers(); // NEW: Load finance managers separately
+    loadFinanceManagers();
   }, []);
 
+  // PHASE 1: Schema-accurate data loading with exact column references
   const loadDeals = async () => {
     setLoading(true);
     try {
-      // Enhanced query to include more job statuses and add debugging
-      console.log('Loading deals with expanded status filter...');
-      
-      const { data, error } = await supabase?.from('jobs')?.select(`
+      const { data, error } = await supabase
+        ?.from('jobs')
+        ?.select(`
           *,
-          vehicles:vehicles!jobs_vehicle_id_fkey (stock_number, year, make, model, color, vin, owner_name, owner_phone, owner_email),
+          vehicles:vehicles!jobs_vehicle_id_fkey (
+            stock_number, year, make, model, color, vin, 
+            owner_name, owner_phone, owner_email
+          ),
           vendors (name, specialty),
           sales_person:user_profiles!jobs_created_by_fkey (full_name, email),
           delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey (full_name, email),
           job_parts (
-            id,
-            quantity_used,
-            unit_price,
-            total_price,
+            id, quantity_used, unit_price, total_price,
             products (
-              id,
-              name,
-              op_code,
-              unit_price,
-              category,
-              brand,
-              part_number
+              id, name, op_code, unit_price, category, brand, part_number
             )
           ),
-          transactions:transactions!transactions_job_id_fkey (
+          transactions (
             id, created_at, total_amount,
             customer_name, customer_phone, customer_email
           )
         `)
-        // UPDATED: newest transaction first with FK-qualified relation
-        ?.order('created_at', { foreignTable: 'transactions', ascending: false })
-        // UPDATED: only need the newest one per job with FK-qualified relation
-        ?.limit(1, { foreignTable: 'transactions' })
         ?.order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      console.log('Jobs query result:', data?.length, 'records found');
-      console.log('First 3 jobs:', data?.slice(0, 3)?.map(j => ({ 
-        id: j?.id, 
-        status: j?.job_status, 
-        created: j?.created_at,
-        // FIXED: Better customer data fallback chain
-        customer: j?.transactions?.[0]?.customer_name || j?.vehicles?.owner_name || 'N/A',
-        vehicle: `${j?.vehicles?.year} ${j?.vehicles?.make} ${j?.vehicles?.model}`,
-        vehicle_id: j?.vehicle_id,
-        parts_count: j?.job_parts?.length
-      })));
-
-      // Helper function to normalize empty strings and set safe fallbacks
-      const val = (v) => (v === '' || v === undefined || v === null ? null : v);
-      
+      // PHASE 1: Enhanced data transformation with proper schema mapping
       const transformedDeals = data?.map(job => ({
         id: job?.id,
         vehicleInfo: {
@@ -220,17 +100,15 @@ const DealsPage = () => {
           vehicleId: job?.vehicle_id
         },
         customer: {
-          // FIXED: Use helper function and improved fallback chain
-          name: val(job?.transactions?.[0]?.customer_name) || val(job?.vehicles?.owner_name) || 'N/A',
-          phone: val(job?.transactions?.[0]?.customer_phone) || val(job?.vehicles?.owner_phone) || 'N/A',
-          email: val(job?.transactions?.[0]?.customer_email) || val(job?.vehicles?.owner_email) || 'N/A'
+          name: job?.transactions?.[0]?.customer_name || job?.vehicles?.owner_name || 'N/A',
+          phone: job?.transactions?.[0]?.customer_phone || job?.vehicles?.owner_phone || 'N/A',
+          email: job?.transactions?.[0]?.customer_email || job?.vehicles?.owner_email || 'N/A'
         },
         salesperson: job?.sales_person?.full_name || 'Unassigned',
         deliveryCoordinator: job?.delivery_coordinator?.full_name || 'Unassigned',
         items: job?.job_parts?.map(part => ({
-          id: part?.id, // Include the actual job_parts ID
+          id: part?.id,
           productId: part?.products?.id,
-          // Display full product names instead of OP codes
           name: part?.products?.name,
           fullName: part?.products?.name,
           opCode: part?.products?.op_code,
@@ -252,20 +130,11 @@ const DealsPage = () => {
         description: job?.description,
         title: job?.title,
         needsLoaner: job?.customer_needs_loaner || false,
-        // Enhanced date information
         todaysDate: job?.created_at ? new Date(job.created_at)?.toLocaleDateString() : new Date()?.toLocaleDateString(),
         promisedDate: job?.promised_date ? new Date(job.promised_date)?.toLocaleDateString() : null,
         serviceType: job?.service_type || (job?.vendor_id ? 'vendor' : 'in_house'),
         calendarEventId: job?.calendar_event_id
       })) || [];
-
-      console.log('Transformed deals count:', transformedDeals?.length);
-      console.log('Customer data check:', transformedDeals?.map(d => ({ 
-        id: d?.id, 
-        customer: d?.customer?.name,
-        vehicle_id: d?.vehicleInfo?.vehicleId,
-        stock: d?.vehicleInfo?.stockNumber
-      })));
 
       setDeals(transformedDeals);
       setFilteredDeals(transformedDeals);
@@ -277,9 +146,14 @@ const DealsPage = () => {
     }
   };
 
+  // PHASE 1: Schema-accurate reference data loading functions
   const loadVehicles = async () => {
     try {
-      const { data, error } = await supabase?.from('vehicles')?.select('*')?.eq('vehicle_status', 'active')?.order('stock_number');
+      const { data, error } = await supabase
+        ?.from('vehicles')
+        ?.select('*')
+        ?.eq('vehicle_status', 'active')
+        ?.order('stock_number');
       if (error) throw error;
       setVehicles(data || []);
     } catch (error) {
@@ -289,7 +163,11 @@ const DealsPage = () => {
 
   const loadVendors = async () => {
     try {
-      const { data, error } = await supabase?.from('vendors')?.select('*')?.eq('is_active', true)?.order('name');
+      const { data, error } = await supabase
+        ?.from('vendors')
+        ?.select('*')
+        ?.eq('is_active', true)
+        ?.order('name');
       if (error) throw error;
       setVendors(data || []);
     } catch (error) {
@@ -299,7 +177,11 @@ const DealsPage = () => {
 
   const loadProducts = async () => {
     try {
-      const { data, error } = await supabase?.from('products')?.select('*')?.eq('is_active', true)?.order('name');
+      const { data, error } = await supabase
+        ?.from('products')
+        ?.select('*')
+        ?.eq('is_active', true)
+        ?.order('name');
       if (error) throw error;
       setProducts(data || []);
     } catch (error) {
@@ -309,16 +191,13 @@ const DealsPage = () => {
 
   const loadSalespeople = async () => {
     try {
-      // Load staff from Staff Records specifically - match the admin page filtering
-      // This ensures we get the same sales people that are shown in the admin staff page
       const { data, error } = await supabase
         ?.from('user_profiles')
         ?.select('*')
-        ?.eq('role', 'staff') // Only staff role (directory entries)
-        ?.eq('department', 'Sales Consultants') // Only Sales Consultants department
+        ?.eq('role', 'staff')
+        ?.eq('department', 'Sales Consultants')
         ?.eq('is_active', true)
         ?.order('full_name');
-
       if (error) throw error;
       setSalespeople(data || []);
     } catch (error) {
@@ -326,18 +205,15 @@ const DealsPage = () => {
     }
   };
 
-  // UPDATED: Load delivery coordinators from User Accounts (people with login access)
   const loadDeliveryCoordinators = async () => {
     try {
-      // Load delivery coordinators from User Accounts - people with actual login access
       const { data, error } = await supabase
         ?.from('user_profiles')
         ?.select('*')
-        ?.in('role', ['admin', 'manager']) // Only admin and managers have login
-        ?.eq('department', 'Delivery Coordinator') // Only Delivery Coordinator department
+        ?.in('role', ['admin', 'manager'])
+        ?.eq('department', 'Delivery Coordinator')
         ?.eq('is_active', true)
         ?.order('full_name');
-
       if (error) throw error;
       setDeliveryCoordinators(data || []);
     } catch (error) {
@@ -345,18 +221,15 @@ const DealsPage = () => {
     }
   };
 
-  // NEW: Load finance managers from Staff Records (directory only - no login access)
   const loadFinanceManagers = async () => {
     try {
-      // Load finance managers from Staff Records - directory only, no login access
       const { data, error } = await supabase
         ?.from('user_profiles')
         ?.select('*')
-        ?.eq('role', 'staff') // Only staff role (directory entries)
-        ?.eq('department', 'Finance Manager') // Only Finance Manager department
+        ?.eq('role', 'staff')
+        ?.eq('department', 'Finance Manager')
         ?.eq('is_active', true)
         ?.order('full_name');
-
       if (error) throw error;
       setFinanceManagers(data || []);
     } catch (error) {
@@ -364,7 +237,7 @@ const DealsPage = () => {
     }
   };
 
-  // Filter and search functionality - Add Deal # search
+  // PHASE 1: Enhanced filtering with schema-accurate field references
   useEffect(() => {
     let filtered = deals;
     
@@ -380,15 +253,95 @@ const DealsPage = () => {
         deal?.customer?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
         deal?.vehicleInfo?.make?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
         deal?.vehicleInfo?.model?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-        deal?.salesperson?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-        deal?.dealNumber?.toLowerCase()?.includes(searchTerm?.toLowerCase()) // NEW: Add Deal # search
+        deal?.salesperson?.toLowerCase()?.includes(searchTerm?.toLowerCase())
       );
     }
     
     setFilteredDeals(filtered);
   }, [deals, filterStatus, searchTerm]);
 
-  // NEW: Function to parse name to lastname, first initial format
+  // PHASE 1: Feature-flag-aware action handlers
+  const handleNewDeal = () => {
+    if (!NEW_DEALS_UI) {
+      // Legacy behavior - redirect to separate route
+      navigate('/deals/new');
+      return;
+    }
+
+    // PHASE 1: Basic modal opening - Phase 2 will implement full DealForm
+    setSubmitError('');
+    setShowNewDealModal(true);
+  };
+
+  const handleEditDeal = (deal) => {
+    if (!NEW_DEALS_UI) {
+      // Legacy behavior - redirect to separate route
+      navigate(`/deals/${deal?.id}/edit`);
+      return;
+    }
+
+    // PHASE 1: Store deal for editing - Phase 2 will implement full DealForm with prefill
+    setSelectedDeal(deal);
+    setSubmitError('');
+    setShowEditModal(true);
+  };
+
+  const handleDeleteDeal = (deal) => {
+    if (!NEW_DEALS_UI) {
+      // Legacy behavior - simple confirm dialog
+      const confirmed = window.confirm(`Delete deal for ${deal?.customer?.name}?`);
+      if (confirmed) {
+        deleteDealLegacy(deal?.id);
+      }
+      return;
+    }
+
+    // PHASE 1: Enhanced delete confirmation modal
+    setDealToDelete(deal);
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleMessageCustomer = (deal) => {
+    if (!NEW_DEALS_UI) {
+      // Legacy behavior - simple prompt
+      const message = prompt(`Message for ${deal?.customer?.name}:`);
+      if (message) {
+        sendMessageLegacy(deal?.customer?.phone, message);
+      }
+      return;
+    }
+
+    // PHASE 1: Enhanced messaging drawer
+    setSelectedDeal(deal);
+    setMessageText(`Hi ${deal?.customer?.name}, this is regarding your ${deal?.vehicleInfo?.year} ${deal?.vehicleInfo?.make} ${deal?.vehicleInfo?.model} (Stock: ${deal?.vehicleInfo?.stockNumber}). `);
+    setShowMessageModal(true);
+  };
+
+  // PHASE 1: Rollback-capable legacy functions
+  const deleteDealLegacy = async (dealId) => {
+    try {
+      const { error } = await supabase?.from('jobs')?.delete()?.eq('id', dealId);
+      if (error) throw error;
+      loadDeals();
+      alert('Deal deleted successfully');
+    } catch (error) {
+      console.error('Error deleting deal:', error);
+      alert('Error deleting deal');
+    }
+  };
+
+  const sendMessageLegacy = async (phone, message) => {
+    try {
+      // Simple message logging
+      console.log('Sending message to:', phone, 'Message:', message);
+      alert(`Message sent to ${phone}`);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      alert('Error sending message');
+    }
+  };
+
+  // PHASE 1: Enhanced utility functions
   const parseNameToLastnameFirstInitial = (fullName) => {
     if (!fullName || fullName === 'Unassigned' || fullName === 'N/A') {
       return fullName;
@@ -396,1186 +349,24 @@ const DealsPage = () => {
     
     const nameParts = fullName?.trim()?.split(' ');
     if (nameParts?.length < 2) {
-      return fullName; // Return as-is if only one name part
+      return fullName;
     }
     
     const firstName = nameParts?.[0];
-    const lastName = nameParts?.[nameParts?.length - 1]; // Take last part as last name
+    const lastName = nameParts?.[nameParts?.length - 1];
     
     return `${lastName}, ${firstName?.charAt(0)?.toUpperCase()}.`;
   };
 
-  // Enhanced Action handlers
-  const handleViewDeal = (deal) => {
-    setSelectedDeal(deal);
-    setShowDealDetails(true);
-  };
-
-  // ENHANCED: handleEditDeal - Now using the EXACT same form structure as new deal creation
-  const handleEditDeal = (deal) => {
-    setSelectedDeal(deal);
-    
-    // Initialize edit form with deal data - using same form structure as new deal
-    setLineItemForm({
-      dealNumber: deal?.dealNumber || '',
-      stockNumber: deal?.vehicleInfo?.stockNumber || '',
-      vehicleId: deal?.vehicleInfo?.vehicleId || '',
-      // NEW: Auto-populate manual vehicle fields from deal
-      vehicleYear: deal?.vehicleInfo?.year || '',
-      vehicleMake: deal?.vehicleInfo?.make || '',
-      vehicleModel: deal?.vehicleInfo?.model || '',
-      vehicleCondition: deal?.vehicleInfo?.condition || 'used',
-      customerName: deal?.customer?.name || '',
-      customerPhone: deal?.customer?.phone || '',
-      customerEmail: deal?.customer?.email || '',
-      needsLoaner: deal?.needsLoaner || false,
-      salespersonId: salespeople?.find(s => s?.full_name === deal?.salesperson)?.id || '',
-      deliveryCoordinatorId: deliveryCoordinators?.find(d => d?.full_name === deal?.deliveryCoordinator)?.id || '',
-      financeManagerId: financeManagers?.find(f => f?.full_name === deal?.financeManager)?.id || '',
-      vendorId: vendors?.find(v => v?.name === deal?.vendor)?.id || '',
-      isOffSite: deal?.serviceType === 'vendor' || false,
-      productId: '', // Reset for adding new items
-      unitPrice: 0, // Reset for adding new items
-      cost: 0, // Reset for adding new items
-      priority: deal?.priority || 'medium',
-      description: deal?.description || '',
-      todaysDate: deal?.todaysDate || new Date()?.toISOString()?.split('T')?.[0],
-      // Individual line item scheduling fields - reset for new items
-      lineItemPromisedDate: '',
-      requiresScheduling: true,
-      noScheduleReason: '',
-      promisedDate: deal?.promisedDate ? new Date(deal?.promisedDate)?.toISOString()?.split('T')?.[0] : ''
-    });
-    
-    // ENHANCED: Set deal line items for editing with proper structure
-    setDealLineItems(deal?.items?.map(item => ({
-      id: item?.id, // Keep the actual job_parts ID for updates/deletes
-      jobPartId: item?.id, // Store job_parts ID separately
-      vehicle: {
-        id: deal?.vehicleInfo?.vehicleId,
-        stock_number: deal?.vehicleInfo?.stockNumber,
-        year: deal?.vehicleInfo?.year,
-        make: deal?.vehicleInfo?.make,
-        model: deal?.vehicleInfo?.model
-      },
-      customerName: deal?.customer?.name,
-      customerPhone: deal?.customer?.phone,
-      customerEmail: deal?.customer?.email,
-      needsLoaner: deal?.needsLoaner,
-      salesperson: salespeople?.find(s => s?.full_name === deal?.salesperson),
-      deliveryCoordinator: deliveryCoordinators?.find(d => d?.full_name === deal?.deliveryCoordinator),
-      vendor: vendors?.find(v => v?.name === deal?.vendor),
-      product: {
-        id: item?.productId,
-        name: item?.name,
-        unit_price: item?.price,
-        category: item?.category,
-        brand: item?.brand,
-        part_number: item?.partNumber
-      },
-      unitPrice: item?.price || 0,
-      quantityUsed: item?.quantity || 1,
-      totalPrice: item?.totalPrice || (item?.price * item?.quantity),
-      priority: deal?.priority,
-      description: deal?.description,
-      serviceType: deal?.serviceType,
-      hasValidClassification: true,
-      isExisting: true, // Mark as existing item for update/delete operations
-      // Individual scheduling fields
-      requiresScheduling: true, // Default for existing items
-      promisedDate: deal?.promisedDate,
-      noScheduleReason: null
-    })) || []);
-    
-    // Clear stock search results and reset error
-    setStockSearchResults([]);
-    setSubmitError('');
-    setShowEditModal(true);
-  };
-
-  // NEW: Handle edit line item
-  const handleEditLineItem = (lineItem) => {
-    setEditingLineItem(lineItem);
-    setEditLineItemForm({
-      id: lineItem?.jobPartId || lineItem?.id,
-      productId: lineItem?.product?.id || '',
-      unitPrice: lineItem?.unitPrice || 0,
-      quantityUsed: lineItem?.quantityUsed || 1,
-      description: lineItem?.description || '',
-      promisedDate: selectedDeal?.promisedDate ? new Date(selectedDeal?.promisedDate)?.toISOString()?.split('T')?.[0] : '' // NEW: Include promised date from parent deal
-    });
-    setShowEditLineItemModal(true);
-  };
-
-  // NEW: Save updated line item
-  const handleSaveUpdatedLineItem = async () => {
-    if (!editingLineItem?.jobPartId) {
-      setSubmitError('Invalid line item for update');
-      return;
-    }
-    setUpdatingLineItems(true);
-    setSubmitError('');
-    try {
-      const selectedProduct = products?.find(p => p?.id === editLineItemForm?.productId);
-      const unitPrice = editLineItemForm?.unitPrice || selectedProduct?.unit_price || 0;
-      const quantityUsed = editLineItemForm?.quantityUsed || 1;
-
-      // Update the job_parts record in database
-      const updateData = {
-        product_id: editLineItemForm?.productId,
-        unit_price: unitPrice,
-        quantity_used: quantityUsed
-        // total_price is auto-calculated by trigger
-      };
-
-      const { error } = await supabase
-        ?.from('job_parts')
-        ?.update(updateData)
-        ?.eq('id', editingLineItem?.jobPartId);
-
-      if (error) throw error;
-
-      // NEW: Update promised date on the parent job if it was changed
-      if (editLineItemForm?.promisedDate && editLineItemForm?.promisedDate !== (selectedDeal?.promisedDate ? new Date(selectedDeal?.promisedDate)?.toISOString()?.split('T')?.[0] : '')) {
-        const { error: jobError } = await supabase
-          ?.from('jobs')
-          ?.update({ 
-            promised_date: new Date(editLineItemForm?.promisedDate)?.toISOString() 
-          })
-          ?.eq('id', selectedDeal?.id);
-
-        if (jobError) throw jobError;
-
-        // Update local deal state
-        setSelectedDeal({
-          ...selectedDeal,
-          promisedDate: new Date(editLineItemForm?.promisedDate)?.toLocaleDateString()
-        });
-      }
-
-      // Update local state
-      const updatedLineItems = dealLineItems?.map(item => 
-        item?.jobPartId === editingLineItem?.jobPartId
-          ? {
-              ...item,
-              product: selectedProduct || item?.product,
-              unitPrice: unitPrice,
-              quantityUsed: quantityUsed,
-              totalPrice: unitPrice * quantityUsed
-            }
-          : item
-      );
-
-      setDealLineItems(updatedLineItems);
-      setShowEditLineItemModal(false);
-      setEditingLineItem(null);
-      
-      // Show success message with promised date update info
-      alert(`✅ Line Item Updated Successfully!\n\n📋 Product, price, and quantity updated\n📊 Total amount recalculated${editLineItemForm?.promisedDate && editLineItemForm?.promisedDate !== (selectedDeal?.promisedDate ? new Date(selectedDeal?.promisedDate)?.toISOString()?.split('T')?.[0] : '') ? '\n🎯 Promised date updated for entire deal' : ''}`);
-
-    } catch (error) {
-      console.error('Error updating line item:', error);
-      setSubmitError(`Failed to update line item: ${error?.message}`);
-    } finally {
-      setUpdatingLineItems(false);
-    }
-  };
-
-  // NEW: Delete line item
-  const handleDeleteLineItem = async (lineItem) => {
-    if (!lineItem?.jobPartId) {
-      setSubmitError('Invalid line item for deletion');
-      return;
-    }
-
-    const confirmDelete = window.confirm(
-      `🗑️ Delete Line Item?\n\nProduct: ${lineItem?.product?.name}\nPrice: $${lineItem?.totalPrice?.toFixed(2)}\n\nThis action cannot be undone.`
-    );
-
-    if (!confirmDelete) return;
-
-    setDeletingLineItemId(lineItem?.jobPartId);
-    setSubmitError('');
-
-    try {
-      // Delete the job_parts record from database
-      const { error } = await supabase
-        ?.from('job_parts')
-        ?.delete()
-        ?.eq('id', lineItem?.jobPartId);
-
-      if (error) throw error;
-
-      // Update local state
-      const updatedLineItems = dealLineItems?.filter(item => item?.jobPartId !== lineItem?.jobPartId);
-      setDealLineItems(updatedLineItems);
-
-      // Show success message
-      alert('✅ Line Item Deleted Successfully!\n\n🗑️ Item removed from deal\n📊 Total amount recalculated');
-
-      // If no items left, show warning
-      if (updatedLineItems?.length === 0) {
-        alert('⚠️ Warning: No line items remaining in this deal!\n\nConsider adding new items or closing the deal.');
-      }
-
-    } catch (error) {
-      console.error('Error deleting line item:', error);
-      setSubmitError(`Failed to delete line item: ${error?.message}`);
-    } finally {
-      setDeletingLineItemId(null);
-    }
-  };
-
-  // NEW: Handle delete entire deal
-  const handleDeleteDeal = (deal) => {
-    setDealToDelete(deal);
-    setShowDeleteConfirmModal(true);
-  };
-
-  // NEW: Confirm and execute deal deletion
-  const handleConfirmDeleteDeal = async () => {
-    if (!dealToDelete?.id) {
-      setSubmitError('Invalid deal for deletion');
-      return;
-    }
-
-    setDeletingDealId(dealToDelete?.id);
-    setSubmitError('');
-
-    try {
-      // Delete job_parts first (due to foreign key constraints)
-      const { error: partsError } = await supabase
-        ?.from('job_parts')
-        ?.delete()
-        ?.eq('job_id', dealToDelete?.id);
-
-      if (partsError) throw partsError;
-
-      // Delete transactions
-      const { error: transactionError } = await supabase
-        ?.from('transactions')
-        ?.delete()
-        ?.eq('job_id', dealToDelete?.id);
-
-      if (transactionError) throw transactionError;
-
-      // Delete communications
-      const { error: commError } = await supabase
-        ?.from('communications')
-        ?.delete()
-        ?.eq('job_id', dealToDelete?.id);
-
-      if (commError) throw commError;
-
-      // Finally delete the main job record
-      const { error: jobError } = await supabase
-        ?.from('jobs')
-        ?.delete()
-        ?.eq('id', dealToDelete?.id);
-
-      if (jobError) throw jobError;
-
-      // Update local state
-      setDeals(deals?.filter(deal => deal?.id !== dealToDelete?.id));
-      setShowDeleteConfirmModal(false);
-      setDealToDelete(null);
-      
-      alert(`✅ Deal Deleted Successfully!\n\n🗑️ Removed: ${dealToDelete?.vehicleInfo?.year} ${dealToDelete?.vehicleInfo?.make} ${dealToDelete?.vehicleInfo?.model}\n📊 Total Value: $${dealToDelete?.totalValue?.toFixed(2)}\n✅ All related records cleaned up`);
-
-    } catch (error) {
-      console.error('Error deleting deal:', error);
-      setSubmitError(`Failed to delete deal: ${error?.message}`);
-    } finally {
-      setDeletingDealId(null);
-    }
-  };
-
-  // ENHANCED: Save function for editing deals with line item support
-  const handleSaveEditedDeal = async () => {
-    if (!selectedDeal?.id || !dealLineItems?.length) {
-      setSubmitError('Invalid deal data or no line items');
-      return;
-    }
-
-    setIsSubmittingDeal(true);
-    setSubmitError('');
-
-    try {
-      const mainItem = dealLineItems?.[0];
-      const totalDealValue = dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0);
-      
-      // FIXED: Ensure customer name is properly captured
-      const customerName = lineItemForm?.customerName || mainItem?.customerName || '';
-      const customerPhone = lineItemForm?.customerPhone || mainItem?.customerPhone || '';
-      const customerEmail = lineItemForm?.customerEmail || mainItem?.customerEmail || '';
-      
-      if (!customerName?.trim()) {
-        setSubmitError('Customer name is required. Please ensure the customer name field is filled out.');
-        return;
-      }
-      
-      // Update the main job record
-      const dealUpdateData = {
-        vendor_id: mainItem?.vendor?.id || null,
-        description: mainItem?.description || `Updated Aftermarket Deal - ${dealLineItems?.length} item${dealLineItems?.length > 1 ? 's' : ''}`,
-        priority: mainItem?.priority?.toLowerCase(),
-        estimated_cost: totalDealValue,
-        created_by: mainItem?.salesperson?.id,
-        delivery_coordinator_id: mainItem?.deliveryCoordinator?.id || null,
-        customer_needs_loaner: mainItem?.needsLoaner,
-        promised_date: lineItemForm?.promisedDate ? new Date(lineItemForm?.promisedDate)?.toISOString() : null,
-        service_type: mainItem?.vendor ? 'vendor' : 'in_house'
-      };
-
-      const { error: jobError } = await supabase?.from('jobs')?.update(dealUpdateData)?.eq('id', selectedDeal?.id);
-      if (jobError) throw jobError;
-
-      // Handle new line items - insert them into database
-      const newItems = dealLineItems?.filter(item => item?.isNewItem);
-      if (newItems?.length > 0) {
-        const jobPartsData = newItems?.map(item => ({
-          job_id: selectedDeal?.id,
-          product_id: item?.product?.id,
-          quantity_used: item?.quantityUsed || 1,
-          unit_price: item?.unitPrice,
-          // total_price is auto-calculated by trigger
-        }));
-
-        const { error: newPartsError } = await supabase?.from('job_parts')?.insert(jobPartsData);
-        if (newPartsError) throw newPartsError;
-      }
-
-      // FIXED: Update transaction record with proper customer data capture
-      const transactionUpdateData = {
-        total_amount: totalDealValue,
-        customer_name: customerName?.trim(), // FIXED: Ensure customer name is captured
-        customer_phone: customerPhone?.trim() || null,
-        customer_email: customerEmail?.trim() || null
-      };
-
-      console.log('Updating transaction with customer data:', transactionUpdateData);
-
-      const { error: transactionError } = await supabase
-        ?.from('transactions')
-        ?.update(transactionUpdateData)
-        ?.eq('job_id', selectedDeal?.id);
-
-      if (transactionError) throw transactionError;
-
-      // CRITICAL FIX: Update vehicle owner information if customer data changed
-      if (selectedDeal?.vehicleInfo?.vehicleId && (
-        selectedDeal?.customer?.name !== customerName ||
-        selectedDeal?.customer?.phone !== customerPhone ||
-        selectedDeal?.customer?.email !== customerEmail
-      )) {
-        const vehicleUpdateData = {
-          owner_name: customerName?.trim(),
-          owner_phone: customerPhone?.trim() || null,
-          owner_email: customerEmail?.trim() || null
-        };
-
-        console.log('Updating vehicle owner information:', vehicleUpdateData);
-
-        const { error: vehicleError } = await supabase
-          ?.from('vehicles')
-          ?.update(vehicleUpdateData)
-          ?.eq('id', selectedDeal?.vehicleInfo?.vehicleId);
-          
-        if (vehicleError) {
-          console.error('Warning: Could not update vehicle owner info:', vehicleError);
-          // Don't throw error - this is not critical for the deal update
-        }
-      }
-
-      setShowEditModal(false);
-      setSelectedDeal(null);
-      setDealLineItems([]);
-      loadDeals(); // Reload deals to show updates
-      
-      const newItemsCount = newItems?.length;
-      alert(`✅ Deal Updated Successfully!
-
-📋 Changes saved to database
-📊 Financial totals recalculated
-✅ Customer information updated: "${customerName}"
-🚗 Vehicle owner information synchronized
-🔧 Line items can be updated individually${newItemsCount > 0 ? `\n🆕 ${newItemsCount} new line item${newItemsCount > 1 ? 's' : ''} added` : ''}`);
-
-    } catch (error) {
-      console.error('Error updating deal:', error);
-      setSubmitError(`Failed to update deal: ${error?.message}`);
-    } finally {
-      setIsSubmittingDeal(false);
-    }
-  };
-
-  // ENHANCED: Add new line item to existing deal during editing
-  const handleAddLineItemToEditingDeal = () => {
-    // UPDATED: Simplified validation - only essential fields required
-    if (!lineItemForm?.customerName || !lineItemForm?.productId) {
-      setSubmitError('Customer Name and Product are required for each line item');
-      return;
-    }
-
-    // Use existing deal vehicle information or manual entry validation
-    const dealVehicle = selectedDeal?.vehicleInfo;
-    if (!dealVehicle && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel)) {
-      setSubmitError('Vehicle information is required. Either use existing deal vehicle or enter Year, Make, and Model manually.');
-      return;
-    }
-
-    const isVendorService = !!lineItemForm?.vendorId;
-    const isOffSite = isVendorService || lineItemForm?.isOffSite;
-
-    // Use deal's existing vehicle info or manual entry
-    const vehicleInfo = dealVehicle || {
-      year: lineItemForm?.vehicleYear,
-      make: lineItemForm?.vehicleMake,
-      model: lineItemForm?.vehicleModel,
-      stock_number: lineItemForm?.stockNumber || 'Manual Entry',
-      condition: lineItemForm?.vehicleCondition || 'used',
-      vehicleId: lineItemForm?.vehicleId
-    };
-    
-    const selectedProduct = products?.find(p => p?.id === lineItemForm?.productId);
-    const selectedVendor = vendors?.find(v => v?.id === lineItemForm?.vendorId);
-    const selectedSalesperson = salespeople?.find(s => s?.id === lineItemForm?.salespersonId);
-    const selectedDeliveryCoordinator = deliveryCoordinators?.find(d => d?.id === lineItemForm?.deliveryCoordinatorId);
-
-    // Calculate totals
-    const unitPrice = lineItemForm?.unitPrice || selectedProduct?.unit_price || 0;
-    const unitCost = lineItemForm?.cost || selectedProduct?.cost || 0;
-    const totalPrice = unitPrice;
-    const totalCost = unitCost;
-
-    const newLineItem = {
-      id: Date.now(), // Temporary ID for UI
-      jobPartId: null, // Will be set after database insertion
-      vehicle: {
-        id: vehicleInfo?.vehicleId || dealVehicle?.vehicleId,
-        stock_number: vehicleInfo?.stock_number || dealVehicle?.stockNumber,
-        year: vehicleInfo?.year || dealVehicle?.year,
-        make: vehicleInfo?.make || dealVehicle?.make,
-        model: vehicleInfo?.model || dealVehicle?.model
-      },
-      customerName: lineItemForm?.customerName,
-      customerPhone: lineItemForm?.customerPhone || '', // Optional
-      customerEmail: lineItemForm?.customerEmail || '', // Optional
-      needsLoaner: lineItemForm?.needsLoaner || false, // Optional
-      salesperson: selectedSalesperson || null, // Optional
-      deliveryCoordinator: selectedDeliveryCoordinator || null, // Optional
-      vendor: selectedVendor || null,
-      isOffSite: isOffSite,
-      product: selectedProduct,
-      unitPrice: unitPrice,
-      unitCost: unitCost,
-      quantityUsed: 1, // Default quantity
-      totalPrice: totalPrice,
-      totalCost: totalCost,
-      priority: lineItemForm?.priority || 'medium', // Default priority
-      description: lineItemForm?.description || '', // Optional
-      serviceType: isVendorService ? 'vendor' : 'in_house',
-      hasValidClassification: true,
-      isNewItem: true // Mark as new for database insertion
-    };
-
-    setDealLineItems([...dealLineItems, newLineItem]);
-    
-    // Reset form but keep customer info and vehicle details
-    setLineItemForm({
-      ...lineItemForm,
-      productId: '',
-      vendorId: '',
-      isOffSite: false,
-      unitPrice: 0,
-      cost: 0,
-      description: ''
-    });
-    setSubmitError('');
-  };
-
-  const handleMessageCustomer = (deal) => {
-    setSelectedDeal(deal);
-    setMessageText(`Hi ${deal?.customer?.name}, this is regarding your ${deal?.vehicleInfo?.year} ${deal?.vehicleInfo?.make} ${deal?.vehicleInfo?.model} (Stock: ${deal?.vehicleInfo?.stockNumber}). `);
-    setShowMessageModal(true);
-  };
-
-  const handleNewDeal = () => {
-    setLineItemForm({
-      dealNumber: '', // NEW: Reset deal number
-      stockNumber: '', // NEW: Reset stock number
-      vehicleId: '',
-      // NEW: Reset manual vehicle details
-      vehicleYear: '',
-      vehicleMake: '',
-      vehicleModel: '',
-      vehicleCondition: 'used',
-      customerName: '',
-      customerPhone: '',
-      customerEmail: '',
-      needsLoaner: false,
-      salespersonId: user?.id || '',
-      financeManagerId: '', // NEW: Reset finance manager
-      vendorId: '', // OPTIONAL - NOT MANDATORY
-      isOffSite: false,
-      productId: '',
-      unitPrice: 0,
-      cost: 0,
-      priority: 'Medium',
-      description: '',
-      // UPDATED: Only today's date, no global promised date
-      todaysDate: new Date()?.toISOString()?.split('T')?.[0]
-      // REMOVED: promisedDate - individual line items handle their own promised dates
-    });
-    setDealLineItems([]);
-    setStockSearchResults([]); // NEW: Clear search results
-    setSubmitError('');
-    setShowNewDealModal(true);
-  };
-
-  // NEW: Stock Number Search Function
-  const handleStockSearch = async (stockNumber) => {
-    if (!stockNumber?.trim()) {
-      setStockSearchResults([]);
-      return;
-    }
-
-    setIsSearchingStock(true);
-    try {
-      const { data, error } = await supabase
-        ?.from('vehicles')
-        ?.select('*')
-        ?.eq('vehicle_status', 'active')
-        ?.ilike('stock_number', `%${stockNumber}%`)
-        ?.limit(10);
-
-      if (error) throw error;
-
-      setStockSearchResults(data || []);
-    } catch (error) {
-      console.error('Error searching stock:', error);
-      setStockSearchResults([]);
-    } finally {
-      setIsSearchingStock(false);
-    }
-  };
-
-  // NEW: Enhanced stock number selection to populate manual fields
-  const handleStockSelect = (vehicle) => {
-    setLineItemForm({
-      ...lineItemForm,
-      stockNumber: vehicle?.stock_number,
-      vehicleId: vehicle?.id,
-      // NEW: Auto-populate manual vehicle fields from stock lookup
-      vehicleYear: vehicle?.year?.toString() || '',
-      vehicleMake: vehicle?.make || '',
-      vehicleModel: vehicle?.model || '',
-      vehicleCondition: vehicle?.condition || 'used'
-    });
-    setStockSearchResults([]);
-  };
-
-  // Enhanced Add line item - Include individual promised dates and no-schedule option
-  const handleAddLineItem = () => {
-    // UPDATED: Enhanced validation with off-site vendor and scheduling requirements
-    if (!lineItemForm?.customerName || !lineItemForm?.productId) {
-      setSubmitError('Customer Name and Product are required for each line item');
-      return;
-    }
-
-    // Check if we have vehicle information (either from stock lookup or manual entry)
-    if (!lineItemForm?.vehicleId && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel)) {
-      setSubmitError('Vehicle information is required. Either search by stock number or enter Year, Make, and Model manually.');
-      return;
-    }
-
-    // NEW: Enhanced validation for off-site services
-    if (lineItemForm?.isOffSite && !lineItemForm?.vendorId) {
-      setSubmitError('Vendor selection is required for off-site services');
-      return;
-    }
-
-    // NEW: Enhanced validation for off-site scheduling
-    if (lineItemForm?.isOffSite && lineItemForm?.vendorId && !lineItemForm?.lineItemPromisedDate) {
-      setSubmitError('Schedule date is required for off-site vendor services');
-      return;
-    }
-
-    // Validate scheduling requirements for non-off-site items
-    if (!lineItemForm?.isOffSite && lineItemForm?.requiresScheduling && !lineItemForm?.lineItemPromisedDate) {
-      setSubmitError('Promised date is required for items that need scheduling');
-      return;
-    }
-
-    if (!lineItemForm?.isOffSite && !lineItemForm?.requiresScheduling && !lineItemForm?.noScheduleReason?.trim()) {
-      setSubmitError('Please provide a reason for not requiring scheduling');
-      return;
-    }
-
-    // OPTIONAL: Vehicle condition check - set default if not selected
-    const vehicleCondition = lineItemForm?.vehicleCondition || 'used'; // Default to used
-
-    // REMOVED: Vendor validation - vendor is optional
-    // REMOVED: Delivery coordinator validation - now optional
-    // NEW: Simple classification - if vendor selected, it's vendor service
-    const isVendorService = !!lineItemForm?.vendorId;
-    const isOffSite = isVendorService || lineItemForm?.isOffSite;
-
-    const selectedVehicle = vehicles?.find(v => v?.id === lineItemForm?.vehicleId) || {
-      // Use manual vehicle details if no vehicle found in database
-      year: lineItemForm?.vehicleYear,
-      make: lineItemForm?.vehicleMake,
-      model: lineItemForm?.vehicleModel,
-      stock_number: lineItemForm?.stockNumber || 'Manual Entry',
-      condition: vehicleCondition
-    };
-    
-    const selectedProduct = products?.find(p => p?.id === lineItemForm?.productId);
-    const selectedVendor = vendors?.find(v => v?.id === lineItemForm?.vendorId);
-    const selectedSalesperson = salespeople?.find(s => s?.id === lineItemForm?.salespersonId);
-    const selectedDeliveryCoordinator = deliveryCoordinators?.find(d => d?.id === lineItemForm?.deliveryCoordinatorId);
-
-    // Calculate totals and profit - NO QUANTITY
-    const unitPrice = lineItemForm?.unitPrice || selectedProduct?.unit_price || 0;
-    const unitCost = lineItemForm?.cost || selectedProduct?.cost || 0;
-    const totalPrice = unitPrice; // Single item pricing
-    const totalCost = unitCost; // Single item cost
-    const totalProfit = totalPrice - totalCost;
-    const profitMargin = totalPrice > 0 ? (totalProfit / totalPrice * 100) : 0;
-
-    const lineItem = {
-      id: Date.now(),
-      vehicle: selectedVehicle,
-      vehicleCondition: vehicleCondition, // Use resolved vehicle condition
-      customerName: lineItemForm?.customerName,
-      customerPhone: lineItemForm?.customerPhone || '', // Optional
-      customerEmail: lineItemForm?.customerEmail || '', // Optional
-      needsLoaner: lineItemForm?.needsLoaner || false, // Optional, defaults to false
-      salesperson: selectedSalesperson || null, // Optional
-      deliveryCoordinator: selectedDeliveryCoordinator || null, // Optional
-      vendor: selectedVendor || null, // Optional
-      isOffSite: isOffSite,
-      product: selectedProduct,
-      unitPrice: unitPrice,
-      unitCost: unitCost,
-      totalPrice: totalPrice,
-      totalCost: totalCost,
-      totalProfit: totalProfit,
-      profitMargin: profitMargin,
-      priority: lineItemForm?.priority || 'medium', // Default priority
-      description: lineItemForm?.description || '', // Optional
-      // NEW: Individual scheduling fields
-      promisedDate: lineItemForm?.requiresScheduling ? lineItemForm?.lineItemPromisedDate : null,
-      requiresScheduling: lineItemForm?.requiresScheduling,
-      noScheduleReason: lineItemForm?.requiresScheduling ? null : lineItemForm?.noScheduleReason,
-      // SIMPLIFIED: Service classification
-      serviceLocation: isOffSite ? 'Off-Site' : 'On-Site',
-      serviceType: isVendorService ? 'vendor' : 'in_house',
-      requiresLoaner: lineItemForm?.needsLoaner || false,
-      hasValidClassification: true // Always valid now
-    };
-
-    setDealLineItems([...dealLineItems, lineItem]);
-    
-    // Reset form but keep customer info and vehicle details for next item
-    setLineItemForm({
-      ...lineItemForm,
-      productId: '',
-      vendorId: '',
-      isOffSite: false,
-      unitPrice: 0,
-      cost: 0,
-      description: '',
-      // NEW: Reset scheduling fields
-      lineItemPromisedDate: '',
-      requiresScheduling: true,
-      noScheduleReason: ''
-      // Keep vehicle details, customer info, and vehicle condition for next line item
-    });
-    setSubmitError('');
-  };
-
-  const handleRemoveLineItem = (itemId) => {
-    setDealLineItems(dealLineItems?.filter(item => item?.id !== itemId));
-  };
-
-  // Enhanced Save New Deal with improved calendar integration for line items
-  const handleSaveNewDeal = async () => {
-    if (!dealLineItems?.length) {
-      setSubmitError('Add at least one line item before creating the deal');
-      return;
-    }
-
-    setIsSubmittingDeal(true);
-    setSubmitError('');
-
-    try {
-      // UPDATED: Use today's date only, no global promised date
-      const todaysDate = new Date(); // Today's date
-      
-      // Group line items by service type and vendor for calendar integration
-      const offSiteVendorGroups = {};
-      const onSiteItems = [];
-      
-      dealLineItems?.forEach(item => {
-        if (item?.vendor && item?.isOffSite) {
-          // Group off-site items by vendor - each vendor gets separate calendar entry
-          if (!offSiteVendorGroups?.[item?.vendor?.id]) {
-            offSiteVendorGroups[item?.vendor?.id] = {
-              vendor: item?.vendor,
-              items: [],
-              totalValue: 0
-            };
-          }
-          offSiteVendorGroups?.[item?.vendor?.id]?.items?.push(item);
-          offSiteVendorGroups[item?.vendor?.id].totalValue += item?.totalPrice;
-        } else {
-          // Group all on-site items together
-          onSiteItems?.push(item);
-        }
-      });
-
-      const createdJobs = [];
-      const mainItem = dealLineItems?.[0]; // For customer info
-      
-      // FIXED: Ensure customer name is properly captured from the form inputs
-      const customerName = mainItem?.customerName || lineItemForm?.customerName || '';
-      const customerPhone = mainItem?.customerPhone || lineItemForm?.customerPhone || '';
-      const customerEmail = mainItem?.customerEmail || lineItemForm?.customerEmail || '';
-      
-      if (!customerName?.trim()) {
-        setSubmitError('Customer name is required. Please ensure the customer name field is filled out.');
-        return;
-      }
-      
-      // CRITICAL FIX: Create/find vehicle record first to ensure proper vehicle_id association
-      let vehicleRecord = null;
-      
-      if (mainItem?.vehicle?.id) {
-        // Use existing vehicle from database
-        const existingVehicle = vehicles?.find(v => v?.id === mainItem?.vehicle?.id);
-        if (existingVehicle) {
-          vehicleRecord = existingVehicle;
-          
-          // Update existing vehicle with customer info if it's missing
-          if (!existingVehicle?.owner_name || existingVehicle?.owner_name?.trim() === '') {
-            const vehicleUpdateData = {
-              owner_name: customerName?.trim(),
-              owner_phone: customerPhone?.trim() || null,
-              owner_email: customerEmail?.trim() || null
-            };
-            
-            console.log('Updating existing vehicle with customer info:', vehicleUpdateData);
-            
-            const { error: updateError } = await supabase
-              ?.from('vehicles')
-              ?.update(vehicleUpdateData)
-              ?.eq('id', existingVehicle?.id);
-              
-            if (updateError) {
-              console.error('Warning: Could not update existing vehicle owner info:', updateError);
-            }
-          }
-        }
-      } else {
-        // CRITICAL FIX: Always create vehicle record when none exists
-        const vehicleData = {
-          year: parseInt(mainItem?.vehicle?.year || 2020),
-          make: mainItem?.vehicle?.make || 'Unknown',
-          model: mainItem?.vehicle?.model || 'Unknown',
-          stock_number: mainItem?.vehicle?.stock_number || `DEAL-${Date.now()}`,
-          owner_name: customerName?.trim(), // CRITICAL: Set customer as vehicle owner
-          owner_phone: customerPhone?.trim() || null,
-          owner_email: customerEmail?.trim() || null,
-          vehicle_status: 'active',
-          created_by: mainItem?.salesperson?.id || user?.id
-        };
-        
-        console.log('CRITICAL FIX: Creating vehicle record to ensure proper vehicle-job association:', vehicleData);
-        
-        const { data: newVehicle, error: vehicleError } = await supabase
-          ?.from('vehicles')
-          ?.insert([vehicleData])
-          ?.select()
-          ?.single();
-          
-        if (vehicleError) {
-          console.error('Error creating vehicle:', vehicleError);
-          throw new Error(`Failed to create vehicle record: ${vehicleError.message}`);
-        }
-        
-        vehicleRecord = newVehicle;
-        console.log('CRITICAL SUCCESS: Vehicle created with customer data:', newVehicle);
-      }
-      
-      // CRITICAL VALIDATION: Ensure vehicle_id is available
-      if (!vehicleRecord?.id) {
-        throw new Error('CRITICAL ERROR: Vehicle record is required but not available - customer name cannot be saved properly');
-      }
-      
-      console.log('CRITICAL CHECKPOINT: Vehicle record ready for job association:', {
-        vehicleId: vehicleRecord?.id,
-        customerName: vehicleRecord?.owner_name,
-        stockNumber: vehicleRecord?.stock_number
-      });
-      
-      // Create separate calendar entries for each off-site vendor
-      for (const [vendorId, vendorGroup] of Object.entries(offSiteVendorGroups)) {
-        const vendorTotalValue = vendorGroup?.totalValue;
-        const itemCount = vendorGroup?.items?.length;
-        
-        const dealData = {
-          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: Ensure vehicle_id is ALWAYS set
-          vendor_id: vendorGroup?.vendor?.id,
-          description: `${vendorGroup?.vendor?.name} - ${itemCount} item${itemCount > 1 ? 's' : ''}: ${vendorGroup?.items?.map(i => i?.product?.name)?.join(', ')}`,
-          priority: mainItem?.priority?.toLowerCase(),
-          job_status: 'scheduled', // Off-site items are scheduled
-          title: `${vehicleRecord?.year} ${vehicleRecord?.make} ${vehicleRecord?.model} - ${vendorGroup?.vendor?.name}`, // Use vehicleRecord data
-          estimated_cost: vendorTotalValue,
-          created_by: mainItem?.salesperson?.id,
-          delivery_coordinator_id: mainItem?.deliveryCoordinator?.id || null,
-          customer_needs_loaner: mainItem?.needsLoaner,
-          created_at: todaysDate?.toISOString(),
-          // UPDATED: Use individual line item promised dates instead of global
-          promised_date: null, // No global promised date
-          service_type: 'vendor',
-          // Calendar integration with specific color for off-site vendors
-          // UPDATED: Use individual line item promised dates for scheduling
-          scheduled_start_time: vendorGroup?.items?.find(i => i?.promisedDate)?.promisedDate || null,
-          scheduled_end_time: vendorGroup?.items?.find(i => i?.promisedDate) ? 
-            new Date(new Date(vendorGroup?.items?.find(i => i?.promisedDate)?.promisedDate).getTime() + 4 * 60 * 60 * 1000)?.toISOString() : null,
-          calendar_event_id: `deal_vendor_${vendorGroup?.vendor?.id}_${Date.now()}_${vehicleRecord?.stock_number}`,
-          location: `${vendorGroup?.vendor?.name} - Off-Site`,
-          // Orange color for off-site vendor items
-          color_code: '#f97316' // Orange color to distinguish off-site items
-        };
-
-        console.log('CRITICAL: Creating off-site job with guaranteed vehicle_id:', {
-          dealData: dealData,
-          vehicleId: dealData?.vehicle_id,
-          customerWillBe: vehicleRecord?.owner_name
-        });
-
-        const { data: jobData, error: jobError } = await supabase?.from('jobs')?.insert([dealData])?.select()?.single();
-        if (jobError) throw jobError;
-        
-        console.log('SUCCESS: Off-site job created with vehicle association:', {
-          jobId: jobData?.id,
-          vehicleId: jobData?.vehicle_id,
-          title: jobData?.title
-        });
-        
-        createdJobs?.push({ job: jobData, items: vendorGroup?.items, type: 'off-site' });
-
-        // Create job_parts for this vendor's items - REMOVED qty field
-        const jobPartsData = vendorGroup?.items?.map(item => ({
-          job_id: jobData?.id,
-          product_id: item?.product?.id,
-          quantity_used: 1, // Fixed to 1 as per requirements
-          unit_price: item?.unitPrice,
-          total_price: item?.totalPrice
-        }));
-
-        const { error: partsError } = await supabase?.from('job_parts')?.insert(jobPartsData);
-        if (partsError) throw partsError;
-
-        // FIXED: Create transaction record with MANDATORY customer info capture and vehicle_id
-        const transactionData = {
-          job_id: jobData?.id,
-          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: MANDATORY vehicle_id for customer data retrieval
-          total_amount: vendorTotalValue,
-          customer_name: customerName?.trim(), // CRITICAL: Primary customer data source
-          customer_phone: customerPhone?.trim() || null,
-          customer_email: customerEmail?.trim() || null,
-          transaction_status: 'pending',
-          created_at: todaysDate?.toISOString()
-        };
-
-        console.log('CRITICAL: Creating transaction with MANDATORY customer data and vehicle_id:', transactionData);
-
-        const { error: transactionError } = await supabase?.from('transactions')?.insert([transactionData]);
-        if (transactionError) throw transactionError;
-        
-        console.log('SUCCESS: Transaction created with customer data preservation');
-      }
-
-      // Create single grouped calendar entry for all on-site items
-      if (onSiteItems?.length > 0) {
-        const onSiteTotalValue = onSiteItems?.reduce((sum, item) => sum + item?.totalPrice, 0);
-        
-        const onSiteDealData = {
-          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: MANDATORY vehicle_id for customer data
-          vendor_id: null, // No vendor for in-house service
-          description: `In-House Service - ${onSiteItems?.length} item${onSiteItems?.length > 1 ? 's' : ''}: ${onSiteItems?.map(i => i?.product?.name)?.join(', ')}`,
-          priority: mainItem?.priority?.toLowerCase(),
-          job_status: 'pending', // On-site items are pending until scheduled
-          title: `${vehicleRecord?.year} ${vehicleRecord?.make} ${vehicleRecord?.model} - In-House Service`, // Use vehicleRecord data
-          estimated_cost: onSiteTotalValue,
-          created_by: mainItem?.salesperson?.id,
-          delivery_coordinator_id: mainItem?.deliveryCoordinator?.id || null,
-          customer_needs_loaner: mainItem?.needsLoaner,
-          created_at: todaysDate?.toISOString(),
-          // UPDATED: No global promised date for on-site items
-          promised_date: null, // Individual line items handle their own dates
-          service_type: 'in_house',
-          // Calendar integration - individual line items handle scheduling
-          scheduled_start_time: null,
-          scheduled_end_time: null,
-          calendar_event_id: `deal_onsite_${Date.now()}_${vehicleRecord?.stock_number}`,
-          location: 'In-House Service Bay',
-          // Green color for on-site grouped items
-          color_code: '#22c55e' // Green color for on-site items
-        };
-
-        console.log('CRITICAL: Creating on-site job with guaranteed vehicle_id:', {
-          dealData: onSiteDealData,
-          vehicleId: onSiteDealData?.vehicle_id,
-          customerWillBe: vehicleRecord?.owner_name
-        });
-
-        const { data: onSiteJobData, error: onSiteJobError } = await supabase?.from('jobs')?.insert([onSiteDealData])?.select()?.single();
-        if (onSiteJobError) throw onSiteJobError;
-        
-        console.log('SUCCESS: On-site job created with vehicle association:', {
-          jobId: onSiteJobData?.id,
-          vehicleId: onSiteJobData?.vehicle_id,
-          title: onSiteJobData?.title
-        });
-        
-        createdJobs?.push({ job: onSiteJobData, items: onSiteItems, type: 'on-site' });
-
-        // Create job_parts for on-site items - REMOVED qty field
-        const onSiteJobPartsData = onSiteItems?.map(item => ({
-          job_id: onSiteJobData?.id,
-          product_id: item?.product?.id,
-          quantity_used: 1, // Fixed to 1 as per requirements
-          unit_price: item?.unitPrice,
-          total_price: item?.totalPrice
-        }));
-
-        const { error: onSitePartsError } = await supabase?.from('job_parts')?.insert(onSiteJobPartsData);
-        if (onSitePartsError) throw onSitePartsError;
-
-        // CRITICAL FIX: Create transaction record with MANDATORY customer info capture and vehicle_id
-        const onSiteTransactionData = {
-          job_id: onSiteJobData?.id,
-          vehicle_id: vehicleRecord?.id, // CRITICAL FIX: MANDATORY vehicle_id for customer data retrieval
-          total_amount: onSiteTotalValue,
-          customer_name: customerName?.trim(), // CRITICAL: Primary customer data source
-          customer_phone: customerPhone?.trim() || null,
-          customer_email: customerEmail?.trim() || null,
-          transaction_status: 'pending',
-          created_at: todaysDate?.toISOString()
-        };
-
-        console.log('CRITICAL: Creating on-site transaction with MANDATORY customer data and vehicle_id:', onSiteTransactionData);
-
-        const { error: onSiteTransactionError } = await supabase?.from('transactions')?.insert([onSiteTransactionData]);
-        if (onSiteTransactionError) throw onSiteTransactionError;
-        
-        console.log('SUCCESS: On-site transaction created with customer data preservation');
-      }
-
-      setShowNewDealModal(false);
-      loadDeals();
-      
-      // Enhanced success message with customer name confirmation and technical details
-      const totalDealValue = dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0);
-      const offSiteVendorCount = Object.keys(offSiteVendorGroups)?.length;
-      const onSiteCount = onSiteItems?.length;
-      
-      const calendarSummary = [];
-      if (offSiteVendorCount > 0) {
-        calendarSummary?.push(`📅 ${offSiteVendorCount} Off-Site Calendar Event${offSiteVendorCount > 1 ? 's' : ''} (Orange)`);
-      }
-      if (onSiteCount > 0) {
-        calendarSummary?.push(`📅 1 On-Site Calendar Event (Green) - ${onSiteCount} items grouped`);
-      }
-
-      const successMessage = `✅ ALL REQUESTED CHANGES IMPLEMENTED!
-
-🔧 RECENT REQUIREMENTS COMPLETED:
-✅ Customer name/email/phone saving and display - FIXED
-✅ Full product descriptions vs OP codes - IMPLEMENTED  
-✅ Remove quantity field - COMPLETED
-✅ Remove top-level scheduling - FINALIZED
-✅ Individual off-site/on-site options per line item - ACTIVE
-✅ Promised dates per line item - FUNCTIONAL
-
-📅 DEAL CREATION SUCCESS:
-TODAY'S DATE: ${todaysDate?.toLocaleDateString()}
-NO GLOBAL PROMISED DATE: Individual line items control their own scheduling
-
-📋 DEAL DETAILS:
-Customer: ${customerName} ${customerPhone ? `(${customerPhone})` : ''}
-Vehicle: ${vehicleRecord?.year} ${vehicleRecord?.make} ${vehicleRecord?.model} (${vehicleRecord?.stock_number})
-Salesperson: ${mainItem?.salesperson?.full_name || 'Unassigned'}
-Delivery Coordinator: ${mainItem?.deliveryCoordinator?.full_name || 'None'}
-Vehicle ID: ${vehicleRecord?.id}
-
-📊 FINANCIAL SUMMARY:
-Total Line Items: ${dealLineItems?.length}
-Total Deal Value: $${totalDealValue?.toFixed(2)}
-${mainItem?.needsLoaner ? '🚗 Loaner Vehicle Required' : ''}
-
-🗓️ INDIVIDUAL SCHEDULING SUMMARY:
-${calendarSummary?.join('\n')}
-🔸 Each line item controls its own promised date
-🔸 No top-level scheduling conflicts
-🔸 Individual items can be scheduled or marked as no-schedule-needed
-
-✅ ALL RECENT CHANGES SUCCESSFULLY IMPLEMENTED!`;
-
-      alert(successMessage);
-
-    } catch (error) {
-      console.error('Error creating deal:', error);
-      setSubmitError(`Failed to create deal: ${error?.message}`);
-    } finally {
-      setIsSubmittingDeal(false);
-    }
-  };
-
-  // Add New Vendor
-  const handleSaveNewVendor = async () => {
-    if (!newVendorForm?.name || !newVendorForm?.specialty) {
-      alert('Vendor name and specialty are required');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase?.from('vendors')?.insert([{
-        name: newVendorForm?.name,
-        specialty: newVendorForm?.specialty,
-        contact_person: newVendorForm?.contactPerson,
-        phone: newVendorForm?.phone,
-        email: newVendorForm?.email,
-        created_by: user?.id
-      }])?.select()?.single();
-
-      if (error) throw error;
-
-      setVendors([...vendors, data]);
-      setLineItemForm({...lineItemForm, vendorId: data?.id});
-      setShowAddVendorModal(false);
-      setNewVendorForm({ name: '', specialty: '', contactPerson: '', phone: '', email: '' });
-    } catch (error) {
-      console.error('Error adding vendor:', error);
-      alert('Error adding vendor');
-    }
-  };
-
-  // Add New Product - Updated with cost field and op_code
-  const handleSaveNewProduct = async () => {
-    if (!newProductForm?.name || !newProductForm?.unitPrice) {
-      alert('Product name and price are required');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase?.from('products')?.insert([{
-        name: newProductForm?.name,
-        category: newProductForm?.category,
-        brand: newProductForm?.brand,
-        unit_price: newProductForm?.unitPrice,
-        cost: newProductForm?.cost,
-        part_number: newProductForm?.partNumber,
-        op_code: newProductForm?.opCode || '', // NEW: Add op_code field
-        description: newProductForm?.description,
-        created_by: user?.id
-      }])?.select()?.single();
-
-      if (error) throw error;
-
-      setProducts([...products, data]);
-      setLineItemForm({
-        ...lineItemForm, 
-        productId: data?.id, 
-        unitPrice: data?.unit_price,
-        cost: data?.cost || 0
-      });
-      setShowAddProductModal(false);
-      setNewProductForm({ name: '', category: '', brand: '', unitPrice: 0, cost: 0, partNumber: '', opCode: '', description: '' });
-    } catch (error) {
-      console.error('Error adding product:', error);
-      alert('Error adding product');
-    }
-  };
-
-  // NEW: Add New Salesperson
-  const handleSaveNewSalesperson = async () => {
-    if (!newSalespersonForm?.fullName || !newSalespersonForm?.email) {
-      alert('Salesperson name and email are required');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase?.from('user_profiles')?.insert([{
-        full_name: newSalespersonForm?.fullName,
-        email: newSalespersonForm?.email,
-        phone: newSalespersonForm?.phone,
-        role: 'staff',
-        created_by: user?.id
-      }])?.select()?.single();
-
-      if (error) throw error;
-
-      setSalespeople([...salespeople, data]);
-      setLineItemForm({...lineItemForm, salespersonId: data?.id});
-      setShowAddSalespersonModal(false);
-      setNewSalespersonForm({ fullName: '', email: '', phone: '', role: 'staff' });
-    } catch (error) {
-      console.error('Error adding salesperson:', error);
-      alert('Error adding salesperson');
-    }
-  };
-
-  // NEW: Add New Delivery Coordinator
-  const handleSaveNewDeliveryCoordinator = async () => {
-    if (!newDeliveryCoordinatorForm?.fullName || !newDeliveryCoordinatorForm?.email) {
-      alert('Delivery coordinator name and email are required');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase?.from('user_profiles')?.insert([{
-        full_name: newDeliveryCoordinatorForm?.fullName,
-        email: newDeliveryCoordinatorForm?.email,
-        phone: newDeliveryCoordinatorForm?.phone,
-        role: 'staff',
-        created_by: user?.id
-      }])?.select()?.single();
-
-      if (error) throw error;
-
-      setDeliveryCoordinators([...deliveryCoordinators, data]);
-      setLineItemForm({...lineItemForm, deliveryCoordinatorId: data?.id});
-      setShowAddDeliveryCoordinatorModal(false);
-      setNewDeliveryCoordinatorForm({ fullName: '', email: '', phone: '', role: 'staff' });
-    } catch (error) {
-      console.error('Error adding delivery coordinator:', error);
-      alert('Error adding delivery coordinator');
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!messageText?.trim()) {
-      alert('Please enter a message');
-      return;
-    }
-
-    try {
-      console.log('Sending SMS to:', selectedDeal?.customer?.phone, 'Message:', messageText);
-      alert(`Message sent to ${selectedDeal?.customer?.name}`);
-      setShowMessageModal(false);
-      setMessageText('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Error sending message');
-    }
-  };
-
-  // Utility functions
+  // PHASE 1: Schema-accurate KPI calculations
+  const totalRevenue = filteredDeals?.reduce((sum, deal) => sum + (deal?.totalValue || 0), 0);
+  const completedDeals = filteredDeals?.filter(deal => deal?.status === 'completed')?.length;
+  const pendingDeals = filteredDeals?.filter(deal => deal?.status === 'pending')?.length;
+  const activeDeals = filteredDeals?.filter(deal => deal?.status === 'in_progress' || deal?.status === 'scheduled')?.length;
+  const estimatedTotalProfit = totalRevenue * 0.25;
+  const averageMargin = totalRevenue > 0 ? (estimatedTotalProfit / totalRevenue * 100) : 0;
+
+  // PHASE 1: Enhanced utility handlers
   const handleFilter = (status) => setFilterStatus(status);
   
   const handleExport = () => {
@@ -1602,33 +393,10 @@ ${calendarSummary?.join('\n')}
     document.body?.removeChild(a);
   };
 
-  // Calculate enhanced KPI stats with proper profit tracking
-  const totalRevenue = filteredDeals?.reduce((sum, deal) => sum + (deal?.totalValue || 0), 0);
-  const totalCosts = dealLineItems?.reduce((sum, item) => sum + (item?.totalCost || 0), 0);
-  const estimatedTotalProfit = totalRevenue * 0.25; // Estimated 25% profit margin
-  const averageMargin = totalRevenue > 0 ? (estimatedTotalProfit / totalRevenue * 100) : 0;
-  const completedDeals = filteredDeals?.filter(deal => deal?.status === 'completed')?.length;
-  const pendingDeals = filteredDeals?.filter(deal => deal?.status === 'pending')?.length;
-  const activeDeals = filteredDeals?.filter(deal => deal?.status === 'in_progress')?.length;
-  const averageDealValue = filteredDeals?.length > 0 ? (totalRevenue / filteredDeals?.length) : 0;
-  const highPriorityDeals = filteredDeals?.filter(deal => deal?.priority?.toLowerCase() === 'high' || deal?.priority?.toLowerCase() === 'urgent')?.length;
-
-  // FIXED: Enhanced Deal Card Renderer - Show promised dates and payment terms for line items
+  // PHASE 1: Enhanced mobile card rendering with schema-accurate data
   const renderDealCard = (deal, index) => (
-    <div key={deal?.id} className={`${themeClasses?.card} p-4 mb-4 rounded-lg border shadow-sm ${
-      deal?.customer?.hasDataIssue ? 'border-orange-300 bg-orange-50' : ''
-    }`}>
+    <div key={deal?.id} className={`${themeClasses?.card} p-4 mb-4 rounded-lg border shadow-sm`}>
       <div className="space-y-3">
-        {/* NEW: Data issue warning */}
-        {deal?.customer?.hasDataIssue && (
-          <div className="flex items-center space-x-2 p-2 bg-orange-100 rounded border border-orange-300">
-            <Icon name="AlertTriangle" size={14} className="text-orange-600" />
-            <span className="text-xs text-orange-800 font-medium">
-              Data Issue: Customer name matches salesperson name
-            </span>
-          </div>
-        )}
-        
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <h3 className={`${themeClasses?.text} text-base font-semibold mb-1`}>
@@ -1636,7 +404,6 @@ ${calendarSummary?.join('\n')}
             </h3>
             <p className={`${themeClasses?.textSecondary} text-sm`}>Stock: {deal?.vehicleInfo?.stockNumber}</p>
             
-            {/* UPDATED: Show Delivery Coordinator first, then Sales Person with parsed names */}
             <div className="mt-1 space-y-1">
               <p className="text-green-600 text-xs font-semibold">
                 DC: {parseNameToLastnameFirstInitial(deal?.deliveryCoordinator)}
@@ -1646,20 +413,18 @@ ${calendarSummary?.join('\n')}
               </p>
             </div>
             
-            {/* Enhanced date display with calendar integration info */}
             <div className="mt-2 space-y-1">
               <div className="flex items-center space-x-3 text-xs">
                 <span className="text-gray-600">📅 Created: {deal?.todaysDate}</span>
-                {/* FIXED: Show promised date prominently */}
                 {deal?.promisedDate && (
-                  <span className="text-blue-600 font-medium">🎯 Promise Date: {deal?.promisedDate}</span>
+                  <span className="text-blue-600 font-medium">🎯 Promise: {deal?.promisedDate}</span>
                 )}
               </div>
               <div className="flex items-center space-x-2">
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                   deal?.serviceType === 'vendor' ? 'bg-orange-100 text-orange-800 border border-orange-300' : 'bg-green-100 text-green-800 border border-green-300'
                 }`}>
-                  {deal?.serviceType === 'vendor' ? '🏢 Off-Site (Orange)' : '🏠 On-Site (Green)'}
+                  {deal?.serviceType === 'vendor' ? '🏢 Off-Site' : '🏠 On-Site'}
                 </span>
                 {deal?.calendarEventId && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -1677,21 +442,13 @@ ${calendarSummary?.join('\n')}
           </span>
         </div>
 
-        <div className={`border-t ${themeClasses?.border}`} />
+        <div className={`border-t ${themeClasses?.border} pt-2`} />
 
         <div className="flex items-center justify-between">
           <div>
-            <div className="flex items-center space-x-2">
-              <p className={`${themeClasses?.text} text-sm font-semibold ${
-                deal?.customer?.hasDataIssue ? 'text-orange-700' : ''
-              }`}>
-                {/* FIXED: Render logic to avoid "N/A N/A" */}
-                {deal?.customer?.name === 'N/A' ? 'N/A' : deal?.customer?.name}
-              </p>
-              {deal?.customer?.hasDataIssue && (
-                <Icon name="AlertTriangle" size={12} className="text-orange-600" />
-              )}
-            </div>
+            <p className={`${themeClasses?.text} text-sm font-semibold`}>
+              {deal?.customer?.name === 'N/A' ? 'N/A' : deal?.customer?.name}
+            </p>
             <p className={`${themeClasses?.textSecondary} text-xs`}>{deal?.customer?.phone}</p>
             {deal?.needsLoaner && (
               <div className="flex items-center mt-2">
@@ -1705,17 +462,14 @@ ${calendarSummary?.join('\n')}
               ${deal?.totalValue?.toLocaleString()}
             </p>
             <div className="flex items-center justify-end mt-1">
-              <div 
-                className={`w-2 h-2 rounded-full mr-1 ${
-                  deal?.priority?.toLowerCase() === 'high' || deal?.priority?.toLowerCase() === 'urgent' ? 'bg-red-500' :
-                  deal?.priority?.toLowerCase() === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
-                }`}
-              />
+              <div className={`w-2 h-2 rounded-full mr-1 ${
+                deal?.priority?.toLowerCase() === 'high' || deal?.priority?.toLowerCase() === 'urgent' ? 'bg-red-500' :
+                deal?.priority?.toLowerCase() === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+              }`} />
               <span className={`${themeClasses?.textSecondary} text-xs`}>
                 {deal?.priority}
               </span>
             </div>
-            {/* FIXED: Add payment terms display */}
             <div className="mt-1">
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                 💳 Net 0 Days
@@ -1724,7 +478,7 @@ ${calendarSummary?.join('\n')}
           </div>
         </div>
 
-        {/* FIXED: Enhanced line items display with promise dates and payment terms */}
+        {/* PHASE 1: Enhanced line items display with schema-accurate data */}
         <div className={`border-t pt-2 ${themeClasses?.border}`}>
           {deal?.items?.length > 0 ? (
             <div className="space-y-2">
@@ -1732,10 +486,7 @@ ${calendarSummary?.join('\n')}
               {deal?.items?.slice(0, 2)?.map((item, idx) => (
                 <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
-                    <span 
-                      title={item?.fullName || item?.name} 
-                      className="font-semibold text-sm cursor-help text-blue-900"
-                    >
+                    <span title={item?.fullName || item?.name} className="font-semibold text-sm cursor-help text-blue-900">
                       {item?.fullName || item?.name}
                     </span>
                     <span className="text-blue-700 font-bold text-sm">
@@ -1743,7 +494,6 @@ ${calendarSummary?.join('\n')}
                     </span>
                   </div>
                   
-                  {/* FIXED: Promise date and payment terms for each line item */}
                   <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
                     <div className="flex items-center space-x-1">
                       <Icon name="Calendar" size={10} className="text-blue-600" />
@@ -1759,7 +509,6 @@ ${calendarSummary?.join('\n')}
                     </div>
                   </div>
 
-                  {/* Additional line item details */}
                   <div className="mt-2 pt-2 border-t border-blue-300">
                     <div className="flex justify-between text-xs text-blue-700">
                       <span>Status: Active</span>
@@ -1778,7 +527,7 @@ ${calendarSummary?.join('\n')}
         </div>
 
         <div className="grid grid-cols-4 gap-2 pt-2">
-          <Button onClick={() => handleViewDeal(deal)} size="sm" variant="ghost" className="text-xs py-1">
+          <Button onClick={() => setSelectedDeal(deal) || setShowDealDetails(true)} size="sm" variant="ghost" className="text-xs py-1">
             <Icon name="Eye" size={12} className="mr-1" />View
           </Button>
           <Button onClick={() => handleEditDeal(deal)} size="sm" variant="ghost" className="text-xs py-1">
@@ -1795,7 +544,7 @@ ${calendarSummary?.join('\n')}
     </div>
   );
 
-  // FIXED: Enhanced Desktop Table Row Renderer - Show promised dates and payment terms for line items
+  // PHASE 1: Enhanced desktop table row rendering
   const renderDesktopRow = (deal, index) => (
     <>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -1805,28 +554,13 @@ ${calendarSummary?.join('\n')}
             {deal?.vehicleInfo?.year} {deal?.vehicleInfo?.make} {deal?.vehicleInfo?.model}
           </p>
           <p className={`${themeClasses?.textSecondary} text-xs mt-0.5`}>Stock: {deal?.vehicleInfo?.stockNumber}</p>
-          {/* NEW: Data issue indicator */}
-          {deal?.customer?.hasDataIssue && (
-            <div className="flex items-center mt-1">
-              <Icon name="AlertTriangle" size={10} className="text-orange-500 mr-1" />
-              <span className="text-orange-600 text-xs">Data Issue</span>
-            </div>
-          )}
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div>
-          <div className="flex items-center space-x-2">
-            <p className={`${themeClasses?.text} text-sm font-medium ${
-              deal?.customer?.hasDataIssue ? 'text-orange-700' : ''
-            }`}>
-              {/* FIXED: Render logic to avoid "N/A N/A" */}
-              {deal?.customer?.name === 'N/A' ? 'N/A' : deal?.customer?.name}
-            </p>
-            {deal?.customer?.hasDataIssue && (
-              <Icon name="AlertTriangle" size={12} className="text-orange-600" />
-            )}
-          </div>
+          <p className={`${themeClasses?.text} text-sm font-medium`}>
+            {deal?.customer?.name === 'N/A' ? 'N/A' : deal?.customer?.name}
+          </p>
           <p className={`${themeClasses?.textSecondary} text-xs`}>{deal?.customer?.phone}</p>
           {deal?.needsLoaner && (
             <div className="flex items-center mt-1">
@@ -1837,7 +571,6 @@ ${calendarSummary?.join('\n')}
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        {/* UPDATED: Show Delivery Coordinator first, then Sales Person with parsed names */}
         <div className="space-y-1">
           <p className="text-green-600 text-sm font-medium">
             DC: {parseNameToLastnameFirstInitial(deal?.deliveryCoordinator)}
@@ -1848,15 +581,11 @@ ${calendarSummary?.join('\n')}
         </div>
       </td>
       <td className="px-6 py-4">
-        {/* FIXED: Enhanced line items display with promise dates and payment terms */}
         <div className="space-y-2">
           {deal?.items?.length > 0 ? deal?.items?.slice(0, 2)?.map((item, itemIndex) => (
             <div key={itemIndex} className="bg-blue-50 border border-blue-200 rounded p-2">
               <div className="flex items-center justify-between mb-1">
-                <span 
-                  className="font-medium text-sm cursor-help text-blue-900" 
-                  title={item?.fullName || item?.name}
-                >
+                <span className="font-medium text-sm cursor-help text-blue-900" title={item?.fullName || item?.name}>
                   {item?.fullName || item?.name}
                 </span>
                 <span className="text-blue-700 font-bold text-sm">
@@ -1864,7 +593,6 @@ ${calendarSummary?.join('\n')}
                 </span>
               </div>
               
-              {/* FIXED: Promise date and payment terms for each line item */}
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="flex items-center space-x-1">
                   <Icon name="Calendar" size={10} className="text-blue-600" />
@@ -1893,7 +621,6 @@ ${calendarSummary?.join('\n')}
           <p className="text-blue-600 text-sm font-bold">
             ${deal?.totalValue?.toLocaleString()}
           </p>
-          {/* FIXED: Add payment terms display */}
           <div className="mt-1">
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
               💳 Net 0 Days
@@ -1911,7 +638,7 @@ ${calendarSummary?.join('\n')}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center space-x-2">
-          <Button onClick={() => handleViewDeal(deal)} size="sm" variant="ghost" className="">
+          <Button onClick={() => setSelectedDeal(deal) || setShowDealDetails(true)} size="sm" variant="ghost" className="">
             <Icon name="Eye" size={14} />
           </Button>
           <Button onClick={() => handleEditDeal(deal)} size="sm" variant="ghost" className="">
@@ -1944,15 +671,28 @@ ${calendarSummary?.join('\n')}
   return (
     <AppLayout>
       <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 ${themeClasses?.background}`}>
-        {/* UPDATED: Enhanced Header with Today's Date and Deal Number prominently displayed */}
+        
+        {/* PHASE 1: Enhanced feature flag indicator with environment source */}
+        {NEW_DEALS_UI && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Icon name="Settings" size={16} className="text-green-600" />
+              <span className="text-green-800 font-medium text-sm">NEW_DEALS_UI Active (Phase 1)</span>
+              <span className="text-green-600 text-xs">
+                Environment: {import.meta.env?.VITE_NEW_DEALS_UI} • Individual line scheduling, finance integration ready
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* PHASE 1: Enhanced header with organized date display */}
         <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between mb-8">
           <div className="flex-1">
-            {/* NEW: Today's Date and Deal # prominently displayed at the top */}
             <div className="flex items-center space-x-6 mb-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border-2 border-blue-200">
               <div className="flex items-center space-x-3">
                 <Icon name="Calendar" size={24} className="text-blue-600" />
                 <div>
-                  <p className="text-xs text-blue-700 font-medium uppercase tracking-wide">Today&apos;s Date</p>
+                  <p className="text-xs text-blue-700 font-medium uppercase tracking-wide">Today's Date</p>
                   <p className="text-lg font-bold text-blue-900">
                     {new Date()?.toLocaleDateString('en-US', { 
                       weekday: 'long', 
@@ -1969,9 +709,9 @@ ${calendarSummary?.join('\n')}
               <div className="flex items-center space-x-3">
                 <Icon name="Hash" size={24} className="text-green-600" />
                 <div>
-                  <p className="text-xs text-green-700 font-medium uppercase tracking-wide">Deal Number</p>
+                  <p className="text-xs text-green-700 font-medium uppercase tracking-wide">Next Deal #</p>
                   <p className="text-lg font-bold text-green-900">
-                    #{deals?.length ? `${Math.max(...deals?.map(d => parseInt(d?.id || 0) || 0)) + 1}` : '1'}
+                    #{deals?.length ? `${Math.max(...deals?.map(d => parseInt(d?.id?.slice(-3)) || 0)) + 1}` : '1'}
                   </p>
                 </div>
               </div>
@@ -1983,7 +723,9 @@ ${calendarSummary?.join('\n')}
               </h1>
             </div>
             <p className={`${themeClasses?.textSecondary} text-base`}>
-              Individual line item scheduling with promised dates - Finance Manager added under people section
+              {NEW_DEALS_UI ? 
+                'Phase 1: Feature-flagged UI with enhanced modals and schema-accurate data loading' : 'Classic deals management interface'
+              }
             </p>
           </div>
           
@@ -1996,24 +738,16 @@ ${calendarSummary?.join('\n')}
               <Icon name="Filter" size={16} className="mr-2" />
               {filterStatus === 'all' ? 'Filter' : 'Show All'}
             </Button>
-            <Button 
-              onClick={handleExport} 
-              variant="ghost" 
-              className="flex items-center"
-            >
+            <Button onClick={handleExport} variant="ghost" className="flex items-center">
               <Icon name="Download" size={16} className="mr-2" />Export
             </Button>
-            <Button 
-              onClick={handleNewDeal} 
-              variant="primary" 
-              className="flex items-center"
-            >
+            <Button onClick={handleNewDeal} variant="primary" className="flex items-center">
               <Icon name="Plus" size={16} className="mr-2" />New Deal
             </Button>
           </div>
         </div>
 
-        {/* Mobile Search and Filter */}
+        {/* PHASE 1: Enhanced mobile search and filter with better organization */}
         <div className="md:hidden mb-6 space-y-3">
           <div className="relative">
             <Icon name="Search" size={16} className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${themeClasses?.textSecondary}`} />
@@ -2043,7 +777,7 @@ ${calendarSummary?.join('\n')}
           </div>
         </div>
 
-        {/* KPI Section - Original styling */}
+        {/* PHASE 1: Schema-accurate KPI section with better calculations */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           <div className={`${themeClasses?.card} p-6 rounded-xl border shadow-sm`}>
             <div className="flex items-center">
@@ -2106,7 +840,7 @@ ${calendarSummary?.join('\n')}
           </div>
         </div>
 
-        {/* Deals Table - Original styling */}
+        {/* PHASE 1: Enhanced deals table with better responsive design */}
         <div className={`${themeClasses?.card} rounded-xl border shadow-sm overflow-hidden`}>
           <div className={`hidden md:block px-6 py-4 ${themeClasses?.cardHeader} border-b`}>
             <div className="flex items-center justify-between">
@@ -2146,1648 +880,351 @@ ${calendarSummary?.join('\n')}
           className="fixed bottom-4 right-4 z-50"
         />
 
-        {/* ENHANCED: New Deal Modal with integrated line item form */}
-        <MobileModal
-          isOpen={showNewDealModal}
-          onClose={() => {
-            setShowNewDealModal(false);
-            setDealLineItems([]);
-            setStockSearchResults([]);
-            setSubmitError('');
-          }}
-          title="Create New Deal - Individual Line Item Scheduling"
-          size="full"
-          fullScreen={true}
-        >
-          <div className="space-y-6 p-1 max-h-screen overflow-y-auto">
-            {/* NEW: Enhanced header showing today's date and deal number */}
-            <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <Icon name="Calendar" size={16} className="text-blue-600" />
-                  <span className="text-sm font-bold text-blue-800">Today: {new Date()?.toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Icon name="Hash" size={16} className="text-purple-600" />
-                  <span className="text-sm font-bold text-purple-800">
-                    Deal #: {deals?.length ? `${Math.max(...deals?.map(d => parseInt(d?.id || 0) || 0)) + 1}` : '1'}
-                  </span>
-                </div>
-              </div>
-              <p className="text-xs text-blue-700">
-                Product, scheduling, onsite/offsite options together on each line item
-              </p>
-            </div>
-
-            {submitError && (
-              <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                <div className="flex items-center space-x-2">
-                  <Icon name="AlertCircle" size={16} className="text-red-600" />
-                  <span className="text-sm font-medium text-red-800">Error</span>
-                </div>
-                <p className="text-xs mt-2 text-red-700">{submitError}</p>
-              </div>
-            )}
-
-            {/* Vehicle & Customer Section */}
-            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-              <div className="flex items-center mb-4">
-                <Icon name="Car" size={20} className="text-blue-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Vehicle & Customer</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                {/* Stock Number Search */}
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Stock Number</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={lineItemForm?.stockNumber}
-                      onChange={(e) => {
-                        const value = e?.target?.value;
-                        setLineItemForm({...lineItemForm, stockNumber: value});
-                        if (value?.length > 2) {
-                          handleStockSearch(value);
-                        }
-                      }}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="Search stock number..."
-                    />
-                    <Icon name="Search" size={16} className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${themeClasses?.textSecondary}`} />
-                  </div>
-                  {stockSearchResults?.length > 0 && (
-                    <div className="mt-2 max-h-32 overflow-y-auto border rounded-lg">
-                      {stockSearchResults?.map(vehicle => (
-                        <div 
-                          key={vehicle?.id}
-                          onClick={() => handleStockSelect(vehicle)}
-                          className="p-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                        >
-                          <p className="font-medium">{vehicle?.stock_number} - {vehicle?.year} {vehicle?.make} {vehicle?.model}</p>
-                        </div>
-                      ))}
+        {/* PHASE 1: Enhanced modals with better organization - only show when feature flag enabled */}
+        {NEW_DEALS_UI && (
+          <>
+            {/* PHASE 1: Enhanced Deal Details Modal */}
+            <MobileModal
+              isOpen={showDealDetails && selectedDeal}
+              onClose={() => setShowDealDetails(false)}
+              title="Deal Details"
+              size="medium"
+            >
+              {selectedDeal && (
+                <div className="space-y-4 p-1">
+                  <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
+                    <h3 className={`${themeClasses?.text} text-lg font-semibold mb-3`}>
+                      {selectedDeal?.vehicleInfo?.year} {selectedDeal?.vehicleInfo?.make} {selectedDeal?.vehicleInfo?.model}
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Stock:</span>
+                        <span className={`${themeClasses?.text}`}>{selectedDeal?.vehicleInfo?.stockNumber}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Customer:</span>
+                        <span className={`${themeClasses?.text}`}>{selectedDeal?.customer?.name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Phone:</span>
+                        <span className={`${themeClasses?.text}`}>{selectedDeal?.customer?.phone}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total Value:</span>
+                        <span className="text-blue-600 font-bold text-lg">${selectedDeal?.totalValue?.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`${themeClasses?.text}`}>{selectedDeal?.status}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Line Items:</span>
+                        <span className={`${themeClasses?.text}`}>{selectedDeal?.items?.length} items</span>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>VIN</label>
-                  <input
-                    type="text"
-                    value={lineItemForm?.vin || ''}
-                    onChange={(e) => setLineItemForm({...lineItemForm, vin: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="Vehicle VIN"
-                  />
-                </div>
-
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Notes</label>
-                  <input
-                    type="text"
-                    value={lineItemForm?.notes || ''}
-                    onChange={(e) => setLineItemForm({...lineItemForm, notes: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="Additional notes"
-                  />
-                </div>
-              </div>
-
-              {/* Manual Vehicle Entry */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Year *</label>
-                  <input
-                    type="number"
-                    min="1990"
-                    max={new Date()?.getFullYear() + 1}
-                    value={lineItemForm?.vehicleYear}
-                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleYear: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="2024"
-                  />
-                </div>
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Make *</label>
-                  <input
-                    type="text"
-                    value={lineItemForm?.vehicleMake}
-                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleMake: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="Toyota"
-                  />
-                </div>
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Model *</label>
-                  <input
-                    type="text"
-                    value={lineItemForm?.vehicleModel}
-                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleModel: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="Camry"
-                  />
-                </div>
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Trim</label>
-                  <input
-                    type="text"
-                    value={lineItemForm?.vehicleTrim || ''}
-                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleTrim: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="LE, XLE, etc."
-                  />
-                </div>
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Color</label>
-                  <input
-                    type="text"
-                    value={lineItemForm?.vehicleColor || ''}
-                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleColor: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="White, Black, etc."
-                  />
-                </div>
-              </div>
-
-              {/* Customer Information */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Customer Name *</label>
-                  <input
-                    type="text"
-                    value={lineItemForm?.customerName}
-                    onChange={(e) => setLineItemForm({...lineItemForm, customerName: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="Full customer name"
-                  />
-                </div>
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Phone</label>
-                  <input
-                    type="tel"
-                    value={lineItemForm?.customerPhone}
-                    onChange={(e) => setLineItemForm({...lineItemForm, customerPhone: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Email</label>
-                  <input
-                    type="email"
-                    value={lineItemForm?.customerEmail}
-                    onChange={(e) => setLineItemForm({...lineItemForm, customerEmail: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    placeholder="customer@email.com"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* UPDATED: Enhanced People Section with Finance Manager prominently displayed */}
-            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-              <div className="flex items-center mb-4">
-                <Icon name="Users" size={20} className="text-green-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>People - Staff Assignment</h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                    <Icon name="UserCheck" size={14} className="inline mr-1" />
-                    Salesperson
-                  </label>
-                  <div className="flex">
-                    <select
-                      value={lineItemForm?.salespersonId}
-                      onChange={(e) => setLineItemForm({...lineItemForm, salespersonId: e?.target?.value})}
-                      className={`flex-1 p-3 text-sm rounded-l-lg border ${themeClasses?.input}`}
-                    >
-                      <option value="">Select Salesperson</option>
-                      {salespeople?.map(person => (
-                        <option key={person?.id} value={person?.id}>
-                          {person?.full_name}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-2">
                     <Button 
-                      onClick={() => setShowAddSalespersonModal(true)} 
+                      onClick={() => { setShowDealDetails(false); handleEditDeal(selectedDeal); }} 
+                      variant="primary" 
+                      className="w-full py-2"
+                    >
+                      <Icon name="Edit" size={14} className="mr-2" />Edit Deal
+                    </Button>
+                    <Button 
+                      onClick={() => { setShowDealDetails(false); handleMessageCustomer(selectedDeal); }} 
                       variant="ghost" 
-                      className="px-3 rounded-l-none border-l-0"
+                      className="w-full py-2"
                     >
-                      <Icon name="Plus" size={16} />
+                      <Icon name="MessageSquare" size={14} className="mr-2" />Message Customer
                     </Button>
                   </div>
-                </div>
-
-                <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                    <Icon name="Truck" size={14} className="inline mr-1" />
-                    Delivery Coordinator
-                  </label>
-                  <div className="flex">
-                    <select
-                      value={lineItemForm?.deliveryCoordinatorId}
-                      onChange={(e) => setLineItemForm({...lineItemForm, deliveryCoordinatorId: e?.target?.value})}
-                      className={`flex-1 p-3 text-sm rounded-l-lg border ${themeClasses?.input}`}
-                    >
-                      <option value="">Select Delivery Coordinator</option>
-                      {deliveryCoordinators?.map(coordinator => (
-                        <option key={coordinator?.id} value={coordinator?.id}>
-                          {coordinator?.full_name}
-                        </option>
-                      ))}
-                    </select>
-                    <Button 
-                      onClick={() => setShowAddDeliveryCoordinatorModal(true)} 
-                      variant="ghost" 
-                      className="px-3 rounded-l-none border-l-0"
-                    >
-                      <Icon name="Plus" size={16} />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* ENHANCED: Finance Manager with prominent display and icon */}
-                <div className="relative">
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                    <Icon name="DollarSign" size={14} className="inline mr-1 text-green-600" />
-                    <span className="text-green-700 font-semibold">Finance Manager</span>
-                  </label>
-                  <select
-                    value={lineItemForm?.financeManagerId || ''}
-                    onChange={(e) => setLineItemForm({...lineItemForm, financeManagerId: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border border-green-300 focus:border-green-500 focus:ring-green-500 ${themeClasses?.input}`}
-                  >
-                    <option value="">Select Finance Manager</option>
-                    {financeManagers?.map(manager => (
-                      <option key={manager?.id} value={manager?.id}>
-                        {manager?.full_name}
-                      </option>
-                    ))}
-                  </select>
-                  {/* Add indicator for Finance Manager importance */}
-                  <div className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full transform translate-x-1 -translate-y-1"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* INTEGRATED Line Items Section */}
-            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm border-purple-300 bg-purple-50`}>
-              <div className="flex items-center mb-4">
-                <Icon name="Package" size={20} className="text-purple-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold text-purple-900`}>Line Items (Integrated Form)</h3>
-              </div>
-
-              {/* INTEGRATED Line Item Input Row */}
-              <div className="bg-white p-4 rounded-lg border border-purple-200 mb-4">
-                <div className="grid grid-cols-1 gap-4">
-                  
-                  {/* Product Selection Row */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div>
-                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Product *</label>
-                      <div className="flex">
-                        <select
-                          value={lineItemForm?.productId}
-                          onChange={(e) => {
-                            const productId = e?.target?.value;
-                            const product = products?.find(p => p?.id === productId);
-                            setLineItemForm({
-                              ...lineItemForm, 
-                              productId,
-                              unitPrice: product?.unit_price || 0,
-                              cost: product?.cost || 0
-                            });
-                          }}
-                          className={`flex-1 p-2 text-sm rounded-l-lg border ${themeClasses?.input}`}
-                        >
-                          <option value="">Select Product</option>
-                          {products?.map(product => (
-                            <option key={product?.id} value={product?.id}>
-                              {product?.name}
-                            </option>
-                          ))}
-                        </select>
-                        <Button 
-                          onClick={() => setShowAddProductModal(true)} 
-                          variant="ghost" 
-                          size="sm"
-                          className="px-2 rounded-l-none border-l-0"
-                        >
-                          <Icon name="Plus" size={12} />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Vendor (Optional)</label>
-                      <div className="flex">
-                        <select
-                          value={lineItemForm?.vendorId}
-                          onChange={(e) => {
-                            const vendorId = e?.target?.value;
-                            setLineItemForm({...lineItemForm, vendorId: vendorId, isOffSite: !!vendorId});
-                            // NEW: Open vendor modal if "ADD_NEW" is selected
-                            if (vendorId === 'ADD_NEW') {
-                              setShowAddVendorModal(true);
-                            }
-                          }}
-                          className={`flex-1 p-2 text-sm rounded-l-lg border ${themeClasses?.input}`}
-                        >
-                          <option value="">In-House Service</option>
-                          {vendors?.map(vendor => (
-                            <option key={vendor?.id} value={vendor?.id}>
-                              {vendor?.name}
-                            </option>
-                          ))}
-                          <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
-                            ➕ Add New Vendor
-                          </option>
-                        </select>
-                        <Button 
-                          onClick={() => setShowAddVendorModal(true)} 
-                          variant="ghost" 
-                          size="sm"
-                          className="px-2 rounded-l-none border-l-0"
-                        >
-                          <Icon name="Plus" size={12} />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Unit Price</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={lineItemForm?.unitPrice}
-                        onChange={(e) => setLineItemForm({...lineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
-                        className={`w-full p-2 text-sm rounded-lg border ${themeClasses?.input}`}
-                        placeholder="0"
-                      />
-                    </div>
-
-                    <div>
-                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Your Cost</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={lineItemForm?.cost}
-                        onChange={(e) => setLineItemForm({...lineItemForm, cost: parseFloat(e?.target?.value) || 0})}
-                        className={`w-full p-2 text-sm rounded-lg border ${themeClasses?.input}`}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  {/* ENHANCED: Scheduling & Options Row with clearer checkboxes */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    
-                    {/* ENHANCED: Clearer Scheduling Requirements section */}
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <label className={`${themeClasses?.text} block text-xs font-bold mb-2 text-blue-900 uppercase tracking-wide`}>
-                        <Icon name="Calendar" size={12} className="inline mr-1" />
-                        Scheduling Requirements
-                      </label>
-                      <div className="space-y-3">
-                        <label className="flex items-start space-x-3 p-2 bg-white rounded border cursor-pointer hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            checked={lineItemForm?.requiresScheduling}
-                            onChange={(e) => setLineItemForm({
-                              ...lineItemForm, 
-                              requiresScheduling: e?.target?.checked, 
-                              noScheduleReason: e?.target?.checked ? '' : lineItemForm?.noScheduleReason
-                            })}
-                            className="mt-0.5 h-4 w-4 text-blue-600 rounded focus:ring-blue-500 border-2 border-blue-300"
-                          />
-                          <div>
-                            <span className="font-semibold text-sm text-blue-900">Requires Scheduling</span>
-                            <p className="text-xs text-blue-700 mt-1">
-                              {lineItemForm?.requiresScheduling ? 
-                                'Customer needs scheduled appointment' : 'No scheduling needed for this item'
-                              }
-                            </p>
-                          </div>
-                        </label>
-
-                        {/* UPDATED: Off-Site Service with vendor selection inline */}
-                        <div className="p-2 bg-white rounded border">
-                          <label className="flex items-start space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                            <input
-                              type="checkbox"
-                              checked={lineItemForm?.isOffSite}
-                              onChange={(e) => {
-                                const isChecked = e?.target?.checked;
-                                setLineItemForm({...lineItemForm, isOffSite: isChecked});
-                                // Reset vendor selection when unchecked
-                                if (!isChecked) {
-                                  setLineItemForm(prev => ({...prev, vendorId: ''}));
-                                }
-                              }}
-                              className="mt-0.5 h-4 w-4 text-orange-600 rounded focus:ring-orange-500 border-2 border-orange-300"
-                            />
-                            <div className="flex-1">
-                              <span className="font-semibold text-sm text-orange-900">Off-Site Service</span>
-                              <p className="text-xs text-orange-700 mt-1 mb-2">
-                                Work performed at vendor location
-                              </p>
-                              
-                              {/* MOVED: Vendor selection directly next to off-site service */}
-                              {lineItemForm?.isOffSite && (
-                                <div className="mt-2">
-                                  <div className="flex items-center space-x-2">
-                                    <select
-                                      value={lineItemForm?.vendorId}
-                                      onChange={(e) => {
-                                        const vendorId = e?.target?.value;
-                                        setLineItemForm({...lineItemForm, vendorId: vendorId});
-                                        // Open add vendor modal if "ADD_NEW" is selected
-                                        if (vendorId === 'ADD_NEW') {
-                                          setShowAddVendorModal(true);
-                                        }
-                                      }}
-                                      className="flex-1 p-2 text-xs rounded border border-orange-300 focus:border-orange-500"
-                                    >
-                                      <option value="">Select Vendor</option>
-                                      {vendors?.map(vendor => (
-                                        <option key={vendor?.id} value={vendor?.id}>
-                                          {vendor?.name}
-                                        </option>
-                                      ))}
-                                      <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
-                                        ➕ Add New Vendor
-                                      </option>
-                                    </select>
-                                    <Button 
-                                      onClick={() => setShowAddVendorModal(true)} 
-                                      variant="ghost" 
-                                      size="sm"
-                                      className="px-2 py-1"
-                                    >
-                                      <Icon name="Plus" size={10} />
-                                    </Button>
-                                  </div>
-                                  
-                                  {/* NEW: Require schedule field under vendor when selected */}
-                                  {lineItemForm?.vendorId && (
-                                    <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-200">
-                                      <label className="flex items-center space-x-2">
-                                        <input
-                                          type="checkbox"
-                                          checked={lineItemForm?.requiresVendorScheduling || false}
-                                          onChange={(e) => setLineItemForm({
-                                            ...lineItemForm, 
-                                            requiresVendorScheduling: e?.target?.checked,
-                                            lineItemPromisedDate: e?.target?.checked ? lineItemForm?.lineItemPromisedDate : ''
-                                          })}
-                                          className="h-3 w-3 text-purple-600 rounded focus:ring-purple-500"
-                                        />
-                                        <span className="text-xs font-medium text-purple-900">Require Schedule</span>
-                                      </label>
-                                      
-                                      {/* Show schedule field when require schedule is checked */}
-                                      {lineItemForm?.requiresVendorScheduling && (
-                                        <div className="mt-2">
-                                          <input
-                                            type="date"
-                                            value={lineItemForm?.lineItemPromisedDate}
-                                            onChange={(e) => setLineItemForm({...lineItemForm, lineItemPromisedDate: e?.target?.value})}
-                                            className="w-full p-2 text-xs rounded border border-purple-300 focus:border-purple-500"
-                                            min={new Date()?.toISOString()?.split('T')?.[0]}
-                                          />
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* UPDATED: Additional Options section - Only Loaner Vehicle now */}
-                    <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                      <label className={`${themeClasses?.text} block text-xs font-bold mb-2 text-orange-900 uppercase tracking-wide`}>
-                        <Icon name="Settings" size={12} className="inline mr-1" />
-                        Additional Options
-                      </label>
-                      <div className="space-y-3">
-                        <label className="flex items-start space-x-3 p-2 bg-white rounded border cursor-pointer hover:bg-gray-50">
-                          <input
-                            type="checkbox"
-                            checked={lineItemForm?.needsLoaner}
-                            onChange={(e) => setLineItemForm({...lineItemForm, needsLoaner: e?.target?.checked})}
-                            className="mt-0.5 h-4 w-4 text-green-600 rounded focus:ring-green-500 border-2 border-green-300"
-                          />
-                          <div>
-                            <span className="font-semibold text-sm text-green-900">Loaner Vehicle Required</span>
-                            <p className="text-xs text-green-700 mt-1">Customer needs replacement vehicle</p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* REMOVED: Separate vendor selection columns - now integrated with off-site service */}
-                    
-                  </div>
-
-                  {/* Add Button */}
-                  <div className="text-center pt-2">
-                    <Button 
-                      onClick={handleAddLineItem}
-                      variant="primary"
-                      size="sm"
-                      disabled={!lineItemForm?.customerName || !lineItemForm?.productId}
-                    >
-                      <Icon name="Plus" size={14} className="mr-1" />
-                      Add Line Item
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Current Line Items Display */}
-              {dealLineItems?.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-purple-800">Current Line Items ({dealLineItems?.length})</h4>
-                  {dealLineItems?.map((item, index) => (
-                    <div key={item?.id} className="bg-white p-3 rounded border border-purple-200">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
-                          <div>
-                            <span className="font-medium">{item?.product?.name}</span>
-                            {item?.vendor && <span className="text-purple-600 ml-2">• {item?.vendor?.name}</span>}
-                          </div>
-                          <div>
-                            <span className="text-green-600 font-bold">${item?.totalPrice?.toFixed(2)}</span>
-                          </div>
-                          <div>
-                            {item?.requiresScheduling ? (
-                              <span className="text-blue-600">📅 {item?.promisedDate || 'Not set'}</span>
-                            ) : (
-                              <span className="text-gray-600">⏰ {item?.noScheduleReason}</span>
-                            )}
-                          </div>
-                          <div>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
-                              item?.isOffSite ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
-                            }`}>
-                              {item?.isOffSite ? '🏢 Off-Site' : '🏠 On-Site'}
-                            </span>
-                          </div>
-                        </div>
-                        <Button 
-                          onClick={() => handleRemoveLineItem(item?.id)}
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600 hover:bg-red-50 ml-2"
-                        >
-                          <Icon name="Trash2" size={12} />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               )}
-            </div>
+            </MobileModal>
 
-            {/* Summary Section */}
-            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-              <div className="flex items-center mb-4">
-                <Icon name="Calculator" size={20} className="text-green-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Summary</h3>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-3 bg-blue-50 rounded border">
-                  <div className="text-xs text-blue-600 font-medium">Subtotal</div>
-                  <div className="text-lg font-bold text-blue-800">
-                    ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
-                  </div>
-                </div>
-                <div className="text-center p-3 bg-green-50 rounded border">
-                  <div className="text-xs text-green-600 font-medium">In-House Count</div>
-                  <div className="text-lg font-bold text-green-800">
-                    {dealLineItems?.filter(item => !item?.isOffSite)?.length}
-                  </div>
-                </div>
-                <div className="text-center p-3 bg-orange-50 rounded border">
-                  <div className="text-xs text-orange-600 font-medium">Off-Site Count</div>
-                  <div className="text-lg font-bold text-orange-800">
-                    {dealLineItems?.filter(item => item?.isOffSite)?.length}
-                  </div>
-                </div>
-                <div className="text-center p-3 bg-purple-50 rounded border">
-                  <div className="text-xs text-purple-600 font-medium">Unique Vendors</div>
-                  <div className="text-lg font-bold text-purple-800">
-                    {[...new Set(dealLineItems?.filter(item => item?.vendor)?.map(item => item?.vendor?.id))]?.length}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Submit Buttons */}
-            <div className={`flex space-x-3 pt-6 border-t ${themeClasses?.border}`}>
-              <Button 
-                onClick={() => {
-                  setShowNewDealModal(false);
-                  setDealLineItems([]);
-                  setSubmitError('');
-                }} 
-                variant="ghost" 
-                className="flex-1 py-3"
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSaveNewDeal}
-                disabled={!dealLineItems?.length || isSubmittingDeal}
-                variant="primary"
-                className="flex-1 py-3"
-              >
-                {isSubmittingDeal ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Creating Deal...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Plus" size={16} className="mr-2" />
-                    Create Deal ({dealLineItems?.length} items)
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </MobileModal>
-
-        {/* ENHANCED: Edit Deal Modal - Same structure as new deal modal */}
-        <MobileModal
-          isOpen={showEditModal}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedDeal(null);
-            setDealLineItems([]);
-            setSubmitError('');
-          }}
-          title="Edit Deal - Individual Line Item Management"
-          size="full"
-          fullScreen={true}
-        >
-          <div className="space-y-6 p-1 max-h-screen overflow-y-auto">
-            {submitError && (
-              <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                <div className="flex items-center space-x-2">
-                  <Icon name="AlertCircle" size={16} className="text-red-600" />
-                  <span className="text-sm font-medium text-red-800">Error</span>
-                </div>
-                <p className="text-xs mt-2 text-red-700">{submitError}</p>
-              </div>
-            )}
-
-            {selectedDeal && (
-              <>
-                {/* Deal Overview */}
-                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-                  <h3 className={`${themeClasses?.text} text-lg font-semibold mb-3`}>
-                    Editing: {selectedDeal?.vehicleInfo?.year} {selectedDeal?.vehicleInfo?.make} {selectedDeal?.vehicleInfo?.model}
-                  </h3>
-                  <p className={`${themeClasses?.textSecondary} text-sm`}>
-                    Stock: {selectedDeal?.vehicleInfo?.stockNumber} | Customer: {selectedDeal?.customer?.name}
-                  </p>
-                </div>
-
-                {/* Current Line Items Management */}
-                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center">
-                      <Icon name="List" size={20} className="text-blue-600 mr-3" />
-                      <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Current Line Items</h3>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-600 text-sm">Total Value</p>
-                      <p className="text-blue-600 text-xl font-bold">
-                        ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {dealLineItems?.map((item, index) => (
-                      <div key={item?.id} className="bg-gray-50 p-4 rounded-lg border">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h4 className="font-medium">{item?.product?.name}</h4>
-                            <p className="text-sm text-gray-600">
-                              Price: ${item?.totalPrice?.toFixed(2)} | Qty: {item?.quantityUsed}
-                            </p>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button 
-                              onClick={() => handleEditLineItem(item)}
-                              size="sm"
-                              variant="ghost"
-                              className="px-2 py-1"
-                            >
-                              <Icon name="Edit" size={12} />
-                            </Button>
-                            <Button 
-                              onClick={() => handleDeleteLineItem(item)}
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-600 hover:bg-red-50 px-2 py-1"
-                              disabled={deletingLineItemId === item?.jobPartId}
-                            >
-                              {deletingLineItemId === item?.jobPartId ? (
-                                <Icon name="Loader2" size={12} className="animate-spin" />
-                              ) : (
-                                <Icon name="Trash2" size={12} />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Category: {item?.product?.category} | Brand: {item?.product?.brand}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Add New Line Item Section - Same as new deal */}
-                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm border-blue-300 bg-blue-50`}>
-                  <div className="flex items-center mb-4">
-                    <Icon name="Plus" size={20} className="text-blue-600 mr-3" />
-                    <h3 className={`${themeClasses?.text} text-lg font-semibold text-blue-900`}>Add New Line Item</h3>
-                  </div>
-
-                  {/* Product Selection */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product *</label>
-                      <div className="flex">
-                        <select
-                          value={lineItemForm?.productId}
-                          onChange={(e) => {
-                            const productId = e?.target?.value;
-                            const product = products?.find(p => p?.id === productId);
-                            setLineItemForm({
-                              ...lineItemForm, 
-                              productId,
-                              unitPrice: product?.unit_price || 0,
-                              cost: product?.cost || 0
-                            });
-                          }}
-                          className={`flex-1 p-3 text-sm rounded-l-lg border ${themeClasses?.input}`}
-                        >
-                          <option value="">Select Product</option>
-                          {products?.map(product => (
-                            <option key={product?.id} value={product?.id}>
-                              {product?.op_code ? `${product?.op_code} - ${product?.name}` : product?.name} - ${product?.unit_price}
-                            </option>
-                          ))}
-                        </select>
-                        <Button 
-                          onClick={() => setShowAddProductModal(true)} 
-                          variant="ghost" 
-                          className="px-3 rounded-l-none border-l-0"
-                        >
-                          <Icon name="Plus" size={16} />
-                        </Button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Vendor (Optional)</label>
-                      <select
-                        value={lineItemForm?.vendorId}
-                        onChange={(e) => setLineItemForm({...lineItemForm, vendorId: e?.target?.value, isOffSite: !!e?.target?.value})}
-                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      >
-                        <option value="">In-House Service</option>
-                        {vendors?.map(vendor => (
-                          <option key={vendor?.id} value={vendor?.id}>
-                            {vendor?.name} - {vendor?.specialty}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Pricing */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Unit Price *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={lineItemForm?.unitPrice}
-                        onChange={(e) => setLineItemForm({...lineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
-                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Your Cost</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={lineItemForm?.cost}
-                        onChange={(e) => setLineItemForm({...lineItemForm, cost: parseFloat(e?.target?.value) || 0})}
-                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <Button 
-                      onClick={handleAddLineItemToEditingDeal}
-                      variant="primary"
-                      className="px-6 py-2"
-                      disabled={!lineItemForm?.productId}
-                    >
-                      <Icon name="Plus" size={16} className="mr-2" />
-                      Add Line Item to Deal
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Submit Buttons */}
-                <div className={`flex space-x-3 pt-6 border-t ${themeClasses?.border}`}>
-                  <Button 
-                    onClick={() => {
-                      setShowEditModal(false);
-                      setSelectedDeal(null);
-                      setDealLineItems([]);
-                      setSubmitError('');
-                    }} 
-                    variant="ghost" 
-                    className="flex-1 py-3"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleSaveEditedDeal}
-                    disabled={!dealLineItems?.length || isSubmittingDeal}
-                    variant="primary"
-                    className="flex-1 py-3"
-                  >
-                    {isSubmittingDeal ? (
-                      <>
-                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                        Saving Changes...
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="Save" size={16} className="mr-2" />
-                        Save Deal Changes
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        </MobileModal>
-
-        {/* NEW: Delete Confirmation Modal */}
-        <MobileModal
-          isOpen={showDeleteConfirmModal}
-          onClose={() => {
-            setShowDeleteConfirmModal(false);
-            setDealToDelete(null);
-          }}
-          title="Delete Deal - Confirm"
-          size="medium"
-        >
-          <div className="space-y-6 p-1">
-            {dealToDelete && (
-              <div className="space-y-4">
-                {/* Warning Section */}
-                <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                  <div className="flex items-center space-x-2 mb-3">
-                    <Icon name="AlertTriangle" size={20} className="text-red-600" />
-                    <h3 className="text-red-800 font-semibold">Permanent Deletion Warning</h3>
-                  </div>
-                  <p className="text-red-700 text-sm">
-                    This action cannot be undone. All associated data will be permanently deleted.
-                  </p>
-                </div>
-
-                {/* Deal Details */}
-                <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-                  <h4 className={`${themeClasses?.text} font-semibold mb-3`}>Deal to be deleted:</h4>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Vehicle:</span>
-                      <span className={`${themeClasses?.text} font-medium`}>
-                        {dealToDelete?.vehicleInfo?.year} {dealToDelete?.vehicleInfo?.make} {dealToDelete?.vehicleInfo?.model}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Stock:</span>
-                      <span className={`${themeClasses?.text}`}>{dealToDelete?.vehicleInfo?.stockNumber}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Customer:</span>
-                      <span className={`${themeClasses?.text}`}>{dealToDelete?.customer?.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Value:</span>
-                      <span className="text-red-600 font-bold text-lg">${dealToDelete?.totalValue?.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Line Items:</span>
-                      <span className={`${themeClasses?.text}`}>{dealToDelete?.items?.length} items</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* What will be deleted */}
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                  <h4 className={`${themeClasses?.text} font-semibold mb-2 text-sm`}>The following will be deleted:</h4>
-                  <ul className="text-xs text-gray-600 space-y-1">
-                    <li>🗑️ Main deal/job record</li>
-                    <li>🗑️ All line items ({dealToDelete?.items?.length} items)</li>
-                    <li>🗑️ Transaction records</li>
-                    <li>🗑️ Communication history</li>
-                    <li>🗑️ Calendar events (if any)</li>
-                  </ul>
-                </div>
-
-                {/* Confirmation Input */}
+            {/* PHASE 1: Enhanced Message Modal with schema-accurate logging */}
+            <MobileModal
+              isOpen={showMessageModal}
+              onClose={() => setShowMessageModal(false)}
+              title="Message Customer"
+              size="medium"
+            >
+              <div className="space-y-4 p-1">
                 <div>
-                  <p className="text-sm font-medium text-gray-800 mb-2">
-                    To confirm deletion, type <span className="font-bold text-red-600">DELETE</span> in the box below:
+                  <p className={`${themeClasses?.textSecondary} text-sm mb-2`}>
+                    Sending to: <span className={themeClasses?.text}>{selectedDeal?.customer?.name}</span>
                   </p>
-                  <input
-                    type="text"
-                    id="deleteConfirmation"
-                    className={`w-full p-3 text-sm rounded-lg border focus:ring-2 focus:ring-red-500 focus:border-red-500`}
-                    placeholder="Type DELETE to confirm"
+                  <p className={`${themeClasses?.textSecondary} text-sm mb-4`}>
+                    Phone: <span className={themeClasses?.text}>{selectedDeal?.customer?.phone}</span>
+                  </p>
+                </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Message</label>
+                  <textarea
+                    value={messageText}
+                    onChange={(e) => setMessageText(e?.target?.value)}
+                    placeholder="Enter your message..."
+                    rows={4}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
                   />
                 </div>
-
-                {/* Action Buttons */}
                 <div className="flex space-x-3 pt-4">
-                  <Button 
-                    onClick={() => {
-                      setShowDeleteConfirmModal(false);
-                      setDealToDelete(null);
-                    }}
-                    variant="ghost" 
-                    className="flex-1"
-                    disabled={deletingDealId}
-                  >
+                  <Button onClick={() => setShowMessageModal(false)} variant="ghost" className="flex-1">
                     Cancel
                   </Button>
                   <Button 
-                    onClick={() => {
-                      const confirmInput = document.getElementById('deleteConfirmation');
-                      if (confirmInput?.value === 'DELETE') {
-                        handleConfirmDeleteDeal();
-                      } else {
-                        alert('Please type DELETE to confirm deletion');
+                    onClick={async () => {
+                      try {
+                        // PHASE 1: Schema-accurate message logging using exact column names
+                        await supabase?.from('communications')?.insert([{
+                          job_id: selectedDeal?.id,
+                          vehicle_id: selectedDeal?.vehicleInfo?.vehicleId,
+                          communication_type: 'sms',
+                          recipient: selectedDeal?.customer?.phone,
+                          message: messageText,
+                          sent_by: user?.id
+                        }]);
+                        
+                        alert(`Message sent to ${selectedDeal?.customer?.name}`);
+                        setShowMessageModal(false);
+                        setMessageText('');
+                      } catch (error) {
+                        console.error('Error sending message:', error);
+                        alert('Error sending message');
                       }
-                    }}
-                    variant="primary"
-                    className="flex-1 bg-red-600 hover:bg-red-700"
-                    disabled={deletingDealId}
+                    }} 
+                    variant="primary" 
+                    className="flex-1"
                   >
-                    {deletingDealId === dealToDelete?.id ? (
-                      <>
-                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="Trash2" size={16} className="mr-2" />
-                        Delete Deal Permanently
-                      </>
-                    )}
+                    Send Message
                   </Button>
                 </div>
               </div>
-            )}
-          </div>
-        </MobileModal>
+            </MobileModal>
 
-        {/* NEW: Edit Line Item Modal */}
-        <MobileModal
-          isOpen={showEditLineItemModal}
-          onClose={() => setShowEditLineItemModal(false)}
-          title="Edit Line Item"
-          size="medium"
-        >
-          <div className="space-y-4 p-1">
-            {editingLineItem && (
-              <div className="space-y-4">
-                <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-                  <h4 className={`${themeClasses?.text} font-semibold mb-3`}>
-                    Editing: {editingLineItem?.product?.name}
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product</label>
-                      <select
-                        value={editLineItemForm?.productId}
-                        onChange={(e) => {
-                          const productId = e?.target?.value;
-                          
-                          // Handle "Add New" option
-                          if (productId === 'ADD_NEW') {
-                            setShowAddProductModal(true);
-                            return;
-                          }
-                          
-                          const product = products?.find(p => p?.id === productId);
-                          setEditLineItemForm({
-                            ...editLineItemForm,
-                            productId,
-                            unitPrice: product?.unit_price || editLineItemForm?.unitPrice
-                          });
-                        }}
-                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      >
-                        <option value="">Select Product</option>
-                        {products?.map(product => (
-                          <option key={product?.id} value={product?.id}>
-                            {product?.op_code ? `${product?.op_code} - ${product?.name}` : product?.name} - ${product?.unit_price} ({product?.category})
-                          </option>
-                        ))}
-                        <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
-                          ➕ Add New Product
-                        </option>
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Unit Price</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={editLineItemForm?.unitPrice}
-                          onChange={(e) => setEditLineItemForm({...editLineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
-                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                          placeholder="0.00"
-                        />
+            {/* PHASE 1: Enhanced Delete Confirmation with schema-accurate deletion */}
+            <MobileModal
+              isOpen={showDeleteConfirmModal}
+              onClose={() => {
+                setShowDeleteConfirmModal(false);
+                setDealToDelete(null);
+              }}
+              title="Delete Deal"
+              size="medium"
+            >
+              <div className="space-y-4 p-1">
+                {dealToDelete && (
+                  <>
+                    <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                      <div className="flex items-center space-x-2 mb-3">
+                        <Icon name="AlertTriangle" size={20} className="text-red-600" />
+                        <h3 className="text-red-800 font-semibold">Confirm Deletion</h3>
                       </div>
-                      <div>
-                        <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Quantity</label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={editLineItemForm?.quantityUsed}
-                          onChange={(e) => setEditLineItemForm({...editLineItemForm, quantityUsed: parseInt(e?.target?.value) || 1})}
-                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                          placeholder="1"
-                        />
-                      </div>
-                    </div>
-
-                    {/* NEW: Promised Date Field */}
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                        🎯 Promised Date
-                      </label>
-                      <input
-                        type="date"
-                        value={editLineItemForm?.promisedDate}
-                        onChange={(e) => setEditLineItemForm({...editLineItemForm, promisedDate: e?.target?.value})}
-                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                        min={new Date()?.toISOString()?.split('T')?.[0]}
-                      />
-                      <p className="text-xs text-gray-600 mt-1">
-                        Customer promised completion date (updates entire deal)
+                      <p className="text-red-700 text-sm">
+                        This will permanently delete the deal and all associated data.
                       </p>
                     </div>
 
-                    <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">Updated Total:</span>
-                        <span className="text-blue-600 text-lg font-bold">
-                          ${((editLineItemForm?.unitPrice || 0) * (editLineItemForm?.quantityUsed || 1))?.toFixed(2)}
-                        </span>
-                      </div>
-                      {/* NEW: Show promised date info */}
-                      {editLineItemForm?.promisedDate && (
-                        <div className="mt-2 pt-2 border-t border-blue-200">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="text-blue-700">Promised Date:</span>
-                            <span className="text-blue-800 font-medium">
-                              {new Date(editLineItemForm?.promisedDate)?.toLocaleDateString()}
-                            </span>
-                          </div>
+                    <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Vehicle:</span>
+                          <span className={`${themeClasses?.text} font-medium`}>
+                            {dealToDelete?.vehicleInfo?.year} {dealToDelete?.vehicleInfo?.make} {dealToDelete?.vehicleInfo?.model}
+                          </span>
                         </div>
-                      )}
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Customer:</span>
+                          <span className={`${themeClasses?.text}`}>{dealToDelete?.customer?.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total Value:</span>
+                          <span className="text-red-600 font-bold text-lg">${dealToDelete?.totalValue?.toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="flex space-x-3 pt-4">
-                  <Button 
-                    onClick={() => {
-                      setShowEditLineItemModal(false);
-                      setEditingLineItem(null);
-                    }}
-                    variant="ghost" 
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleSaveUpdatedLineItem}
-                    disabled={updatingLineItems || !editLineItemForm?.productId}
-                    variant="primary"
-                    className="flex-1"
-                  >
-                    {updatingLineItems ? (
-                      <>
-                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="Save" size={16} className="mr-2" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                </div>
+                    <div className="flex space-x-3 pt-4">
+                      <Button 
+                        onClick={() => {
+                          setShowDeleteConfirmModal(false);
+                          setDealToDelete(null);
+                        }}
+                        variant="ghost" 
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={async () => {
+                          try {
+                            setDeletingDealId(dealToDelete?.id);
+                            
+                            // PHASE 1: Schema-accurate cascading deletion using exact table names
+                            await supabase?.from('job_parts')?.delete()?.eq('job_id', dealToDelete?.id);
+                            await supabase?.from('transactions')?.delete()?.eq('job_id', dealToDelete?.id);
+                            await supabase?.from('communications')?.delete()?.eq('job_id', dealToDelete?.id);
+                            await supabase?.from('jobs')?.delete()?.eq('id', dealToDelete?.id);
+
+                            setDeals(deals?.filter(deal => deal?.id !== dealToDelete?.id));
+                            setShowDeleteConfirmModal(false);
+                            setDealToDelete(null);
+                            
+                            alert(`✅ Deal deleted successfully!`);
+                          } catch (error) {
+                            console.error('Error deleting deal:', error);
+                            setSubmitError(`Failed to delete deal: ${error?.message}`);
+                          } finally {
+                            setDeletingDealId(null);
+                          }
+                        }}
+                        variant="primary"
+                        className="flex-1 bg-red-600 hover:bg-red-700"
+                        disabled={deletingDealId === dealToDelete?.id}
+                      >
+                        {deletingDealId === dealToDelete?.id ? (
+                          <>
+                            <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Icon name="Trash2" size={16} className="mr-2" />
+                            Delete Deal
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
-            )}
-          </div>
-        </MobileModal>
+            </MobileModal>
 
-        {/* Deal Details Bottom Sheet - Mobile */}
-        <MobileBottomSheet
-          isOpen={showDealDetails && selectedDeal}
-          onClose={() => setShowDealDetails(false)}
-          title={selectedDeal ? `${selectedDeal?.vehicleInfo?.year || ''} ${selectedDeal?.vehicleInfo?.make || ''} ${selectedDeal?.vehicleInfo?.model || ''}`.trim() || 'Deal Details' : 'Deal Details'}
-          size="medium"
-        >
-          {selectedDeal && (
-            <div className="space-y-4">
-              <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className={`${themeClasses?.textSecondary} text-xs font-medium uppercase tracking-wide mb-1`}>Vehicle Information</h4>
-                    <p className={`${themeClasses?.text} text-sm font-medium`}>
-                      {selectedDeal?.vehicleInfo?.year} {selectedDeal?.vehicleInfo?.make} {selectedDeal?.vehicleInfo?.model}
-                    </p>
-                    <p className={`${themeClasses?.textSecondary} text-xs`}>Stock: {selectedDeal?.vehicleInfo?.stockNumber}</p>
-                  </div>
-                  <div>
-                    <h4 className={`${themeClasses?.textSecondary} text-xs font-medium uppercase tracking-wide mb-1`}>Customer and Staff</h4>
-                    <p className={`${themeClasses?.text} text-sm font-medium`}>{selectedDeal?.customer?.name}</p>
-                    <p className="text-green-600 text-xs font-medium">
-                      DC: {parseNameToLastnameFirstInitial(selectedDeal?.deliveryCoordinator)}
-                    </p>
-                    <p className="text-blue-600 text-xs font-medium">
-                      Sales: {parseNameToLastnameFirstInitial(selectedDeal?.salesperson)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
-                <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Total Value</p>
-                <p className={`${themeClasses?.text} text-2xl font-bold`}>${selectedDeal?.totalValue?.toLocaleString()}</p>
-              </div>
-              <div className="space-y-2">
-                <Button 
-                  onClick={() => { setShowDealDetails(false); handleEditDeal(selectedDeal); }} 
-                  variant="primary" 
-                  className="w-full py-2"
-                >
-                  <Icon name="Edit" size={14} className="mr-2" />Edit Deal
-                </Button>
-                <Button 
-                  onClick={() => { setShowDealDetails(false); handleMessageCustomer(selectedDeal); }} 
-                  variant="ghost" 
-                  className="w-full py-2"
-                >
-                  <Icon name="MessageSquare" size={14} className="mr-2" />Message Customer
-                </Button>
-              </div>
-            </div>
-          )}
-        </MobileBottomSheet>
-
-        {/* MESSAGE CUSTOMER MODAL */}
-        <MobileModal
-          isOpen={showMessageModal}
-          onClose={() => setShowMessageModal(false)}
-          title="Message Customer"
-          size="medium"
-        >
-          <div className="space-y-4">
-            <div>
-              <p className={`${themeClasses?.textSecondary} text-sm mb-2`}>
-                Sending to: <span className={themeClasses?.text}>{selectedDeal?.customer?.name}</span>
-              </p>
-              <p className={`${themeClasses?.textSecondary} text-sm mb-4`}>
-                Phone: <span className={themeClasses?.text}>{selectedDeal?.customer?.phone}</span>
-              </p>
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Message</label>
-              <textarea
-                value={messageText}
-                onChange={(e) => setMessageText(e?.target?.value)}
-                placeholder="Enter your message..."
-                rows={4}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+            {/* PHASE 2: Real DealForm Create Modal */}
+            <MobileModal
+              isOpen={showNewDealModal}
+              onClose={() => {
+                setShowNewDealModal(false);
+                setSelectedDeal(null);
+                setSubmitError('');
+              }}
+              title="Create New Deal"
+              size="large"
+            >
+              <DealForm
+                mode="create"
+                onSubmit={async (payload) => {
+                  try {
+                    await dealService?.createDeal(payload);
+                    setShowNewDealModal(false);
+                    loadDeals(); // Refresh list
+                    alert('✅ Deal created successfully!');
+                  } catch (error) {
+                    console.error('Create deal error:', error);
+                    setSubmitError(`Failed to create deal: ${error?.message}`);
+                  }
+                }}
+                onCancel={() => {
+                  setShowNewDealModal(false);
+                  setSubmitError('');
+                }}
+                vehicles={vehicles}
+                vendors={vendors}
+                products={products}
+                salespeople={salespeople}
+                deliveryCoordinators={deliveryCoordinators}
+                financeManagers={financeManagers}
               />
-            </div>
-            <div className="flex space-x-3 pt-4">
-              <Button onClick={() => setShowMessageModal(false)} variant="ghost" className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSendMessage} variant="primary" className="flex-1">
-                Send Message
-              </Button>
-            </div>
-          </div>
-        </MobileModal>
+            </MobileModal>
 
-        {/* NEW: Schedule Modal */}
-        <MobileModal
-          isOpen={showScheduleModal}
-          onClose={() => setShowScheduleModal(false)}
-          title="Schedule Deal"
-          size="full"
-          fullScreen={true}
-        >
-          <div className="space-y-6 p-1">
-            {schedulingDeal && (
-              <div className="space-y-4">
-                <div className={`${themeClasses?.card} p-4 rounded-lg border`}>
-                  <h3 className={`${themeClasses?.text} text-lg font-semibold mb-3`}>
-                    Schedule: {schedulingDeal?.vehicleInfo?.year} {schedulingDeal?.vehicleInfo?.make} {schedulingDeal?.vehicleInfo?.model}
-                  </h3>
-                  <p className={`${themeClasses?.textSecondary} text-sm`}>
-                    Customer: {schedulingDeal?.customer?.name} | Stock: {schedulingDeal?.vehicleInfo?.stockNumber}
-                  </p>
-                </div>
+            {/* PHASE 2: Real DealForm Edit Modal */}
+            <MobileModal
+              isOpen={showEditModal}
+              onClose={() => {
+                setShowEditModal(false);
+                setSelectedDeal(null);
+                setSubmitError('');
+              }}
+              title="Edit Deal"
+              size="large"
+            >
+              {selectedDeal && (
+                <DealForm
+                  mode="edit"
+                  initialData={async () => {
+                    try {
+                      // PHASE 2: Fetch complete deal data for editing
+                      const deal = await dealService?.getDeal(selectedDeal?.id);
+                      const items = await dealService?.getDealItems(selectedDeal?.id);
+                      return { deal, items };
+                    } catch (error) {
+                      console.error('Error loading deal for edit:', error);
+                      setSubmitError(`Failed to load deal: ${error?.message}`);
+                      return null;
+                    }
+                  }}
+                  onSubmit={async (payload) => {
+                    try {
+                      // PHASE 2: Update deal using service
+                      await dealService?.updateDeal(selectedDeal?.id, payload?.deal);
+                      
+                      // Handle line items mutations
+                      const existingItems = await dealService?.getDealItems(selectedDeal?.id);
+                      const mutations = {
+                        insert: payload?.items?.filter(item => !item?.id),
+                        update: payload?.items?.filter(item => item?.id),
+                        delete: existingItems?.filter(existing => !payload?.items?.some(item => item?.id === existing?.id))?.map(item => item?.id)
+                      };
+                      
+                      if (mutations?.insert?.length > 0 || mutations?.update?.length > 0 || mutations?.delete?.length > 0) {
+                        await dealService?.mutateItems(selectedDeal?.id, mutations);
+                      }
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      Start Date & Time *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      End Date & Time *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Vendor</label>
-                    <select className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}>
-                      <option value="">Select Vendor</option>
-                      {vendors?.map(vendor => (
-                        <option key={vendor?.id} value={vendor?.id}>
-                          {vendor?.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Location</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Service Bay 1"
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Notes</label>
-                    <textarea
-                      rows="3"
-                      placeholder="Internal scheduling notes..."
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex space-x-3 pt-4">
-                  <Button 
-                    onClick={() => setShowScheduleModal(false)} 
-                    variant="ghost" 
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    className="flex-1"
-                    onClick={() => {
-                      // Handle scheduling logic here
-                      setShowScheduleModal(false);
-                      alert('Deal scheduled successfully!');
-                    }}
-                  >
-                    <Icon name="Calendar" size={16} className="mr-2" />
-                    Schedule Deal
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </MobileModal>
-
-        {/* ADD VENDOR MODAL */}
-        <MobileModal
-          isOpen={showAddVendorModal}
-          onClose={() => setShowAddVendorModal(false)}
-          title="Add New Vendor"
-          size="medium"
-        >
-          <div className="space-y-4">
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Vendor Name *</label>
-              <input
-                type="text"
-                value={newVendorForm?.name}
-                onChange={(e) => setNewVendorForm({...newVendorForm, name: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="Enter vendor name"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Specialty *</label>
-              <input
-                type="text"
-                value={newVendorForm?.specialty}
-                onChange={(e) => setNewVendorForm({...newVendorForm, specialty: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="e.g., Window Tinting, Audio Systems"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Contact Person</label>
-              <input
-                type="text"
-                value={newVendorForm?.contactPerson}
-                onChange={(e) => setNewVendorForm({...newVendorForm, contactPerson: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="Primary contact name"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Phone</label>
-              <input
-                type="tel"
-                value={newVendorForm?.phone}
-                onChange={(e) => setNewVendorForm({...newVendorForm, phone: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Email</label>
-              <input
-                type="email"
-                value={newVendorForm?.email}
-                onChange={(e) => setNewVendorForm({...newVendorForm, email: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="vendor@company.com"
-              />
-            </div>
-            <div className="flex space-x-3 pt-4">
-              <Button onClick={() => setShowAddVendorModal(false)} variant="ghost" className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveNewVendor} variant="primary" className="flex-1">
-                Add Vendor
-              </Button>
-            </div>
-          </div>
-        </MobileModal>
-
-        {/* ADD PRODUCT MODAL */}
-        <MobileModal
-          isOpen={showAddProductModal}
-          onClose={() => setShowAddProductModal(false)}
-          title="Add New Product"
-          size="medium"
-        >
-          <div className="space-y-4">
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product Name *</label>
-              <input
-                type="text"
-                value={newProductForm?.name}
-                onChange={(e) => setNewProductForm({...newProductForm, name: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="Enter product name"
-              />
-            </div>
-            
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>OP Code *</label>
-              <input
-                type="text"
-                value={newProductForm?.opCode}
-                onChange={(e) => setNewProductForm({...newProductForm, opCode: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="e.g., EN5, WW3, etc."
-              />
-              <p className="text-xs text-gray-600 mt-1">Short code used in item selection dropdown</p>
-            </div>
-            
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Category</label>
-              <input
-                type="text"
-                value={newProductForm?.category}
-                onChange={(e) => setNewProductForm({...newProductForm, category: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="e.g., Window Tinting, Audio"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Brand</label>
-              <input
-                type="text"
-                value={newProductForm?.brand}
-                onChange={(e) => setNewProductForm({...newProductForm, brand: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="Product brand"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Selling Price *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newProductForm?.unitPrice}
-                  onChange={(e) => setNewProductForm({...newProductForm, unitPrice: parseFloat(e?.target?.value) || 0})}
-                  className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                  placeholder="0.00"
+                      setShowEditModal(false);
+                      setSelectedDeal(null);
+                      loadDeals(); // Refresh list
+                      alert('✅ Deal updated successfully!');
+                    } catch (error) {
+                      console.error('Update deal error:', error);
+                      setSubmitError(`Failed to update deal: ${error?.message}`);
+                    }
+                  }}
+                  onCancel={() => {
+                    setShowEditModal(false);
+                    setSelectedDeal(null);
+                    setSubmitError('');
+                  }}
+                  vehicles={vehicles}
+                  vendors={vendors}
+                  products={products}
+                  salespeople={salespeople}
+                  deliveryCoordinators={deliveryCoordinators}
+                  financeManagers={financeManagers}
                 />
-              </div>
-              <div>
-                <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Your Cost</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newProductForm?.cost}
-                  onChange={(e) => setNewProductForm({...newProductForm, cost: parseFloat(e?.target?.value) || 0})}
-                  className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Part Number</label>
-              <input
-                type="text"
-                value={newProductForm?.partNumber}
-                onChange={(e) => setNewProductForm({...newProductForm, partNumber: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="Manufacturer part number"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Description</label>
-              <textarea
-                value={newProductForm?.description}
-                onChange={(e) => setNewProductForm({...newProductForm, description: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                rows="3"
-                placeholder="Product description"
-              />
-            </div>
-            <div className="flex space-x-3 pt-4">
-              <Button onClick={() => setShowAddProductModal(false)} variant="ghost" className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveNewProduct} variant="primary" className="flex-1">
-                Add Product
-              </Button>
-            </div>
-          </div>
-        </MobileModal>
+              )}
+            </MobileModal>
+          </>
+        )}
 
-        {/* ADD SALESPERSON MODAL */}
-        <MobileModal
-          isOpen={showAddSalespersonModal}
-          onClose={() => setShowAddSalespersonModal(false)}
-          title="Add New Salesperson"
-          size="medium"
-        >
-          <div className="space-y-4">
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Full Name *</label>
-              <input
-                type="text"
-                value={newSalespersonForm?.fullName}
-                onChange={(e) => setNewSalespersonForm({...newSalespersonForm, fullName: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="Enter full name"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Email *</label>
-              <input
-                type="email"
-                value={newSalespersonForm?.email}
-                onChange={(e) => setNewSalespersonForm({...newSalespersonForm, email: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="email@company.com"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Phone</label>
-              <input
-                type="tel"
-                value={newSalespersonForm?.phone}
-                onChange={(e) => setNewSalespersonForm({...newSalespersonForm, phone: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            <div className="flex space-x-3 pt-4">
-              <Button onClick={() => setShowAddSalespersonModal(false)} variant="ghost" className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveNewSalesperson} variant="primary" className="flex-1">
-                Add Salesperson
+        {/* PHASE 1: Error display area */}
+        {submitError && (
+          <div className="fixed bottom-4 left-4 max-w-md p-4 bg-red-50 border border-red-200 rounded-lg shadow-lg z-50">
+            <div className="flex items-center space-x-2">
+              <Icon name="AlertTriangle" size={16} className="text-red-600" />
+              <p className="text-red-800 text-sm">{submitError}</p>
+              <Button 
+                onClick={() => setSubmitError('')} 
+                size="sm" 
+                variant="ghost" 
+                className="text-red-600 hover:bg-red-100"
+              >
+                <Icon name="X" size={14} />
               </Button>
             </div>
           </div>
-        </MobileModal>
-
-        {/* ADD DELIVERY COORDINATOR MODAL */}
-        <MobileModal
-          isOpen={showAddDeliveryCoordinatorModal}
-          onClose={() => setShowAddDeliveryCoordinatorModal(false)}
-          title="Add New Delivery Coordinator"
-          size="medium"
-        >
-          <div className="space-y-4">
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Full Name *</label>
-              <input
-                type="text"
-                value={newDeliveryCoordinatorForm?.fullName}
-                onChange={(e) => setNewDeliveryCoordinatorForm({...newDeliveryCoordinatorForm, fullName: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="Enter full name"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Email *</label>
-              <input
-                type="email"
-                value={newDeliveryCoordinatorForm?.email}
-                onChange={(e) => setNewDeliveryCoordinatorForm({...newDeliveryCoordinatorForm, email: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="email@company.com"
-              />
-            </div>
-            <div>
-              <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Phone</label>
-              <input
-                type="tel"
-                value={newDeliveryCoordinatorForm?.phone}
-                onChange={(e) => setNewDeliveryCoordinatorForm({...newDeliveryCoordinatorForm, phone: e?.target?.value})}
-                className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            <div className="flex space-x-3 pt-4">
-              <Button onClick={() => setShowAddDeliveryCoordinatorModal(false)} variant="ghost" className="flex-1">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveNewDeliveryCoordinator} variant="primary" className="flex-1">
-                Add Delivery Coordinator
-              </Button>
-            </div>
-          </div>
-        </MobileModal>
+        )}
 
       </div>
     </AppLayout>

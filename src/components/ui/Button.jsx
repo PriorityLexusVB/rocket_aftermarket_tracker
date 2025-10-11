@@ -36,17 +36,13 @@ const Button = ({
   };
 
   const handleClick = (e) => {
-    // Prevent default form submission if it's a submit button in a form
-    if (type === 'button') {
-      e?.preventDefault();
-    }
-    
     if (disabled) {
       e?.preventDefault();
       e?.stopPropagation();
       return false;
     }
     
+    // Only call onClick if it exists and is a function
     if (onClick && typeof onClick === 'function') {
       try {
         onClick(e);
@@ -69,7 +65,7 @@ const Button = ({
       )}
       disabled={disabled}
       onClick={handleClick}
-      onMouseDown={(e) => e?.preventDefault()} // Prevent focus issues
+      onMouseDown={(e) => e?.preventDefault()}
       {...props}
     >
       {children}

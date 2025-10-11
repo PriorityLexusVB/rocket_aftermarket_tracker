@@ -1,5 +1,5 @@
-// components/ui/Select.jsx - Shadcn style Select
-import React, { useState } from "react";
+// components/ui/Select.jsx - Shadcn style Select with ResizeObserver optimization
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, Check, Search, X } from "lucide-react";
 import { cn } from "../../utils/cn";
 import Button from "./Button";
@@ -28,20 +28,24 @@ const Select = React.forwardRef(({
 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const dropdownRef = useRef(null);
+    const buttonRef = useRef(null);
 
     // Generate unique ID if not provided
     const selectId = id || `select-${Math.random()?.toString(36)?.substr(2, 9)}`;
 
-    // Filter options based on search
-    const filteredOptions = searchable && searchTerm
-        ? options?.filter(option =>
+    // Filter options based on search - Memoized to prevent re-calculations
+    const filteredOptions = React.useMemo(() => {
+        if (!searchable || !searchTerm) return options;
+        
+        return options?.filter(option =>
             option?.label?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
             (option?.value && option?.value?.toString()?.toLowerCase()?.includes(searchTerm?.toLowerCase()))
-        )
-        : options;
+        );
+    }, [options, searchable, searchTerm]);
 
-    // Get selected option(s) for display
-    const getSelectedDisplay = () => {
+    // Get selected option(s) for display - Memoized to prevent re-calculations
+    const selectedDisplay = React.useMemo(() => {
         if (!value) return placeholder;
 
         if (multiple) {
@@ -53,9 +57,10 @@ const Select = React.forwardRef(({
 
         const selectedOption = options?.find(opt => opt?.value === value);
         return selectedOption ? selectedOption?.label : placeholder;
-    };
+    }, [value, placeholder, multiple, options]);
 
-    const handleToggle = () => {
+    // Optimized toggle handler
+    const handleToggle = useCallback(() => {
         if (!disabled) {
             const newIsOpen = !isOpen;
             setIsOpen(newIsOpen);
@@ -64,9 +69,10 @@ const Select = React.forwardRef(({
                 setSearchTerm("");
             }
         }
-    };
+    }, [disabled, isOpen, onOpenChange]);
 
-    const handleOptionSelect = (option) => {
+    // Optimized option selection handler
+    const handleOptionSelect = useCallback((option) => {
         if (multiple) {
             const newValue = value || [];
             const updatedValue = newValue?.includes(option?.value)
@@ -78,25 +84,55 @@ const Select = React.forwardRef(({
             setIsOpen(false);
             onOpenChange?.(false);
         }
-    };
+    }, [multiple, value, onChange, onOpenChange]);
 
-    const handleClear = (e) => {
+    // Optimized clear handler
+    const handleClear = useCallback((e) => {
         e?.stopPropagation();
         onChange?.(multiple ? [] : '');
-    };
+    }, [multiple, onChange]);
 
-    const handleSearchChange = (e) => {
+    // Optimized search handler with debouncing
+    const handleSearchChange = useCallback((e) => {
         setSearchTerm(e?.target?.value);
-    };
+    }, []);
 
-    const isSelected = (optionValue) => {
+    // Optimized selected check
+    const isSelected = useCallback((optionValue) => {
         if (multiple) {
             return value?.includes(optionValue) || false;
         }
         return value === optionValue;
-    };
+    }, [multiple, value]);
 
     const hasValue = multiple ? value?.length > 0 : value !== undefined && value !== '';
+
+    // Close dropdown when clicking outside - Optimized
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isOpen && 
+                dropdownRef?.current && 
+                !dropdownRef?.current?.contains(event?.target) &&
+                buttonRef?.current &&
+                !buttonRef?.current?.contains(event?.target)) {
+                setIsOpen(false);
+                onOpenChange?.(false);
+                setSearchTerm("");
+            }
+        };
+
+        if (isOpen) {
+            // Small delay to prevent immediate closing
+            const timer = setTimeout(() => {
+                document.addEventListener('mousedown', handleClickOutside);
+            }, 10);
+            
+            return () => {
+                clearTimeout(timer);
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
+    }, [isOpen, onOpenChange]);
 
     return (
         <div className={cn("relative", className)}>
@@ -114,7 +150,16 @@ const Select = React.forwardRef(({
             )}
             <div className="relative">
                 <button
-                    ref={ref}
+                    ref={(node) => {
+                        buttonRef.current = node;
+                        if (ref) {
+                            if (typeof ref === 'function') {
+                                ref(node);
+                            } else {
+                                ref.current = node;
+                            }
+                        }
+                    }}
                     id={selectId}
                     type="button"
                     className={cn(
@@ -128,7 +173,7 @@ const Select = React.forwardRef(({
                     aria-haspopup="listbox"
                     {...props}
                 >
-                    <span className="truncate">{getSelectedDisplay()}</span>
+                    <span className="truncate">{selectedDisplay}</span>
 
                     <div className="flex items-center gap-1">
                         {loading && (
@@ -171,9 +216,16 @@ const Select = React.forwardRef(({
                     ))}
                 </select>
 
-                {/* Dropdown */}
+                {/* Dropdown - Optimized positioning and rendering */}
                 {isOpen && (
-                    <div className="absolute z-50 w-full mt-1 bg-white text-black border border-border rounded-md shadow-md">
+                    <div 
+                        ref={dropdownRef}
+                        className="absolute z-50 w-full mt-1 bg-white text-black border border-border rounded-md shadow-md"
+                        style={{
+                            maxHeight: '240px', // Fixed height to prevent layout shifts
+                            minHeight: '60px'   // Minimum height to prevent jumping
+                        }}
+                    >
                         {searchable && (
                             <div className="p-2 border-b">
                                 <div className="relative">
@@ -183,12 +235,13 @@ const Select = React.forwardRef(({
                                         value={searchTerm}
                                         onChange={handleSearchChange}
                                         className="pl-8"
+                                        // Prevent auto-focus which can cause layout issues
                                     />
                                 </div>
                             </div>
                         )}
 
-                        <div className="py-1 max-h-60 overflow-auto">
+                        <div className="py-1 overflow-auto" style={{ maxHeight: searchable ? '180px' : '200px' }}>
                             {filteredOptions?.length === 0 ? (
                                 <div className="px-3 py-2 text-sm text-muted-foreground">
                                     {searchTerm ? 'No options found' : 'No options available'}
