@@ -28,7 +28,7 @@ const DealsPage = () => {
   const [products, setProducts] = useState([]);
   const [salespeople, setSalespeople] = useState([]);
   const [deliveryCoordinators, setDeliveryCoordinators] = useState([]);
-  const [financeManagers, setFinanceManagers] = useState([]); // NEW: Separate state for finance managers
+  const [financeManagers, setFinanceManagers] = useState([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageText, setMessageText] = useState('');
@@ -45,13 +45,13 @@ const DealsPage = () => {
   const [dealCalendarEvents, setDealCalendarEvents] = useState([]);
   const [showCalendarView, setShowCalendarView] = useState(false);
 
-  // NEW: Enhanced state for line item editing
+  // Enhanced state for line item editing
   const [editingLineItem, setEditingLineItem] = useState(null);
   const [showEditLineItemModal, setShowEditLineItemModal] = useState(false);
   const [updatingLineItems, setUpdatingLineItems] = useState(false);
   const [deletingLineItemId, setDeletingLineItemId] = useState(null);
 
-  // NEW: Enhanced state for deal deletion
+  // Enhanced state for deal deletion
   const [deletingDealId, setDeletingDealId] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [dealToDelete, setDealToDelete] = useState(null);
@@ -72,6 +72,7 @@ const DealsPage = () => {
     needsLoaner: false,
     salespersonId: '',
     deliveryCoordinatorId: '',
+    financeManagerId: '', // NEW: Add finance manager field
     vendorId: '', // OPTIONAL - NOT MANDATORY
     isOffSite: false,
     productId: '',
@@ -103,7 +104,6 @@ const DealsPage = () => {
 
   const [stockSearchResults, setStockSearchResults] = useState([]);
   const [isSearchingStock, setIsSearchingStock] = useState(false);
-
   const [dealLineItems, setDealLineItems] = useState([]);
 
   // New Vendor Form
@@ -123,7 +123,7 @@ const DealsPage = () => {
     unitPrice: 0,
     cost: 0,
     partNumber: '',
-    opCode: '', // NEW: Add OP code field
+    opCode: '', // NEW: Add op_code field
     description: ''
   });
 
@@ -318,6 +318,7 @@ const DealsPage = () => {
         ?.eq('department', 'Sales Consultants') // Only Sales Consultants department
         ?.eq('is_active', true)
         ?.order('full_name');
+
       if (error) throw error;
       setSalespeople(data || []);
     } catch (error) {
@@ -336,6 +337,7 @@ const DealsPage = () => {
         ?.eq('department', 'Delivery Coordinator') // Only Delivery Coordinator department
         ?.eq('is_active', true)
         ?.order('full_name');
+
       if (error) throw error;
       setDeliveryCoordinators(data || []);
     } catch (error) {
@@ -354,6 +356,7 @@ const DealsPage = () => {
         ?.eq('department', 'Finance Manager') // Only Finance Manager department
         ?.eq('is_active', true)
         ?.order('full_name');
+
       if (error) throw error;
       setFinanceManagers(data || []);
     } catch (error) {
@@ -428,6 +431,7 @@ const DealsPage = () => {
       needsLoaner: deal?.needsLoaner || false,
       salespersonId: salespeople?.find(s => s?.full_name === deal?.salesperson)?.id || '',
       deliveryCoordinatorId: deliveryCoordinators?.find(d => d?.full_name === deal?.deliveryCoordinator)?.id || '',
+      financeManagerId: financeManagers?.find(f => f?.full_name === deal?.financeManager)?.id || '',
       vendorId: vendors?.find(v => v?.name === deal?.vendor)?.id || '',
       isOffSite: deal?.serviceType === 'vendor' || false,
       productId: '', // Reset for adding new items
@@ -509,10 +513,8 @@ const DealsPage = () => {
       setSubmitError('Invalid line item for update');
       return;
     }
-
     setUpdatingLineItems(true);
     setSubmitError('');
-
     try {
       const selectedProduct = products?.find(p => p?.id === editLineItemForm?.productId);
       const unitPrice = editLineItemForm?.unitPrice || selectedProduct?.unit_price || 0;
@@ -757,6 +759,7 @@ const DealsPage = () => {
         ?.from('transactions')
         ?.update(transactionUpdateData)
         ?.eq('job_id', selectedDeal?.id);
+
       if (transactionError) throw transactionError;
 
       // CRITICAL FIX: Update vehicle owner information if customer data changed
@@ -912,6 +915,7 @@ const DealsPage = () => {
       customerEmail: '',
       needsLoaner: false,
       salespersonId: user?.id || '',
+      financeManagerId: '', // NEW: Reset finance manager
       vendorId: '', // OPTIONAL - NOT MANDATORY
       isOffSite: false,
       productId: '',
@@ -946,6 +950,7 @@ const DealsPage = () => {
         ?.limit(10);
 
       if (error) throw error;
+
       setStockSearchResults(data || []);
     } catch (error) {
       console.error('Error searching stock:', error);
@@ -970,15 +975,9 @@ const DealsPage = () => {
     setStockSearchResults([]);
   };
 
-  // NEW: Handle schedule deal functionality
-  const handleScheduleDeal = (deal) => {
-    setSchedulingDeal(deal);
-    setShowScheduleModal(true);
-  };
-
   // Enhanced Add line item - Include individual promised dates and no-schedule option
   const handleAddLineItem = () => {
-    // UPDATED: Simplified validation - Only essential fields required
+    // UPDATED: Enhanced validation with off-site vendor and scheduling requirements
     if (!lineItemForm?.customerName || !lineItemForm?.productId) {
       setSubmitError('Customer Name and Product are required for each line item');
       return;
@@ -990,13 +989,25 @@ const DealsPage = () => {
       return;
     }
 
-    // NEW: Validate scheduling requirements
-    if (lineItemForm?.requiresScheduling && !lineItemForm?.lineItemPromisedDate) {
+    // NEW: Enhanced validation for off-site services
+    if (lineItemForm?.isOffSite && !lineItemForm?.vendorId) {
+      setSubmitError('Vendor selection is required for off-site services');
+      return;
+    }
+
+    // NEW: Enhanced validation for off-site scheduling
+    if (lineItemForm?.isOffSite && lineItemForm?.vendorId && !lineItemForm?.lineItemPromisedDate) {
+      setSubmitError('Schedule date is required for off-site vendor services');
+      return;
+    }
+
+    // Validate scheduling requirements for non-off-site items
+    if (!lineItemForm?.isOffSite && lineItemForm?.requiresScheduling && !lineItemForm?.lineItemPromisedDate) {
       setSubmitError('Promised date is required for items that need scheduling');
       return;
     }
 
-    if (!lineItemForm?.requiresScheduling && !lineItemForm?.noScheduleReason?.trim()) {
+    if (!lineItemForm?.isOffSite && !lineItemForm?.requiresScheduling && !lineItemForm?.noScheduleReason?.trim()) {
       setSubmitError('Please provide a reason for not requiring scheduling');
       return;
     }
@@ -1602,7 +1613,7 @@ ${calendarSummary?.join('\n')}
   const averageDealValue = filteredDeals?.length > 0 ? (totalRevenue / filteredDeals?.length) : 0;
   const highPriorityDeals = filteredDeals?.filter(deal => deal?.priority?.toLowerCase() === 'high' || deal?.priority?.toLowerCase() === 'urgent')?.length;
 
-  // FIXED: Enhanced Deal Card Renderer - Show full product names instead of OP codes, remove qty
+  // FIXED: Enhanced Deal Card Renderer - Show promised dates and payment terms for line items
   const renderDealCard = (deal, index) => (
     <div key={deal?.id} className={`${themeClasses?.card} p-4 mb-4 rounded-lg border shadow-sm ${
       deal?.customer?.hasDataIssue ? 'border-orange-300 bg-orange-50' : ''
@@ -1639,8 +1650,9 @@ ${calendarSummary?.join('\n')}
             <div className="mt-2 space-y-1">
               <div className="flex items-center space-x-3 text-xs">
                 <span className="text-gray-600">📅 Created: {deal?.todaysDate}</span>
+                {/* FIXED: Show promised date prominently */}
                 {deal?.promisedDate && (
-                  <span className="text-blue-600 font-medium">🎯 Promised: {deal?.promisedDate}</span>
+                  <span className="text-blue-600 font-medium">🎯 Promise Date: {deal?.promisedDate}</span>
                 )}
               </div>
               <div className="flex items-center space-x-2">
@@ -1703,26 +1715,61 @@ ${calendarSummary?.join('\n')}
                 {deal?.priority}
               </span>
             </div>
+            {/* FIXED: Add payment terms display */}
+            <div className="mt-1">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                💳 Net 0 Days
+              </span>
+            </div>
           </div>
         </div>
 
+        {/* FIXED: Enhanced line items display with promise dates and payment terms */}
         <div className={`border-t pt-2 ${themeClasses?.border}`}>
           {deal?.items?.length > 0 ? (
-            <div className="space-y-1">
+            <div className="space-y-2">
+              <h4 className="text-xs font-medium text-gray-600 uppercase tracking-wide">Line Items</h4>
               {deal?.items?.slice(0, 2)?.map((item, idx) => (
-                <div key={idx} className={`flex justify-between text-xs ${themeClasses?.textSecondary}`}>
-                  {/* FIXED: Show full product name instead of OP codes, remove qty display */}
-                  <span 
-                    title={item?.fullName || item?.name} 
-                    className="font-semibold cursor-help"
-                  >
-                    {item?.fullName || item?.name}
-                  </span>
-                  {/* REMOVED: Qty display as per user requirements */}
+                <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <span 
+                      title={item?.fullName || item?.name} 
+                      className="font-semibold text-sm cursor-help text-blue-900"
+                    >
+                      {item?.fullName || item?.name}
+                    </span>
+                    <span className="text-blue-700 font-bold text-sm">
+                      ${item?.price?.toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  {/* FIXED: Promise date and payment terms for each line item */}
+                  <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                    <div className="flex items-center space-x-1">
+                      <Icon name="Calendar" size={10} className="text-blue-600" />
+                      <span className="text-blue-700 font-medium">
+                        Promise: {deal?.promisedDate || 'TBD'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Icon name="CreditCard" size={10} className="text-blue-600" />
+                      <span className="text-blue-700 font-medium">
+                        Net 0 Days
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Additional line item details */}
+                  <div className="mt-2 pt-2 border-t border-blue-300">
+                    <div className="flex justify-between text-xs text-blue-700">
+                      <span>Status: Active</span>
+                      <span>Priority: {deal?.priority}</span>
+                    </div>
+                  </div>
                 </div>
               ))}
               {deal?.items?.length > 2 && (
-                <p className="text-blue-600 text-xs font-medium">+{deal?.items?.length - 2} more items</p>
+                <p className="text-blue-600 text-xs font-medium">+{deal?.items?.length - 2} more line items</p>
               )}
             </div>
           ) : (
@@ -1748,7 +1795,7 @@ ${calendarSummary?.join('\n')}
     </div>
   );
 
-  // FIXED: Enhanced Desktop Table Row Renderer - Show full product names instead of OP codes, remove qty
+  // FIXED: Enhanced Desktop Table Row Renderer - Show promised dates and payment terms for line items
   const renderDesktopRow = (deal, index) => (
     <>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -1801,30 +1848,58 @@ ${calendarSummary?.join('\n')}
         </div>
       </td>
       <td className="px-6 py-4">
-        <div className="space-y-1">
-          {deal?.items?.length > 0 ? deal?.items?.slice(0, 2)?.map((item, index) => (
-            <div key={index} className={`flex items-center justify-between text-xs ${themeClasses?.textSecondary}`}>
-              {/* FIXED: Show full product name instead of OP codes, remove qty display */}
-              <span 
-                className="font-medium cursor-help" 
-                title={item?.fullName || item?.name}
-              >
-                {item?.fullName || item?.name}
-              </span>
-              {/* REMOVED: Qty display as per user requirements */}
+        {/* FIXED: Enhanced line items display with promise dates and payment terms */}
+        <div className="space-y-2">
+          {deal?.items?.length > 0 ? deal?.items?.slice(0, 2)?.map((item, itemIndex) => (
+            <div key={itemIndex} className="bg-blue-50 border border-blue-200 rounded p-2">
+              <div className="flex items-center justify-between mb-1">
+                <span 
+                  className="font-medium text-sm cursor-help text-blue-900" 
+                  title={item?.fullName || item?.name}
+                >
+                  {item?.fullName || item?.name}
+                </span>
+                <span className="text-blue-700 font-bold text-sm">
+                  ${item?.price?.toFixed(2)}
+                </span>
+              </div>
+              
+              {/* FIXED: Promise date and payment terms for each line item */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center space-x-1">
+                  <Icon name="Calendar" size={10} className="text-blue-600" />
+                  <span className="text-blue-700 font-medium">
+                    Promise: {deal?.promisedDate || 'TBD'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Icon name="CreditCard" size={10} className="text-blue-600" />
+                  <span className="text-blue-700 font-medium">
+                    Net 0 Days
+                  </span>
+                </div>
+              </div>
             </div>
           )) : (
             <div className={`${themeClasses?.textSecondary} text-xs italic`}>{deal?.title || deal?.description}</div>
           )}
           {deal?.items?.length > 2 && (
-            <p className="text-blue-600 text-xs font-medium">+{deal?.items?.length - 2} more</p>
+            <p className="text-blue-600 text-xs font-medium">+{deal?.items?.length - 2} more line items</p>
           )}
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <p className="text-blue-600 text-sm font-bold">
-          ${deal?.totalValue?.toLocaleString()}
-        </p>
+        <div className="text-center">
+          <p className="text-blue-600 text-sm font-bold">
+            ${deal?.totalValue?.toLocaleString()}
+          </p>
+          {/* FIXED: Add payment terms display */}
+          <div className="mt-1">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+              💳 Net 0 Days
+            </span>
+          </div>
+        </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -1869,18 +1944,47 @@ ${calendarSummary?.join('\n')}
   return (
     <AppLayout>
       <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 ${themeClasses?.background}`}>
-        {/* Enhanced Header with date info */}
+        {/* UPDATED: Enhanced Header with Today's Date and Deal Number prominently displayed */}
         <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between mb-8">
-          <div>
-            <h1 className={`${themeClasses?.text} text-3xl font-bold mb-2`}>
-              Aftermarket Deals
-            </h1>
-            <p className={`${themeClasses?.textSecondary} text-base`}>
-              Manage aftermarket sales with today&apos;s date, promised dates, and calendar integration
-            </p>
-            <div className="mt-2 text-sm text-gray-600">
-              📅 Today: {new Date()?.toLocaleDateString()} | 🎯 Default Promise: 7 days from creation
+          <div className="flex-1">
+            {/* NEW: Today's Date and Deal # prominently displayed at the top */}
+            <div className="flex items-center space-x-6 mb-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border-2 border-blue-200">
+              <div className="flex items-center space-x-3">
+                <Icon name="Calendar" size={24} className="text-blue-600" />
+                <div>
+                  <p className="text-xs text-blue-700 font-medium uppercase tracking-wide">Today&apos;s Date</p>
+                  <p className="text-lg font-bold text-blue-900">
+                    {new Date()?.toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="h-8 w-px bg-gray-300"></div>
+              
+              <div className="flex items-center space-x-3">
+                <Icon name="Hash" size={24} className="text-green-600" />
+                <div>
+                  <p className="text-xs text-green-700 font-medium uppercase tracking-wide">Deal Number</p>
+                  <p className="text-lg font-bold text-green-900">
+                    #{deals?.length ? `${Math.max(...deals?.map(d => parseInt(d?.id || 0) || 0)) + 1}` : '1'}
+                  </p>
+                </div>
+              </div>
             </div>
+
+            <div className="flex items-center space-x-4 mb-2">
+              <h1 className={`${themeClasses?.text} text-3xl font-bold`}>
+                Aftermarket Deals
+              </h1>
+            </div>
+            <p className={`${themeClasses?.textSecondary} text-base`}>
+              Individual line item scheduling with promised dates - Finance Manager added under people section
+            </p>
           </div>
           
           <div className="hidden md:flex items-center space-x-4">
@@ -2039,19 +2143,42 @@ ${calendarSummary?.join('\n')}
         <MobileFloatingAction
           onClick={handleNewDeal}
           icon={<Icon name="Plus" size={20} />}
-          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700"
+          className="fixed bottom-4 right-4 z-50"
         />
 
-        {/* NEW DEAL MODAL - ENHANCED WITH INDIVIDUAL LINE ITEM SCHEDULING */}
+        {/* ENHANCED: New Deal Modal with integrated line item form */}
         <MobileModal
           isOpen={showNewDealModal}
-          onClose={() => setShowNewDealModal(false)}
-          title="Create New Deal with Individual Line Item Scheduling"
+          onClose={() => {
+            setShowNewDealModal(false);
+            setDealLineItems([]);
+            setStockSearchResults([]);
+            setSubmitError('');
+          }}
+          title="Create New Deal - Individual Line Item Scheduling"
           size="full"
           fullScreen={true}
-          className="z-50"
         >
-          <div className="space-y-6 p-1">
+          <div className="space-y-6 p-1 max-h-screen overflow-y-auto">
+            {/* NEW: Enhanced header showing today's date and deal number */}
+            <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <Icon name="Calendar" size={16} className="text-blue-600" />
+                  <span className="text-sm font-bold text-blue-800">Today: {new Date()?.toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Icon name="Hash" size={16} className="text-purple-600" />
+                  <span className="text-sm font-bold text-purple-800">
+                    Deal #: {deals?.length ? `${Math.max(...deals?.map(d => parseInt(d?.id || 0) || 0)) + 1}` : '1'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-blue-700">
+                Product, scheduling, onsite/offsite options together on each line item
+              </p>
+            </div>
+
             {submitError && (
               <div className="p-4 rounded-lg bg-red-50 border border-red-200">
                 <div className="flex items-center space-x-2">
@@ -2062,847 +2189,619 @@ ${calendarSummary?.join('\n')}
               </div>
             )}
 
-            {/* Enhanced Line Item Form with Individual Scheduling */}
+            {/* Vehicle & Customer Section */}
             <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-              <div className="flex items-center mb-6">
-                <Icon name="Calendar" size={20} className="text-blue-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Deal Information &amp; Line Item Details</h3>
+              <div className="flex items-center mb-4">
+                <Icon name="Car" size={20} className="text-blue-600 mr-3" />
+                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Vehicle & Customer</h3>
               </div>
 
-              {/* UPDATED: Today's Date Only (No global promised date) */}
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                {/* Stock Number Search */}
                 <div>
-                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                    📅 Today&apos;s Date
-                  </label>
-                  <input
-                    type="date"
-                    value={lineItemForm?.todaysDate}
-                    onChange={(e) => setLineItemForm({...lineItemForm, todaysDate: e?.target?.value})}
-                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                  />
-                  <p className="text-xs text-blue-700 mt-2 font-medium">
-                    ℹ️ Each line item will have its own promised date or no-schedule option
-                  </p>
-                </div>
-              </div>
-
-              {/* REORGANIZED: Customer Information Section */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Customer Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Customer Name *</label>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Stock Number</label>
+                  <div className="relative">
                     <input
                       type="text"
-                      value={lineItemForm?.customerName}
+                      value={lineItemForm?.stockNumber}
                       onChange={(e) => {
                         const value = e?.target?.value;
-                        // NEW: Real-time validation to prevent salesperson name entry
-                        const matchesSalesperson = salespeople?.some(s => 
-                          s?.full_name?.toLowerCase()?.includes(value?.toLowerCase()) && value?.trim()?.length > 2
-                        );
-                        
-                        setLineItemForm({...lineItemForm, customerName: value});
-                        
-                        if (matchesSalesperson && value?.trim()?.length > 5) {
-                          setSubmitError('⚠️ Warning: This name matches a salesperson. Please enter the actual customer name.');
-                        } else {
-                          setSubmitError('');
+                        setLineItemForm({...lineItemForm, stockNumber: value});
+                        if (value?.length > 2) {
+                          handleStockSearch(value);
                         }
                       }}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} ${
-                        submitError?.includes('salesperson') ? 'border-orange-500 bg-orange-50' : ''
-                      }`}
-                      placeholder="Enter actual customer's full name"
-                    />
-                    {salespeople?.some(s => 
-                      s?.full_name?.toLowerCase() === lineItemForm?.customerName?.toLowerCase() && lineItemForm?.customerName?.trim()
-                    ) && (
-                      <p className="text-xs text-orange-600 mt-1 font-medium">
-                        ⚠️ This matches a salesperson name. Please verify this is the actual customer.
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Customer Phone</label>
-                    <input
-                      type="tel"
-                      value={lineItemForm?.customerPhone}
-                      onChange={(e) => setLineItemForm({...lineItemForm, customerPhone: e?.target?.value})}
                       className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="(555) 123-4567 (Optional)"
+                      placeholder="Search stock number..."
                     />
+                    <Icon name="Search" size={16} className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${themeClasses?.textSecondary}`} />
                   </div>
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Customer Email</label>
-                    <input
-                      type="email"
-                      value={lineItemForm?.customerEmail}
-                      onChange={(e) => setLineItemForm({...lineItemForm, customerEmail: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="customer@email.com (Optional)"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Vehicle Information Section (Unchanged) */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Vehicle Information</h4>
-                
-                <div className="mb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                        Stock Number
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={lineItemForm?.stockNumber}
-                          onChange={(e) => {
-                            const value = e?.target?.value;
-                            setLineItemForm({...lineItemForm, stockNumber: value, vehicleId: ''});
-                            handleStockSearch(value);
-                          }}
-                          placeholder="Enter stock number..."
-                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                        />
-                        {isSearchingStock && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <Icon name="Loader2" size={16} className="animate-spin text-blue-600" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                        🔖 Deal #
-                      </label>
-                      <input
-                        type="text"
-                        value={lineItemForm?.dealNumber}
-                        onChange={(e) => setLineItemForm({...lineItemForm, dealNumber: e?.target?.value})}
-                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                        placeholder="Enter deal number..."
-                      />
-                    </div>
-                  </div>
-
-                  {/* Stock Search Results */}
                   {stockSearchResults?.length > 0 && (
-                    <div className={`mt-2 max-h-40 overflow-y-auto rounded-lg border ${themeClasses?.card}`}>
+                    <div className="mt-2 max-h-32 overflow-y-auto border rounded-lg">
                       {stockSearchResults?.map(vehicle => (
-                        <div
+                        <div 
                           key={vehicle?.id}
                           onClick={() => handleStockSelect(vehicle)}
-                          className={`p-3 cursor-pointer hover:bg-gray-50 border-b last:border-b-0 ${themeClasses?.hover}`}
+                          className="p-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                         >
-                          <p className={`${themeClasses?.text} text-sm font-medium`}>
-                            {vehicle?.stock_number}
-                          </p>
-                          <p className={`${themeClasses?.textSecondary} text-xs`}>
-                            {vehicle?.year} {vehicle?.make} {vehicle?.model}
-                          </p>
+                          <p className="font-medium">{vehicle?.stock_number} - {vehicle?.year} {vehicle?.make} {vehicle?.model}</p>
                         </div>
                       ))}
                     </div>
                   )}
-
-                  {/* Selected Vehicle Display */}
-                  {lineItemForm?.vehicleId && (
-                    <div className="mt-2 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                      <p className="text-blue-600 text-sm font-medium">
-                        ✓ Vehicle Selected
-                      </p>
-                      <p className={`${themeClasses?.textSecondary} text-xs`}>
-                        {vehicles?.find(v => v?.id === lineItemForm?.vehicleId)?.year} {vehicles?.find(v => v?.id === lineItemForm?.vehicleId)?.make} {vehicles?.find(v => v?.id === lineItemForm?.vehicleId)?.model}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Manual Vehicle Details Section */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      Year *
-                    </label>
-                    <input
-                      type="number"
-                      min="1900"
-                      max={new Date()?.getFullYear() + 1}
-                      value={lineItemForm?.vehicleYear || ''}
-                      onChange={(e) => setLineItemForm({...lineItemForm, vehicleYear: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="e.g., 2023"
-                    />
-                  </div>
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      Make *
-                    </label>
-                    <input
-                      type="text"
-                      value={lineItemForm?.vehicleMake || ''}
-                      onChange={(e) => setLineItemForm({...lineItemForm, vehicleMake: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="e.g., Toyota, Honda, Ford"
-                    />
-                  </div>
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      Model *
-                    </label>
-                    <input
-                      type="text"
-                      value={lineItemForm?.vehicleModel || ''}
-                      onChange={(e) => setLineItemForm({...lineItemForm, vehicleModel: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="e.g., Camry, Civic, F-150"
-                    />
-                  </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>VIN</label>
+                  <input
+                    type="text"
+                    value={lineItemForm?.vin || ''}
+                    onChange={(e) => setLineItemForm({...lineItemForm, vin: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="Vehicle VIN"
+                  />
                 </div>
 
-                {/* Vehicle Condition and Loaner Section */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
-                      Vehicle Condition *
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div 
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          lineItemForm?.vehicleCondition === 'new' ?'border-green-500 bg-green-50 shadow-sm' :'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        onClick={() => setLineItemForm({...lineItemForm, vehicleCondition: 'new'})}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-5 h-5 flex items-center justify-center rounded-full border-2 transition-all duration-200 ${
-                            lineItemForm?.vehicleCondition === 'new' ?'bg-green-600 border-green-600' :'bg-white border-gray-300'
-                          }`}>
-                            {lineItemForm?.vehicleCondition === 'new' && (
-                              <div className="w-2 h-2 bg-white rounded-full"></div>
-                            )}
-                          </div>
-                          <div>
-                            <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>New</label>
-                          </div>
-                        </div>
-                      </div>
-                      <div 
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          lineItemForm?.vehicleCondition === 'used' ?'border-blue-500 bg-blue-50 shadow-sm' :'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        onClick={() => setLineItemForm({...lineItemForm, vehicleCondition: 'used'})}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-5 h-5 flex items-center justify-center rounded-full border-2 transition-all duration-200 ${
-                            lineItemForm?.vehicleCondition === 'used' ?'bg-blue-600 border-blue-600' :'bg-white border-gray-300'
-                          }`}>
-                            {lineItemForm?.vehicleCondition === 'used' && (
-                              <div className="w-2 h-2 bg-white rounded-full"></div>
-                            )}
-                          </div>
-                          <div>
-                            <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>Used</label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
-                      Customer Loaner Vehicle
-                    </label>
-                    <div 
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                        lineItemForm?.needsLoaner ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                      onClick={() => setLineItemForm({...lineItemForm, needsLoaner: !lineItemForm?.needsLoaner})}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-6 h-6 flex items-center justify-center rounded border-2 transition-all duration-200 ${
-                          lineItemForm?.needsLoaner 
-                            ? 'bg-blue-600 border-blue-600' :'bg-white border-gray-300 hover:border-gray-400'
-                        }`}>
-                          {lineItemForm?.needsLoaner && (
-                            <Icon name="Check" size={14} className="text-white" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
-                            Customer requires loaner vehicle
-                          </label>
-                          <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
-                            Customer requires a loaner vehicle during service
-                          </p>
-                        </div>
-                        {lineItemForm?.needsLoaner && (
-                          <div className="flex-shrink-0">
-                            <Icon name="Car" size={16} className="text-blue-600" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Notes</label>
+                  <input
+                    type="text"
+                    value={lineItemForm?.notes || ''}
+                    onChange={(e) => setLineItemForm({...lineItemForm, notes: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="Additional notes"
+                  />
                 </div>
               </div>
 
-              {/* Staff Assignment Section */}
-              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className={`${themeClasses?.text} text-base font-semibold mb-4`}>Staff Assignment</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Delivery Coordinator</label>
-                    <select
-                      value={lineItemForm?.deliveryCoordinatorId}
-                      onChange={(e) => setLineItemForm({...lineItemForm, deliveryCoordinatorId: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    >
-                      <option value="">Select Delivery Coordinator (Optional)</option>
-                      {deliveryCoordinators?.map(coordinator => (
-                        <option key={coordinator?.id} value={coordinator?.id}>
-                          {coordinator?.full_name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="mt-2">
-                      <Button 
-                        onClick={() => setShowAddDeliveryCoordinatorModal(true)} 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-xs"
-                      >
-                        <Icon name="Plus" size={12} className="mr-1" />Add New
-                      </Button>
-                    </div>
-                  </div>
+              {/* Manual Vehicle Entry */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Year *</label>
+                  <input
+                    type="number"
+                    min="1990"
+                    max={new Date()?.getFullYear() + 1}
+                    value={lineItemForm?.vehicleYear}
+                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleYear: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="2024"
+                  />
+                </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Make *</label>
+                  <input
+                    type="text"
+                    value={lineItemForm?.vehicleMake}
+                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleMake: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="Toyota"
+                  />
+                </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Model *</label>
+                  <input
+                    type="text"
+                    value={lineItemForm?.vehicleModel}
+                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleModel: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="Camry"
+                  />
+                </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Trim</label>
+                  <input
+                    type="text"
+                    value={lineItemForm?.vehicleTrim || ''}
+                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleTrim: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="LE, XLE, etc."
+                  />
+                </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Color</label>
+                  <input
+                    type="text"
+                    value={lineItemForm?.vehicleColor || ''}
+                    onChange={(e) => setLineItemForm({...lineItemForm, vehicleColor: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="White, Black, etc."
+                  />
+                </div>
+              </div>
 
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Sales Person</label>
+              {/* Customer Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Customer Name *</label>
+                  <input
+                    type="text"
+                    value={lineItemForm?.customerName}
+                    onChange={(e) => setLineItemForm({...lineItemForm, customerName: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="Full customer name"
+                  />
+                </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Phone</label>
+                  <input
+                    type="tel"
+                    value={lineItemForm?.customerPhone}
+                    onChange={(e) => setLineItemForm({...lineItemForm, customerPhone: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Email</label>
+                  <input
+                    type="email"
+                    value={lineItemForm?.customerEmail}
+                    onChange={(e) => setLineItemForm({...lineItemForm, customerEmail: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    placeholder="customer@email.com"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* UPDATED: Enhanced People Section with Finance Manager prominently displayed */}
+            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
+              <div className="flex items-center mb-4">
+                <Icon name="Users" size={20} className="text-green-600 mr-3" />
+                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>People - Staff Assignment</h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                    <Icon name="UserCheck" size={14} className="inline mr-1" />
+                    Salesperson
+                  </label>
+                  <div className="flex">
                     <select
                       value={lineItemForm?.salespersonId}
                       onChange={(e) => setLineItemForm({...lineItemForm, salespersonId: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                      className={`flex-1 p-3 text-sm rounded-l-lg border ${themeClasses?.input}`}
                     >
-                      <option value="">Select Salesperson (Optional)</option>
+                      <option value="">Select Salesperson</option>
                       {salespeople?.map(person => (
                         <option key={person?.id} value={person?.id}>
                           {person?.full_name}
                         </option>
                       ))}
                     </select>
-                    <div className="mt-2">
-                      <Button 
-                        onClick={() => setShowAddSalespersonModal(true)} 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-xs"
-                      >
-                        <Icon name="Plus" size={12} className="mr-1" />Add New
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Finance Manager</label>
-                    <select
-                      value={lineItemForm?.financeManagerId || ''}
-                      onChange={(e) => setLineItemForm({...lineItemForm, financeManagerId: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                    <Button 
+                      onClick={() => setShowAddSalespersonModal(true)} 
+                      variant="ghost" 
+                      className="px-3 rounded-l-none border-l-0"
                     >
-                      <option value="">Select Finance Manager</option>
-                      {financeManagers?.map(person => (
-                        <option key={person?.id} value={person?.id}>
-                          {person?.full_name}
+                      <Icon name="Plus" size={16} />
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                    <Icon name="Truck" size={14} className="inline mr-1" />
+                    Delivery Coordinator
+                  </label>
+                  <div className="flex">
+                    <select
+                      value={lineItemForm?.deliveryCoordinatorId}
+                      onChange={(e) => setLineItemForm({...lineItemForm, deliveryCoordinatorId: e?.target?.value})}
+                      className={`flex-1 p-3 text-sm rounded-l-lg border ${themeClasses?.input}`}
+                    >
+                      <option value="">Select Delivery Coordinator</option>
+                      {deliveryCoordinators?.map(coordinator => (
+                        <option key={coordinator?.id} value={coordinator?.id}>
+                          {coordinator?.full_name}
                         </option>
                       ))}
                     </select>
+                    <Button 
+                      onClick={() => setShowAddDeliveryCoordinatorModal(true)} 
+                      variant="ghost" 
+                      className="px-3 rounded-l-none border-l-0"
+                    >
+                      <Icon name="Plus" size={16} />
+                    </Button>
                   </div>
                 </div>
-              </div>
 
-              {/* ENHANCED: Line Item Details Section with Cost and Scheduling */}
-              <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                <h4 className={`${themeClasses?.text} text-base font-semibold mb-4 flex items-center`}>
-                  <Icon name="Package" size={18} className="mr-2 text-yellow-600" />
-                  Individual Line Item Details
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product Name *</label>
-                    <select
-                      value={lineItemForm?.productId}
-                      onChange={(e) => {
-                        const productId = e?.target?.value;
-                        
-                        if (productId === 'ADD_NEW') {
-                          setShowAddProductModal(true);
-                          return;
-                        }
-                        
-                        const product = products?.find(p => p?.id === productId);
-                        setLineItemForm({
-                          ...lineItemForm, 
-                          productId,
-                          unitPrice: product?.unit_price || 0,
-                          cost: product?.cost || 0
-                        });
-                      }}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    >
-                      <option value="">Select Product</option>
-                      {products?.map(product => (
-                        <option key={product?.id} value={product?.id}>
-                          {product?.op_code ? `${product?.op_code} - ${product?.name}` : product?.name} - ${product?.unit_price} ({product?.category})
-                        </option>
-                      ))}
-                      <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
-                        ➕ Add New Product
+                {/* ENHANCED: Finance Manager with prominent display and icon */}
+                <div className="relative">
+                  <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
+                    <Icon name="DollarSign" size={14} className="inline mr-1 text-green-600" />
+                    <span className="text-green-700 font-semibold">Finance Manager</span>
+                  </label>
+                  <select
+                    value={lineItemForm?.financeManagerId || ''}
+                    onChange={(e) => setLineItemForm({...lineItemForm, financeManagerId: e?.target?.value})}
+                    className={`w-full p-3 text-sm rounded-lg border border-green-300 focus:border-green-500 focus:ring-green-500 ${themeClasses?.input}`}
+                  >
+                    <option value="">Select Finance Manager</option>
+                    {financeManagers?.map(manager => (
+                      <option key={manager?.id} value={manager?.id}>
+                        {manager?.full_name}
                       </option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      💰 Selling Price *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={lineItemForm?.unitPrice}
-                      onChange={(e) => setLineItemForm({...lineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  {/* ENHANCED: Cost field now prominently displayed */}
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      💸 Your Cost *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={lineItemForm?.cost}
-                      onChange={(e) => setLineItemForm({...lineItemForm, cost: parseFloat(e?.target?.value) || 0})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} bg-yellow-50`}
-                      placeholder="Enter your cost..."
-                    />
-                    <p className="text-xs text-yellow-700 mt-1 font-medium">
-                      ⚠️ Required for profit calculation
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
-                      Vendor Required
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div 
-                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          !lineItemForm?.isOffSite 
-                            ? 'border-green-500 bg-green-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        onClick={() => setLineItemForm({...lineItemForm, isOffSite: false, vendorId: ''})}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-4 h-4 flex items-center justify-center rounded border-2 transition-all duration-200 ${
-                            !lineItemForm?.isOffSite 
-                              ? 'bg-green-600 border-green-600' :'bg-white border-gray-300'
-                          }`}>
-                            {!lineItemForm?.isOffSite && (
-                              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                            )}
-                          </div>
-                          <label className={`${themeClasses?.text} text-xs font-medium cursor-pointer`}>On-Site</label>
-                        </div>
-                      </div>
-                      <div 
-                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          lineItemForm?.isOffSite 
-                            ? 'border-orange-500 bg-orange-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        onClick={() => setLineItemForm({...lineItemForm, isOffSite: true})}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-4 h-4 flex items-center justify-center rounded border-2 transition-all duration-200 ${
-                            lineItemForm?.isOffSite 
-                              ? 'bg-orange-600 border-orange-600' :'bg-white border-gray-300'
-                          }`}>
-                            {lineItemForm?.isOffSite && (
-                              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                            )}
-                          </div>
-                          <label className={`${themeClasses?.text} text-xs font-medium cursor-pointer`}>Off-Site</label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {lineItemForm?.isOffSite && (
-                      <div className="mt-4">
-                        <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                          Select Vendor *
-                        </label>
-                        <select
-                          value={lineItemForm?.vendorId}
-                          onChange={(e) => setLineItemForm({...lineItemForm, vendorId: e?.target?.value})}
-                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                          required
-                        >
-                          <option value="">Choose a vendor for off-site service</option>
-                          {vendors?.map(vendor => (
-                            <option key={vendor?.id} value={vendor?.id}>
-                              {vendor?.name} - {vendor?.specialty}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="mt-2">
-                          <Button 
-                            onClick={() => setShowAddVendorModal(true)} 
-                            variant="ghost" 
-                            size="sm"
-                            className="text-xs"
-                          >
-                            <Icon name="Plus" size={12} className="mr-1" />Add New Vendor
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Priority Level</label>
-                    <select
-                      value={lineItemForm?.priority}
-                      onChange={(e) => setLineItemForm({...lineItemForm, priority: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    >
-                      <option value="Low">Low Priority</option>
-                      <option value="Medium">Medium Priority</option>
-                      <option value="High">High Priority</option>
-                      <option value="Urgent">Urgent</option>
-                    </select>
-                  </div>
+                    ))}
+                  </select>
+                  {/* Add indicator for Finance Manager importance */}
+                  <div className="absolute top-0 right-0 w-2 h-2 bg-green-500 rounded-full transform translate-x-1 -translate-y-1"></div>
                 </div>
-
-                {/* NEW: Individual Line Item Scheduling Section */}
-                <div className="mt-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                  <h5 className={`${themeClasses?.text} text-sm font-semibold mb-4 flex items-center`}>
-                    <Icon name="Clock" size={16} className="mr-2 text-purple-600" />
-                    Individual Line Item Scheduling
-                  </h5>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Scheduling Requirement Toggle */}
-                    <div>
-                      <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
-                        Does this item require scheduling?
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div 
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                            lineItemForm?.requiresScheduling 
-                              ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                          }`}
-                          onClick={() => setLineItemForm({...lineItemForm, requiresScheduling: true, noScheduleReason: ''})}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border-2 transition-all duration-200 ${
-                              lineItemForm?.requiresScheduling 
-                                ? 'bg-blue-600 border-blue-600' :'bg-white border-gray-300'
-                            }`}>
-                              {lineItemForm?.requiresScheduling && (
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              )}
-                            </div>
-                            <div>
-                              <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
-                                📅 Yes, Schedule Required
-                              </label>
-                              <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
-                                Needs appointment/promise date
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div 
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                            !lineItemForm?.requiresScheduling 
-                              ? 'border-gray-500 bg-gray-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                          }`}
-                          onClick={() => setLineItemForm({...lineItemForm, requiresScheduling: false, lineItemPromisedDate: ''})}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`w-5 h-5 flex items-center justify-center rounded-full border-2 transition-all duration-200 ${
-                              !lineItemForm?.requiresScheduling 
-                                ? 'bg-gray-600 border-gray-600' :'bg-white border-gray-300'
-                            }`}>
-                              {!lineItemForm?.requiresScheduling && (
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
-                              )}
-                            </div>
-                            <div>
-                              <label className={`${themeClasses?.text} text-sm font-medium cursor-pointer`}>
-                                🚫 No Schedule Needed
-                              </label>
-                              <p className={`${themeClasses?.textSecondary} text-xs mt-1`}>
-                                Already done/stock item/etc.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Conditional Fields Based on Scheduling Requirement */}
-                    <div>
-                      {lineItemForm?.requiresScheduling ? (
-                        <div>
-                          <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                            🎯 Individual Promised Date *
-                          </label>
-                          <input
-                            type="date"
-                            value={lineItemForm?.lineItemPromisedDate}
-                            onChange={(e) => setLineItemForm({...lineItemForm, lineItemPromisedDate: e?.target?.value})}
-                            className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} bg-blue-50`}
-                            min={lineItemForm?.todaysDate}
-                          />
-                          <p className="text-xs text-blue-700 mt-1 font-medium">
-                            ℹ️ This item's specific promised completion date
-                          </p>
-                        </div>
-                      ) : (
-                        <div>
-                          <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                            📝 Reason for No Scheduling *
-                          </label>
-                          <select
-                            value={lineItemForm?.noScheduleReason}
-                            onChange={(e) => setLineItemForm({...lineItemForm, noScheduleReason: e?.target?.value})}
-                            className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} bg-gray-50`}
-                          >
-                            <option value="">Select reason...</option>
-                            <option value="stock_item">Stock Item - No Installation</option>
-                            <option value="already_completed">Work Already Completed</option>
-                            <option value="delivery_only">Delivery Only</option>
-                            <option value="customer_pickup">Customer Pickup</option>
-                            <option value="documentation_only">Documentation/Paperwork Only</option>
-                            <option value="other">Other (specify in notes)</option>
-                          </select>
-                          <p className="text-xs text-gray-600 mt-1">
-                            ⚠️ Required when no scheduling needed
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Enhanced Pricing Preview with Profit Calculation */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
-                  <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Selling Price</p>
-                  <p className={`${themeClasses?.text} text-2xl font-bold`}>
-                    ${(lineItemForm?.unitPrice || 0)?.toFixed(2)}
-                  </p>
-                </div>
-                <div className={`${themeClasses?.card} p-4 rounded-lg border text-center bg-yellow-50`}>
-                  <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Your Cost</p>
-                  <p className={`${themeClasses?.text} text-2xl font-bold text-orange-600`}>
-                    ${(lineItemForm?.cost || 0)?.toFixed(2)}
-                  </p>
-                </div>
-                <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
-                  <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Profit</p>
-                  <p className="text-green-600 text-2xl font-bold">
-                    ${((lineItemForm?.unitPrice || 0) - (lineItemForm?.cost || 0))?.toFixed(2)}
-                  </p>
-                </div>
-                <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
-                  <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Margin %</p>
-                  <p className="text-purple-600 text-2xl font-bold">
-                    {lineItemForm?.unitPrice > 0 ? 
-                      (((lineItemForm?.unitPrice - lineItemForm?.cost) / lineItemForm?.unitPrice) * 100)?.toFixed(1) : '0'
-                    }%
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <Button 
-                  onClick={handleAddLineItem}
-                  variant="primary"
-                  className="w-full py-3 text-base font-medium bg-blue-600 hover:bg-blue-700"
-                  disabled={!lineItemForm?.customerName || !lineItemForm?.productId || (!lineItemForm?.vehicleId && (!lineItemForm?.vehicleYear || !lineItemForm?.vehicleMake || !lineItemForm?.vehicleModel))}
-                >
-                  <Icon name="Plus" size={16} className="mr-2" />
-                  Add Line Item with Individual Scheduling
-                </Button>
               </div>
             </div>
 
-            {/* Enhanced Line Items Display with Individual Scheduling Info */}
-            {dealLineItems?.length > 0 && (
-              <div>
-                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm mb-6`}>
-                  <div className="text-center mb-4">
-                    <p className={`${themeClasses?.textSecondary} text-sm font-medium uppercase`}>Deal Summary ({dealLineItems?.length} items)</p>
-                    <p className={`${themeClasses?.text} text-3xl font-bold mt-2`}>
-                      ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
-                    </p>
-                  </div>
+            {/* INTEGRATED Line Items Section */}
+            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm border-purple-300 bg-purple-50`}>
+              <div className="flex items-center mb-4">
+                <Icon name="Package" size={20} className="text-purple-600 mr-3" />
+                <h3 className={`${themeClasses?.text} text-lg font-semibold text-purple-900`}>Line Items (Integrated Form)</h3>
+              </div>
+
+              {/* INTEGRATED Line Item Input Row */}
+              <div className="bg-white p-4 rounded-lg border border-purple-200 mb-4">
+                <div className="grid grid-cols-1 gap-4">
                   
-                  {/* Enhanced Scheduling Summary */}
-                  <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className={`${themeClasses?.text} text-sm font-semibold mb-3 flex items-center`}>
-                      <Icon name="Calendar" size={16} className="mr-2 text-blue-600" />
-                      Individual Line Item Scheduling Summary
-                    </h4>
+                  {/* Product Selection Row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Product *</label>
+                      <div className="flex">
+                        <select
+                          value={lineItemForm?.productId}
+                          onChange={(e) => {
+                            const productId = e?.target?.value;
+                            const product = products?.find(p => p?.id === productId);
+                            setLineItemForm({
+                              ...lineItemForm, 
+                              productId,
+                              unitPrice: product?.unit_price || 0,
+                              cost: product?.cost || 0
+                            });
+                          }}
+                          className={`flex-1 p-2 text-sm rounded-l-lg border ${themeClasses?.input}`}
+                        >
+                          <option value="">Select Product</option>
+                          {products?.map(product => (
+                            <option key={product?.id} value={product?.id}>
+                              {product?.name}
+                            </option>
+                          ))}
+                        </select>
+                        <Button 
+                          onClick={() => setShowAddProductModal(true)} 
+                          variant="ghost" 
+                          size="sm"
+                          className="px-2 rounded-l-none border-l-0"
+                        >
+                          <Icon name="Plus" size={12} />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Vendor (Optional)</label>
+                      <div className="flex">
+                        <select
+                          value={lineItemForm?.vendorId}
+                          onChange={(e) => {
+                            const vendorId = e?.target?.value;
+                            setLineItemForm({...lineItemForm, vendorId: vendorId, isOffSite: !!vendorId});
+                            // NEW: Open vendor modal if "ADD_NEW" is selected
+                            if (vendorId === 'ADD_NEW') {
+                              setShowAddVendorModal(true);
+                            }
+                          }}
+                          className={`flex-1 p-2 text-sm rounded-l-lg border ${themeClasses?.input}`}
+                        >
+                          <option value="">In-House Service</option>
+                          {vendors?.map(vendor => (
+                            <option key={vendor?.id} value={vendor?.id}>
+                              {vendor?.name}
+                            </option>
+                          ))}
+                          <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
+                            ➕ Add New Vendor
+                          </option>
+                        </select>
+                        <Button 
+                          onClick={() => setShowAddVendorModal(true)} 
+                          variant="ghost" 
+                          size="sm"
+                          className="px-2 rounded-l-none border-l-0"
+                        >
+                          <Icon name="Plus" size={12} />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Unit Price</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={lineItemForm?.unitPrice}
+                        onChange={(e) => setLineItemForm({...lineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
+                        className={`w-full p-2 text-sm rounded-lg border ${themeClasses?.input}`}
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`${themeClasses?.text} block text-xs font-medium mb-1`}>Your Cost</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={lineItemForm?.cost}
+                        onChange={(e) => setLineItemForm({...lineItemForm, cost: parseFloat(e?.target?.value) || 0})}
+                        className={`w-full p-2 text-sm rounded-lg border ${themeClasses?.input}`}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  {/* ENHANCED: Scheduling & Options Row with clearer checkboxes */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     
-                    {(() => {
-                      const scheduledItems = dealLineItems?.filter(item => item?.requiresScheduling);
-                      const nonScheduledItems = dealLineItems?.filter(item => !item?.requiresScheduling);
-                      
-                      return (
-                        <div className="space-y-2 text-sm">
-                          {scheduledItems?.length > 0 && (
-                            <div className="p-2 bg-blue-100 rounded border">
-                              <span className="text-blue-800 font-medium">
-                                📅 {scheduledItems?.length} Item{scheduledItems?.length > 1 ? 's' : ''} Requiring Scheduling
-                              </span>
-                              <div className="mt-1 ml-4 space-y-1">
-                                {scheduledItems?.map((item, index) => (
-                                  <div key={index} className="text-xs text-blue-700">
-                                    • {item?.product?.name}: {item?.promisedDate ? new Date(item?.promisedDate)?.toLocaleDateString() : 'Date TBD'}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {nonScheduledItems?.length > 0 && (
-                            <div className="p-2 bg-gray-100 rounded border">
-                              <span className="text-gray-800 font-medium">
-                                🚫 {nonScheduledItems?.length} Item{nonScheduledItems?.length > 1 ? 's' : ''} Not Requiring Scheduling
-                              </span>
-                              <div className="mt-1 ml-4 space-y-1">
-                                {nonScheduledItems?.map((item, index) => (
-                                  <div key={index} className="text-xs text-gray-700">
-                                    • {item?.product?.name}: {item?.noScheduleReason?.replace('_', ' ')?.toUpperCase()}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="mt-3 p-2 bg-green-50 rounded text-xs text-green-700">
-                            ✅ Each line item has individual scheduling control<br/>
-                            ✅ Calendar events will be created only for items requiring scheduling<br/>
-                            ✅ Non-scheduled items tracked for completion without appointments
+                    {/* ENHANCED: Clearer Scheduling Requirements section */}
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <label className={`${themeClasses?.text} block text-xs font-bold mb-2 text-blue-900 uppercase tracking-wide`}>
+                        <Icon name="Calendar" size={12} className="inline mr-1" />
+                        Scheduling Requirements
+                      </label>
+                      <div className="space-y-3">
+                        <label className="flex items-start space-x-3 p-2 bg-white rounded border cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={lineItemForm?.requiresScheduling}
+                            onChange={(e) => setLineItemForm({
+                              ...lineItemForm, 
+                              requiresScheduling: e?.target?.checked, 
+                              noScheduleReason: e?.target?.checked ? '' : lineItemForm?.noScheduleReason
+                            })}
+                            className="mt-0.5 h-4 w-4 text-blue-600 rounded focus:ring-blue-500 border-2 border-blue-300"
+                          />
+                          <div>
+                            <span className="font-semibold text-sm text-blue-900">Requires Scheduling</span>
+                            <p className="text-xs text-blue-700 mt-1">
+                              {lineItemForm?.requiresScheduling ? 
+                                'Customer needs scheduled appointment' : 'No scheduling needed for this item'
+                              }
+                            </p>
                           </div>
+                        </label>
+
+                        {/* UPDATED: Off-Site Service with vendor selection inline */}
+                        <div className="p-2 bg-white rounded border">
+                          <label className="flex items-start space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                            <input
+                              type="checkbox"
+                              checked={lineItemForm?.isOffSite}
+                              onChange={(e) => {
+                                const isChecked = e?.target?.checked;
+                                setLineItemForm({...lineItemForm, isOffSite: isChecked});
+                                // Reset vendor selection when unchecked
+                                if (!isChecked) {
+                                  setLineItemForm(prev => ({...prev, vendorId: ''}));
+                                }
+                              }}
+                              className="mt-0.5 h-4 w-4 text-orange-600 rounded focus:ring-orange-500 border-2 border-orange-300"
+                            />
+                            <div className="flex-1">
+                              <span className="font-semibold text-sm text-orange-900">Off-Site Service</span>
+                              <p className="text-xs text-orange-700 mt-1 mb-2">
+                                Work performed at vendor location
+                              </p>
+                              
+                              {/* MOVED: Vendor selection directly next to off-site service */}
+                              {lineItemForm?.isOffSite && (
+                                <div className="mt-2">
+                                  <div className="flex items-center space-x-2">
+                                    <select
+                                      value={lineItemForm?.vendorId}
+                                      onChange={(e) => {
+                                        const vendorId = e?.target?.value;
+                                        setLineItemForm({...lineItemForm, vendorId: vendorId});
+                                        // Open add vendor modal if "ADD_NEW" is selected
+                                        if (vendorId === 'ADD_NEW') {
+                                          setShowAddVendorModal(true);
+                                        }
+                                      }}
+                                      className="flex-1 p-2 text-xs rounded border border-orange-300 focus:border-orange-500"
+                                    >
+                                      <option value="">Select Vendor</option>
+                                      {vendors?.map(vendor => (
+                                        <option key={vendor?.id} value={vendor?.id}>
+                                          {vendor?.name}
+                                        </option>
+                                      ))}
+                                      <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
+                                        ➕ Add New Vendor
+                                      </option>
+                                    </select>
+                                    <Button 
+                                      onClick={() => setShowAddVendorModal(true)} 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="px-2 py-1"
+                                    >
+                                      <Icon name="Plus" size={10} />
+                                    </Button>
+                                  </div>
+                                  
+                                  {/* NEW: Require schedule field under vendor when selected */}
+                                  {lineItemForm?.vendorId && (
+                                    <div className="mt-2 p-2 bg-purple-50 rounded border border-purple-200">
+                                      <label className="flex items-center space-x-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={lineItemForm?.requiresVendorScheduling || false}
+                                          onChange={(e) => setLineItemForm({
+                                            ...lineItemForm, 
+                                            requiresVendorScheduling: e?.target?.checked,
+                                            lineItemPromisedDate: e?.target?.checked ? lineItemForm?.lineItemPromisedDate : ''
+                                          })}
+                                          className="h-3 w-3 text-purple-600 rounded focus:ring-purple-500"
+                                        />
+                                        <span className="text-xs font-medium text-purple-900">Require Schedule</span>
+                                      </label>
+                                      
+                                      {/* Show schedule field when require schedule is checked */}
+                                      {lineItemForm?.requiresVendorScheduling && (
+                                        <div className="mt-2">
+                                          <input
+                                            type="date"
+                                            value={lineItemForm?.lineItemPromisedDate}
+                                            onChange={(e) => setLineItemForm({...lineItemForm, lineItemPromisedDate: e?.target?.value})}
+                                            className="w-full p-2 text-xs rounded border border-purple-300 focus:border-purple-500"
+                                            min={new Date()?.toISOString()?.split('T')?.[0]}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </label>
                         </div>
-                      );
-                    })()}
+                      </div>
+                    </div>
+
+                    {/* UPDATED: Additional Options section - Only Loaner Vehicle now */}
+                    <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <label className={`${themeClasses?.text} block text-xs font-bold mb-2 text-orange-900 uppercase tracking-wide`}>
+                        <Icon name="Settings" size={12} className="inline mr-1" />
+                        Additional Options
+                      </label>
+                      <div className="space-y-3">
+                        <label className="flex items-start space-x-3 p-2 bg-white rounded border cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={lineItemForm?.needsLoaner}
+                            onChange={(e) => setLineItemForm({...lineItemForm, needsLoaner: e?.target?.checked})}
+                            className="mt-0.5 h-4 w-4 text-green-600 rounded focus:ring-green-500 border-2 border-green-300"
+                          />
+                          <div>
+                            <span className="font-semibold text-sm text-green-900">Loaner Vehicle Required</span>
+                            <p className="text-xs text-green-700 mt-1">Customer needs replacement vehicle</p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* REMOVED: Separate vendor selection columns - now integrated with off-site service */}
+                    
                   </div>
-                  
-                  <div className="mt-2 text-xs text-gray-600 space-y-1">
-                    <div>📅 Created: {lineItemForm?.todaysDate}</div>
-                    <div>✅ Individual line item scheduling and cost tracking implemented</div>
+
+                  {/* Add Button */}
+                  <div className="text-center pt-2">
+                    <Button 
+                      onClick={handleAddLineItem}
+                      variant="primary"
+                      size="sm"
+                      disabled={!lineItemForm?.customerName || !lineItemForm?.productId}
+                    >
+                      <Icon name="Plus" size={14} className="mr-1" />
+                      Add Line Item
+                    </Button>
                   </div>
                 </div>
-                
-                {/* Enhanced Line Items List with Individual Scheduling Display */}
-                <div className="space-y-3">
-                  {dealLineItems?.map(item => (
-                    <div key={item?.id} className={`${themeClasses?.card} p-4 rounded-lg border shadow-sm`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          {item?.isNewItem && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mb-2">
-                              🆕 New Item - Will be saved to database
-                            </span>
-                          )}
-                          <p className={`${themeClasses?.text} text-sm font-medium`}>
-                            {item?.vehicle?.stock_number} - {item?.vehicle?.year} {item?.vehicle?.make} {item?.vehicle?.model}
-                          </p>
-                          <p className={`${themeClasses?.textSecondary} text-xs`}>
-                            {item?.customerName} - {item?.product?.name}
-                          </p>
-                          
-                          <div className="flex items-center space-x-4 mt-2">
-                            <div className="text-xs">
-                              <span className="text-gray-500">Price:</span>
-                              <span className="font-medium ml-1">${item?.totalPrice?.toFixed(2)}</span>
-                            </div>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              item?.serviceType === 'vendor' ? 'bg-orange-100 text-orange-800 border border-orange-300' : 'bg-green-100 text-green-800 border border-green-300'
-                            }`}>
-                              {item?.serviceType === 'vendor' ? '🏢 Off-Site' : '🏠 On-Site'}
-                            </span>
-                            {item?.vendor && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                📍 {item?.vendor?.name}
-                              </span>
+              </div>
+
+              {/* Current Line Items Display */}
+              {dealLineItems?.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold text-purple-800">Current Line Items ({dealLineItems?.length})</h4>
+                  {dealLineItems?.map((item, index) => (
+                    <div key={item?.id} className="bg-white p-3 rounded border border-purple-200">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
+                          <div>
+                            <span className="font-medium">{item?.product?.name}</span>
+                            {item?.vendor && <span className="text-purple-600 ml-2">• {item?.vendor?.name}</span>}
+                          </div>
+                          <div>
+                            <span className="text-green-600 font-bold">${item?.totalPrice?.toFixed(2)}</span>
+                          </div>
+                          <div>
+                            {item?.requiresScheduling ? (
+                              <span className="text-blue-600">📅 {item?.promisedDate || 'Not set'}</span>
+                            ) : (
+                              <span className="text-gray-600">⏰ {item?.noScheduleReason}</span>
                             )}
                           </div>
-                          
-                          {item?.description && (
-                            <p className={`${themeClasses?.textSecondary} text-xs mt-1 italic`}>
-                              {item?.description}
-                            </p>
-                          )}
+                          <div>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${
+                              item?.isOffSite ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {item?.isOffSite ? '🏢 Off-Site' : '🏠 On-Site'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2 ml-4">
-                          {!item?.isNewItem && (
-                            <Button
-                              onClick={() => handleEditLineItem(item)}
-                              size="sm"
-                              variant="ghost"
-                              className="p-2 hover:bg-blue-50"
-                              disabled={updatingLineItems}
-                              title="Edit existing line item"
-                            >
-                              <Icon name="Edit" size={14} className="text-blue-600" />
-                            </Button>
-                          )}
-                          <Button
-                            onClick={() => item?.isNewItem ? 
-                              setDealLineItems(dealLineItems?.filter(i => i?.id !== item?.id)) : 
-                              handleDeleteLineItem(item)
-                            }
-                            size="sm"
-                            variant="ghost"
-                            className="p-2 hover:bg-red-50"
-                            disabled={deletingLineItemId === (item?.jobPartId || item?.id)}
-                            title={item?.isNewItem ? "Remove from deal" : "Delete from database"}
-                          >
-                            {deletingLineItemId === (item?.jobPartId || item?.id) ? (
-                              <Icon name="Loader2" size={14} className="animate-spin text-red-600" />
-                            ) : (
-                              <Icon name="Trash2" size={14} className="text-red-600" />
-                            )}
-                          </Button>
-                        </div>
+                        <Button 
+                          onClick={() => handleRemoveLineItem(item?.id)}
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600 hover:bg-red-50 ml-2"
+                        >
+                          <Icon name="Trash2" size={12} />
+                        </Button>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Action Buttons */}
-            <div className={`flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 pt-6 border-t ${themeClasses?.border}`}>
-              <Button onClick={() => setShowNewDealModal(false)} variant="ghost" className="flex-1 py-3">
+            {/* Summary Section */}
+            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
+              <div className="flex items-center mb-4">
+                <Icon name="Calculator" size={20} className="text-green-600 mr-3" />
+                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Summary</h3>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded border">
+                  <div className="text-xs text-blue-600 font-medium">Subtotal</div>
+                  <div className="text-lg font-bold text-blue-800">
+                    ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded border">
+                  <div className="text-xs text-green-600 font-medium">In-House Count</div>
+                  <div className="text-lg font-bold text-green-800">
+                    {dealLineItems?.filter(item => !item?.isOffSite)?.length}
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-orange-50 rounded border">
+                  <div className="text-xs text-orange-600 font-medium">Off-Site Count</div>
+                  <div className="text-lg font-bold text-orange-800">
+                    {dealLineItems?.filter(item => item?.isOffSite)?.length}
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded border">
+                  <div className="text-xs text-purple-600 font-medium">Unique Vendors</div>
+                  <div className="text-lg font-bold text-purple-800">
+                    {[...new Set(dealLineItems?.filter(item => item?.vendor)?.map(item => item?.vendor?.id))]?.length}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Buttons */}
+            <div className={`flex space-x-3 pt-6 border-t ${themeClasses?.border}`}>
+              <Button 
+                onClick={() => {
+                  setShowNewDealModal(false);
+                  setDealLineItems([]);
+                  setSubmitError('');
+                }} 
+                variant="ghost" 
+                className="flex-1 py-3"
+              >
                 Cancel
               </Button>
               <Button 
@@ -2914,12 +2813,12 @@ ${calendarSummary?.join('\n')}
                 {isSubmittingDeal ? (
                   <>
                     <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Creating Deal with Individual Scheduling...
+                    Creating Deal...
                   </>
                 ) : (
                   <>
                     <Icon name="Plus" size={16} className="mr-2" />
-                    Create Deal ({dealLineItems?.length} items) with Individual Line Item Scheduling
+                    Create Deal ({dealLineItems?.length} items)
                   </>
                 )}
               </Button>
@@ -2927,22 +2826,20 @@ ${calendarSummary?.join('\n')}
           </div>
         </MobileModal>
 
-        {/* ENHANCED EDIT DEAL MODAL - Updated to show existing line items in same format as new deal form */}
+        {/* ENHANCED: Edit Deal Modal - Same structure as new deal modal */}
         <MobileModal
           isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
             setSelectedDeal(null);
             setDealLineItems([]);
-            setStockSearchResults([]);
             setSubmitError('');
           }}
-          title="Edit Deal - Existing Line Items - Products Already Purchased"
+          title="Edit Deal - Individual Line Item Management"
           size="full"
           fullScreen={true}
-          className="z-50"
         >
-          <div className="space-y-6 p-1">
+          <div className="space-y-6 p-1 max-h-screen overflow-y-auto">
             {submitError && (
               <div className="p-4 rounded-lg bg-red-50 border border-red-200">
                 <div className="flex items-center space-x-2">
@@ -2953,392 +2850,208 @@ ${calendarSummary?.join('\n')}
               </div>
             )}
 
-            {/* ENHANCED: Display existing line items prominently at the top - EXACT FORMAT as user's attached example */}
-            {dealLineItems?.length > 0 && (
-              <div>
-                {/* ENHANCED: Section header for existing line items */}
-                <div className="mb-4 p-4 bg-blue-100 rounded-lg border border-blue-300">
-                  <h3 className="text-blue-800 font-bold text-lg mb-2 flex items-center">
-                    <Icon name="Package" size={20} className="mr-2" />
-                    Existing Line Items - Products Already Purchased
+            {selectedDeal && (
+              <>
+                {/* Deal Overview */}
+                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
+                  <h3 className={`${themeClasses?.text} text-lg font-semibold mb-3`}>
+                    Editing: {selectedDeal?.vehicleInfo?.year} {selectedDeal?.vehicleInfo?.make} {selectedDeal?.vehicleInfo?.model}
                   </h3>
-                  <p className="text-blue-700 text-sm">
-                    📦 {dealLineItems?.length} item{dealLineItems?.length > 1 ? 's' : ''} currently in this deal • Total: ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
+                  <p className={`${themeClasses?.textSecondary} text-sm`}>
+                    Stock: {selectedDeal?.vehicleInfo?.stockNumber} | Customer: {selectedDeal?.customer?.name}
                   </p>
                 </div>
-                
-                {/* Enhanced Line Items List - Prominently displayed like in user's example */}
-                <div className="space-y-3 mb-6">
-                  {dealLineItems?.map((item, index) => (
-                    <div key={item?.id || item?.jobPartId} className="bg-blue-50 border-2 border-blue-300 rounded-lg shadow-sm">
-                      <div className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-blue-600 text-white">
-                                ✅ Already Purchased
-                              </span>
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Item #{index + 1}
-                              </span>
-                            </div>
-                            
-                            {/* ENHANCED: Match user's example format exactly */}
-                            <div className="mb-3">
-                              <p className="text-blue-900 font-bold text-base">
-                                {item?.vehicle?.stock_number || 'Manual Entry'} - {item?.vehicle?.year} {item?.vehicle?.make} {item?.vehicle?.model}
-                              </p>
-                              <p className="text-gray-700 font-semibold">
-                                {item?.product?.name}
-                              </p>
-                            </div>
-                            
-                            {/* Pricing display - matching user's format */}
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                              <div>
-                                <span className="text-gray-600 text-sm">Price:</span>
-                                <span className="font-bold text-lg text-blue-600 ml-2">${item?.totalPrice?.toFixed(2)}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-600 text-sm">Service:</span>
-                                <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  item?.serviceType === 'vendor' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
-                                }`}>
-                                  {item?.serviceType === 'vendor' ? '🏢 Off-Site' : '🏠 On-Site'}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            {/* Additional details */}
-                            <div className="text-sm text-gray-600 space-y-1">
-                              <div>📧 Customer: {item?.customerName}</div>
-                              {item?.vendor && (
-                                <div>🏪 Vendor: {item?.vendor?.name}</div>
-                              )}
-                              {item?.promisedDate && (
-                                <div>🎯 Promised: {new Date(item?.promisedDate)?.toLocaleDateString()}</div>
-                              )}
-                            </div>
+
+                {/* Current Line Items Management */}
+                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <Icon name="List" size={20} className="text-blue-600 mr-3" />
+                      <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Current Line Items</h3>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-gray-600 text-sm">Total Value</p>
+                      <p className="text-blue-600 text-xl font-bold">
+                        ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {dealLineItems?.map((item, index) => (
+                      <div key={item?.id} className="bg-gray-50 p-4 rounded-lg border">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-medium">{item?.product?.name}</h4>
+                            <p className="text-sm text-gray-600">
+                              Price: ${item?.totalPrice?.toFixed(2)} | Qty: {item?.quantityUsed}
+                            </p>
                           </div>
-                          
-                          {/* Action buttons */}
-                          <div className="flex items-center space-x-2 ml-4">
-                            <Button
+                          <div className="flex space-x-2">
+                            <Button 
                               onClick={() => handleEditLineItem(item)}
                               size="sm"
-                              variant="primary"
-                              className="bg-blue-600 hover:bg-blue-700"
-                              disabled={updatingLineItems}
-                              title="Edit this line item"
+                              variant="ghost"
+                              className="px-2 py-1"
                             >
-                              <Icon name="Edit" size={14} className="mr-1" />
-                              Edit
+                              <Icon name="Edit" size={12} />
                             </Button>
-                            <Button
+                            <Button 
                               onClick={() => handleDeleteLineItem(item)}
                               size="sm"
                               variant="ghost"
-                              className="text-red-600 hover:bg-red-50"
-                              disabled={deletingLineItemId === (item?.jobPartId || item?.id)}
-                              title="Delete this line item"
+                              className="text-red-600 hover:bg-red-50 px-2 py-1"
+                              disabled={deletingLineItemId === item?.jobPartId}
                             >
-                              {deletingLineItemId === (item?.jobPartId || item?.id) ? (
-                                <Icon name="Loader2" size={14} className="animate-spin" />
+                              {deletingLineItemId === item?.jobPartId ? (
+                                <Icon name="Loader2" size={12} className="animate-spin" />
                               ) : (
-                                <Icon name="Trash2" size={14} />
+                                <Icon name="Trash2" size={12} />
                               )}
                             </Button>
                           </div>
                         </div>
+                        <div className="text-xs text-gray-500">
+                          Category: {item?.product?.category} | Brand: {item?.product?.brand}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
-                {/* ENHANCED: Summary section matching user's format */}
-                <div className="p-4 bg-green-50 rounded-lg border border-green-300 mb-6">
-                  <div className="flex items-center justify-between">
+                {/* Add New Line Item Section - Same as new deal */}
+                <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm border-blue-300 bg-blue-50`}>
+                  <div className="flex items-center mb-4">
+                    <Icon name="Plus" size={20} className="text-blue-600 mr-3" />
+                    <h3 className={`${themeClasses?.text} text-lg font-semibold text-blue-900`}>Add New Line Item</h3>
+                  </div>
+
+                  {/* Product Selection */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <h4 className="text-green-800 font-bold">Current Deal Summary</h4>
-                      <p className="text-green-700 text-sm">
-                        {dealLineItems?.length} existing line item{dealLineItems?.length > 1 ? 's' : ''} • Created: {selectedDeal?.todaysDate || new Date()?.toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-green-800 font-bold text-2xl">
-                        ${dealLineItems?.reduce((sum, item) => sum + item?.totalPrice, 0)?.toFixed(2)}
-                      </div>
-                      <div className="text-green-600 text-sm">Total Value</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Show message when no line items exist */}
-            {dealLineItems?.length === 0 && (
-              <div className="p-8 bg-orange-50 border-2 border-orange-300 rounded-lg text-center mb-6">
-                <Icon name="AlertTriangle" size={48} className="text-orange-500 mx-auto mb-4" />
-                <h3 className="text-orange-800 font-bold text-lg mb-2">No Line Items Found</h3>
-                <p className="text-orange-700 mb-4">
-                  This deal doesn't have any existing line items. This might indicate a data loading issue or the deal was created without products.
-                </p>
-                <div className="text-orange-600 text-sm bg-orange-100 p-3 rounded border">
-                  ⚠️ If you expected to see items here, please refresh the page or contact support.
-                </div>
-              </div>
-            )}
-
-            {/* Add line item form - EXACT SAME as new deal modal */}
-            <div className={`${themeClasses?.card} p-6 rounded-lg border shadow-sm`}>
-              <div className="flex items-center mb-6">
-                <Icon name="Plus" size={20} className="text-green-600 mr-3" />
-                <h3 className={`${themeClasses?.text} text-lg font-semibold`}>Add New Line Item to This Deal</h3>
-              </div>
-
-              {/* Line Item Details Section - EXACT COPY from new deal modal */}
-              <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                <h4 className={`${themeClasses?.text} text-base font-semibold mb-4 flex items-center`}>
-                  <Icon name="Package" size={18} className="mr-2 text-yellow-600" />
-                  Individual Line Item Details
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product Name *</label>
-                    <select
-                      value={lineItemForm?.productId}
-                      onChange={(e) => {
-                        const productId = e?.target?.value;
-                        
-                        if (productId === 'ADD_NEW') {
-                          setShowAddProductModal(true);
-                          return;
-                        }
-                        
-                        const product = products?.find(p => p?.id === productId);
-                        setLineItemForm({
-                          ...lineItemForm, 
-                          productId,
-                          unitPrice: product?.unit_price || 0,
-                          cost: product?.cost || 0
-                        });
-                      }}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                    >
-                      <option value="">Select Product</option>
-                      {products?.map(product => (
-                        <option key={product?.id} value={product?.id}>
-                          {product?.op_code ? `${product?.op_code} - ${product?.name}` : product?.name} - ${product?.unit_price} ({product?.category})
-                        </option>
-                      ))}
-                      <option value="ADD_NEW" className="font-semibold text-blue-600 bg-blue-50">
-                        ➕ Add New Product
-                      </option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      💰 Selling Price *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={lineItemForm?.unitPrice}
-                      onChange={(e) => setLineItemForm({...lineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      💸 Your Cost *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={lineItemForm?.cost}
-                      onChange={(e) => setLineItemForm({...lineItemForm, cost: parseFloat(e?.target?.value) || 0})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input} bg-yellow-50`}
-                      placeholder="Enter your cost..."
-                    />
-                    <p className="text-xs text-yellow-700 mt-1 font-medium">
-                      ⚠️ Required for profit calculation
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-3`}>
-                      Vendor Required
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div 
-                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          !lineItemForm?.isOffSite 
-                            ? 'border-green-500 bg-green-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        onClick={() => setLineItemForm({...lineItemForm, isOffSite: false, vendorId: ''})}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-4 h-4 flex items-center justify-center rounded border-2 transition-all duration-200 ${
-                            !lineItemForm?.isOffSite 
-                              ? 'bg-green-600 border-green-600' :'bg-white border-gray-300'
-                          }`}>
-                            {!lineItemForm?.isOffSite && (
-                              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                            )}
-                          </div>
-                          <label className={`${themeClasses?.text} text-xs font-medium cursor-pointer`}>On-Site</label>
-                        </div>
-                      </div>
-                      <div 
-                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          lineItemForm?.isOffSite 
-                            ? 'border-orange-500 bg-orange-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'
-                        }`}
-                        onClick={() => setLineItemForm({...lineItemForm, isOffSite: true})}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-4 h-4 flex items-center justify-center rounded border-2 transition-all duration-200 ${
-                            lineItemForm?.isOffSite 
-                              ? 'bg-orange-600 border-orange-600' :'bg-white border-gray-300'
-                          }`}>
-                            {lineItemForm?.isOffSite && (
-                              <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                            )}
-                          </div>
-                          <label className={`${themeClasses?.text} text-xs font-medium cursor-pointer`}>Off-Site</label>
-                        </div>
-                      </div>
-                    </div>
-
-                    {lineItemForm?.isOffSite && (
-                      <div className="mt-4">
-                        <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                          Select Vendor *
-                        </label>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Product *</label>
+                      <div className="flex">
                         <select
-                          value={lineItemForm?.vendorId}
-                          onChange={(e) => setLineItemForm({...lineItemForm, vendorId: e?.target?.value})}
-                          className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
-                          required
+                          value={lineItemForm?.productId}
+                          onChange={(e) => {
+                            const productId = e?.target?.value;
+                            const product = products?.find(p => p?.id === productId);
+                            setLineItemForm({
+                              ...lineItemForm, 
+                              productId,
+                              unitPrice: product?.unit_price || 0,
+                              cost: product?.cost || 0
+                            });
+                          }}
+                          className={`flex-1 p-3 text-sm rounded-l-lg border ${themeClasses?.input}`}
                         >
-                          <option value="">Choose a vendor for off-site service</option>
-                          {vendors?.map(vendor => (
-                            <option key={vendor?.id} value={vendor?.id}>
-                              {vendor?.name} - {vendor?.specialty}
+                          <option value="">Select Product</option>
+                          {products?.map(product => (
+                            <option key={product?.id} value={product?.id}>
+                              {product?.op_code ? `${product?.op_code} - ${product?.name}` : product?.name} - ${product?.unit_price}
                             </option>
                           ))}
                         </select>
-                        <div className="mt-2">
-                          <Button 
-                            onClick={() => setShowAddVendorModal(true)} 
-                            variant="ghost" 
-                            size="sm"
-                            className="text-xs"
-                          >
-                            <Icon name="Plus" size={12} className="mr-1" />Add New Vendor
-                          </Button>
-                        </div>
+                        <Button 
+                          onClick={() => setShowAddProductModal(true)} 
+                          variant="ghost" 
+                          className="px-3 rounded-l-none border-l-0"
+                        >
+                          <Icon name="Plus" size={16} />
+                        </Button>
                       </div>
-                    )}
+                    </div>
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Vendor (Optional)</label>
+                      <select
+                        value={lineItemForm?.vendorId}
+                        onChange={(e) => setLineItemForm({...lineItemForm, vendorId: e?.target?.value, isOffSite: !!e?.target?.value})}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                      >
+                        <option value="">In-House Service</option>
+                        {vendors?.map(vendor => (
+                          <option key={vendor?.id} value={vendor?.id}>
+                            {vendor?.name} - {vendor?.specialty}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Priority Level</label>
-                    <select
-                      value={lineItemForm?.priority}
-                      onChange={(e) => setLineItemForm({...lineItemForm, priority: e?.target?.value})}
-                      className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                  {/* Pricing */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Unit Price *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={lineItemForm?.unitPrice}
+                        onChange={(e) => setLineItemForm({...lineItemForm, unitPrice: parseFloat(e?.target?.value) || 0})}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>Your Cost</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={lineItemForm?.cost}
+                        onChange={(e) => setLineItemForm({...lineItemForm, cost: parseFloat(e?.target?.value) || 0})}
+                        className={`w-full p-3 text-sm rounded-lg border ${themeClasses?.input}`}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-center">
+                    <Button 
+                      onClick={handleAddLineItemToEditingDeal}
+                      variant="primary"
+                      className="px-6 py-2"
+                      disabled={!lineItemForm?.productId}
                     >
-                      <option value="Low">Low Priority</option>
-                      <option value="Medium">Medium Priority</option>
-                      <option value="High">High Priority</option>
-                      <option value="Urgent">Urgent</option>
-                    </select>
+                      <Icon name="Plus" size={16} className="mr-2" />
+                      Add Line Item to Deal
+                    </Button>
                   </div>
                 </div>
 
-                {/* Enhanced Pricing Preview with Profit Calculation */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
-                    <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Selling Price</p>
-                    <p className={`${themeClasses?.text} text-2xl font-bold`}>
-                      ${(lineItemForm?.unitPrice || 0)?.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className={`${themeClasses?.card} p-4 rounded-lg border text-center bg-yellow-50`}>
-                    <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Your Cost</p>
-                    <p className={`${themeClasses?.text} text-2xl font-bold text-orange-600`}>
-                      ${(lineItemForm?.cost || 0)?.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
-                    <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Profit</p>
-                    <p className="text-green-600 text-2xl font-bold">
-                      ${((lineItemForm?.unitPrice || 0) - (lineItemForm?.cost || 0))?.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className={`${themeClasses?.card} p-4 rounded-lg border text-center`}>
-                    <p className={`${themeClasses?.textSecondary} text-xs font-medium uppercase`}>Margin %</p>
-                    <p className="text-purple-600 text-2xl font-bold">
-                      {lineItemForm?.unitPrice > 0 ? 
-                        (((lineItemForm?.unitPrice - lineItemForm?.cost) / lineItemForm?.unitPrice) * 100)?.toFixed(1) : '0'
-                      }%
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-6">
+                {/* Submit Buttons */}
+                <div className={`flex space-x-3 pt-6 border-t ${themeClasses?.border}`}>
                   <Button 
-                    onClick={handleAddLineItemToEditingDeal}
-                    variant="primary"
-                    className="w-full py-3 text-base font-medium bg-green-600 hover:bg-green-700"
-                    disabled={!lineItemForm?.customerName || !lineItemForm?.productId}
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedDeal(null);
+                      setDealLineItems([]);
+                      setSubmitError('');
+                    }} 
+                    variant="ghost" 
+                    className="flex-1 py-3"
                   >
-                    <Icon name="Plus" size={16} className="mr-2" />
-                    + Add Line Item with Individual Scheduling
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSaveEditedDeal}
+                    disabled={!dealLineItems?.length || isSubmittingDeal}
+                    variant="primary"
+                    className="flex-1 py-3"
+                  >
+                    {isSubmittingDeal ? (
+                      <>
+                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                        Saving Changes...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="Save" size={16} className="mr-2" />
+                        Save Deal Changes
+                      </>
+                    )}
                   </Button>
                 </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className={`flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 pt-6 border-t ${themeClasses?.border}`}>
-              <Button 
-                onClick={() => {
-                  setShowEditModal(false);
-                  setSelectedDeal(null);
-                  setDealLineItems([]);
-                  setStockSearchResults([]);
-                  setSubmitError('');
-                }}
-                variant="ghost" 
-                className="flex-1 py-3"
-              >
-                Cancel Changes
-              </Button>
-              <Button 
-                onClick={handleSaveEditedDeal}
-                disabled={isSubmittingDeal || !dealLineItems?.length}
-                variant="primary"
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700"
-              >
-                {isSubmittingDeal ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Saving Changes...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Save" size={16} className="mr-2" />
-                    Save Deal Changes ({dealLineItems?.length} items)
-                  </>
-                )}
-              </Button>
-            </div>
+              </>
+            )}
           </div>
         </MobileModal>
 
@@ -3351,7 +3064,6 @@ ${calendarSummary?.join('\n')}
           }}
           title="Delete Deal - Confirm"
           size="medium"
-          className="z-50"
         >
           <div className="space-y-6 p-1">
             {dealToDelete && (
@@ -3472,7 +3184,6 @@ ${calendarSummary?.join('\n')}
           onClose={() => setShowEditLineItemModal(false)}
           title="Edit Line Item"
           size="medium"
-          className="z-50"
         >
           <div className="space-y-4 p-1">
             {editingLineItem && (
@@ -3620,9 +3331,8 @@ ${calendarSummary?.join('\n')}
         <MobileBottomSheet
           isOpen={showDealDetails && selectedDeal}
           onClose={() => setShowDealDetails(false)}
-          title={selectedDeal ? `${selectedDeal?.vehicleInfo?.year || ''} ${selectedDeal?.vehicleInfo?.make || ''} ${selectedDeal?.vehicleInfo?.model || ''}`?.trim() || 'Deal Details' : 'Deal Details'}
+          title={selectedDeal ? `${selectedDeal?.vehicleInfo?.year || ''} ${selectedDeal?.vehicleInfo?.make || ''} ${selectedDeal?.vehicleInfo?.model || ''}`.trim() || 'Deal Details' : 'Deal Details'}
           size="medium"
-          className="z-40"
         >
           {selectedDeal && (
             <div className="space-y-4">
@@ -3677,7 +3387,6 @@ ${calendarSummary?.join('\n')}
           onClose={() => setShowMessageModal(false)}
           title="Message Customer"
           size="medium"
-          className="z-50"
         >
           <div className="space-y-4">
             <div>
@@ -3716,7 +3425,6 @@ ${calendarSummary?.join('\n')}
           title="Schedule Deal"
           size="full"
           fullScreen={true}
-          className="z-50"
         >
           <div className="space-y-6 p-1">
             {schedulingDeal && (
@@ -3814,7 +3522,6 @@ ${calendarSummary?.join('\n')}
           onClose={() => setShowAddVendorModal(false)}
           title="Add New Vendor"
           size="medium"
-          className="z-50"
         >
           <div className="space-y-4">
             <div>
@@ -3884,7 +3591,6 @@ ${calendarSummary?.join('\n')}
           onClose={() => setShowAddProductModal(false)}
           title="Add New Product"
           size="medium"
-          className="z-50"
         >
           <div className="space-y-4">
             <div>
@@ -3991,7 +3697,6 @@ ${calendarSummary?.join('\n')}
           onClose={() => setShowAddSalespersonModal(false)}
           title="Add New Salesperson"
           size="medium"
-          className="z-50"
         >
           <div className="space-y-4">
             <div>
@@ -4041,7 +3746,6 @@ ${calendarSummary?.join('\n')}
           onClose={() => setShowAddDeliveryCoordinatorModal(false)}
           title="Add New Delivery Coordinator"
           size="medium"
-          className="z-50"
         >
           <div className="space-y-4">
             <div>

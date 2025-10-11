@@ -4,7 +4,7 @@ import { useLogger } from '../../../hooks/useLogger';
 import UIButton from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import productService from '../../../services/productService';
+import { productService } from '../../../services/productService';
 import { vendorService } from '../../../services/vendorService';
 
 const ProductCatalog = () => {

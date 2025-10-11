@@ -28,7 +28,7 @@ const EnhancedVehicleTable = ({
 
   const handleSort = (key) => {
     let direction = 'asc';
-    if (sortConfig?.key === key && sortConfig?.direction === 'asc') {
+    if (sortConfig && sortConfig?.key === key && sortConfig?.direction === 'asc') {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
@@ -39,8 +39,8 @@ const EnhancedVehicleTable = ({
       setIsLoading(true);
       const result = await vehicleService?.updateVehicle(vehicleId, { [field]: value });
       
-      if (result?.error) {
-        throw new Error(result?.error?.message);
+      if (result && result?.error) {
+        throw new Error(result.error.message);
       }
       
       // Update parent component
@@ -62,7 +62,7 @@ const EnhancedVehicleTable = ({
 
   const handleSelectAll = (checked) => {
     if (checked) {
-      onSelectionChange(vehicles?.map(v => v?.id));
+      onSelectionChange(vehicles ? vehicles?.map(v => v?.id) : []);
     } else {
       onSelectionChange([]);
     }
@@ -78,7 +78,8 @@ const EnhancedVehicleTable = ({
 
   const getStatusBadge = (status, vehicleId) => {
     // Check if vehicle has overdue jobs
-    const hasOverdueJobs = overdueJobs?.some(job => 
+    const hasOverdueJobs = overdueJobs && overdueJobs?.some(job => 
+      job?.vehicle_info && vehicles && vehicles?.find(v => v?.id === vehicleId) && 
       job?.vehicle_info?.includes(vehicles?.find(v => v?.id === vehicleId)?.license_plate)
     );
 
@@ -106,19 +107,19 @@ const EnhancedVehicleTable = ({
   };
 
   const getRowClassName = (vehicle) => {
-    const hasOverdueJobs = overdueJobs?.some(job => 
-      job?.vehicle_info?.includes(vehicle?.license_plate)
+    const hasOverdueJobs = overdueJobs && overdueJobs?.some(job => 
+      job?.vehicle_info && vehicle && job?.vehicle_info?.includes(vehicle?.license_plate)
     );
 
     return `hover:bg-muted/50 transition-colors duration-150 ${
-      selectedVehicles?.includes(vehicle?.id) ? 'bg-primary/5' : ''
+      selectedVehicles && selectedVehicles?.includes(vehicle?.id) ? 'bg-primary/5' : ''
     } ${
       hasOverdueJobs ? 'bg-red-50/50 border-l-4 border-l-red-500' : ''
     }`;
   };
 
   const sortedVehicles = useMemo(() => {
-    if (!sortConfig?.key) return vehicles;
+    if (!sortConfig || !sortConfig?.key) return vehicles;
     
     return [...(vehicles || [])]?.sort((a, b) => {
       const aValue = a?.[sortConfig?.key];
@@ -159,8 +160,8 @@ const EnhancedVehicleTable = ({
     }
   };
 
-  const isAllSelected = selectedVehicles?.length === vehicles?.length && vehicles?.length > 0;
-  const isIndeterminate = selectedVehicles?.length > 0 && selectedVehicles?.length < vehicles?.length;
+  const isAllSelected = selectedVehicles && vehicles && selectedVehicles?.length === vehicles?.length && vehicles?.length > 0;
+  const isIndeterminate = selectedVehicles && vehicles && selectedVehicles?.length > 0 && selectedVehicles?.length < vehicles?.length;
 
   // Filter configuration for vehicles
   const filterConfig = {
@@ -204,9 +205,9 @@ const EnhancedVehicleTable = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h3 className="text-lg font-semibold text-foreground">
-                Vehicle Inventory ({vehicles?.length})
+                Vehicle Inventory ({vehicles ? vehicles?.length : 0})
               </h3>
-              {selectedVehicles?.length > 0 && (
+              {selectedVehicles && selectedVehicles?.length > 0 && (
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">
                     {selectedVehicles?.length} selected
@@ -234,7 +235,6 @@ const EnhancedVehicleTable = ({
                 onExportStart={() => setIsLoading(true)}
                 onExportComplete={() => setIsLoading(false)}
                 onExportError={() => setIsLoading(false)}
-                className=""
               />
               
               <Button
@@ -243,7 +243,6 @@ const EnhancedVehicleTable = ({
                 iconName="Plus"
                 iconPosition="left"
                 onClick={() => navigate('/sales-transaction-interface')}
-                className="text-sm"
               >
                 Add Vehicle
               </Button>
@@ -251,7 +250,7 @@ const EnhancedVehicleTable = ({
           </div>
 
           {/* Bulk Actions */}
-          {showBulkActions && selectedVehicles?.length > 0 && (
+          {showBulkActions && selectedVehicles && selectedVehicles?.length > 0 && (
             <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center space-x-4">
                 <span className="text-sm font-medium text-blue-800">
@@ -264,7 +263,6 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => handleBulkStatusUpdate('maintenance')}
                     disabled={isLoading}
-                    className="text-sm"
                   >
                     Mark as Maintenance
                   </Button>
@@ -274,7 +272,6 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => handleBulkStatusUpdate('sold')}
                     disabled={isLoading}
-                    className="text-sm"
                   >
                     Mark as Sold
                   </Button>
@@ -284,7 +281,6 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => setShowBulkActions(false)}
                     iconName="X"
-                    className="text-sm"
                   >
                     Close
                   </Button>
@@ -332,7 +328,7 @@ const EnhancedVehicleTable = ({
                   >
                     <div className="flex items-center space-x-1">
                       <span>{column?.label}</span>
-                      {column?.sortable && sortConfig?.key === column?.key && (
+                      {column?.sortable && sortConfig && sortConfig?.key === column?.key && (
                         <Icon 
                           name={sortConfig?.direction === 'asc' ? 'ChevronUp' : 'ChevronDown'} 
                           size={14} 
@@ -345,7 +341,7 @@ const EnhancedVehicleTable = ({
             </thead>
             
             <tbody className="bg-card divide-y divide-border">
-              {sortedVehicles?.map((vehicle) => (
+              {sortedVehicles && sortedVehicles?.map((vehicle) => (
                 <tr
                   key={vehicle?.id}
                   className={getRowClassName(vehicle)}
@@ -353,7 +349,7 @@ const EnhancedVehicleTable = ({
                   <td className="px-4 py-4">
                     <input
                       type="checkbox"
-                      checked={selectedVehicles?.includes(vehicle?.id)}
+                      checked={selectedVehicles && selectedVehicles?.includes(vehicle?.id)}
                       onChange={(e) => handleSelectVehicle(vehicle?.id, e?.target?.checked)}
                       className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-ring focus:ring-2"
                     />
@@ -364,7 +360,7 @@ const EnhancedVehicleTable = ({
                       value={vehicle?.vin}
                       onSave={(value) => handleCellUpdate(vehicle?.id, 'vin', value)}
                       onCancel={() => {}}
-                      validation={validators?.required}
+                      validation={validators && validators?.required}
                       cellClassName="font-mono text-sm"
                       disabled={isLoading || userRole === 'staff'}
                     />
@@ -376,7 +372,7 @@ const EnhancedVehicleTable = ({
                       onSave={(value) => handleCellUpdate(vehicle?.id, 'year', parseInt(value))}
                       onCancel={() => {}}
                       type="number"
-                      validation={validators?.combine(validators?.required, validators?.number)}
+                      validation={validators && validators?.combine && validators?.combine(validators?.required, validators?.number)}
                       disabled={isLoading || userRole === 'staff'}
                     />
                   </td>
@@ -386,7 +382,7 @@ const EnhancedVehicleTable = ({
                       value={vehicle?.make}
                       onSave={(value) => handleCellUpdate(vehicle?.id, 'make', value)}
                       onCancel={() => {}}
-                      validation={validators?.required}
+                      validation={validators && validators?.required}
                       disabled={isLoading || userRole === 'staff'}
                     />
                   </td>
@@ -396,7 +392,7 @@ const EnhancedVehicleTable = ({
                       value={vehicle?.model}
                       onSave={(value) => handleCellUpdate(vehicle?.id, 'model', value)}
                       onCancel={() => {}}
-                      validation={validators?.required}
+                      validation={validators && validators?.required}
                       disabled={isLoading || userRole === 'staff'}
                     />
                   </td>
@@ -442,7 +438,7 @@ const EnhancedVehicleTable = ({
                       <span className={`text-sm font-medium ${
                         (vehicle?.totalProfit || 0) >= 0 ? 'text-success' : 'text-error'
                       }`}>
-                        {formatters?.currency(vehicle?.totalProfit || 0)}
+                        {formatters && formatters?.currency && formatters?.currency(vehicle?.totalProfit || 0)}
                       </span>
                     </td>
                   )}
@@ -483,12 +479,12 @@ const EnhancedVehicleTable = ({
         </div>
 
         {/* Empty State */}
-        {vehicles?.length === 0 && (
+        {vehicles && vehicles?.length === 0 && (
           <div className="px-6 py-12 text-center">
             <Icon name="Car" size={48} className="mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No vehicles found</h3>
             <p className="text-muted-foreground mb-4">
-              {searchQuery || Object.values(filters || {})?.some(f => f) 
+              {searchQuery || (filters && Object.values(filters)?.some(f => f))
                 ? 'Try adjusting your search or filters' : 'Start by adding your first vehicle to the system'
               }
             </p>
@@ -497,7 +493,6 @@ const EnhancedVehicleTable = ({
               iconName="Plus"
               iconPosition="left"
               onClick={() => navigate('/sales-transaction-interface')}
-              className="text-sm"
             >
               Add Vehicle
             </Button>

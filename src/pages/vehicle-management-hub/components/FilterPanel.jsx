@@ -121,7 +121,6 @@ const FilterPanel = ({
             options={makeOptions}
             value={filters?.make || ''}
             onChange={(value) => handleFilterChange('make', value)}
-            className="w-full"
           />
           
           <Select
@@ -129,7 +128,6 @@ const FilterPanel = ({
             options={statusOptions}
             value={filters?.status || ''}
             onChange={(value) => handleFilterChange('status', value)}
-            className="w-full"
           />
           
           <Select
@@ -137,7 +135,6 @@ const FilterPanel = ({
             options={yearOptions}
             value={filters?.year || ''}
             onChange={(value) => handleFilterChange('year', value)}
-            className="w-full"
           />
         </div>
       </div>
@@ -156,7 +153,6 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className="w-full"
             />
             
             <Input
@@ -168,7 +164,6 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className="w-full"
             />
             
             <Input
@@ -180,7 +175,6 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className="w-full"
             />
           </div>
 
@@ -196,7 +190,6 @@ const FilterPanel = ({
               ]}
               value={filters?.hasAftermarket || ''}
               onChange={(value) => handleFilterChange('hasAftermarket', value)}
-              className="w-full"
             />
             
             <Input
@@ -208,7 +201,6 @@ const FilterPanel = ({
               helperText=""
               maxLength={undefined}
               style={{}}
-              className="w-full"
             />
             
             <Select
@@ -224,7 +216,6 @@ const FilterPanel = ({
               ]}
               value={filters?.sortBy || ''}
               onChange={(value) => handleFilterChange('sortBy', value)}
-              className="w-full"
             />
           </div>
 

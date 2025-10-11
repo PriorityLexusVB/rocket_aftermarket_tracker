@@ -4,7 +4,7 @@ import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { vendorService } from '../../../services/vendorService';
-import productService from '../../../services/productService';
+import { productService } from '../../../services/productService';
 
 const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
   const [formData, setFormData] = useState({

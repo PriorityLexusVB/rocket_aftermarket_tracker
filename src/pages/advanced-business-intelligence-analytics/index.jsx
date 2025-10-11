@@ -95,7 +95,6 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
       document.body?.appendChild(a);
       a?.click();
       document.body?.removeChild(a);
-      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Error exporting data:', err);
     }
@@ -249,7 +248,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
             <MetricCard
               icon={<DollarSign className="w-5 h-5" />}
               title="Total Revenue"
-              value={`$${parseFloat(dashboardData?.summary_stats?.total_revenue || 0).toLocaleString()}`}
+              value={`$${parseFloat(dashboardData?.summary_stats?.total_revenue || 0)?.toLocaleString()}`}
               trend="+15%"
               trendUp={true}
               description="Total sales revenue"
