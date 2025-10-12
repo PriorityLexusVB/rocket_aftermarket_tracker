@@ -219,10 +219,11 @@ const Select = React.forwardRef(({
                 {isOpen && (
                     <div 
                         ref={dropdownRef}
-                        className="absolute z-50 w-full mt-1 bg-white text-black border border-border rounded-md shadow-md"
+                        className="absolute w-full mt-1 bg-white text-black border border-border rounded-md shadow-md"
                         style={{
-                            maxHeight: '240px', // Fixed height to prevent layout shifts
-                            minHeight: '60px'   // Minimum height to prevent jumping
+                            maxHeight: '240px',
+                            minHeight: '60px',
+                            zIndex: 9999 // Added high z-index for dropdown visibility above other elements
                         }}
                     >
                         {searchable && (

@@ -191,14 +191,22 @@ const DealsPage = () => {
 
   const loadSalespeople = async () => {
     try {
+      console.log('Loading salespeople...');
       const { data, error } = await supabase
         ?.from('user_profiles')
         ?.select('*')
         ?.eq('role', 'staff')
-        ?.eq('department', 'Sales Consultants')
         ?.eq('is_active', true)
+        ?.ilike('department', '%sales%')
         ?.order('full_name');
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Error in salespeople query:', error);
+        throw error;
+      }
+      
+      console.log('Salespeople loaded:', data?.length, 'records');
+      console.log('Salespeople data:', data);
       setSalespeople(data || []);
     } catch (error) {
       console.error('Error loading salespeople:', error);
@@ -207,14 +215,21 @@ const DealsPage = () => {
 
   const loadDeliveryCoordinators = async () => {
     try {
+      console.log('Loading delivery coordinators...');
       const { data, error } = await supabase
         ?.from('user_profiles')
         ?.select('*')
-        ?.in('role', ['admin', 'manager'])
-        ?.eq('department', 'Delivery Coordinator')
         ?.eq('is_active', true)
+        ?.ilike('department', '%delivery%')
         ?.order('full_name');
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Error in delivery coordinators query:', error);
+        throw error;
+      }
+      
+      console.log('Delivery coordinators loaded:', data?.length, 'records');
+      console.log('Delivery coordinators data:', data);
       setDeliveryCoordinators(data || []);
     } catch (error) {
       console.error('Error loading delivery coordinators:', error);
@@ -223,14 +238,22 @@ const DealsPage = () => {
 
   const loadFinanceManagers = async () => {
     try {
+      console.log('Loading finance managers...');
       const { data, error } = await supabase
         ?.from('user_profiles')
         ?.select('*')
         ?.eq('role', 'staff')
-        ?.eq('department', 'Finance Manager')
         ?.eq('is_active', true)
+        ?.ilike('department', '%finance%')
         ?.order('full_name');
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Error in finance managers query:', error);
+        throw error;
+      }
+      
+      console.log('Finance managers loaded:', data?.length, 'records');
+      console.log('Finance managers data:', data);
       setFinanceManagers(data || []);
     } catch (error) {
       console.error('Error loading finance managers:', error);
@@ -408,9 +431,6 @@ const DealsPage = () => {
               <p className="text-green-600 text-xs font-semibold">
                 DC: {parseNameToLastnameFirstInitial(deal?.deliveryCoordinator)}
               </p>
-              <p className="text-blue-600 text-xs font-semibold">
-                Sales: {parseNameToLastnameFirstInitial(deal?.salesperson)}
-              </p>
             </div>
             
             <div className="mt-2 space-y-1">
@@ -574,9 +594,6 @@ const DealsPage = () => {
         <div className="space-y-1">
           <p className="text-green-600 text-sm font-medium">
             DC: {parseNameToLastnameFirstInitial(deal?.deliveryCoordinator)}
-          </p>
-          <p className="text-blue-600 text-sm font-medium">
-            Sales: {parseNameToLastnameFirstInitial(deal?.salesperson)}
           </p>
         </div>
       </td>

@@ -204,7 +204,7 @@ const QRCodeGenerator = ({
               disabled={loading || !customUrl?.trim()}
               variant="primary"
               size="md"
-              className=""
+              className="flex items-center"
             >
               {loading ? 'Generating...' : 'Generate QR Code'}
             </Button>
@@ -213,7 +213,7 @@ const QRCodeGenerator = ({
               onClick={resetToDefault}
               variant="secondary"
               size="md"
-              className=""
+              className="flex items-center"
             >
               Reset
             </Button>
@@ -267,7 +267,7 @@ const QRCodeGenerator = ({
             onClick={downloadQRCode}
             variant="primary"
             size="md"
-            className=""
+            className="flex items-center"
           >
             <Download className="w-4 h-4 mr-1" />
             Download PNG
@@ -277,7 +277,7 @@ const QRCodeGenerator = ({
             onClick={copyToClipboard}
             variant="secondary"
             size="md"
-            className=""
+            className="flex items-center"
           >
             {copied ? <CheckCircle className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
             {copied ? 'Copied!' : 'Copy'}
@@ -288,7 +288,7 @@ const QRCodeGenerator = ({
               onClick={shareQRCode}
               variant="secondary"
               size="md"
-              className=""
+              className="flex items-center"
             >
               <Share className="w-4 h-4 mr-1" />
               Share

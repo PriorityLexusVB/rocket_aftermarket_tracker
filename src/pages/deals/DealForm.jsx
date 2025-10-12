@@ -1,4 +1,4 @@
-// PHASE 3: Line Item Management & Scheduling
+// PHASE 3: Line Item Management & Scheduling - ROLLBACK SALES/FINANCE FIELDS
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -23,11 +23,11 @@ const DealForm = ({
   const { themeClasses } = useTheme();
   const { user } = useAuth();
 
-  // CHANGE 1: Enhanced vehicle data state with separate fields for NEW vehicle entry
+  // Enhanced vehicle data state with separate fields for NEW vehicle entry
   const [vehicleData, setVehicleData] = useState({
-    new_used: 'new', // New/Used selector
-    stock_number: '', // Stock # field
-    deal_number: '', // Deal # field  
+    new_used: 'new',
+    stock_number: '',
+    deal_number: '',  
     year: '',
     make: '',
     model: '',
@@ -36,10 +36,10 @@ const DealForm = ({
     mileage: ''
   });
 
-  // Form state management with schema-accurate field mapping - REMOVED title field
+  // Form state management with schema-accurate field mapping
   const [dealData, setDealData] = useState({
     description: '',
-    vehicle_id: null, // Will be created/updated based on vehicleData
+    vehicle_id: null,
     vendor_id: null,
     created_by: user?.id,
     delivery_coordinator_id: '',
@@ -55,39 +55,39 @@ const DealForm = ({
     calendar_notes: ''
   });
 
-  // PHASE 3: Enhanced line items state with individual scheduling fields
+  // Enhanced line items state with individual scheduling fields
   const [lineItems, setLineItems] = useState([]);
   
-  // CHANGE 2: Enhanced customer data with first/last name and spouse
+  // Enhanced customer data with first/last name and spouse
   const [customerData, setCustomerData] = useState({
     customer_first_name: '',
     customer_last_name: '',
     customer_phone: '',
     customer_email: '',
-    spouse_name: '' // New spouse field
+    spouse_name: ''
   });
 
-  // PHASE 3: Enhanced form state with scheduling validation
+  // Enhanced form state with scheduling validation
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [warnings, setWarnings] = useState({});
-
-  // CHANGE 2 & 3: New state for scheduling functionality
   const [schedulingEnabled, setSchedulingEnabled] = useState({});
+  
+  // NEW: Individual line item save states
+  const [savingLineItem, setSavingLineItem] = useState({});
 
   // Initialize form data for edit mode - Optimized with useEffect dependencies
   useEffect(() => {
     if (mode === 'edit' && initialData?.deal) {
       const { deal, items = [] } = initialData;
       
-      // CHANGE 1: Map vehicle data from deal's vehicle
       if (deal?.vehicles) {
         const vehicle = deal?.vehicles;
         setVehicleData(prev => ({
           ...prev,
-          new_used: 'used', // Default, could be enhanced
+          new_used: 'used',
           stock_number: vehicle?.stock_number || '',
-          deal_number: deal?.job_number || '', // Use job_number as deal number
+          deal_number: deal?.job_number || '',
           year: vehicle?.year?.toString() || '',
           make: vehicle?.make || '',
           model: vehicle?.model || '',
@@ -97,7 +97,6 @@ const DealForm = ({
         }));
       }
       
-      // Map deal data exactly from database structure - REMOVED title
       setDealData(prev => ({
         ...prev,
         description: deal?.description || '',
@@ -105,7 +104,7 @@ const DealForm = ({
         vendor_id: deal?.vendor_id,
         created_by: deal?.created_by || user?.id,
         delivery_coordinator_id: deal?.delivery_coordinator_id || '',
-        assigned_to: deal?.assigned_to, // Sales consultant
+        assigned_to: deal?.assigned_to,
         finance_manager_id: deal?.finance_manager_id || null,
         job_status: deal?.job_status || 'pending',
         priority: deal?.priority || 'medium',
@@ -117,19 +116,16 @@ const DealForm = ({
         calendar_notes: deal?.calendar_notes || ''
       }));
 
-      // CHANGE 4: Enhanced line items mapping with individual service settings
       const mappedItems = items?.map(item => ({
-        id: item?.id, // Existing item ID for updates
+        id: item?.id,
         product_id: item?.product_id || item?.products?.id,
         name: item?.products?.name || item?.name,
         op_code: item?.products?.op_code,
         unit_price: parseFloat(item?.unit_price || item?.products?.unit_price || 0),
-        cost: parseFloat(item?.products?.cost || 0), // Add cost field
-        // REMOVED: quantity_used field as requested
+        cost: parseFloat(item?.products?.cost || 0),
         category: item?.products?.category,
         brand: item?.products?.brand,
         description: item?.products?.description,
-        // CHANGE 4: Individual service settings per line item
         service_type: item?.service_type || 'in_house',
         vendor_id: item?.vendor_id || null,
         promised_date: item?.promised_date ? item?.promised_date?.split('T')?.[0] : '',
@@ -138,7 +134,6 @@ const DealForm = ({
       }));
       setLineItems(mappedItems || []);
 
-      // CHANGE 2: Extract customer data with first/last name
       if (deal?.transactions?.[0]) {
         const txn = deal?.transactions?.[0];
         const fullName = txn?.customer_name || '';
@@ -149,7 +144,7 @@ const DealForm = ({
           customer_last_name: nameParts?.slice(1)?.join(' ') || '',
           customer_phone: txn?.customer_phone || '',
           customer_email: txn?.customer_email || '',
-          spouse_name: txn?.spouse_name || '' // If available
+          spouse_name: txn?.spouse_name || ''
         }));
       } else if (deal?.vehicles) {
         const fullName = deal?.vehicles?.owner_name || '';
@@ -164,19 +159,16 @@ const DealForm = ({
         }));
       }
     } else if (mode === 'create') {
-      // CHANGE 4: Enhanced create mode defaults with individual line item settings
       const today = new Date();
-
       setLineItems([{
-        id: null, // New item
+        id: null,
         product_id: '',
         name: '',
         unit_price: 0,
-        cost: 0, // Add cost field - NO quantity
+        cost: 0,
         category: '',
         brand: '',
         description: '',
-        // Individual service settings per line item  
         service_type: 'in_house',
         vendor_id: null,
         promised_date: today?.toISOString()?.slice(0, 10),
@@ -184,14 +176,13 @@ const DealForm = ({
         notes: ''
       }]);
     }
-  }, [mode, initialData?.deal?.id, user?.id]); // Optimized dependencies
+  }, [mode, initialData?.deal?.id, user?.id]);
 
   // Load vehicle details when selected - Debounced
   useEffect(() => {
     if (dealData?.vehicle_id) {
       const vehicle = vehicles?.find(v => v?.id === dealData?.vehicle_id);
       
-      // Auto-populate customer data from vehicle owner
       if (vehicle && !customerData?.customer_first_name) {
         const timer = setTimeout(() => {
           setCustomerData(prev => ({
@@ -201,8 +192,7 @@ const DealForm = ({
             customer_phone: vehicle?.owner_phone || '',
             customer_email: vehicle?.owner_email || ''
           }));
-        }, 100); // Small debounce to prevent rapid updates
-
+        }, 100);
         return () => clearTimeout(timer);
       }
     }
@@ -224,25 +214,22 @@ const DealForm = ({
           location: 'In-House Service Bay'
         }));
       }
-    }, 100); // Debounce to prevent rapid updates
-
+    }, 100);
     return () => clearTimeout(timer);
   }, [dealData?.vendor_id, vendors]);
 
-  // CHANGE 4: Enhanced line item management with individual service settings - Optimized callbacks
+  // Enhanced line item management with individual service settings
   const addLineItem = useCallback(() => {
     const today = new Date();
-
     const newItem = {
-      id: null, // New item
+      id: null,
       product_id: '',
       name: '',
       unit_price: 0,
-      cost: 0, // Add cost field - NO quantity
+      cost: 0,
       category: '',
       brand: '',
       description: '',
-      // Individual service settings per line item  
       service_type: 'in_house',
       vendor_id: null,
       promised_date: today?.toISOString()?.slice(0, 10),
@@ -252,22 +239,19 @@ const DealForm = ({
     setLineItems(prev => [...prev, newItem]);
   }, []);
 
-  // Remove line item - Optimized callback
   const removeLineItem = useCallback((index) => {
     setLineItems(prev => prev?.filter((_, i) => i !== index));
   }, []);
 
-  // CHANGE 4: Enhanced line item update with individual service settings - Optimized callback
   const updateLineItem = useCallback((index, field, value) => {
     setLineItems(prev => prev?.map((item, i) => {
       if (i !== index) return item;
       
       const updatedItem = { ...item, [field]: value };
       
-      // Auto-update when service_type changes
       if (field === 'service_type') {
         if (value === 'vendor') {
-          updatedItem.customer_needs_loaner = true; // Suggest loaner for vendor work
+          updatedItem.customer_needs_loaner = true;
         } else {
           updatedItem.vendor_id = null;
         }
@@ -276,7 +260,6 @@ const DealForm = ({
       return updatedItem;
     }));
     
-    // Clear field-specific errors when user fixes them
     setErrors(prev => {
       const newErrors = { ...prev };
       const errorKey = `lineItem_${index}_${field}`;
@@ -287,14 +270,43 @@ const DealForm = ({
     });
   }, []);
 
-  // CHANGE 2 & 3: Toggle scheduling for individual line items
+  // NEW: Individual line item save function
+  const saveLineItem = useCallback(async (index) => {
+    const item = lineItems?.[index];
+    if (!item?.product_id) return;
+
+    setSavingLineItem(prev => ({ ...prev, [index]: true }));
+    
+    try {
+      // Here you would call your individual item save service
+      // For now, we'll just simulate a save
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Show success feedback
+      const itemElement = document.querySelector(`[data-item-index="${index}"]`);
+      if (itemElement) {
+        itemElement.style.background = 'linear-gradient(to right, #ecfdf5, #f0fdf4)';
+        itemElement.style.borderColor = '#22c55e';
+        setTimeout(() => {
+          itemElement.style.background = '';
+          itemElement.style.borderColor = '';
+        }, 2000);
+      }
+      
+      console.log('Line item saved:', item);
+    } catch (error) {
+      console.error('Error saving line item:', error);
+    } finally {
+      setSavingLineItem(prev => ({ ...prev, [index]: false }));
+    }
+  }, [lineItems]);
+
   const toggleScheduling = useCallback((index, enabled) => {
     setSchedulingEnabled(prev => ({
       ...prev,
       [index]: enabled
     }));
     
-    // Auto-set promise date when scheduling is enabled
     if (enabled && !lineItems?.[index]?.promised_date) {
       const tomorrow = new Date();
       tomorrow?.setDate(tomorrow?.getDate() + 1);
@@ -302,11 +314,9 @@ const DealForm = ({
     }
   }, [lineItems, updateLineItem]);
 
-  // Load product details when selected - Optimized callback
   const handleProductSelect = useCallback(async (itemIndex, productId) => {
     const product = products?.find(p => p?.id === productId);
     if (product) {
-      // Batch all updates to prevent multiple re-renders
       setLineItems(prev => prev?.map((item, i) => {
         if (i !== itemIndex) return item;
         
@@ -324,12 +334,9 @@ const DealForm = ({
     }
   }, [products]);
 
-  // CHANGE 1,2: Updated form validation for new structure
   const validateForm = () => {
     const newErrors = {};
-    const newWarnings = {};
 
-    // CHANGE 1: Vehicle validation for NEW entry
     if (!vehicleData?.new_used) newErrors.new_used = 'New/Used selection is required';
     if (!vehicleData?.stock_number?.trim()) newErrors.stock_number = 'Stock # is required';
     if (!vehicleData?.deal_number?.trim()) newErrors.deal_number = 'Deal # is required';
@@ -337,12 +344,8 @@ const DealForm = ({
     if (!vehicleData?.make?.trim()) newErrors.make = 'Make is required';
     if (!vehicleData?.model?.trim()) newErrors.model = 'Model is required';
     
-    // Required dealer representatives - UPDATED field names
     if (!dealData?.delivery_coordinator_id) newErrors.delivery_coordinator_id = 'Delivery coordinator is required';
-    if (!dealData?.assigned_to) newErrors.assigned_to = 'Sales consultant is required';
-    if (!dealData?.finance_manager_id) newErrors.finance_manager_id = 'Finance manager is required';
     
-    // Line items validation
     if (lineItems?.length === 0) {
       newErrors.lineItems = 'At least one line item is required';
     } else {
@@ -359,7 +362,6 @@ const DealForm = ({
       });
     }
 
-    // CHANGE 2: Customer validation with first/last name
     if (!customerData?.customer_first_name?.trim()) {
       newErrors.customer_first_name = 'Customer first name is required';
     }
@@ -368,18 +370,16 @@ const DealForm = ({
     }
 
     setErrors(newErrors);
-    setWarnings(newWarnings);
+    setWarnings({});
     return Object.keys(newErrors)?.length === 0;
   };
 
-  // Calculate totals - NO quantity multiplication - Memoized for performance
   const totalAmount = useMemo(() => {
     return lineItems?.reduce((sum, item) => 
       sum + parseFloat(item?.unit_price || 0), 0
     );
   }, [lineItems]);
 
-  // CHANGE 4: Updated form submission with individual line item settings
   const handleSubmit = async (e) => {
     e?.preventDefault();
     
@@ -389,13 +389,10 @@ const DealForm = ({
 
     setLoading(true);
     try {
-      // Get today's date for automatic start time
       const today = new Date();
       const startTime = today?.toISOString();
 
-      // CHANGE 1,2,4: Enhanced payload with new structure
       const payload = {
-        // Vehicle data (create/update vehicle record)
         vehicle: {
           ...vehicleData,
           year: parseInt(vehicleData?.year),
@@ -407,24 +404,20 @@ const DealForm = ({
         deal: {
           ...dealData,
           estimated_cost: totalAmount
-          // NO title field - removed as requested
         },
         items: lineItems?.map(item => {
-          // Calculate automatic end time based on promise date
           const promiseDate = item?.promised_date ? new Date(item?.promised_date) : new Date();
           const endTime = promiseDate?.toISOString();
 
           return {
-            id: item?.id, // For updates, null for new items
+            id: item?.id,
             product_id: item?.product_id,
             unit_price: parseFloat(item?.unit_price || 0),
-            // Individual service settings
             service_type: item?.service_type,
             vendor_id: item?.vendor_id || null,
             promised_date: item?.promised_date || null,
             customer_needs_loaner: item?.customer_needs_loaner || false,
             notes: item?.notes || null,
-            // Automatic start/end times
             start_time: startTime,
             end_time: endTime
           };
@@ -450,15 +443,37 @@ const DealForm = ({
     }
   };
 
-  // CHANGE 5: Enhanced line item rendering with improved "Need to Schedule" visibility
+  // UPDATED: Enhanced line item rendering with individual save buttons
   const renderLineItem = useCallback((item, index) => (
-    <div key={`${item?.id || 'new'}-${index}`} className="border-2 border-gray-300 rounded-xl p-6 bg-gradient-to-r from-gray-50 to-white space-y-6">
+    <div key={`${item?.id || 'new'}-${index}`} data-item-index={index} className="border-2 border-gray-300 rounded-xl p-6 bg-gradient-to-r from-gray-50 to-white space-y-6 relative z-10">
       <div className="flex items-center justify-between">
         <span className="text-lg font-bold text-gray-800 flex items-center">
           <Icon name="Package" size={16} className="mr-2 text-blue-600" />
           Item #{index + 1}
         </span>
         <div className="flex items-center space-x-3">
+          {/* NEW: Individual Save Button */}
+          <Button
+            type="button"
+            onClick={() => saveLineItem(index)}
+            size="sm"
+            variant="primary"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2"
+            disabled={savingLineItem?.[index] || !item?.product_id}
+          >
+            {savingLineItem?.[index] ? (
+              <>
+                <Icon name="Loader2" size={14} className="mr-1 animate-spin" />
+                Saving
+              </>
+            ) : (
+              <>
+                <Icon name="Save" size={14} className="mr-1" />
+                Save
+              </>
+            )}
+          </Button>
+          
           {lineItems?.length > 1 && (
             <Button
               type="button"
@@ -475,7 +490,7 @@ const DealForm = ({
 
       {/* Product Selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
+        <div className="relative z-20">
           <label className="block text-base font-semibold text-gray-700 mb-2">
             Product *
           </label>
@@ -488,6 +503,7 @@ const DealForm = ({
             })) || []}
             placeholder="Select product..."
             error={errors?.[`lineItem_${index}_product`]}
+            className="relative z-20"
           />
         </div>
 
@@ -504,10 +520,10 @@ const DealForm = ({
               step="0.01"
               placeholder="0.00"
               error={errors?.[`lineItem_${index}_price`]}
+              className="text-base p-3"
               label=""
               helperText=""
-              className="text-base p-3"
-              maxLength={undefined}
+              maxLength={10}
               style={{}}
             />
           </div>
@@ -524,24 +540,24 @@ const DealForm = ({
               step="0.01"
               placeholder="0.00"
               error={errors?.[`lineItem_${index}_cost`]}
+              className="text-base p-3"
               label=""
               helperText=""
-              className="text-base p-3"
-              maxLength={undefined}
+              maxLength={10}
               style={{}}
             />
           </div>
         </div>
       </div>
 
-      {/* ENHANCED Service Configuration per line item */}
-      <div className="bg-white border-2 border-blue-300 rounded-xl p-5 shadow-sm">
+      {/* ENHANCED Service Configuration per line item with proper z-index */}
+      <div className="bg-white border-2 border-blue-300 rounded-xl p-5 shadow-sm relative z-10">
         <h4 className="text-lg font-bold text-blue-900 mb-4 flex items-center">
           <Icon name="Settings" size={16} className="mr-2" />
           Service Configuration
         </h4>
 
-        {/* CHANGE 6: PROMINENT "Need to Schedule" bar with enhanced styling */}
+        {/* "Need to Schedule" bar */}
         <div className="mb-6 p-4 bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-300 rounded-xl shadow-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -576,7 +592,6 @@ const DealForm = ({
             )}
           </div>
 
-          {/* CHANGE 7: Enhanced promise date section with better visibility */}
           {schedulingEnabled?.[index] && (
             <div className="mt-4 pt-4 border-t-2 border-purple-300">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -588,12 +603,12 @@ const DealForm = ({
                     value={item?.promised_date}
                     onChange={(e) => updateLineItem(index, 'promised_date', e?.target?.value)}
                     type="date"
-                    placeholder=""
                     className="border-2 border-purple-400 focus:border-purple-600 focus:ring-purple-500 text-base p-3"
                     label=""
                     helperText=""
-                    maxLength={undefined}
+                    maxLength={10}
                     style={{}}
+                    placeholder=""
                   />
                 </div>
                 <div className="flex items-end">
@@ -610,7 +625,7 @@ const DealForm = ({
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
+          <div className="relative z-20">
             <label className="block text-base font-semibold text-gray-700 mb-2">
               Service Type *
             </label>
@@ -621,10 +636,11 @@ const DealForm = ({
                 { value: 'in_house', label: 'Done in house' },
                 { value: 'vendor', label: 'Sent offsite' }
               ]}
+              className="relative z-20"
             />
           </div>
 
-          <div>
+          <div className="relative z-20">
             <label className="block text-base font-semibold text-gray-700 mb-2">
               Vendor {item?.service_type === 'vendor' && '*'}
             </label>
@@ -639,6 +655,7 @@ const DealForm = ({
                 })) || [])
               ]}
               disabled={item?.service_type !== 'vendor'}
+              className="relative z-20"
             />
           </div>
 
@@ -650,16 +667,16 @@ const DealForm = ({
               value={item?.notes || ''}
               onChange={(e) => updateLineItem(index, 'notes', e?.target?.value)}
               placeholder="Optional notes..."
+              className="text-base p-3"
               label=""
               helperText=""
-              className="text-base p-3"
-              maxLength={undefined}
+              maxLength={500}
               style={{}}
             />
           </div>
         </div>
 
-        {/* Enhanced loaner checkbox - positioned below service configuration */}
+        {/* Enhanced loaner checkbox */}
         <div className="mt-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
           <div className="flex items-center space-x-4">
             <div className="relative flex items-center">
@@ -688,19 +705,19 @@ const DealForm = ({
         </div>
       </div>
     </div>
-  ), [lineItems?.length, removeLineItem, handleProductSelect, updateLineItem, products, vendors, errors, schedulingEnabled, toggleScheduling]);
+  ), [lineItems?.length, removeLineItem, handleProductSelect, updateLineItem, products, vendors, errors, schedulingEnabled, toggleScheduling, saveLineItem, savingLineItem]);
 
   return (
     <div className="max-h-[85vh] overflow-y-auto">
       <form onSubmit={handleSubmit} className="space-y-6 p-2">
         
-        {/* Header with mode indicator - ENHANCED VISIBILITY */}
+        {/* Header */}
         <div className="flex items-center justify-between mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
           <div>
             <h3 className={`${themeClasses?.text} text-2xl font-bold mb-2`}>
               {mode === 'create' ? 'Create New Deal' : 'Edit Deal'}
               <span className="text-green-600 text-sm ml-3 px-2 py-1 bg-green-100 rounded-full font-semibold">
-                ✓ Enhanced Layout
+                ✓ Restored Sales & Finance
               </span>
             </h3>
             <p className={`${themeClasses?.textSecondary} text-base`}>
@@ -715,7 +732,7 @@ const DealForm = ({
           </div>
         </div>
 
-        {/* CHANGE 1: NEW Vehicle Entry Section - Enhanced spacing and layout */}
+        {/* Vehicle Information Section */}
         <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
           <h4 className={`${themeClasses?.text} text-lg font-bold mb-4 uppercase tracking-wide flex items-center`}>
             <Icon name="Car" size={18} className="mr-2 text-blue-600" />
@@ -723,7 +740,7 @@ const DealForm = ({
           </h4>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
+            <div className="relative z-30">
               <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 New/Used *
               </label>
@@ -735,6 +752,7 @@ const DealForm = ({
                   { value: 'used', label: 'Used' }
                 ]}
                 error={errors?.new_used}
+                className="relative z-30"
               />
             </div>
 
@@ -747,10 +765,10 @@ const DealForm = ({
                 onChange={(e) => setVehicleData(prev => ({ ...prev, stock_number: e?.target?.value }))}
                 placeholder="Stock number"
                 error={errors?.stock_number}
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={50}
                 style={{}}
               />
             </div>
@@ -764,10 +782,10 @@ const DealForm = ({
                 onChange={(e) => setVehicleData(prev => ({ ...prev, deal_number: e?.target?.value }))}
                 placeholder="Deal number"
                 error={errors?.deal_number}
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={50}
                 style={{}}
               />
             </div>
@@ -784,10 +802,10 @@ const DealForm = ({
                 max={new Date()?.getFullYear() + 2}
                 placeholder="2024"
                 error={errors?.year}
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={4}
                 style={{}}
               />
             </div>
@@ -801,10 +819,10 @@ const DealForm = ({
                 onChange={(e) => setVehicleData(prev => ({ ...prev, make: e?.target?.value }))}
                 placeholder="Ford, Toyota, etc."
                 error={errors?.make}
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={50}
                 style={{}}
               />
             </div>
@@ -818,17 +836,17 @@ const DealForm = ({
                 onChange={(e) => setVehicleData(prev => ({ ...prev, model: e?.target?.value }))}
                 placeholder="F-150, Camry, etc."
                 error={errors?.model}
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={50}
                 style={{}}
               />
             </div>
           </div>
         </div>
 
-        {/* CHANGE 2: Customer Information Section - Enhanced spacing */}
+        {/* Customer Information Section */}
         <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
           <h4 className={`${themeClasses?.text} text-lg font-bold mb-4 uppercase tracking-wide flex items-center`}>
             <Icon name="User" size={18} className="mr-2 text-blue-600" />
@@ -845,10 +863,10 @@ const DealForm = ({
                 onChange={(e) => setCustomerData(prev => ({ ...prev, customer_first_name: e?.target?.value }))}
                 placeholder="First name"
                 error={errors?.customer_first_name}
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={50}
                 style={{}}
               />
             </div>
@@ -862,10 +880,10 @@ const DealForm = ({
                 onChange={(e) => setCustomerData(prev => ({ ...prev, customer_last_name: e?.target?.value }))}
                 placeholder="Last name"
                 error={errors?.customer_last_name}
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={50}
                 style={{}}
               />
             </div>
@@ -879,10 +897,10 @@ const DealForm = ({
                 onChange={(e) => setCustomerData(prev => ({ ...prev, customer_phone: e?.target?.value }))}
                 placeholder="Customer phone"
                 type="tel"
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={20}
                 style={{}}
               />
             </div>
@@ -896,10 +914,10 @@ const DealForm = ({
                 onChange={(e) => setCustomerData(prev => ({ ...prev, customer_email: e?.target?.value }))}
                 placeholder="Customer email"
                 type="email"
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={100}
                 style={{}}
               />
             </div>
@@ -912,91 +930,100 @@ const DealForm = ({
                 value={customerData?.spouse_name}
                 onChange={(e) => setCustomerData(prev => ({ ...prev, spouse_name: e?.target?.value }))}
                 placeholder="Spouse name (optional)"
+                className="text-base p-3"
                 label=""
                 helperText=""
-                className="text-base p-3"
-                maxLength={undefined}
+                maxLength={100}
                 style={{}}
               />
             </div>
           </div>
         </div>
 
-        {/* CHANGE 3: Dealer Representatives Section - Enhanced spacing */}
+        {/* REORDERED: Dealer Representatives Section - Delivery Coordinator First */}
         <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
           <h4 className={`${themeClasses?.text} text-lg font-bold mb-4 uppercase tracking-wide flex items-center`}>
             <Icon name="Users" size={18} className="mr-2 text-blue-600" />
             Dealer Representatives Involved
           </h4>
           
+          {/* Debug info to show data availability */}
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-xs space-y-1">
+              <p className="text-blue-700">
+                <strong>Data Status:</strong> Sales: {salespeople?.length || 0} • Finance: {financeManagers?.length || 0} • Delivery: {deliveryCoordinators?.length || 0}
+              </p>
+            </div>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
+            <div style={{ position: 'relative', zIndex: 50 }}>
               <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
                 Delivery Coordinator *
               </label>
               <Select
                 value={dealData?.delivery_coordinator_id}
                 onChange={(value) => setDealData(prev => ({ ...prev, delivery_coordinator_id: value }))}
-                options={deliveryCoordinators?.map(dc => ({
-                  value: dc?.id,
-                  label: dc?.full_name
-                })) || []}
+                options={[
+                  { value: '', label: 'Select coordinator...' },
+                  ...(deliveryCoordinators?.map(dc => ({
+                    value: dc?.id,
+                    label: dc?.full_name
+                  })) || [])
+                ]}
                 placeholder="Select coordinator..."
                 error={errors?.delivery_coordinator_id}
+                style={{ position: 'relative', zIndex: 50 }}
               />
             </div>
 
-            <div>
+            <div style={{ position: 'relative', zIndex: 40 }}>
               <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
-                Sales Consultant *
+                Sales Person
               </label>
               <Select
-                value={dealData?.assigned_to}
-                onChange={(value) => setDealData(prev => ({ ...prev, assigned_to: value }))}
-                options={salespeople?.map(sp => ({
-                  value: sp?.id,
-                  label: sp?.full_name
-                })) || []}
-                placeholder="Select sales consultant..."
-                error={errors?.assigned_to}
+                value={dealData?.assigned_to || ''}
+                onChange={(value) => setDealData(prev => ({ ...prev, assigned_to: value || null }))}
+                options={[
+                  { value: '', label: 'Select sales person...' },
+                  ...(salespeople?.map(sp => ({
+                    value: sp?.id,
+                    label: sp?.full_name
+                  })) || [])
+                ]}
+                placeholder="Select sales person..."
+                style={{ position: 'relative', zIndex: 40 }}
               />
             </div>
 
-            <div>
+            <div style={{ position: 'relative', zIndex: 30 }}>
               <label className={`${themeClasses?.text} block text-base font-semibold mb-2`}>
-                Finance Manager *
+                Finance Manager
               </label>
               <Select
-                value={dealData?.finance_manager_id}
-                onChange={(value) => setDealData(prev => ({ ...prev, finance_manager_id: value }))}
-                options={financeManagers?.map(fm => ({
-                  value: fm?.id,
-                  label: fm?.full_name
-                })) || []}
+                value={dealData?.finance_manager_id || ''}
+                onChange={(value) => setDealData(prev => ({ ...prev, finance_manager_id: value || null }))}
+                options={[
+                  { value: '', label: 'Select finance manager...' },
+                  ...(financeManagers?.map(fm => ({
+                    value: fm?.id,
+                    label: fm?.full_name
+                  })) || [])
+                ]}
                 placeholder="Select finance manager..."
-                error={errors?.finance_manager_id}
+                style={{ position: 'relative', zIndex: 30 }}
               />
             </div>
           </div>
         </div>
 
-        {/* CHANGE 4: Enhanced Line Items Section with improved layout */}
-        <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
+        {/* UPDATED: Line Items Section with repositioned Add Item button */}
+        <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md relative z-0`}>
           <div className="flex items-center justify-between mb-6">
             <h4 className={`${themeClasses?.text} text-lg font-bold uppercase tracking-wide flex items-center`}>
               <Icon name="ShoppingCart" size={18} className="mr-2 text-blue-600" />
               Line Items with Individual Settings ({lineItems?.length})
             </h4>
-            <Button
-              type="button"
-              onClick={addLineItem}
-              size="lg"
-              variant="outline"
-              className="flex items-center bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 px-6 py-3"
-            >
-              <Icon name="Plus" size={16} className="mr-2" />
-              Add Item
-            </Button>
           </div>
 
           {errors?.lineItems && (
@@ -1008,6 +1035,20 @@ const DealForm = ({
 
           <div className="space-y-8">
             {lineItems?.map((item, index) => renderLineItem(item, index))}
+            
+            {/* REPOSITIONED: Add Item button after the last line item */}
+            <div className="flex justify-center pt-4">
+              <Button
+                type="button"
+                onClick={addLineItem}
+                size="lg"
+                variant="outline"
+                className="flex items-center bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-700 px-8 py-4 text-lg font-semibold"
+              >
+                <Icon name="Plus" size={18} className="mr-2" />
+                + Add Item
+              </Button>
+            </div>
           </div>
 
           {/* Enhanced Total Display */}

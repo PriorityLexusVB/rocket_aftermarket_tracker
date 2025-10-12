@@ -128,7 +128,7 @@ class DealService {
   }
 
   /**
-   * PHASE 2: Enhanced createDeal with vehicle creation support - FIXED timestamp validation
+   * PHASE 2: Enhanced createDeal with vehicle creation support - FIXED VIN constraint handling
    */
   async createDeal(payload) {
     try {
@@ -138,57 +138,13 @@ class DealService {
 
       // Step 1: Create or find vehicle if vehicle data provided
       if (vehicle && (!vehicleId || vehicleId === 'new')) {
-        // Check if vehicle exists by stock_number or VIN
-        let existingVehicle = null;
-        
-        if (vehicle?.stock_number) {
-          const { data: stockCheck } = await supabase
-            ?.from('vehicles')
-            ?.select('id')
-            ?.eq('stock_number', vehicle?.stock_number)
-            ?.single();
-          existingVehicle = stockCheck;
-        }
-        
-        if (!existingVehicle && vehicle?.vin) {
-          const { data: vinCheck } = await supabase
-            ?.from('vehicles')
-            ?.select('id')
-            ?.eq('vin', vehicle?.vin)
-            ?.single();
-          existingVehicle = vinCheck;
-        }
-
-        if (existingVehicle) {
-          vehicleId = existingVehicle?.id;
-        } else {
-          // Create new vehicle
-          const { data: createdVehicle, error: vehicleError } = await supabase
-            ?.from('vehicles')
-            ?.insert({
-              year: vehicle?.year,
-              make: vehicle?.make,
-              model: vehicle?.model,
-              color: vehicle?.color,
-              vin: vehicle?.vin,
-              mileage: vehicle?.mileage,
-              stock_number: vehicle?.stock_number,
-              owner_name: vehicle?.owner_name,
-              owner_phone: vehicle?.owner_phone,
-              owner_email: vehicle?.owner_email,
-              created_by: deal?.created_by
-            })
-            ?.select('id')
-            ?.single();
-
-          if (vehicleError) throw vehicleError;
-          vehicleId = createdVehicle?.id;
-        }
+        vehicleId = await this._handleVehicleCreation(vehicle, deal?.created_by);
       }
 
       // PHASE 2 FIX: Clean timestamp fields to prevent PostgreSQL 22007 errors
       const cleanDealData = {
-        title: deal?.title,
+        // FIX: Generate automatic title from vehicle and customer data
+        title: this._generateDealTitle(vehicle, customerData, deal),
         description: deal?.description,
         vehicle_id: vehicleId,
         vendor_id: deal?.vendor_id || null,
@@ -253,6 +209,188 @@ class DealService {
     } catch (error) {
       console.error('Error creating deal:', error);
       throw new Error(`Failed to create deal: ${error?.message}`);
+    }
+  }
+
+  /**
+   * Enhanced vehicle creation with proper duplicate VIN/stock number handling
+   * @private
+   */
+  async _handleVehicleCreation(vehicle, createdBy) {
+    try {
+      // Step 1: Comprehensive existing vehicle lookup
+      let existingVehicle = await this._findExistingVehicle(vehicle);
+      
+      if (existingVehicle) {
+        console.log('Found existing vehicle:', existingVehicle?.id);
+        return existingVehicle?.id;
+      }
+
+      // Step 2: Prepare vehicle data for creation
+      const vehicleData = this._prepareVehicleData(vehicle, createdBy);
+
+      // Step 3: Attempt to create vehicle with constraint violation handling
+      try {
+        const { data: createdVehicle, error: vehicleError } = await supabase
+          ?.from('vehicles')
+          ?.insert(vehicleData)
+          ?.select('id')
+          ?.single();
+
+        if (vehicleError) {
+          // Check if this is a constraint violation (duplicate VIN)
+          if (vehicleError?.code === '23505' && vehicleError?.message?.includes('vehicles_vin_key')) {
+            console.log('VIN constraint violation detected, attempting to find existing vehicle');
+            // Try to find the existing vehicle one more time
+            existingVehicle = await this._findExistingVehicle(vehicle);
+            if (existingVehicle) {
+              return existingVehicle?.id;
+            }
+          }
+          throw vehicleError;
+        }
+
+        return createdVehicle?.id;
+      } catch (constraintError) {
+        // Handle race condition where vehicle was created between our check and insert
+        if (constraintError?.code === '23505' && constraintError?.message?.includes('vehicles_vin_key')) {
+          console.log('Race condition detected, searching for newly created vehicle');
+          existingVehicle = await this._findExistingVehicle(vehicle);
+          if (existingVehicle) {
+            return existingVehicle?.id;
+          }
+          throw new Error('Vehicle with this VIN already exists but could not be located');
+        }
+        throw constraintError;
+      }
+    } catch (error) {
+      console.error('Error in _handleVehicleCreation:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Comprehensive vehicle lookup by VIN, stock_number, and vehicle details
+   * @private
+   */
+  async _findExistingVehicle(vehicle) {
+    try {
+      let existingVehicle = null;
+
+      // Primary lookup: VIN (most reliable)
+      if (vehicle?.vin?.trim()) {
+        const { data: vinCheck } = await supabase
+          ?.from('vehicles')
+          ?.select('id')
+          ?.eq('vin', vehicle?.vin?.trim())
+          ?.single();
+        existingVehicle = vinCheck;
+      }
+
+      // Secondary lookup: Stock number
+      if (!existingVehicle && vehicle?.stock_number?.trim()) {
+        const { data: stockCheck } = await supabase
+          ?.from('vehicles')
+          ?.select('id')
+          ?.eq('stock_number', vehicle?.stock_number?.trim())
+          ?.single();
+        existingVehicle = stockCheck;
+      }
+
+      // Tertiary lookup: Exact vehicle match (year, make, model, owner combination)
+      if (!existingVehicle && vehicle?.year && vehicle?.make && vehicle?.model) {
+        let query = supabase
+          ?.from('vehicles')
+          ?.select('id')
+          ?.eq('year', vehicle?.year)
+          ?.ilike('make', vehicle?.make?.trim())
+          ?.ilike('model', vehicle?.model?.trim());
+
+        // Add owner filters if available
+        if (vehicle?.owner_name?.trim()) {
+          query = query?.ilike('owner_name', vehicle?.owner_name?.trim());
+        }
+        if (vehicle?.owner_phone?.trim()) {
+          query = query?.eq('owner_phone', vehicle?.owner_phone?.trim());
+        }
+        if (vehicle?.owner_email?.trim()) {
+          query = query?.ilike('owner_email', vehicle?.owner_email?.trim());
+        }
+
+        const { data: exactMatch } = await query?.single();
+        existingVehicle = exactMatch;
+      }
+
+      return existingVehicle;
+    } catch (error) {
+      // Single record queries throw errors when no match, which is expected
+      if (error?.code === 'PGRST116') {
+        return null; // No match found
+      }
+      console.error('Error in _findExistingVehicle:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Prepare and validate vehicle data for database insertion
+   * @private
+   */
+  _prepareVehicleData(vehicle, createdBy) {
+    return {
+      year: vehicle?.year || null,
+      make: vehicle?.make?.trim() || null,
+      model: vehicle?.model?.trim() || null,
+      color: vehicle?.color?.trim() || null,
+      vin: vehicle?.vin?.trim() || null, // Handle empty VIN properly
+      mileage: vehicle?.mileage || null,
+      stock_number: vehicle?.stock_number?.trim() || null,
+      owner_name: vehicle?.owner_name?.trim() || null,
+      owner_phone: vehicle?.owner_phone?.trim() || null,
+      owner_email: vehicle?.owner_email?.trim() || null,
+      created_by: createdBy
+    };
+  }
+
+  /**
+   * Generate automatic deal title from available data
+   * @private
+   */
+  _generateDealTitle(vehicle, customerData, deal) {
+    try {
+      // Extract customer name from various sources
+      let customerName = '';
+      if (customerData?.customer_first_name && customerData?.customer_last_name) {
+        customerName = `${customerData?.customer_first_name} ${customerData?.customer_last_name}`;
+      } else if (vehicle?.owner_name) {
+        customerName = vehicle?.owner_name;
+      } else if (deal?.customer_name) {
+        customerName = deal?.customer_name;
+      } else {
+        customerName = 'Customer';
+      }
+
+      // Extract vehicle description
+      let vehicleDesc = '';
+      if (vehicle?.year && vehicle?.make && vehicle?.model) {
+        vehicleDesc = `${vehicle?.year} ${vehicle?.make} ${vehicle?.model}`;
+      } else if (vehicle?.make && vehicle?.model) {
+        vehicleDesc = `${vehicle?.make} ${vehicle?.model}`;
+      } else if (vehicle?.stock_number) {
+        vehicleDesc = `Stock #${vehicle?.stock_number}`;
+      } else {
+        vehicleDesc = 'Vehicle';
+      }
+
+      // Generate comprehensive title
+      const title = `${customerName} - ${vehicleDesc}`;
+      
+      // Ensure title doesn't exceed reasonable length (PostgreSQL text fields can handle this but keep it clean)
+      return title?.length > 100 ? title?.substring(0, 97) + '...' : title;
+    } catch (error) {
+      console.error('Error generating deal title:', error);
+      // Fallback title to ensure we never return null/undefined
+      return `Deal - ${new Date()?.toISOString()?.slice(0, 10)}`;
     }
   }
 

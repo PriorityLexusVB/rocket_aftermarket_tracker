@@ -243,7 +243,7 @@ const EnhancedVehicleTable = ({
                 iconName="Plus"
                 iconPosition="left"
                 onClick={() => navigate('/sales-transaction-interface')}
-                className=""
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Add Vehicle
               </Button>
@@ -264,7 +264,7 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => handleBulkStatusUpdate('maintenance')}
                     disabled={isLoading}
-                    className=""
+                    className="border-border bg-background text-foreground hover:bg-muted"
                   >
                     Mark as Maintenance
                   </Button>
@@ -274,7 +274,7 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => handleBulkStatusUpdate('sold')}
                     disabled={isLoading}
-                    className=""
+                    className="border-border bg-background text-foreground hover:bg-muted"
                   >
                     Mark as Sold
                   </Button>
@@ -284,7 +284,7 @@ const EnhancedVehicleTable = ({
                     size="sm"
                     onClick={() => setShowBulkActions(false)}
                     iconName="X"
-                    className=""
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted"
                   >
                     Close
                   </Button>
@@ -497,7 +497,7 @@ const EnhancedVehicleTable = ({
               iconName="Plus"
               iconPosition="left"
               onClick={() => navigate('/sales-transaction-interface')}
-              className=""
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               Add Vehicle
             </Button>

@@ -293,7 +293,7 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 placeholder="John Smith"
                 helperText=""
                 maxLength={100}
-                style={{}}
+                className=""
               />
               <Input
                 label="Email"
@@ -303,7 +303,7 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 placeholder="customer@email.com"
                 helperText=""
                 maxLength={100}
-                style={{}}
+                className=""
               />
               <Input
                 label="Phone"
@@ -313,7 +313,7 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 placeholder="(555) 123-4567"
                 helperText=""
                 maxLength={20}
-                style={{}}
+                className=""
               />
             </div>
           </div>

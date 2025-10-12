@@ -391,7 +391,6 @@ const UserManagement = () => {
               <Button
                 type="button"
                 onClick={resetForm}
-                variant="secondary"
                 disabled={creating}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-800"
               >
