@@ -141,54 +141,54 @@ const ExecutiveAnalyticsDashboard = () => {
       name: 'Premium Auto Solutions',
       specialty: 'Paint Protection',
       completionRate: 96.8,
+      activeJobs: 23,
       avgTurnaround: 3.2,
-      profitContribution: 125750,
-      activeJobs: 23
+      profitContribution: 125750
     },
     {
       id: 2,
       name: 'Elite Detailing Co.',
       specialty: 'Ceramic Coating',
       completionRate: 94.2,
+      activeJobs: 18,
       avgTurnaround: 4.1,
-      profitContribution: 89340,
-      activeJobs: 18
+      profitContribution: 89340
     },
     {
       id: 3,
       name: 'Pro Tint & Graphics',
       specialty: 'Tinting & Wraps',
       completionRate: 91.5,
+      activeJobs: 31,
       avgTurnaround: 2.8,
-      profitContribution: 67890,
-      activeJobs: 31
+      profitContribution: 67890
     },
     {
       id: 4,
       name: 'Shield Masters',
       specialty: 'Glass Protection',
       completionRate: 88.7,
+      activeJobs: 15,
       avgTurnaround: 5.3,
-      profitContribution: 45620,
-      activeJobs: 15
+      profitContribution: 45620
     },
     {
       id: 5,
       name: 'Apex Automotive',
       specialty: 'Multi-Service',
       completionRate: 92.3,
+      activeJobs: 27,
       avgTurnaround: 4.7,
-      profitContribution: 78450,
-      activeJobs: 27
+      profitContribution: 78450
     },
     {
       id: 6,
       name: 'Precision Wraps',
       specialty: 'Vehicle Wraps',
       completionRate: 89.4,
+      activeJobs: 12,
       avgTurnaround: 6.2,
-      profitContribution: 52340,
-      activeJobs: 12
+      profitContribution: 52340
     }
   ];
 

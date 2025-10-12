@@ -294,7 +294,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 helperText=""
                 maxLength={100}
                 className=""
-                style={{}}
               />
               <Input
                 label="Email"
@@ -305,7 +304,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 helperText=""
                 maxLength={100}
                 className=""
-                style={{}}
               />
               <Input
                 label="Phone"
@@ -316,7 +314,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 helperText=""
                 maxLength={20}
                 className=""
-                style={{}}
               />
             </div>
           </div>

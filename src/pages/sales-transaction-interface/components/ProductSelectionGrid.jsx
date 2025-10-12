@@ -269,7 +269,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                 variant="ghost"
                 onClick={() => setShowCustomForm(false)}
                 iconName="X"
-                className="h-8"
+                className="px-3"
               >
                 Cancel
               </Button>
