@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Icon from '../../components/AppIcon';
+import dealService from '../../services/dealService';
 
 
 const DealForm = ({ 
@@ -15,10 +16,7 @@ const DealForm = ({
   onCancel,
   vehicles = [],
   vendors = [],
-  products = [],
-  salespeople = [],
-  deliveryCoordinators = [],
-  financeManagers = []
+  products = []
 }) => {
   const { themeClasses } = useTheme();
   const { user } = useAuth();
@@ -75,6 +73,45 @@ const DealForm = ({
   
   // NEW: Individual line item save states
   const [savingLineItem, setSavingLineItem] = useState({});
+
+  // NEW: Staff data states
+  const [salesPeople, setSalesPeople] = useState([]);
+  const [financeManagers, setFinanceManagers] = useState([]);
+  const [deliveryCoordinators, setDeliveryCoordinators] = useState([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+
+  // NEW: Fetch staff data on component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setIsLoadingUsers(true);
+      console.log("Fetching sales and finance users...");
+      
+      try {
+        const salesData = await dealService?.getStaffByRole('sales');
+        const financeData = await dealService?.getStaffByRole('finance');
+        const deliveryData = await dealService?.getStaffByRole('delivery_coordinator');
+        
+        setSalesPeople(salesData);
+        setFinanceManagers(financeData);
+        setDeliveryCoordinators(deliveryData);
+        
+        console.log('Staff data loaded:', { 
+          sales: salesData?.length, 
+          finance: financeData?.length, 
+          delivery: deliveryData?.length 
+        });
+      } catch (error) {
+        console.error('Error fetching staff data:', error);
+        // Set empty arrays on error to prevent crashes
+        setSalesPeople([]);
+        setFinanceManagers([]);
+        setDeliveryCoordinators([]);
+      }
+      
+      setIsLoadingUsers(false);
+    };
+    fetchUsers();
+  }, []);
 
   // Initialize form data for edit mode - Optimized with useEffect dependencies
   useEffect(() => {
@@ -333,6 +370,12 @@ const DealForm = ({
       }));
     }
   }, [products]);
+
+  // NEW: Helper function to create dropdown options from user arrays
+  const userOptions = (users) => users?.map(user => ({
+    label: user?.full_name,
+    value: user?.id
+  })) || [];
 
   const validateForm = () => {
     const newErrors = {};
@@ -940,19 +983,25 @@ const DealForm = ({
           </div>
         </div>
 
-        {/* REORDERED: Dealer Representatives Section - Delivery Coordinator First */}
+        {/* UPDATED: Dealer Representatives Section with service integration */}
         <div className={`${themeClasses?.card} p-6 rounded-xl border-2 shadow-md`}>
           <h4 className={`${themeClasses?.text} text-lg font-bold mb-4 uppercase tracking-wide flex items-center`}>
             <Icon name="Users" size={18} className="mr-2 text-blue-600" />
             Dealer Representatives Involved
           </h4>
           
-          {/* Debug info to show data availability */}
+          {/* Enhanced debug info to show data availability */}
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="text-xs space-y-1">
               <p className="text-blue-700">
-                <strong>Data Status:</strong> Sales: {salespeople?.length || 0} • Finance: {financeManagers?.length || 0} • Delivery: {deliveryCoordinators?.length || 0}
+                <strong>Data Status:</strong> Sales: {salesPeople?.length || 0} • Finance: {financeManagers?.length || 0} • Delivery: {deliveryCoordinators?.length || 0}
               </p>
+              {isLoadingUsers && (
+                <p className="text-blue-600">
+                  <Icon name="Loader2" size={12} className="inline animate-spin mr-1" />
+                  Loading staff data...
+                </p>
+              )}
             </div>
           </div>
           
@@ -964,14 +1013,9 @@ const DealForm = ({
               <Select
                 value={dealData?.delivery_coordinator_id}
                 onChange={(value) => setDealData(prev => ({ ...prev, delivery_coordinator_id: value }))}
-                options={[
-                  { value: '', label: 'Select coordinator...' },
-                  ...(deliveryCoordinators?.map(dc => ({
-                    value: dc?.id,
-                    label: dc?.full_name
-                  })) || [])
-                ]}
-                placeholder="Select coordinator..."
+                options={userOptions(deliveryCoordinators)}
+                placeholder={isLoadingUsers ? "Loading staff..." : "Select coordinator..."}
+                loading={isLoadingUsers}
                 error={errors?.delivery_coordinator_id}
                 style={{ position: 'relative', zIndex: 50 }}
               />
@@ -984,14 +1028,9 @@ const DealForm = ({
               <Select
                 value={dealData?.assigned_to || ''}
                 onChange={(value) => setDealData(prev => ({ ...prev, assigned_to: value || null }))}
-                options={[
-                  { value: '', label: 'Select sales person...' },
-                  ...(salespeople?.map(sp => ({
-                    value: sp?.id,
-                    label: sp?.full_name
-                  })) || [])
-                ]}
-                placeholder="Select sales person..."
+                options={userOptions(salesPeople)}
+                placeholder={isLoadingUsers ? "Loading staff..." : "Select sales person..."}
+                loading={isLoadingUsers}
                 style={{ position: 'relative', zIndex: 40 }}
               />
             </div>
@@ -1003,14 +1042,9 @@ const DealForm = ({
               <Select
                 value={dealData?.finance_manager_id || ''}
                 onChange={(value) => setDealData(prev => ({ ...prev, finance_manager_id: value || null }))}
-                options={[
-                  { value: '', label: 'Select finance manager...' },
-                  ...(financeManagers?.map(fm => ({
-                    value: fm?.id,
-                    label: fm?.full_name
-                  })) || [])
-                ]}
-                placeholder="Select finance manager..."
+                options={userOptions(financeManagers)}
+                placeholder={isLoadingUsers ? "Loading staff..." : "Select finance manager..."}
+                loading={isLoadingUsers}
                 style={{ position: 'relative', zIndex: 30 }}
               />
             </div>

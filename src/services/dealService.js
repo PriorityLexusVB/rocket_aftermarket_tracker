@@ -544,6 +544,68 @@ class DealService {
       throw new Error(`Failed to get deal statistics: ${error?.message}`);
     }
   }
+
+  /**
+   * Get staff members by department for dropdown population
+   * Fixed to query by department instead of role since all users have role='staff'
+   */
+  async getStaffByRole(department) {
+    try {
+      let query = supabase
+        ?.from('user_profiles')
+        ?.select('id, full_name, department')
+        ?.eq('is_active', true)
+        ?.order('full_name');
+
+      // Map common department requests to actual database department values
+      const departmentMapping = {
+        'sales': '%Sales%',
+        'finance': '%Finance%', 
+        'delivery_coordinator': '%Delivery%',
+        'delivery': '%Delivery%'
+      };
+
+      // Use ILIKE pattern matching for department since departments have full names
+      if (departmentMapping?.[department?.toLowerCase()]) {
+        query = query?.ilike('department', departmentMapping?.[department?.toLowerCase()]);
+      } else {
+        // Fallback: try direct department match or pattern match
+        query = query?.or(`department.ilike.%${department}%,department.ilike.%${department?.toLowerCase()}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw new Error(`Error fetching staff for department ${department}: ${error?.message}`);
+
+      console.log(`Fetched ${data?.length || 0} users for department: ${department}`, data);
+      return data || [];
+    } catch (error) {
+      console.error('Get staff by department failed:', error);
+      return []; // Return an empty array on failure
+    }
+  }
+
+  /**
+   * Simple getDeals method for backward compatibility
+   * This method provides a simple interface for getting all deals
+   */
+  async getDeals(options = {}) {
+    try {
+      // Use the existing listDeals method with default parameters
+      const result = await this.listDeals({
+        page: 0,
+        limit: options?.limit || 100,
+        query: options?.query || '',
+        filters: options?.filters || {}
+      });
+
+      // Return just the data array for simple usage
+      return result?.data || [];
+    } catch (error) {
+      console.error('Error in getDeals:', error);
+      throw new Error(`Failed to get deals: ${error?.message}`);
+    }
+  }
 }
 
 // Export singleton instance

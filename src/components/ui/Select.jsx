@@ -1,21 +1,20 @@
 // components/ui/Select.jsx - Shadcn style Select with ResizeObserver optimization
 import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import ReactDOM from 'react-dom';
 import { ChevronDown, Check, Search, X } from "lucide-react";
 import { cn } from "../../utils/cn";
-
+import Button from "./Button";
 import Input from "./Input";
 
 const Select = React.forwardRef(({
     className,
     options = [],
     value,
-    defaultValue,
     placeholder = "Select an option",
     multiple = false,
     disabled = false,
     required = false,
     label,
-    description,
     error,
     searchable = false,
     clearable = false,
@@ -23,266 +22,157 @@ const Select = React.forwardRef(({
     id,
     name,
     onChange,
-    onOpenChange,
     ...props
 }, ref) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [dropdownPosition, setDropdownPosition] = useState({});
     const dropdownRef = useRef(null);
     const buttonRef = useRef(null);
+    const selectId = id || `select-${useMemo(() => Math.random()?.toString(36)?.substr(2, 9), [])}`;
 
-    // Generate unique ID if not provided
-    const selectId = id || `select-${Math.random()?.toString(36)?.substr(2, 9)}`;
-
-    // Filter options based on search - Memoized to prevent re-calculations
-    const filteredOptions = React.useMemo(() => {
+    const filteredOptions = useMemo(() => {
         if (!searchable || !searchTerm) return options;
-        
         return options?.filter(option =>
-            option?.label?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-            (option?.value && option?.value?.toString()?.toLowerCase()?.includes(searchTerm?.toLowerCase()))
+            option?.label?.toLowerCase()?.includes(searchTerm?.toLowerCase())
         );
     }, [options, searchable, searchTerm]);
 
-    // Get selected option(s) for display - Memoized to prevent re-calculations
-    const selectedDisplay = React.useMemo(() => {
+    const selectedDisplay = useMemo(() => {
         if (!value) return placeholder;
-
         if (multiple) {
             const selectedOptions = options?.filter(opt => value?.includes(opt?.value));
             if (selectedOptions?.length === 0) return placeholder;
             if (selectedOptions?.length === 1) return selectedOptions?.[0]?.label;
             return `${selectedOptions?.length} items selected`;
         }
-
         const selectedOption = options?.find(opt => opt?.value === value);
         return selectedOption ? selectedOption?.label : placeholder;
     }, [value, placeholder, multiple, options]);
 
-    // Optimized toggle handler
-    const handleToggle = useCallback(() => {
-        if (!disabled) {
-            const newIsOpen = !isOpen;
-            setIsOpen(newIsOpen);
-            onOpenChange?.(newIsOpen);
-            if (!newIsOpen) {
-                setSearchTerm("");
-            }
+    useEffect(() => {
+        if (isOpen && buttonRef?.current) {
+            const rect = buttonRef?.current?.getBoundingClientRect();
+            setDropdownPosition({
+                top: rect?.bottom + window.scrollY,
+                left: rect?.left + window.scrollX,
+                width: rect?.width,
+            });
         }
-    }, [disabled, isOpen, onOpenChange]);
+    }, [isOpen]);
 
-    // Optimized option selection handler
+    const handleToggle = useCallback(() => {
+        if (!disabled) setIsOpen(prev => !prev);
+    }, [disabled]);
+
     const handleOptionSelect = useCallback((option) => {
         if (multiple) {
             const newValue = value || [];
             const updatedValue = newValue?.includes(option?.value)
                 ? newValue?.filter(v => v !== option?.value)
                 : [...newValue, option?.value];
-            onChange?.(updatedValue);
+            onChange(updatedValue);
         } else {
-            onChange?.(option?.value);
+            onChange(option?.value);
             setIsOpen(false);
-            onOpenChange?.(false);
         }
-    }, [multiple, value, onChange, onOpenChange]);
+    }, [multiple, value, onChange]);
 
-    // Optimized clear handler
     const handleClear = useCallback((e) => {
         e?.stopPropagation();
-        onChange?.(multiple ? [] : '');
+        onChange(multiple ? [] : '');
     }, [multiple, onChange]);
 
-    // Optimized search handler with debouncing
-    const handleSearchChange = useCallback((e) => {
-        setSearchTerm(e?.target?.value);
-    }, []);
-
-    // Optimized selected check
     const isSelected = useCallback((optionValue) => {
-        if (multiple) {
-            return value?.includes(optionValue) || false;
-        }
-        return value === optionValue;
+        return multiple ? (value || [])?.includes(optionValue) : value === optionValue;
     }, [multiple, value]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                isOpen &&
+                dropdownRef?.current && !dropdownRef?.current?.contains(event?.target) &&
+                buttonRef?.current && !buttonRef?.current?.contains(event?.target)
+            ) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
 
     const hasValue = multiple ? value?.length > 0 : value !== undefined && value !== '';
 
-    // Close dropdown when clicking outside - Optimized
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (isOpen && 
-                dropdownRef?.current && 
-                !dropdownRef?.current?.contains(event?.target) &&
-                buttonRef?.current &&
-                !buttonRef?.current?.contains(event?.target)) {
-                setIsOpen(false);
-                onOpenChange?.(false);
-                setSearchTerm("");
-            }
-        };
-
-        if (isOpen) {
-            // Small delay to prevent immediate closing
-            const timer = setTimeout(() => {
-                document.addEventListener('mousedown', handleClickOutside);
-            }, 10);
-            
-            return () => {
-                clearTimeout(timer);
-                document.removeEventListener('mousedown', handleClickOutside);
-            };
-        }
-    }, [isOpen, onOpenChange]);
-
     return (
-        <div className={cn("relative", className)}>
+        <div className={cn("relative w-full", className)}>
             {label && (
-                <label
-                    htmlFor={selectId}
-                    className={cn(
-                        "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block",
-                        error ? "text-destructive" : "text-foreground"
-                    )}
-                >
-                    {label}
-                    {required && <span className="text-destructive ml-1">*</span>}
-                </label>
+                <label htmlFor={selectId} className="block text-sm font-medium text-gray-700 mb-1">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>
             )}
             <div className="relative">
                 <button
-                    ref={(node) => {
-                        buttonRef.current = node;
-                        if (ref) {
-                            if (typeof ref === 'function') {
-                                ref(node);
-                            } else {
-                                ref.current = node;
-                            }
-                        }
-                    }}
+                    ref={buttonRef}
                     id={selectId}
                     type="button"
                     className={cn(
-                        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-white text-black px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-                        error && "border-destructive focus:ring-destructive",
+                        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-white text-black px-3 py-2 text-sm",
                         !hasValue && "text-muted-foreground"
                     )}
                     onClick={handleToggle}
-                    disabled={disabled}
-                    aria-expanded={isOpen}
-                    aria-haspopup="listbox"
-                    {...props}
+                    disabled={disabled || loading}
                 >
                     <span className="truncate">{selectedDisplay}</span>
-
-                    <div className="flex items-center gap-1">
-                        {loading && (
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                        )}
-
+                    <div className="flex items-center">
+                        {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>}
                         {clearable && hasValue && !loading && (
-                            <button
-                                type="button"
-                                onClick={handleClear}
-                                className="h-4 w-4 p-0.5 rounded hover:bg-gray-200 flex items-center justify-center"
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleClear}><X className="h-4 w-4" /></Button>
                         )}
-
                         <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
                     </div>
                 </button>
-
-                {/* Hidden native select for form submission */}
-                <select
-                    name={name}
-                    value={value || ''}
-                    onChange={() => { }} // Controlled by our custom logic
-                    className="sr-only"
-                    tabIndex={-1}
-                    multiple={multiple}
-                    required={required}
-                >
-                    <option value="">Select...</option>
-                    {options?.map(option => (
-                        <option key={option?.value} value={option?.value}>
-                            {option?.label}
-                        </option>
-                    ))}
-                </select>
-
-                {/* Dropdown - Optimized positioning and rendering */}
-                {isOpen && (
-                    <div 
+                {isOpen && ReactDOM?.createPortal(
+                    <div
                         ref={dropdownRef}
-                        className="absolute w-full mt-1 bg-white text-black border border-border rounded-md shadow-md"
+                        className="absolute w-full mt-1 bg-white text-black border border-border rounded-md shadow-lg z-50"
                         style={{
+                            ...dropdownPosition,
                             maxHeight: '240px',
-                            minHeight: '60px',
-                            zIndex: 9999 // Added high z-index for dropdown visibility above other elements
                         }}
                     >
                         {searchable && (
-                            <div className="p-2 border-b">
-                                <div className="relative">
-                                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Search options..."
-                                        value={searchTerm}
-                                        onChange={handleSearchChange}
-                                        className="pl-8"
-                                        // Prevent auto-focus which can cause layout issues
-                                    />
-                                </div>
+                            <div className="p-2">
+                                <Input
+                                    placeholder="Search..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e?.target?.value)}
+                                    className="pl-8"
+                                    icon={<Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />}
+                                />
                             </div>
                         )}
-
-                        <div className="py-1 overflow-auto" style={{ maxHeight: searchable ? '180px' : '200px' }}>
+                        <div className="max-h-60 overflow-auto">
                             {filteredOptions?.length === 0 ? (
-                                <div className="px-3 py-2 text-sm text-muted-foreground">
-                                    {searchTerm ? 'No options found' : 'No options available'}
-                                </div>
+                                <div className="px-3 py-2 text-sm text-gray-500">No options found.</div>
                             ) : (
                                 filteredOptions?.map((option) => (
                                     <div
                                         key={option?.value}
                                         className={cn(
-                                            "relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                            isSelected(option?.value) && "bg-primary text-primary-foreground",
-                                            option?.disabled && "pointer-events-none opacity-50"
+                                            "relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm hover:bg-accent",
+                                            isSelected(option?.value) && "bg-primary text-primary-foreground"
                                         )}
-                                        onClick={() => !option?.disabled && handleOptionSelect(option)}
+                                        onClick={() => handleOptionSelect(option)}
                                     >
                                         <span className="flex-1">{option?.label}</span>
-                                        {multiple && isSelected(option?.value) && (
-                                            <Check className="h-4 w-4" />
-                                        )}
-                                        {option?.description && (
-                                            <span className="text-xs text-muted-foreground ml-2">
-                                                {option?.description}
-                                            </span>
-                                        )}
+                                        {isSelected(option?.value) && !multiple && <Check className="h-4 w-4 ml-2" />}
                                     </div>
                                 ))
                             )}
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
-            {description && !error && (
-                <p className="text-sm text-muted-foreground mt-1">
-                    {description}
-                </p>
-            )}
-            {error && (
-                <p className="text-sm text-destructive mt-1">
-                    {error}
-                </p>
-            )}
+            {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
         </div>
     );
 });

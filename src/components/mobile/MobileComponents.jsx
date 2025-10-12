@@ -121,7 +121,7 @@ const MobileModal = ({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose} />
       <div className={cn(
-        'relative bg-white',
+        'relative bg-white overflow-visible',
         getModalSize()
       )}>
         <div className="flex items-center justify-between p-6 border-b-2 border-gray-200 bg-white sticky top-0 z-10">

@@ -535,7 +535,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                             htmlFor={`schedule-${service?.id}`}
                             className="ml-2 text-sm text-foreground cursor-pointer"
                           >
-                            No scheduling needed for this item
+                            Service requires scheduling
                           </label>
                         </div>
                       </div>
