@@ -269,6 +269,7 @@ const AdminPage = () => {
         ?.select('*', { count: 'exact' })
         ?.in('role', ['admin', 'manager'])  
         ?.in('department', ['Managers', 'Delivery Coordinator'])  
+        ?.eq('is_active', true)  // Add this filter to exclude inactive/demo users
         ?.order('created_at', { ascending: false });
 
       if (error) {
@@ -292,6 +293,8 @@ const AdminPage = () => {
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
         ?.eq('role', 'staff')  
+        ?.eq('is_active', true)  // Add this filter to exclude inactive/demo users
+        ?.in('department', ['Sales Consultants', 'Finance Manager'])  // Move filter to SQL query
         ?.order('created_at', { ascending: false });
 
       if (staffError) {
@@ -299,13 +302,9 @@ const AdminPage = () => {
         throw staffError;
       }
       
-      // Filter for the specific departments we want to display in admin
-      const filteredStaff = allStaff?.filter(staff => 
-        ['Sales Consultants', 'Finance Manager']?.includes(staff?.department)
-      ) || [];
-      
-      console.log(`Staff records: ${filteredStaff?.length} matching target departments`);
-      setStaffRecords(filteredStaff);
+      // Remove client-side filtering since we're now filtering in SQL
+      console.log(`Staff records: ${allStaff?.length} matching target departments`);
+      setStaffRecords(allStaff || []);
     } catch (error) {
       console.error('Error loading staff records:', error);
     }

@@ -370,7 +370,7 @@ const AdvancedFilters = ({
                 }}
                 className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center text-xs"
               >
-                &times;
+                ×
               </button>
             </Button>
           ))}

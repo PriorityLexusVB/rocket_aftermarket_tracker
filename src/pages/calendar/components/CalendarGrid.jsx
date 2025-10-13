@@ -87,7 +87,7 @@ const CalendarGrid = ({
                           e?.stopPropagation();
                           onAppointmentClick(apt);
                         }}
-                        className={`p-1 md:p-2 rounded-lg text-xs cursor-pointer mb-1 border shadow-sm ${getStatusColor(apt?.job_status)} ${
+                        className={`p-1 md:p-2 rounded-lg text-xs cursor-pointer mb-1 border ${apt?._isDueOnly ? 'border-dashed' : ''} shadow-sm ${getStatusColor(apt?.job_status)} ${
                           dragging?.id === apt?.id ? 'opacity-50' : ''
                         } ${isMobile ? 'min-h-12' : 'min-h-16'}`}
                         draggable
@@ -109,6 +109,7 @@ const CalendarGrid = ({
                         )}
                         <div className="text-xs font-medium mt-1">
                           {estLabel(apt?.scheduled_start_time, isMobile ? 'h:mm' : 'h:mm a')}
+                          {apt?._isDueOnly && <span className="ml-2 text-[10px] font-semibold uppercase">DUE</span>}
                         </div>
                       </div>
                     ))}
@@ -191,7 +192,7 @@ const CalendarGrid = ({
                         <div
                           key={apt?.id}
                           onClick={() => onAppointmentClick(apt)}
-                          className={`p-2 md:p-3 rounded-lg cursor-pointer border shadow-sm ${getStatusColor(apt?.job_status)} ${
+                          className={`p-2 md:p-3 rounded-lg cursor-pointer border ${apt?._isDueOnly ? 'border-dashed' : ''} shadow-sm ${getStatusColor(apt?.job_status)} ${
                             dragging?.id === apt?.id ? 'opacity-50' : ''
                           }`}
                         >
@@ -219,6 +220,7 @@ const CalendarGrid = ({
                             <div className="text-right ml-2">
                               <div className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
                                 {estLabel(apt?.scheduled_start_time, isMobile ? 'h:mm' : 'h:mm a')}
+                                {apt?._isDueOnly && <span className="ml-2 text-[10px] font-semibold uppercase">DUE</span>}
                               </div>
                               <div className="text-xs text-gray-500">
                                 {format(parseISO(apt?.scheduled_start_time), 'MMM d')}
@@ -285,7 +287,7 @@ const CalendarGrid = ({
                         e?.stopPropagation();
                         onAppointmentClick(apt);
                       }}
-                      className={`p-2 md:p-3 rounded-lg cursor-pointer mb-2 border shadow-sm ${getStatusColor(apt?.job_status)}`}
+                      className={`p-2 md:p-3 rounded-lg cursor-pointer mb-2 border ${apt?._isDueOnly ? 'border-dashed' : ''} shadow-sm ${getStatusColor(apt?.job_status)}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
@@ -303,6 +305,7 @@ const CalendarGrid = ({
                           <div className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
                             {estLabel(apt?.scheduled_start_time, isMobile ? 'h:mm' : 'h:mm a')} 
                             {!isMobile && ` - ${estLabel(apt?.scheduled_end_time, 'h:mm a')}`}
+                            {apt?._isDueOnly && <span className="ml-2 text-[10px] font-semibold uppercase">DUE</span>}
                           </div>
                         </div>
                       </div>

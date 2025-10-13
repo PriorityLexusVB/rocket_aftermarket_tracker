@@ -177,7 +177,7 @@ const ExportButton = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowOptions(false)}
-                className=""
+                className="min-w-0"
               >
                 Cancel
               </Button>
@@ -187,7 +187,7 @@ const ExportButton = ({
                 onClick={handleExport}
                 iconName="Download"
                 iconPosition="left"
-                className=""
+                className="min-w-0"
               >
                 Export
               </Button>

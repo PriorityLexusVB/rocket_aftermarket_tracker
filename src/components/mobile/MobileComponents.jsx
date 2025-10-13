@@ -111,8 +111,8 @@ const MobileModal = ({
 
   const getModalSize = () => {
     if (fullScreen || size === 'full') return 'min-h-screen w-full';
-    // CHANGE 1: Made 'large' size significantly wider and taller for better form readability
-    if (size === 'large') return 'mx-1 mt-2 mb-2 rounded-xl max-w-7xl w-[95vw] sm:mx-auto min-h-[85vh]';
+    // UPDATED: Made 'large' size even wider for desktop with max-w-[90rem] and improved responsive breakpoints
+    if (size === 'large') return 'mx-1 mt-1 mb-1 rounded-xl max-w-[90rem] w-[98vw] md:w-[95vw] lg:w-[92vw] xl:w-[90vw] 2xl:w-[85vw] sm:mx-auto min-h-[90vh] max-h-[95vh]';
     if (size === 'xl') return 'mx-1 mt-2 mb-2 rounded-xl max-w-6xl sm:mx-auto';
     return 'mx-4 mt-8 mb-4 rounded-lg max-w-lg sm:mx-auto'; // default 'md'
   };
@@ -124,7 +124,7 @@ const MobileModal = ({
         'relative bg-white overflow-visible',
         getModalSize()
       )}>
-        <div className="flex items-center justify-between p-6 border-b-2 border-gray-200 bg-white sticky top-0 z-10">
+        <div className="flex items-center justify-between p-6 border-b-2 border-gray-200 bg-white sticky top-0 z-10 rounded-t-xl">
           <h3 className="text-xl font-bold text-gray-900">{title}</h3>
           <button
             onClick={onClose}

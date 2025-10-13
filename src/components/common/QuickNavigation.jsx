@@ -86,6 +86,12 @@ const QuickNavigation = () => {
     setQuery('');
   };
 
+  // Close popup when clicking outside
+  const handleBackdropClick = () => {
+    setIsOpen(false);
+    setQuery('');
+  };
+
   if (!isOpen) {
     return (
       <button
@@ -102,8 +108,8 @@ const QuickNavigation = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-25 flex items-start justify-center pt-16 z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-25 flex items-start justify-center pt-16 z-50" onClick={handleBackdropClick}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4" onClick={(e) => e?.stopPropagation()}>
         <div className="p-4 border-b border-gray-200">
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />

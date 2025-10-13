@@ -119,7 +119,7 @@ const EnhancedVehicleTable = ({
   };
 
   const sortedVehicles = useMemo(() => {
-    if (!sortConfig || !sortConfig?.key) return vehicles;
+    if (!sortConfig?.key) return vehicles || [];
     
     return [...(vehicles || [])]?.sort((a, b) => {
       const aValue = a?.[sortConfig?.key];
@@ -332,7 +332,7 @@ const EnhancedVehicleTable = ({
                   >
                     <div className="flex items-center space-x-1">
                       <span>{column?.label}</span>
-                      {column?.sortable && sortConfig && sortConfig?.key === column?.key && (
+                      {column?.sortable && sortConfig?.key === column?.key && (
                         <Icon 
                           name={sortConfig?.direction === 'asc' ? 'ChevronUp' : 'ChevronDown'} 
                           size={14} 
@@ -376,7 +376,7 @@ const EnhancedVehicleTable = ({
                       onSave={(value) => handleCellUpdate(vehicle?.id, 'year', parseInt(value))}
                       onCancel={() => {}}
                       type="number"
-                      validation={validators && validators?.combine && validators?.combine(validators?.required, validators?.number)}
+                      validation={validators?.combine?.(validators?.required, validators?.number)}
                       disabled={isLoading || userRole === 'staff'}
                     />
                   </td>
@@ -442,7 +442,7 @@ const EnhancedVehicleTable = ({
                       <span className={`text-sm font-medium ${
                         (vehicle?.totalProfit || 0) >= 0 ? 'text-success' : 'text-error'
                       }`}>
-                        {formatters && formatters?.currency && formatters?.currency(vehicle?.totalProfit || 0)}
+                        {formatters?.currency?.(vehicle?.totalProfit || 0)}
                       </span>
                     </td>
                   )}

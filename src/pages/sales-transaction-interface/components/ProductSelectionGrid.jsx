@@ -456,13 +456,6 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2">
                       Vendor {isOffsite && <Icon name="MapPin" size={12} className="inline text-orange ml-1" />}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowCustomForm(true)}
-                        className="w-6 h-6 ml-1 text-muted-foreground hover:text-primary"
-                        iconName="Plus"
-                      />
                     </label>
                     <div className="space-y-2">
                       <Select

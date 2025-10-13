@@ -74,20 +74,39 @@ const CalendarPage = () => {
   const loadAppointments = async () => {
     try {
       const { start, end } = getDateRange();
-      
-      // Convert to UTC for database query
       const startUTC = toUTC(start);
       const endUTC = toUTC(end);
 
-      const { data, error } = await supabase?.rpc('get_jobs_by_date_range', {
-        start_date: startUTC,
-        end_date: endUTC
-      });
+      // Include scheduled-in-range OR (unscheduled but promised within range)
+      const { data, error } = await supabase?.from('jobs')?.select(`
+        id, title, description, vehicle_id, vendor_id, job_status, priority,
+        scheduled_start_time, scheduled_end_time, promised_date, calendar_notes,
+        color_code, location,
+        vehicles!jobs_vehicle_id_fkey (
+          year, make, model, color, vin, stock_number, owner_name, owner_phone
+        ),
+        vendors!jobs_vendor_id_fkey (id, name)
+      `)
+      ?.or(`and(scheduled_start_time.gte.${startUTC},scheduled_start_time.lte.${endUTC}),and(scheduled_start_time.is.null,promised_date.gte.${start?.toISOString()},promised_date.lte.${end?.toISOString()})`);
 
       if (error) throw error;
       
-      // Apply filters
-      let filteredData = data || [];
+      // Normalize for display: if no schedule, map promised_date to a default slot
+      const normalized = (data || [])?.map(job => {
+        if (!job?.scheduled_start_time && job?.promised_date) {
+          const startLocal = new Date(`${job.promised_date}T09:00:00`);
+          const endLocal   = new Date(`${job.promised_date}T09:30:00`);
+          return {
+            ...job,
+            scheduled_start_time: startLocal?.toISOString(),
+            scheduled_end_time: endLocal?.toISOString(),
+            _isDueOnly: true
+          };
+        }
+        return job;
+      });
+
+      let filteredData = normalized;
       
       // Apply status filters
       if (selectedStatuses?.length > 0) {
@@ -159,6 +178,11 @@ const CalendarPage = () => {
       clearInterval(pollInterval);
       window.removeEventListener('focus', handleFocus);
     };
+  }, []);
+
+  // Immediate refresh on view/week/day changes
+  useEffect(() => {
+    loadAppointments();
   }, [currentDate, view]);
 
   const loadVendors = async () => {
@@ -608,7 +632,7 @@ const CalendarPage = () => {
               </div>
             ) : (
               // Desktop Layout
-              <div className="space-y-4">
+              (<div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-6">
                     <div className="flex items-center space-x-3">
@@ -711,7 +735,6 @@ const CalendarPage = () => {
                     </Link>
                   </div>
                 </div>
-
                 {/* Filter Chips Row - Desktop Only */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -735,7 +758,7 @@ const CalendarPage = () => {
                     <span>{appointments?.length} appointments</span>
                   </div>
                 </div>
-              </div>
+              </div>)
             )}
           </div>
 

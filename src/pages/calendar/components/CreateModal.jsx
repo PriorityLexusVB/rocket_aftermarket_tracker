@@ -475,17 +475,17 @@ const CreateModal = ({
       throw new Error('Promised Date is required');
     }
 
-    // Validate line items
+    if (!lineItems || lineItems?.length === 0) {
+      throw new Error('At least one line item is required');
+    }
+    // Validate per-line rules
     for (let i = 0; i < lineItems?.length; i++) {
       const item = lineItems?.[i];
-      if (!item?.product_name) {
-        throw new Error(`Line item ${i + 1}: Product Name is required`);
-      }
-      if (!item?.sold_price) {
-        throw new Error(`Line item ${i + 1}: Sold Price is required`);
-      }
-      if (!item?.cost) {
-        throw new Error(`Line item ${i + 1}: Cost is required`);
+      if (!item?.product_name) throw new Error(`Line item ${i+1}: Product Name is required`);
+      if (!item?.sold_price)   throw new Error(`Line item ${i+1}: Sold Price is required`);
+      if (!item?.cost)         throw new Error(`Line item ${i+1}: Cost is required`);
+      if (item?.off_site_work && !item?.vendor_id) {
+        throw new Error(`Line item ${i+1}: Vendor is required for Off-Site work`);
       }
     }
 
@@ -529,13 +529,17 @@ const CreateModal = ({
         // Create separate job for off-site work
         const isOffSite = item?.off_site_work;
         
+        // Default schedule window when no explicit slot chosen
+        const defaultStartISO = toUTC(new Date(`${(item?.promised_date || dateData?.promised_date)}T09:00:00`));
+        const defaultEndISO   = toUTC(new Date(`${(item?.promised_date || dateData?.promised_date)}T09:30:00`));
+
         const jobData = {
           title: `${vehicleData?.stock_number}: ${item?.product_name}`,
           description: `${vehicleData?.new_used === 'new' ? 'New' : 'Used'} ${vehicleData?.year} ${vehicleData?.make} ${vehicleData?.model}`,
           vehicle_id: vehicleId,
           vendor_id: isOffSite ? item?.vendor_id : null,
-          scheduled_start_time: initialData?.startTime ? toUTC(new Date(initialData?.startTime)) : null,
-          scheduled_end_time: initialData?.endTime ? toUTC(new Date(initialData?.endTime)) : null,
+          scheduled_start_time: initialData?.startTime ? toUTC(new Date(initialData?.startTime)) : defaultStartISO,
+          scheduled_end_time:   initialData?.endTime   ? toUTC(new Date(initialData?.endTime))   : defaultEndISO,
           promised_date: item?.promised_date || dateData?.promised_date,
           job_status: 'pending',
           service_type: isOffSite ? 'off_site' : 'in_house',
