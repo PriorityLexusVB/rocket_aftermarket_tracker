@@ -546,7 +546,6 @@ const DealForm = ({
       const vehicleLabel = [vehicleData?.year, vehicleData?.make, vehicleData?.model]?.filter(Boolean)?.join(' ');
       const name = `${customerData?.customer_first_name || ''} ${customerData?.customer_last_name || ''}`?.trim();
       const parentPayload = {
-        title: `Deal for ${name || vehicleLabel || 'Customer'}`,
         description: dealData?.description || 'Sales transaction',
         vehicle_id: dealData?.vehicle_id || null,
         vehicle_label: vehicleLabel || null,

@@ -74,8 +74,25 @@ const CalendarPage = () => {
   const loadAppointments = async () => {
     try {
       const { start, end } = getDateRange();
+      
+      // Validate dates before using them
+      if (!start || !end || isNaN(start?.getTime()) || isNaN(end?.getTime())) {
+        console.error('Invalid date range:', { start, end });
+        return;
+      }
+      
       const startUTC = toUTC(start);
       const endUTC = toUTC(end);
+      
+      // Validate UTC dates as well
+      if (!startUTC || !endUTC) {
+        console.error('Invalid UTC conversion:', { startUTC, endUTC });
+        return;
+      }
+
+      // Convert to safe ISO strings with fallback
+      const startISO = start?.toISOString();
+      const endISO = end?.toISOString();
 
       // Include scheduled-in-range OR (unscheduled but promised within range)
       const { data, error } = await supabase?.from('jobs')?.select(`
@@ -87,21 +104,33 @@ const CalendarPage = () => {
         ),
         vendors!jobs_vendor_id_fkey (id, name)
       `)
-      ?.or(`and(scheduled_start_time.gte.${startUTC},scheduled_start_time.lte.${endUTC}),and(scheduled_start_time.is.null,promised_date.gte.${start?.toISOString()},promised_date.lte.${end?.toISOString()})`);
+      ?.or(`and(scheduled_start_time.gte.${startUTC},scheduled_start_time.lte.${endUTC}),and(scheduled_start_time.is.null,promised_date.gte.${startISO},promised_date.lte.${endISO})`);
 
       if (error) throw error;
       
       // Normalize for display: if no schedule, map promised_date to a default slot
       const normalized = (data || [])?.map(job => {
         if (!job?.scheduled_start_time && job?.promised_date) {
-          const startLocal = new Date(`${job.promised_date}T09:00:00`);
-          const endLocal   = new Date(`${job.promised_date}T09:30:00`);
-          return {
-            ...job,
-            scheduled_start_time: startLocal?.toISOString(),
-            scheduled_end_time: endLocal?.toISOString(),
-            _isDueOnly: true
-          };
+          try {
+            const startLocal = new Date(`${job.promised_date}T09:00:00`);
+            const endLocal   = new Date(`${job.promised_date}T09:30:00`);
+            
+            // Validate the created dates
+            if (isNaN(startLocal?.getTime()) || isNaN(endLocal?.getTime())) {
+              console.warn('Invalid promised_date for job:', job?.id, job?.promised_date);
+              return job; // Return original job without modification
+            }
+            
+            return {
+              ...job,
+              scheduled_start_time: startLocal?.toISOString(),
+              scheduled_end_time: endLocal?.toISOString(),
+              _isDueOnly: true
+            };
+          } catch (dateError) {
+            console.warn('Date parsing error for job:', job?.id, dateError);
+            return job; // Return original job without modification
+          }
         }
         return job;
       });
@@ -120,21 +149,31 @@ const CalendarPage = () => {
         );
       }
       
-      // Apply header chip filters
+      // Apply header chip filters with safe date parsing
       if (activeFilters?.today) {
-        filteredData = filteredData?.filter(job => 
-          isSameDay(parseISO(job?.scheduled_start_time), new Date())
-        );
+        filteredData = filteredData?.filter(job => {
+          try {
+            return job?.scheduled_start_time && isSameDay(parseISO(job?.scheduled_start_time), new Date());
+          } catch (dateError) {
+            console.warn('Date parsing error in today filter:', job?.id, dateError);
+            return false;
+          }
+        });
       }
       if (activeFilters?.inProgress) {
         filteredData = filteredData?.filter(job => job?.job_status === 'in_progress');
       }
       if (activeFilters?.overdue) {
         const now = new Date();
-        filteredData = filteredData?.filter(job => 
-          parseISO(job?.scheduled_end_time || job?.scheduled_start_time) < now && 
-          !['completed', 'cancelled']?.includes(job?.job_status)
-        );
+        filteredData = filteredData?.filter(job => {
+          try {
+            const jobEndTime = parseISO(job?.scheduled_end_time || job?.scheduled_start_time);
+            return jobEndTime < now && !['completed', 'cancelled']?.includes(job?.job_status);
+          } catch (dateError) {
+            console.warn('Date parsing error in overdue filter:', job?.id, dateError);
+            return false;
+          }
+        });
       }
       if (activeFilters?.completed) {
         filteredData = filteredData?.filter(job => job?.job_status === 'completed');
