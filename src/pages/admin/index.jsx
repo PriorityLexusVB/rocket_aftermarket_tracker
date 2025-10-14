@@ -264,12 +264,11 @@ const AdminPage = () => {
     try {
       console.log('Loading user accounts...');
       
+      // RESTORED: Show all admin and manager level users without restrictive filters
       const { data, error, count } = await supabase
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
-        ?.in('role', ['admin', 'manager'])  
-        ?.in('department', ['Managers', 'Delivery Coordinator'])  
-        ?.eq('is_active', true)  // Add this filter to exclude inactive/demo users
+        ?.in('role', ['admin', 'manager'])
         ?.order('created_at', { ascending: false });
 
       if (error) {
@@ -289,12 +288,11 @@ const AdminPage = () => {
     try {
       console.log('Loading staff records...');
       
+      // RESTORED: Show all staff records without restrictive department filters
       const { data: allStaff, error: staffError, count } = await supabase
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
-        ?.eq('role', 'staff')  
-        ?.eq('is_active', true)  // Add this filter to exclude inactive/demo users
-        ?.in('department', ['Sales Consultants', 'Finance Manager'])  // Move filter to SQL query
+        ?.eq('role', 'staff')
         ?.order('created_at', { ascending: false });
 
       if (staffError) {
@@ -302,8 +300,7 @@ const AdminPage = () => {
         throw staffError;
       }
       
-      // Remove client-side filtering since we're now filtering in SQL
-      console.log(`Staff records: ${allStaff?.length} matching target departments`);
+      console.log(`Staff records: ${allStaff?.length} staff members found`);
       setStaffRecords(allStaff || []);
     } catch (error) {
       console.error('Error loading staff records:', error);

@@ -191,31 +191,37 @@ export const jobService = {
     }
   },
 
+  // Get a deal with line items - Used by deals page for edit prefill
+  async getDealWithLineItems(jobId) {
+    const job = await this.getJobById(jobId);
+    if (!job) return { data: null, error: { message: 'Deal not found' } };
+    
+    const parts = await this.getLineItems(jobId);
+    return { 
+      data: { 
+        ...job, 
+        lineItems: parts?.data || [] 
+      }, 
+      error: null 
+    };
+  },
+
   // Delete a deal and all its line items
   async deleteDeal(dealId) {
-    if (!dealId) throw new Error('Deal ID is required');
+    if (!dealId) return { success: false, error: { message: 'Deal ID is required' } };
     
     try {
-      // Delete job_parts first (foreign key constraint)
-      const { error: lineItemsError } = await supabase?.from('job_parts')?.delete()?.eq('job_id', dealId);
-      
-      if (lineItemsError) {
-        console.error('Error deleting line items:', lineItemsError);
-        throw new Error(`Failed to delete line items: ${lineItemsError?.message}`);
+      // Clean up any child LI markers tied to this parent
+      const { data: parts } = await supabase?.from('job_parts')?.select('id')?.eq('job_id', dealId);
+      for (const p of parts || []) {
+        await this.removeLineItemCalendarJob(p?.id);
       }
-
-      // Delete the main job
-      const { error: jobError } = await supabase?.from('jobs')?.delete()?.eq('id', dealId);
       
-      if (jobError) {
-        console.error('Error deleting job:', jobError);
-        throw new Error(`Failed to delete deal: ${jobError?.message}`);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Network error deleting deal:', error);
-      throw error;
+      const { error } = await supabase?.from('jobs')?.delete()?.eq('id', dealId);
+      if (error) return { success: false, error };
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: { message: e?.message || 'Delete failed' } };
     }
   },
 
@@ -259,40 +265,7 @@ export const jobService = {
         job_status: status,
         updated_at: new Date()?.toISOString(),
         ...additionalData
-      
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      };
 
       // Set completed_at when status is completed
       if (status === 'completed' && !updateData?.completed_at) {
@@ -367,40 +340,7 @@ export const jobService = {
   // Calculate deal/job totals from line items
   calculateDealTotals(jobParts) {
     if (!jobParts || !Array.isArray(jobParts)) {
-      return { totalCost: 0, totalPrice: 0, totalProfit: 0, itemCount: 0 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { totalCost: 0, totalPrice: 0, totalProfit: 0, itemCount: 0 };
     }
 
     const totalCost = jobParts?.reduce((sum, part) => {
@@ -420,40 +360,7 @@ export const jobService = {
       totalPrice: parseFloat(totalPrice?.toFixed(2)),
       totalProfit: parseFloat(totalProfit?.toFixed(2)),
       itemCount: jobParts?.length
-    
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+    };
   },
 
   // Get all jobs with optional filtering (maintains compatibility with existing code)
@@ -497,150 +404,18 @@ export const jobService = {
       const { data, error } = await query;
 
       if (error) {
-        return { data: null, error: { message: error?.message } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        return { data: null, error: { message: error?.message } };
       }
 
-      return { data: data || [], error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { data: data || [], error: null };
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
         return { 
           data: null, 
           error: { message: 'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.' }
-        
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        };
       }
-      return { data: null, error: { message: 'Failed to load jobs' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { data: null, error: { message: 'Failed to load jobs' } };
     }
   },
 
@@ -656,40 +431,7 @@ export const jobService = {
       ]?.filter(Boolean)?.join(' — ') ||
       'Aftermarket Job';
 
-    const safeJob = { ...jobData, title: safeTitle 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+    const safeJob = { ...jobData, title: safeTitle };
 
     try {
       // Generate job number
@@ -711,150 +453,18 @@ export const jobService = {
         ?.single();
 
       if (error) {
-        return { data: null, error: { message: error?.message } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        return { data: null, error: { message: error?.message } };
       }
 
-      return { data, error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
       return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
         return { 
           data: null, 
           error: { message: 'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.' }
-        
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        };
       }
-      return { data: null, error: { message: 'Failed to create job' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { data: null, error: { message: 'Failed to create job' } };
     }
   },
 
@@ -877,150 +487,18 @@ export const jobService = {
         ?.single();
 
       if (error) {
-        return { data: null, error: { message: error?.message } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        return { data: null, error: { message: error?.message } };
       }
 
-      return { data, error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
       return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
         return { 
           data: null, 
           error: { message: 'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.' }
-        
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        };
       }
-      return { data: null, error: { message: 'Failed to update job' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { data: null, error: { message: 'Failed to update job' } };
     }
   },
 
@@ -1033,149 +511,17 @@ export const jobService = {
         ?.eq('id', id);
 
       if (error) {
-        return { error: { message: error?.message } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        return { error: { message: error?.message } };
       }
 
-      return { error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { error: null };
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
         return { 
           error: { message: 'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.' }
-        
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        };
       }
-      return { error: { message: 'Failed to delete job' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { error: { message: 'Failed to delete job' } };
     }
   },
 
@@ -1187,40 +533,7 @@ export const jobService = {
         ?.select('job_status, priority');
 
       if (error) {
-        return { data: null, error: { message: error?.message } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        return { data: null, error: { message: error?.message } };
       }
 
       const stats = {
@@ -1230,149 +543,17 @@ export const jobService = {
         completed: data?.filter(j => j?.job_status === 'completed')?.length || 0,
         cancelled: data?.filter(j => j?.job_status === 'cancelled')?.length || 0,
         high_priority: data?.filter(j => j?.priority === 'high' || j?.priority === 'urgent')?.length || 0
-      
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      };
 
-      return { data: stats, error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { data: stats, error: null };
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
         return { 
           data: null, 
           error: { message: 'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.' }
-        
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        };
       }
-      return { data: null, error: { message: 'Failed to load job statistics' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { data: null, error: { message: 'Failed to load job statistics' } };
     }
   },
 
@@ -1381,40 +562,7 @@ export const jobService = {
     try {
       const currentUser = (await supabase?.auth?.getUser())?.data?.user;
       if (!currentUser) {
-        return { data: [], error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        return { data: [], error: null };
       }
 
       const { data, error } = await supabase
@@ -1427,343 +575,123 @@ export const jobService = {
         ?.order('created_at', { ascending: false });
 
       if (error) {
-        return { data: null, error: { message: error?.message } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        return { data: null, error: { message: error?.message } };
       }
 
-      return { data: data || [], error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      return { data: data || [], error: null };
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
         return { 
           data: null, 
           error: { message: 'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.' }
-        
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        };
       }
-      return { data: null, error: { message: 'Failed to load assigned jobs' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
+      return { data: null, error: { message: 'Failed to load assigned jobs' } };
     }
   },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
-    }
-  }
 
-  ,
+  // ADD this helper - safe line-items fetch (as requested in scope)
+  async getLineItems(jobId) {
+    try {
+      if (!jobId) return { data: [], error: null };
+      const { data, error } = await supabase
+        ?.from('job_parts')
+        ?.select('id, job_id, product_id, unit_price, promised_date, vendor_id')
+        ?.eq('job_id', jobId);
+      if (error) return { data: null, error };
+      // Mark as saved so the form shows them under the "Scheduled / Saved" panel
+      const items = (data || [])?.map(li => ({
+        id: li?.id,
+        product_id: li?.product_id,
+        unit_price: parseFloat(li?.unit_price ?? 0),
+        promised_date: li?.promised_date ?? null,
+        vendor_id: li?.vendor_id ?? null,
+        _saved: true,
+      }));
+      return { data: items, error: null };
+    } catch (e) {
+      return { data: null, error: { message: e?.message || 'Failed to load line items' } };
+    }
+  },
+
   // Upsert a single line item for a given job (insert if id is null, else update by id)
   async upsertLineItem(jobId, item) {
     try {
-      if (!jobId) return { data: null, error: { message: 'jobId is required' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+      if (!jobId) return { data: null, error: { message: 'jobId is required' } };
       const row = {
         id: item?.id || undefined,
         job_id: jobId,
         product_id: item?.product_id,
         quantity_used: item?.quantity || 1,
-        unit_price: parseFloat(item?.unit_price || 0)
-      
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
+        unit_price: parseFloat(item?.unit_price || 0),
+        promised_date: item?.promised_date ?? null,
+        vendor_id: item?.vendor_id ?? null,
+      };
       const { data, error } = await supabase
         ?.from('job_parts')
         ?.upsert([row], { onConflict: 'id' })
         ?.select()
         ?.single();
-      if (error) return { data: null, error 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
       if (error) return { data: null, error };
       return { data, error: null };
     } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
+      return { data: null, error: { message: error?.message || 'Failed to upsert line item' } };
     }
   },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
-      return { data, error: null 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to upsert line item' } 
-  ,
-  // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
-  async removeLineItemCalendarJob(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: null };
-      const marker = `LI:${lineItemId}`;
-      const { data: hits, error: qErr } = await supabase
-        ?.from('jobs')
-        ?.select('id, calendar_notes')
-        ?.ilike('calendar_notes', `%${marker}%`);
-      if (qErr) return { data: null, error: qErr };
-      if (!hits?.length) return { data: [], error: null };
-      const ids = hits?.map(r => r?.id);
-      const { data, error } = await supabase?.from('jobs')?.delete()?.in('id', ids)?.select();
-      if (error) return { data: null, error };
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
-    }
-  },
-  // Delete a single line item and its calendar job(s)
-  async deleteLineItem(lineItemId) {
-    try {
-      if (!lineItemId) return { data: null, error: { message: 'lineItemId is required' } };
-      const { data, error } = await supabase?.from('job_parts')?.delete()?.eq('id', lineItemId)?.select()?.single();
-      if (error) return { data: null, error };
-      await this.removeLineItemCalendarJob(lineItemId);
-      return { data, error: null };
-    } catch (error) {
-      return { data: null, error: { message: error?.message || 'Failed to delete line item' } };
-    }
-  }
-};
-    }
-  }
 
-  ,
+  // Create/update a calendar job for a line item (non-blocking upstream)
+  async ensureLineItemCalendarJob(parentJobId, lineItemId, item) {
+    try {
+      if (!lineItemId || !item?.promised_date) {
+        return { data: null, error: { message: 'line item id and promised_date required' } };
+      }
+      const marker = `LI:${lineItemId}`;
+      const { data: existing, error: qErr } = await supabase
+        ?.from('jobs')
+        ?.select('*')
+        ?.ilike('calendar_notes', `%${marker}%`)
+        ?.limit(1)
+        ?.maybeSingle();
+      if (qErr) return { data: null, error: qErr };
+
+      const start = new Date(`${item.promised_date}T09:00:00`);
+      const end = new Date(`${item.promised_date}T09:30:00`);
+      const child = {
+        title: item?.product_name ? `Line: ${item?.product_name}` : 'Line Item',
+        description: parentJobId ? `From parent job ${parentJobId}` : null,
+        vendor_id: item?.vendor_id ?? null,
+        promised_date: item?.promised_date,
+        scheduled_start_time: start?.toISOString(),
+        scheduled_end_time: end?.toISOString(),
+        job_status: 'pending',
+        priority: 'medium',
+        location: item?.vendor_id ? 'Off-Site' : 'In-House',
+        calendar_notes: `${marker}${parentJobId ? `;PARENT:${parentJobId}` : ''}`,
+      };
+
+      if (existing?.id) {
+        const { data, error } = await supabase
+          ?.from('jobs')
+          ?.update(child)
+          ?.eq('id', existing?.id)
+          ?.select()
+          ?.single();
+        if (error) return { data: null, error };
+        return { data, error: null };
+      } else {
+        const { data, error } = await supabase
+          ?.from('jobs')
+          ?.insert([child])
+          ?.select()
+          ?.single();
+        if (error) return { data: null, error };
+        return { data, error: null };
+      }
+    } catch (error) {
+      return { data: null, error: { message: error?.message || 'Failed to ensure calendar job' } };
+    }
+  },
+
   // Remove any child calendar jobs associated with a line item (by LI:<id> marker)
   async removeLineItemCalendarJob(lineItemId) {
     try {
@@ -1783,6 +711,7 @@ export const jobService = {
       return { data: null, error: { message: error?.message || 'Failed to remove calendar jobs for line item' } };
     }
   },
+
   // Delete a single line item and its calendar job(s)
   async deleteLineItem(lineItemId) {
     try {

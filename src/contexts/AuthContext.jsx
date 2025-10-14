@@ -39,7 +39,13 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Error loading or creating user profile:', error)
+        // Show user-friendly error but don't block loading
+        const errorMessage = error?.message || 'Authentication service error';
+        if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
+          console.warn('Cannot connect to authentication service. Your Supabase project may be paused or inactive.');
+        } else {
+          console.error('Error loading user profile:', error);
+        }
       } finally {
         setProfileLoading(false)
       }
@@ -61,7 +67,12 @@ export const AuthProvider = ({ children }) => {
         profileOperations?.clear()
       }
     } catch (error) {
-      console.error("Error checking user session:", error)
+      const errorMessage = error?.message || 'Session check failed';
+      if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
+        console.warn('Cannot connect to authentication service. Please check your network connection.');
+      } else {
+        console.error("Error checking user session:", error);
+      }
       setUser(null)
       profileOperations?.clear()
     } finally {
@@ -94,7 +105,11 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error
       return { success: true, data }
     } catch (error) {
-      return { success: false, error: error?.message };
+      const errorMessage = error?.message || 'Login failed';
+      if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
+        return { success: false, error: 'Cannot connect to authentication service. Please check your network connection and try again.' };
+      }
+      return { success: false, error: errorMessage };
     }
   }
 

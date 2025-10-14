@@ -1,6 +1,25 @@
 import { supabase } from '../lib/supabase';
 
 export const productService = {
+  async getProducts() {
+    try {
+      const { data, error } = await supabase?.from('products')?.select(`
+          *,
+          vendor:vendors(id, name, specialty)
+        `)?.eq('is_active', true)?.order('category', { ascending: true })?.order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching products:', error);
+        return { data: [], error };
+      }
+
+      return { data: data || [], error: null };
+    } catch (error) {
+      console.error('Network error fetching products:', error);
+      return { data: [], error };
+    }
+  },
+
   async getAllProducts() {
     try {
       const { data, error } = await supabase?.from('products')?.select(`

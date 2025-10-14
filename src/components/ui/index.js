@@ -18,3 +18,10 @@ export {
   Sidebar,
   Navbar
 };
+function Icon(...args) {
+  // eslint-disable-next-line no-console
+  console.warn('Placeholder: Icon is not implemented yet.', args);
+  return null;
+}
+
+export { Icon };

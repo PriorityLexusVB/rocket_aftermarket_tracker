@@ -207,7 +207,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                   iconName="RotateCcw"
                   iconPosition="left"
                   className="flex items-center space-x-2"
-                  style={{}}
                 >
                   Reset Form
                 </Button>
@@ -219,7 +218,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                   iconName="Save"
                   iconPosition="left"
                   className="flex items-center space-x-2"
-                  style={{}}
                 >
                   {isSaving ? 'Saving...' : 'Save Sale'}
                 </Button>
@@ -293,9 +291,9 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 value={customerData?.name}
                 onChange={(e) => handleCustomerChange('name', e?.target?.value)}
                 placeholder="John Smith"
+                className=""
                 helperText=""
                 maxLength={100}
-                className=""
                 style={{}}
               />
               <Input
@@ -304,9 +302,9 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 value={customerData?.email}
                 onChange={(e) => handleCustomerChange('email', e?.target?.value)}
                 placeholder="customer@email.com"
+                className=""
                 helperText=""
                 maxLength={100}
-                className=""
                 style={{}}
               />
               <Input
@@ -315,9 +313,9 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 value={customerData?.phone}
                 onChange={(e) => handleCustomerChange('phone', e?.target?.value)}
                 placeholder="(555) 123-4567"
+                className=""
                 helperText=""
                 maxLength={20}
-                className=""
                 style={{}}
               />
             </div>
@@ -386,7 +384,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                     iconName="Car"
                     iconPosition="left"
                     className="w-full justify-start"
-                    style={{}}
                   >
                     Vehicle Management
                   </Button>
@@ -397,7 +394,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                     iconName="Users"
                     iconPosition="left"
                     className="w-full justify-start"
-                    style={{}}
                   >
                     Manage Vendors
                   </Button>
@@ -408,7 +404,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                     iconName="FileText"
                     iconPosition="left"
                     className="w-full justify-start"
-                    style={{}}
                   >
                     View All Deals
                   </Button>
@@ -428,7 +423,6 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
               iconName="Save"
               iconPosition="left"
               className="shadow-elevation-3"
-              style={{}}
             >
               {isSaving ? 'Saving Sale...' : 'Save Sale'}
             </Button>
