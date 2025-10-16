@@ -1,6 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
+// Utility functions for safe data handling
+const safeNumber = (value, defaultValue = 0) => {
+  if (value === null || value === undefined || value === '') return defaultValue;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+};
+
+const safeString = (value, defaultValue = '') => {
+  return (value === null || value === undefined) ? defaultValue : String(value);
+};
+
 // Enhanced service with all advanced features
 export const advancedFeaturesService = {
   // Overdue Jobs Service
@@ -183,7 +194,25 @@ export const advancedFeaturesService = {
         return { data: null, error: { message: error?.message } };
       }
       
-      return { data: data || [], error: null };
+      // Clean and validate export data to prevent NaN/undefined values
+      const cleanedData = (data || [])?.map(item => {
+        const exportData = item?.export_data || item;
+        const cleanedExportData = {};
+        
+        Object?.entries(exportData)?.forEach(([key, value]) => {
+          if (typeof value === 'number') {
+            cleanedExportData[key] = isNaN(value) ? 0 : value;
+          } else if (value === null || value === undefined) {
+            cleanedExportData[key] = '';
+          } else {
+            cleanedExportData[key] = value;
+          }
+        });
+        
+        return { export_data: cleanedExportData };
+      });
+      
+      return { data: cleanedData, error: null };
     } catch (error) {
       console.error('Error exporting data:', error);
       return { data: null, error: { message: 'Failed to export data' } };
@@ -204,22 +233,30 @@ export const advancedFeaturesService = {
       } else {
         // Use object keys as headers for JSONB data
         const firstRow = data?.[0]?.export_data || data?.[0];
-        csvContent += Object?.keys(firstRow)?.join(',') + '\n';
+        if (firstRow) {
+          csvContent += Object?.keys(firstRow)?.join(',') + '\n';
+        }
       }
       
-      // Add data rows
+      // Add data rows with safe value handling
       data?.forEach(row => {
         const rowData = row?.export_data || row;
         const values = Object?.values(rowData)?.map(value => {
-          // Handle nulls and undefined
-          if (value == null) return '';
+          // Handle nulls, undefined, and NaN values
+          if (value === null || value === undefined) return '';
+          
+          // Handle NaN specifically
+          if (typeof value === 'number' && isNaN(value)) return '0';
+          
+          // Convert to string safely
+          let stringValue = safeString(value);
           
           // Escape commas and quotes in CSV
-          if (typeof value === 'string' && (value?.includes(',') || value?.includes('"'))) {
-            return `"${value?.replace(/"/g, '""')}"`;
+          if (stringValue?.includes(',') || stringValue?.includes('"')) {
+            return `"${stringValue?.replace(/"/g, '""')}"`;
           }
           
-          return value;
+          return stringValue;
         });
         csvContent += values?.join(',') + '\n';
       });
@@ -236,6 +273,8 @@ export const advancedFeaturesService = {
         document.body?.appendChild(link);
         link?.click();
         document.body?.removeChild(link);
+        // Clean up the URL object
+        URL?.revokeObjectURL(url);
       }
       
       return { success: true, error: null };

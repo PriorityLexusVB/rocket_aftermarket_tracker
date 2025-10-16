@@ -8,6 +8,43 @@ import {
   MapPin
 } from 'lucide-react';
 
+// Service Location Tag Component matching deals page implementation
+const ServiceLocationTag = ({ jobParts }) => {
+  if (!jobParts || jobParts?.length === 0) {
+    return <span className="text-xs text-gray-500">No items</span>;
+  }
+
+  const hasOffSite = jobParts?.some(part => part?.is_off_site);
+  const hasOnSite = jobParts?.some(part => !part?.is_off_site);
+
+  if (hasOffSite && hasOnSite) {
+    return (
+      <div className="flex flex-col space-y-1">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
+          🏢 Off-Site
+        </span>
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+          🏠 On-Site
+        </span>
+      </div>
+    );
+  }
+
+  if (hasOffSite) {
+    return (
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
+        🏢 Off-Site
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+      🏠 On-Site
+    </span>
+  );
+};
+
 const JobCard = ({
   job,
   isOverdue = false,
@@ -107,6 +144,12 @@ const JobCard = ({
         <div className="flex items-center space-x-1 text-sm text-gray-600 mb-2">
           <User className="h-4 w-4" />
           <span className="truncate">{job?.vehicle?.owner_name}</span>
+        </div>
+      )}
+      {/* Service Location Pills - NEW */}
+      {job?.job_parts && job?.job_parts?.length > 0 && (
+        <div className="mb-2">
+          <ServiceLocationTag jobParts={job?.job_parts} />
         </div>
       )}
       {/* Vendor assignment */}

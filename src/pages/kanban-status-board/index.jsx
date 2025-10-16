@@ -101,7 +101,8 @@ const KanbanStatusBoard = () => {
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name)
+          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          job_parts:job_parts(id, is_off_site, requires_scheduling, promised_date)
         `)?.order('created_at', { ascending: false });
 
       if (error) {
