@@ -245,7 +245,7 @@ const QRCodeGenerator = ({
           <div className="flex items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg">
             <div className="text-center">
               <QrCode className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500">Click "Generate QR Code" to create QR code</p>
+              <p className="text-gray-500">Click &quot;Generate QR Code&quot; to create QR code</p>
             </div>
           </div>
         )}

@@ -1,20 +1,20 @@
 :root {
-  /* Core */
-  --bg: #0f1113;           /* app background */
-  --surface: #111417;      /* panel/card bg */
-  --surface-2: #0c0e10;    /* header/alt */
-  --text: #e7eaee;
-  --muted: #a9b0b8;
-  --line: #23272c;
+  /* Core - Light backgrounds for mobile readability */
+  --bg: #f8fafc;           /* app background - light slate */
+  --surface: #ffffff;      /* panel/card bg - white */
+  --surface-2: #f1f5f9;    /* header/alt - light gray */
+  --text: #1e293b;         /* dark text for readability */
+  --muted: #64748b;        /* muted text */
+  --line: #e2e8f0;         /* light borders */
 
   /* Accent (pick one) */
-  --accent: #c59d5f;       /* Lexus gold */
-  /* --accent: #4aa3ff;   Electric blue (alt) */
+  --accent: #3b82f6;       /* Blue for better contrast on light bg */
+  /* --accent: #c59d5f;   Lexus gold (alt) */
 
   /* States */
-  --ok: #4fb477;
-  --warn: #e6b34f;
-  --bad: #e26d6d;
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --bad: #ef4444;
 
   /* Shape & spacing */
   --radius-sm: 4px;
@@ -30,4 +30,10 @@
   --size-sm: 12px;
   --size-md: 14px;
   --size-lg: 18px;
+
+  /* Mobile-specific light backgrounds */
+  --mobile-card-bg: #ffffff;
+  --mobile-hover-bg: #f8fafc;
+  --mobile-border: #e2e8f0;
+  --mobile-shadow: rgba(15, 23, 42, 0.08);
 }

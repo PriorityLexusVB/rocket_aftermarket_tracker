@@ -11,10 +11,10 @@ import NotFound from './pages/NotFound';
 import AuthenticationPortal from './pages/authentication-portal';
 
 // 4 Main Pages - Updated with Currently Active Appointments
-import CalendarPage from './pages/calendar';
+
 import DealsPage from './pages/deals';
+import DealForm from './pages/deals/DealForm';
 import CurrentlyActiveAppointments from './pages/currently-active-appointments';
-import AdminPage from './pages/admin';
 
 // NEW: Calendar Flow Management Center
 import CalendarFlowManagementCenter from './pages/calendar-flow-management-center';
@@ -47,9 +47,8 @@ const Routes = () => {
               {/* Main Application Pages */}
               <Route path="/" element={<ProtectedRoute><DealsPage /></ProtectedRoute>} />
               <Route path="/deals" element={<ProtectedRoute><DealsPage /></ProtectedRoute>} />
-              <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-              <Route path="/appointments" element={<ProtectedRoute><CurrentlyActiveAppointments /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+              <Route path="/deals/:dealId/edit" element={<ProtectedRoute><DealForm mode="edit" propOnSubmit={(data) => console.log('Deal updated:', data)} propOnCancel={() => window.history?.back()} /></ProtectedRoute>} />
+              <Route path="/deals/new" element={<ProtectedRoute><DealForm mode="create" propOnSubmit={(data) => console.log('Deal created:', data)} propOnCancel={() => window.history?.back()} /></ProtectedRoute>} />
 
               {/* Advanced Management Centers */}
               <Route path="/calendar-flow-management-center" element={<ProtectedRoute><CalendarFlowManagementCenter /></ProtectedRoute>} />
@@ -62,7 +61,7 @@ const Routes = () => {
               {/* Protected Legacy Route Redirects */}
               <Route path="/dashboard" element={<ProtectedRoute><Navigate to="/deals" replace /></ProtectedRoute>} />
               <Route path="/executive-analytics-dashboard" element={<ProtectedRoute><Navigate to="/advanced-business-intelligence-analytics" replace /></ProtectedRoute>} />
-              <Route path="/calendar-scheduling-center" element={<ProtectedRoute><Navigate to="/calendar" replace /></ProtectedRoute>} />
+              <Route path="/calendar-scheduling-center" element={<ProtectedRoute><Navigate to="/calendar-flow-management-center" replace /></ProtectedRoute>} />
               <Route path="/kanban-status-board" element={<ProtectedRoute><Navigate to="/deals" replace /></ProtectedRoute>} />
               <Route path="/sales-tracker" element={<ProtectedRoute><Navigate to="/deals" replace /></ProtectedRoute>} />
               <Route path="/sales-transaction-interface" element={<ProtectedRoute><Navigate to="/deals" replace /></ProtectedRoute>} />

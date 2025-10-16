@@ -267,12 +267,11 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               </Button>
               <Button
                 variant="ghost"
+                size="icon"
                 onClick={() => setShowCustomForm(false)}
                 iconName="X"
                 className="px-3"
-              >
-                Cancel
-              </Button>
+              />
             </div>
           </div>
         </div>
@@ -472,7 +471,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                       <div className="flex items-center space-x-1">
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           service?.isOffsite 
-                            ? 'bg-orange/10 text-orange' :'bg-success/10 text-success'
+                            ? 'bg-orange/10 text-orange' : 'bg-success/10 text-success'
                         }`}>
                           {getVendorDisplayName(service?.vendorId)}
                         </span>

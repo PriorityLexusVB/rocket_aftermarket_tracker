@@ -32,6 +32,7 @@
     "@reduxjs/toolkit": "^2.6.1",
     "@supabase/supabase-js": "^2.74.0",
     "@tailwindcss/forms": "^0.5.7",
+    "@tanstack/react-query": "^5.90.3",
     "@testing-library/jest-dom": "^5.15.1",
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^12.8.3",
@@ -56,7 +57,8 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-elevation": "^2.0.0",
-    "tailwindcss-fluid-type": "^2.0.7"
+    "tailwindcss-fluid-type": "^2.0.7",
+    "vitest": "^3.2.4"
   },
   "scripts": {
     "start": "vite",

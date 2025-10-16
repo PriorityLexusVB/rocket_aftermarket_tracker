@@ -1,514 +1,685 @@
-import React, { useState, useEffect } from 'react';
-import AppLayout from '../../components/layouts/AppLayout';
-import Icon from '../../components/AppIcon';
-import Button from '../../components/ui/Button';
-import { MobileModal } from '../../components/mobile/MobileComponents';
-import dealService from '../../services/dealService';
-import { jobService } from '../../services/jobService';
-import DealForm from './DealForm';
+// src/pages/deals/index.jsx
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getAllDeals } from '../../services/dealService';
+import ExportButton from '../../components/common/ExportButton';
+import KpiRow from '../../components/common/KpiRow';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import Button from '../../components/ui/Button';
+import Icon from '../../components/ui/Icon';
 
-const DealsPage = () => {
-  const { user, loading: authLoading, signIn } = useAuth();
-  const [deals, setDeals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showNewDealModal, setShowNewDealModal] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
-  // State for all dropdown data
-  const [products, setProducts] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [salespeople, setSalespeople] = useState([]);
-  const [deliveryCoordinators, setDeliveryCoordinators] = useState([]);
-  const [financeManagers, setFinanceManagers] = useState([]);
-
-  // Login form state
-  const [loginData, setLoginData] = useState({
-    email: 'admin@priorityautomotive.com',
-    password: 'admin123'
-  });
-    
-  // Fetch all data required for the DealForm
-  useEffect(() => {
-    if (!user) return; // Wait for authentication
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [dealsData, productsData, vendorsData, salesData, financeData, deliveryData] = await Promise.all([
-          dealService?.getDeals(),
-          dealService?.getProducts(),
-          dealService?.getVendors(),
-          dealService?.getStaffByDepartment('sales'),
-          dealService?.getStaffByDepartment('finance'),
-          dealService?.getStaffByDepartment('delivery')
-        ]);
-        setDeals(dealsData || []);
-        setProducts(productsData || []);
-        setVendors(vendorsData || []);
-        setSalespeople(salesData || []);
-        setFinanceManagers(financeData || []);
-        setDeliveryCoordinators(deliveryData || []);
-      } catch (error) {
-        setSubmitError(`Failed to load data: ${error?.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [user]);
-
-  
-
-const handleCreateDeal = async (payload) => {
-  try {
-    setSubmitError('');
-
-    const draftId = payload?.meta?.draft_job_id || null;
-
-    // --- Normalize payload (unchanged) ---
-    const v = payload?.vehicle || {};
-    const d = payload?.deal || {};
-    const tx = payload?.transaction || {};
-    const items = payload?.lineItems || payload?.items || [];
-
-    const name = (tx?.customer_name || '')?.trim();
-    const vehicleLabel = [v?.year, v?.make, v?.model]?.filter(Boolean)?.join(' ');
-    const derivedTitle =
-      d?.title ||
-      (vehicleLabel ? `${vehicleLabel}` : (name ? `Deal for ${name}` : 'Sales Transaction'));
-    const promised =
-      d?.promised_date || (items?.find(i => i?.promised_date)?.promised_date) || null;
-
-    const mapped = {
-      // parent job fields
-      title: derivedTitle,
-      description: d?.description || d?.notes || `Deal for ${name || 'Customer'}`,
-      vehicle_id: d?.vehicle_id || v?.id || null,
-      vendor_id: d?.vendor_id || null,
-      service_type: d?.service_type || (d?.vendor_id ? 'off_site' : 'in_house'),
-      location: d?.location || (d?.vendor_id ? 'Off-Site' : 'In-House'),
-      priority: d?.priority || 'medium',
-      promised_date: promised,
-      scheduled_start_time: d?.scheduled_start_time || null,
-      scheduled_end_time: d?.scheduled_end_time || null,
-      estimated_cost: d?.estimated_cost ?? tx?.total_amount ?? 0,
-      job_status: d?.job_status || 'pending',
-      assigned_to: d?.assigned_to || null,
-      finance_manager_id: d?.finance_manager_id || null,
-      delivery_coordinator_id: d?.delivery_coordinator_id || null,
-      customer_needs_loaner: d?.customer_needs_loaner || false,
-      calendar_notes: d?.calendar_notes || null,
-
-      // line items
-      lineItems: (items || [])?.map(i => ({
-        id: i?.id || null,
-        product_id: i?.product_id,
-        quantity: 1,
-        unit_price: parseFloat(i?.unit_price ?? 0),
-        promised_date: i?.promised_date || null,
-        vendor_id: i?.vendor_id || null,
-        product_name: i?.product_name || null,
-      })),
-
-      // passthrough for Rocket's service if needed
-      customer_name: name,
-    };
-
-    let result;
-
-    // --- Prefer Rocket's dealService if it's present and async ---
-    if (typeof dealService?.createDeal === 'function') {
-      if (draftId && typeof dealService?.updateDealWithLineItems === 'function') {
-        result = await dealService?.updateDealWithLineItems(draftId, mapped);
-      } else {
-        result = await dealService?.createDeal(mapped);
-      }
-    } else {
-      // Fallback to our jobService path
-      if (draftId) {
-        result = await jobService?.updateDealWithLineItems(draftId, mapped);
-      } else {
-        const created = await jobService?.createJob(mapped);
-        const parentId = created?.data?.id || created?.id;
-        if (!parentId) throw new Error(created?.error?.message || 'createJob failed');
-        result = await jobService?.updateDealWithLineItems(parentId, mapped);
-      }
-    }
-
-    // --- Refresh dash ---
-    const updatedDeals = await dealService?.getDeals(); // Rocket fixed this
-    setDeals(updatedDeals || []);
-    setShowNewDealModal(false);
-  } catch (err) {
-    const msg = err?.message || String(err);
-    const prefix = 'Failed to create deal';
-    setSubmitError(msg?.includes(prefix) ? msg : `${prefix}: ${msg}`);
-    console.error('Create deal error', err);
-  }
+const StatusPill = ({ status }) => {
+  const bg = {
+    new: 'bg-gray-100 text-gray-800',
+    draft: 'bg-gray-200 text-gray-800',
+    scheduled: 'bg-blue-100 text-blue-800',
+    in_progress: 'bg-amber-100 text-amber-800',
+    completed: 'bg-green-100 text-green-800',
+    canceled: 'bg-red-100 text-red-800',
+  }?.[status] || 'bg-gray-100 text-gray-800';
+  return <span className={`px-2 py-1 rounded-full text-xs font-medium ${bg}`}>{(status || '')?.replace('_',' ')}</span>;
 };
 
-  const handleLogin = async (e) => {
-    e?.preventDefault();
-    setSubmitError('');
+// Helper to format names as "Lastname, F."
+const formatStaffName = (fullName) => {
+  if (!fullName) return '';
+  const parts = fullName?.trim()?.split(' ');
+  if (parts?.length < 2) return fullName;
+  
+  const firstName = parts?.[0];
+  const lastName = parts?.slice(1)?.join(' ');
+  const firstInitial = firstName?.[0]?.toUpperCase();
+  
+  return `${lastName}, ${firstInitial}.`;
+};
 
-    try {
-      let result = await signIn(loginData?.email, loginData?.password);
-      if (result?.success) {
-        setShowLoginModal(false);
-        setLoginData({ email: '', password: '' });
-      } else {
-        setSubmitError(result?.error || 'Login failed');
-      }
-    } catch (error) {
-      setSubmitError(`Login error: ${error?.message}`);
-    }
-  };
+// Service Location Tag Component
+const ServiceLocationTag = ({ jobParts }) => {
+  if (!jobParts || jobParts?.length === 0) {
+    return <span className="text-xs text-gray-500">-</span>;
+  }
 
-  const handleDemoLogin = async () => {
-    setSubmitError('');
-    
-    try {
-      let result = await signIn('admin@priorityautomotive.com', 'admin123');
-      if (result?.success) {
-        setShowLoginModal(false);
-      } else {
-        setSubmitError(result?.error || 'Demo login failed');
-      }
-    } catch (error) {
-      setSubmitError(`Demo login error: ${error?.message}`);
-    }
-  };
+  const hasOffSite = jobParts?.some(part => part?.is_off_site);
+  const hasOnSite = jobParts?.some(part => !part?.is_off_site);
 
-  // Show loading spinner while auth is loading
-  if (authLoading) {
+  if (hasOffSite && hasOnSite) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Icon name="Loader" className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-4" />
-            <p className="text-gray-600">Loading authentication...</p>
-          </div>
-        </div>
-      </AppLayout>
+      <div className="flex flex-col space-y-1">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
+          🏢 Off-Site
+        </span>
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+          🏠 On-Site
+        </span>
+      </div>
     );
   }
 
-  // Show login prompt if not authenticated
-  if (!user) {
+  if (hasOffSite) {
     return (
-      <AppLayout>
-        <div className="p-4 md:p-6 lg:p-8">
-          <div className="max-w-md mx-auto mt-8">
-            <div className="bg-white p-8 rounded-lg shadow-lg border">
-              <div className="text-center mb-6">
-                <Icon name="Lock" className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-gray-900">Authentication Required</h2>
-                <p className="text-gray-600 mt-2">Please sign in to view deals and customer data</p>
-              </div>
-              
-              <div className="space-y-4">
-                <Button 
-                  onClick={handleDemoLogin}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  <Icon name="Play" size={18} className="mr-2" />
-                  Demo Login (Admin Access)
-                </Button>
-                
-                <Button 
-                  onClick={() => setShowLoginModal(true)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Icon name="LogIn" size={18} className="mr-2" />
-                  Custom Login
-                </Button>
-              </div>
-
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <Icon name="Info" size={16} className="inline mr-1" />
-                  Demo account includes pre-loaded customer data with off-site jobs scheduled for 10/17/2025
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Custom Login Modal */}
-          {showLoginModal && (
-            <MobileModal
-              isOpen={showLoginModal}
-              onClose={() => setShowLoginModal(false)}
-              title="Sign In"
-            >
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={loginData?.email}
-                    onChange={(e) => setLoginData(prev => ({ ...prev, email: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={loginData?.password}
-                    onChange={(e) => setLoginData(prev => ({ ...prev, password: e?.target?.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
-                {submitError && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <div className="flex items-center">
-                      <Icon name="AlertCircle" className="h-5 w-5 text-red-400 mr-2" />
-                      <p className="text-red-800 text-sm">{submitError}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex space-x-3">
-                  <Button
-                    type="button"
-                    onClick={() => setShowLoginModal(false)}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  >
-                    Sign In
-                  </Button>
-                </div>
-              </form>
-            </MobileModal>
-          )}
-        </div>
-      </AppLayout>
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
+        🏢 Off-Site
+      </span>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="p-4 md:p-6 lg:p-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Deals Management</h1>
-            <p className="text-gray-600 mt-1">Manage customer deals, vehicles, and service appointments</p>
-          </div>
-          <Button 
-            onClick={() => setShowNewDealModal(true)}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
-          >
-            <Icon name="Plus" size={18} />
-            <span>New Deal</span>
-          </Button>
-        </div>
-
-        {/* Deals Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-            <div className="flex items-center">
-              <Icon name="FileText" className="h-8 w-8 text-blue-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Deals</p>
-                <p className="text-2xl font-bold text-gray-900">{deals?.length || 0}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-            <div className="flex items-center">
-              <Icon name="CheckCircle" className="h-8 w-8 text-green-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {deals?.filter(deal => deal?.job_status === 'completed')?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-500">
-            <div className="flex items-center">
-              <Icon name="Clock" className="h-8 w-8 text-yellow-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {deals?.filter(deal => deal?.job_status === 'in_progress')?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
-            <div className="flex items-center">
-              <Icon name="AlertCircle" className="h-8 w-8 text-red-500" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Scheduled</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {deals?.filter(deal => deal?.job_status === 'scheduled')?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Deals Table */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Deals</h3>
-          </div>
-          <div className="overflow-x-auto">
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-center">
-                  <Icon name="Loader" className="animate-spin h-8 w-8 text-blue-500 mx-auto mb-4" />
-                  <div className="text-gray-500">Loading deals...</div>
-                </div>
-              </div>
-            ) : deals?.length > 0 ? (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Deal Info
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Vehicle
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Service Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Promise Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {deals?.map((deal) => (
-                    <tr key={deal?.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{deal?.title || 'Untitled Deal'}</div>
-                          <div className="text-sm text-gray-500">{deal?.job_number || 'No Job Number'}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {deal?.vehicles ? `${deal?.vehicles?.year} ${deal?.vehicles?.make} ${deal?.vehicles?.model}` : 'No Vehicle'}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {deal?.vehicles?.owner_name || 'No Customer'}
-                          {deal?.vehicles?.stock_number && ` - ${deal?.vehicles?.stock_number}`}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          deal?.job_status === 'completed' ? 'bg-green-100 text-green-800' :
-                          deal?.job_status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                          deal?.job_status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                          deal?.job_status === 'pending' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {deal?.job_status?.replace('_', ' ')?.toUpperCase() || 'UNKNOWN'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {deal?.service_type === 'off_site' && (
-                            <Icon name="MapPin" size={16} className="text-orange-500 mr-1" />
-                          )}
-                          <span className={`text-sm ${
-                            deal?.service_type === 'off_site' ? 'text-orange-700 font-medium' : 'text-gray-600'
-                          }`}>
-                            {deal?.service_type === 'off_site' ? 'Off-Site' : 'In-House'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${parseFloat(deal?.estimated_cost || 0)?.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {deal?.promised_date ? new Date(deal?.promised_date)?.toLocaleDateString() : 'No Promise Date'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-center">
-                  <Icon name="FileText" className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500 mb-2">No deals found.</p>
-                  <p className="text-sm text-gray-400">Demo data should appear here once the migration is applied.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Modal for Creating a New Deal */}
-        {showNewDealModal && (
-          <MobileModal
-            isOpen={showNewDealModal}
-            onClose={() => setShowNewDealModal(false)}
-            title="Create New Deal"
-            size="large"
-          >
-            <DealForm
-              mode="create"
-              onSubmit={handleCreateDeal}
-              onCancel={() => setShowNewDealModal(false)}
-              products={products}
-              vendors={vendors}
-              salespeople={salespeople}
-              deliveryCoordinators={deliveryCoordinators}
-              financeManagers={financeManagers}
-            />
-            {submitError && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-center">
-                  <Icon name="AlertCircle" className="h-5 w-5 text-red-400 mr-2" />
-                  <p className="text-red-800 text-sm">{submitError}</p>
-                </div>
-              </div>
-            )}
-          </MobileModal>
-        )}
-        
-        {/* Error display outside modal - only show when no modal is open */}
-        {submitError && !showNewDealModal && (
-          <div className="fixed bottom-4 right-4 max-w-md p-4 bg-red-50 border border-red-200 rounded-lg shadow-lg z-50">
-            <div className="flex items-center">
-              <Icon name="AlertCircle" className="h-5 w-5 text-red-400 mr-2" />
-              <p className="text-red-800 text-sm">{submitError}</p>
-              <button
-                onClick={() => setSubmitError('')}
-                className="ml-auto text-red-400 hover:text-red-600"
-              >
-                <Icon name="X" size={16} />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </AppLayout>
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+      🏠 On-Site
+    </span>
   );
 };
 
-export default DealsPage;
+const SchedulingStatus = ({ jobParts }) => {
+  if (!jobParts || jobParts?.length === 0) {
+    return <span className="text-xs text-gray-500">No items</span>;
+  }
+
+  const schedulingItems = jobParts?.filter(part => part?.requires_scheduling);
+  const noScheduleItems = jobParts?.filter(part => !part?.requires_scheduling);
+  
+  const upcomingPromises = schedulingItems?.filter(part => {
+    if (!part?.promised_date) return false;
+    const promiseDate = new Date(part?.promised_date);
+    const today = new Date();
+    today?.setHours(0, 0, 0, 0);
+    return promiseDate >= today;
+  });
+
+  const overduePromises = schedulingItems?.filter(part => {
+    if (!part?.promised_date) return false;
+    const promiseDate = new Date(part?.promised_date);
+    const today = new Date();
+    today?.setHours(0, 0, 0, 0);
+    return promiseDate < today;
+  });
+
+  if (overduePromises?.length > 0) {
+    return (
+      <div className="flex flex-col space-y-1">
+        <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+          {overduePromises?.length} overdue
+        </span>
+        {upcomingPromises?.length > 0 && (
+          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+            {upcomingPromises?.length} scheduled
+          </span>
+        )}
+        {noScheduleItems?.length > 0 && (
+          <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+            {noScheduleItems?.length} no schedule
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (upcomingPromises?.length > 0) {
+    const nextPromise = upcomingPromises?.sort((a, b) => 
+      new Date(a?.promised_date) - new Date(b?.promised_date)
+    )?.[0];
+    const promiseDate = new Date(nextPromise?.promised_date);
+    const formattedDate = promiseDate?.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+    
+    return (
+      <div className="flex flex-col space-y-1">
+        <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+          Next: {formattedDate}
+        </span>
+        {upcomingPromises?.length > 1 && (
+          <span className="text-xs text-gray-500">
+            +{upcomingPromises?.length - 1} more
+          </span>
+        )}
+        {noScheduleItems?.length > 0 && (
+          <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+            {noScheduleItems?.length} no schedule
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  if (noScheduleItems?.length > 0) {
+    return (
+      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+        {noScheduleItems?.length} no schedule needed
+      </span>
+    );
+  }
+
+  return (
+    <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+      Needs scheduling setup
+    </span>
+  );
+};
+
+export default function DealsPage() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [exportFilters, setExportFilters] = useState({});
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showNewDealModal, setShowNewDealModal] = useState(false);
+  const [selectedDeal, setSelectedDeal] = useState(null);
+  const [dealLineItems, setDealLineItems] = useState([]);
+  const [stockSearchResults, setStockSearchResults] = useState([]);
+  const [isSubmittingDeal, setIsSubmittingDeal] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [lineItemForm, setLineItemForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    customerEmail: '',
+    vehicleId: null,
+    vehicleYear: '',
+    vehicleMake: '',
+    vehicleModel: '',
+    stockNumber: '',
+    description: '',
+    priority: 'medium',
+    salespersonId: null,
+    deliveryCoordinatorId: null,
+    needsLoaner: false
+  });
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Calculate KPIs with safety checks including drafts
+  const calculateKPIs = (deals) => {
+    const safeDeals = deals || [];
+    
+    const activeJobs = safeDeals?.filter(d => 
+      d?.job_status && !['completed', 'canceled']?.includes(d?.job_status)
+    )?.length || 0;
+    
+    const totalRevenue = safeDeals?.reduce((sum, deal) => {
+      const revenue = parseFloat(deal?.total_amount) || 0;
+      return sum + revenue;
+    }, 0);
+    
+    const totalProfit = safeDeals?.reduce((sum, deal) => {
+      const profit = parseFloat(deal?.profit_amount) || 0;
+      return sum + profit;
+    }, 0);
+    
+    const margin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100) : 0;
+    
+    const pendingJobs = safeDeals?.filter(d => 
+      d?.job_status === 'new' || d?.job_status === 'pending'
+    )?.length || 0;
+
+    const totalDrafts = safeDeals?.filter(d => d?.job_status === 'draft')?.length || 0;
+    
+    return {
+      active: activeJobs,
+      revenue: totalRevenue?.toFixed(2) || '0.00',
+      profit: totalProfit?.toFixed(2) || '0.00', 
+      margin: margin?.toFixed(1) || '0.0',
+      pending: pendingJobs,
+      drafts: totalDrafts
+    };
+  };
+
+  const kpis = calculateKPIs(rows);
+
+  // Filter deals based on status
+  const filteredDeals = rows?.filter(deal => {
+    if (filterStatus === 'all') return true;
+    return deal?.job_status === filterStatus;
+  });
+
+  // Quick Draft save helper
+  const handleQuickSaveDraft = async () => {
+    try {
+      setIsSubmittingDeal(true);
+      setSubmitError('');
+
+      const customerName = (lineItemForm?.customerName || '')?.trim();
+      const customerPhone = (lineItemForm?.customerPhone || '')?.trim() || null;
+      const customerEmail = (lineItemForm?.customerEmail || '')?.trim() || null;
+
+      if (!customerName) {
+        setSubmitError('Customer name is required to save a draft.');
+        return;
+      }
+
+      // Vehicle: prefer selected vehicle; else create a simple placeholder
+      let vehicleId = lineItemForm?.vehicleId || null;
+      if (!vehicleId) {
+        const veh = {
+          year: parseInt(lineItemForm?.vehicleYear || 0) || null,
+          make: lineItemForm?.vehicleMake || null,
+          model: lineItemForm?.vehicleModel || null,
+          stock_number: lineItemForm?.stockNumber || `DRAFT-${Date.now()}`,
+          owner_name: customerName,
+          owner_phone: customerPhone,
+          owner_email: customerEmail,
+          vehicle_status: 'active',
+          created_by: user?.id
+        };
+        const { data: v, error: vErr } = await supabase?.from('vehicles')?.insert([veh])?.select()?.single();
+        if (vErr) throw vErr;
+        vehicleId = v?.id;
+      }
+
+      const nowIso = new Date()?.toISOString();
+
+      // Create a Draft job (no items yet)
+      const job = {
+        vehicle_id: vehicleId,
+        vendor_id: null,
+        description: (lineItemForm?.description || 'Draft deal'),
+        priority: (lineItemForm?.priority || 'medium')?.toLowerCase(),
+        job_status: 'draft',
+        title: `Draft – ${customerName}`,
+        estimated_cost: 0,
+        created_by: lineItemForm?.salespersonId || user?.id,
+        delivery_coordinator_id: lineItemForm?.deliveryCoordinatorId || null,
+        customer_needs_loaner: !!lineItemForm?.needsLoaner,
+        created_at: nowIso,
+        promised_date: null,
+        service_type: 'in_house',
+        scheduled_start_time: null,
+        scheduled_end_time: null,
+        calendar_event_id: null,
+        location: null,
+        color_code: null
+      };
+
+      const { data: jobRow, error: jobErr } = await supabase?.from('jobs')?.insert([job])?.select()?.single();
+      if (jobErr) throw jobErr;
+
+      // Ensure a transaction exists even for drafts (0 total)
+      const tx = {
+        job_id: jobRow?.id,
+        vehicle_id: vehicleId,
+        total_amount: 0,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+        transaction_status: 'pending',
+        created_at: nowIso
+      };
+      const { error: txErr } = await supabase?.from('transactions')?.upsert([tx], { onConflict: 'job_id' });
+      if (txErr) throw txErr;
+
+      alert('✅ Draft saved. You can add items and details later.');
+      setShowNewDealModal(false);
+      setSelectedDeal(null);
+      setDealLineItems([]);
+      setStockSearchResults([]);
+      await loadDeals();
+    } catch (e) {
+      console.error(e);
+      setSubmitError(`Failed to save draft: ${e?.message}`);
+    } finally {
+      setIsSubmittingDeal(false);
+    }
+  };
+
+  const handleSaveDeal = async () => {
+    // If there are no items, save as Draft instead of blocking.
+    if (!dealLineItems?.length) {
+      await handleQuickSaveDraft();
+      return;
+    }
+
+    try {
+      setIsSubmittingDeal(true);
+      setSubmitError('');
+
+      const mainItem = dealLineItems?.[0];
+      const totalDealValue = dealLineItems?.reduce((sum, item) => sum + (parseFloat(item?.totalPrice) || 0), 0);
+
+      if (selectedDeal?.id) {
+        // EDITING MODE - Update existing deal
+        const dealUpdateData = {
+          vendor_id: mainItem?.vendor?.id || null,
+          description: mainItem?.description || `Updated Deal - ${dealLineItems?.length} items`,
+          priority: mainItem?.priority?.toLowerCase() || 'medium',
+          estimated_cost: totalDealValue,
+          created_by: mainItem?.salesperson?.id || user?.id,
+          delivery_coordinator_id: mainItem?.deliveryCoordinator?.id || null,
+          customer_needs_loaner: mainItem?.needsLoaner || false,
+          service_type: mainItem?.vendor ? 'vendor' : 'in_house'
+        };
+
+        // Promote draft once items exist
+        if (selectedDeal?.job_status === 'draft' && dealLineItems?.length > 0) {
+          dealUpdateData.job_status = 'pending';
+        }
+
+        // Update the deal
+        const { error: updateErr } = await supabase?.from('jobs')?.update(dealUpdateData)?.eq('id', selectedDeal?.id);
+        if (updateErr) throw updateErr;
+
+        // Update the transaction
+        const tx = {
+          job_id: selectedDeal?.id,
+          total_amount: totalDealValue,
+          customer_name: mainItem?.customerName || '',
+          customer_phone: mainItem?.customerPhone || '',
+          customer_email: mainItem?.customerEmail || '',
+          transaction_status: 'pending',
+          created_at: new Date()?.toISOString()
+        };
+        const { error: txErr } = await supabase?.from('transactions')?.upsert([tx], { onConflict: 'job_id' });
+        if (txErr) throw txErr;
+
+        alert('✅ Deal saved successfully!');
+        setShowNewDealModal(false);
+        setSelectedDeal(null);
+        setDealLineItems([]);
+        setStockSearchResults([]);
+        await loadDeals();
+      } else {
+        // CREATE MODE - Add new deal
+        const nowIso = new Date()?.toISOString();
+
+        const job = {
+          vehicle_id: lineItemForm?.vehicleId || null,
+          vendor_id: mainItem?.vendor?.id || null,
+          description: mainItem?.description || `New Deal - ${dealLineItems?.length} items`,
+          priority: mainItem?.priority?.toLowerCase() || 'medium',
+          job_status: 'pending',
+          title: `New Deal – ${mainItem?.customerName || 'Customer'}`,
+          estimated_cost: totalDealValue,
+          created_by: mainItem?.salesperson?.id || user?.id,
+          delivery_coordinator_id: mainItem?.deliveryCoordinator?.id || null,
+          customer_needs_loaner: mainItem?.needsLoaner || false,
+          created_at: nowIso,
+          promised_date: null,
+          service_type: mainItem?.vendor ? 'vendor' : 'in_house',
+          scheduled_start_time: null,
+          scheduled_end_time: null,
+          calendar_event_id: null,
+          location: null,
+          color_code: null
+        };
+
+        const { data: jobRow, error: jobErr } = await supabase?.from('jobs')?.insert([job])?.select()?.single();
+        if (jobErr) throw jobErr;
+
+        // Create transaction
+        const tx = {
+          job_id: jobRow?.id,
+          vehicle_id: lineItemForm?.vehicleId || null,
+          total_amount: totalDealValue,
+          customer_name: mainItem?.customerName || '',
+          customer_phone: mainItem?.customerPhone || '',
+          customer_email: mainItem?.customerEmail || '',
+          transaction_status: 'pending',
+          created_at: nowIso
+        };
+        const { error: txErr } = await supabase?.from('transactions')?.insert([tx]);
+        if (txErr) throw txErr;
+
+        alert('✅ Deal created successfully!');
+        setShowNewDealModal(false);
+        setSelectedDeal(null);
+        setDealLineItems([]);
+        setStockSearchResults([]);
+        await loadDeals();
+      }
+    } catch (e) {
+      console.error(e);
+      setSubmitError(`Failed to save deal: ${e?.message}`);
+    } finally {
+      setIsSubmittingDeal(false);
+    }
+  };
+
+  // Helper function for missing bits banner
+  const missingBits = (deal) => {
+    const needs = [];
+    if (!deal?.items?.length) needs?.push('line items');
+    if (!deal?.salesperson || deal?.salesperson === 'Unassigned') needs?.push('salesperson');
+    return needs;
+  };
+
+  const loadDeals = async () => {
+    try {
+      const data = await getAllDeals();
+      setRows(data);
+    } catch (e) {
+      alert(e?.message || 'Failed to load deals');
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await getAllDeals();
+        if (alive) setRows(data);
+      } catch (e) {
+        alert(e?.message || 'Failed to load deals');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Deal Tracker</h1>
+        <div className="flex items-center space-x-3">
+          <ExportButton
+            exportType="jobs"
+            filters={exportFilters}
+            onExportStart={() => console.log('Starting export...')}
+            onExportComplete={(recordCount, filename) => console.log(`Export complete: ${recordCount} records exported to ${filename}`)}
+            onExportError={(errorMessage) => alert(`Export failed: ${errorMessage}`)}
+            variant="outline"
+            size="sm"
+          />
+          <button
+            data-testid="new-deal-btn"
+            className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+            onClick={() => setShowNewDealModal(true)}
+          >
+            New Deal
+          </button>
+        </div>
+      </div>
+      {/* Draft nudge banner */}
+      {kpis?.drafts > 0 && (
+        <div className="mt-3 p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-900 text-sm flex items-center justify-between">
+          <span>⏳ You have {kpis?.drafts} draft deal{kpis?.drafts > 1 ? 's' : ''} to finish.</span>
+          <Button size="sm" variant="ghost" onClick={() => setFilterStatus('draft')} className="text-amber-700 hover:text-amber-800">View drafts</Button>
+        </div>
+      )}
+      {/* KPI Row with Drafts */}
+      <div className="mb-6 p-4 bg-white border rounded">
+        <KpiRow
+          active={kpis?.active}
+          revenue={kpis?.revenue}
+          profit={kpis?.profit}
+          margin={kpis?.margin}
+          pending={kpis?.pending}
+        />
+        <div className={`bg-white p-6 rounded-xl border shadow-sm`}>
+          <div className="flex items-center">
+            <div className="p-3 rounded-lg bg-gray-100 mr-4">
+              <Icon name="File" size={24} className="text-gray-700" />
+            </div>
+            <div>
+              <h3 className={`text-gray-600 text-sm font-medium uppercase tracking-wide`}>Drafts</h3>
+              <p className={`text-gray-900 text-2xl font-bold`}>{kpis?.drafts}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Filter chips including Draft */}
+      <div className="mb-4 flex gap-2 overflow-x-auto">
+        {['all', 'draft', 'pending', 'in_progress', 'completed']?.map(status => (
+          <button
+            key={status}
+            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+              filterStatus === status 
+                ? 'bg-blue-100 text-blue-800' :'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            onClick={() => setFilterStatus(status)}
+          >
+            {status === 'all' ? `All (${rows?.length || 0})` :
+             status === 'draft' ? `Draft (${kpis?.drafts})` :
+             status === 'in_progress' ? `Active (${kpis?.active})` :
+             status === 'pending' ? `Pending (${kpis?.pending})` :
+             status?.charAt(0)?.toUpperCase() + status?.slice(1)}
+          </button>
+        ))}
+      </div>
+      <div className="bg-white border rounded overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="bg-gray-50 text-left text-sm text-gray-600">
+            <tr>
+              <th className="px-4 py-2">Job #</th>
+              <th className="px-4 py-2">Title</th>
+              <th className="px-4 py-2">Vehicle</th>
+              <th className="px-4 py-2">DC / Sales</th>
+              <th className="px-4 py-2">Service</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2">Scheduling</th>
+              <th className="px-4 py-2 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {loading ? (
+              <tr><td className="px-4 py-8 text-center" colSpan={8}>Loading...</td></tr>
+            ) : filteredDeals?.length === 0 ? (
+              <tr><td className="px-4 py-8 text-center" colSpan={8}>No deals</td></tr>
+            ) : filteredDeals?.map(d => (
+              <tr key={d?.id} className="border-t hover:bg-gray-50/70">
+                <td className="px-4 py-2">{d?.job_number || d?.id}</td>
+                <td className="px-4 py-2">
+                  <div>
+                    {d?.title}
+                    {d?.job_status === 'draft' && (
+                      <div className="mt-2 p-2 rounded border bg-amber-50 border-amber-300 text-amber-800 text-xs">
+                        ⏳ Draft – needs {missingBits(d)?.join(', ') || 'details'}
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-2">
+                  {d?.vehicle
+                    ? `${d?.vehicle?.year || ''} ${d?.vehicle?.make || ''} ${d?.vehicle?.model || ''}${
+                        d?.vehicle?.stock_number ? ' • Stock: ' + d?.vehicle?.stock_number : ''
+                      }`?.trim()
+                    : '-'}
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex flex-col space-y-1">
+                    {d?.delivery_coordinator_name && (
+                      <div className="text-xs">
+                        <span className="text-gray-500">DC:</span> {formatStaffName(d?.delivery_coordinator_name)}
+                      </div>
+                    )}
+                    {d?.sales_consultant_name && (
+                      <div className="text-xs">
+                        <span className="text-gray-500">Sales:</span> {formatStaffName(d?.sales_consultant_name)}
+                      </div>
+                    )}
+                    {!d?.delivery_coordinator_name && !d?.sales_consultant_name && (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-2">
+                  <ServiceLocationTag jobParts={d?.job_parts} />
+                </td>
+                <td className="px-4 py-2"><StatusPill status={d?.job_status} /></td>
+                <td className="px-4 py-2">
+                  <SchedulingStatus jobParts={d?.job_parts} />
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <button
+                    className="px-3 py-1 rounded border hover:bg-gray-50 mr-2"
+                    onClick={() => navigate(`/deals/edit/${d?.id}`)}
+                  >
+                    Edit
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {/* New Deal Modal */}
+      {showNewDealModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Create New Deal</h3>
+            
+            {submitError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-800 text-sm">
+                {submitError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Customer Name *</label>
+                <input
+                  type="text"
+                  className="w-full p-3 border rounded-lg bg-white"
+                  value={lineItemForm?.customerName || ''}
+                  onChange={(e) => setLineItemForm(prev => ({ ...prev, customerName: e?.target?.value }))}
+                  placeholder="Enter customer name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Customer Phone</label>
+                <input
+                  type="tel"
+                  className="w-full p-3 border rounded-lg bg-white"
+                  value={lineItemForm?.customerPhone || ''}
+                  onChange={(e) => setLineItemForm(prev => ({ ...prev, customerPhone: e?.target?.value }))}
+                  placeholder="Enter customer phone"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Customer Email</label>
+                <input
+                  type="email"
+                  className="w-full p-3 border rounded-lg bg-white"
+                  value={lineItemForm?.customerEmail || ''}
+                  onChange={(e) => setLineItemForm(prev => ({ ...prev, customerEmail: e?.target?.value }))}
+                  placeholder="Enter customer email"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                onClick={() => {
+                  setShowNewDealModal(false);
+                  setLineItemForm({});
+                  setSubmitError('');
+                }}
+              >
+                Cancel
+              </button>
+              <Button
+                onClick={handleQuickSaveDraft}
+                disabled={!lineItemForm?.customerName?.trim() || isSubmittingDeal}
+                className="flex-1"
+              >
+                {isSubmittingDeal ? 'Creating...' : 'Save Draft'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

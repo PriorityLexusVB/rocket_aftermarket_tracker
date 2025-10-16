@@ -253,7 +253,7 @@ const FilterPanel = ({
                   size="sm"
                   onClick={handleSavePreset}
                   disabled={!presetName?.trim()}
-                  className="px-3"
+                  className=""
                 >
                   Save
                 </Button>
@@ -264,7 +264,7 @@ const FilterPanel = ({
                     setShowPresetInput(false);
                     setPresetName('');
                   }}
-                  className="px-3 text-muted-foreground"
+                  className=""
                 >
                   Cancel
                 </Button>
@@ -279,7 +279,7 @@ const FilterPanel = ({
                     variant="outline"
                     size="sm"
                     onClick={() => onLoadPreset(preset)}
-                    className="text-xs px-2"
+                    className=""
                   >
                     {preset?.name}
                   </Button>

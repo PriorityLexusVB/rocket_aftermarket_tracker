@@ -291,10 +291,9 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 value={customerData?.name}
                 onChange={(e) => handleCustomerChange('name', e?.target?.value)}
                 placeholder="John Smith"
-                className=""
                 helperText=""
                 maxLength={100}
-                style={{}}
+                className=""
               />
               <Input
                 label="Email"
@@ -302,10 +301,9 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 value={customerData?.email}
                 onChange={(e) => handleCustomerChange('email', e?.target?.value)}
                 placeholder="customer@email.com"
-                className=""
                 helperText=""
                 maxLength={100}
-                style={{}}
+                className=""
               />
               <Input
                 label="Phone"
@@ -313,10 +311,9 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 value={customerData?.phone}
                 onChange={(e) => handleCustomerChange('phone', e?.target?.value)}
                 placeholder="(555) 123-4567"
-                className=""
                 helperText=""
                 maxLength={20}
-                style={{}}
+                className=""
               />
             </div>
           </div>
