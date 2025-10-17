@@ -20,7 +20,7 @@ const Navbar = () => {
   const location = useLocation();
 
   const navigationLinks = [
-    { name: 'Calendar', href: '/calendar', icon: Calendar },
+    { name: 'Calendar', href: '/calendar-flow-management-center', icon: Calendar },
     { name: 'Appointments', href: '/currently-active-appointments', icon: Clock, shortName: 'Active' },
     { name: 'Claims', href: '/claims-management-center', icon: FileText },
     { name: 'Deals', href: '/deals', icon: Package },

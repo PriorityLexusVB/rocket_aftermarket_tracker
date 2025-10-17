@@ -438,12 +438,10 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
         product_id: item?.productId,
         quantity_used: 1,
         unit_price: parseFloat(item?.unitPrice),
-        total_price: parseFloat(item?.unitPrice), // Add total_price for consistency
         is_off_site: item?.serviceType === 'vendor',
         requires_scheduling: Boolean(item?.requiresScheduling),
         promised_date: item?.requiresScheduling ? item?.promisedDate : null,
-        no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
-        description: item?.serviceNotes || null
+        no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null
       }));
 
       const { error: jobPartsError } = await supabase?.from('job_parts')?.insert(jobPartsData);

@@ -11,7 +11,6 @@ import NotFound from './pages/NotFound';
 import AuthenticationPortal from './pages/authentication-portal';
 
 // 4 Main Pages - Updated with Currently Active Appointments
-
 import DealsPage from './pages/deals';
 import DealForm from './pages/deals/DealForm';
 import CurrentlyActiveAppointments from './pages/currently-active-appointments';
@@ -26,6 +25,9 @@ import AdvancedBusinessIntelligenceAnalytics from './pages/advanced-business-int
 import ClaimsManagementCenter from './pages/claims-management-center';
 import GuestClaimsSubmissionForm from './pages/guest-claims-submission-form';
 import LoanerManagementDrawer from './pages/loaner-management-drawer';
+
+// Admin page import - ensures proper loading
+import AdminPage from './pages/admin';
 
 const Routes = () => {
   return (
@@ -55,6 +57,12 @@ const Routes = () => {
               <Route path="/calendar-flow-management-center" element={<ProtectedRoute><CalendarFlowManagementCenter /></ProtectedRoute>} />
               <Route path="/currently-active-appointments" element={<ProtectedRoute><CurrentlyActiveAppointments /></ProtectedRoute>} />
               <Route path="/advanced-business-intelligence-analytics" element={<ProtectedRoute><AdvancedBusinessIntelligenceAnalytics /></ProtectedRoute>} />
+              
+              {/* Admin route with proper component loading */}
+              <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+              
+              {/* Calendar route - redirect to new calendar flow center */}
+              <Route path="/calendar" element={<Navigate to="/calendar-flow-management-center" replace />} />
               
               {/* Loaner Management */}
               <Route path="/loaner-management-drawer" element={<ProtectedRoute><LoanerManagementDrawer /></ProtectedRoute>} />

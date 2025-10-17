@@ -52,9 +52,16 @@
   }
 
   /* Improve form elements on mobile */
-  input, textarea, select {
+  input, textarea {
     -webkit-appearance: none;
     border-radius: 0;
+    font-family: inherit;
+    background: var(--surface);
+    border-color: var(--line);
+  }
+
+  select {
+    /* Let the browser handle the appearance for native mobile dropdowns */
     font-family: inherit;
     background: var(--surface);
     border-color: var(--line);
@@ -278,6 +285,7 @@
 
   /* Theme Preset Styles with light backgrounds */
   
+
   /* Enhanced Carded Theme Styles */
   .theme-carded .card-enhanced {
     background: var(--mobile-card-bg);
@@ -428,6 +436,7 @@
   .theme-zebra .table-row-zebra:hover {
     background: var(--mobile-hover-bg);
   }
+
 }
 
 @layer utilities {

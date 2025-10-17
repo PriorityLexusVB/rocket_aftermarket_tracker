@@ -1,9 +1,13 @@
 // src/pages/deals/components/DealForm.jsx
 import React, { useEffect, useMemo, useState } from 'react';
-import { productService } from '../../services/productService';
-import { vendorService } from '../../services/vendorService';
 import { useTheme } from '../../contexts/ThemeContext';
-import { supabase } from '../../lib/supabase';
+import { 
+  getDeliveryCoordinators, 
+  getSalesConsultants, 
+  getFinanceManagers, 
+  getProducts, 
+  getVendors 
+} from '../../services/dropdownService';
 
 const Field = ({ label, children, id, required = false, error }) => {
   const fieldId = id || `field-${Math.random()?.toString(36)?.substr(2, 9)}`;
@@ -14,7 +18,7 @@ const Field = ({ label, children, id, required = false, error }) => {
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      <div className="h-11 min-h-[44px]"> {/* H5: Mobile tap target - 44px minimum */}
+      <div className="h-11 min-h-[44px]">
         {React.cloneElement(children, { id: fieldId, className: `${children?.props?.className} ${error ? 'border-red-300' : ''}` })}
       </div>
       {error && (
@@ -29,14 +33,14 @@ const Field = ({ label, children, id, required = false, error }) => {
 export default function DealForm({ mode='create', initialData=null, onSubmit, onCancel, saving=false }) {
   const { themeClasses } = useTheme();
   
-  // H2: Controlled inputs - proper state management with stable keys
+  // Form state management with customer_name added to match schema
   const [form, setForm] = useState(() => initialData || {
     title: '',
     description: '',
     vendor_id: null,
     vehicle_id: null,
-    job_status: 'new',
-    priority: 'normal',
+    job_status: 'pending',  // Updated to match schema enum default
+    priority: 'medium',     // Updated to match schema enum default
     scheduled_start_time: '',
     scheduled_end_time: '',
     estimated_hours: '',
@@ -45,14 +49,14 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
     location: '',
     assigned_to: null,
     delivery_coordinator_id: null,
+    finance_manager_id: null,
     customer_needs_loaner: false,
-    customer_name: '', // H4: Ensure customer name is in form state
+    customer_name: '',      // Added to match jobs table requirement
     lineItems: [{ 
-      id: `new-${Date.now()}`, // H2: Stable key for new items
-      part_name: '', 
-      sku: '', 
-      quantity_used: 1, 
-      unit_price: 0, 
+      id: `new-${Date.now()}`,
+      product_id: null,     // Updated to match job_parts table
+      quantity_used: 1,     // Updated to match job_parts table
+      unit_price: 0,        // Updated to match job_parts table
       notes: '',
       isOffSite: false,
       requiresScheduling: true,
@@ -60,7 +64,6 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
       noScheduleReason: '',
       description: ''
     }],
-    // A3: FIXED - Include loaner fields in main form state
     loanerForm: {
       loaner_number: '',
       eta_return_date: '',
@@ -68,99 +71,181 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
     }
   });
 
-  // Step 11: Add dropdown state for all required dropdowns
-  const [vendors, setVendors] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [salesConsultants, setSalesConsultants] = useState([]);
-  const [deliveryCoordinators, setDeliveryCoordinators] = useState([]);
+  // Enhanced dropdown state with better error handling
+  const [dropdownData, setDropdownData] = useState({
+    vendors: [],
+    products: [], 
+    salesConsultants: [],
+    deliveryCoordinators: [],
+    financeManagers: []
+  });
+  
+  const [loading, setLoading] = useState({
+    vendors: false,
+    products: false,
+    salesConsultants: false,
+    deliveryCoordinators: false,
+    financeManagers: false
+  });
+  
+  const [errors, setErrors] = useState({});
 
-  // Step 11: Load dropdown data from correct tables with proper filters
+  // Enhanced dropdown data loading with comprehensive error handling
   useEffect(() => {
-    const loadDropdownData = async () => {
+    const loadAllDropdownData = async () => {
+      setLoading({
+        vendors: true,
+        products: true,
+        salesConsultants: true,
+        deliveryCoordinators: true,
+        financeManagers: true
+      });
+
       try {
-        // Load vendors (existing)
-        const vendorData = await vendorService?.getAll();
-        setVendors(vendorData || []);
+        // Load all dropdown data in parallel with individual error handling
+        const results = await Promise.allSettled([
+          getVendors(),
+          getProducts(),
+          getSalesConsultants(),
+          getDeliveryCoordinators(),
+          getFinanceManagers()
+        ]);
 
-        // Load products (existing) 
-        const productData = await productService?.getAllActive();
-        setProducts(productData || []);
+        const [vendorsResult, productsResult, salesResult, deliveryResult, financeResult] = results;
 
-        // Step 11: Load Sales Consultants - user_profiles where role='staff' AND department='Sales Consultants' AND is_active=true
-        const { data: salesData, error: salesError } = await supabase?.from('user_profiles')?.select('id, full_name, email')?.eq('role', 'staff')?.eq('department', 'Sales Consultants')?.eq('is_active', true)?.order('full_name');
+        // Process results with fallbacks for failed requests
+        const newDropdownData = {
+          vendors: vendorsResult?.status === 'fulfilled' ? (vendorsResult?.value || []) : [],
+          products: productsResult?.status === 'fulfilled' ? (productsResult?.value || []) : [],
+          salesConsultants: salesResult?.status === 'fulfilled' ? (salesResult?.value || []) : [],
+          deliveryCoordinators: deliveryResult?.status === 'fulfilled' ? (deliveryResult?.value || []) : [],
+          financeManagers: financeResult?.status === 'fulfilled' ? (financeResult?.value || []) : []
+        };
 
-        if (!salesError) {
-          setSalesConsultants(salesData || []);
+        const newErrors = {};
+
+        // Track any failures for user feedback
+        if (vendorsResult?.status === 'rejected') {
+          newErrors.vendors = 'Failed to load vendors';
+          console.log('Failed to load vendors:', vendorsResult?.reason);
+        }
+        if (productsResult?.status === 'rejected') {
+          newErrors.products = 'Failed to load products';
+          console.log('Failed to load products:', productsResult?.reason);
+        }
+        if (salesResult?.status === 'rejected') {
+          newErrors.salesConsultants = 'Failed to load sales consultants';
+          console.log('Failed to load sales consultants:', salesResult?.reason);
+        }
+        if (deliveryResult?.status === 'rejected') {
+          newErrors.deliveryCoordinators = 'Failed to load delivery coordinators';
+          console.log('Failed to load delivery coordinators:', deliveryResult?.reason);
+        }
+        if (financeResult?.status === 'rejected') {
+          newErrors.financeManagers = 'Failed to load finance managers';
+          console.log('Failed to load finance managers:', financeResult?.reason);
         }
 
-        // Step 11: Load Delivery Coordinators - user_profiles where role IN ('admin','manager') AND department='Delivery Coordinator' AND is_active=true
-        const { data: coordData, error: coordError } = await supabase?.from('user_profiles')?.select('id, full_name, email')?.in('role', ['admin', 'manager'])?.eq('department', 'Delivery Coordinator')?.eq('is_active', true)?.order('full_name');
+        setDropdownData(newDropdownData);
+        setErrors(newErrors);
 
-        if (!coordError) {
-          setDeliveryCoordinators(coordData || []);
-        }
       } catch (error) {
-        console.error('Error loading dropdown data:', error);
+        console.log('Unexpected error loading dropdown data:', error);
+        setErrors({
+          global: 'Failed to load form data. Please refresh the page.'
+        });
+      } finally {
+        setLoading({
+          vendors: false,
+          products: false,
+          salesConsultants: false,
+          deliveryCoordinators: false,
+          financeManagers: false
+        });
       }
     };
 
-    loadDropdownData();
+    loadAllDropdownData();
   }, []);
 
-  // A3: ENHANCED - Load existing loaner data when editing
+  // Enhanced loaner data loading that matches database schema
   useEffect(() => {
-    if (initialData) {
+    if (initialData?.id && initialData?.customer_needs_loaner) {
       const loadExistingLoanerData = async () => {
-        if (initialData?.id && initialData?.customer_needs_loaner) {
-          try {
-            // Load active loaner assignment for this job
-            const { data: loanerAssignment } = await supabase
-              ?.from('loaner_assignments')
-              ?.select('loaner_number, eta_return_date, notes')
-              ?.eq('job_id', initialData?.id)
-              ?.is('returned_at', null)
-              ?.single();
+        try {
+          const { supabase } = await import('../../lib/supabase');
+          
+          // Query loaner_assignments table for existing assignment
+          const { data: loanerAssignment, error } = await supabase
+            ?.from('loaner_assignments')
+            ?.select('loaner_number, eta_return_date, notes')
+            ?.eq('job_id', initialData?.id)
+            ?.is('returned_at', null)  // Only get active assignments
+            ?.single();
 
-            if (loanerAssignment) {
-              setForm(prev => ({
-                ...prev,
-                ...initialData,
-                loanerForm: {
-                  loaner_number: loanerAssignment?.loaner_number || '',
-                  eta_return_date: loanerAssignment?.eta_return_date || '',
-                  notes: loanerAssignment?.notes || ''
-                }
-              }));
-              return;
+          if (error && error?.code !== 'PGRST116') {
+            console.log('Error loading loaner assignment:', error);
+            return;
+          }
+
+          if (loanerAssignment) {
+            setForm(prev => ({
+              ...prev,
+              ...initialData,
+              loanerForm: {
+                loaner_number: loanerAssignment?.loaner_number || '',
+                eta_return_date: loanerAssignment?.eta_return_date || '',
+                notes: loanerAssignment?.notes || ''
+              }
+            }));
+          } else {
+            // No existing assignment, set up empty form
+            setForm(prev => ({ 
+              ...prev, 
+              ...initialData,
+              loanerForm: {
+                loaner_number: '',
+                eta_return_date: '',
+                notes: ''
+              }
+            }));
+          }
+        } catch (error) {
+          console.log('Failed to load loaner data:', error);
+          // Continue with empty loaner form
+          setForm(prev => ({ 
+            ...prev, 
+            ...initialData,
+            loanerForm: {
+              loaner_number: '',
+              eta_return_date: '',
+              notes: ''
             }
-          } catch (error) {
-            // No existing loaner assignment, use default
-            console.log('No existing loaner assignment found');
-          }
+          }));
         }
-        
-        // Set form with initial data and default loaner form
-        setForm(prev => ({ 
-          ...prev, 
-          ...initialData,
-          loanerForm: prev?.loanerForm || {
-            loaner_number: '',
-            eta_return_date: '',
-            notes: ''
-          }
-        }));
       };
 
       loadExistingLoanerData();
+    } else if (initialData) {
+      // No loaner needed or new form, just set initial data
+      setForm(prev => ({ 
+        ...prev, 
+        ...initialData,
+        loanerForm: prev?.loanerForm || {
+          loaner_number: '',
+          eta_return_date: '',
+          notes: ''
+        }
+      }));
     }
   }, [initialData]);
 
-  // Form validation logic - softened to allow incomplete line items
+  // Enhanced form validation that matches database constraints
   const isFormValid = useMemo(() => {
-    // Check if title is present (required field)
+    // Required field: title (NOT NULL in jobs table)
     if (!form?.title?.trim()) return false;
     
-    // A3: Enhanced validation - if loaner is needed, loaner number is required
+    // Conditional validation: loaner requirements
     if (form?.customer_needs_loaner && !form?.loanerForm?.loaner_number?.trim()) {
       return false;
     }
@@ -168,10 +253,9 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
     return true;
   }, [form?.title, form?.customer_needs_loaner, form?.loanerForm?.loaner_number]);
 
-  // H2: Controlled update functions with proper value handling
+  // Form update functions
   const update = (patch) => setForm(prev => ({ ...prev, ...patch }));
   
-  // A3: FIXED - Update loaner form within main form state
   const updateLoaner = (patch) => setForm(prev => ({
     ...prev,
     loanerForm: { ...prev?.loanerForm, ...patch }
@@ -191,7 +275,7 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
     setForm(prev => ({ 
       ...prev, 
       lineItems: [...prev?.lineItems, { 
-        id: newId, // H2: Stable unique key
+        id: newId,
         part_name: '', 
         sku: '', 
         quantity_used: 1, 
@@ -223,161 +307,301 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
 
   const submit = (e) => {
     e?.preventDefault();
-    // A3: FIXED - Pass complete form data including loaner
     onSubmit?.(form);
   };
 
+  // Render loading states for dropdowns
+  const renderDropdownOptions = (items, loadingKey, errorKey, defaultText, renderOption) => {
+    if (loading?.[loadingKey]) {
+      return <option value="">Loading...</option>;
+    }
+    
+    if (errors?.[errorKey]) {
+      return <option value="">Error loading data</option>;
+    }
+
+    if (!items || !Array.isArray(items) || items?.length === 0) {
+      return <option value="">No data available</option>;
+    }
+
+    return (
+      <>
+        <option value="">{defaultText}</option>
+        {items?.map(renderOption)}
+      </>
+    );
+  };
+
   return (
-    <form onSubmit={submit} className="space-y-6 pb-20"> {/* H5: Bottom padding for mobile */}
+    <form onSubmit={(e) => { e?.preventDefault(); onSubmit?.(form); }} className="space-y-6 pb-20">
+      {/* Global error display */}
+      {errors?.global && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          {errors?.global}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* H1: Enhanced Field with proper ID binding */}
-        <Field label="Title" required id="title-field" error={null}>
+        {/* Title - Required field matching jobs.title */}
+        <Field label="Title" required id="title-field" error="">
           <input 
             className="w-full border rounded px-3 py-2 h-11" 
             value={form?.title || ''} 
-            onChange={e=>update({ title: e?.target?.value })} 
+            onChange={e => setForm(prev => ({ ...prev, title: e?.target?.value }))} 
+            placeholder="Enter deal title"
             required
-            aria-describedby="title-help"
           />
         </Field>
 
-        {/* H1: Customer Name with proper binding */}
-        <Field label="Customer Name" required id="customer-name-field" error={null}>
+        {/* Customer Name - Maps to job description or customer context */}
+        <Field label="Customer Name" id="customer-name-field" error="">
           <input 
             className="w-full border rounded px-3 py-2 h-11" 
             value={form?.customer_name || ''} 
-            onChange={e=>update({ customer_name: e?.target?.value })} 
+            onChange={e => setForm(prev => ({ ...prev, customer_name: e?.target?.value }))} 
             placeholder="Enter customer name"
-            required
           />
         </Field>
 
-        {/* Step 11: Salesperson Dropdown - user_profiles where role='staff' AND department='Sales Consultants' AND is_active=true */}
-        <Field label="Salesperson" id="salesperson-field" error={null}>
+        {/* Salesperson - Maps to jobs.assigned_to */}
+        <Field label="Salesperson" id="salesperson-field" error="">
           <select 
             data-testid="salesperson-select"
             className="w-full border rounded px-3 py-2 h-11" 
             value={form?.assigned_to || ''} 
-            onChange={e=>update({ assigned_to: e?.target?.value ? e?.target?.value : null })}
+            onChange={e => setForm(prev => ({ 
+              ...prev, 
+              assigned_to: e?.target?.value ? e?.target?.value : null 
+            }))}
           >
-            <option value="">Select salesperson</option>
-            {salesConsultants?.map(sc => (
-              <option key={sc?.id} value={sc?.id}>{sc?.full_name}</option>
-            ))}
+            {renderDropdownOptions(
+              dropdownData?.salesConsultants,
+              'salesConsultants',
+              'salesConsultants',
+              'Select salesperson',
+              (sc) => <option key={sc?.id} value={sc?.id}>{sc?.full_name}</option>
+            )}
           </select>
+          {errors?.salesConsultants && (
+            <div className="text-xs text-red-600 mt-1">{errors?.salesConsultants}</div>
+          )}
         </Field>
 
-        {/* Step 11: Delivery Coordinator Dropdown - user_profiles where role IN ('admin','manager') AND department='Delivery Coordinator' AND is_active=true */}
-        <Field label="Delivery Coordinator" id="delivery-coordinator-field" error={null}>
+        {/* Finance Manager - Maps to jobs.finance_manager_id */}
+        <Field label="Finance Manager" id="finance-manager-field" error="">
+          <select 
+            data-testid="finance-manager-select"
+            className="w-full border rounded px-3 py-2 h-11" 
+            value={form?.finance_manager_id || ''} 
+            onChange={e => setForm(prev => ({ 
+              ...prev, 
+              finance_manager_id: e?.target?.value ? e?.target?.value : null 
+            }))}
+          >
+            {renderDropdownOptions(
+              dropdownData?.financeManagers,
+              'financeManagers',
+              'financeManagers',
+              'Select finance manager',
+              (fm) => <option key={fm?.id} value={fm?.id}>{fm?.full_name}</option>
+            )}
+          </select>
+          {errors?.financeManagers && (
+            <div className="text-xs text-red-600 mt-1">{errors?.financeManagers}</div>
+          )}
+        </Field>
+
+        {/* Delivery Coordinator - Maps to jobs.delivery_coordinator_id */}
+        <Field label="Delivery Coordinator" id="delivery-coordinator-field" error="">
           <select 
             data-testid="delivery-coordinator-select"
             className="w-full border rounded px-3 py-2 h-11" 
             value={form?.delivery_coordinator_id || ''} 
-            onChange={e=>update({ delivery_coordinator_id: e?.target?.value ? e?.target?.value : null })}
+            onChange={e => setForm(prev => ({ 
+              ...prev, 
+              delivery_coordinator_id: e?.target?.value ? e?.target?.value : null 
+            }))}
           >
-            <option value="">Select delivery coordinator</option>
-            {deliveryCoordinators?.map(dc => (
-              <option key={dc?.id} value={dc?.id}>{dc?.full_name}</option>
-            ))}
+            {renderDropdownOptions(
+              dropdownData?.deliveryCoordinators,
+              'deliveryCoordinators',
+              'deliveryCoordinators',
+              'Select delivery coordinator',
+              (dc) => <option key={dc?.id} value={dc?.id}>{dc?.full_name}</option>
+            )}
           </select>
+          {errors?.deliveryCoordinators && (
+            <div className="text-xs text-red-600 mt-1">{errors?.deliveryCoordinators}</div>
+          )}
         </Field>
 
-        <Field label="Vendor" id="vendor-field" error={null}>
+        {/* Vendor - Maps to jobs.vendor_id */}
+        <Field label="Vendor" id="vendor-field" error="">
           <select 
             data-testid="vendor-select"
             className="w-full border rounded px-3 py-2 h-11" 
             value={form?.vendor_id || ''} 
-            onChange={e=>update({ vendor_id: e?.target?.value ? Number(e?.target?.value) : null })}
+            onChange={e => setForm(prev => ({ 
+              ...prev, 
+              vendor_id: e?.target?.value ? e?.target?.value : null 
+            }))}
           >
-            <option value="">Select vendor</option>
-            {vendors?.map(v => <option key={v?.id} value={v?.id}>{v?.name}</option>)}
+            {renderDropdownOptions(
+              dropdownData?.vendors,
+              'vendors',
+              'vendors',
+              'Select vendor',
+              (v) => <option key={v?.id} value={v?.id}>{v?.name}</option>
+            )}
           </select>
+          {errors?.vendors && (
+            <div className="text-xs text-red-600 mt-1">{errors?.vendors}</div>
+          )}
         </Field>
 
-        <Field label="Status" id="status-field" error={null}>
-          <select className="w-full border rounded px-3 py-2 h-11" value={form?.job_status} onChange={e=>update({ job_status: e?.target?.value })}>
-            {['new','scheduled','in_progress','completed','canceled']?.map(s => <option key={s} value={s}>{s?.replace('_',' ')}</option>)}
+        {/* Status - Maps to jobs.job_status enum */}
+        <Field label="Status" id="status-field" error="">
+          <select 
+            className="w-full border rounded px-3 py-2 h-11" 
+            value={form?.job_status || 'pending'} 
+            onChange={e => setForm(prev => ({ ...prev, job_status: e?.target?.value }))}
+          >
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="quality_check">Quality Check</option>
+            <option value="delivered">Delivered</option>
+            <option value="draft">Draft</option>
           </select>
         </Field>
         
-        <Field label="Priority" id="priority-field" error={null}>
-          <select className="w-full border rounded px-3 py-2 h-11" value={form?.priority} onChange={e=>update({ priority: e?.target?.value })}>
-            {['low','normal','high','urgent']?.map(s => <option key={s} value={s}>{s}</option>)}
+        {/* Priority - Maps to jobs.priority enum */}
+        <Field label="Priority" id="priority-field" error="">
+          <select 
+            className="w-full border rounded px-3 py-2 h-11" 
+            value={form?.priority || 'medium'} 
+            onChange={e => setForm(prev => ({ ...prev, priority: e?.target?.value }))}
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
           </select>
         </Field>
         
-        <Field label="Start time" id="start-time-field" error={null}>
-          <input type="datetime-local" className="w-full border rounded px-3 py-2 h-11" value={form?.scheduled_start_time || ''} onChange={e=>update({ scheduled_start_time: e?.target?.value })} />
+        {/* Scheduling Fields - Map to jobs table columns */}
+        <Field label="Start time" id="start-time-field" error="">
+          <input 
+            type="datetime-local" 
+            className="w-full border rounded px-3 py-2 h-11" 
+            value={form?.scheduled_start_time || ''} 
+            onChange={e => setForm(prev => ({ ...prev, scheduled_start_time: e?.target?.value }))} 
+          />
         </Field>
         
-        <Field label="End time" id="end-time-field" error={null}>
-          <input type="datetime-local" className="w-full border rounded px-3 py-2 h-11" value={form?.scheduled_end_time || ''} onChange={e=>update({ scheduled_end_time: e?.target?.value })} />
+        <Field label="End time" id="end-time-field" error="">
+          <input 
+            type="datetime-local" 
+            className="w-full border rounded px-3 py-2 h-11" 
+            value={form?.scheduled_end_time || ''} 
+            onChange={e => setForm(prev => ({ ...prev, scheduled_end_time: e?.target?.value }))} 
+          />
         </Field>
         
-        <Field label="Estimated hours" id="estimated-hours-field" error={null}>
-          <input type="number" step="0.1" className="w-full border rounded px-3 py-2 h-11" value={form?.estimated_hours || ''} onChange={e=>update({ estimated_hours: e?.target?.value })} />
+        <Field label="Estimated hours" id="estimated-hours-field" error="">
+          <input 
+            type="number" 
+            step="0.1" 
+            className="w-full border rounded px-3 py-2 h-11" 
+            value={form?.estimated_hours || ''} 
+            onChange={e => setForm(prev => ({ ...prev, estimated_hours: e?.target?.value }))} 
+          />
         </Field>
         
-        <Field label="Location" id="location-field" error={null}>
-          <input className="w-full border rounded px-3 py-2 h-11" value={form?.location || ''} onChange={e=>update({ location: e?.target?.value })} />
+        <Field label="Location" id="location-field" error="">
+          <input 
+            className="w-full border rounded px-3 py-2 h-11" 
+            value={form?.location || ''} 
+            onChange={e => setForm(prev => ({ ...prev, location: e?.target?.value }))} 
+          />
         </Field>
         
+        {/* Description - Maps to jobs.description */}
         <div className="md:col-span-2">
-          <Field label="Description" id="description-field" error={null}>
-            <textarea rows={4} className="w-full border rounded px-3 py-2 h-11" value={form?.description} onChange={e=>update({ description: e?.target?.value })} />
+          <Field label="Description" id="description-field" error="">
+            <textarea 
+              rows={4} 
+              className="w-full border rounded px-3 py-2" 
+              value={form?.description || ''} 
+              onChange={e => setForm(prev => ({ ...prev, description: e?.target?.value }))} 
+              placeholder="Enter deal description"
+            />
           </Field>
         </div>
 
-        {/* A2: Enhanced Customer Requirements with Loaner Fields */}
+        {/* Customer Loaner Requirements - Maps to jobs.customer_needs_loaner and loaner_assignments table */}
         <div className="md:col-span-2">
-          <Field label="Customer Requirements" id="customer-requirements-field" error={null}>
+          <Field label="Customer Requirements" id="customer-requirements-field" error="">
             <div className="space-y-4">
-              {/* H1: Proper label binding for loaner checkbox */}
-              <label className="inline-flex items-center space-x-2 cursor-pointer h-11 min-h-[44px]">
+              <label className="inline-flex items-center space-x-2 cursor-pointer">
                 <input
-                  id={`loaner-${form?.id || 'new'}`}
-                  data-testid="loaner-checkbox"
                   type="checkbox"
                   checked={!!form?.customer_needs_loaner}
-                  onChange={(e) => update({ customer_needs_loaner: e?.target?.checked })}
+                  onChange={(e) => setForm(prev => ({ 
+                    ...prev, 
+                    customer_needs_loaner: e?.target?.checked 
+                  }))}
                   className="h-5 w-5"
                 />
-                <span className="text-sm select-none">Customer needs loaner vehicle</span>
+                <span className="text-sm">Customer needs loaner vehicle</span>
               </label>
               
-              {/* A2: Loaner fields revealed when checked */}
               {form?.customer_needs_loaner && (
                 <div className="ml-6 pl-4 border-l-2 border-blue-200 space-y-4 bg-blue-50 p-4 rounded-lg">
                   <h4 className="font-medium text-blue-800">Loaner Assignment Details</h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Field label="Loaner Number" required id="loaner-number-field" error={null}>
+                    {/* Loaner Number - Maps to loaner_assignments.loaner_number */}
+                    <Field label="Loaner Number" required id="loaner-number-field" error="">
                       <input
                         className="w-full border rounded px-3 py-2 h-11"
                         value={form?.loanerForm?.loaner_number || ''}
-                        onChange={(e) => updateLoaner({ loaner_number: e?.target?.value })}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          loanerForm: { ...prev?.loanerForm, loaner_number: e?.target?.value }
+                        }))}
                         placeholder="e.g., LOANER-001"
                         required={form?.customer_needs_loaner}
                       />
                     </Field>
                     
-                    <Field label="ETA Return Date" id="eta-return-date-field" error={null}>
+                    {/* ETA Return Date - Maps to loaner_assignments.eta_return_date */}
+                    <Field label="ETA Return Date" id="eta-return-date-field" error="">
                       <input
                         type="date"
                         className="w-full border rounded px-3 py-2 h-11"
                         value={form?.loanerForm?.eta_return_date || ''}
-                        onChange={(e) => updateLoaner({ eta_return_date: e?.target?.value })}
+                        onChange={(e) => setForm(prev => ({
+                          ...prev,
+                          loanerForm: { ...prev?.loanerForm, eta_return_date: e?.target?.value }
+                        }))}
                         min={new Date()?.toISOString()?.split('T')?.[0]}
                       />
                     </Field>
                   </div>
                   
-                  <Field label="Loaner Notes" id="loaner-notes-field" error={null}>
+                  {/* Loaner Notes - Maps to loaner_assignments.notes */}
+                  <Field label="Loaner Notes" id="loaner-notes-field" error="">
                     <textarea
                       rows={2}
                       className="w-full border rounded px-3 py-2 resize-none"
                       value={form?.loanerForm?.notes || ''}
-                      onChange={(e) => updateLoaner({ notes: e?.target?.value })}
+                      onChange={(e) => setForm(prev => ({
+                        ...prev,
+                        loanerForm: { ...prev?.loanerForm, notes: e?.target?.value }
+                      }))}
                       placeholder="Additional notes about the loaner assignment..."
                     />
                   </Field>
@@ -387,18 +611,34 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
           </Field>
         </div>
       </div>
-      
+
+      {/* Line Items Section - Maps to job_parts table */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold">Line Items</h3>
-          {/* H3: Only disable during actual operations, not validation */}
           <button 
             type="button" 
             data-testid="add-line-item-btn"
             className="px-3 py-2 h-11 rounded border hover:bg-gray-50 disabled:opacity-50"
-            onClick={addItem}
-            disabled={saving} // H3: Only disable while saving
-            aria-label="Add new line item"
+            onClick={() => {
+              const newId = `new-${Date.now()}-${Math.random()?.toString(36)?.substr(2, 9)}`;
+              setForm(prev => ({ 
+                ...prev, 
+                lineItems: [...(prev?.lineItems || []), { 
+                  id: newId,
+                  product_id: null,
+                  quantity_used: 1,
+                  unit_price: 0,
+                  notes: '',
+                  isOffSite: false,
+                  requiresScheduling: true,
+                  lineItemPromisedDate: '',
+                  noScheduleReason: '',
+                  description: ''
+                }] 
+              }));
+            }}
+            disabled={saving}
           >
             Add Line Item
           </button>
@@ -406,190 +646,248 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
         
         <div className="space-y-3">
           {(form?.lineItems || [])?.map((item, idx) => {
-            // H2: Use stable key - item.id or fallback to index
             const itemKey = item?.id || `item-${idx}`;
             
             return (
               <div key={itemKey} className="grid grid-cols-1 md:grid-cols-12 gap-3 border rounded p-3 bg-white">
-                {/* H1: Product selection with proper labeling */}
+                {/* Product Selection - Maps to job_parts.product_id */}
                 <div className="md:col-span-3">
-                  <Field label="Product" id={`product-field-${itemKey}`} error={null}>
+                  <Field label="Product" id={`product-field-${itemKey}`} error="">
                     <select 
-                      id={`product-${itemKey}`}
                       data-testid="product-select"
                       className="w-full border rounded px-3 py-2 h-11" 
                       value={item?.product_id || ''} 
-                      onChange={e=>updateItem(idx, { product_id: e?.target?.value ? Number(e?.target?.value) : null })}
-                      aria-describedby={`product-${itemKey}-help`}
+                      onChange={e => {
+                        const productId = e?.target?.value ? e?.target?.value : null;
+                        const selectedProduct = dropdownData?.products?.find(p => p?.id === productId);
+                        
+                        setForm(prev => ({
+                          ...prev,
+                          lineItems: prev?.lineItems?.map((it, i) => 
+                            i === idx ? { 
+                              ...it, 
+                              product_id: productId,
+                              unit_price: selectedProduct?.unit_price || it?.unit_price || 0
+                            } : it
+                          )
+                        }));
+                      }}
                     >
-                      <option value="">Select product</option>
-                      {products?.map(p => <option key={p?.id} value={p?.id}>{p?.name}</option>)}
+                      {renderDropdownOptions(
+                        dropdownData?.products,
+                        'products',
+                        'products',
+                        'Select product',
+                        (p) => <option key={p?.id} value={p?.id}>{p?.name}</option>
+                      )}
                     </select>
                   </Field>
                 </div>
-                
-                {/* H2: Price with controlled value */}
+
+                {/* Quantity - Maps to job_parts.quantity_used */}
                 <div className="md:col-span-2">
-                  <Field label="Price" id={`price-field-${itemKey}`} error={null}>
+                  <Field label="Quantity" id={`quantity-field-${itemKey}`} error="">
+                    <input 
+                      type="number" 
+                      min="1"
+                      className="w-full border rounded px-3 py-2 h-11" 
+                      value={item?.quantity_used || 1} 
+                      onChange={e => setForm(prev => ({
+                        ...prev,
+                        lineItems: prev?.lineItems?.map((it, i) => 
+                          i === idx ? { ...it, quantity_used: parseInt(e?.target?.value) || 1 } : it
+                        )
+                      }))}
+                    />
+                  </Field>
+                </div>
+                
+                {/* Unit Price - Maps to job_parts.unit_price */}
+                <div className="md:col-span-2">
+                  <Field label="Unit Price" id={`price-field-${itemKey}`} error="">
                     <input 
                       type="number" 
                       step="0.01" 
+                      min="0"
                       className="w-full border rounded px-3 py-2 h-11" 
-                      value={item?.unit_price ?? ''} 
-                      onChange={e=>updateItem(idx, { unit_price: e?.target?.value })} 
+                      value={item?.unit_price || 0} 
+                      onChange={e => setForm(prev => ({
+                        ...prev,
+                        lineItems: prev?.lineItems?.map((it, i) => 
+                          i === idx ? { ...it, unit_price: parseFloat(e?.target?.value) || 0 } : it
+                        )
+                      }))}
                     />
                   </Field>
                 </div>
 
-                {/* Step 11: Vendor Dropdown - user_profiles where role='staff' AND department='Sales Consultants' AND is_active=true */}
-                <div className="md:col-span-2">
-                  <Field label="Vendor" id={`vendor-field-${itemKey}`} error={null}>
-                    <select className="w-full border rounded px-3 py-2 h-11" value={item?.vendor_id || ''} onChange={e=>updateItem(idx, { vendor_id: e?.target?.value ? Number(e?.target?.value) : null })}>
-                      <option value="">—</option>
-                      {vendors?.map(v => <option key={v?.id} value={v?.id}>{v?.name}</option>)}
-                    </select>
-                  </Field>
+                {/* Total Price Display */}
+                <div className="md:col-span-2 flex items-end">
+                  <div className="w-full p-2 bg-gray-50 rounded border text-center">
+                    Total: ${((item?.quantity_used || 1) * (item?.unit_price || 0))?.toFixed(2)}
+                  </div>
                 </div>
 
-                {/* Step 11: Priority Dropdown - user_profiles where role='staff' AND department='Sales Consultants' AND is_active=true */}
-                <div className="md:col-span-2">
-                  <Field label="Priority" id={`priority-field-${itemKey}`} error={null}>
-                    <select className="w-full border rounded px-3 py-2 h-11" value={item?.priority || 'normal'} onChange={e=>updateItem(idx, { priority: e?.target?.value })}>
-                      {['low','normal','high','urgent']?.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </Field>
-                </div>
-
+                {/* Remove Button */}
                 <div className="md:col-span-3 flex items-end justify-end">
                   <button 
                     type="button" 
                     className="px-3 py-2 h-11 rounded border text-red-700 border-red-300 hover:bg-red-50 disabled:opacity-50" 
-                    onClick={()=>removeItem(idx)}
-                    disabled={saving} // H3: Only disable during save
-                    aria-label="Remove line item"
+                    onClick={() => setForm(prev => ({ 
+                      ...prev, 
+                      lineItems: prev?.lineItems?.filter((_, i) => i !== idx) 
+                    }))}
+                    disabled={saving}
                   >
                     Remove
                   </button>
                 </div>
-                
-                {/* H1: Service location with enhanced radio button labeling */}
-                <div className="md:col-span-12 mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Service Location and Scheduling Options */}
+                <div className="md:col-span-12 mt-4 space-y-4 p-4 bg-gray-50 rounded">
+                  {/* Service Location */}
                   <div>
-                    <label className={`${themeClasses?.text} block text-sm font-medium mb-2`}>
-                      Service Location
-                    </label>
+                    <label className="block text-sm font-medium mb-2">Service Location</label>
                     <div className="flex items-center space-x-4">
-                      <label className="inline-flex items-center space-x-2 cursor-pointer h-11 min-h-[44px]">
+                      <label className="inline-flex items-center space-x-2 cursor-pointer">
                         <input
-                          id={`onsite-${itemKey}`}
-                          data-testid="service-location-onsite"
                           type="radio"
                           name={`serviceLocation_${itemKey}`}
                           checked={!item?.isOffSite}
-                          onChange={() => updateItem(idx, { isOffSite: false })}
-                          className="h-5 w-5"
+                          onChange={() => setForm(prev => ({
+                            ...prev,
+                            lineItems: prev?.lineItems?.map((it, i) => 
+                              i === idx ? { ...it, isOffSite: false } : it
+                            )
+                          }))}
+                          className="h-4 w-4"
                         />
-                        <span className="text-sm select-none">On-Site</span>
+                        <span className="text-sm">On-Site</span>
                       </label>
-                      <label className="inline-flex items-center space-x-2 cursor-pointer h-11 min-h-[44px]">
+                      <label className="inline-flex items-center space-x-2 cursor-pointer">
                         <input
-                          id={`offsite-${itemKey}`}
-                          data-testid="service-location-offsite"
                           type="radio"
                           name={`serviceLocation_${itemKey}`}
                           checked={!!item?.isOffSite}
-                          onChange={() => updateItem(idx, { isOffSite: true })}
-                          className="h-5 w-5"
+                          onChange={() => setForm(prev => ({
+                            ...prev,
+                            lineItems: prev?.lineItems?.map((it, i) => 
+                              i === idx ? { ...it, isOffSite: true } : it
+                            )
+                          }))}
+                          className="h-4 w-4"
                         />
-                        <span className="text-sm select-none">Off-Site</span>
+                        <span className="text-sm">Off-Site</span>
                       </label>
                     </div>
                   </div>
-                </div>
 
-                {/* H1: Enhanced scheduling section with proper labeling */}
-                <div className="md:col-span-12 mt-6 p-4 rounded-lg border bg-indigo-50 border-indigo-200">
-                  <h5 className="font-semibold text-indigo-800 mb-3">Scheduling (per item)</h5>
+                  {/* Scheduling Options */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Scheduling</label>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-4">
+                        <label className="inline-flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`scheduling_${itemKey}`}
+                            checked={!!item?.requiresScheduling}
+                            onChange={() => setForm(prev => ({
+                              ...prev,
+                              lineItems: prev?.lineItems?.map((it, i) => 
+                                i === idx ? { ...it, requiresScheduling: true, noScheduleReason: '' } : it
+                              )
+                            }))}
+                            className="h-4 w-4"
+                          />
+                          <span className="text-sm">Needs scheduling</span>
+                        </label>
+                        <label className="inline-flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={`scheduling_${itemKey}`}
+                            checked={!item?.requiresScheduling}
+                            onChange={() => setForm(prev => ({
+                              ...prev,
+                              lineItems: prev?.lineItems?.map((it, i) => 
+                                i === idx ? { ...it, requiresScheduling: false, lineItemPromisedDate: '' } : it
+                              )
+                            }))}
+                            className="h-4 w-4"
+                          />
+                          <span className="text-sm">No scheduling needed</span>
+                        </label>
+                      </div>
 
-                  <div className="flex items-center space-x-4 mb-4">
-                    <label className="inline-flex items-center space-x-2 cursor-pointer h-11 min-h-[44px]">
-                      <input
-                        id={`sched-needed-${itemKey}`}
-                        data-testid="scheduling-needed"
-                        type="radio"
-                        name={`requiresScheduling_${itemKey}`}
-                        checked={!!item?.requiresScheduling}
-                        onChange={() => updateItem(idx, { requiresScheduling: true, noScheduleReason: '' })}
-                        className="h-5 w-5"
-                      />
-                      <span className="text-sm select-none">Needs scheduling</span>
-                    </label>
-                    <label className="inline-flex items-center space-x-2 cursor-pointer h-11 min-h-[44px]">
-                      <input
-                        id={`sched-none-${itemKey}`}
-                        data-testid="scheduling-none"
-                        type="radio"
-                        name={`requiresScheduling_${itemKey}`}
-                        checked={!item?.requiresScheduling}
-                        onChange={() => updateItem(idx, { requiresScheduling: false, lineItemPromisedDate: '' })}
-                        className="h-5 w-5"
-                      />
-                      <span className="text-sm select-none">No scheduling needed</span>
-                    </label>
-                  </div>
-
-                  {/* H2: Controlled inputs for scheduling fields */}
-                  {item?.requiresScheduling ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Field label="Promised Date" required id={`promised-date-field-${itemKey}`} error={null}>
-                        <input
-                          data-testid="promised-date-input"
-                          type="date"
-                          value={item?.lineItemPromisedDate || ''}
-                          min={new Date()?.toISOString()?.split('T')?.[0]}
-                          onChange={(e) => updateItem(idx, { lineItemPromisedDate: e?.target?.value })}
-                          className="w-full p-3 text-sm rounded-lg border h-11"
-                          required={item?.requiresScheduling}
-                        />
-                      </Field>
-                      <div className="md:col-span-2">
-                        <Field label="Scheduling Notes" id={`scheduling-notes-field-${itemKey}`} error={null}>
-                          <textarea
-                            rows={3}
-                            placeholder="Add any special instructions, requirements, or customer preferences for this scheduled service..."
-                            className="w-full p-3 text-sm rounded-lg border resize-none"
-                            onChange={(e) => updateItem(idx, { description: e?.target?.value })}
-                            value={item?.description || ''}
+                      {item?.requiresScheduling ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <Field label="Promised Date" required id={`promised-date-field-${itemKey}`} error="">
+                            <input
+                              type="date"
+                              value={item?.lineItemPromisedDate || ''}
+                              min={new Date()?.toISOString()?.split('T')?.[0]}
+                              onChange={(e) => setForm(prev => ({
+                                ...prev,
+                                lineItems: prev?.lineItems?.map((it, i) => 
+                                  i === idx ? { ...it, lineItemPromisedDate: e?.target?.value } : it
+                                )
+                              }))}
+                              className="w-full p-3 text-sm rounded-lg border h-11"
+                              required={item?.requiresScheduling}
+                            />
+                          </Field>
+                          <Field label="Scheduling Notes" id={`scheduling-notes-field-${itemKey}`} error="">
+                            <textarea
+                              rows={2}
+                              placeholder="Special instructions or requirements..."
+                              className="w-full p-3 text-sm rounded-lg border resize-none"
+                              value={item?.description || ''}
+                              onChange={(e) => setForm(prev => ({
+                                ...prev,
+                                lineItems: prev?.lineItems?.map((it, i) => 
+                                  i === idx ? { ...it, description: e?.target?.value } : it
+                                )
+                              }))}
+                            />
+                          </Field>
+                        </div>
+                      ) : (
+                        <Field label="Reason for no schedule" required id={`no-schedule-reason-field-${itemKey}`} error="">
+                          <input
+                            type="text"
+                            placeholder="e.g., installed at delivery, no appointment needed"
+                            value={item?.noScheduleReason || ''}
+                            onChange={(e) => setForm(prev => ({
+                              ...prev,
+                              lineItems: prev?.lineItems?.map((it, i) => 
+                                i === idx ? { ...it, noScheduleReason: e?.target?.value } : it
+                              )
+                            }))}
+                            className="w-full p-3 text-sm rounded-lg border h-11"
+                            required={!item?.requiresScheduling}
                           />
                         </Field>
-                      </div>
+                      )}
                     </div>
-                  ) : (
-                    <Field label="Reason for no schedule" required id={`no-schedule-reason-field-${itemKey}`} error={null}>
-                      <input
-                        data-testid="no-schedule-reason-input"
-                        type="text"
-                        placeholder="e.g., installed at delivery, no appointment needed"
-                        value={item?.noScheduleReason || ''}
-                        onChange={(e) => updateItem(idx, { noScheduleReason: e?.target?.value })}
-                        className="w-full p-3 text-sm rounded-lg border h-11"
-                        required={!item?.requiresScheduling}
-                      />
-                    </Field>
-                  )}
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
 
+        {/* Total Summary */}
         <div className="flex items-center justify-end mt-3 text-sm text-gray-700">
-          <div className="px-3 py-1 bg-gray-50 rounded border">Total: ${total}</div>
+          <div className="px-3 py-1 bg-gray-50 rounded border">
+            Total: ${(form?.lineItems || [])?.reduce((sum, item) => {
+              return sum + ((item?.quantity_used || 1) * (item?.unit_price || 0));
+            }, 0)?.toFixed(2)}
+          </div>
         </div>
       </div>
-      
-      {/* H3: Enhanced footer with proper disable states */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t bg-white sticky bottom-0 pointer-events-auto">
+
+      {/* Form Actions */}
+      <div className="flex items-center justify-end gap-3 pt-4 border-t bg-white sticky bottom-0">
         <button 
           type="button" 
           className="px-4 py-2 h-11 rounded border hover:bg-gray-50 disabled:opacity-50" 
@@ -601,20 +899,20 @@ export default function DealForm({ mode='create', initialData=null, onSubmit, on
         <button 
           type="submit" 
           data-testid="save-deal-btn"
-          disabled={saving || !form?.customer_name?.trim() || (form?.customer_needs_loaner && !form?.loanerForm?.loaner_number?.trim())} 
+          disabled={saving || !isFormValid} 
           className="px-4 py-2 h-11 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {saving ? 'Saving...' : (mode === 'edit' ? 'Save Changes' : 'Create Deal')}
         </button>
-        {/* A3: Enhanced validation messages */}
-        {!form?.customer_name?.trim() && !saving && (
+        
+        {/* Validation Messages */}
+        {!isFormValid && !saving && (
           <div className="text-xs text-red-600 ml-2" role="alert">
-            Customer name is required to save
-          </div>
-        )}
-        {form?.customer_needs_loaner && !form?.loanerForm?.loaner_number?.trim() && !saving && (
-          <div className="text-xs text-red-600 ml-2" role="alert">
-            Loaner number is required when loaner is needed
+            {!form?.title?.trim() 
+              ? 'Title is required' 
+              : form?.customer_needs_loaner && !form?.loanerForm?.loaner_number?.trim() 
+              ? 'Loaner number is required when loaner is needed' :'Please complete required fields'
+            }
           </div>
         )}
       </div>

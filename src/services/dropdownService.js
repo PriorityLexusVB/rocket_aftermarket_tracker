@@ -11,20 +11,18 @@ const validateConnection = async () => {
   }
 };
 
-// Enhanced delivery coordinators with better error handling
+// Enhanced delivery coordinators with better error handling and flexible department matching
 export async function getDeliveryCoordinators() {
   try {
-    // First try with authentication bypass for demo/preview mode
     const { data, error } = await supabase
       ?.from('user_profiles')
-      ?.select('id, full_name, email, department')
+      ?.select('id, full_name, email, department, role')
       ?.eq('is_active', true)
-      ?.eq('department', 'Delivery Coordinator')
+      ?.or('department.ilike.%delivery%,department.ilike.%coordinator%')
       ?.order('full_name', { ascending: true });
 
     if (error) {
       console.error('Failed to fetch delivery coordinators:', error);
-      // Return empty array instead of throwing - allows UI to show appropriate message
       return [];
     }
     
@@ -35,14 +33,14 @@ export async function getDeliveryCoordinators() {
   }
 }
 
-// Enhanced sales consultants with better error handling  
+// Enhanced sales consultants with flexible department matching
 export async function getSalesConsultants() {
   try {
     const { data, error } = await supabase
       ?.from('user_profiles')
-      ?.select('id, full_name, email, department')
+      ?.select('id, full_name, email, department, role')
       ?.eq('is_active', true)
-      ?.eq('department', 'Sales Consultants')
+      ?.or('department.ilike.%sales%,department.ilike.%consultant%')
       ?.order('full_name', { ascending: true });
 
     if (error) {
@@ -57,14 +55,14 @@ export async function getSalesConsultants() {
   }
 }
 
-// Enhanced finance managers with better error handling
+// Enhanced finance managers with flexible department matching
 export async function getFinanceManagers() {
   try {
     const { data, error } = await supabase
       ?.from('user_profiles')
-      ?.select('id, full_name, email, department')
+      ?.select('id, full_name, email, department, role')
       ?.eq('is_active', true)
-      ?.eq('department', 'Finance Manager')
+      ?.or('department.ilike.%finance%,department.ilike.%manager%')
       ?.order('full_name', { ascending: true });
 
     if (error) {
@@ -101,11 +99,11 @@ export async function getProducts(options = {}) {
       return [];
     }
     
-    // Format for dropdowns
+    // Return products in simple format for dropdowns
     return (data || [])?.map(product => ({
       id: product?.id,
       value: product?.id,
-      label: `${product?.name} - ${product?.brand || 'Generic'}`,
+      label: `${product?.name}${product?.brand ? ` - ${product?.brand}` : ''}`,
       name: product?.name,
       category: product?.category,
       unitPrice: product?.unit_price,
@@ -179,11 +177,11 @@ export async function getVendors(options = {}) {
       return [];
     }
     
-    // Format for dropdowns
+    // Return vendors in simple format for dropdowns
     return (data || [])?.map(vendor => ({
       id: vendor?.id,
       value: vendor?.id,
-      label: `${vendor?.name} - ${vendor?.specialty || 'General'}`,
+      label: `${vendor?.name}${vendor?.specialty ? ` - ${vendor?.specialty}` : ''}`,
       name: vendor?.name,
       specialty: vendor?.specialty,
       email: vendor?.email,
@@ -242,5 +240,72 @@ export async function globalSearch(searchTerm) {
   } catch (e) {
     console.error('Global search failed:', e);
     return { users: [], vendors: [] };
+  }
+}
+
+// Additional utility functions for comprehensive staff management
+export async function getAllStaff() {
+  try {
+    const { data, error } = await supabase
+      ?.from('user_profiles')
+      ?.select('id, full_name, email, department, role')
+      ?.eq('is_active', true)
+      ?.order('full_name', { ascending: true });
+
+    if (error) {
+      console.error('Failed to fetch all staff:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (e) {
+    console.error('Failed to fetch all staff:', e);
+    return [];
+  }
+}
+
+export async function getStaffByDepartment(department) {
+  try {
+    if (!department?.trim()) return getAllStaff();
+    
+    const { data, error } = await supabase
+      ?.from('user_profiles')
+      ?.select('id, full_name, email, department, role')
+      ?.eq('is_active', true)
+      ?.ilike('department', `%${department}%`)
+      ?.order('full_name', { ascending: true });
+
+    if (error) {
+      console.error(`Failed to fetch staff from ${department}:`, error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (e) {
+    console.error(`Failed to fetch staff from ${department}:`, e);
+    return [];
+  }
+}
+
+export async function getStaffByRole(role) {
+  try {
+    if (!role?.trim()) return getAllStaff();
+    
+    const { data, error } = await supabase
+      ?.from('user_profiles')
+      ?.select('id, full_name, email, department, role')
+      ?.eq('is_active', true)
+      ?.eq('role', role)
+      ?.order('full_name', { ascending: true });
+
+    if (error) {
+      console.error(`Failed to fetch staff with role ${role}:`, error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (e) {
+    console.error(`Failed to fetch staff with role ${role}:`, e);
+    return [];
   }
 }
