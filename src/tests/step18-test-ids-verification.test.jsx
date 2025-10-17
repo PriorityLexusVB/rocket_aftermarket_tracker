@@ -291,7 +291,13 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
 
       buttonVariants?.forEach(({ variant, testId }) => {
         render(
-          <Button variant={variant} data-testid={testId} className="" onClick={() => {}}>
+          <Button 
+            variant={variant} 
+            data-testid={testId} 
+            className="" 
+            onClick={() => {}}
+            aria-label="Test Button"
+          >
             Test Button
           </Button>
         );

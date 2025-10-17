@@ -204,6 +204,7 @@ const SmsTemplateManager = ({ className = '' }) => {
           iconName="Plus"
           iconPosition="left"
           className="bg-primary text-primary-foreground hover:bg-primary/90"
+          aria-label="Create new SMS template"
         >
           Create Template
         </Button>
@@ -241,6 +242,7 @@ const SmsTemplateManager = ({ className = '' }) => {
             iconName="Plus"
             iconPosition="left"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
+            aria-label="Create your first SMS template"
           >
             Create First Template
           </Button>
@@ -302,6 +304,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     size="sm"
                     iconName="Edit"
                     className="hover:bg-muted"
+                    aria-label={`Edit ${template?.name} template`}
                   />
                   
                   <Button
@@ -310,6 +313,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     size="sm"
                     iconName="Trash"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    aria-label={`Delete ${template?.name} template`}
                   />
                 </div>
               </div>
@@ -416,6 +420,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   type="button" 
                   onClick={handleCancel}
                   className="border-border hover:bg-muted"
+                  aria-label="Cancel template creation"
                 >
                   Cancel
                 </Button>
@@ -423,7 +428,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                 <Button 
                   type="submit"
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => {}}
+                  aria-label={editingTemplate ? 'Update SMS template' : 'Create SMS template'}
                 >
                   {editingTemplate ? 'Update Template' : 'Create Template'}
                 </Button>

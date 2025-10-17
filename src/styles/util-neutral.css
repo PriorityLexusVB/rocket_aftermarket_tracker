@@ -55,3 +55,208 @@
   .badge--ok { border-color: var(--ok); color: var(--ok); }
   .badge--bad { border-color: var(--bad); color: var(--bad); }
 }
+
+/* Utility classes for neutral theme with enhanced mobile-first approach */
+
+/* Enhanced Mobile Touch Optimization */
+.touch-friendly {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Mobile-first light theme button variants */
+.btn-mobile-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors touch-friendly focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+.btn-mobile-secondary {
+  @apply bg-gray-100 hover:bg-gray-200 text-gray-900 px-4 py-3 rounded-lg font-medium transition-colors touch-friendly focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+}
+
+.btn-mobile-outline {
+  @apply border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-4 py-3 rounded-lg font-medium transition-colors touch-friendly focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+/* Enhanced card styles for light theme mobile */
+.card-light-mobile {
+  @apply bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4;
+}
+
+.card-light-elevated {
+  @apply bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg transition-shadow p-6;
+}
+
+/* Mobile-optimized form inputs */
+.input-mobile-light {
+  @apply w-full px-3 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 bg-white touch-friendly;
+}
+
+/* Status indicators optimized for light backgrounds */
+.status-mobile-success {
+  @apply bg-green-50 text-green-800 border border-green-200 px-3 py-2 rounded-full text-sm font-medium;
+}
+
+.status-mobile-warning {
+  @apply bg-yellow-50 text-yellow-800 border border-yellow-200 px-3 py-2 rounded-full text-sm font-medium;
+}
+
+.status-mobile-error {
+  @apply bg-red-50 text-red-800 border border-red-200 px-3 py-2 rounded-full text-sm font-medium;
+}
+
+.status-mobile-info {
+  @apply bg-blue-50 text-blue-800 border border-blue-200 px-3 py-2 rounded-full text-sm font-medium;
+}
+
+/* Mobile navigation enhancements */
+.nav-mobile-light {
+  @apply flex flex-col items-center justify-center space-y-1 p-3 rounded-lg transition-colors touch-friendly hover:bg-gray-100 text-gray-600 hover:text-gray-900;
+}
+
+/* Mobile table alternatives for light theme */
+.table-card-mobile {
+  @apply bg-white border border-gray-200 rounded-lg p-4 mb-3 shadow-sm hover:shadow-md transition-shadow;
+}
+
+/* Light theme specific utilities */
+.light-surface {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+.light-surface-elevated {
+  background-color: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px var(--mobile-shadow);
+}
+
+.light-border {
+  border-color: var(--line);
+}
+
+.light-text {
+  color: var(--text);
+}
+
+.light-muted {
+  color: var(--muted);
+}
+
+/* Mobile-first spacing utilities */
+.mobile-stack > * + * {
+  margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .mobile-stack {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .mobile-stack > * + * {
+    margin-top: 0;
+  }
+}
+
+/* Enhanced mobile typography for light theme */
+.mobile-heading-light {
+  @apply text-gray-900 font-semibold leading-tight;
+}
+
+.mobile-text-light {
+  @apply text-gray-700 leading-relaxed;
+}
+
+.mobile-caption-light {
+  @apply text-gray-500 text-sm leading-relaxed;
+}
+
+/* Mobile modal enhancements for light theme */
+.modal-mobile-light {
+  @apply bg-white rounded-t-2xl md:rounded-2xl shadow-2xl border border-gray-200;
+}
+
+/* Accessibility enhancements for mobile light theme */
+@media (prefers-reduced-motion: reduce) {
+  .btn-mobile-primary,
+  .btn-mobile-secondary,
+  .btn-mobile-outline,
+  .card-light-mobile,
+  .card-light-elevated {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-mobile-primary {
+    @apply border-2 border-blue-800;
+  }
+  
+  .btn-mobile-outline {
+    @apply border-2 border-gray-600;
+  }
+  
+  .card-light-mobile,
+  .card-light-elevated {
+    @apply border-2 border-gray-400;
+  }
+}
+
+/* Dark mode media query override for light theme preference */
+@media (prefers-color-scheme: dark) {
+  .theme-neutral-luxe {
+    /* Force light theme even in dark mode preference */
+    background: var(--bg);
+    color: var(--text);
+  }
+  
+  .theme-neutral-luxe .card-light-mobile,
+  .theme-neutral-luxe .card-light-elevated {
+    background: var(--surface);
+    border-color: var(--line);
+    color: var(--text);
+  }
+}
+
+/* Enhanced mobile touch feedback */
+.btn-mobile-primary:active,
+.btn-mobile-secondary:active,
+.btn-mobile-outline:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease-in-out;
+}
+
+/* Mobile-safe z-index stack */
+.z-mobile-dropdown { z-index: 40; }
+.z-mobile-modal { z-index: 50; }
+.z-mobile-toast { z-index: 60; }
+
+/* Mobile-optimized loading states */
+.loading-mobile-light {
+  @apply bg-gray-100 animate-pulse rounded-lg;
+}
+
+/* Enhanced mobile grid for light theme */
+.grid-mobile-light {
+  @apply grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+}
+
+/* Mobile-first responsive text sizes optimized for light backgrounds */
+.text-mobile-xs { @apply text-xs leading-relaxed; }
+.text-mobile-sm { @apply text-sm leading-relaxed; }
+.text-mobile-base { @apply text-base leading-relaxed; }
+.text-mobile-lg { @apply text-lg leading-tight; }
+.text-mobile-xl { @apply text-xl leading-tight; }
+
+@media (max-width: 768px) {
+  .text-mobile-xs { @apply text-sm; }
+  .text-mobile-sm { @apply text-base; }
+  .text-mobile-base { @apply text-lg; }
+  .text-mobile-lg { @apply text-xl; }
+  .text-mobile-xl { @apply text-2xl; }
+}

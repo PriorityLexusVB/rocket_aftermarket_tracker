@@ -1,7 +1,7 @@
 // src/pages/deals/index.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllDeals, deleteDeal } from '../../services/dealService';
+import { getAllDeals, deleteDeal, markLoanerReturned } from '../../services/dealService';
 import ExportButton from '../../components/common/ExportButton';
 import NewDealModal from './NewDealModal';
 import EditDealModal from './components/EditDealModal';
@@ -44,7 +44,66 @@ const formatStaffName = (fullName) => {
   return `${lastName}, ${firstInitial}.`;
 };
 
-// Service Location Tag Component
+// Enhanced "Next" promised chip with urgency colors
+const NextPromisedChip = ({ jobParts }) => {
+  if (!jobParts || jobParts?.length === 0) {
+    return <span className="text-xs text-gray-500">—</span>;
+  }
+
+  // Find earliest promised date from items requiring scheduling
+  const schedulingItems = jobParts?.filter(part => part?.requires_scheduling && part?.promised_date);
+  
+  if (schedulingItems?.length === 0) {
+    return <span className="text-xs text-gray-500">—</span>;
+  }
+
+  const earliestPromise = schedulingItems?.sort((a, b) => 
+    new Date(a?.promised_date) - new Date(b?.promised_date)
+  )?.[0];
+
+  if (!earliestPromise?.promised_date) {
+    return <span className="text-xs text-gray-500">—</span>;
+  }
+
+  const promiseDate = new Date(earliestPromise?.promised_date);
+  const today = new Date();
+  today?.setHours(0, 0, 0, 0);
+  promiseDate?.setHours(0, 0, 0, 0);
+  
+  const todayPlus2 = new Date(today);
+  todayPlus2?.setDate(today?.getDate() + 2);
+
+  let urgencyClass = '';
+  let status = 'ok';
+  
+  // Compute urgency
+  if (promiseDate < today) {
+    // overdue: date < today
+    status = 'overdue';
+    urgencyClass = 'bg-red-100 text-red-800 border-red-200';
+  } else if (promiseDate <= todayPlus2) {
+    // soon: today ≤ date ≤ today+2
+    status = 'soon'; 
+    urgencyClass = 'bg-amber-100 text-amber-800 border-amber-200';
+  } else {
+    // ok: otherwise
+    status = 'ok';
+    urgencyClass = 'bg-green-100 text-green-800 border-green-200';
+  }
+
+  const formattedDate = promiseDate?.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric' 
+  });
+
+  return (
+    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${urgencyClass}`}>
+      Next: {formattedDate}
+    </span>
+  );
+};
+
+// Enhanced Service Location Tag with updated colors per checklist requirements
 const ServiceLocationTag = ({ jobParts }) => {
   if (!jobParts || jobParts?.length === 0) {
     return <span className="text-xs text-gray-500">No items</span>;
@@ -56,10 +115,10 @@ const ServiceLocationTag = ({ jobParts }) => {
   if (hasOffSite && hasOnSite) {
     return (
       <div className="flex flex-col space-y-1">
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#f97316', borderColor: '#f97316' }}>
           🏢 Off-Site
         </span>
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#22c55e', borderColor: '#22c55e' }}>
           🏠 On-Site
         </span>
       </div>
@@ -68,89 +127,62 @@ const ServiceLocationTag = ({ jobParts }) => {
 
   if (hasOffSite) {
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#f97316', borderColor: '#f97316' }}>
         🏢 Off-Site
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#22c55e', borderColor: '#22c55e' }}>
       🏠 On-Site
     </span>
   );
 };
 
-const SchedulingStatus = ({ jobParts }) => {
-  if (!jobParts || jobParts?.length === 0) {
-    return <span className="text-xs text-gray-500">—</span>;
-  }
-
-  const schedulingItems = jobParts?.filter(part => part?.requires_scheduling);
-  const noScheduleItems = jobParts?.filter(part => !part?.requires_scheduling);
+// Enhanced draft reminder with improved styling
+const DraftReminderBanner = ({ draftsCount, onViewDrafts }) => {
+  const [dismissed, setDismissed] = useState(false);
   
-  const upcomingPromises = schedulingItems?.filter(part => {
-    if (!part?.promised_date) return false;
-    const promiseDate = new Date(part?.promised_date);
-    const today = new Date();
-    today?.setHours(0, 0, 0, 0);
-    return promiseDate >= today;
-  });
-
-  const overduePromises = schedulingItems?.filter(part => {
-    if (!part?.promised_date) return false;
-    const promiseDate = new Date(part?.promised_date);
-    const today = new Date();
-    today?.setHours(0, 0, 0, 0);
-    return promiseDate < today;
-  });
-
-  if (overduePromises?.length > 0) {
-    return (
-      <div className="flex flex-col space-y-1">
-        <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
-          {overduePromises?.length} overdue
-        </span>
-        {upcomingPromises?.length > 0 && (
-          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-            {upcomingPromises?.length} scheduled
-          </span>
-        )}
-      </div>
-    );
-  }
-
-  if (upcomingPromises?.length > 0) {
-    const nextPromise = upcomingPromises?.sort((a, b) => 
-      new Date(a?.promised_date) - new Date(b?.promised_date)
-    )?.[0];
-    const promiseDate = new Date(nextPromise?.promised_date);
-    const formattedDate = promiseDate?.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
-    
-    return (
-      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-        Next: {formattedDate}
-      </span>
-    );
-  }
-
-  if (noScheduleItems?.length > 0) {
-    return (
-      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-        No scheduling needed
-      </span>
-    );
-  }
+  if (draftsCount === 0 || dismissed) return null;
 
   return (
-    <span className="text-xs text-gray-500">—</span>
+    <div className="mb-6 p-4 rounded-lg border bg-amber-50 border-amber-200 text-amber-900">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="flex-shrink-0">
+            <Icon name="AlertCircle" size={20} className="text-amber-600" />
+          </div>
+          <div>
+            <p className="font-medium">Draft – needs details</p>
+            <p className="text-sm">
+              You have {draftsCount} draft deal{draftsCount > 1 ? 's' : ''} to complete.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            onClick={onViewDrafts} 
+            className="text-amber-700 hover:text-amber-800 hover:bg-amber-100"
+            aria-label="View draft deals"
+          >
+            View drafts
+          </Button>
+          <button
+            onClick={() => setDismissed(true)}
+            className="text-amber-500 hover:text-amber-700 p-1"
+          >
+            <Icon name="X" size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
-// Mobile-friendly customer display with tap-to-call
+// Mobile-friendly customer display with enhanced tap-to-call and SMS
 const CustomerDisplay = ({ deal }) => {
   if (!deal?.customer_name && !deal?.customer_phone) {
     return <span className="text-xs text-gray-500">—</span>;
@@ -164,18 +196,26 @@ const CustomerDisplay = ({ deal }) => {
         </div>
       )}
       {deal?.customer_phone && (
-        <div className="md:hidden">
-          <a 
-            href={`tel:${deal?.customer_phone}`}
-            className="text-xs text-blue-600 hover:text-blue-800 underline"
-          >
+        <div className="flex space-x-2 md:block md:space-x-0">
+          {/* Mobile: tap-to-call and SMS */}
+          <div className="md:hidden flex space-x-2">
+            <a 
+              href={`tel:${deal?.customer_phone}`}
+              className="text-xs text-blue-600 hover:text-blue-800 underline bg-blue-50 px-2 py-1 rounded"
+            >
+              📞 Call
+            </a>
+            <a 
+              href={`sms:${deal?.customer_phone}`}
+              className="text-xs text-green-600 hover:text-green-800 underline bg-green-50 px-2 py-1 rounded"
+            >
+              💬 SMS
+            </a>
+          </div>
+          {/* Desktop: plain display */}
+          <div className="hidden md:block text-xs text-gray-500">
             {deal?.customer_phone}
-          </a>
-        </div>
-      )}
-      {deal?.customer_phone && (
-        <div className="hidden md:block text-xs text-gray-500">
-          {deal?.customer_phone}
+          </div>
         </div>
       )}
     </div>
@@ -193,6 +233,59 @@ const ValueDisplay = ({ amount }) => {
           currency: 'USD'
         })?.format(value)}
       </span>
+    </div>
+  );
+};
+
+// A2: Enhanced Loaner Pill component for tracker rows
+const LoanerPill = ({ deal }) => {
+  if (!deal?.loaner_number) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+      🚗 Loaner #{deal?.loaner_number}
+      {deal?.loaner_eta_short && (
+        <span className="ml-1">• Due {deal?.loaner_eta_short}</span>
+      )}
+    </span>
+  );
+};
+
+// A3: Mark Returned Modal Component
+const MarkReturnedModal = ({ loaner, onClose, onConfirm, loading }) => {
+  if (!loaner) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md">
+        <div className="p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Mark Loaner Returned</h3>
+          <p className="text-gray-600 mb-6">
+            Mark loaner <strong>#{loaner?.loaner_number}</strong> as returned?
+          </p>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+              disabled={loading}
+              aria-label="Cancel marking loaner as returned"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={onConfirm}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              disabled={loading}
+              aria-label="Confirm loaner returned"
+            >
+              {loading ? 'Processing...' : 'Mark Returned'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -234,6 +327,10 @@ export default function DealsPage() {
     dateRange: null,
     search: ''
   });
+
+  // A3: Loaner management state
+  const [markReturnedModal, setMarkReturnedModal] = useState(null);
+  const [returningLoaner, setReturningLoaner] = useState(false);
 
   // Load dropdown data for filters
   const {
@@ -474,6 +571,19 @@ export default function DealsPage() {
     }
   };
 
+  const handleMarkLoanerReturned = async (loanerData) => {
+    try {
+      setReturningLoaner(true);
+      await markLoanerReturned(loanerData?.loaner_id);
+      setMarkReturnedModal(null);
+      await loadDeals(); // Refresh data
+    } catch (e) {
+      alert(`Failed to mark loaner as returned: ${e?.message}`);
+    } finally {
+      setReturningLoaner(false);
+    }
+  };
+
   const loadDeals = async () => {
     try {
       setLoading(true);
@@ -522,6 +632,7 @@ export default function DealsPage() {
             <Button
               onClick={() => setShowNewDealModal(true)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 h-11"
+              aria-label="Create new deal"
             >
               <Icon name="Plus" size={16} className="mr-2" />
               New Deal
@@ -529,20 +640,11 @@ export default function DealsPage() {
           </div>
         </div>
 
-        {/* Draft nudge banner */}
-        {kpis?.drafts > 0 && (
-          <div className="mb-6 p-4 rounded-lg border bg-amber-50 border-amber-200 text-amber-900 text-sm flex items-center justify-between">
-            <span>⏳ You have {kpis?.drafts} draft deal{kpis?.drafts > 1 ? 's' : ''} to finish.</span>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => updateFilter('status', 'draft')} 
-              className="text-amber-700 hover:text-amber-800"
-            >
-              View drafts
-            </Button>
-          </div>
-        )}
+        {/* Draft reminder banner */}
+        <DraftReminderBanner 
+          draftsCount={kpis?.drafts}
+          onViewDrafts={() => updateFilter('status', 'draft')}
+        />
 
         {/* KPI Row */}
         <div className="mb-6">
@@ -713,6 +815,7 @@ export default function DealsPage() {
                 size="sm"
                 onClick={clearAllFilters}
                 className="text-gray-600 hover:text-gray-800"
+                aria-label="Clear all filters"
               >
                 <Icon name="X" size={16} className="mr-1" />
                 Clear
@@ -805,7 +908,7 @@ export default function DealsPage() {
                   Scheduling
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Service
+                  Service / Loaner
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Value
@@ -850,10 +953,13 @@ export default function DealsPage() {
                     <StatusPill status={deal?.job_status} />
                   </td>
                   <td className="px-6 py-4">
-                    <SchedulingStatus jobParts={deal?.job_parts} />
+                    <NextPromisedChip jobParts={deal?.job_parts} />
                   </td>
                   <td className="px-6 py-4">
-                    <ServiceLocationTag jobParts={deal?.job_parts} />
+                    <div className="space-y-1">
+                      <ServiceLocationTag jobParts={deal?.job_parts} />
+                      <LoanerPill deal={deal} />
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <ValueDisplay amount={deal?.total_amount} />
@@ -865,14 +971,34 @@ export default function DealsPage() {
                         variant="ghost"
                         onClick={() => handleEditDeal(deal?.id)}
                         className="text-blue-600 hover:text-blue-800"
+                        aria-label="Edit deal"
                       >
                         Edit
                       </Button>
+                      
+                      {/* A3: Mark Loaner Returned action */}
+                      {deal?.loaner_id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setMarkReturnedModal({
+                            loaner_id: deal?.loaner_id,
+                            loaner_number: deal?.loaner_number,
+                            job_title: deal?.title
+                          })}
+                          className="text-green-600 hover:text-green-800"
+                          aria-label="Mark loaner returned"
+                        >
+                          Return
+                        </Button>
+                      )}
+                      
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setDeleteConfirm(deal)}
                         className="text-red-600 hover:text-red-800"
+                        aria-label="Delete deal"
                       >
                         Delete
                       </Button>
@@ -889,27 +1015,31 @@ export default function DealsPage() {
           {filteredDeals?.length === 0 ? (
             <div className="bg-white rounded-lg border p-8 text-center">
               <div className="text-gray-500">
-                {filterStatus === 'all' ? 'No deals found' : `No ${filterStatus} deals found`}
+                {filters?.status === 'all' ? 'No deals found' : `No ${filters?.status} deals found`}
               </div>
             </div>
           ) : filteredDeals?.map(deal => (
-            <div key={deal?.id} className="bg-white rounded-lg border p-4 shadow-sm">
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <div className="font-medium text-gray-900">
-                    {deal?.job_number || `Job-${deal?.id?.slice(0, 8)}`}
+            <div key={deal?.id} className="bg-white rounded-xl border shadow-sm overflow-hidden">
+              {/* Card Header with enhanced mobile styling */}
+              <div className="p-4 border-b bg-slate-50">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <div className="font-medium text-gray-900">
+                      {deal?.job_number || `Job-${deal?.id?.slice(0, 8)}`}
+                    </div>
+                    <div className="text-sm text-gray-600">{deal?.title}</div>
                   </div>
-                  <div className="text-sm text-gray-500">{deal?.title}</div>
-                </div>
-                <div className="flex space-x-2">
                   <StatusPill status={deal?.job_status} />
                 </div>
               </div>
 
-              <div className="space-y-3">
+              {/* Card Content */}
+              <div className="p-4 space-y-4">
                 {deal?.vehicle && (
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Vehicle</div>
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                      Vehicle
+                    </div>
                     <div className="text-sm text-gray-900">
                       {`${deal?.vehicle?.year} ${deal?.vehicle?.make} ${deal?.vehicle?.model}`}
                     </div>
@@ -921,47 +1051,89 @@ export default function DealsPage() {
 
                 {(deal?.customer_name || deal?.customer_phone) && (
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Customer</div>
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                      Customer
+                    </div>
                     <CustomerDisplay deal={deal} />
                   </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Service</div>
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                      Service
+                    </div>
                     <ServiceLocationTag jobParts={deal?.job_parts} />
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Value</div>
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                      Value
+                    </div>
                     <ValueDisplay amount={deal?.total_amount} />
                   </div>
                 </div>
 
+                {/* A2: Loaner section for mobile */}
+                {deal?.loaner_number && (
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                      Loaner Assignment
+                    </div>
+                    <LoanerPill deal={deal} />
+                  </div>
+                )}
+
                 <div>
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Scheduling</div>
-                  <SchedulingStatus jobParts={deal?.job_parts} />
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                    Next Promised
+                  </div>
+                  <NextPromisedChip jobParts={deal?.job_parts} />
                 </div>
               </div>
 
-              <div className="flex justify-between items-center mt-4 pt-3 border-t">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleEditDeal(deal?.id)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  <Icon name="Edit" size={16} className="mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setDeleteConfirm(deal)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <Icon name="Trash2" size={16} className="mr-1" />
-                  Delete
-                </Button>
+              {/* A3: Enhanced mobile footer with loaner actions */}
+              <div className="p-4 border-t bg-slate-50">
+                <div className={`grid gap-2 ${deal?.loaner_id ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEditDeal(deal?.id)}
+                    className="h-11 w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                    aria-label="Edit deal"
+                  >
+                    <Icon name="Edit" size={16} className="mr-2" />
+                    Edit
+                  </Button>
+                  
+                  {/* A3: Mobile loaner return button */}
+                  {deal?.loaner_id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMarkReturnedModal({
+                        loaner_id: deal?.loaner_id,
+                        loaner_number: deal?.loaner_number,
+                        job_title: deal?.title
+                      })}
+                      className="h-11 w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                      aria-label="Mark loaner returned"
+                    >
+                      <Icon name="CheckCircle" size={16} className="mr-2" />
+                      Return
+                    </Button>
+                  )}
+                  
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDeleteConfirm(deal)}
+                    className="h-11 w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                    aria-label="Delete deal"
+                  >
+                    <Icon name="Trash2" size={16} className="mr-2" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
@@ -999,12 +1171,14 @@ export default function DealsPage() {
                     variant="outline"
                     onClick={() => setDeleteConfirm(null)}
                     className="flex-1"
+                    aria-label="Cancel deletion"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={() => handleDeleteDeal(deleteConfirm?.id)}
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    aria-label="Confirm deletion"
                   >
                     Delete
                   </Button>
@@ -1013,6 +1187,14 @@ export default function DealsPage() {
             </div>
           </div>
         )}
+
+        {/* A3: Mark Loaner Returned Modal */}
+        <MarkReturnedModal
+          loaner={markReturnedModal}
+          onClose={() => setMarkReturnedModal(null)}
+          onConfirm={() => handleMarkLoanerReturned(markReturnedModal)}
+          loading={returningLoaner}
+        />
       </div>
     </div>
   );

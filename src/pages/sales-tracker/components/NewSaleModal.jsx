@@ -303,11 +303,8 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="date"
                   required
-                  label="Sale Date"
-                  placeholder=""
-                  helperText=""
-                  maxLength={50}
-                  style={{}}
+                  id="saleDate"
+                  aria-label="Sale Date"
                   value={formData?.saleDate}
                   onChange={(e) => handleInputChange('saleDate', e?.target?.value)}
                 />
@@ -358,11 +355,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="text"
                   required
-                  label="Customer Name"
+                  id="customerName"
+                  aria-label="Customer Name"
                   placeholder="Enter customer name"
-                  helperText=""
-                  maxLength={100}
-                  style={{}}
                   value={formData?.customerName}
                   onChange={(e) => handleInputChange('customerName', e?.target?.value)}
                 />
@@ -373,11 +368,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="email"
-                  label="Email"
+                  id="customerEmail"
+                  aria-label="Email"
                   placeholder="customer@email.com"
-                  helperText=""
-                  maxLength={100}
-                  style={{}}
                   value={formData?.customerEmail}
                   onChange={(e) => handleInputChange('customerEmail', e?.target?.value)}
                 />
@@ -388,11 +381,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="tel"
-                  label="Phone"
+                  id="customerPhone"
+                  aria-label="Phone"
                   placeholder="(555) 123-4567"
-                  helperText=""
-                  maxLength={20}
-                  style={{}}
                   value={formData?.customerPhone}
                   onChange={(e) => handleInputChange('customerPhone', e?.target?.value)}
                 />
@@ -414,11 +405,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="text"
-                  label="Stock Number"
+                  id="stockNumber"
+                  aria-label="Stock Number"
                   placeholder="STK-2024-001"
-                  helperText=""
-                  maxLength={50}
-                  style={{}}
                   value={formData?.vehicle?.stockNumber}
                   onChange={(e) => handleInputChange('vehicle.stockNumber', e?.target?.value)}
                 />
@@ -432,11 +421,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                   min="1980"
                   max="2025"
                   required
-                  label="Year"
+                  id="vehicleYear"
+                  aria-label="Year"
                   placeholder="2020"
-                  helperText=""
-                  maxLength={4}
-                  style={{}}
                   value={formData?.vehicle?.year}
                   onChange={(e) => handleInputChange('vehicle.year', e?.target?.value)}
                 />
@@ -448,11 +435,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="text"
                   required
-                  label="Make"
+                  id="vehicleMake"
+                  aria-label="Make"
                   placeholder="Honda, Toyota, Ford, etc."
-                  helperText=""
-                  maxLength={50}
-                  style={{}}
                   value={formData?.vehicle?.make}
                   onChange={(e) => handleInputChange('vehicle.make', e?.target?.value)}
                 />
@@ -464,11 +449,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 <Input
                   type="text"
                   required
-                  label="Model"
+                  id="vehicleModel"
+                  aria-label="Model"
                   placeholder="Civic, Camry, F-150, etc."
-                  helperText=""
-                  maxLength={50}
-                  style={{}}
                   value={formData?.vehicle?.model}
                   onChange={(e) => handleInputChange('vehicle.model', e?.target?.value)}
                 />
@@ -479,11 +462,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                 </label>
                 <Input
                   type="text"
-                  label="Color"
+                  id="vehicleColor"
+                  aria-label="Color"
                   placeholder="Red, Blue, White, Silver, etc."
-                  helperText=""
-                  maxLength={30}
-                  style={{}}
                   value={formData?.vehicle?.color}
                   onChange={(e) => handleInputChange('vehicle.color', e?.target?.value)}
                 />
@@ -518,11 +499,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         {item?.isCustomItem && (
                           <Input
                             type="text"
-                            label="Custom Item Name"
+                            id={`customItem-${index}`}
+                            aria-label="Custom Item Name"
                             placeholder="Enter custom item name"
-                            helperText=""
-                            maxLength={100}
-                            style={{}}
                             value={item?.itemName}
                             onChange={(e) => handleLineItemChange(index, 'itemName', e?.target?.value)}
                             required
@@ -540,11 +519,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         step="0.01"
                         min="0"
                         required
-                        label="Cost"
+                        id={`cost-${index}`}
+                        aria-label="Cost"
                         placeholder="0.00"
-                        helperText=""
-                        maxLength={10}
-                        style={{}}
                         value={item?.cost}
                         onChange={(e) => handleLineItemChange(index, 'cost', e?.target?.value)}
                       />
@@ -559,11 +536,9 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         step="0.01"
                         min="0"
                         required
-                        label="Price"
+                        id={`price-${index}`}
+                        aria-label="Price"
                         placeholder="0.00"
-                        helperText=""
-                        maxLength={10}
-                        style={{}}
                         value={item?.price}
                         onChange={(e) => handleLineItemChange(index, 'price', e?.target?.value)}
                       />
@@ -618,11 +593,8 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         type="date"
                         required={item?.processingType === 'vendor'}
                         disabled={item?.processingType !== 'vendor'}
-                        label="Date for Vendor"
-                        placeholder=""
-                        helperText=""
-                        maxLength={50}
-                        style={{}}
+                        id={`vendorDate-${index}`}
+                        aria-label="Date for Vendor"
                         value={item?.vendorDate}
                         onChange={(e) => handleLineItemChange(index, 'vendorDate', e?.target?.value)}
                       />
@@ -636,11 +608,8 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                         type="date"
                         required={item?.processingType === 'vendor'}
                         disabled={item?.processingType !== 'vendor'}
-                        label="ETA Return"
-                        placeholder=""
-                        helperText=""
-                        maxLength={50}
-                        style={{}}
+                        id={`etaReturn-${index}`}
+                        aria-label="ETA Return"
                         value={item?.etaReturn}
                         onChange={(e) => handleLineItemChange(index, 'etaReturn', e?.target?.value)}
                       />
@@ -668,6 +637,7 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
                   type="button"
                   variant="outline"
                   onClick={addLineItem}
+                  aria-label="Add Another Item"
                   className="flex items-center space-x-2"
                 >
                   <Plus className="h-4 w-4" />
@@ -760,15 +730,15 @@ const NewSaleModal = ({ isOpen, onClose, onSubmit, staffMembers }) => {
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className=""
+              aria-label="Cancel"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
+              aria-label={loading ? 'Adding...' : 'Add Sale'}
               className="flex items-center space-x-2"
-              onClick={() => {}}
             >
               {loading && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>

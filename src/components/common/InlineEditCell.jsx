@@ -172,6 +172,7 @@ const InlineEditCell = ({
               onClick={handleSave}
               disabled={isLoading}
               className="w-6 h-6 text-green-600 hover:bg-green-50"
+              aria-label="Save changes"
             >
               {isLoading ? (
                 <div className="w-3 h-3 border border-green-600 border-t-transparent rounded-full animate-spin" />
@@ -186,6 +187,7 @@ const InlineEditCell = ({
               onClick={handleCancel}
               disabled={isLoading}
               className="w-6 h-6 text-red-600 hover:bg-red-50"
+              aria-label="Cancel editing"
             >
               <Icon name="X" size={12} />
             </Button>
@@ -199,7 +201,7 @@ const InlineEditCell = ({
     <div 
       className={`inline-edit-cell display ${cellClassName} ${
         disabled 
-          ? 'cursor-not-allowed opacity-50' :'cursor-pointer hover:bg-gray-50 hover:text-primary'
+          ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-gray-50 hover:text-primary'
       } group flex items-center justify-between`}
       onClick={handleStartEdit}
     >

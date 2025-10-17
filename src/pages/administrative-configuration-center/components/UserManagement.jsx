@@ -226,6 +226,7 @@ const UserManagement = () => {
           onClick={() => setShowCreateForm(true)}
           disabled={!isAdmin}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          aria-label="Add Staff"
         >
           <span className="mr-2">➕</span>
           Add Staff
@@ -393,6 +394,7 @@ const UserManagement = () => {
                 onClick={resetForm}
                 disabled={creating}
                 className="bg-gray-100 hover:bg-gray-200 text-gray-800"
+                aria-label="Cancel"
               >
                 Cancel
               </Button>
@@ -401,6 +403,7 @@ const UserManagement = () => {
                 onClick={handleCreateUser}
                 disabled={creating || !formData?.full_name || !formData?.full_name?.trim()}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                aria-label="Add Staff"
               >
                 {creating ? 'Adding...' : 'Add Staff'}
               </Button>

@@ -67,6 +67,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
             iconName="ExternalLink"
             iconPosition="right"
             className="text-sm"
+            aria-label="View all overdue jobs"
           >
             View All
           </Button>
@@ -159,6 +160,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
               size="sm"
               onClick={() => navigate('/kanban-status-board?filter=overdue')}
               className="flex-1"
+              aria-label="Manage overdue jobs"
             >
               Manage Overdue
             </Button>
@@ -168,6 +170,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
               size="sm"
               onClick={() => navigate('/vendor-operations-center')}
               className="flex-1"
+              aria-label="Contact vendors for overdue jobs"
             >
               Contact Vendors
             </Button>

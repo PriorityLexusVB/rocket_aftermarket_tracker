@@ -273,6 +273,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
             onClick={handleClose}
             disabled={isSubmitting}
             className="hover:bg-muted"
+            aria-label="Close modal"
           >
             <Icon name="X" size={20} />
           </Button>
@@ -342,6 +343,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                     onClick={fillSuggestedStockNumber}
                     className="absolute right-2 top-8 text-xs"
                     disabled={!watchedMake || !watchedYear}
+                    aria-label="Auto-generate stock number"
                   >
                     Auto
                   </Button>
@@ -586,6 +588,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                 onClick={handleClose}
                 disabled={isSubmitting}
                 className=""
+                aria-label="Cancel"
               >
                 Cancel
               </Button>
@@ -597,6 +600,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                 iconPosition="left"
                 className=""
                 onClick={() => {}}
+                aria-label="Add Vehicle with Products"
               >
                 Add Vehicle with Products
               </Button>

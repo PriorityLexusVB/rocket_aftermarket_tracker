@@ -8,14 +8,15 @@ import Select from '../../../components/ui/Select';
 import SearchableSelect from '../../../components/ui/SearchableSelect';
 import Icon from '../../../components/ui/Icon';
 
-
-
 const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
+  const [initialFormData, setInitialFormData] = useState(null);
 
   // Enhanced dropdown data
   const {
@@ -39,6 +40,14 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     lineItems: []
   });
 
+  // Dirty state tracking
+  useEffect(() => {
+    if (initialFormData) {
+      const hasChanges = JSON.stringify(formData) !== JSON.stringify(initialFormData);
+      setIsDirty(hasChanges);
+    }
+  }, [formData, initialFormData]);
+
   // Load dropdown data when modal opens
   useEffect(() => {
     if (isOpen && !dropdownLoading) {
@@ -53,6 +62,102 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     }
   }, [isOpen, dealId]);
 
+  // Enhanced Loaner Checkbox with mobile optimization and click propagation handling
+  const LoanerCheckbox = ({ checked, onChange }) => (
+    <div 
+      className="bg-slate-50 p-4 rounded-lg border"
+      onClick={(e) => e?.stopPropagation()}
+    >
+      <label htmlFor="customer_needs_loaner" className="inline-flex items-center gap-3 min-h-11 px-2 cursor-pointer">
+        <input
+          id="customer_needs_loaner"
+          type="checkbox"
+          checked={Boolean(checked)}
+          onChange={(e) => {
+            e?.stopPropagation();
+            onChange(e?.target?.checked);
+          }}
+          onClick={(e) => e?.stopPropagation()}
+          className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          data-testid="loaner-checkbox"
+        />
+        <span className="text-sm font-medium text-gray-700 select-none">
+          Customer needs loaner vehicle
+        </span>
+      </label>
+    </div>
+  );
+
+  // Enhanced Service Type Radio with proper mobile accessibility
+  const ServiceTypeRadio = ({ value, selectedValue, onChange, itemIndex, disabled = false }) => (
+    <div className="flex space-x-6">
+      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
+        <input
+          type="radio"
+          name={`serviceLocation_${itemIndex}`}
+          value="in_house"
+          checked={!selectedValue}
+          onChange={() => onChange(false)}
+          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+          data-testid="service-type-in-house"
+          disabled={disabled}
+        />
+        <span className="text-sm text-gray-700 select-none">
+          🏠 On-Site
+        </span>
+      </label>
+      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
+        <input
+          type="radio"
+          name={`serviceLocation_${itemIndex}`}
+          value="vendor"
+          checked={selectedValue}
+          onChange={() => onChange(true)}
+          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+          data-testid="service-type-vendor"
+          disabled={disabled}
+        />
+        <span className="text-sm text-gray-700 select-none">
+          🏢 Off-Site
+        </span>
+      </label>
+    </div>
+  );
+
+  // Enhanced Scheduling Radio with mobile optimization
+  const SchedulingRadio = ({ requiresScheduling, onChange, itemIndex, disabled = false }) => (
+    <div className="flex space-x-6">
+      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
+        <input
+          type="radio"
+          name={`scheduling_${itemIndex}`}
+          checked={requiresScheduling === true}
+          onChange={() => onChange(true)}
+          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+          data-testid="requires-scheduling-yes"
+          disabled={disabled}
+        />
+        <span className="text-sm text-gray-700 select-none">
+          Needs scheduling
+        </span>
+      </label>
+      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
+        <input
+          type="radio"
+          name={`scheduling_${itemIndex}`}
+          checked={requiresScheduling === false}
+          onChange={() => onChange(false)}
+          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+          data-testid="requires-scheduling-no"
+          disabled={disabled}
+        />
+        <span className="text-sm text-gray-700 select-none">
+          No scheduling needed
+        </span>
+      </label>
+    </div>
+  );
+
   const loadDealData = async () => {
     try {
       setLoading(true);
@@ -64,13 +169,16 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
       // Get transaction data for customer info
       const { data: transaction } = await supabase?.from('transactions')?.select('customer_name, customer_phone, customer_email')?.eq('job_id', dealId)?.single();
 
-      setFormData({
+      const loadedFormData = {
         ...formDeal,
         customerName: transaction?.customer_name || '',
         customerPhone: transaction?.customer_phone || '',
         customerEmail: transaction?.customer_email || '',
         lineItems: (formDeal?.lineItems || [])?.length > 0 ? formDeal?.lineItems : [createEmptyLineItem()]
-      });
+      };
+
+      setFormData(loadedFormData);
+      setInitialFormData(JSON.parse(JSON.stringify(loadedFormData))); // Deep copy for comparison
     } catch (err) {
       setError(`Failed to load deal: ${err?.message}`);
     } finally {
@@ -96,9 +204,31 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
   const updateLineItem = (index, updates) => {
     setFormData(prev => ({
       ...prev,
-      lineItems: prev?.lineItems?.map((item, i) => 
-        i === index ? { ...item, ...updates } : item
-      )
+      lineItems: prev?.lineItems?.map((item, i) => {
+        if (i === index) {
+          let updatedItem = { ...item, ...updates };
+          
+          // Boolean coercion and paired field clearing
+          if ('requiresScheduling' in updates) {
+            updatedItem.requiresScheduling = Boolean(updates?.requiresScheduling);
+            if (updates?.requiresScheduling === true) {
+              updatedItem.noScheduleReason = '';
+            } else {
+              updatedItem.lineItemPromisedDate = '';
+            }
+          }
+          
+          if ('isOffSite' in updates) {
+            updatedItem.isOffSite = Boolean(updates?.isOffSite);
+            if (!updates?.isOffSite) {
+              updatedItem.vendorId = '';
+            }
+          }
+          
+          return updatedItem;
+        }
+        return item;
+      })
     }));
 
     // Auto-populate price when product is selected
@@ -169,10 +299,27 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
           setError(`Line item ${i + 1}: Reason is required when no scheduling is needed`);
           return;
         }
+
+        if (item?.isOffSite && !item?.vendorId) {
+          setError(`Line item ${i + 1}: Vendor is required for off-site service`);
+          return;
+        }
       }
 
-      // Update the deal
-      await updateDeal(dealId, formData);
+      // Update the deal with proper boolean coercion
+      const updatedFormData = {
+        ...formData,
+        customer_needs_loaner: Boolean(formData?.customer_needs_loaner),
+        lineItems: formData?.lineItems?.map(item => ({
+          ...item,
+          requiresScheduling: Boolean(item?.requiresScheduling),
+          isOffSite: Boolean(item?.isOffSite),
+          unit_price: parseFloat(item?.unit_price) || 0,
+          quantity_used: parseInt(item?.quantity_used) || 1
+        }))
+      };
+
+      await updateDeal(dealId, updatedFormData);
       
       onSuccess?.();
       onClose?.();
@@ -197,34 +344,48 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     }
   };
 
-  // Calculate total
+  // Enhanced close handler with unsaved changes guard
+  const handleClose = () => {
+    if (isDirty) {
+      setShowUnsavedWarning(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const confirmClose = () => {
+    setShowUnsavedWarning(false);
+    onClose();
+  };
+
+  // Calculate total with guard for NaN
   const calculateTotal = () => {
     return formData?.lineItems?.reduce((total, item) => {
       const price = parseFloat(item?.unit_price) || 0;
       const quantity = parseInt(item?.quantity_used) || 1;
       return total + (price * quantity);
-    }, 0);
+    }, 0) || 0;
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+      <div className="bg-white rounded-xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
+        {/* Header with enhanced styling */}
+        <div className="flex items-center justify-between p-6 border-b bg-slate-50">
           <h2 className="text-xl font-semibold text-gray-900">Edit Deal</h2>
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            onClick={handleClose}
+            className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
           >
             <Icon name="X" size={20} />
           </button>
         </div>
 
-        {/* Content */}
+        {/* Content with light theme */}
         <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 bg-white">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="text-red-800 text-sm">{error}</div>
@@ -243,13 +404,15 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
               </div>
             ) : (
               <>
-                {/* Basic Info */}
+                {/* Basic Info with mobile-first layout */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Deal Title *
                     </label>
                     <Input
+                      id="deal-title"
+                      aria-label="Deal title input"
                       label=""
                       helperText=""
                       maxLength={255}
@@ -280,6 +443,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                       Customer Name *
                     </label>
                     <Input
+                      id="customer-name"
+                      aria-label="Customer name input"
                       label=""
                       helperText=""
                       maxLength={255}
@@ -295,6 +460,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                       Customer Phone
                     </label>
                     <Input
+                      id="customer-phone"
+                      aria-label="Customer phone input"
                       label=""
                       helperText=""
                       maxLength={20}
@@ -310,6 +477,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                       Customer Email
                     </label>
                     <Input
+                      id="customer-email"
+                      aria-label="Customer email input"
                       label=""
                       helperText=""
                       maxLength={255}
@@ -337,26 +506,93 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   </div>
                 </div>
 
-                {/* Customer Needs Loaner */}
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="customer_needs_loaner"
-                    checked={formData?.customer_needs_loaner}
-                    onChange={(e) => updateFormData({ customer_needs_loaner: e?.target?.checked })}
-                    className="rounded border-gray-300"
-                  />
-                  <label htmlFor="customer_needs_loaner" className="text-sm text-gray-700">
-                    Customer needs loaner vehicle
-                  </label>
+                {/* Vehicle Information Section - Visible on Mobile and Desktop */}
+                <div className="block bg-slate-50 p-4 rounded-lg border">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Vehicle Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Year
+                      </label>
+                      <Input
+                        id="vehicle-year"
+                        aria-label="Vehicle year input"
+                        label=""
+                        helperText=""
+                        maxLength={4}
+                        style={{}}
+                        type="number"
+                        value={formData?.vehicleYear || ''}
+                        onChange={(e) => updateFormData({ vehicleYear: e?.target?.value })}
+                        placeholder="2024"
+                        min="1900"
+                        max={new Date()?.getFullYear() + 2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Make
+                      </label>
+                      <Input
+                        id="vehicle-make"
+                        aria-label="Vehicle make input"
+                        label=""
+                        helperText=""
+                        maxLength={50}
+                        style={{}}
+                        value={formData?.vehicleMake || ''}
+                        onChange={(e) => updateFormData({ vehicleMake: e?.target?.value })}
+                        placeholder="Toyota"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Model
+                      </label>
+                      <Input
+                        id="vehicle-model"
+                        aria-label="Vehicle model input"
+                        label=""
+                        helperText=""
+                        maxLength={50}
+                        style={{}}
+                        value={formData?.vehicleModel || ''}
+                        onChange={(e) => updateFormData({ vehicleModel: e?.target?.value })}
+                        placeholder="Camry"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Stock Number
+                    </label>
+                    <Input
+                      id="vehicle-stock"
+                      aria-label="Vehicle stock number input"
+                      label=""
+                      helperText=""
+                      maxLength={20}
+                      style={{}}
+                      value={formData?.stockNumber || ''}
+                      onChange={(e) => updateFormData({ stockNumber: e?.target?.value })}
+                      placeholder="Enter stock number"
+                    />
+                  </div>
                 </div>
+
+                {/* Customer Needs Loaner with enhanced styling and click propagation */}
+                <LoanerCheckbox
+                  checked={formData?.customer_needs_loaner}
+                  onChange={(checked) => updateFormData({ customer_needs_loaner: checked })}
+                />
 
                 {/* Line Items */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium text-gray-900">Line Items</h3>
                     <Button
-                      className=""
+                      className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                      aria-label="Add line item"
                       variant="outline"
                       size="sm"
                       onClick={addLineItem}
@@ -368,12 +604,13 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
 
                   <div className="space-y-4">
                     {formData?.lineItems?.map((item, index) => (
-                      <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                      <div key={index} className="border rounded-xl p-4 bg-slate-50">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
                           {formData?.lineItems?.length > 1 && (
                             <Button
-                              className="text-red-600 hover:text-red-800"
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                              aria-label="Remove line item"
                               variant="ghost"
                               size="sm"
                               onClick={() => removeLineItem(index)}
@@ -402,6 +639,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                               Unit Price *
                             </label>
                             <Input
+                              id={`unit-price-${index}`}
+                              aria-label="Unit price input"
                               label=""
                               helperText=""
                               maxLength={10}
@@ -419,6 +658,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                               Quantity
                             </label>
                             <Input
+                              id={`quantity-${index}`}
+                              aria-label="Quantity input"
                               label=""
                               helperText=""
                               maxLength={10}
@@ -432,38 +673,21 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                           </div>
                         </div>
 
-                        {/* Service Location */}
+                        {/* Service Location with enhanced radio buttons */}
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Service Location
                           </label>
-                          <div className="flex space-x-4">
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                name={`serviceLocation_${index}`}
-                                checked={!item?.isOffSite}
-                                onChange={() => updateLineItem(index, { isOffSite: false })}
-                                className="mr-2"
-                              />
-                              <span className="text-sm">🏠 On-Site</span>
-                            </label>
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                name={`serviceLocation_${index}`}
-                                checked={item?.isOffSite}
-                                onChange={() => updateLineItem(index, { isOffSite: true })}
-                                className="mr-2"
-                              />
-                              <span className="text-sm">🏢 Off-Site</span>
-                            </label>
-                          </div>
+                          <ServiceTypeRadio
+                            selectedValue={item?.isOffSite}
+                            onChange={(value) => updateLineItem(index, { isOffSite: value })}
+                            itemIndex={index}
+                          />
                         </div>
 
                         {/* Vendor Selection (if off-site) */}
                         {item?.isOffSite && (
-                          <div className="mb-4">
+                          <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
                             <SearchableSelect
                               label="Vendor *"
                               options={vendors}
@@ -477,46 +701,27 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                           </div>
                         )}
 
-                        {/* Scheduling */}
-                        <div className="border rounded-lg p-3 bg-blue-50">
-                          <h5 className="font-medium text-blue-900 mb-3">Scheduling</h5>
+                        {/* Scheduling with enhanced styling */}
+                        <div className="bg-white rounded-lg p-4 border">
+                          <h5 className="font-medium text-gray-900 mb-3">Scheduling</h5>
                           
-                          <div className="flex space-x-4 mb-3">
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                name={`scheduling_${index}`}
-                                checked={item?.requiresScheduling}
-                                onChange={() => updateLineItem(index, { 
-                                  requiresScheduling: true, 
-                                  noScheduleReason: '' 
-                                })}
-                                className="mr-2"
-                              />
-                              <span className="text-sm">Needs scheduling</span>
-                            </label>
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                name={`scheduling_${index}`}
-                                checked={!item?.requiresScheduling}
-                                onChange={() => updateLineItem(index, { 
-                                  requiresScheduling: false, 
-                                  lineItemPromisedDate: '' 
-                                })}
-                                className="mr-2"
-                              />
-                              <span className="text-sm">No scheduling needed</span>
-                            </label>
+                          <div className="mb-3">
+                            <SchedulingRadio
+                              requiresScheduling={item?.requiresScheduling}
+                              onChange={(value) => updateLineItem(index, { requiresScheduling: value })}
+                              itemIndex={index}
+                            />
                           </div>
 
                           {item?.requiresScheduling ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                   Promised Date *
                                 </label>
                                 <Input
+                                  id={`promised-date-${index}`}
+                                  aria-label="Promised date input"
                                   label=""
                                   helperText=""
                                   maxLength={255}
@@ -533,6 +738,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                                   Notes
                                 </label>
                                 <Input
+                                  id={`notes-${index}`}
+                                  aria-label="Notes input"
                                   label=""
                                   helperText=""
                                   maxLength={500}
@@ -544,11 +751,13 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                               </div>
                             </div>
                           ) : (
-                            <div>
+                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                               <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Reason for no schedule *
                               </label>
                               <Input
+                                id={`no-schedule-reason-${index}`}
+                                aria-label="No schedule reason input"
                                 label=""
                                 helperText=""
                                 maxLength={255}
@@ -561,18 +770,18 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                           )}
                         </div>
 
-                        {/* Line Total */}
+                        {/* Line Total with NaN guard */}
                         <div className="text-right mt-3 text-sm text-gray-600">
-                          Line Total: ${((item?.unit_price || 0) * (item?.quantity_used || 1))?.toFixed(2)}
+                          Line Total: ${((parseFloat(item?.unit_price) || 0) * (parseInt(item?.quantity_used) || 1))?.toFixed(2)}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Deal Total */}
+                  {/* Deal Total with enhanced styling */}
                   <div className="flex justify-end mt-4">
-                    <div className="bg-gray-100 px-4 py-2 rounded-lg">
-                      <span className="font-medium text-gray-900">
+                    <div className="bg-green-50 border border-green-200 px-4 py-2 rounded-lg">
+                      <span className="font-medium text-green-900">
                         Deal Total: ${calculateTotal()?.toFixed(2)}
                       </span>
                     </div>
@@ -583,10 +792,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
+        {/* Footer with mobile-friendly buttons */}
+        <div className="flex flex-col md:flex-row items-center justify-between p-6 border-t bg-slate-50 gap-3">
           <Button
-            className="text-red-600 border-red-300 hover:bg-red-50"
+            className="w-full md:w-auto h-11 text-red-600 border-red-300 hover:bg-red-50"
+            aria-label="Delete deal"
             variant="outline"
             onClick={() => setDeleteConfirm(true)}
           >
@@ -594,12 +804,18 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
             Delete Deal
           </Button>
           
-          <div className="flex space-x-3">
-            <Button className="" variant="outline" onClick={onClose}>
+          <div className="flex space-x-3 w-full md:w-auto">
+            <Button 
+              className="w-full md:w-auto h-11" 
+              aria-label="Cancel editing"
+              variant="outline" 
+              onClick={handleClose}
+            >
               Cancel
             </Button>
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
+              className="w-full md:w-auto h-11 bg-blue-600 hover:bg-blue-700"
+              aria-label="Save changes"
               onClick={handleSave}
               disabled={saving}
             >
@@ -611,25 +827,56 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
         {/* Delete Confirmation Modal */}
         {deleteConfirm && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
               <h3 className="text-lg font-semibold mb-4">Delete Deal</h3>
               <p className="text-gray-600 mb-6">
                 Are you sure you want to delete this deal and all its line items? This action cannot be undone.
               </p>
               <div className="flex space-x-3">
                 <Button
-                  className="flex-1"
+                  className="flex-1 h-11"
+                  aria-label="Cancel deletion"
                   variant="outline"
                   onClick={() => setDeleteConfirm(false)}
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white"
+                  aria-label="Confirm deletion"
                   onClick={handleDelete}
                   disabled={deleting}
                 >
                   {deleting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Unsaved Changes Warning Modal */}
+        {showUnsavedWarning && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Unsaved Changes</h3>
+              <p className="text-gray-600 mb-6">
+                You have unsaved changes. Are you sure you want to close and discard your changes?
+              </p>
+              <div className="flex space-x-3">
+                <Button
+                  className="flex-1 h-11"
+                  aria-label="Keep editing"
+                  variant="outline"
+                  onClick={() => setShowUnsavedWarning(false)}
+                >
+                  Keep Editing
+                </Button>
+                <Button
+                  className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white"
+                  aria-label="Discard changes"
+                  onClick={confirmClose}
+                >
+                  Discard Changes
                 </Button>
               </div>
             </div>

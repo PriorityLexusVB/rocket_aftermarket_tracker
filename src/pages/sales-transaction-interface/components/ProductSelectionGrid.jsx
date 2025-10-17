@@ -191,6 +191,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
             iconName="Plus"
             iconPosition="left"
             className="flex-shrink-0"
+            ariaLabel="Add Custom Service"
+            ariaLabelledBy=""
+            ariaDescribedBy=""
           >
             Add Custom
           </Button>
@@ -208,6 +211,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                 size="sm"
                 onClick={() => setSelectedCategory('all')}
                 className="h-8"
+                ariaLabel={`Filter by all categories (${products?.length} items)`}
+                ariaLabelledBy=""
+                ariaDescribedBy=""
               >
                 All ({products?.length})
               </Button>
@@ -220,6 +226,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                     size="sm"
                     onClick={() => setSelectedCategory(category)}
                     className="h-8"
+                    ariaLabel={`Filter by ${category} category (${count} items)`}
+                    ariaLabelledBy=""
+                    ariaDescribedBy=""
                   >
                     {category} ({count})
                   </Button>
@@ -244,6 +253,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                 helperText=""
                 maxLength={255}
                 style={{}}
+                ariaLabel="Service name"
+                ariaLabelledBy=""
+                ariaDescribedBy=""
+                error=""
               />
             </div>
             <Input
@@ -254,6 +267,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
               helperText=""
               maxLength={255}
               style={{}}
+              ariaLabel="Service category"
+              ariaLabelledBy=""
+              ariaDescribedBy=""
+              error=""
             />
             <div className="flex space-x-2">
               <Button
@@ -262,6 +279,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                 iconName="Plus"
                 disabled={!customService?.name?.trim()}
                 className="flex-1"
+                ariaLabel="Add custom service"
+                ariaLabelledBy=""
+                ariaDescribedBy=""
               >
                 Add
               </Button>
@@ -271,6 +291,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                 onClick={() => setShowCustomForm(false)}
                 iconName="X"
                 className="px-3"
+                ariaLabel="Cancel custom service creation"
+                ariaLabelledBy=""
+                ariaDescribedBy=""
               />
             </div>
           </div>
@@ -395,6 +418,9 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                     onClick={() => onProductToggle(service?.id, false)}
                     className="w-8 h-8 text-muted-foreground hover:text-error"
                     iconName="X"
+                    ariaLabel="Remove service"
+                    ariaLabelledBy=""
+                    ariaDescribedBy=""
                   />
                 </div>
                 
@@ -410,6 +436,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                     helperText=""
                     maxLength={10}
                     style={{}}
+                    ariaLabel="Service quantity"
+                    ariaLabelledBy=""
+                    ariaDescribedBy=""
+                    error=""
                   />
 
                   {/* Unit Price (Your Cost) */}
@@ -424,6 +454,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                     helperText=""
                     maxLength={10}
                     style={{}}
+                    ariaLabel="Service cost"
+                    ariaLabelledBy=""
+                    ariaDescribedBy=""
+                    error=""
                   />
 
                   {/* Unit Price */}
@@ -438,6 +472,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                     helperText=""
                     maxLength={10}
                     style={{}}
+                    ariaLabel="Service unit price"
+                    ariaLabelledBy=""
+                    ariaDescribedBy=""
+                    error=""
                   />
 
                   {/* Profit Display */}
@@ -560,6 +598,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                           helperText=""
                           maxLength={20}
                           style={{}}
+                          ariaLabel="Service start date"
+                          ariaLabelledBy=""
+                          ariaDescribedBy=""
+                          error=""
                         />
                         <Input
                           label="Days to Complete"
@@ -571,6 +613,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                           helperText=""
                           maxLength={10}
                           style={{}}
+                          ariaLabel="Days to complete service"
+                          ariaLabelledBy=""
+                          ariaDescribedBy=""
+                          error=""
                         />
                         <div className="flex flex-col">
                           <label className="text-sm font-medium text-foreground mb-2">Completion Date</label>
@@ -596,6 +642,10 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                     helperText=""
                     maxLength={500}
                     style={{}}
+                    ariaLabel="Service notes"
+                    ariaLabelledBy=""
+                    ariaDescribedBy=""
+                    error=""
                   />
                 </div>
               </div>

@@ -220,6 +220,7 @@ const EnhancedVehicleTable = ({
                     iconName="Settings"
                     iconPosition="left"
                     className="flex items-center"
+                    aria-label="Toggle bulk actions menu"
                   >
                     Bulk Actions
                   </Button>
@@ -244,6 +245,7 @@ const EnhancedVehicleTable = ({
                 iconPosition="left"
                 onClick={() => navigate('/sales-transaction-interface')}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
+                aria-label="Add new vehicle"
               >
                 Add Vehicle
               </Button>
@@ -265,6 +267,7 @@ const EnhancedVehicleTable = ({
                     onClick={() => handleBulkStatusUpdate('maintenance')}
                     disabled={isLoading}
                     className="border-border bg-background text-foreground hover:bg-muted"
+                    aria-label="Mark selected vehicles as maintenance"
                   >
                     Mark as Maintenance
                   </Button>
@@ -275,6 +278,7 @@ const EnhancedVehicleTable = ({
                     onClick={() => handleBulkStatusUpdate('sold')}
                     disabled={isLoading}
                     className="border-border bg-background text-foreground hover:bg-muted"
+                    aria-label="Mark selected vehicles as sold"
                   >
                     Mark as Sold
                   </Button>
@@ -285,6 +289,7 @@ const EnhancedVehicleTable = ({
                     onClick={() => setShowBulkActions(false)}
                     iconName="X"
                     className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                    aria-label="Close bulk actions menu"
                   >
                     Close
                   </Button>
@@ -498,6 +503,7 @@ const EnhancedVehicleTable = ({
               iconPosition="left"
               onClick={() => navigate('/sales-transaction-interface')}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
+              aria-label="Add new vehicle"
             >
               Add Vehicle
             </Button>

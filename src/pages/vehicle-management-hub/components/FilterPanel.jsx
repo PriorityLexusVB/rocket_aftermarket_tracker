@@ -83,6 +83,9 @@ const FilterPanel = ({
                 iconName="X"
                 iconPosition="left"
                 className="text-muted-foreground hover:text-foreground"
+                ariaLabel="Clear all active filters"
+                ariaLabelledBy=""
+                ariaDescribedBy=""
               >
                 Clear All
               </Button>
@@ -95,6 +98,9 @@ const FilterPanel = ({
               iconName={isExpanded ? "ChevronUp" : "ChevronDown"}
               iconPosition="right"
               className="text-muted-foreground hover:text-foreground"
+              ariaLabel={isExpanded ? 'Collapse filters' : 'Expand filters'}
+              ariaLabelledBy=""
+              ariaDescribedBy=""
             >
               {isExpanded ? 'Collapse' : 'Expand'}
             </Button>
@@ -106,14 +112,19 @@ const FilterPanel = ({
       <div className="px-6 py-4 border-b border-border bg-muted/30">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Input
+            id="search-input"
             type="search"
             placeholder="Search VIN, Stock #, Owner Phone..."
             value={filters?.search || ''}
             onChange={(e) => handleFilterChange('search', e?.target?.value)}
             className="w-full"
+            ariaLabel="Search vehicles by VIN, stock number, or owner phone"
+            ariaLabelledBy=""
+            ariaDescribedBy=""
             helperText=""
             maxLength={undefined}
             style={{}}
+            error=""
           />
           
           <Select
@@ -145,36 +156,51 @@ const FilterPanel = ({
           {/* Date Range Filters */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Input
+              id="date-from-input"
               type="date"
               label="Added From"
               placeholder=""
               value={filters?.dateFrom || ''}
               onChange={(e) => handleFilterChange('dateFrom', e?.target?.value)}
+              ariaLabel="Filter by date added from"
+              ariaLabelledBy=""
+              ariaDescribedBy=""
               helperText=""
               maxLength={undefined}
               style={{}}
+              error=""
             />
             
             <Input
+              id="date-to-input"
               type="date"
               label="Added To"
               placeholder=""
               value={filters?.dateTo || ''}
               onChange={(e) => handleFilterChange('dateTo', e?.target?.value)}
+              ariaLabel="Filter by date added to"
+              ariaLabelledBy=""
+              ariaDescribedBy=""
               helperText=""
               maxLength={undefined}
               style={{}}
+              error=""
             />
             
             <Input
+              id="min-profit-input"
               type="number"
               label="Min Profit ($)"
               placeholder="0.00"
               value={filters?.minProfit || ''}
               onChange={(e) => handleFilterChange('minProfit', e?.target?.value)}
+              ariaLabel="Filter by minimum profit amount"
+              ariaLabelledBy=""
+              ariaDescribedBy=""
               helperText=""
               maxLength={undefined}
               style={{}}
+              error=""
             />
           </div>
 
@@ -193,14 +219,19 @@ const FilterPanel = ({
             />
             
             <Input
+              id="model-input"
               type="text"
               label="Model Contains"
               placeholder="Enter model name..."
               value={filters?.model || ''}
               onChange={(e) => handleFilterChange('model', e?.target?.value)}
+              ariaLabel="Filter by vehicle model"
+              ariaLabelledBy=""
+              ariaDescribedBy=""
               helperText=""
               maxLength={undefined}
               style={{}}
+              error=""
             />
             
             <Select
@@ -231,6 +262,9 @@ const FilterPanel = ({
                 iconPosition="left"
                 disabled={!hasActiveFilters}
                 className="text-sm"
+                ariaLabel="Save current filter settings as preset"
+                ariaLabelledBy=""
+                ariaDescribedBy=""
               >
                 Save Current
               </Button>
@@ -239,14 +273,19 @@ const FilterPanel = ({
             {showPresetInput && (
               <div className="flex items-center space-x-2 mb-3">
                 <Input
+                  id="preset-name-input"
                   type="text"
                   placeholder="Preset name..."
                   value={presetName}
                   onChange={(e) => setPresetName(e?.target?.value)}
                   className="flex-1"
+                  ariaLabel="Enter preset name"
+                  ariaLabelledBy=""
+                  ariaDescribedBy=""
                   helperText=""
                   maxLength={undefined}
                   style={{}}
+                  error=""
                 />
                 <Button
                   variant="default"
@@ -254,6 +293,9 @@ const FilterPanel = ({
                   onClick={handleSavePreset}
                   disabled={!presetName?.trim()}
                   className=""
+                  ariaLabel="Save filter preset"
+                  ariaLabelledBy=""
+                  ariaDescribedBy=""
                 >
                   Save
                 </Button>
@@ -265,6 +307,9 @@ const FilterPanel = ({
                     setPresetName('');
                   }}
                   className=""
+                  ariaLabel="Cancel saving preset"
+                  ariaLabelledBy=""
+                  ariaDescribedBy=""
                 >
                   Cancel
                 </Button>
@@ -280,6 +325,9 @@ const FilterPanel = ({
                     size="sm"
                     onClick={() => onLoadPreset(preset)}
                     className=""
+                    ariaLabel={`Load preset ${preset?.name}`}
+                    ariaLabelledBy=""
+                    ariaDescribedBy=""
                   >
                     {preset?.name}
                   </Button>

@@ -57,6 +57,53 @@ function toJobPartRows(jobId, items = []) {
   );
 }
 
+// A3: Enhanced UPSERT loaner assignment function
+async function upsertLoanerAssignment(jobId, loanerData) {
+  if (!loanerData?.loaner_number?.trim()) {
+    return; // No loaner number provided, skip assignment
+  }
+
+  try {
+    // Check for existing active assignment for this job
+    const { data: existing } = await supabase
+      ?.from('loaner_assignments')
+      ?.select('id')
+      ?.eq('job_id', jobId)
+      ?.is('returned_at', null)
+      ?.single();
+
+    const assignmentData = {
+      job_id: jobId,
+      loaner_number: loanerData?.loaner_number?.trim(),
+      eta_return_date: loanerData?.eta_return_date || null,
+      notes: loanerData?.notes?.trim() || null
+    };
+
+    if (existing) {
+      // Update existing assignment
+      const { error } = await supabase
+        ?.from('loaner_assignments')
+        ?.update(assignmentData)
+        ?.eq('id', existing?.id);
+      
+      if (error) throw error;
+    } else {
+      // Create new assignment
+      const { error } = await supabase
+        ?.from('loaner_assignments')
+        ?.insert([assignmentData]);
+      
+      if (error) throw error;
+    }
+  } catch (error) {
+    // Handle uniqueness constraint error gracefully
+    if (error?.code === '23505') {
+      throw new Error(`Loaner ${loanerData?.loaner_number} is already assigned to another active job`);
+    }
+    throw error;
+  }
+}
+
 // --- queries -------------------------------------------------------------
 
 // ✅ UPDATED: Proper tracker SQL query with CTE for next appointments
@@ -79,6 +126,16 @@ export async function getAllDeals() {
             AND jp.promised_date IS NOT NULL
             AND jp.promised_date >= CURRENT_DATE - INTERVAL '30 days'
           ORDER BY jp.job_id, jp.promised_date ASC
+        ),
+        active_loaner AS (
+          SELECT 
+            la.job_id, 
+            la.id as loaner_id, 
+            la.loaner_number, 
+            la.eta_return_date,
+            la.notes as loaner_notes
+          FROM loaner_assignments la
+          WHERE la.returned_at IS NULL
         )
         SELECT 
           j.id,
@@ -102,6 +159,11 @@ export async function getAllDeals() {
           -- Next appointment data from CTE
           na.next_appointment_date,
           na.appointment_status,
+          -- Active loaner data
+          ala.loaner_id,
+          ala.loaner_number,
+          to_char(ala.eta_return_date, 'Mon DD') as loaner_eta_short,
+          ala.loaner_notes,
           -- Job parts for service location and scheduling
           COALESCE(
             json_agg(
@@ -123,6 +185,7 @@ export async function getAllDeals() {
         FROM jobs j
         LEFT JOIN vehicles v ON j.vehicle_id = v.id
         LEFT JOIN next_appt na ON j.id = na.job_id
+        LEFT JOIN active_loaner ala ON ala.job_id = j.id
         LEFT JOIN job_parts jp ON j.id = jp.job_id
         WHERE j.job_status IN ('draft', 'pending', 'in_progress', 'completed')
         GROUP BY 
@@ -130,7 +193,8 @@ export async function getAllDeals() {
           j.title, j.job_number, j.priority, j.assigned_to, 
           j.delivery_coordinator_id, j.finance_manager_id, j.customer_needs_loaner,
           v.id, v.year, v.make, v.model, v.stock_number,
-          na.next_appointment_date, na.appointment_status
+          na.next_appointment_date, na.appointment_status,
+          ala.loaner_id, ala.loaner_number, ala.eta_return_date, ala.loaner_notes
         ORDER BY j.created_at DESC
       `
     });
@@ -302,21 +366,28 @@ export async function createDeal(formState) {
 
   if (jobErr) throw new Error(`Failed to create deal: ${jobErr.message}`);
 
-  // 2) insert parts (if any)
-  if (lineItems?.length > 0) {
-    const rows = toJobPartRows(job?.id, lineItems);
-    if (rows?.length > 0) {
-      const { error: partsErr } = await supabase?.from('job_parts')?.insert(rows);
-      if (partsErr) {
-        // rollback best-effort
-        await supabase?.from('jobs')?.delete()?.eq('id', job?.id);
-        throw new Error(`Failed to create line items: ${partsErr.message}`);
+  try {
+    // 2) insert parts (if any)
+    if (lineItems?.length > 0) {
+      const rows = toJobPartRows(job?.id, lineItems);
+      if (rows?.length > 0) {
+        const { error: partsErr } = await supabase?.from('job_parts')?.insert(rows);
+        if (partsErr) throw partsErr;
       }
     }
-  }
 
-  // 3) return full record (with joins)
-  return await getDeal(job?.id);
+    // A3: Handle loaner assignment for new deals
+    if (formState?.customer_needs_loaner && formState?.loanerForm) {
+      await upsertLoanerAssignment(job?.id, formState?.loanerForm);
+    }
+
+    // 3) return full record (with joins)
+    return await getDeal(job?.id);
+  } catch (error) {
+    // rollback best-effort
+    await supabase?.from('jobs')?.delete()?.eq('id', job?.id);
+    throw new Error(`Failed to create deal: ${error.message}`);
+  }
 }
 
 // UPDATE: deal + replace job_parts - FIXED with proper transaction handling and customer data
@@ -369,6 +440,11 @@ export async function updateDeal(id, formState) {
       const { error: insErr } = await supabase?.from('job_parts')?.insert(rows);
       if (insErr) throw new Error(`Failed to update line items: ${insErr.message}`);
     }
+  }
+
+  // A3: Handle loaner assignment updates
+  if (formState?.customer_needs_loaner && formState?.loanerForm) {
+    await upsertLoanerAssignment(id, formState?.loanerForm);
   }
 
   // 4) Return full record (with joins and transaction data)
@@ -426,6 +502,16 @@ function mapDbDealToForm(dbDeal) {
       // ❌ REMOVED: description mapping as column doesn't exist
     }))
   };
+}
+
+// A3: New function to mark loaner as returned
+export async function markLoanerReturned(loanerAssignmentId) {
+  const { error } = await supabase?.rpc('mark_loaner_returned', { 
+    assignment_id: loanerAssignmentId 
+  });
+  
+  if (error) throw new Error(`Failed to mark loaner as returned: ${error.message}`);
+  return true;
 }
 
 // Back-compat default export (so both import styles work):

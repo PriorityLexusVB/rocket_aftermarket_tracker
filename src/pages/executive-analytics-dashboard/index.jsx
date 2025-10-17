@@ -293,6 +293,7 @@ const ExecutiveAnalyticsDashboard = () => {
                   iconName="FileText"
                   iconPosition="left"
                   className="flex items-center"
+                  aria-label="Navigate to reports page"
                 >
                   Reports
                 </Button>
@@ -304,6 +305,7 @@ const ExecutiveAnalyticsDashboard = () => {
                   iconName="Plus"
                   iconPosition="left"
                   className="flex items-center"
+                  aria-label="Navigate to create new sale page"
                 >
                   New Sale
                 </Button>

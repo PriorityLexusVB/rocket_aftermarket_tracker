@@ -1,9 +1,46 @@
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, testSupabaseConnection } from '../lib/supabase';
 
 /**
  * Dropdown Service for standardized data source management
  * Provides filtered data sources for users, vendors, and products with exact specifications
  */
+
+// Connection validation helper
+const validateConnection = async () => {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not properly configured. Please check your environment variables.');
+  }
+  
+  // Test connection on first use
+  if (!validateConnection?.tested) {
+    const isConnected = await testSupabaseConnection();
+    if (!isConnected) {
+      throw new Error('Cannot connect to Supabase. Please check your configuration and network connection.');
+    }
+    validateConnection.tested = true;
+  }
+};
+
+// Enhanced error handling
+const handleSupabaseError = (error, operation) => {
+  console.error(`Supabase error in ${operation}:`, {
+    message: error?.message,
+    details: error?.details,
+    hint: error?.hint,
+    code: error?.code
+  });
+
+  // Provide more specific error messages based on error type
+  if (error?.message?.includes('Failed to fetch')) {
+    throw new Error('Network connection error. Please check your internet connection and try again.');
+  } else if (error?.message?.includes('JWT')) {
+    throw new Error('Authentication error. Please refresh the page and try again.');
+  } else if (error?.code === 'PGRST116') {
+    throw new Error('Database table not found. Please contact support.');
+  } else {
+    throw new Error(`Database error: ${error.message}`);
+  }
+};
 
 export const dropdownService = {
   /**
@@ -19,6 +56,8 @@ export const dropdownService = {
    */
   async getUsers(filters = {}) {
     try {
+      await validateConnection();
+
       const {
         roles = null,
         departments = null,
@@ -30,6 +69,10 @@ export const dropdownService = {
       } = filters;
 
       let query = supabase?.from('user_profiles')?.select('id, full_name, email, role, department, phone, is_active, vendor_id');
+
+      if (!query) {
+        throw new Error('Failed to create query. Supabase client is not available.');
+      }
 
       // Role filtering - supports single role or array of roles
       if (roles) {
@@ -75,13 +118,16 @@ export const dropdownService = {
       const { data, error } = await query;
 
       if (error) {
-        throw error;
+        handleSupabaseError(error, 'getUsers');
       }
 
       return data || [];
     } catch (error) {
+      if (error?.message?.includes('Supabase') || error?.message?.includes('Network') || error?.message?.includes('Authentication')) {
+        throw error; // Re-throw our custom errors
+      }
       console.error('Error fetching users:', error);
-      return [];
+      throw new Error('Failed to fetch users. Please try again later.');
     }
   },
 
@@ -90,6 +136,8 @@ export const dropdownService = {
    */
   async getUsersByType() {
     try {
+      await validateConnection();
+
       const [salesConsultants, deliveryCoordinators, managers, admins, vendors] = await Promise.all([
         // Sales Consultants - Staff role in Sales Consultants department
         this.getUsers({
@@ -140,6 +188,7 @@ export const dropdownService = {
       };
     } catch (error) {
       console.error('Error fetching users by type:', error);
+      // Return empty structure instead of throwing to prevent complete failure
       return {
         salesConsultants: [],
         deliveryCoordinators: [],
@@ -165,6 +214,8 @@ export const dropdownService = {
    */
   async getVendors(filters = {}) {
     try {
+      await validateConnection();
+
       const {
         activeOnly = true,
         search = null,
@@ -176,6 +227,10 @@ export const dropdownService = {
       } = filters;
 
       let query = supabase?.from('vendors')?.select('id, name, specialty, contact_person, phone, email, address, rating, is_active, notes');
+
+      if (!query) {
+        throw new Error('Failed to create query. Supabase client is not available.');
+      }
 
       // Active status filtering
       if (activeOnly) {
@@ -217,13 +272,16 @@ export const dropdownService = {
       const { data, error } = await query;
 
       if (error) {
-        throw error;
+        handleSupabaseError(error, 'getVendors');
       }
 
       return data || [];
     } catch (error) {
+      if (error?.message?.includes('Supabase') || error?.message?.includes('Network') || error?.message?.includes('Authentication')) {
+        throw error;
+      }
       console.error('Error fetching vendors:', error);
-      return [];
+      throw new Error('Failed to fetch vendors. Please try again later.');
     }
   },
 
@@ -232,8 +290,14 @@ export const dropdownService = {
    */
   async getVendorsBySpecialty() {
     try {
+      await validateConnection();
+
       // Get all unique specialties first
-      const { data: specialtyData } = await supabase?.from('vendors')?.select('specialty')?.eq('is_active', true)?.not('specialty', 'is', null);
+      const { data: specialtyData, error: specialtyError } = await supabase?.from('vendors')?.select('specialty')?.eq('is_active', true)?.not('specialty', 'is', null);
+
+      if (specialtyError) {
+        handleSupabaseError(specialtyError, 'getVendorsBySpecialty - specialties');
+      }
 
       const uniqueSpecialties = [...new Set(specialtyData?.map(v => v?.specialty)?.filter(Boolean))];
 
@@ -287,6 +351,8 @@ export const dropdownService = {
    */
   async getProducts(filters = {}) {
     try {
+      await validateConnection();
+
       const {
         activeOnly = true,
         search = null,
@@ -306,6 +372,10 @@ export const dropdownService = {
           unit_price, cost, quantity_in_stock, minimum_stock_level,
           vendor_id, is_active, created_at, updated_at
         `);
+
+      if (!query) {
+        throw new Error('Failed to create query. Supabase client is not available.');
+      }
 
       // Active status filtering
       if (activeOnly) {
@@ -369,13 +439,16 @@ export const dropdownService = {
       const { data, error } = await query;
 
       if (error) {
-        throw error;
+        handleSupabaseError(error, 'getProducts');
       }
 
       return data || [];
     } catch (error) {
+      if (error?.message?.includes('Supabase') || error?.message?.includes('Network') || error?.message?.includes('Authentication')) {
+        throw error;
+      }
       console.error('Error fetching products:', error);
-      return [];
+      throw new Error('Failed to fetch products. Please try again later.');
     }
   },
 
@@ -384,11 +457,20 @@ export const dropdownService = {
    */
   async getProductsByCategory() {
     try {
+      await validateConnection();
+
       // Get all unique categories and brands
       const [categoryData, brandData] = await Promise.all([
         supabase?.from('products')?.select('category')?.eq('is_active', true)?.not('category', 'is', null),
         supabase?.from('products')?.select('brand')?.eq('is_active', true)?.not('brand', 'is', null)
       ]);
+
+      if (categoryData?.error) {
+        handleSupabaseError(categoryData?.error, 'getProductsByCategory - categories');
+      }
+      if (brandData?.error) {
+        handleSupabaseError(brandData?.error, 'getProductsByCategory - brands');
+      }
 
       const uniqueCategories = [...new Set(categoryData?.data?.map(p => p?.category)?.filter(Boolean))];
       const uniqueBrands = [...new Set(brandData?.data?.map(p => p?.brand)?.filter(Boolean))];
@@ -454,6 +536,8 @@ export const dropdownService = {
    */
   async getDealFormData() {
     try {
+      await validateConnection();
+
       const [userTypes, vendorTypes, productTypes] = await Promise.all([
         this.getUsersByType(),
         this.getVendorsBySpecialty(), 
@@ -495,6 +579,7 @@ export const dropdownService = {
       };
     } catch (error) {
       console.error('Error fetching deal form data:', error);
+      // Return safe fallback structure
       return {
         users: { salesConsultants: [], deliveryCoordinators: [], managers: [], admins: [], vendors: [], allStaff: [], allActive: [] },
         vendors: { all: [], bySpecialty: {}, specialties: [], topRated: [] },
@@ -515,6 +600,8 @@ export const dropdownService = {
    */
   async globalSearch(searchTerm, options = {}) {
     try {
+      await validateConnection();
+
       const { limit = 10, activeOnly = true } = options;
 
       if (!searchTerm?.trim()) {

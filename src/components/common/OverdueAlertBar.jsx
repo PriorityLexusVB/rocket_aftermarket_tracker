@@ -149,6 +149,7 @@ const OverdueAlertBar = ({ className = '' }) => {
             iconName="Eye"
             iconPosition="left"
             className="border-red-300 text-red-700 hover:bg-red-50"
+            aria-label="View all overdue jobs"
           >
             View All
           </Button>
@@ -159,6 +160,7 @@ const OverdueAlertBar = ({ className = '' }) => {
             onClick={handleDismiss}
             iconName="X"
             className="text-red-500 hover:bg-red-100"
+            aria-label="Dismiss overdue alert"
           />
         </div>
       </div>

@@ -86,6 +86,11 @@ const LoginForm = () => {
             helperText=""
             maxLength={255}
             style={{}}
+            id="email"
+            aria-label="Email"
+            aria-labelledby=""
+            aria-describedby=""
+            error=""
           />
         </div>
         <div>
@@ -101,6 +106,11 @@ const LoginForm = () => {
             helperText=""
             maxLength={255}
             style={{}}
+            id="password"
+            aria-label="Password"
+            aria-labelledby=""
+            aria-describedby=""
+            error=""
           />
         </div>
         <div className="flex items-center justify-between">
@@ -120,6 +130,9 @@ const LoginForm = () => {
           className="w-full" 
           disabled={isLoading}
           onClick={handleSubmit}
+          aria-label="Sign In"
+          aria-labelledby=""
+          aria-describedby=""
         >
           {isLoading ? 'Signing In...' : 'Sign In'}
         </Button>

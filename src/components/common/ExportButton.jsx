@@ -40,6 +40,160 @@ const ExportButton = ({
     return `${exportType}-${scope}-${timestamp}.${exportFormat}`;
   };
 
+  const exportData = async () => {
+    try {
+      setIsExporting(true);
+      
+      // Get data from service instead of undefined generateExportData
+      const result = await advancedFeaturesService?.exportData(
+        exportType, 
+        filters, 
+        userProfile?.role || 'staff'
+      );
+
+      if (result?.error) {
+        onExportError?.(result?.error?.message || 'Export failed');
+        return;
+      }
+
+      const data = result?.data;
+      
+      if (!data || data?.length === 0) {
+        onExportError?.('No data available for export');
+        return;
+      }
+
+      // Enhanced CSV columns with proper guards
+      const csvData = data?.map(row => {
+        // Helper function to guard against NaN/undefined values
+        const safeValue = (value, fallback = '') => {
+          if (value === null || value === undefined || value === '' || 
+              (typeof value === 'number' && (isNaN(value) || !isFinite(value)))) {
+            return fallback;
+          }
+          return value;
+        };
+
+        const safeNumber = (value, fallback = 0) => {
+          const num = parseFloat(value);
+          return isNaN(num) || !isFinite(num) ? fallback : num;
+        };
+
+        const safeCurrency = (value) => {
+          const num = safeNumber(value, 0);
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+          })?.format(num);
+        };
+
+        return {
+          // Core identification
+          Stock: safeValue(row?.vehicle?.stock_number),
+          Customer: safeValue(row?.customer_name),
+          Phone: safeValue(row?.customer_phone),
+          
+          // Vehicle information
+          Vehicle: row?.vehicle ? 
+            `${safeValue(row?.vehicle?.year)} ${safeValue(row?.vehicle?.make)} ${safeValue(row?.vehicle?.model)}`?.trim() : 
+            '',
+          
+          // Staff assignments
+          Sales: safeValue(row?.assigned_to_name),
+          Status: safeValue(row?.job_status, 'unknown')?.replace('_', ' ')?.toUpperCase(),
+          
+          // Service details
+          ServiceType: row?.service_type === 'vendor' ? 'Off-Site' : 'On-Site',
+          
+          // Loaner information with proper boolean check
+          Loaner: row?.customer_needs_loaner === true ? 'Yes' : 'No',
+          
+          // Next promised date with safe formatting
+          NextPromised: (() => {
+            if (!row?.job_parts || row?.job_parts?.length === 0) return '';
+            
+            const schedulingItems = row?.job_parts?.filter(part => 
+              part?.requires_scheduling && part?.promised_date
+            );
+            
+            if (schedulingItems?.length === 0) return '';
+            
+            const earliestPromise = schedulingItems?.sort((a, b) => 
+              new Date(a.promised_date) - new Date(b.promised_date)
+            )?.[0];
+            
+            if (!earliestPromise?.promised_date) return '';
+            
+            try {
+              return new Date(earliestPromise.promised_date)?.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              });
+            } catch {
+              return '';
+            }
+          })(),
+          
+          // Financial information with currency formatting
+          Value: safeCurrency(row?.total_amount),
+          
+          // Vendor information
+          Vendor: safeValue(row?.vendor?.name)
+        };
+      });
+
+      // Generate filename with timestamp
+      const timestamp = new Date()?.toISOString()?.slice(0, 19)?.replace(/:/g, '-');
+      const filename = `${exportType}_export_${timestamp}.csv`;
+      
+      // Convert to CSV
+      const csvContent = convertToCSV(csvData);
+      
+      // Download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link?.setAttribute('href', url);
+      link?.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body?.appendChild(link);
+      link?.click();
+      document.body?.removeChild(link);
+      
+      onExportComplete?.(data?.length, filename);
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      onExportError?.(error?.message || 'Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Helper function to convert data to CSV with proper escaping
+  const convertToCSV = (data) => {
+    if (!data || data?.length === 0) return '';
+    
+    const headers = Object.keys(data?.[0]);
+    const csvRows = [
+      // Header row
+      headers?.map(header => `"${header}"`)?.join(','),
+      // Data rows
+      ...data?.map(row =>
+        headers?.map(header => {
+          const value = row?.[header];
+          // Escape quotes and wrap in quotes
+          const escapedValue = String(value || '')?.replace(/"/g, '""');
+          return `"${escapedValue}"`;
+        })?.join(',')
+      )
+    ];
+    
+    return csvRows?.join('\n');
+  };
+
   const handleExport = async () => {
     if (isExporting) return;
 
@@ -119,6 +273,7 @@ const ExportButton = ({
         iconName={isExporting ? undefined : 'Download'}
         iconPosition="left"
         className={`${className} ${isExporting ? 'cursor-wait' : ''}`}
+        aria-label={`Export ${getExportTypeLabel()}`}
       >
         {isExporting ? (
           <div className="flex items-center space-x-2">
@@ -178,6 +333,7 @@ const ExportButton = ({
                 size="sm"
                 onClick={() => setShowOptions(false)}
                 className="min-w-0"
+                aria-label="Cancel export"
               >
                 Cancel
               </Button>
@@ -188,6 +344,7 @@ const ExportButton = ({
                 iconName="Download"
                 iconPosition="left"
                 className="min-w-0"
+                aria-label={`Export ${getExportTypeLabel()}`}
               >
                 Export
               </Button>

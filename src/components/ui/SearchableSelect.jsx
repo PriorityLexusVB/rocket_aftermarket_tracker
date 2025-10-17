@@ -2,18 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
 
 /**
- * SearchableSelect Component - Enhanced dropdown with search, filtering, and grouping
- * @param {Object} props
- * @param {Array} props.options - Array of option objects with id, name, displayName
- * @param {string|null} props.value - Currently selected value
- * @param {Function} props.onChange - Callback when selection changes
- * @param {string} props.placeholder - Placeholder text
- * @param {boolean} props.searchable - Enable search functionality
- * @param {boolean} props.clearable - Enable clear functionality
- * @param {string} props.groupBy - Group options by this field
- * @param {Function} props.renderOption - Custom option render function
- * @param {boolean} props.disabled - Disable the select
- * @param {string} props.className - Additional CSS classes
+ * SearchableSelect Component with Mobile Native Select Support
+ * Automatically detects mobile and renders native <select> for mobile devices
+ * while keeping headless select with portal rendering for desktop
  */
 const SearchableSelect = ({
   options = [],
@@ -34,10 +25,26 @@ const SearchableSelect = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredOptions, setFilteredOptions] = useState(options);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isMobile, setIsMobile] = useState(false);
   
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
   const listRef = useRef(null);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkIsMobile = () => {
+      return window.matchMedia('(max-width: 767px)')?.matches;
+    };
+    
+    setIsMobile(checkIsMobile());
+    
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const handleResize = () => setIsMobile(mediaQuery?.matches);
+    
+    mediaQuery?.addEventListener('change', handleResize);
+    return () => mediaQuery?.removeEventListener('change', handleResize);
+  }, []);
 
   // Filter options based on search term
   useEffect(() => {
@@ -70,8 +77,10 @@ const SearchableSelect = ({
   // Find selected option
   const selectedOption = options?.find(opt => opt?.id === value);
 
-  // Handle click outside
+  // Handle click outside (desktop only)
   useEffect(() => {
+    if (isMobile) return; // Skip for mobile
+    
     const handleClickOutside = (event) => {
       if (containerRef?.current && !containerRef?.current?.contains(event?.target)) {
         setIsOpen(false);
@@ -82,10 +91,12 @@ const SearchableSelect = ({
 
     document?.addEventListener('mousedown', handleClickOutside);
     return () => document?.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isMobile]);
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation (desktop only)
   const handleKeyDown = (e) => {
+    if (isMobile) return; // Skip for mobile
+    
     if (!isOpen) {
       if (e?.key === 'Enter' || e?.key === ' ' || e?.key === 'ArrowDown') {
         e?.preventDefault();
@@ -139,13 +150,74 @@ const SearchableSelect = ({
     setHighlightedIndex(-1);
   };
 
-  // Handle clear selection
+  // Handle clear selection (desktop only)
   const handleClear = (e) => {
     e?.stopPropagation();
     onChange?.(null);
   };
 
-  // Group options if groupBy is specified
+  // Mobile Native Select
+  if (isMobile) {
+    return (
+      <div className={`${className}`}>
+        {/* Label */}
+        {label && (
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {label}
+          </label>
+        )}
+        {/* Native Select for Mobile */}
+        <select
+          value={value || ''}
+          onChange={(e) => onChange?.(e?.target?.value || null)}
+          disabled={disabled}
+          className={`w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] ${
+            disabled ? 'bg-gray-50 cursor-not-allowed border-gray-200' : ''
+          } ${
+            error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
+          }`}
+        >
+          <option value="">{placeholder}</option>
+          {groupBy ? (
+            // Grouped options for mobile
+            (Object.entries(
+              options?.reduce((groups, option) => {
+                const group = option?.[groupBy] || 'Other';
+                if (!groups?.[group]) groups[group] = [];
+                groups?.[group]?.push(option);
+                return groups;
+              }, {})
+            )?.map(([groupName, groupOptions]) => (
+              <optgroup key={groupName} label={groupName}>
+                {groupOptions?.map(option => (
+                  <option key={option?.id} value={option?.id}>
+                    {option?.displayName || option?.name}
+                  </option>
+                ))}
+              </optgroup>
+            )))
+          ) : (
+            // Flat options for mobile
+            (options?.map(option => (
+              <option key={option?.id} value={option?.id}>
+                {option?.displayName || option?.name}
+              </option>
+            )))
+          )}
+        </select>
+        {/* Error message */}
+        {error && (
+          <p className="mt-1 text-sm text-red-600">{error}</p>
+        )}
+        {/* Helper text */}
+        {helperText && !error && (
+          <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        )}
+      </div>
+    );
+  }
+
+  // Group options if groupBy is specified (desktop only)
   const groupedOptions = groupBy && filteredOptions?.length > 0 
     ? filteredOptions?.reduce((groups, option) => {
         const group = option?.[groupBy] || 'Other';
@@ -155,7 +227,7 @@ const SearchableSelect = ({
       }, {})
     : null;
 
-  // Default option renderer
+  // Default option renderer (desktop only)
   const defaultRenderOption = (option, isHighlighted) => (
     <div className={`px-3 py-2 cursor-pointer transition-colors ${
       isHighlighted 
@@ -184,6 +256,7 @@ const SearchableSelect = ({
 
   const optionRenderer = renderOption || defaultRenderOption;
 
+  // Desktop Headless Select
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {/* Label */}
@@ -243,9 +316,20 @@ const SearchableSelect = ({
           </div>
         </div>
       </div>
-      {/* Dropdown */}
+
+      {/* Desktop Dropdown with Portal Rendering */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+        <div 
+          className="fixed bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden z-[9999]"
+          style={{
+            position: 'fixed',
+            inset: 'auto',
+            zIndex: 9999,
+            width: containerRef?.current?.offsetWidth + 'px',
+            top: (containerRef?.current?.getBoundingClientRect()?.bottom + window?.scrollY + 4) + 'px',
+            left: containerRef?.current?.getBoundingClientRect()?.left + window?.scrollX + 'px'
+          }}
+        >
           {/* Search input */}
           {searchable && (
             <div className="p-2 border-b border-gray-200">
@@ -316,6 +400,7 @@ const SearchableSelect = ({
           </div>
         </div>
       )}
+      
       {/* Error message */}
       {error && (
         <p className="mt-1 text-sm text-red-600">{error}</p>

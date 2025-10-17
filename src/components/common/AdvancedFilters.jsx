@@ -174,6 +174,7 @@ const AdvancedFilters = ({
       case 'text':
         return (
           <Input
+            id={`filter-${filterKey}`}
             type="text"
             value={value}
             onChange={(e) => handleFilterChange(filterKey, e?.target?.value)}
@@ -183,6 +184,10 @@ const AdvancedFilters = ({
             helperText=""
             maxLength={100}
             style={{}}
+            aria-label={`Filter by ${config?.label?.toLowerCase()}`}
+            aria-labelledby=""
+            aria-describedby=""
+            error=""
           />
         );
 
@@ -215,6 +220,7 @@ const AdvancedFilters = ({
         return (
           <div className="flex space-x-2">
             <Input
+              id={`filter-${filterKey}-start`}
               type="date"
               value={value?.start || ''}
               onChange={(e) => handleFilterChange(filterKey, { ...value, start: e?.target?.value })}
@@ -224,8 +230,13 @@ const AdvancedFilters = ({
               helperText=""
               maxLength={100}
               style={{}}
+              aria-label="Start date"
+              aria-labelledby=""
+              aria-describedby=""
+              error=""
             />
             <Input
+              id={`filter-${filterKey}-end`}
               type="date"
               value={value?.end || ''}
               onChange={(e) => handleFilterChange(filterKey, { ...value, end: e?.target?.value })}
@@ -235,6 +246,10 @@ const AdvancedFilters = ({
               helperText=""
               maxLength={100}
               style={{}}
+              aria-label="End date"
+              aria-labelledby=""
+              aria-describedby=""
+              error=""
             />
           </div>
         );
@@ -243,6 +258,7 @@ const AdvancedFilters = ({
         return (
           <div className="flex space-x-2">
             <Input
+              id={`filter-${filterKey}-min`}
               type="number"
               value={value?.min || ''}
               onChange={(e) => handleFilterChange(filterKey, { ...value, min: e?.target?.value })}
@@ -255,8 +271,13 @@ const AdvancedFilters = ({
               helperText=""
               maxLength={100}
               style={{}}
+              aria-label={`Min ${config?.label?.toLowerCase()}`}
+              aria-labelledby=""
+              aria-describedby=""
+              error=""
             />
             <Input
+              id={`filter-${filterKey}-max`}
               type="number"
               value={value?.max || ''}
               onChange={(e) => handleFilterChange(filterKey, { ...value, max: e?.target?.value })}
@@ -269,6 +290,10 @@ const AdvancedFilters = ({
               helperText=""
               maxLength={100}
               style={{}}
+              aria-label={`Max ${config?.label?.toLowerCase()}`}
+              aria-labelledby=""
+              aria-describedBy=""
+              error=""
             />
           </div>
         );
@@ -307,6 +332,9 @@ const AdvancedFilters = ({
             iconName={isExpanded ? 'ChevronUp' : 'ChevronDown'}
             iconPosition="left"
             className="flex items-center space-x-2"
+            aria-label="Toggle advanced filters"
+            aria-labelledBy=""
+            aria-describedBy=""
           >
             Advanced Filters
           </Button>
@@ -328,6 +356,9 @@ const AdvancedFilters = ({
                 iconName="Save"
                 iconPosition="left"
                 className="flex items-center space-x-2"
+                aria-label="Save current filters as preset"
+                aria-labelledBy=""
+                aria-describedBy=""
               >
                 Save Preset
               </Button>
@@ -339,6 +370,9 @@ const AdvancedFilters = ({
                 iconName="X"
                 iconPosition="left"
                 className="flex items-center space-x-2"
+                aria-label="Clear all filters"
+                aria-labelledBy=""
+                aria-describedBy=""
               >
                 Clear All
               </Button>
@@ -357,6 +391,9 @@ const AdvancedFilters = ({
               size="sm"
               onClick={() => handleLoadPreset(preset)}
               className="relative group flex items-center"
+              aria-label={`Load preset ${preset?.name}`}
+              aria-labelledBy=""
+              aria-describedBy=""
             >
               <span>{preset?.name}</span>
               {preset?.is_public && (
@@ -405,6 +442,7 @@ const AdvancedFilters = ({
                   Preset Name
                 </label>
                 <Input
+                  id="preset-name"
                   type="text"
                   value={presetName}
                   onChange={(e) => setPresetName(e?.target?.value)}
@@ -414,6 +452,10 @@ const AdvancedFilters = ({
                   helperText=""
                   maxLength={100}
                   style={{}}
+                  aria-label="Preset name"
+                  aria-labelledBy=""
+                  aria-describedBy=""
+                  error=""
                 />
               </div>
               
@@ -435,6 +477,9 @@ const AdvancedFilters = ({
                 variant="outline"
                 onClick={() => setShowSaveDialog(false)}
                 className="px-4 py-2"
+                aria-label="Cancel save preset"
+                aria-labelledBy=""
+                aria-describedBy=""
               >
                 Cancel
               </Button>
@@ -443,6 +488,9 @@ const AdvancedFilters = ({
                 onClick={handleSavePreset}
                 disabled={!presetName?.trim()}
                 className="px-4 py-2"
+                aria-label="Save preset"
+                aria-labelledBy=""
+                aria-describedBy=""
               >
                 Save Preset
               </Button>
