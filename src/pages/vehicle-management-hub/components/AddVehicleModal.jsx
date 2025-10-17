@@ -4,7 +4,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import { Checkbox } from '../../../components/ui/Checkbox';
+import Checkbox from '../../../components/ui/Checkbox';
 
 const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -408,6 +408,9 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                 <div className="flex items-center space-x-3">
                   <Checkbox
                     id="needs_loaner"
+                    name="needs_loaner"
+                    label=""
+                    description=""
                     {...register('needs_loaner')}
                   />
                   <label htmlFor="needs_loaner" className="text-sm font-medium text-foreground">
@@ -458,6 +461,9 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                         <div className="flex items-center space-x-3">
                           <Checkbox
                             id={`product_${product?.id}`}
+                            name={`product_${product?.id}`}
+                            label=""
+                            description=""
                             checked={selectedProducts?.some(p => p?.id === product?.id)}
                             onChange={(e) => handleProductToggle(product, e?.target?.checked)}
                           />

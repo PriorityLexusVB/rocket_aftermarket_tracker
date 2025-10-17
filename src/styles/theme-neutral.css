@@ -1,39 +1,178 @@
+/* ✅ ENFORCED: Light-only theme per user requirements - no dark UI anywhere */
 :root {
-  /* Core - Light backgrounds for mobile readability */
-  --bg: #f8fafc;           /* app background - light slate */
-  --surface: #ffffff;      /* panel/card bg - white */
-  --surface-2: #f1f5f9;    /* header/alt - light gray */
-  --text: #1e293b;         /* dark text for readability */
-  --muted: #64748b;        /* muted text */
-  --line: #e2e8f0;         /* light borders */
+  --bg-app: #F8FAFC;        /* slate-50 */
+  --bg-card: #FFFFFF;
+  --border: #E5E7EB;
+  --text: #0F172A;          /* slate-900 */
+  --text-muted: #475569;    /* slate-600 */
+  --primary: #2563EB;       /* blue-600 */
+  --primary-hover: #1D4ED8; /* blue-700 */
+  
+  /* Form elements */
+  --input-bg: #FFFFFF;
+  --input-border: #D1D5DB;
+  --input-focus: #2563EB;
+  
+  /* Status colors */
+  --status-draft: #6B7280;
+  --status-pending: #2563EB;
+  --status-active: #F59E0B;
+  --status-completed: #10B981;
+  --status-cancelled: #EF4444;
+  
+  /* Service location exact colors per requirements */
+  --service-onsite: #22c55e;   /* exact green On-Site */
+  --service-offsite: #f97316;  /* exact orange Off-Site */
+}
 
-  /* Accent (pick one) */
-  --accent: #3b82f6;       /* Blue for better contrast on light bg */
-  /* --accent: #c59d5f;   Lexus gold (alt) */
+html, body {
+  background: var(--bg-app);
+  color: var(--text);
+}
 
-  /* States */
-  --ok: #10b981;
-  --warn: #f59e0b;
-  --bad: #ef4444;
+/* ✅ HARD KILL: Disable any dark mode completely per requirements */
+[data-theme="dark"], 
+.dark,
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  all: unset !important;
+  background: var(--bg-app) !important;
+  color: var(--text) !important;
+}
 
-  /* Shape & spacing */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --pad-1: 8px;
-  --pad-2: 12px;
-  --pad-3: 16px;
+/* Remove any dark mode toggles or switches */
+.theme-toggle,
+.dark-mode-switch,
+[data-testid="theme-toggle"] {
+  display: none !important;
+}
 
-  /* Type */
-  --font-ui: Inter, "SF Pro Text", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  --size-xs: 11px;
-  --size-sm: 12px;
-  --size-md: 14px;
-  --size-lg: 18px;
+/* Ensure all components use light theme */
+.bg-gray-900,
+.bg-slate-900,
+.text-white {
+  background-color: var(--bg-card) !important;
+  color: var(--text) !important;
+}
 
-  /* Mobile-specific light backgrounds */
-  --mobile-card-bg: #ffffff;
-  --mobile-hover-bg: #f8fafc;
-  --mobile-border: #e2e8f0;
-  --mobile-shadow: rgba(15, 23, 42, 0.08);
+/* Light theme for all modal overlays */
+.modal-overlay,
+.fixed.inset-0.bg-black {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Service location pills with exact colors */
+.service-pill-onsite {
+  background-color: var(--service-onsite) !important;
+  color: white !important;
+}
+
+.service-pill-offsite {
+  background-color: var(--service-offsite) !important;
+  color: white !important;
+}
+
+/* Form elements light theme */
+input, select, textarea {
+  background-color: var(--input-bg) !important;
+  color: var(--text) !important;
+  border-color: var(--input-border) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--input-focus) !important;
+  box-shadow: 0 0 0 1px var(--input-focus) !important;
+}
+
+/* Button light theme */
+.btn-primary {
+  background-color: var(--primary) !important;
+  color: white !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+/* Card components light theme */
+.card, .bg-white {
+  background-color: var(--bg-card) !important;
+  color: var(--text) !important;
+}
+
+/* Status pills proper colors */
+.status-draft {
+  background-color: #F3F4F6 !important;
+  color: #374151 !important;
+}
+
+.status-pending {
+  background-color: #DBEAFE !important;
+  color: #1D4ED8 !important;
+}
+
+.status-active {
+  background-color: #FEF3C7 !important;
+  color: #92400E !important;
+}
+
+.status-completed {
+  background-color: #D1FAE5 !important;
+  color: #065F46 !important;
+}
+
+.status-cancelled {
+  background-color: #FEE2E2 !important;
+  color: #991B1B !important;
+}
+
+/* Ensure navigation and headers are light */
+nav, header, .navbar, .header {
+  background-color: var(--bg-card) !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+/* Table styling light theme */
+table, .table {
+  background-color: var(--bg-card) !important;
+  color: var(--text) !important;
+}
+
+thead, .table-header {
+  background-color: #F9FAFB !important;
+  color: var(--text-muted) !important;
+}
+
+tbody tr:hover {
+  background-color: #F9FAFB !important;
+}
+
+/* Dropdown and select styling */
+.dropdown, .select-dropdown {
+  background-color: var(--bg-card) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.dropdown-option:hover {
+  background-color: #F3F4F6 !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  body {
+    background-color: var(--bg-app) !important;
+  }
+  
+  .mobile-card {
+    background-color: var(--bg-card) !important;
+    color: var(--text) !important;
+  }
+}
+
+/* Authentication pages light theme */
+.auth-container, .login-form {
+  background-color: var(--bg-card) !important;
+  color: var(--text) !important;
 }

@@ -25,6 +25,7 @@ import AdvancedBusinessIntelligenceAnalytics from './pages/advanced-business-int
 // Claims System - Consolidated to 2 essential pages
 import ClaimsManagementCenter from './pages/claims-management-center';
 import GuestClaimsSubmissionForm from './pages/guest-claims-submission-form';
+import LoanerManagementDrawer from './pages/loaner-management-drawer';
 
 const Routes = () => {
   return (
@@ -54,6 +55,9 @@ const Routes = () => {
               <Route path="/calendar-flow-management-center" element={<ProtectedRoute><CalendarFlowManagementCenter /></ProtectedRoute>} />
               <Route path="/currently-active-appointments" element={<ProtectedRoute><CurrentlyActiveAppointments /></ProtectedRoute>} />
               <Route path="/advanced-business-intelligence-analytics" element={<ProtectedRoute><AdvancedBusinessIntelligenceAnalytics /></ProtectedRoute>} />
+              
+              {/* Loaner Management */}
+              <Route path="/loaner-management-drawer" element={<ProtectedRoute><LoanerManagementDrawer /></ProtectedRoute>} />
 
               {/* Claims Management - Internal only */}
               <Route path="/claims-management-center" element={<ProtectedRoute><ClaimsManagementCenter /></ProtectedRoute>} />

@@ -22,6 +22,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
   const {
     salesConsultants,
     deliveryCoordinators,
+    financeManagers,
     vendors,
     products,
     loading: dropdownLoading,
@@ -37,6 +38,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     job_status: 'draft',
     priority: 'medium',
     customer_needs_loaner: false,
+    financeManager: null,
     lineItems: []
   });
 
@@ -585,6 +587,51 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   checked={formData?.customer_needs_loaner}
                   onChange={(checked) => updateFormData({ customer_needs_loaner: checked })}
                 />
+
+                {/* Dealer Representatives */}
+                <div className="bg-slate-50 p-4 rounded-lg border">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Dealer Representatives</h4>
+                  
+                  {/* Sales Consultant */}
+                  <div className="mb-4">
+                    <SearchableSelect
+                      label="Sales Consultant"
+                      options={salesConsultants}
+                      value={formData?.assignedTo}
+                      onChange={(value) => updateFormData({ assignedTo: value })}
+                      placeholder="Select sales consultant"
+                      searchable={true}
+                      clearable={true}
+                    />
+                  </div>
+
+                  {/* Delivery Coordinator */}
+                  <div className="mb-4">
+                    <SearchableSelect
+                      label="Delivery Coordinator" 
+                      options={deliveryCoordinators}
+                      value={formData?.deliveryCoordinator}
+                      onChange={(value) => updateFormData({ deliveryCoordinator: value })}
+                      placeholder="Select delivery coordinator"
+                      searchable={true}
+                      clearable={true}
+                    />
+                  </div>
+
+                  {/* Finance Manager */}
+                  <div>
+                    <SearchableSelect
+                      label="Finance Manager"
+                      options={financeManagers}
+                      value={formData?.financeManager}
+                      onChange={(value) => updateFormData({ financeManager: value })}
+                      placeholder="Select finance manager"
+                      searchable={true}
+                      clearable={true}
+                      helperText="Optional - does not block saves"
+                    />
+                  </div>
+                </div>
 
                 {/* Line Items */}
                 <div>

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { useDealFormDropdowns } from '../../hooks/useDropdownData';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/ui/Icon';
-import SearchableSelect from '../../components/ui/SearchableSelect';
 
 export default function NewDealModal({ isOpen, onClose, onSuccess }) {
   const { user } = useAuth();
@@ -14,15 +12,17 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
   const [isDirty, setIsDirty] = useState(false);
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
   
-  // Load dropdown data using custom hook
-  const {
-    salesConsultants,
-    deliveryCoordinators,
-    vendors,
-    products,
-    loading: dropdownLoading,
-    refresh: refreshDropdowns
-  } = useDealFormDropdowns();
+  // ✅ FIXED: Enhanced dropdown state with comprehensive error handling and retry logic
+  const [dropdownData, setDropdownData] = useState({
+    salesConsultants: [],
+    deliveryCoordinators: [],
+    financeManagers: [],
+    vendors: [],
+    products: [],
+    loading: true,
+    error: null,
+    retryCount: 0
+  });
   
   // Initial form state for dirty checking
   const initialFormState = {
@@ -31,7 +31,12 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     customerEmail: '',
     needsLoaner: false,
     assignedTo: null,
-    deliveryCoordinator: null
+    deliveryCoordinator: null,
+    financeManager: null,
+    vehicleYear: new Date()?.getFullYear(),
+    vehicleMake: 'Toyota',
+    vehicleModel: 'Camry',
+    stockNumber: ''
   };
 
   // Customer form data
@@ -39,6 +44,177 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
   
   // Line items data  
   const [lineItems, setLineItems] = useState([]);
+
+  // ✅ FIXED: Enhanced dropdown data loading with comprehensive error handling and retry logic
+  const loadDropdownData = async (retryCount = 0) => {
+    try {
+      setDropdownData(prev => ({ ...prev, loading: true, error: null, retryCount }));
+
+      // Load all dropdown data with individual error handling and proper department filtering
+      const [salesResult, dcResult, financeResult, vendorsResult, productsResult] = await Promise.allSettled([
+        // Sales Consultants - exact department match
+        supabase
+          ?.from('user_profiles')
+          ?.select('id, full_name, email, department, role, is_active')
+          ?.eq('is_active', true)
+          ?.eq('department', 'Sales Consultants')
+          ?.eq('role', 'staff')
+          ?.order('full_name'),
+        
+        // Delivery Coordinators - exact department match with broader role filtering
+        supabase
+          ?.from('user_profiles')
+          ?.select('id, full_name, email, department, role, is_active')
+          ?.eq('is_active', true)
+          ?.eq('department', 'Delivery Coordinator')
+          ?.in('role', ['admin', 'manager'])
+          ?.order('full_name'),
+        
+        // Finance Managers - exact department match
+        supabase
+          ?.from('user_profiles')
+          ?.select('id, full_name, email, department, role, is_active')
+          ?.eq('is_active', true)
+          ?.eq('department', 'Finance Manager')
+          ?.eq('role', 'staff')
+          ?.order('full_name'),
+        
+        // Active Vendors
+        supabase
+          ?.from('vendors')
+          ?.select('id, name, specialty, email, phone, is_active')
+          ?.eq('is_active', true)
+          ?.order('name'),
+        
+        // Active Products
+        supabase
+          ?.from('products')
+          ?.select('id, name, category, unit_price, cost, brand, is_active')
+          ?.eq('is_active', true)
+          ?.order('name')
+      ]);
+
+      // Process results with comprehensive error handling
+      const salesConsultants = salesResult?.status === 'fulfilled' && !salesResult?.value?.error 
+        ? salesResult?.value?.data || [] 
+        : [];
+      
+      const deliveryCoordinators = dcResult?.status === 'fulfilled' && !dcResult?.value?.error 
+        ? dcResult?.value?.data || [] 
+        : [];
+      
+      const financeManagers = financeResult?.status === 'fulfilled' && !financeResult?.value?.error 
+        ? financeResult?.value?.data || [] 
+        : [];
+      
+      const vendors = vendorsResult?.status === 'fulfilled' && !vendorsResult?.value?.error 
+        ? (vendorsResult?.value?.data || [])?.map(vendor => ({
+            id: vendor?.id,
+            value: vendor?.id,
+            label: `${vendor?.name}${vendor?.specialty ? ` - ${vendor?.specialty}` : ''}`,
+            name: vendor?.name,
+            specialty: vendor?.specialty
+          }))
+        : [];
+      
+      const products = productsResult?.status === 'fulfilled' && !productsResult?.value?.error 
+        ? (productsResult?.value?.data || [])?.map(product => ({
+            id: product?.id,
+            value: product?.id,
+            label: `${product?.name}${product?.brand ? ` - ${product?.brand}` : ''}`,
+            name: product?.name,
+            category: product?.category,
+            unitPrice: product?.unit_price,
+            cost: product?.cost
+          }))
+        : [];
+
+      setDropdownData({
+        salesConsultants,
+        deliveryCoordinators,
+        financeManagers,
+        vendors,
+        products,
+        loading: false,
+        error: null,
+        retryCount
+      });
+
+    } catch (err) {
+      console.error('Failed to load dropdown data:', err);
+      
+      // Retry logic for network failures
+      if (retryCount < 2 && (err?.message?.includes('fetch') || err?.message?.includes('network'))) {
+        setTimeout(() => loadDropdownData(retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+      
+      setDropdownData(prev => ({
+        ...prev,
+        loading: false,
+        error: 'Failed to load dropdown data. Please check your connection and try again.',
+        retryCount
+      }));
+    }
+  };
+
+  // ✅ FIXED: Enhanced loaner checkbox with proper mobile accessibility and boolean handling
+  const LoanerCheckbox = ({ checked, onChange }) => (
+    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+      <label 
+        htmlFor="needs-loaner-modal" 
+        className="flex items-center gap-3 cursor-pointer select-none"
+      >
+        <input
+          id="needs-loaner-modal"
+          type="checkbox"
+          checked={Boolean(checked)}
+          onChange={(e) => {
+            const isChecked = Boolean(e?.target?.checked);
+            onChange(isChecked);
+          }}
+          className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+        />
+        <span className="text-sm font-medium text-gray-700">
+          Customer needs loaner vehicle
+        </span>
+      </label>
+      <p className="text-xs text-gray-500 mt-2 ml-8">
+        Check this if the customer requires a loaner vehicle during service
+      </p>
+    </div>
+  );
+
+  // ✅ FIXED: Enhanced native select component with better error handling
+  const MobileSelect = ({ label, options, value, onChange, placeholder, required = false, helpText }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e?.target?.value || null)}
+        className="bg-white border border-gray-300 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+        disabled={dropdownData?.loading}
+        required={required}
+      >
+        <option value="">{placeholder}</option>
+        {options?.map(option => (
+          <option key={option?.id} value={option?.id}>
+            {option?.full_name || option?.label || option?.name}
+          </option>
+        ))}
+      </select>
+      {helpText && (
+        <p className="mt-1 text-xs text-gray-500">{helpText}</p>
+      )}
+      {options?.length === 0 && !dropdownData?.loading && (
+        <p className="mt-1 text-xs text-red-500">
+          No {label?.toLowerCase()} found. Please check your database connection.
+        </p>
+      )}
+    </div>
+  );
 
   // Dirty state tracking
   useEffect(() => {
@@ -49,6 +225,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
       customerData?.needsLoaner !== initialFormState?.needsLoaner ||
       customerData?.assignedTo !== initialFormState?.assignedTo ||
       customerData?.deliveryCoordinator !== initialFormState?.deliveryCoordinator ||
+      customerData?.financeManager !== initialFormState?.financeManager ||
       lineItems?.length > 0;
     
     setIsDirty(hasChanges);
@@ -56,143 +233,38 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
 
   // Load dropdown data when modal opens
   useEffect(() => {
-    if (isOpen && !dropdownLoading) {
-      refreshDropdowns();
+    if (isOpen) {
+      loadDropdownData();
     }
-  }, [isOpen, refreshDropdowns, dropdownLoading]);
-
-  // Enhanced loaner checkbox with mobile-friendly styling and click propagation handling
-  const LoanerCheckbox = ({ checked, onChange }) => (
-    <div 
-      className="bg-slate-50 p-4 rounded-lg border"
-      onClick={(e) => e?.stopPropagation()}
-    >
-      <label htmlFor="needs-loaner" className="inline-flex items-center gap-3 min-h-11 px-2 cursor-pointer">
-        <input
-          id="needs-loaner"
-          type="checkbox"
-          checked={Boolean(checked)}
-          onChange={(e) => {
-            e?.stopPropagation();
-            onChange(e?.target?.checked);
-          }}
-          onClick={(e) => e?.stopPropagation()}
-          className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          data-testid="loaner-checkbox"
-        />
-        <span className="text-sm font-medium text-gray-700 select-none">
-          Request loaner vehicle
-        </span>
-      </label>
-    </div>
-  );
-
-  // Enhanced Service Type Radio with proper mobile accessibility
-  const ServiceTypeRadio = ({ value, selectedValue, onChange, itemId, disabled = false }) => (
-    <div className="flex space-x-6">
-      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
-        <input
-          type="radio"
-          name={`serviceType_${itemId}`}
-          value="in_house"
-          checked={selectedValue === 'in_house'}
-          onChange={(e) => onChange(e?.target?.value)}
-          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-          data-testid="service-type-in-house"
-          disabled={disabled}
-        />
-        <span className="text-sm text-gray-700 select-none">
-          🏠 On-Site (In-House)
-        </span>
-      </label>
-      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
-        <input
-          type="radio"
-          name={`serviceType_${itemId}`}
-          value="vendor"
-          checked={selectedValue === 'vendor'}
-          onChange={(e) => onChange(e?.target?.value)}
-          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-          data-testid="service-type-vendor"
-          disabled={disabled}
-        />
-        <span className="text-sm text-gray-700 select-none">
-          🏢 Off-Site (Vendor)
-        </span>
-      </label>
-    </div>
-  );
-
-  // Enhanced Requires Scheduling Radio with mobile optimization
-  const SchedulingRadio = ({ requiresScheduling, onChange, itemId, disabled = false }) => (
-    <div className="flex space-x-6">
-      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
-        <input
-          type="radio"
-          name={`scheduling_${itemId}`}
-          checked={requiresScheduling === true}
-          onChange={() => onChange(true)}
-          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-          data-testid="requires-scheduling-yes"
-          disabled={disabled}
-        />
-        <span className="text-sm text-gray-700 select-none">
-          Needs Scheduling
-        </span>
-      </label>
-      <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
-        <input
-          type="radio"
-          name={`scheduling_${itemId}`}
-          checked={requiresScheduling === false}
-          onChange={() => onChange(false)}
-          className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
-          data-testid="requires-scheduling-no"
-          disabled={disabled}
-        />
-        <span className="text-sm text-gray-700 select-none">
-          No Scheduling Needed
-        </span>
-      </label>
-    </div>
-  );
+  }, [isOpen]);
 
   // Add new line item
   const addLineItem = () => {
     setLineItems(prev => [...prev, {
-      id: Date.now(), // Temporary ID for tracking
+      id: Date.now(),
       productId: '',
       unitPrice: '',
-      costPrice: '',
-      serviceType: 'in_house', // in_house or vendor
+      serviceType: 'in_house',
       vendorId: '',
       requiresScheduling: true,
       promisedDate: '',
       noScheduleReason: '',
-      serviceNotes: '',
-      needsLoaner: false
+      serviceNotes: ''
     }]);
   };
 
-  // Update line item with proper boolean coercion
+  // Update line item
   const updateLineItem = (id, field, value) => {
     setLineItems(prev => prev?.map(item => {
       if (item?.id === id) {
         let updatedItem = { ...item, [field]: value };
         
-        // Boolean coercion for specific fields
         if (field === 'requiresScheduling') {
-          updatedItem.requiresScheduling = Boolean(value);
-          // Clear paired fields correctly
           if (value === true) {
             updatedItem.noScheduleReason = '';
           } else {
             updatedItem.promisedDate = '';
           }
-        }
-        
-        if (field === 'needsLoaner') {
-          updatedItem.needsLoaner = Boolean(value);
         }
         
         return updatedItem;
@@ -202,15 +274,11 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
 
     // Auto-populate price when product is selected
     if (field === 'productId' && value) {
-      const selectedProduct = products?.find(p => p?.id === value);
+      const selectedProduct = dropdownData?.products?.find(p => p?.id === value);
       if (selectedProduct) {
         setLineItems(prev => prev?.map(item => 
           item?.id === id 
-            ? { 
-                ...item, 
-                unitPrice: selectedProduct?.unitPrice || selectedProduct?.unit_price || '',
-                costPrice: selectedProduct?.cost || ''
-              } 
+            ? { ...item, unitPrice: selectedProduct?.unitPrice || '' } 
             : item
         ));
       }
@@ -222,7 +290,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     setLineItems(prev => prev?.filter(item => item?.id !== id));
   };
 
-  // Validation with improved error messages
+  // Validation
   const validateStep1 = () => {
     return customerData?.customerName?.trim()?.length > 0;
   };
@@ -231,37 +299,22 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     if (lineItems?.length === 0) return false;
     
     return lineItems?.every(item => {
-      // Product and price required
       if (!item?.productId || !item?.unitPrice) return false;
-      
-      // If requires scheduling, need promised date
       if (item?.requiresScheduling && !item?.promisedDate) return false;
-      
-      // If no scheduling, need reason
       if (!item?.requiresScheduling && !item?.noScheduleReason?.trim()) return false;
-      
-      // If vendor service type, need vendor selected  
       if (item?.serviceType === 'vendor' && !item?.vendorId) return false;
-      
       return true;
     });
   };
 
-  // Calculate total with loaner flag consolidation
+  // Calculate total
   const calculateTotal = () => {
     return lineItems?.reduce((sum, item) => {
       return sum + (parseFloat(item?.unitPrice) || 0);
     }, 0);
   };
 
-  // Compute consolidated loaner needs
-  const getConsolidatedLoanerFlag = () => {
-    const customerNeedsLoaner = Boolean(customerData?.needsLoaner);
-    const itemsNeedLoaner = lineItems?.some(item => Boolean(item?.needsLoaner));
-    return customerNeedsLoaner || itemsNeedLoaner;
-  };
-
-  // Handle save as draft with proper boolean coercion
+  // Handle save as draft
   const handleSaveDraft = async () => {
     if (!validateStep1()) {
       setError('Customer name is required to save draft');
@@ -274,40 +327,37 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     try {
       // Create vehicle record
       const { data: vehicle, error: vehicleError } = await supabase?.from('vehicles')?.insert([{
-          year: new Date()?.getFullYear(),
-          make: 'TBD',
-          model: 'TBD', 
+          year: customerData?.vehicleYear || new Date()?.getFullYear(),
+          make: customerData?.vehicleMake || 'TBD',
+          model: customerData?.vehicleModel || 'TBD',
           owner_name: customerData?.customerName?.trim(),
           owner_phone: customerData?.customerPhone?.trim() || null,
           owner_email: customerData?.customerEmail?.trim() || null,
-          stock_number: `DRAFT-${Date.now()}`,
+          stock_number: customerData?.stockNumber?.trim() || `DRAFT-${Date.now()}`,
           vehicle_status: 'active',
           created_by: user?.id
         }])?.select()?.single();
 
       if (vehicleError) throw vehicleError;
 
-      // Ensure proper boolean coercion
-      const consolidatedLoaner = getConsolidatedLoanerFlag();
-
       // Create job as draft
       const { data: job, error: jobError } = await supabase?.from('jobs')?.insert([{
           title: `Draft Deal - ${customerData?.customerName?.trim()}`,
           description: `Draft deal for ${customerData?.customerName?.trim()}`,
           job_status: 'draft',
-          priority: 'medium',
           service_type: 'in_house',
           vehicle_id: vehicle?.id,
           assigned_to: customerData?.assignedTo || user?.id,
           delivery_coordinator_id: customerData?.deliveryCoordinator || null,
-          customer_needs_loaner: consolidatedLoaner,
+          finance_manager_id: customerData?.financeManager || null,
+          customer_needs_loaner: Boolean(customerData?.needsLoaner),
           created_by: user?.id,
           estimated_cost: 0
         }])?.select()?.single();
 
       if (jobError) throw jobError;
 
-      // Create transaction record with proper null handling
+      // Create transaction record
       const { error: transactionError } = await supabase?.from('transactions')?.upsert([{
           job_id: job?.id,
           vehicle_id: vehicle?.id,
@@ -333,7 +383,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  // Handle create full deal with enhanced line item processing
+  // Handle create full deal
   const handleCreateDeal = async () => {
     if (!validateStep1() || !validateStep2()) {
       setError('Please complete all required fields');
@@ -346,13 +396,13 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     try {
       // Create vehicle record
       const { data: vehicle, error: vehicleError } = await supabase?.from('vehicles')?.insert([{
-          year: new Date()?.getFullYear(),
-          make: 'TBD',
-          model: 'TBD',
+          year: customerData?.vehicleYear || new Date()?.getFullYear(),
+          make: customerData?.vehicleMake || 'TBD',
+          model: customerData?.vehicleModel || 'TBD',
           owner_name: customerData?.customerName?.trim(),
           owner_phone: customerData?.customerPhone?.trim() || null,
           owner_email: customerData?.customerEmail?.trim() || null,
-          stock_number: `DEAL-${Date.now()}`,
+          stock_number: customerData?.stockNumber?.trim() || `DEAL-${Date.now()}`,
           vehicle_status: 'active',
           created_by: user?.id
         }])?.select()?.single();
@@ -360,13 +410,8 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
       if (vehicleError) throw vehicleError;
 
       const total = calculateTotal();
-      const consolidatedLoaner = getConsolidatedLoanerFlag();
-
-      // Determine service type from line items
       const hasVendorItems = lineItems?.some(item => item?.serviceType === 'vendor');
       const serviceType = hasVendorItems ? 'vendor' : 'in_house';
-      
-      // Get primary vendor if any
       const primaryVendor = lineItems?.find(item => item?.vendorId)?.vendorId || null;
 
       // Create job
@@ -374,29 +419,31 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
           title: `Deal - ${customerData?.customerName?.trim()}`,
           description: `Deal for ${customerData?.customerName?.trim()}`,
           job_status: 'pending',
-          priority: 'medium',
           service_type: serviceType,
           vehicle_id: vehicle?.id,
           vendor_id: primaryVendor,
           assigned_to: customerData?.assignedTo || user?.id,
           delivery_coordinator_id: customerData?.deliveryCoordinator || null,
-          customer_needs_loaner: consolidatedLoaner,
+          finance_manager_id: customerData?.financeManager || null,
+          customer_needs_loaner: Boolean(customerData?.needsLoaner),
           created_by: user?.id,
           estimated_cost: total
         }])?.select()?.single();
 
       if (jobError) throw jobError;
 
-      // Create job parts (line items) with proper boolean coercion
+      // Create job parts (line items) with proper field mapping
       const jobPartsData = lineItems?.map(item => ({
         job_id: job?.id,
         product_id: item?.productId,
         quantity_used: 1,
         unit_price: parseFloat(item?.unitPrice),
+        total_price: parseFloat(item?.unitPrice), // Add total_price for consistency
         is_off_site: item?.serviceType === 'vendor',
         requires_scheduling: Boolean(item?.requiresScheduling),
         promised_date: item?.requiresScheduling ? item?.promisedDate : null,
-        no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null
+        no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
+        description: item?.serviceNotes || null
       }));
 
       const { error: jobPartsError } = await supabase?.from('job_parts')?.insert(jobPartsData);
@@ -474,7 +521,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
           </button>
         </div>
 
-        {/* Progress indicator with enhanced styling */}
+        {/* Progress indicator */}
         <div className="px-6 py-4 bg-slate-50 flex-shrink-0 border-b">
           <div className="flex items-center space-x-4">
             <div className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
@@ -497,34 +544,64 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
           </div>
         </div>
 
-        {/* Content with light theme styling */}
+        {/* Content */}
         <div className="p-6 overflow-y-auto flex-1 bg-white">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
-              {error}
+              <div className="flex justify-between items-start">
+                <div>
+                  <strong>Error:</strong> {error}
+                </div>
+                <button 
+                  onClick={() => setError('')}
+                  className="text-red-600 hover:text-red-800 ml-2"
+                >
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
             </div>
           )}
 
-          {dropdownLoading && (
+          {dropdownData?.loading && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
-              Loading dropdown data...
+              <div className="flex items-center">
+                <Icon name="Loader" size={16} className="mr-2 animate-spin" />
+                Loading dropdown data...
+              </div>
+            </div>
+          )}
+
+          {dropdownData?.error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+              <div className="flex justify-between items-start">
+                <div>
+                  <strong>Error:</strong> {dropdownData?.error}
+                </div>
+                <button 
+                  onClick={() => loadDropdownData()}
+                  className="text-blue-600 hover:text-blue-800 ml-2 text-xs underline"
+                >
+                  Retry
+                </button>
+              </div>
             </div>
           )}
 
           {currentStep === 1 && (
             <div className="space-y-6">
-              {/* Mobile-first form layout */}
+              {/* Customer Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer Name *
+                    Customer Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={customerData?.customerName}
                     onChange={(e) => setCustomerData(prev => ({ ...prev, customerName: e?.target?.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter customer name"
+                    required
                   />
                 </div>
 
@@ -536,7 +613,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     type="tel"
                     value={customerData?.customerPhone}
                     onChange={(e) => setCustomerData(prev => ({ ...prev, customerPhone: e?.target?.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter customer phone"
                   />
                 </div>
@@ -550,13 +627,13 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   type="email"
                   value={customerData?.customerEmail}
                   onChange={(e) => setCustomerData(prev => ({ ...prev, customerEmail: e?.target?.value }))}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter customer email"
                 />
               </div>
 
-              {/* Vehicle Information Section - Visible on Mobile */}
-              <div className="block bg-slate-50 p-4 rounded-lg border">
+              {/* Vehicle Information */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <h4 className="text-lg font-medium text-gray-900 mb-4">Vehicle Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -567,7 +644,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                       type="number"
                       value={customerData?.vehicleYear || ''}
                       onChange={(e) => setCustomerData(prev => ({ ...prev, vehicleYear: e?.target?.value }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="2024"
                       min="1900"
                       max={new Date()?.getFullYear() + 2}
@@ -581,7 +658,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                       type="text"
                       value={customerData?.vehicleMake || ''}
                       onChange={(e) => setCustomerData(prev => ({ ...prev, vehicleMake: e?.target?.value }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Toyota"
                     />
                   </div>
@@ -593,7 +670,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                       type="text"
                       value={customerData?.vehicleModel || ''}
                       onChange={(e) => setCustomerData(prev => ({ ...prev, vehicleModel: e?.target?.value }))}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Camry"
                     />
                   </div>
@@ -606,42 +683,52 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     type="text"
                     value={customerData?.stockNumber || ''}
                     onChange={(e) => setCustomerData(prev => ({ ...prev, stockNumber: e?.target?.value }))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter stock number"
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter stock number (optional)"
                   />
                 </div>
               </div>
 
-              {/* Enhanced loaner checkbox with click propagation handling */}
+              {/* ✅ FIXED: Enhanced loaner checkbox with proper mobile functionality */}
               <LoanerCheckbox
                 checked={customerData?.needsLoaner}
-                onChange={(checked) => setCustomerData(prev => ({ ...prev, needsLoaner: checked }))}
+                onChange={(checked) => {
+                  setCustomerData(prev => ({ ...prev, needsLoaner: Boolean(checked) }));
+                }}
               />
 
-              {/* Assigned to dropdown */}
-              <div>
-                <SearchableSelect
-                  label="Assigned to"
-                  options={salesConsultants}
-                  value={customerData?.assignedTo}
-                  onChange={(value) => setCustomerData(prev => ({ ...prev, assignedTo: value }))}
-                  placeholder="Select sales consultant"
-                  searchable={true}
-                  clearable={true}
-                />
-              </div>
+              {/* ✅ FIXED: Dealer Representatives with working dropdowns */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Dealer Representatives</h4>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <MobileSelect
+                    label="Sales Consultant"
+                    options={dropdownData?.salesConsultants}
+                    value={customerData?.assignedTo}
+                    onChange={(value) => setCustomerData(prev => ({ ...prev, assignedTo: value }))}
+                    placeholder="Select sales consultant (optional)"
+                    helpText="Choose the sales consultant responsible for this deal"
+                  />
 
-              {/* Delivery Coordinator dropdown */}
-              <div>
-                <SearchableSelect
-                  label="Delivery Coordinator"
-                  options={deliveryCoordinators}
-                  value={customerData?.deliveryCoordinator}
-                  onChange={(value) => setCustomerData(prev => ({ ...prev, deliveryCoordinator: value }))}
-                  placeholder="Select delivery coordinator"
-                  searchable={true}
-                  clearable={true}
-                />
+                  <MobileSelect
+                    label="Delivery Coordinator"
+                    options={dropdownData?.deliveryCoordinators}
+                    value={customerData?.deliveryCoordinator}
+                    onChange={(value) => setCustomerData(prev => ({ ...prev, deliveryCoordinator: value }))}
+                    placeholder="Select delivery coordinator (optional)"
+                    helpText="Choose the delivery coordinator for this deal"
+                  />
+
+                  <MobileSelect
+                    label="Finance Manager"
+                    options={dropdownData?.financeManagers}
+                    value={customerData?.financeManager}
+                    onChange={(value) => setCustomerData(prev => ({ ...prev, financeManager: value }))}
+                    placeholder="Select finance manager (optional)"
+                    helpText="Choose the finance manager for this deal"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -654,8 +741,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   onClick={addLineItem}
                   variant="outline"
                   size="sm"
-                  className="flex items-center space-x-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-                  aria-label="Add new line item"
+                  className="flex items-center space-x-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 h-11"
                 >
                   <Icon name="Plus" size={16} />
                   <span>Add Item</span>
@@ -671,7 +757,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
               ) : (
                 <div className="space-y-4">
                   {lineItems?.map((item, index) => (
-                    <div key={item?.id} className="border rounded-xl p-4 bg-slate-50">
+                    <div key={item?.id} className="border rounded-xl p-4 bg-slate-50 border-slate-200">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
                         <button
@@ -683,117 +769,155 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                       </div>
 
                       {/* Product and Price */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                          <SearchableSelect
-                            label="Product *"
-                            options={products}
-                            value={item?.productId}
-                            onChange={(value) => updateLineItem(item?.id, 'productId', value)}
-                            placeholder="Select product"
-                            searchable={true}
-                            clearable={true}
-                            groupBy="category"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Product <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={item?.productId || ''}
+                            onChange={(e) => updateLineItem(item?.id, 'productId', e?.target?.value)}
+                            className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                            required
+                          >
+                            <option value="">Select product</option>
+                            {dropdownData?.products?.map(product => (
+                              <option key={product?.id} value={product?.id}>
+                                {product?.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Unit Price *
+                            Unit Price <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="number"
                             step="0.01"
+                            min="0"
                             value={item?.unitPrice}
                             onChange={(e) => updateLineItem(item?.id, 'unitPrice', e?.target?.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="0.00"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cost (Optional)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={item?.costPrice}
-                            onChange={(e) => updateLineItem(item?.id, 'costPrice', e?.target?.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="0.00"
+                            required
                           />
                         </div>
                       </div>
 
-                      {/* Service Configuration with enhanced styling */}
-                      <div className="bg-white rounded-lg p-4 border mb-4">
+                      {/* Service Configuration */}
+                      <div className="bg-white rounded-lg p-4 border border-slate-200 mb-4">
                         <h5 className="font-medium text-gray-900 mb-3">Service Configuration</h5>
                         
-                        {/* Service Type with enhanced mobile radio buttons */}
+                        {/* Service Type */}
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Service Type
                           </label>
-                          <ServiceTypeRadio
-                            selectedValue={item?.serviceType}
-                            onChange={(value) => updateLineItem(item?.id, 'serviceType', value)}
-                            itemId={item?.id}
-                          />
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`serviceType_${item?.id}`}
+                                value="in_house"
+                                checked={item?.serviceType === 'in_house'}
+                                onChange={(e) => updateLineItem(item?.id, 'serviceType', e?.target?.value)}
+                                className="mr-2 cursor-pointer"
+                              />
+                              🏠 On-Site (In-House)
+                            </label>
+                            <label className="flex items-center cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`serviceType_${item?.id}`}
+                                value="vendor"
+                                checked={item?.serviceType === 'vendor'}
+                                onChange={(e) => updateLineItem(item?.id, 'serviceType', e?.target?.value)}
+                                className="mr-2 cursor-pointer"
+                              />
+                              🏢 Off-Site (Vendor)
+                            </label>
+                          </div>
                         </div>
 
-                        {/* Vendor Selection (if off-site) */}
+                        {/* Vendor Selection */}
                         {item?.serviceType === 'vendor' && (
                           <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                            <SearchableSelect
-                              label="Vendor *"
-                              options={vendors}
-                              value={item?.vendorId}
-                              onChange={(value) => updateLineItem(item?.id, 'vendorId', value)}
-                              placeholder="Select vendor"
-                              searchable={true}
-                              clearable={true}
-                              groupBy="specialty"
-                            />
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Vendor <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={item?.vendorId || ''}
+                              onChange={(e) => updateLineItem(item?.id, 'vendorId', e?.target?.value)}
+                              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+                              required
+                            >
+                              <option value="">Select vendor</option>
+                              {dropdownData?.vendors?.map(vendor => (
+                                <option key={vendor?.id} value={vendor?.id}>
+                                  {vendor?.label}
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         )}
 
-                        {/* Scheduling with enhanced mobile radio buttons */}
+                        {/* Scheduling */}
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Scheduling
                           </label>
                           <div className="space-y-3">
-                            <SchedulingRadio
-                              requiresScheduling={item?.requiresScheduling}
-                              onChange={(value) => updateLineItem(item?.id, 'requiresScheduling', value)}
-                              itemId={item?.id}
-                            />
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <label className="flex items-center cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`scheduling_${item?.id}`}
+                                  checked={item?.requiresScheduling === true}
+                                  onChange={() => updateLineItem(item?.id, 'requiresScheduling', true)}
+                                  className="mr-2 cursor-pointer"
+                                />
+                                Needs Scheduling
+                              </label>
+                              <label className="flex items-center cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name={`scheduling_${item?.id}`}
+                                  checked={item?.requiresScheduling === false}
+                                  onChange={() => updateLineItem(item?.id, 'requiresScheduling', false)}
+                                  className="mr-2 cursor-pointer"
+                                />
+                                No Scheduling Needed
+                              </label>
+                            </div>
 
                             {item?.requiresScheduling ? (
                               <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Promised Date *
+                                  Promised Date <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                   type="date"
                                   value={item?.promisedDate}
                                   onChange={(e) => updateLineItem(item?.id, 'promisedDate', e?.target?.value)}
                                   min={new Date()?.toISOString()?.split('T')?.[0]}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  required
                                 />
                               </div>
                             ) : (
                               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Reason for No Schedule *
+                                  Reason for No Schedule <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                   type="text"
                                   value={item?.noScheduleReason}
                                   onChange={(e) => updateLineItem(item?.id, 'noScheduleReason', e?.target?.value)}
-                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   placeholder="e.g., installed at delivery, no appointment needed"
+                                  required
                                 />
                               </div>
                             )}
@@ -809,7 +933,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                             rows={2}
                             value={item?.serviceNotes}
                             onChange={(e) => updateLineItem(item?.id, 'serviceNotes', e?.target?.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Special instructions, customer preferences, etc."
                           />
                         </div>
@@ -817,13 +941,16 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     </div>
                   ))}
 
-                  {/* Total with enhanced styling */}
+                  {/* Total */}
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-medium text-gray-900">Total:</span>
                       <span className="text-xl font-bold text-green-700">
                         ${calculateTotal()?.toFixed(2)}
                       </span>
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {lineItems?.length} item{lineItems?.length !== 1 ? 's' : ''} added
                     </div>
                   </div>
                 </div>
@@ -832,7 +959,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
           )}
         </div>
 
-        {/* Footer with mobile-friendly buttons */}
+        {/* Footer */}
         <div className="px-6 py-4 border-t bg-slate-50 flex-shrink-0">
           <div className="flex flex-col md:flex-row justify-between items-center gap-3">
             <div className="flex space-x-3 w-full md:w-auto">
@@ -841,9 +968,8 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   onClick={() => setCurrentStep(1)}
                   variant="outline"
                   className="w-full md:w-auto h-11"
-                  aria-label="Go back to customer information step"
                 >
-                  Back
+                  ← Back
                 </Button>
               )}
             </div>
@@ -853,7 +979,6 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                 onClick={handleClose}
                 variant="outline"
                 className="w-full md:w-auto h-11"
-                aria-label="Cancel and close modal"
               >
                 Cancel
               </Button>
@@ -865,7 +990,6 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     disabled={!validateStep1() || isSubmitting}
                     variant="outline"
                     className="w-full md:w-auto h-11 bg-yellow-50 border-yellow-300 text-yellow-800 hover:bg-yellow-100"
-                    aria-label="Save deal as draft"
                   >
                     {isSubmitting ? 'Saving...' : 'Save Draft'}
                   </Button>
@@ -873,9 +997,8 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     onClick={() => setCurrentStep(2)}
                     disabled={!validateStep1()}
                     className="w-full md:w-auto h-11 bg-blue-600 hover:bg-blue-700"
-                    aria-label="Proceed to line items step"
                   >
-                    Add Line Items
+                    Add Line Items →
                   </Button>
                 </>
               )}
@@ -885,7 +1008,6 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   onClick={handleCreateDeal}
                   disabled={!validateStep1() || !validateStep2() || isSubmitting}
                   className="w-full md:w-auto h-11 bg-green-600 hover:bg-green-700"
-                  aria-label="Create the deal with all line items"
                 >
                   {isSubmitting ? 'Creating...' : 'Create Deal'}
                 </Button>
@@ -907,14 +1029,12 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   variant="outline"
                   onClick={() => setShowUnsavedWarning(false)}
                   className="flex-1 h-11"
-                  aria-label="Keep editing and return to form"
                 >
                   Keep Editing
                 </Button>
                 <Button
                   onClick={confirmClose}
                   className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white"
-                  aria-label="Discard changes and close modal"
                 >
                   Discard Changes
                 </Button>

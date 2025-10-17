@@ -3,7 +3,7 @@ import { X, Search, Calendar, User, MapPin, AlertTriangle, Plus, Trash2, Car, Us
 import { format } from 'date-fns';
 import { supabase } from '../../../lib/supabase';
 import { toUTC } from '../../../lib/time';
-import { Checkbox } from '../../../components/ui/Checkbox';
+import Checkbox from '../../../components/ui/Checkbox';
 
 const CreateModal = ({ 
   initialData, 
@@ -665,7 +665,7 @@ const CreateModal = ({
 
               {/* Omnibox Search Section */}
               <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-6 rounded-lg border-2 border-orange-200">
-                <h4 className="text-lg font-semibent text-gray-900 mb-4 flex items-center">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <Search className="w-5 h-5 mr-2 text-orange-600" />
                   Search Existing Deals
                 </h4>
@@ -847,7 +847,7 @@ const CreateModal = ({
                         type="button"
                         onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'new' }))}
                         className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                          vehicleData?.new_used === 'new' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600'
+                          vehicleData?.new_used === 'new' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
                         }`}
                       >
                         New
@@ -856,7 +856,7 @@ const CreateModal = ({
                         type="button"
                         onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'used' }))}
                         className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                          vehicleData?.new_used === 'used' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600'
+                          vehicleData?.new_used === 'used' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
                         }`}
                       >
                         Used
@@ -870,6 +870,9 @@ const CreateModal = ({
                   {/* Customer Needs Loaner Vehicle - Proper UI Library Checkbox */}
                   <div className="md:col-span-3">
                     <Checkbox
+                      id="customer_needs_loaner"
+                      name="customer_needs_loaner"
+                      description="Check if customer requires a loaner vehicle during service"
                       checked={vehicleData?.customer_needs_loaner}
                       onChange={(checked) => setVehicleData(prev => ({ 
                         ...prev, 
@@ -1136,6 +1139,9 @@ const CreateModal = ({
                       {/* Off-Site Work Checkbox with Visible Checkmark */}
                       <div>
                         <Checkbox
+                          id={`off_site_work_${index}`}
+                          name={`off_site_work_${index}`}
+                          description="Check if this work needs to be done off-site"
                           checked={item?.off_site_work}
                           onChange={(checked) => updateLineItem(index, 'off_site_work', checked)}
                           label="Off-Site Work"

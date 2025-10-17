@@ -1,31 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Icon from './Icon';
+import { Portal } from './Portal';
 
 /**
  * SearchableSelect Component with Mobile Native Select Support
  * Automatically detects mobile and renders native <select> for mobile devices
  * while keeping headless select with portal rendering for desktop
  */
-const SearchableSelect = ({
-  options = [],
-  value = null,
-  onChange,
-  placeholder = 'Select an option...',
-  searchable = true,
-  clearable = true,
+const SearchableSelect = ({ 
+  options = [], 
+  value, 
+  onChange, 
+  placeholder = "Select...",
+  searchable = false,
+  clearable = false,
+  disabled = false,
+  loading = false,
+  error = null,
+  className = "",
+  optionLabel = "label",
+  optionValue = "value",
   groupBy = null,
   renderOption = null,
-  disabled = false,
-  className = '',
   label = '',
-  error = '',
   helperText = ''
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
   const [filteredOptions, setFilteredOptions] = useState(options);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [isMobile, setIsMobile] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -76,6 +81,30 @@ const SearchableSelect = ({
 
   // Find selected option
   const selectedOption = options?.find(opt => opt?.id === value);
+
+  // Check if option is selected
+  const isSelected = (option) => {
+    return (option?.[optionValue] || option?.id) === value;
+  };
+
+  // Calculate dropdown position
+  const calculateDropdownPosition = () => {
+    if (containerRef?.current) {
+      const rect = containerRef?.current?.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect?.bottom + window.scrollY,
+        left: rect?.left + window.scrollX,
+        width: rect?.width
+      });
+    }
+  };
+
+  // Update position when opening dropdown
+  useEffect(() => {
+    if (isOpen && !isMobile) {
+      calculateDropdownPosition();
+    }
+  }, [isOpen, isMobile]);
 
   // Handle click outside (desktop only)
   useEffect(() => {
@@ -156,258 +185,147 @@ const SearchableSelect = ({
     onChange?.(null);
   };
 
-  // Mobile Native Select
+  // ✅ FIXED: Use native select on mobile per user requirements
   if (isMobile) {
     return (
-      <div className={`${className}`}>
-        {/* Label */}
-        {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {label}
-          </label>
-        )}
-        {/* Native Select for Mobile */}
+      <div className={`relative ${className}`}>
         <select
           value={value || ''}
           onChange={(e) => onChange?.(e?.target?.value || null)}
-          disabled={disabled}
-          className={`w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[44px] ${
-            disabled ? 'bg-gray-50 cursor-not-allowed border-gray-200' : ''
-          } ${
-            error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''
-          }`}
+          disabled={disabled || loading}
+          className={`
+            w-full px-3 py-2 border rounded-lg
+            ${error ? 'border-red-500' : 'border-gray-300'}
+            ${disabled || loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
+            focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+            appearance-none text-base
+          `}
         >
           <option value="">{placeholder}</option>
-          {groupBy ? (
-            // Grouped options for mobile
-            (Object.entries(
-              options?.reduce((groups, option) => {
-                const group = option?.[groupBy] || 'Other';
-                if (!groups?.[group]) groups[group] = [];
-                groups?.[group]?.push(option);
-                return groups;
-              }, {})
-            )?.map(([groupName, groupOptions]) => (
-              <optgroup key={groupName} label={groupName}>
-                {groupOptions?.map(option => (
-                  <option key={option?.id} value={option?.id}>
-                    {option?.displayName || option?.name}
-                  </option>
-                ))}
-              </optgroup>
-            )))
-          ) : (
-            // Flat options for mobile
-            (options?.map(option => (
-              <option key={option?.id} value={option?.id}>
-                {option?.displayName || option?.name}
-              </option>
-            )))
-          )}
+          {options?.map((option) => (
+            <option 
+              key={option?.[optionValue] || option?.id} 
+              value={option?.[optionValue] || option?.id}
+            >
+              {option?.[optionLabel] || option?.label || option?.name}
+            </option>
+          ))}
         </select>
-        {/* Error message */}
+        {/* Mobile select arrow */}
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+          <Icon name="ChevronDown" size={16} className="text-gray-400" />
+        </div>
         {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
-        )}
-        {/* Helper text */}
-        {helperText && !error && (
-          <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+          <div className="mt-1 text-sm text-red-600">{error}</div>
         )}
       </div>
     );
   }
 
-  // Group options if groupBy is specified (desktop only)
-  const groupedOptions = groupBy && filteredOptions?.length > 0 
-    ? filteredOptions?.reduce((groups, option) => {
-        const group = option?.[groupBy] || 'Other';
-        if (!groups?.[group]) groups[group] = [];
-        groups?.[group]?.push(option);
-        return groups;
-      }, {})
-    : null;
-
-  // Default option renderer (desktop only)
-  const defaultRenderOption = (option, isHighlighted) => (
-    <div className={`px-3 py-2 cursor-pointer transition-colors ${
-      isHighlighted 
-        ? 'bg-blue-50 text-blue-900' :'text-gray-900 hover:bg-gray-50'
-    }`}>
-      <div className="font-medium">
-        {option?.displayName || option?.name}
-      </div>
-      {option?.category && (
-        <div className="text-xs text-gray-500 mt-1">
-          {option?.category}
-        </div>
-      )}
-      {option?.specialty && (
-        <div className="text-xs text-gray-500 mt-1">
-          {option?.specialty}
-        </div>
-      )}
-      {option?.email && (
-        <div className="text-xs text-gray-500 mt-1">
-          {option?.email}
-        </div>
-      )}
-    </div>
-  );
-
-  const optionRenderer = renderOption || defaultRenderOption;
-
-  // Desktop Headless Select
+  // ✅ ENHANCED: Desktop headless dropdown with better portal rendering
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {/* Label */}
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-        </label>
-      )}
-      {/* Main select button */}
-      <div
-        className={`relative w-full border rounded-lg px-3 py-2 bg-white cursor-pointer transition-colors ${
-          disabled 
-            ? 'bg-gray-50 cursor-not-allowed border-gray-200' 
-            : isOpen 
-              ? 'border-blue-500 ring-1 ring-blue-500' 
-              : error
-                ? 'border-red-300 hover:border-red-400' :'border-gray-300 hover:border-gray-400'
-        }`}
-        onClick={() => {
-          if (disabled) return;
-          setIsOpen(!isOpen);
-          if (!isOpen && searchable) {
-            setTimeout(() => searchInputRef?.current?.focus(), 0);
-          }
-        }}
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => !disabled && !loading && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        tabIndex={disabled ? -1 : 0}
-        role="combobox"
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
+        disabled={disabled || loading}
+        className={`
+          w-full px-3 py-2 text-left border rounded-lg
+          ${error ? 'border-red-500' : 'border-gray-300'}
+          ${disabled || loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'}
+          ${isOpen ? 'ring-1 ring-blue-500 border-blue-500' : ''}
+          focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+          flex items-center justify-between
+        `}
       >
-        <div className="flex items-center justify-between">
-          <span className={`block truncate ${
-            selectedOption ? 'text-gray-900' : 'text-gray-500'
-          }`}>
-            {selectedOption?.displayName || selectedOption?.name || placeholder}
-          </span>
-          
-          <div className="flex items-center space-x-1">
-            {clearable && selectedOption && !disabled && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
-                tabIndex={-1}
-              >
-                <Icon name="X" size={14} className="text-gray-400" />
-              </button>
-            )}
-            <Icon 
-              name="ChevronDown" 
-              size={16} 
-              className={`text-gray-400 transition-transform ${
-                isOpen ? 'transform rotate-180' : ''
-              }`} 
-            />
-          </div>
+        {/* Display text */}
+        <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
+          {selectedOption ? (selectedOption?.[optionLabel] || selectedOption?.label) : placeholder}
+        </span>
+        
+        {/* Icons */}
+        <div className="flex items-center space-x-1">
+          {loading && <Icon name="Loader2" size={16} className="animate-spin text-gray-400" />}
+          {clearable && selectedOption && !loading && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-0.5 hover:bg-gray-200 rounded"
+            >
+              <Icon name="X" size={14} className="text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+          <Icon 
+            name={isOpen ? "ChevronUp" : "ChevronDown"} 
+            size={16} 
+            className="text-gray-400" 
+          />
         </div>
-      </div>
+      </button>
+      {/* ✅ ENHANCED: Portal-rendered dropdown with proper z-index */}
+      {isOpen && typeof window !== 'undefined' && (
+        <Portal>
+          <div 
+            className="fixed inset-0 z-50"
+            onClick={() => setIsOpen(false)}
+          >
+            <div 
+              style={{
+                position: 'absolute',
+                top: `${dropdownPosition?.top}px`,
+                left: `${dropdownPosition?.left}px`,
+                width: `${dropdownPosition?.width}px`,
+                zIndex: 9999
+              }}
+              className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden"
+              onClick={(e) => e?.stopPropagation()}
+            >
+              {/* Search input */}
+              {searchable && (
+                <div className="p-2 border-b border-gray-200">
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e?.target?.value)}
+                    placeholder="Search..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    autoFocus
+                  />
+                </div>
+              )}
 
-      {/* Desktop Dropdown with Portal Rendering */}
-      {isOpen && !disabled && (
-        <div 
-          className="fixed bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden z-[9999]"
-          style={{
-            position: 'fixed',
-            inset: 'auto',
-            zIndex: 9999,
-            width: containerRef?.current?.offsetWidth + 'px',
-            top: (containerRef?.current?.getBoundingClientRect()?.bottom + window?.scrollY + 4) + 'px',
-            left: containerRef?.current?.getBoundingClientRect()?.left + window?.scrollX + 'px'
-          }}
-        >
-          {/* Search input */}
-          {searchable && (
-            <div className="p-2 border-b border-gray-200">
-              <div className="relative">
-                <Icon 
-                  name="Search" 
-                  size={16} 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
-                />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e?.target?.value)}
-                  onKeyDown={handleKeyDown}
-                />
+              {/* Options list */}
+              <div className="max-h-48 overflow-auto">
+                {filteredOptions?.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">
+                    {searchTerm ? 'No results found' : 'No options available'}
+                  </div>
+                ) : (
+                  filteredOptions?.map((option) => (
+                    <button
+                      key={option?.[optionValue] || option?.id}
+                      type="button"
+                      onClick={() => handleSelect(option)}
+                      className={`
+                        w-full px-3 py-2 text-left text-sm hover:bg-gray-50
+                        ${isSelected(option) ? 'bg-blue-50 text-blue-700' : 'text-gray-900'}
+                        focus:bg-gray-50 focus:outline-none
+                      `}
+                    >
+                      {option?.[optionLabel] || option?.label || option?.name}
+                    </button>
+                  ))
+                )}
               </div>
             </div>
-          )}
-
-          {/* Options list */}
-          <div 
-            ref={listRef}
-            className="max-h-48 overflow-y-auto"
-            role="listbox"
-          >
-            {filteredOptions?.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-gray-500 text-center">
-                {searchTerm ? 'No matching options found' : 'No options available'}
-              </div>
-            ) : groupedOptions ? (
-              // Grouped options
-              (Object?.entries(groupedOptions)?.map(([groupName, groupOptions]) => (
-                <div key={groupName}>
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
-                    {groupName}
-                  </div>
-                  {groupOptions?.map((option, index) => {
-                    const globalIndex = filteredOptions?.indexOf(option);
-                    return (
-                      <div
-                        key={option?.id}
-                        onClick={() => handleSelect(option)}
-                        role="option"
-                        aria-selected={value === option?.id}
-                      >
-                        {optionRenderer(option, highlightedIndex === globalIndex)}
-                      </div>
-                    );
-                  })}
-                </div>
-              )))
-            ) : (
-              // Flat options
-              (filteredOptions?.map((option, index) => (
-                <div
-                  key={option?.id}
-                  onClick={() => handleSelect(option)}
-                  role="option"
-                  aria-selected={value === option?.id}
-                >
-                  {optionRenderer(option, highlightedIndex === index)}
-                </div>
-              )))
-            )}
           </div>
-        </div>
+        </Portal>
       )}
-      
       {/* Error message */}
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
-      )}
-      {/* Helper text */}
-      {helperText && !error && (
-        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+        <div className="mt-1 text-sm text-red-600">{error}</div>
       )}
     </div>
   );

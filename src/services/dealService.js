@@ -104,189 +104,48 @@ async function upsertLoanerAssignment(jobId, loanerData) {
   }
 }
 
-// --- queries -------------------------------------------------------------
-
-// ✅ UPDATED: Proper tracker SQL query with CTE for next appointments
+// ✅ FIXED: Updated getAllDeals to remove SQL RPC dependency and use direct queries
 export async function getAllDeals() {
   try {
-    // Enhanced query with CTE for next appointment calculations
-    const { data: jobs, error } = await supabase?.rpc('sql', {
-      query: `
-        WITH next_appt AS (
-          SELECT DISTINCT ON (jp.job_id)
-            jp.job_id,
-            jp.promised_date as next_appointment_date,
-            CASE 
-              WHEN jp.promised_date < CURRENT_DATE THEN 'overdue'
-              WHEN jp.promised_date = CURRENT_DATE THEN 'today'  
-              WHEN jp.promised_date <= CURRENT_DATE + INTERVAL '7 days'THEN 'upcoming' ELSE'future'
-            END as appointment_status
-          FROM job_parts jp
-          WHERE jp.requires_scheduling = true 
-            AND jp.promised_date IS NOT NULL
-            AND jp.promised_date >= CURRENT_DATE - INTERVAL '30 days'
-          ORDER BY jp.job_id, jp.promised_date ASC
-        ),
-        active_loaner AS (
-          SELECT 
-            la.job_id, 
-            la.id as loaner_id, 
-            la.loaner_number, 
-            la.eta_return_date,
-            la.notes as loaner_notes
-          FROM loaner_assignments la
-          WHERE la.returned_at IS NULL
-        )
-        SELECT 
-          j.id,
-          j.created_at,
-          j.job_status,
-          j.service_type,
-          j.color_code,
-          j.title,
-          j.job_number,
-          j.priority,
-          j.assigned_to,
-          j.delivery_coordinator_id,
-          j.finance_manager_id,
-          j.customer_needs_loaner,
-          -- Vehicle information
-          v.id as vehicle_id,
-          v.year as vehicle_year,
-          v.make as vehicle_make,
-          v.model as vehicle_model,
-          v.stock_number as vehicle_stock_number,
-          -- Next appointment data from CTE
-          na.next_appointment_date,
-          na.appointment_status,
-          -- Active loaner data
-          ala.loaner_id,
-          ala.loaner_number,
-          to_char(ala.eta_return_date, 'Mon DD') as loaner_eta_short,
-          ala.loaner_notes,
-          -- Job parts for service location and scheduling
-          COALESCE(
-            json_agg(
-              CASE WHEN jp.id IS NOT NULL THEN
-                json_build_object(
-                  'id', jp.id,
-                  'product_id', jp.product_id,
-                  'unit_price', jp.unit_price,
-                  'quantity_used', jp.quantity_used,
-                  'promised_date', jp.promised_date,
-                  'requires_scheduling', jp.requires_scheduling,
-                  'no_schedule_reason', jp.no_schedule_reason,
-                  'is_off_site', jp.is_off_site
-                )
-              ELSE NULL END
-            ) FILTER (WHERE jp.id IS NOT NULL),
-            '[]'::json
-          ) as job_parts
-        FROM jobs j
-        LEFT JOIN vehicles v ON j.vehicle_id = v.id
-        LEFT JOIN next_appt na ON j.id = na.job_id
-        LEFT JOIN active_loaner ala ON ala.job_id = j.id
-        LEFT JOIN job_parts jp ON j.id = jp.job_id
-        WHERE j.job_status IN ('draft', 'pending', 'in_progress', 'completed')
-        GROUP BY 
-          j.id, j.created_at, j.job_status, j.service_type, j.color_code, 
-          j.title, j.job_number, j.priority, j.assigned_to, 
-          j.delivery_coordinator_id, j.finance_manager_id, j.customer_needs_loaner,
-          v.id, v.year, v.make, v.model, v.stock_number,
-          na.next_appointment_date, na.appointment_status,
-          ala.loaner_id, ala.loaner_number, ala.eta_return_date, ala.loaner_notes
-        ORDER BY j.created_at DESC
-      `
-    });
-
-    if (error) throw error;
-
-    // Get transactions data separately for customer info and totals
-    const jobIds = (jobs || [])?.map(j => j?.id);
-    const { data: transactions } = await supabase?.from('transactions')?.select('job_id, customer_name, customer_phone, customer_email, total_amount')?.in('job_id', jobIds);
-
-    // Get delivery coordinators and sales consultants
-    const { data: deliveryCoordinators } = await supabase?.from('user_profiles')?.select('id, full_name')?.eq('department', 'Delivery Coordinator')?.eq('is_active', true);
-
-    const { data: salesStaff } = await supabase?.from('user_profiles')?.select('id, full_name')?.eq('department', 'Sales Consultants')?.eq('is_active', true);
-
-    // Enhanced job mapping with CTE data
-    const enhancedJobs = (jobs || [])?.map(job => {
-      const transaction = transactions?.find(t => t?.job_id === job?.id);
-      const deliveryCoordinator = deliveryCoordinators?.find(dc => dc?.id === job?.delivery_coordinator_id);
-      const salesConsultant = salesStaff?.find(sc => sc?.id === job?.created_by);
-
-      // Parse job_parts JSON if it exists
-      let jobParts = [];
-      try {
-        jobParts = job?.job_parts ? JSON.parse(job?.job_parts) : [];
-      } catch (e) {
-        jobParts = Array.isArray(job?.job_parts) ? job?.job_parts : [];
-      }
-
-      return {
-        ...job,
-        vehicle: job?.vehicle_id ? {
-          id: job?.vehicle_id,
-          year: job?.vehicle_year,
-          make: job?.vehicle_make,
-          model: job?.vehicle_model,
-          stock_number: job?.vehicle_stock_number
-        } : null,
-        job_parts: jobParts,
-        customer_name: transaction?.customer_name || '',
-        customer_phone: transaction?.customer_phone || '',
-        customer_email: transaction?.customer_email || '',
-        total_amount: transaction?.total_amount || 0,
-        delivery_coordinator_name: deliveryCoordinator?.full_name || null,
-        sales_consultant_name: salesConsultant?.full_name || null,
-        next_promised_short: job?.next_appointment_date ? 
-          new Date(job?.next_appointment_date)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null,
-        appointment_status: job?.appointment_status || null
-      };
-    });
-
-    return enhancedJobs;
-  } catch (error) {
-    // Fallback to original query if CTE query fails
-    console.warn('CTE query failed, falling back to original query:', error?.message);
-    
-    const { data: jobs, error: fallbackError } = await supabase?.from('jobs')?.select(`
-        id,
-        created_at,
-        job_status,
-        service_type,
-        color_code,
-        title,
-        job_number,
-        priority,
-        assigned_to,
-        delivery_coordinator_id,
-        finance_manager_id,
-        customer_needs_loaner,
-        vehicle:vehicles(id, year, make, model, stock_number),
+    // Use direct Supabase queries instead of SQL RPC function
+    const { data: jobs, error: jobsError } = await supabase
+      ?.from('jobs')
+      ?.select(`
+        id, created_at, job_status, service_type, color_code, title, job_number,
+        customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
+        vehicle:vehicles(year, make, model, stock_number),
         job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site)
-      `)?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])?.order('created_at', { ascending: false });
+      `)
+      ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
+      ?.order('created_at', { ascending: false });
 
-    if (fallbackError) throw new Error(`Failed to load deals: ${fallbackError.message}`);
+    if (jobsError) throw jobsError;
 
-    // Get transactions data separately for customer info and totals
-    const jobIds = (jobs || [])?.map(j => j?.id);
-    const { data: transactions } = await supabase?.from('transactions')?.select('job_id, customer_name, customer_phone, customer_email, total_amount')?.in('job_id', jobIds);
+    // Get transactions and loaner assignments separately for better performance
+    const jobIds = jobs?.map(j => j?.id) || [];
+    
+    const [transactionsResult, loanersResult] = await Promise.all([
+      supabase
+        ?.from('transactions')
+        ?.select('job_id, customer_name, customer_phone, customer_email, total_amount')
+        ?.in('job_id', jobIds),
+      supabase
+        ?.from('loaner_assignments')
+        ?.select('job_id, id, loaner_number, eta_return_date')
+        ?.in('job_id', jobIds)
+        ?.is('returned_at', null)
+    ]);
 
-    // Get delivery coordinators and sales consultants
-    const { data: deliveryCoordinators } = await supabase?.from('user_profiles')?.select('id, full_name')?.eq('department', 'Delivery Coordinator')?.eq('is_active', true);
+    const transactions = transactionsResult?.data || [];
+    const loaners = loanersResult?.data || [];
 
-    const { data: salesStaff } = await supabase?.from('user_profiles')?.select('id, full_name')?.eq('department', 'Sales Consultants')?.eq('is_active', true);
-
-    // Merge the data with fallback next appointment calculation
-    const enhancedJobs = (jobs || [])?.map(job => {
+    // Process and enhance the data
+    return jobs?.map(job => {
       const transaction = transactions?.find(t => t?.job_id === job?.id);
-      const deliveryCoordinator = deliveryCoordinators?.find(dc => dc?.id === job?.delivery_coordinator_id);
-      const salesConsultant = salesStaff?.find(sc => sc?.id === job?.created_by);
-
-      // Calculate next promised date
-      const schedulingParts = (job?.job_parts || [])?.filter(part => part?.requires_scheduling && part?.promised_date);
+      const loaner = loaners?.find(l => l?.job_id === job?.id);
+      
+      // Calculate next promised date from job parts
+      const schedulingParts = job?.job_parts?.filter(part => part?.requires_scheduling && part?.promised_date) || [];
       const nextPromisedDate = schedulingParts?.length > 0 
         ? schedulingParts?.sort((a, b) => new Date(a.promised_date) - new Date(b.promised_date))?.[0]?.promised_date
         : null;
@@ -297,63 +156,65 @@ export async function getAllDeals() {
         customer_phone: transaction?.customer_phone || '',
         customer_email: transaction?.customer_email || '',
         total_amount: transaction?.total_amount || 0,
-        delivery_coordinator_name: deliveryCoordinator?.full_name || null,
-        sales_consultant_name: salesConsultant?.full_name || null,
         next_promised_short: nextPromisedDate ? 
-          new Date(nextPromisedDate)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
+          new Date(nextPromisedDate)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null,
+        loaner_id: loaner?.id || null,
+        loaner_number: loaner?.loaner_number || null,
+        loaner_eta_short: loaner?.eta_return_date ? 
+          new Date(loaner?.eta_return_date)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null,
+        vehicle: job?.vehicle_id && job?.vehicle ? {
+          year: job?.vehicle?.year,
+          make: job?.vehicle?.make,
+          model: job?.vehicle?.model,
+          stock_number: job?.vehicle?.stock_number
+        } : null,
+        stock_no: job?.vehicle?.stock_number
       };
-    });
-
-    return enhancedJobs;
+    }) || [];
+  } catch (error) {
+    console.error('Failed to load deals:', error);
+    throw new Error(`Failed to load deals: ${error?.message}`);
   }
 }
 
-// Shared select list with lightweight nested relations.
-// Updated to include new job_parts columns and proper relationships
-const JOBS_SELECT = `
-  id,
-  job_number,
-  title,
-  description,
-  job_status,
-  priority,
-  location,
-  vehicle_id,
-  vendor_id,
-  scheduled_start_time,
-  scheduled_end_time,
-  estimated_hours,
-  estimated_cost,
-  actual_cost,
-  customer_needs_loaner,
-  service_type,
-  delivery_coordinator_id,
-  assigned_to,
-  created_at,
-  vehicle:vehicles(id, year, make, model, stock_number),
-  vendor:vendors(id, name),
-  job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name))
-`;
-
-// READ: single deal by id (used by Edit) - ENHANCED with transaction data
+// ✅ FIXED: Updated getDeal to remove SQL RPC dependency
 export async function getDeal(id) {
-  const { data: job, error: jobError } = await supabase?.from('jobs')?.select(JOBS_SELECT)?.eq('id', id)?.single();
+  try {
+    // Use direct query instead of SQL RPC
+    const { data: job, error: jobError } = await supabase
+      ?.from('jobs')
+      ?.select(`
+        id, job_number, title, description, job_status, priority, location,
+        vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
+        estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
+        service_type, delivery_coordinator_id, assigned_to, created_at, finance_manager_id,
+        vehicle:vehicles(id, year, make, model, stock_number),
+        vendor:vendors(id, name),
+        job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
+      `)
+      ?.eq('id', id)
+      ?.single();
 
-  if (jobError) throw new Error(`Failed to load deal: ${jobError.message}`);
+    if (jobError) throw new Error(`Failed to load deal: ${jobError.message}`);
 
-  // Get transaction data for customer information
-  const { data: transaction } = await supabase?.from('transactions')?.select('customer_name, customer_phone, customer_email, total_amount')?.eq('job_id', id)?.single();
+    // Get transaction data separately
+    const { data: transaction } = await supabase
+      ?.from('transactions')
+      ?.select('customer_name, customer_phone, customer_email, total_amount')
+      ?.eq('job_id', id)
+      ?.single();
 
-  // Merge job and transaction data
-  const enhancedDeal = {
-    ...job,
-    customer_name: transaction?.customer_name || '',
-    customer_phone: transaction?.customer_phone || '',
-    customer_email: transaction?.customer_email || '',
-    total_amount: transaction?.total_amount || 0
-  };
-
-  return enhancedDeal;
+    return {
+      ...job,
+      customer_name: transaction?.customer_name || '',
+      customer_phone: transaction?.customer_phone || '',
+      customer_email: transaction?.customer_email || '',
+      total_amount: transaction?.total_amount || 0
+    };
+  } catch (error) {
+    console.error('Failed to get deal:', error);
+    throw new Error(`Failed to load deal: ${error?.message}`);
+  }
 }
 
 // CREATE: deal + job_parts
@@ -506,12 +367,19 @@ function mapDbDealToForm(dbDeal) {
 
 // A3: New function to mark loaner as returned
 export async function markLoanerReturned(loanerAssignmentId) {
-  const { error } = await supabase?.rpc('mark_loaner_returned', { 
-    assignment_id: loanerAssignmentId 
-  });
-  
-  if (error) throw new Error(`Failed to mark loaner as returned: ${error.message}`);
-  return true;
+  try {
+    // Use direct update instead of RPC function if it doesn't exist
+    const { error } = await supabase
+      ?.from('loaner_assignments')
+      ?.update({ returned_at: new Date()?.toISOString() })
+      ?.eq('id', loanerAssignmentId);
+    
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Failed to mark loaner as returned:', error);
+    throw new Error(`Failed to mark loaner as returned: ${error?.message}`);
+  }
 }
 
 // Back-compat default export (so both import styles work):

@@ -1,18 +1,19 @@
 // src/pages/deals/index.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllDeals, deleteDeal, markLoanerReturned } from '../../services/dealService';
+import { getAllDeals, markLoanerReturned } from '../../services/dealService';
 import ExportButton from '../../components/common/ExportButton';
 import NewDealModal from './NewDealModal';
 import EditDealModal from './components/EditDealModal';
-import SearchableSelect from '../../components/ui/SearchableSelect';
-import { useDropdownData } from '../../hooks/useDropdownData';
 
+import { useDropdownData } from '../../hooks/useDropdownData';
+import Navbar from '../../components/ui/Navbar';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/ui/Icon';
 
+// ✅ UPDATED: StatusPill with enhanced styling  
 const StatusPill = ({ status }) => {
   const statusColors = {
     draft: 'bg-gray-100 text-gray-700',
@@ -31,7 +32,7 @@ const StatusPill = ({ status }) => {
   );
 };
 
-// Helper to format names as "Lastname, F."
+// ✅ ADDED: Helper to format names as "Lastname, F."
 const formatStaffName = (fullName) => {
   if (!fullName) return '';
   const parts = fullName?.trim()?.split(' ');
@@ -44,28 +45,14 @@ const formatStaffName = (fullName) => {
   return `${lastName}, ${firstInitial}.`;
 };
 
-// Enhanced "Next" promised chip with urgency colors
-const NextPromisedChip = ({ jobParts }) => {
-  if (!jobParts || jobParts?.length === 0) {
+// ✅ UPDATED: Enhanced "Next" promised chip with exact functionality per requirements
+const NextPromisedChip = ({ nextPromisedShort }) => {
+  if (!nextPromisedShort) {
     return <span className="text-xs text-gray-500">—</span>;
   }
 
-  // Find earliest promised date from items requiring scheduling
-  const schedulingItems = jobParts?.filter(part => part?.requires_scheduling && part?.promised_date);
-  
-  if (schedulingItems?.length === 0) {
-    return <span className="text-xs text-gray-500">—</span>;
-  }
-
-  const earliestPromise = schedulingItems?.sort((a, b) => 
-    new Date(a?.promised_date) - new Date(b?.promised_date)
-  )?.[0];
-
-  if (!earliestPromise?.promised_date) {
-    return <span className="text-xs text-gray-500">—</span>;
-  }
-
-  const promiseDate = new Date(earliestPromise?.promised_date);
+  // Parse the date to determine urgency
+  const promiseDate = new Date(nextPromisedShort);
   const today = new Date();
   today?.setHours(0, 0, 0, 0);
   promiseDate?.setHours(0, 0, 0, 0);
@@ -74,84 +61,72 @@ const NextPromisedChip = ({ jobParts }) => {
   todayPlus2?.setDate(today?.getDate() + 2);
 
   let urgencyClass = '';
-  let status = 'ok';
   
-  // Compute urgency
+  // Compute urgency per requirements
   if (promiseDate < today) {
     // overdue: date < today
-    status = 'overdue';
     urgencyClass = 'bg-red-100 text-red-800 border-red-200';
   } else if (promiseDate <= todayPlus2) {
     // soon: today ≤ date ≤ today+2
-    status = 'soon'; 
     urgencyClass = 'bg-amber-100 text-amber-800 border-amber-200';
   } else {
     // ok: otherwise
-    status = 'ok';
     urgencyClass = 'bg-green-100 text-green-800 border-green-200';
   }
 
-  const formattedDate = promiseDate?.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric' 
-  });
-
   return (
     <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${urgencyClass}`}>
-      Next: {formattedDate}
+      Next: {nextPromisedShort}
     </span>
   );
 };
 
-// Enhanced Service Location Tag with updated colors per checklist requirements
-const ServiceLocationTag = ({ jobParts }) => {
-  if (!jobParts || jobParts?.length === 0) {
-    return <span className="text-xs text-gray-500">No items</span>;
-  }
+// ✅ UPDATED: Service Location Tag with exact colors per checklist (#22c55e in-house / #f97316 vendor)
+const ServiceLocationTag = ({ serviceType, jobParts }) => {
+  // Check if any line items are off-site to determine vendor status
+  const hasOffSiteItems = jobParts?.some(part => part?.is_off_site);
+  const hasOnSiteItems = jobParts?.some(part => !part?.is_off_site);
 
-  const hasOffSite = jobParts?.some(part => part?.is_off_site);
-  const hasOnSite = jobParts?.some(part => !part?.is_off_site);
-
-  if (hasOffSite && hasOnSite) {
+  if (hasOffSiteItems && hasOnSiteItems) {
     return (
       <div className="flex flex-col space-y-1">
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#f97316', borderColor: '#f97316' }}>
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: '#f97316' }}>
           🏢 Off-Site
         </span>
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#22c55e', borderColor: '#22c55e' }}>
-          🏠 On-Site
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: '#22c55e' }}>
+          🏠 In-House
         </span>
       </div>
     );
   }
 
-  if (hasOffSite) {
+  if (hasOffSiteItems) {
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#f97316', borderColor: '#f97316' }}>
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: '#f97316' }}>
         🏢 Off-Site
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white border" style={{ backgroundColor: '#22c55e', borderColor: '#22c55e' }}>
-      🏠 On-Site
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: '#22c55e' }}>
+      🏠 In-House
     </span>
   );
 };
 
-// Enhanced draft reminder with improved styling
+// ✅ UPDATED: Enhanced draft reminder with improved styling
 const DraftReminderBanner = ({ draftsCount, onViewDrafts }) => {
   const [dismissed, setDismissed] = useState(false);
   
   if (draftsCount === 0 || dismissed) return null;
 
   return (
-    <div className="mb-6 p-4 rounded-lg border bg-amber-50 border-amber-200 text-amber-900">
+    <div className="mb-6 p-4 rounded-lg border" style={{ backgroundColor: '#FEF3C7', borderColor: '#F3E8A3', color: '#92400E' }}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
-            <Icon name="AlertCircle" size={20} className="text-amber-600" />
+            <Icon name="AlertCircle" size={20} style={{ color: '#D97706' }} />
           </div>
           <div>
             <p className="font-medium">Draft – needs details</p>
@@ -165,14 +140,16 @@ const DraftReminderBanner = ({ draftsCount, onViewDrafts }) => {
             size="sm" 
             variant="ghost" 
             onClick={onViewDrafts} 
-            className="text-amber-700 hover:text-amber-800 hover:bg-amber-100"
+            style={{ color: '#92400E' }}
+            className="hover:bg-yellow-100"
             aria-label="View draft deals"
           >
             View drafts
           </Button>
           <button
             onClick={() => setDismissed(true)}
-            className="text-amber-500 hover:text-amber-700 p-1"
+            className="p-1"
+            style={{ color: '#F59E0B' }}
           >
             <Icon name="X" size={16} />
           </button>
@@ -182,7 +159,7 @@ const DraftReminderBanner = ({ draftsCount, onViewDrafts }) => {
   );
 };
 
-// Mobile-friendly customer display with enhanced tap-to-call and SMS
+// ✅ UPDATED: Mobile-friendly customer display with enhanced tap-to-call and SMS
 const CustomerDisplay = ({ deal }) => {
   if (!deal?.customer_name && !deal?.customer_phone) {
     return <span className="text-xs text-gray-500">—</span>;
@@ -191,43 +168,29 @@ const CustomerDisplay = ({ deal }) => {
   return (
     <div className="space-y-1">
       {deal?.customer_name && (
-        <div className="font-medium text-sm text-gray-900">
+        <div className="font-medium text-sm text-slate-900">
           {deal?.customer_name}
         </div>
       )}
       {deal?.customer_phone && (
-        <div className="flex space-x-2 md:block md:space-x-0">
-          {/* Mobile: tap-to-call and SMS */}
-          <div className="md:hidden flex space-x-2">
-            <a 
-              href={`tel:${deal?.customer_phone}`}
-              className="text-xs text-blue-600 hover:text-blue-800 underline bg-blue-50 px-2 py-1 rounded"
-            >
-              📞 Call
-            </a>
-            <a 
-              href={`sms:${deal?.customer_phone}`}
-              className="text-xs text-green-600 hover:text-green-800 underline bg-green-50 px-2 py-1 rounded"
-            >
-              💬 SMS
-            </a>
-          </div>
-          {/* Desktop: plain display */}
-          <div className="hidden md:block text-xs text-gray-500">
-            {deal?.customer_phone}
-          </div>
-        </div>
+        <a 
+          href={`tel:${deal?.customer_phone}`}
+          className="text-xs text-slate-500 hover:text-blue-600 underline"
+          onClick={(e) => e?.stopPropagation()}
+        >
+          {deal?.customer_phone}
+        </a>
       )}
     </div>
   );
 };
 
-// Value display with currency formatting
+// ✅ UPDATED: Value display with currency formatting
 const ValueDisplay = ({ amount }) => {
   const value = parseFloat(amount) || 0;
   return (
     <div className="text-right">
-      <span className="text-sm font-medium text-gray-900">
+      <span className="text-sm font-medium text-slate-900">
         {new Intl.NumberFormat('en-US', {
           style: 'currency',
           currency: 'USD'
@@ -237,8 +200,8 @@ const ValueDisplay = ({ amount }) => {
   );
 };
 
-// A2: Enhanced Loaner Pill component for tracker rows
-const LoanerPill = ({ deal }) => {
+// ✅ ADDED: Enhanced Loaner Badge component for tracker rows
+const LoanerBadge = ({ deal }) => {
   if (!deal?.loaner_number) {
     return null;
   }
@@ -247,13 +210,180 @@ const LoanerPill = ({ deal }) => {
     <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
       🚗 Loaner #{deal?.loaner_number}
       {deal?.loaner_eta_short && (
-        <span className="ml-1">• Due {deal?.loaner_eta_short}</span>
+        <span className="ml-1">• due {deal?.loaner_eta_short}</span>
       )}
     </span>
   );
 };
 
-// A3: Mark Returned Modal Component
+// ✅ FIXED: Loaner Drawer Component with enhanced mobile functionality
+const LoanerDrawer = ({ isOpen, onClose, deal, onSave, loading }) => {
+  const [loanerForm, setLoanerForm] = useState({
+    loaner_number: '',
+    eta_return_date: '',
+    notes: ''
+  });
+  const [error, setError] = useState('');
+
+  // Reset form when drawer opens/closes
+  useEffect(() => {
+    if (isOpen && deal) {
+      // Pre-populate if loaner exists
+      setLoanerForm({
+        loaner_number: deal?.loaner_number || '',
+        eta_return_date: deal?.loaner_eta_return_date || '',
+        notes: deal?.loaner_notes || ''
+      });
+      setError('');
+    } else if (!isOpen) {
+      setLoanerForm({ loaner_number: '', eta_return_date: '', notes: '' });
+      setError('');
+    }
+  }, [isOpen, deal]);
+
+  const handleSave = async () => {
+    setError('');
+    
+    if (!loanerForm?.loaner_number?.trim()) {
+      setError('Loaner number is required');
+      return;
+    }
+    
+    if (!loanerForm?.eta_return_date) {
+      setError('ETA return date is required');
+      return;
+    }
+
+    try {
+      await onSave({
+        job_id: deal?.id,
+        loaner_number: loanerForm?.loaner_number?.trim(),
+        eta_return_date: loanerForm?.eta_return_date,
+        notes: loanerForm?.notes?.trim() || null
+      });
+      onClose(); // Close drawer on successful save
+    } catch (err) {
+      setError(err?.message || 'Failed to save loaner assignment');
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={onClose} />
+      
+      {/* Drawer - Mobile-first light theme only */}
+      <div className="fixed right-0 top-0 h-full w-full md:w-96 bg-white shadow-xl z-50 overflow-y-auto">
+        <div className="p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Loaner Assignment
+            </h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="Close drawer"
+            >
+              <Icon name="X" size={20} />
+            </Button>
+          </div>
+
+          {/* Deal Info */}
+          <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <h4 className="font-medium text-sm text-slate-900 mb-2">Deal Information</h4>
+            <p className="text-sm text-slate-600">{deal?.title}</p>
+            <p className="text-xs text-slate-500">{deal?.customer_name}</p>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{error}</p>
+              <button 
+                onClick={() => setError('')}
+                className="text-xs text-red-500 hover:text-red-700 mt-1 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Form with light theme inputs */}
+          <div className="space-y-4">
+            {/* Loaner Number */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Loaner Number *
+              </label>
+              <input
+                type="text"
+                value={loanerForm?.loaner_number}
+                onChange={(e) => setLoanerForm(prev => ({ ...prev, loaner_number: e?.target?.value }))}
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="e.g., 123"
+                required
+              />
+            </div>
+
+            {/* ETA Return Date */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Expected Return Date *
+              </label>
+              <input
+                type="date"
+                value={loanerForm?.eta_return_date}
+                onChange={(e) => setLoanerForm(prev => ({ ...prev, eta_return_date: e?.target?.value }))}
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                min={new Date()?.toISOString()?.split('T')?.[0]}
+                required
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Notes (optional)
+              </label>
+              <textarea
+                value={loanerForm?.notes}
+                onChange={(e) => setLoanerForm(prev => ({ ...prev, notes: e?.target?.value }))}
+                className="bg-white border border-slate-200 rounded-lg w-full px-3 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={3}
+                placeholder="Optional notes about the loaner vehicle..."
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 h-11"
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={loading || !loanerForm?.loaner_number?.trim() || !loanerForm?.eta_return_date}
+            >
+              {loading ? 'Saving...' : 'Save Loaner'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ✅ ADDED: Mark Returned Modal Component
 const MarkReturnedModal = ({ loaner, onClose, onConfirm, loading }) => {
   if (!loaner) return null;
 
@@ -261,15 +391,15 @@ const MarkReturnedModal = ({ loaner, onClose, onConfirm, loading }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-md">
         <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900">Mark Loaner Returned</h3>
-          <p className="text-gray-600 mb-6">
+          <h3 className="text-lg font-semibold mb-4 text-slate-900">Mark Loaner Returned</h3>
+          <p className="text-slate-600 mb-6">
             Mark loaner <strong>#{loaner?.loaner_number}</strong> as returned?
           </p>
           <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={onClose}
-              className="flex-1"
+              className="flex-1 h-11"
               disabled={loading}
               aria-label="Cancel marking loaner as returned"
             >
@@ -277,7 +407,7 @@ const MarkReturnedModal = ({ loaner, onClose, onConfirm, loading }) => {
             </Button>
             <Button
               onClick={onConfirm}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+              className="flex-1 h-11 bg-green-600 hover:bg-green-700 text-white"
               disabled={loading}
               aria-label="Confirm loaner returned"
             >
@@ -293,62 +423,237 @@ const MarkReturnedModal = ({ loaner, onClose, onConfirm, loading }) => {
 export default function DealsPage() {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState('all');
   const [showNewDealModal, setShowNewDealModal] = useState(false);
   const [showEditDealModal, setShowEditDealModal] = useState(false);
   const [editingDealId, setEditingDealId] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   
-  // Add missing state variables
-  const [isSubmittingDeal, setIsSubmittingDeal] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const [lineItemForm, setLineItemForm] = useState({
-    customerName: '',
-    customerPhone: '',
-    customerEmail: '',
-    vehicleId: null,
-    vehicleYear: '',
-    vehicleMake: '',
-    vehicleModel: '',
-    stockNumber: '',
-    description: '',
-    priority: 'medium',
-    salespersonId: null,
-    deliveryCoordinatorId: null,
-    needsLoaner: false
-  });
+  // ✅ FIXED: Added missing error state management
+  const [error, setError] = useState('');
   
-  // Enhanced filtering state
+  // ✅ UPDATED: Status tabs & quick search with enhanced filtering
   const [filters, setFilters] = useState({
-    status: 'all',
-    assignedTo: null,
-    priority: null,
+    status: 'All',
+    salesAssigned: null,
+    deliveryAssigned: null,
+    financeAssigned: null,
     vendor: null,
-    dateRange: null,
     search: ''
   });
 
-  // A3: Loaner management state
+  // ✅ ADDED: Loaner management state
+  const [showLoanerDrawer, setShowLoanerDrawer] = useState(false);
+  const [selectedDealForLoaner, setSelectedDealForLoaner] = useState(null);
+  const [loanerLoading, setLoanerLoading] = useState(false);
   const [markReturnedModal, setMarkReturnedModal] = useState(null);
   const [returningLoaner, setReturningLoaner] = useState(false);
+  const [searchDebounce, setSearchDebounce] = useState('');
 
-  // Load dropdown data for filters
+  // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
   const {
     getUserOptions,
     getVendorOptions,
-    globalSearch,
-    searchResults,
     clearSearch,
-    loading: dropdownLoading
-  } = useDropdownData({
-    loadOnMount: true,
-    cacheTime: 10 * 60 * 1000 // 10 minutes
-  });
+    loading: dropdownLoading,
+    error: dropdownError,
+    refresh: refreshDropdowns
+  } = useDropdownData({ loadOnMount: true });
   
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Calculate KPIs with proper safety checks
+  // ✅ FIXED: Replace direct function calls with hook-based calls
+  const getSalesConsultants = () => {
+    try {
+      return getUserOptions({ 
+        roles: ['staff'], 
+        departments: ['Sales Consultants'], 
+        activeOnly: true 
+      }) || [];
+    } catch (err) {
+      console.error('Error getting sales consultants:', err);
+      return [];
+    }
+  };
+
+  const getDeliveryCoordinators = () => {
+    try {
+      return getUserOptions({ 
+        roles: ['admin', 'manager'], 
+        departments: ['Delivery Coordinator'], 
+        activeOnly: true 
+      }) || [];
+    } catch (err) {
+      console.error('Error getting delivery coordinators:', err);
+      return [];
+    }
+  };
+
+  const getFinanceManagers = () => {
+    try {
+      return getUserOptions({ 
+        roles: ['staff'], 
+        departments: ['Finance Manager'], 
+        activeOnly: true 
+      }) || [];
+    } catch (err) {
+      console.error('Error getting finance managers:', err);
+      return [];
+    }
+  };
+
+  const getSafeVendorOptions = (filterOptions = {}) => {
+    try {
+      return getVendorOptions(filterOptions) || [];
+    } catch (err) {
+      console.error('Error getting vendor options:', err);
+      return [];
+    }
+  };
+
+  // ✅ FIXED: Enhanced delete function with proper error handling
+  const handleDeleteDeal = async (dealId) => {
+    try {
+      setError(''); // Clear previous errors
+      const { error: deleteError } = await supabase?.rpc('delete_job_cascade', { p_job_id: dealId });
+      if (deleteError) throw deleteError;
+      
+      setDeleteConfirm(null);
+      await loadDeals();
+    } catch (e) {
+      setError(`Failed to delete deal: ${e?.message}`);
+      console.error('Delete error:', e);
+    }
+  };
+
+  // ✅ FIXED: Enhanced loaner assignment with better error handling and modal state management  
+  const handleSaveLoaner = async (loanerData) => {
+    try {
+      setLoanerLoading(true);
+      setError(''); // Clear previous errors
+      
+      // Insert or update loaner assignment per existing schema
+      const { error } = await supabase
+        ?.from('loaner_assignments')
+        ?.upsert({
+          job_id: loanerData?.job_id,
+          loaner_number: loanerData?.loaner_number,
+          eta_return_date: loanerData?.eta_return_date,
+          notes: loanerData?.notes
+        }, {
+          onConflict: 'job_id'
+        });
+      
+      if (error) throw error;
+      
+      // ✅ FIXED: Properly close drawer and reset state
+      setShowLoanerDrawer(false);
+      setSelectedDealForLoaner(null);
+      await loadDeals(); // Refresh data
+    } catch (e) {
+      const errorMessage = `Failed to save loaner assignment: ${e?.message}`;
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoanerLoading(false);
+    }
+  };
+
+  // ✅ FIXED: Enhanced mark returned with better error handling
+  const handleMarkLoanerReturned = async (loanerData) => {
+    try {
+      setReturningLoaner(true);
+      setError(''); // Clear previous errors
+      await markLoanerReturned(loanerData?.loaner_id);
+      setMarkReturnedModal(null);
+      await loadDeals(); // Refresh data
+    } catch (e) {
+      setError(`Failed to mark loaner as returned: ${e?.message}`);
+      console.error('Mark returned error:', e);
+    } finally {
+      setReturningLoaner(false);
+    }
+  };
+
+  // ✅ FIXED: Enhanced load deals with better error handling and retry logic
+  const loadDeals = async (retryCount = 0) => {
+    try {
+      setLoading(true);
+      setError(''); // Clear previous errors
+      const data = await getAllDeals();
+      setDeals(data || []);
+    } catch (e) {
+      const errorMessage = `Failed to load deals: ${e?.message}`;
+      console.error('Load deals error:', e);
+      
+      // Retry logic for network issues
+      if (retryCount < 2 && (e?.message?.includes('fetch') || e?.message?.includes('network'))) {
+        console.log(`Retrying load deals (attempt ${retryCount + 1})`);
+        setTimeout(() => loadDeals(retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+      
+      setError(errorMessage);
+      setDeals([]); // Set empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ ADDED: Initialize status from URL parameter on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const statusParam = urlParams?.get('status');
+    if (statusParam) {
+      const statusValue = statusParam?.charAt(0)?.toUpperCase() + statusParam?.slice(1);
+      setFilters(prev => ({ ...prev, status: statusValue }));
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDeals();
+  }, []);
+
+  // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
+  const loadDropdownData = async () => {
+    await refreshDropdowns();
+  };
+
+  // ✅ FIXED: Move handleManageLoaner function to proper location inside component
+  const handleManageLoaner = (deal) => {
+    setSelectedDealForLoaner(deal);
+    setShowLoanerDrawer(true);
+  };
+
+  // ✅ FIXED: Enhanced error display component
+  const ErrorAlert = ({ message, onClose }) => {
+    if (!message) return null;
+    
+    return (
+      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex justify-between items-start">
+          <div className="flex">
+            <Icon name="AlertCircle" size={20} className="text-red-500 mr-2 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-red-800">Error</h4>
+              <p className="text-sm text-red-700 mt-1">{message}</p>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-red-400 hover:text-red-600"
+              aria-label="Dismiss error"
+            >
+              <Icon name="X" size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ✅ UPDATED: Calculate KPIs with proper safety checks
   const calculateKPIs = (dealsData) => {
     const safeDeals = dealsData || [];
     
@@ -385,20 +690,28 @@ export default function DealsPage() {
 
   const kpis = calculateKPIs(deals);
 
-  // Enhanced filter deals with multiple criteria
+  // ✅ UPDATED: Enhanced filter deals with 300ms debounced search
   const filteredDeals = deals?.filter(deal => {
-    // Status filter
-    if (filters?.status !== 'all' && deal?.job_status !== filters?.status) {
+    // Status filter with tab-based logic
+    if (filters?.status !== 'All') {
+      const targetStatus = filters?.status?.toLowerCase()?.replace(' ', '_');
+      if (deal?.job_status !== targetStatus) {
+        return false;
+      }
+    }
+
+    // Sales assigned filter
+    if (filters?.salesAssigned && deal?.assigned_to !== filters?.salesAssigned) {
       return false;
     }
 
-    // Assigned to filter
-    if (filters?.assignedTo && deal?.assigned_to !== filters?.assignedTo) {
+    // Delivery assigned filter
+    if (filters?.deliveryAssigned && deal?.delivery_coordinator_id !== filters?.deliveryAssigned) {
       return false;
     }
 
-    // Priority filter
-    if (filters?.priority && deal?.priority !== filters?.priority) {
+    // Finance assigned filter
+    if (filters?.financeAssigned && deal?.finance_manager_id !== filters?.financeAssigned) {
       return false;
     }
 
@@ -407,9 +720,14 @@ export default function DealsPage() {
       return false;
     }
 
-    // Search filter
-    if (filters?.search?.trim()) {
-      const searchTerm = filters?.search?.toLowerCase();
+    // ✅ UPDATED: Search filter with debounced search (matches stock, name, phone with stripped non-digits)
+    if (searchDebounce?.trim()) {
+      const searchTerm = searchDebounce?.toLowerCase();
+      
+      // Strip non-digits for phone matching
+      const stripNonDigits = (str) => str?.replace(/\D/g, '') || '';
+      const searchDigits = stripNonDigits(searchTerm);
+      
       const searchableFields = [
         deal?.title,
         deal?.customer_name,
@@ -418,12 +736,18 @@ export default function DealsPage() {
         deal?.job_number,
         deal?.vehicle?.make,
         deal?.vehicle?.model,
+        deal?.vehicle?.stock_number || deal?.stock_no,
         deal?.description
       ]?.filter(Boolean);
 
-      const hasMatch = searchableFields?.some(field => 
-        field?.toLowerCase()?.includes(searchTerm)
-      );
+      const hasMatch = searchableFields?.some(field => {
+        const fieldStr = field?.toLowerCase();
+        // Standard text match
+        if (fieldStr?.includes(searchTerm)) return true;
+        // Phone number digit match
+        if (searchDigits?.length >= 3 && stripNonDigits(fieldStr)?.includes(searchDigits)) return true;
+        return false;
+      });
 
       if (!hasMatch) return false;
     }
@@ -431,124 +755,49 @@ export default function DealsPage() {
     return true;
   });
 
-  // Update filter function
+  // ✅ ADDED: 300ms debounced search implementation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounce(filters?.search);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [filters?.search]);
+
+  // ✅ UPDATED: Update filter function with URL parameter support
   const updateFilter = (key, value) => {
     setFilters(prev => ({
       ...prev,
       [key]: value
     }));
+    
+    // Update URL for status filter
+    if (key === 'status') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (value === 'All') {
+        searchParams?.delete('status');
+      } else {
+        searchParams?.set('status', value?.toLowerCase());
+      }
+      const newUrl = `${window.location?.pathname}${searchParams?.toString() ? '?' + searchParams?.toString() : ''}`;
+      window.history?.replaceState({}, '', newUrl);
+    }
   };
 
   // Clear all filters
   const clearAllFilters = () => {
     setFilters({
-      status: 'all',
-      assignedTo: null,
-      priority: null,
+      status: 'All',
+      salesAssigned: null,
+      deliveryAssigned: null,
+      financeAssigned: null,
       vendor: null,
-      dateRange: null,
       search: ''
     });
     clearSearch();
-  };
-
-  // Quick Draft save helper
-  const handleQuickSaveDraft = async () => {
-    try {
-      setIsSubmittingDeal(true);
-      setSubmitError('');
-
-      const customerName = (lineItemForm?.customerName || '')?.trim();
-      const customerPhone = (lineItemForm?.customerPhone || '')?.trim() || null;
-      const customerEmail = (lineItemForm?.customerEmail || '')?.trim() || null;
-
-      if (!customerName) {
-        setSubmitError('Customer name is required to save a draft.');
-        return;
-      }
-
-      // Vehicle: prefer selected vehicle; else create a simple placeholder
-      let vehicleId = lineItemForm?.vehicleId || null;
-      if (!vehicleId) {
-        const veh = {
-          year: parseInt(lineItemForm?.vehicleYear || 0) || null,
-          make: lineItemForm?.vehicleMake || null,
-          model: lineItemForm?.vehicleModel || null,
-          stock_number: lineItemForm?.stockNumber || `DRAFT-${Date.now()}`,
-          owner_name: customerName,
-          owner_phone: customerPhone,
-          owner_email: customerEmail,
-          vehicle_status: 'active',
-          created_by: user?.id
-        };
-        const { data: v, error: vErr } = await supabase?.from('vehicles')?.insert([veh])?.select()?.single();
-        if (vErr) throw vErr;
-        vehicleId = v?.id;
-      }
-
-      const nowIso = new Date()?.toISOString();
-
-      // Create a Draft job (no items yet)
-      const job = {
-        vehicle_id: vehicleId,
-        vendor_id: null,
-        description: (lineItemForm?.description || 'Draft deal'),
-        priority: (lineItemForm?.priority || 'medium')?.toLowerCase(),
-        job_status: 'draft',
-        title: `Draft – ${customerName}`,
-        estimated_cost: 0,
-        created_by: lineItemForm?.salespersonId || user?.id,
-        delivery_coordinator_id: lineItemForm?.deliveryCoordinatorId || null,
-        customer_needs_loaner: !!lineItemForm?.needsLoaner,
-        created_at: nowIso,
-        promised_date: null,
-        service_type: 'in_house',
-        scheduled_start_time: null,
-        scheduled_end_time: null,
-        calendar_event_id: null,
-        location: null,
-        color_code: null
-      };
-
-      const { data: jobRow, error: jobErr } = await supabase?.from('jobs')?.insert([job])?.select()?.single();
-      if (jobErr) throw jobErr;
-
-      // Ensure a transaction exists even for drafts (0 total)
-      const tx = {
-        job_id: jobRow?.id,
-        vehicle_id: vehicleId,
-        total_amount: 0,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_email: customerEmail,
-        transaction_status: 'pending',
-        created_at: nowIso
-      };
-      const { error: txErr } = await supabase?.from('transactions')?.upsert([tx], { onConflict: 'job_id' });
-      if (txErr) throw txErr;
-
-      setShowNewDealModal(false);
-      setLineItemForm({
-        customerName: '',
-        customerPhone: '',
-        customerEmail: '',
-        vehicleId: null,
-        vehicleYear: '',
-        vehicleMake: '',
-        vehicleModel: '',
-        stockNumber: '',
-        description: '',
-        priority: 'medium',
-        salespersonId: null,
-        deliveryCoordinatorId: null,
-        needsLoaner: false
-      });
-      await loadDeals();
-    } catch (e) {
-      setSubmitError(`Failed to save draft: ${e?.message}`);
-    } finally {
-      setIsSubmittingDeal(false);
-    }
+    
+    // Clear URL params
+    window.history?.replaceState({}, '', window.location?.pathname);
   };
 
   const handleEditDeal = (dealId) => {
@@ -561,51 +810,19 @@ export default function DealsPage() {
     setEditingDealId(null);
   };
 
-  const handleDeleteDeal = async (dealId) => {
-    try {
-      await deleteDeal(dealId);
-      setDeleteConfirm(null);
-      await loadDeals();
-    } catch (e) {
-      alert(`Failed to delete deal: ${e?.message}`);
-    }
-  };
-
-  const handleMarkLoanerReturned = async (loanerData) => {
-    try {
-      setReturningLoaner(true);
-      await markLoanerReturned(loanerData?.loaner_id);
-      setMarkReturnedModal(null);
-      await loadDeals(); // Refresh data
-    } catch (e) {
-      alert(`Failed to mark loaner as returned: ${e?.message}`);
-    } finally {
-      setReturningLoaner(false);
-    }
-  };
-
-  const loadDeals = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllDeals();
-      setDeals(data || []);
-    } catch (e) {
-      setSubmitError(`Failed to load deals: ${e?.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadDeals();
-  }, []);
-
+  // ✅ FIXED: Enhanced loading state with proper dropdown loading reference
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <Navbar />
+        <div className="p-4 md:p-8" style={{ paddingTop: '5rem' }}>
           <div className="flex items-center justify-center py-12">
-            <div className="text-gray-600">Loading deals...</div>
+            <div className="text-center">
+              <div className="text-slate-600">Loading deals...</div>
+              {dropdownLoading && (
+                <div className="text-sm text-slate-500 mt-2">Loading dropdown data...</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -613,18 +830,24 @@ export default function DealsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      {/* ✅ FIXED: Ensure navbar is always visible */}
+      <Navbar />
+      <div className="p-4 md:p-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
+        
+        {/* ✅ FIXED: Error display */}
+        <ErrorAlert message={error || dropdownError} onClose={() => { setError(''); }} />
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Deal Tracker</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Deal Tracker</h1>
           <div className="flex items-center space-x-3">
             <ExportButton
               exportType="jobs"
               filters={{ status: filters?.status }}
               onExportStart={() => console.log('Starting export...')}
               onExportComplete={(recordCount, filename) => console.log(`Export complete: ${recordCount} records`)}
-              onExportError={(errorMessage) => alert(`Export failed: ${errorMessage}`)}
+              onExportError={(errorMessage) => setError(`Export failed: ${errorMessage}`)}
               variant="outline"
               size="sm"
               className="bg-white hover:bg-gray-50"
@@ -640,13 +863,13 @@ export default function DealsPage() {
           </div>
         </div>
 
-        {/* Draft reminder banner */}
+        {/* ✅ UPDATED: Draft reminder banner */}
         <DraftReminderBanner 
           draftsCount={kpis?.drafts}
-          onViewDrafts={() => updateFilter('status', 'draft')}
+          onViewDrafts={() => updateFilter('status', 'Draft')}
         />
 
-        {/* KPI Row */}
+        {/* ✅ UPDATED: KPI Row - Enhanced with profit analysis */}
         <div className="mb-6">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             {/* Active Jobs */}
@@ -656,8 +879,8 @@ export default function DealsPage() {
                   <Icon name="Clock" size={24} className="text-orange-700" />
                 </div>
                 <div>
-                  <h3 className="text-gray-600 text-sm font-medium uppercase tracking-wide">Active</h3>
-                  <p className="text-gray-900 text-2xl font-bold">{kpis?.active}</p>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Active</h3>
+                  <p className="text-slate-900 text-2xl font-bold">{kpis?.active}</p>
                 </div>
               </div>
             </div>
@@ -669,8 +892,8 @@ export default function DealsPage() {
                   <Icon name="DollarSign" size={24} className="text-green-700" />
                 </div>
                 <div>
-                  <h3 className="text-gray-600 text-sm font-medium uppercase tracking-wide">Revenue</h3>
-                  <p className="text-gray-900 text-2xl font-bold">${kpis?.revenue}</p>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Revenue</h3>
+                  <p className="text-slate-900 text-2xl font-bold">${kpis?.revenue}</p>
                 </div>
               </div>
             </div>
@@ -682,8 +905,8 @@ export default function DealsPage() {
                   <Icon name="TrendingUp" size={24} className="text-blue-700" />
                 </div>
                 <div>
-                  <h3 className="text-gray-600 text-sm font-medium uppercase tracking-wide">Profit</h3>
-                  <p className="text-gray-900 text-2xl font-bold">${kpis?.profit}</p>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Profit</h3>
+                  <p className="text-slate-900 text-2xl font-bold">${kpis?.profit}</p>
                 </div>
               </div>
             </div>
@@ -695,8 +918,8 @@ export default function DealsPage() {
                   <Icon name="Percent" size={24} className="text-purple-700" />
                 </div>
                 <div>
-                  <h3 className="text-gray-600 text-sm font-medium uppercase tracking-wide">Margin</h3>
-                  <p className="text-gray-900 text-2xl font-bold">{kpis?.margin}%</p>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Margin</h3>
+                  <p className="text-slate-900 text-2xl font-bold">{kpis?.margin}%</p>
                 </div>
               </div>
             </div>
@@ -708,8 +931,8 @@ export default function DealsPage() {
                   <Icon name="Clock" size={24} className="text-yellow-700" />
                 </div>
                 <div>
-                  <h3 className="text-gray-600 text-sm font-medium uppercase tracking-wide">Pending</h3>
-                  <p className="text-gray-900 text-2xl font-bold">{kpis?.pending}</p>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Pending</h3>
+                  <p className="text-slate-900 text-2xl font-bold">{kpis?.pending}</p>
                 </div>
               </div>
             </div>
@@ -721,91 +944,133 @@ export default function DealsPage() {
                   <Icon name="File" size={24} className="text-gray-700" />
                 </div>
                 <div>
-                  <h3 className="text-gray-600 text-sm font-medium uppercase tracking-wide">Drafts</h3>
-                  <p className="text-gray-900 text-2xl font-bold">{kpis?.drafts}</p>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Drafts</h3>
+                  <p className="text-slate-900 text-2xl font-bold">{kpis?.drafts}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Enhanced Filters */}
+        {/* ✅ FIXED: Status tabs & enhanced dropdown filters */}
         <div className="mb-6 bg-white rounded-lg border p-4">
+          {/* Status Tabs */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {['All', 'Draft', 'Pending', 'Active', 'Completed']?.map(status => (
+              <button
+                key={status}
+                onClick={() => updateFilter('status', status)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
+                  ${filters?.status === status 
+                    ? 'bg-blue-600 text-white' :'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
+            {/* ✅ UPDATED: Search box with 300ms debounce, matches stock, name, phone (strip non-digits) */}
             <div className="flex-1">
               <div className="relative">
                 <Icon 
                   name="Search" 
                   size={16} 
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" 
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" 
                 />
                 <input
                   type="text"
                   placeholder="Search deals, customers, vehicles..."
                   value={filters?.search}
                   onChange={(e) => updateFilter('search', e?.target?.value)}
-                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 pl-9 pr-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
 
-            {/* Status Filter */}
-            <div className="min-w-[150px]">
-              <select
-                value={filters?.status}
-                onChange={(e) => updateFilter('status', e?.target?.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Status</option>
-                <option value="draft">Draft</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            {/* Assigned To Filter */}
+            {/* ✅ FIXED: Separate dropdown filters with proper binding */}
             <div className="min-w-[200px]">
-              <SearchableSelect
-                options={getUserOptions({ roles: ['staff', 'admin', 'manager'], activeOnly: true })}
-                value={filters?.assignedTo}
-                onChange={(value) => updateFilter('assignedTo', value)}
-                placeholder="Assigned to..."
-                searchable={true}
-                clearable={true}
-                className=""
-              />
-            </div>
-
-            {/* Priority Filter */}
-            <div className="min-w-[120px]">
               <select
-                value={filters?.priority || ''}
-                onChange={(e) => updateFilter('priority', e?.target?.value || null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                value={filters?.salesAssigned || ''}
+                onChange={(e) => updateFilter('salesAssigned', e?.target?.value || null)}
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                disabled={dropdownLoading}
+                id="sales-filter"
               >
-                <option value="">All Priority</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>  
-                <option value="urgent">Urgent</option>
+                <option value="">Sales Consultants</option>
+                {getSalesConsultants()?.map(user => (
+                  <option key={user?.id} value={user?.id}>
+                    {formatStaffName(user?.name)}
+                  </option>
+                ))}
               </select>
             </div>
 
-            {/* Vendor Filter */}
+            <div className="min-w-[200px]">
+              <select
+                value={filters?.deliveryAssigned || ''}
+                onChange={(e) => updateFilter('deliveryAssigned', e?.target?.value || null)}
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                disabled={dropdownLoading}
+                id="delivery-filter"
+              >
+                <option value="">Delivery Coordinator</option>
+                {getDeliveryCoordinators()?.map(user => (
+                  <option key={user?.id} value={user?.id}>
+                    {formatStaffName(user?.name)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="min-w-[200px]">
+              <select
+                value={filters?.financeAssigned || ''}
+                onChange={(e) => updateFilter('financeAssigned', e?.target?.value || null)}
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                disabled={dropdownLoading}
+                id="finance-filter"
+              >
+                <option value="">Finance Manager</option>
+                {getFinanceManagers()?.map(user => (
+                  <option key={user?.id} value={user?.id}>
+                    {formatStaffName(user?.name)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="min-w-[180px]">
-              <SearchableSelect
-                options={getVendorOptions({ activeOnly: true })}
-                value={filters?.vendor}
-                onChange={(value) => updateFilter('vendor', value)}
-                placeholder="Any vendor..."
-                searchable={true}
-                clearable={true}
-                groupBy="specialty"
-                className=""
-              />
+              <select
+                value={filters?.vendor || ''}
+                onChange={(e) => updateFilter('vendor', e?.target?.value || null)}
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                disabled={dropdownLoading}
+                id="vendor-filter"
+              >
+                <option value="">Vendors</option>
+                {getSafeVendorOptions({ activeOnly: true })?.map(vendor => (
+                  <option key={vendor?.id} value={vendor?.id}>
+                    {vendor?.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Refresh button for dropdowns */}
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refreshDropdowns}
+                className="text-slate-600 hover:text-slate-800"
+                disabled={dropdownLoading}
+                aria-label="Refresh dropdown data"
+              >
+                <Icon name="RefreshCw" size={16} className="mr-1" />
+                {dropdownLoading ? 'Loading...' : 'Refresh'}
+              </Button>
             </div>
 
             {/* Clear Filters */}
@@ -814,7 +1079,7 @@ export default function DealsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={clearAllFilters}
-                className="text-gray-600 hover:text-gray-800"
+                className="text-slate-600 hover:text-slate-800"
                 aria-label="Clear all filters"
               >
                 <Icon name="X" size={16} className="mr-1" />
@@ -822,147 +1087,52 @@ export default function DealsPage() {
               </Button>
             </div>
           </div>
-
-          {/* Active filters display */}
-          {(filters?.assignedTo || filters?.priority || filters?.vendor || filters?.search) && (
-            <div className="mt-3 pt-3 border-t flex items-center gap-2">
-              <span className="text-sm text-gray-500">Active filters:</span>
-              
-              {filters?.search && (
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                  Search: "{filters?.search}"
-                  <button
-                    onClick={() => updateFilter('search', '')}
-                    className="ml-1 hover:bg-blue-200 rounded p-0.5"
-                  >
-                    <Icon name="X" size={10} />
-                  </button>
-                </span>
-              )}
-
-              {filters?.assignedTo && (
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-                  Assigned: {getUserOptions({ activeOnly: true })?.find(u => u?.id === filters?.assignedTo)?.name}
-                  <button
-                    onClick={() => updateFilter('assignedTo', null)}
-                    className="ml-1 hover:bg-green-200 rounded p-0.5"
-                  >
-                    <Icon name="X" size={10} />
-                  </button>
-                </span>
-              )}
-
-              {filters?.priority && (
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
-                  Priority: {filters?.priority}
-                  <button
-                    onClick={() => updateFilter('priority', null)}
-                    className="ml-1 hover:bg-orange-200 rounded p-0.5"
-                  >
-                    <Icon name="X" size={10} />
-                  </button>
-                </span>
-              )}
-
-              {filters?.vendor && (
-                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                  Vendor: {getVendorOptions({ activeOnly: true })?.find(v => v?.id === filters?.vendor)?.name}
-                  <button
-                    onClick={() => updateFilter('vendor', null)}
-                    className="ml-1 hover:bg-purple-200 rounded p-0.5"
-                  >
-                    <Icon name="X" size={10} />
-                  </button>
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Results count */}
-        <div className="mb-4 text-sm text-gray-600">
+        <div className="mb-4 text-sm text-slate-600">
           Showing {filteredDeals?.length} of {deals?.length} deals
-          {(filters?.assignedTo || filters?.priority || filters?.vendor || filters?.search) && (
+          {(filters?.salesAssigned || filters?.deliveryAssigned || filters?.financeAssigned || filters?.vendor || filters?.search) && (
             <span className="ml-2 text-blue-600">(filtered)</span>
           )}
         </div>
 
-        {/* Desktop Table */}
+        {/* ✅ UPDATED: Desktop Table with exact columns per requirements */}
         <div className="hidden md:block bg-white border rounded-lg overflow-hidden shadow-sm">
           <table className="min-w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Job / Title
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vehicle
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Scheduling
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Service / Loaner
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Value
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Next
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Service
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredDeals?.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                    {filterStatus === 'all' ? 'No deals found' : `No ${filterStatus} deals found`}
-                  </td>
-                </tr>
-              ) : filteredDeals?.map(deal => (
-                <tr key={deal?.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {deal?.job_number || `Job-${deal?.id?.slice(0, 8)}`}
-                      </div>
-                      <div className="text-sm text-gray-500">{deal?.title}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      {deal?.vehicle ? 
-                        `${deal?.vehicle?.year} ${deal?.vehicle?.make} ${deal?.vehicle?.model}` : 
-                        '—'
-                      }
-                    </div>
-                    {deal?.vehicle?.stock_number && (
-                      <div className="text-xs text-gray-500">Stock: {deal?.vehicle?.stock_number}</div>
-                    )}
-                  </td>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {filteredDeals?.map(deal => (
+                <tr key={deal?.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4">
                     <CustomerDisplay deal={deal} />
                   </td>
                   <td className="px-6 py-4">
-                    <StatusPill status={deal?.job_status} />
-                  </td>
-                  <td className="px-6 py-4">
-                    <NextPromisedChip jobParts={deal?.job_parts} />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <ServiceLocationTag jobParts={deal?.job_parts} />
-                      <LoanerPill deal={deal} />
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
                     <ValueDisplay amount={deal?.total_amount} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <NextPromisedChip nextPromisedShort={deal?.next_promised_short} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <ServiceLocationTag serviceType={deal?.service_type} jobParts={deal?.job_parts} />
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
@@ -976,7 +1146,20 @@ export default function DealsPage() {
                         Edit
                       </Button>
                       
-                      {/* A3: Mark Loaner Returned action */}
+                      {/* ✅ FIXED: Loaner management for desktop with proper condition */}
+                      {deal?.customer_needs_loaner && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleManageLoaner(deal)}
+                          className="text-purple-600 hover:text-purple-800"
+                          aria-label="Manage loaner"
+                        >
+                          Loaner
+                        </Button>
+                      )}
+                      
+                      {/* Mark returned button for active loaners */}
                       {deal?.loaner_id && (
                         <Button
                           size="sm"
@@ -1010,48 +1193,35 @@ export default function DealsPage() {
           </table>
         </div>
 
-        {/* Mobile Cards */}
+        {/* ✅ UPDATED: Mobile Cards with enhanced styling and loaner support */}
         <div className="md:hidden space-y-4">
           {filteredDeals?.length === 0 ? (
             <div className="bg-white rounded-lg border p-8 text-center">
-              <div className="text-gray-500">
-                {filters?.status === 'all' ? 'No deals found' : `No ${filters?.status} deals found`}
+              <div className="text-slate-500">
+                {filters?.status === 'All' ? 'No deals found' : `No ${filters?.status?.toLowerCase()} deals found`}
               </div>
             </div>
           ) : filteredDeals?.map(deal => (
             <div key={deal?.id} className="bg-white rounded-xl border shadow-sm overflow-hidden">
-              {/* Card Header with enhanced mobile styling */}
+              {/* Card Header */}
               <div className="p-4 border-b bg-slate-50">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <div className="font-medium text-gray-900">
+                    <div className="font-medium text-slate-900">
                       {deal?.job_number || `Job-${deal?.id?.slice(0, 8)}`}
                     </div>
-                    <div className="text-sm text-gray-600">{deal?.title}</div>
+                    <div className="text-sm text-slate-600">{deal?.title}</div>
                   </div>
                   <StatusPill status={deal?.job_status} />
                 </div>
               </div>
 
-              {/* Card Content */}
+              {/* Card Content with enhanced mobile layout */}
               <div className="p-4 space-y-4">
-                {deal?.vehicle && (
-                  <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                      Vehicle
-                    </div>
-                    <div className="text-sm text-gray-900">
-                      {`${deal?.vehicle?.year} ${deal?.vehicle?.make} ${deal?.vehicle?.model}`}
-                    </div>
-                    {deal?.vehicle?.stock_number && (
-                      <div className="text-xs text-gray-500">Stock: {deal?.vehicle?.stock_number}</div>
-                    )}
-                  </div>
-                )}
-
+                {/* Customer Display */}
                 {(deal?.customer_name || deal?.customer_phone) && (
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
                       Customer
                     </div>
                     <CustomerDisplay deal={deal} />
@@ -1060,40 +1230,41 @@ export default function DealsPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                      Service
-                    </div>
-                    <ServiceLocationTag jobParts={deal?.job_parts} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
                       Value
                     </div>
                     <ValueDisplay amount={deal?.total_amount} />
                   </div>
-                </div>
-
-                {/* A2: Loaner section for mobile */}
-                {deal?.loaner_number && (
                   <div>
-                    <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                      Loaner Assignment
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+                      Next
                     </div>
-                    <LoanerPill deal={deal} />
+                    <NextPromisedChip nextPromisedShort={deal?.next_promised_short} />
                   </div>
-                )}
+                </div>
 
                 <div>
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
-                    Next Promised
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+                    Service
                   </div>
-                  <NextPromisedChip jobParts={deal?.job_parts} />
+                  <ServiceLocationTag serviceType={deal?.service_type} jobParts={deal?.job_parts} />
                 </div>
+
+                {/* ✅ ADDED: Loaner badge display for mobile */}
+                {deal?.loaner_number && (
+                  <div>
+                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+                      Loaner Assignment
+                    </div>
+                    <LoanerBadge deal={deal} />
+                  </div>
+                )}
               </div>
 
-              {/* A3: Enhanced mobile footer with loaner actions */}
+              {/* ✅ FIXED: Enhanced mobile footer with proper loaner actions */}
               <div className="p-4 border-t bg-slate-50">
-                <div className={`grid gap-2 ${deal?.loaner_id ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                {/* Primary actions row */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -1104,24 +1275,6 @@ export default function DealsPage() {
                     <Icon name="Edit" size={16} className="mr-2" />
                     Edit
                   </Button>
-                  
-                  {/* A3: Mobile loaner return button */}
-                  {deal?.loaner_id && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setMarkReturnedModal({
-                        loaner_id: deal?.loaner_id,
-                        loaner_number: deal?.loaner_number,
-                        job_title: deal?.title
-                      })}
-                      className="h-11 w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                      aria-label="Mark loaner returned"
-                    >
-                      <Icon name="CheckCircle" size={16} className="mr-2" />
-                      Return
-                    </Button>
-                  )}
                   
                   <Button
                     size="sm"
@@ -1134,12 +1287,60 @@ export default function DealsPage() {
                     Delete
                   </Button>
                 </div>
+
+                {/* ✅ FIXED: Loaner actions row with proper conditions */}
+                {(deal?.customer_needs_loaner || deal?.loaner_id) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {deal?.customer_needs_loaner && !deal?.loaner_id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleManageLoaner(deal)}
+                        className="h-11 w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                        aria-label="Manage loaner"
+                      >
+                        <Icon name="Car" size={16} className="mr-2" />
+                        Assign Loaner
+                      </Button>
+                    )}
+                    
+                    {deal?.loaner_id && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleManageLoaner(deal)}
+                          className="h-11 w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                          aria-label="Edit loaner"
+                        >
+                          <Icon name="Edit" size={16} className="mr-2" />
+                          Edit Loaner
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setMarkReturnedModal({
+                            loaner_id: deal?.loaner_id,
+                            loaner_number: deal?.loaner_number,
+                            job_title: deal?.title
+                          })}
+                          className="h-11 w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                          aria-label="Mark loaner returned"
+                        >
+                          <Icon name="CheckCircle" size={16} className="mr-2" />
+                          Mark Returned
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* New Deal Modal - Enhanced */}
+        {/* ✅ UPDATED: New Deal Modal */}
         <NewDealModal 
           isOpen={showNewDealModal}
           onClose={() => setShowNewDealModal(false)}
@@ -1157,27 +1358,27 @@ export default function DealsPage() {
           }}
         />
 
-        {/* Delete Confirmation Modal */}
+        {/* ✅ UPDATED: Delete Confirmation Modal with light theme */}
         {deleteConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-md">
+            <div className="bg-white rounded-lg w-full max-w-md max-h-[80vh] overflow-y-auto p-4">
               <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4 text-gray-900">Delete Deal</h3>
-                <p className="text-gray-600 mb-6">
+                <h3 className="text-lg font-semibold mb-4 text-slate-900">Delete Deal</h3>
+                <p className="text-slate-600 mb-6">
                   Delete deal and its line items? This cannot be undone.
                 </p>
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setDeleteConfirm(null)}
-                    className="flex-1"
+                    className="flex-1 h-11"
                     aria-label="Cancel deletion"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={() => handleDeleteDeal(deleteConfirm?.id)}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                    className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white"
                     aria-label="Confirm deletion"
                   >
                     Delete
@@ -1188,10 +1389,26 @@ export default function DealsPage() {
           </div>
         )}
 
-        {/* A3: Mark Loaner Returned Modal */}
+        {/* ✅ ADDED: Loaner Drawer with improved error handling */}
+        <LoanerDrawer
+          isOpen={showLoanerDrawer}
+          onClose={() => {
+            setShowLoanerDrawer(false);
+            setSelectedDealForLoaner(null);
+            setError(''); // Clear any drawer-related errors
+          }}
+          deal={selectedDealForLoaner}
+          onSave={handleSaveLoaner}
+          loading={loanerLoading}
+        />
+
+        {/* Mark Loaner Returned Modal */}
         <MarkReturnedModal
           loaner={markReturnedModal}
-          onClose={() => setMarkReturnedModal(null)}
+          onClose={() => {
+            setMarkReturnedModal(null);
+            setError(''); // Clear any modal-related errors
+          }}
           onConfirm={() => handleMarkLoanerReturned(markReturnedModal)}
           loading={returningLoaner}
         />

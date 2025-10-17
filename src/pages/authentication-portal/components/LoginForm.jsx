@@ -119,6 +119,8 @@ const LoginForm = () => {
             name="rememberMe"
             checked={formData?.rememberMe}
             onChange={handleChange}
+            id="rememberMe"
+            description="Keep me logged in"
           />
           <a href="#" className="text-sm text-blue-600 hover:underline">Forgot password?</a>
         </div>

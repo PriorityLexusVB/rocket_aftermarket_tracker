@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
-import { Checkbox } from '../../../components/ui/Checkbox';
+import Checkbox from '../../../components/ui/Checkbox';
 
 const VendorListTable = ({ 
   vendors, 
@@ -223,6 +223,10 @@ const VendorListTable = ({
             <tr>
               <th className="w-12 p-4">
                 <Checkbox
+                  id="select-all-vendors"
+                  name="selectAll"
+                  label=""
+                  description=""
                   checked={selectedVendors?.length === filteredAndSortedVendors?.length && filteredAndSortedVendors?.length > 0}
                   onChange={(e) => handleSelectAll(e?.target?.checked)}
                 />
@@ -271,6 +275,10 @@ const VendorListTable = ({
               >
                 <td className="p-4" onClick={(e) => e?.stopPropagation()}>
                   <Checkbox
+                    id={`vendor-${vendor?.id}`}
+                    name={`vendor-${vendor?.id}`}
+                    label=""
+                    description=""
                     checked={selectedVendors?.includes(vendor?.id)}
                     onChange={(e) => handleSelectVendor(vendor?.id, e?.target?.checked)}
                   />

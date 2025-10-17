@@ -1,409 +1,301 @@
-import { useState, useEffect, useCallback } from 'react';
-import { dropdownService } from '../services/dropdownService';
+import { useEffect, useState } from 'react';
+import { 
+  getDeliveryCoordinators, 
+  getSalesConsultants, 
+  getFinanceManagers,
+  getUserProfiles,
+  getVendors,
+  getProducts,
+  globalSearch
+} from '../services/dropdownService';
 
-/**
- * Custom hook for managing dropdown data with caching and filtering
- * @param {Object} options - Configuration options
- * @param {boolean} options.loadOnMount - Load data when component mounts
- * @param {number} options.cacheTime - Cache time in milliseconds (default: 5 minutes)
- * @param {Object} options.filters - Default filters to apply
- * @returns {Object} Hook state and functions
- */
-export const useDropdownData = (options = {}) => {
-  const {
-    loadOnMount = true,
-    cacheTime = 5 * 60 * 1000, // 5 minutes
-    filters = {}
+export function useDropdownData(options = {}) {
+  const { 
+    loadOnMount = true, 
+    cacheTime = 5 * 60 * 1000 // 5 minutes default
   } = options;
 
-  const [state, setState] = useState({
-    // Data states
+  const [state, setState] = useState({ 
+    dc: [], 
+    sales: [], 
+    finance: [],
     users: [],
     vendors: [],
     products: [],
-    dealFormData: null,
-    searchResults: null,
-    
-    // Loading states
-    loading: false,
-    usersLoading: false,
-    vendorsLoading: false,
-    productsLoading: false,
-    dealFormLoading: false,
-    
-    // Error states
+    loading: true, 
     error: null,
-    usersError: null,
-    vendorsError: null,
-    productsError: null,
-    
-    // Cache info
-    lastFetch: null,
-    cacheValid: false
+    searchResults: null
   });
 
-  // Check if cache is valid
-  const isCacheValid = useCallback(() => {
-    if (!state?.lastFetch) return false;
-    return Date.now() - state?.lastFetch < cacheTime;
-  }, [state?.lastFetch, cacheTime]);
+  const [lastUpdate, setLastUpdate] = useState(null);
 
-  // Generic error handler
-  const handleError = useCallback((error, type) => {
-    console.error(`Dropdown data error (${type}):`, error);
-    setState(prev => ({
-      ...prev,
-      error: error?.message || 'Failed to load data',
-      [`${type}Error`]: error?.message || 'Failed to load data',
-      [`${type}Loading`]: false,
-      loading: false
-    }));
-  }, []);
-
-  // Load users with filtering
-  const loadUsers = useCallback(async (userFilters = {}) => {
+  // Enhanced load data with better error handling
+  const loadData = async () => {
     try {
-      setState(prev => ({ ...prev, usersLoading: true, usersError: null }));
-      
-      const users = await dropdownService?.getUsers({
-        ...filters,
-        ...userFilters
-      });
-      
-      setState(prev => ({
-        ...prev,
+      setState(prev => ({ ...prev, loading: true, error: null }));
+
+      // Load all data concurrently with individual error handling
+      const promises = [
+        getDeliveryCoordinators()?.catch(err => { 
+          console.error('Delivery coordinators failed:', err); 
+          return []; 
+        }),
+        getSalesConsultants()?.catch(err => { 
+          console.error('Sales consultants failed:', err); 
+          return []; 
+        }),
+        getFinanceManagers()?.catch(err => { 
+          console.error('Finance managers failed:', err); 
+          return []; 
+        }),
+        getUserProfiles({ activeOnly: true })?.catch(err => { 
+          console.error('User profiles failed:', err); 
+          return []; 
+        }),
+        getVendors({ activeOnly: true })?.catch(err => { 
+          console.error('Vendors failed:', err); 
+          return []; 
+        }),
+        getProducts({ activeOnly: true })?.catch(err => { 
+          console.error('Products failed:', err); 
+          return []; 
+        })
+      ];
+
+      const [dc, sales, finance, users, vendors, products] = await Promise.all(promises);
+
+      setState({
+        dc,
+        sales,
+        finance,
         users,
-        usersLoading: false,
-        usersError: null,
-        lastFetch: Date.now(),
-        cacheValid: true
-      }));
-      
-      return users;
-    } catch (error) {
-      handleError(error, 'users');
-      return [];
-    }
-  }, [filters, handleError]);
-
-  // Load vendors with filtering  
-  const loadVendors = useCallback(async (vendorFilters = {}) => {
-    try {
-      setState(prev => ({ ...prev, vendorsLoading: true, vendorsError: null }));
-      
-      const vendors = await dropdownService?.getVendors({
-        ...filters,
-        ...vendorFilters
-      });
-      
-      setState(prev => ({
-        ...prev,
         vendors,
-        vendorsLoading: false,
-        vendorsError: null,
-        lastFetch: Date.now(),
-        cacheValid: true
-      }));
-      
-      return vendors;
-    } catch (error) {
-      handleError(error, 'vendors');
-      return [];
-    }
-  }, [filters, handleError]);
-
-  // Load products with filtering
-  const loadProducts = useCallback(async (productFilters = {}) => {
-    try {
-      setState(prev => ({ ...prev, productsLoading: true, productsError: null }));
-      
-      const products = await dropdownService?.getProducts({
-        ...filters,
-        ...productFilters
-      });
-      
-      setState(prev => ({
-        ...prev,
         products,
-        productsLoading: false,
-        productsError: null,
-        lastFetch: Date.now(),
-        cacheValid: true
-      }));
-      
-      return products;
-    } catch (error) {
-      handleError(error, 'products');
-      return [];
-    }
-  }, [filters, handleError]);
-
-  // Load all deal form data (optimized single call)
-  const loadDealFormData = useCallback(async (forceRefresh = false) => {
-    try {
-      // Use cache if valid and not forcing refresh
-      if (!forceRefresh && state?.dealFormData && isCacheValid()) {
-        return state?.dealFormData;
-      }
-
-      setState(prev => ({ ...prev, dealFormLoading: true, error: null }));
-      
-      const dealFormData = await dropdownService?.getDealFormData();
-      
-      setState(prev => ({
-        ...prev,
-        dealFormData,
-        dealFormLoading: false,
+        loading: false,
         error: null,
-        lastFetch: Date.now(),
-        cacheValid: true
+        searchResults: null
+      });
+      setLastUpdate(Date.now());
+    } catch (err) {
+      // If everything fails, still provide empty arrays
+      setState(prev => ({ 
+        dc: [],
+        sales: [],
+        finance: [],
+        users: [],
+        vendors: [],
+        products: [],
+        loading: false, 
+        error: err?.message || 'Failed to load dropdown data',
+        searchResults: null
       }));
-      
-      return dealFormData;
-    } catch (error) {
-      handleError(error, 'dealForm');
-      return null;
+      console.error('Dropdown data load failed:', err);
     }
-  }, [state?.dealFormData, isCacheValid, handleError]);
+  };
 
-  // Perform global search
-  const globalSearch = useCallback(async (searchTerm, searchOptions = {}) => {
+  // Check if cache is still valid
+  const isCacheValid = () => {
+    if (!lastUpdate) return false;
+    return (Date.now() - lastUpdate) < cacheTime;
+  };
+
+  // Refresh data if cache is invalid
+  const refreshIfNeeded = async () => {
+    if (!isCacheValid()) {
+      await loadData();
+    }
+  };
+
+  // Enhanced search functionality with error handling
+  const performGlobalSearch = async (searchTerm) => {
     try {
       if (!searchTerm?.trim()) {
         setState(prev => ({ ...prev, searchResults: null }));
-        return null;
+        return;
       }
 
-      setState(prev => ({ ...prev, loading: true, error: null }));
-      
-      const searchResults = await dropdownService?.globalSearch(searchTerm, {
-        ...filters,
-        ...searchOptions
-      });
-      
-      setState(prev => ({
-        ...prev,
-        searchResults,
-        loading: false,
-        error: null
-      }));
-      
-      return searchResults;
-    } catch (error) {
-      handleError(error, 'search');
-      return null;
+      const results = await globalSearch(searchTerm);
+      setState(prev => ({ ...prev, searchResults: results }));
+    } catch (err) {
+      console.error('Search failed:', err);
+      setState(prev => ({ ...prev, searchResults: { users: [], vendors: [] } }));
     }
-  }, [filters, handleError]);
+  };
 
   // Clear search results
-  const clearSearch = useCallback(() => {
+  const clearSearch = () => {
     setState(prev => ({ ...prev, searchResults: null }));
-  }, []);
+  };
 
-  // Refresh all data
-  const refreshAll = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, loading: true, error: null }));
-      
-      const [users, vendors, products, dealFormData] = await Promise.all([
-        dropdownService?.getUsers(filters),
-        dropdownService?.getVendors(filters),
-        dropdownService?.getProducts(filters),
-        dropdownService?.getDealFormData()
-      ]);
-      
-      setState(prev => ({
-        ...prev,
-        users,
-        vendors,
-        products,
-        dealFormData,
-        loading: false,
-        error: null,
-        lastFetch: Date.now(),
-        cacheValid: true
-      }));
-      
-      return { users, vendors, products, dealFormData };
-    } catch (error) {
-      handleError(error, 'refresh');
-      return null;
+  // Get user options with filtering
+  const getUserOptions = (filterOptions = {}) => {
+    const { roles = [], departments = [], activeOnly = true } = filterOptions;
+    
+    let filteredUsers = state?.users || [];
+    
+    if (activeOnly) {
+      filteredUsers = filteredUsers?.filter(user => user?.is_active);
     }
-  }, [filters, handleError]);
+    
+    if (roles?.length > 0) {
+      filteredUsers = filteredUsers?.filter(user => roles?.includes(user?.role));
+    }
+    
+    if (departments?.length > 0) {
+      filteredUsers = filteredUsers?.filter(user => departments?.includes(user?.department));
+    }
+    
+    return filteredUsers?.map(user => ({
+      id: user?.id,
+      value: user?.id,
+      label: user?.full_name,
+      name: user?.full_name,
+      role: user?.role,
+      department: user?.department,
+      email: user?.email
+    })) || [];
+  };
 
-  // Clear cache and reload
-  const invalidateCache = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      lastFetch: null,
-      cacheValid: false,
-      dealFormData: null,
-      searchResults: null
-    }));
-  }, []);
+  // Get vendor options with filtering
+  const getVendorOptions = (filterOptions = {}) => {
+    const { activeOnly = true, specialty = null } = filterOptions;
+    
+    let filteredVendors = state?.vendors || [];
+    
+    if (activeOnly) {
+      filteredVendors = filteredVendors?.filter(vendor => vendor?.is_active);
+    }
+    
+    if (specialty) {
+      filteredVendors = filteredVendors?.filter(vendor => 
+        vendor?.specialty?.toLowerCase()?.includes(specialty?.toLowerCase())
+      );
+    }
+    
+    return filteredVendors?.map(vendor => ({
+      id: vendor?.id,
+      value: vendor?.value || vendor?.id,
+      label: vendor?.label || vendor?.name,
+      name: vendor?.name,
+      specialty: vendor?.specialty,
+      email: vendor?.email,
+      phone: vendor?.phone
+    })) || [];
+  };
 
-  // Load initial data on mount
+  // Load data on mount if requested
   useEffect(() => {
     if (loadOnMount) {
-      loadDealFormData();
+      loadData();
     }
-  }, [loadOnMount, loadDealFormData]);
-
-  // Helper getters for common data patterns
-  const getters = {
-    // Get formatted options for SearchableSelect
-    getUserOptions: (userFilters = {}) => {
-      const filteredUsers = state?.users?.filter(user => {
-        if (userFilters?.roles && !userFilters?.roles?.includes(user?.role)) return false;
-        if (userFilters?.departments && !userFilters?.departments?.includes(user?.department)) return false;
-        if (userFilters?.activeOnly && !user?.is_active) return false;
-        return true;
-      });
-
-      return filteredUsers?.map(user => ({
-        id: user?.id,
-        name: user?.full_name,
-        displayName: `${user?.full_name} (${user?.role})`,
-        email: user?.email,
-        role: user?.role,
-        department: user?.department,
-        category: user?.role
-      })) || [];
-    },
-
-    getVendorOptions: (vendorFilters = {}) => {
-      const filteredVendors = state?.vendors?.filter(vendor => {
-        if (vendorFilters?.specialties && !vendorFilters?.specialties?.includes(vendor?.specialty)) return false;
-        if (vendorFilters?.activeOnly && !vendor?.is_active) return false;
-        if (vendorFilters?.minRating && vendor?.rating < vendorFilters?.minRating) return false;
-        return true;
-      });
-
-      return filteredVendors?.map(vendor => ({
-        id: vendor?.id,
-        name: vendor?.name,
-        displayName: `${vendor?.name}${vendor?.specialty ? ` (${vendor?.specialty})` : ''}`,
-        specialty: vendor?.specialty,
-        rating: vendor?.rating,
-        category: vendor?.specialty
-      })) || [];
-    },
-
-    getProductOptions: (productFilters = {}) => {
-      const filteredProducts = state?.products?.filter(product => {
-        if (productFilters?.categories && !productFilters?.categories?.includes(product?.category)) return false;
-        if (productFilters?.brands && !productFilters?.brands?.includes(product?.brand)) return false;
-        if (productFilters?.activeOnly && !product?.is_active) return false;
-        if (productFilters?.inStockOnly && product?.quantity_in_stock <= 0) return false;
-        return true;
-      });
-
-      return filteredProducts?.map(product => ({
-        id: product?.id,
-        name: product?.name,
-        displayName: `${product?.name} - $${product?.unit_price}${product?.brand ? ` (${product?.brand})` : ''}`,
-        category: product?.category,
-        brand: product?.brand,
-        unitPrice: product?.unit_price,
-        cost: product?.cost,
-        inStock: product?.quantity_in_stock > 0
-      })) || [];
-    },
-
-    // Quick access to deal form data
-    getSalesConsultants: () => state?.dealFormData?.salesConsultants || [],
-    getDeliveryCoordinators: () => state?.dealFormData?.deliveryCoordinators || [],
-    getActiveVendors: () => state?.dealFormData?.activeVendors || [],
-    getActiveProducts: () => state?.dealFormData?.activeProducts || []
-  };
+  }, [loadOnMount]);
 
   return {
-    // Data states
-    ...state,
-    
-    // Actions
-    loadUsers,
-    loadVendors,
-    loadProducts,
-    loadDealFormData,
-    globalSearch,
-    clearSearch,
-    refreshAll,
-    invalidateCache,
-    
-    // Helper getters
-    ...getters,
-    
-    // Computed states
-    hasData: Boolean(state?.users?.length || state?.vendors?.length || state?.products?.length),
-    isLoading: state?.loading || state?.usersLoading || state?.vendorsLoading || state?.productsLoading || state?.dealFormLoading,
-    hasError: Boolean(state?.error || state?.usersError || state?.vendorsError || state?.productsError),
-    isCacheValid: isCacheValid()
-  };
-};
-
-/**
- * Specialized hook for deal form dropdown data
- * Pre-configured for deal creation/editing workflows
- */
-export const useDealFormDropdowns = () => {
-  const {
-    dealFormData,
-    loadDealFormData,
-    dealFormLoading,
-    getSalesConsultants,
-    getDeliveryCoordinators,
-    getActiveVendors,
-    getActiveProducts,
-    ...rest
-  } = useDropdownData({
-    loadOnMount: true,
-    cacheTime: 10 * 60 * 1000 // 10 minutes for deal forms
-  });
-
-  return {
-    // Deal-specific data
-    salesConsultants: getSalesConsultants(),
-    deliveryCoordinators: getDeliveryCoordinators(),
-    vendors: getActiveVendors(),
-    products: getActiveProducts(),
+    // Original data arrays
+    dc: state?.dc,
+    sales: state?.sales,
+    finance: state?.finance,
+    users: state?.users,
+    vendors: state?.vendors,
+    products: state?.products,
     
     // Loading state
-    loading: dealFormLoading,
+    loading: state?.loading,
+    error: state?.error,
+    
+    // Search functionality
+    searchResults: state?.searchResults,
+    globalSearch: performGlobalSearch,
+    clearSearch,
+    
+    // Enhanced options methods expected by deals page
+    getUserOptions,
+    getVendorOptions,
     
     // Actions
-    refresh: () => loadDealFormData(true),
+    refresh: loadData,
+    refreshIfNeeded,
     
-    // Full data access
-    fullData: dealFormData,
+    // Cache info
+    lastUpdate,
+    isCacheValid: isCacheValid(),
     
-    // Pass through other functionality
-    ...rest
+    // Formatted options for backward compatibility
+    salesConsultantOptions: (state?.sales || [])?.map(item => ({
+      id: item?.id,
+      value: item?.id,
+      label: item?.full_name,
+      name: item?.full_name
+    })),
+    
+    deliveryCoordinatorOptions: (state?.dc || [])?.map(item => ({
+      id: item?.id,
+      value: item?.id,
+      label: item?.full_name,
+      name: item?.full_name
+    })),
+    
+    financeManagerOptions: (state?.finance || [])?.map(item => ({
+      id: item?.id,
+      value: item?.id,
+      label: item?.full_name,
+      name: item?.full_name
+    }))
   };
-};
+}
 
-/**
- * Specialized hook for user management dropdown data
- */
-export const useUserDropdowns = (userFilters = {}) => {
+// Enhanced deal form dropdowns hook with Finance Managers
+export const useDealFormDropdowns = () => {
   const {
-    users,
-    loadUsers,
-    usersLoading,
-    usersError,
-    getUserOptions,
-    ...rest
-  } = useDropdownData({
-    loadOnMount: true,
-    filters: userFilters
-  });
+    dc: deliveryCoordinators,
+    sales: salesConsultants,
+    finance: financeManagers,
+    vendors,
+    products,
+    loading,
+    error,
+    refresh
+  } = useDropdownData({ loadOnMount: true });
 
   return {
-    users: getUserOptions(),
-    loading: usersLoading,
-    error: usersError,
-    refresh: () => loadUsers(userFilters),
-    ...rest
+    // Deal-specific data with Finance Managers and additional data
+    salesConsultants,
+    deliveryCoordinators,
+    financeManagers,
+    vendors,
+    products,
+    
+    // Loading state
+    loading,
+    error,
+    
+    // Actions
+    refresh,
+    
+    // Formatted options for dropdowns
+    salesConsultantOptions: (salesConsultants || [])?.map(item => ({
+      id: item?.id,
+      value: item?.id,
+      label: item?.full_name,
+      name: item?.full_name
+    })),
+    
+    deliveryCoordinatorOptions: (deliveryCoordinators || [])?.map(item => ({
+      id: item?.id,
+      value: item?.id,
+      label: item?.full_name,
+      name: item?.full_name
+    })),
+    
+    financeManagerOptions: (financeManagers || [])?.map(item => ({
+      id: item?.id,
+      value: item?.id,
+      label: item?.full_name,
+      name: item?.full_name
+    })),
+    
+    vendorOptions: vendors || [],
+    productOptions: products || []
   };
 };
 

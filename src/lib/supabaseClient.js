@@ -1,12 +1,16 @@
 // src/lib/supabaseClient.js
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+const url = import.meta.env?.VITE_SUPABASE_URL;
+const anon = import.meta.env?.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  // Don't crash the app; just warn so UI can still render console.warn('Missing Supabase env (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).');
+if (!url || !anon) {
+  // This helps catch misconfigured Rocket secrets immediately
+  // (You'll see a clean error instead of "Failed to fetch")
+  throw new Error('Supabase env missing: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient(SUPABASE_URL || '', SUPABASE_ANON_KEY || '');
-export default supabase;
+export const supabase = createClient(url, anon, {
+  auth: { persistSession: false },
+  // no local session needed for internal tool
+});
