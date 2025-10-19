@@ -1,0 +1,10 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.eol": "\n",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "eslint.validate": ["javascript", "javascriptreact"],
+  "tailwindCSS.includeLanguages": { "javascript": "javascript", "javascriptreact": "javascriptreact" },
+  "git.confirmSync": false,
+  "git.autofetch": true
+}
