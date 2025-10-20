@@ -1,9 +1,9 @@
 {
   "version": "2.0.0",
   "tasks": [
-    { "label": "Dev: Vite", "type": "npm", "script": "start", "detail": "vite dev server" },
-    { "label": "Build: Vite", "type": "npm", "script": "build", "detail": "vite build" },
-    { "label": "Preview: Vite", "type": "npm", "script": "serve", "detail": "vite preview" },
-    { "label": "Test: Vitest", "type": "npm", "script": "test", "detail": "vitest" }
+    { "label":"Dev: Vite", "type":"npm", "script":"start" },
+    { "label":"Build: Vite", "type":"npm", "script":"build" },
+    { "label":"Preview: Vite", "type":"npm", "script":"serve" },
+    { "label":"Test: Vitest", "type":"npm", "script":"test" }
   ]
 }

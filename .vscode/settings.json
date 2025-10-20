@@ -8,19 +8,15 @@
   "editor.tabSize": 2,
   "editor.trimAutoWhitespace": true,
   "files.eol": "\n",
-
   "typescript.tsdk": "node_modules/typescript/lib",
-  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
-
+  "eslint.validate": ["javascript","javascriptreact","typescript","typescriptreact"],
   "tailwindCSS.experimental.configFile": "./tailwind.config.js",
   "tailwindCSS.includeLanguages": {
-    "javascript": "javascript",
-    "javascriptreact": "javascriptreact",
-    "typescript": "typescript",
-    "typescriptreact": "typescriptreact"
+    "javascript":"javascript",
+    "javascriptreact":"javascriptreact",
+    "typescript":"typescript",
+    "typescriptreact":"typescriptreact"
   },
-
   "git.confirmSync": false,
-  "git.autofetch": true,
-  "cSpell.words": ["supabase"]
+  "git.autofetch": true
 }

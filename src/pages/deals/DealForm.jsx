@@ -5,7 +5,7 @@ import {
   getProducts,
   getSalesConsultants,
   getFinanceManagers,
-  getDeliveryCoordinators
+  getDeliveryCoordinators,
 } from '../../services/dropdownService'
 
 // Optional fallback to service-layer create/update if parent didn't pass onSave
@@ -23,14 +23,14 @@ const emptyLineItem = () => ({
   promised_date: '',
   requires_scheduling: true,
   no_schedule_reason: '',
-  is_off_site: false
+  is_off_site: false,
 })
 
 export default function DealForm({
   initial = {},
   mode = 'create', // 'create' | 'edit'
   onCancel,
-  onSave // optional (payload) => Promise<{id}>
+  onSave, // optional (payload) => Promise<{id}>
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -57,56 +57,58 @@ export default function DealForm({
     promised_date: initial.promised_date || '',
     scheduled_start_time: initial.scheduled_start_time || '',
     scheduled_end_time: initial.scheduled_end_time || '',
-    calendar_notes: initial.calendar_notes || ''
+    calendar_notes: initial.calendar_notes || '',
   })
 
   useEffect(() => {
-    let alive = true
+    let mounted = true
     ;(async () => {
       try {
-        const [v, p, s, f, d] = await Promise.all([
+        const [vOpts, pOpts, sOpts, fOpts, dOpts] = await Promise.all([
           getVendors(),
           getProducts(),
           getSalesConsultants(),
           getFinanceManagers(),
-          getDeliveryCoordinators()
+          getDeliveryCoordinators(),
         ])
-        if (!alive) return
-        setVendors(v)
-        setProducts(p)
-        setSales(s)
-        setFinance(f)
-        setDelivery(d)
+        if (!mounted) return
+        setVendors(vOpts || [])
+        setProducts(pOpts || [])
+        setSales(sOpts || [])
+        setFinance(fOpts || [])
+        setDelivery(dOpts || [])
       } catch (e) {
         console.error('DealForm dropdown load error', e)
       } finally {
-        if (alive) setLoading(false)
+        if (mounted) setLoading(false)
       }
     })()
     return () => {
-      alive = false
+      mounted = false
     }
   }, [])
 
   const productMap = useMemo(() => {
-    const m = new Map()
-    products.forEach((p) => m.set(p.id, p))
+    const m = new Map()(products || []).forEach((p) => m.set(p.id ?? p.value, p))
     return m
   }, [products])
 
   const handleChange = (key, val) => setForm((prev) => ({ ...prev, [key]: val }))
 
-  const handleLineChange = (idx, key, val) =>
+  const handleLineChange = (idx, key, val) => {
     setForm((prev) => {
-      const list = [...prev.lineItems]
-      list[idx] = { ...list[idx], [key]: val }
+      const list = [...(prev.lineItems || [])]
+      const item = { ...(list[idx] || {}) }
+      item[key] = val
       // auto-fill unit_price when product selected
-      if (key === 'product_id') {
+      if (key === 'product_id' && val) {
         const prod = productMap.get(val)
-        if (prod) list[idx].unit_price = Number(prod.unit_price || 0)
+        if (prod && prod.unit_price !== undefined) item.unit_price = Number(prod.unit_price || 0)
       }
+      list[idx] = item
       return { ...prev, lineItems: list }
     })
+  }
 
   const addLineItem = () => setForm((p) => ({ ...p, lineItems: [...p.lineItems, emptyLineItem()] }))
   const removeLineItem = (idx) =>
@@ -116,32 +118,59 @@ export default function DealForm({
     e?.preventDefault?.()
     setSaving(true)
     try {
+      // Build payload that includes both snake_case (UI) and camelCase (service) fields
+      const normalizedLineItems = (form.lineItems || []).map((li) => ({
+        product_id: li.product_id || null,
+        quantity_used: Number(li.quantity_used || 1),
+        unit_price: Number(li.unit_price || 0),
+        // snake_case (UI)
+        promised_date: li.promised_date || li.lineItemPromisedDate || null,
+        requires_scheduling: !!li.requires_scheduling || !!li.requiresScheduling,
+        no_schedule_reason: li.no_schedule_reason || li.noScheduleReason || null,
+        is_off_site: !!li.is_off_site || !!li.isOffSite,
+        // camelCase (service compatibility)
+        lineItemPromisedDate: li.lineItemPromisedDate || li.promised_date || null,
+        requiresScheduling: !!li.requiresScheduling || !!li.requires_scheduling,
+        noScheduleReason: li.noScheduleReason || li.no_schedule_reason || null,
+        isOffSite: !!li.isOffSite || !!li.is_off_site,
+      }))
+
       const payload = {
         ...form,
-        // normalize booleans
         customer_needs_loaner: !!form.customer_needs_loaner,
-        lineItems: (form.lineItems || []).map((li) => ({
-          product_id: li.product_id || null,
-          quantity_used: Number(li.quantity_used || 1),
-          unit_price: Number(li.unit_price || 0),
-          promised_date: li.promised_date || null,
-          requires_scheduling: !!li.requires_scheduling,
-          no_schedule_reason: li.no_schedule_reason || null,
-          is_off_site: !!li.is_off_site
-        }))
+        // mirror phone fields for downstream services
+        customer_phone: form.customer_phone || form.customer_mobile || '',
+        customerPhone: form.customerPhone || form.customer_mobile || form.customer_phone || '',
+        lineItems: normalizedLineItems,
       }
 
       if (onSave) {
+        // parent-provided save handler is authoritative — let it close the form
         await onSave(payload)
+        onCancel?.()
       } else if (dealService) {
+        // Use service directly and reflect the saved record in the form (do not auto-close)
+        let savedRecord = null
         if (mode === 'edit' && payload.id) {
-          await dealService.updateDeal(payload.id, payload)
+          savedRecord = await dealService.updateDeal(payload.id, payload)
         } else {
-          await dealService.createDeal(payload)
+          savedRecord = await dealService.createDeal(payload)
+        }
+
+        if (savedRecord) {
+          // map DB shape to form if helper exists
+          try {
+            const mapped = dealService.mapDbDealToForm
+              ? dealService.mapDbDealToForm(savedRecord)
+              : null
+            if (mapped)
+              setForm((prev) => ({ ...prev, ...mapped, lineItems: mapped.lineItems || [] }))
+          } catch (e) {
+            // fallback: do nothing if mapping fails
+            console.warn('Failed to map saved record to form:', e)
+          }
         }
       }
-      // success — back to parent
-      onCancel?.()
     } catch (err) {
       console.error('Deal save failed', err)
       alert('Save failed. See console for details.')
@@ -218,7 +247,7 @@ export default function DealForm({
           >
             <option value="">— Select Vendor —</option>
             {vendors.map((v) => (
-              <option key={v.id} value={v.id}>
+              <option key={v.id} value={v.value}>
                 {v.label}
               </option>
             ))}
@@ -249,8 +278,8 @@ export default function DealForm({
           >
             <option value="">— Select Sales —</option>
             {sales.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.full_name}
+              <option key={u.id} value={u.value}>
+                {u.label}
               </option>
             ))}
           </select>
@@ -266,8 +295,8 @@ export default function DealForm({
           >
             <option value="">— Select Finance —</option>
             {finance.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.full_name}
+              <option key={u.id} value={u.value}>
+                {u.label}
               </option>
             ))}
           </select>
@@ -283,8 +312,8 @@ export default function DealForm({
           >
             <option value="">— Select Delivery —</option>
             {delivery.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.full_name}
+              <option key={u.id} value={u.value}>
+                {u.label}
               </option>
             ))}
           </select>
@@ -337,7 +366,7 @@ export default function DealForm({
                   >
                     <option value="">— Select Product —</option>
                     {products.map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={p.id} value={p.value}>
                         {p.label}
                       </option>
                     ))}
@@ -389,12 +418,12 @@ export default function DealForm({
                 {/* On-Site */}
                 <label
                   className={`inline-flex items-center gap-2 cursor-pointer border rounded px-3 py-2
-                    ${onSiteSelected ? 'ring-2 ring-blue-400 bg-blue-50 border-blue-300' : 'border-gray-300'}`}
+                    ${!item.is_off_site ? 'ring-2 ring-blue-400 bg-blue-50 border-blue-300' : 'border-gray-300'}`}
                 >
                   <input
                     type="radio"
                     name={`serviceLocation_${itemKey}`}
-                    checked={onSiteSelected}
+                    checked={!item.is_off_site}
                     onChange={() => handleLineChange(idx, 'is_off_site', false)}
                     className="h-4 w-4 accent-blue-600 appearance-auto"
                     data-testid={`onsite-radio-${idx}`}
@@ -438,9 +467,7 @@ export default function DealForm({
                     data-testid={`requires-scheduling-${idx}`}
                     type="checkbox"
                     checked={!!item.requires_scheduling}
-                    onChange={(e) =>
-                      handleLineChange(idx, 'requires_scheduling', e.target.checked)
-                    }
+                    onChange={(e) => handleLineChange(idx, 'requires_scheduling', e.target.checked)}
                     className="h-5 w-5 accent-blue-600 appearance-auto"
                   />
                   <label htmlFor={`requiresScheduling-${idx}`} className="text-sm">
