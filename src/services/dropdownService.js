@@ -104,3 +104,57 @@ export async function getProducts({ activeOnly = true } = {}) {
 
 /** Export for any other page that needs profiles */
 export const getUserProfiles = getStaff
+
+/**
+ * Global fuzzy search across users, vendors and products.
+ * Returns { users: [...], vendors: [...], products: [...] } with option-shaped items.
+ */
+export async function globalSearch(term) {
+  if (!term || !String(term).trim()) return { users: [], vendors: [], products: [] }
+  const q = `%${String(term).trim()}%`
+  try {
+    const [uRes, vRes, pRes] = await Promise.all([
+      supabase
+        .from('user_profiles')
+        .select('id, full_name, email, department, role')
+        .or(`full_name.ilike.${q},email.ilike.${q}`)
+        .limit(20),
+      supabase
+        .from('vendors')
+        .select('id, name, specialty')
+        .or(`name.ilike.${q},specialty.ilike.${q}`)
+        .limit(20),
+      supabase
+        .from('products')
+        .select('id, name, brand, unit_price')
+        .or(`name.ilike.${q},brand.ilike.${q}`)
+        .limit(20),
+    ])
+
+    const users = (uRes?.data || []).map((u) => ({
+      id: u.id,
+      value: u.id,
+      label: u.full_name,
+      email: u.email,
+      department: u.department,
+      role: u.role,
+    }))
+    const vendors = (vRes?.data || []).map((v) => ({
+      id: v.id,
+      value: v.id,
+      label: v.name,
+      specialty: v.specialty,
+    }))
+    const products = (pRes?.data || []).map((p) => ({
+      id: p.id,
+      value: p.id,
+      label: p.brand ? `${p.name} - ${p.brand}` : p.name,
+      unit_price: p.unit_price,
+    }))
+
+    return { users, vendors, products }
+  } catch (e) {
+    console.error('globalSearch error:', e)
+    return { users: [], vendors: [], products: [] }
+  }
+}
