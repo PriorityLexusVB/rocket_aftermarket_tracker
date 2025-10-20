@@ -1,6 +1,57 @@
-Priority Automotive – AI Coding Instructions
+# Priority Automotive — AI Coding Instructions
 
-Goal: Make AI helpers productive immediately in this codebase by explaining the real architecture, conventions, and gotchas.
+## Stack & Commands
+- React 18 + Vite, TailwindCSS, Supabase (Auth/Postgres/Storage), Recharts, Framer Motion.
+- Dev: `npm run start` (http://localhost:5173) · Build: `npm run build` → `dist/` · Preview: `npm run serve`.
+- Vercel: SPA rewrites via `vercel.json` (`rewrites: [{ "source": "/(.*)", "destination": "/" }]`).
+- Bundle split in `vite.config.mjs` (`manualChunks`: `react`, `router`, `supabase`).
+
+## Layout (key paths)
+- `src/pages/**` feature pages (e.g., `deals`, `admin`, `calendar`).
+- `src/services/**` Supabase I/O (use only `src/lib/supabase.js` client).
+- `src/contexts/AuthContext.jsx` = auth/session source of truth.
+- Global CSS: `src/styles/tailwind.css` + `src/styles/index.css`.
+	- **Rule:** All `@import` lines must be the first lines in `src/styles/index.css`.
+
+## Data Model (core)
+- `jobs` ("deals"): `job_number`, `vehicle_id`, `vendor_id`, `assigned_to`, `finance_manager_id`,
+	`delivery_coordinator_id`, `customer_needs_loaner`, dates, notes.
+- `job_parts`: line items for a job (`product_id`, `quantity_used`, `unit_price`, `promised_date`,
+	`requires_scheduling`, `no_schedule_reason`, `is_off_site`).
+- `products`, `vendors`, `user_profiles` (RBAC via `department`/`role`), `loaner_assignments`.
+
+## Service-Layer Pattern (do this)
+- **All DB I/O happens in services.** Components must not import Supabase directly.
+- `src/services/dropdownService.js` = single source of truth:
+	- `getSalesConsultants()`, `getFinanceManagers()`, `getDeliveryCoordinators()` → from `user_profiles` by `department`.
+	- `getVendors({ activeOnly })`, `getProducts({ activeOnly })` → return `{ id, value, label }`; products include `unit_price`.
+
+## Deal Form — correct behavior
+- File: `src/pages/deals/DealForm.jsx`.
+- Present & persist: Deal/Job #, Stock #, Customer Mobile, Vendor, Sales, Finance, Delivery, Description.
+- Line items: add/remove; selecting a product **auto-fills `unit_price`**; fields include `promised_date`,
+	`requires_scheduling` (or `no_schedule_reason`), and `is_off_site`.
+- Native inputs/selects/checkboxes only (mobile pickers). Use `accent-*` so ticks are visible.
+- On-Site vs Off-Site uses radio tiles with a visible highlight.
+- Submit payload mirrors phone into **both** `customer_phone` and `customerPhone`.
+- Line items use **snake_case** for DB fields.
+- If `onSave` prop exists: call it; otherwise call `dealService.createDeal/updateDeal`.
+
+## Auth & Roles
+- `AuthContext` wires Supabase Auth; `user_profiles` holds `department`/`role`.
+- Staff dropdowns filter by department; prefer exact match, fuzzy fallback if empty.
+
+## Gotchas
+- Keep `@import` at the very top of `src/styles/index.css` (Vite CSS will error if not).
+- Do not add Supabase calls in components; use services.
+- Keep native form controls for mobile UX.
+
+## Quick Checks (manual)
+1) Dropdowns populate vendors/products/staff (options use `{ value, label }`).
+2) Selecting a product auto-fills `unit_price`.
+3) Checkboxes show ticks (`accent-blue-600 appearance-auto`).
+4) On-Site/Off-Site tiles highlight selected.
+5) Save a new deal → reopen in Edit → values persist (including line-items).
 
 Tech & Build
 
