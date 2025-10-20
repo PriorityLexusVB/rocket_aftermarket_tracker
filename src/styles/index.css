@@ -1,14 +1,28 @@
 @import './theme-neutral.css';
-@import './util-neutral.css';
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-:root { --brand: #111827; }
+:root {
+  --brand: #111827;
+}
 
-html, body {
+html,
+body {
   background: #fff;
   color: #0f172a;
-  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
-    'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    'Helvetica Neue',
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol',
+    sans-serif;
 }
 
 input[type='checkbox'],
