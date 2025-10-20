@@ -1,22 +1,48 @@
 {
+  // Formatting
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.codeActionsOnSave": {
     "source.fixAll": true,
     "source.fixAll.eslint": true
   },
+
+  // Whitespace / endings
   "editor.tabSize": 2,
   "editor.trimAutoWhitespace": true,
   "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // TypeScript from workspace
   "typescript.tsdk": "node_modules/typescript/lib",
-  "eslint.validate": ["javascript","javascriptreact","typescript","typescriptreact"],
+
+  // ESLint
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  // Tailwind
   "tailwindCSS.experimental.configFile": "./tailwind.config.js",
   "tailwindCSS.includeLanguages": {
-    "javascript":"javascript",
-    "javascriptreact":"javascriptreact",
-    "typescript":"typescript",
-    "typescriptreact":"typescriptreact"
+    "javascript": "javascript",
+    "javascriptreact": "javascriptreact",
+    "typescript": "typescript",
+    "typescriptreact": "typescriptreact"
   },
+
+  // Git
   "git.confirmSync": false,
-  "git.autofetch": true
+  "git.autofetch": true,
+  // Optional: VS Code tells git to sign if you ever disable global signing
+  // "git.enableCommitSigning": true,
+
+  // Nice-to-haves (purely UX)
+  "editor.stickyScroll.enabled": true,
+  "explorer.compactFolders": false,
+  "search.useIgnoreFiles": true,
+  "editor.cursorBlinking": "smooth"
 }
