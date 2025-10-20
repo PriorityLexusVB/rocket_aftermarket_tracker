@@ -12,9 +12,9 @@ Vercel: SPA rewrites via vercel.json (rewrites: [{ source: "/(.*)", destination:
 
 Project Layout (key paths)
 
-src/pages/\*\* feature modules (e.g., deals, admin, calendar).
+src/pages/** feature modules (e.g., deals, admin, calendar).
 
-src/services/\*\* service-layer calls to Supabase (use only src/lib/supabase.js client).
+src/services/** service-layer calls to Supabase (use only src/lib/supabase.js client).
 
 src/contexts/AuthContext.jsx auth/session source of truth.
 
@@ -49,7 +49,7 @@ Inputs present & persisted: Deal/Job #, Stock #, Customer Mobile, Vendor, Sales,
 
 Line items: add/remove; product → auto-fills unit price; Qty/Price editable; Promised Date; Requires Scheduling (or No Schedule Reason); On-Site vs Off-Site uses radio tiles with a visible highlight.
 
-Checkboxes: native with accent-\* so ticks are obvious on iOS/Android.
+Checkboxes: native with accent-* so ticks are obvious on iOS/Android.
 
 Submit path: preferred prop onSave(payload). Fallback calls dealService.createDeal / updateDeal.
 
@@ -71,14 +71,14 @@ Workflows & Tests
 
 Dev: npm run start → verify dropdowns populate, loaner checkbox ticks, line-item scheduling toggles, and save succeeds.
 
-Optional Vitest setup lives under src/tests/\*\*. Use data-testid attributes already present in DealForm.jsx.
+Optional Vitest setup lives under src/tests/**. Use data-testid attributes already present in DealForm.jsx.
 
 When adding code
 
-Put new DB calls in src/services/\*. Keep parameters typed/validated at the boundary.
+Put new DB calls in src/services/*. Keep parameters typed/validated at the boundary.
 
 Reuse dropdownService for any staff/vendor/product lists.
 
 If you add job fields, update both the DealForm payload mapping and the service-layer create/update so DB stays in sync.
 
-Keep routing simple: pages live in src/pages/\* and are registered in the app router (check src/App.jsx / routes file).
+Keep routing simple: pages live in src/pages/* and are registered in the app router (check src/App.jsx / routes file).
