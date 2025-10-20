@@ -89,26 +89,34 @@ export default function DealForm({
   }, [])
 
   const productMap = useMemo(() => {
-    const m = new Map()(products || []).forEach((p) => m.set(p.id ?? p.value, p))
+    const m = new Map()
+    ;(products || []).forEach((p) => {
+      // options come as { id, value, label, unit_price }
+      const key = p.id ?? p.value
+      if (key != null) m.set(String(key), p)
+    })
     return m
   }, [products])
 
   const handleChange = (key, val) => setForm((prev) => ({ ...prev, [key]: val }))
 
-  const handleLineChange = (idx, key, val) => {
+  const handleLineChange = (idx, key, val) =>
     setForm((prev) => {
-      const list = [...(prev.lineItems || [])]
-      const item = { ...(list[idx] || {}) }
-      item[key] = val
-      // auto-fill unit_price when product selected
-      if (key === 'product_id' && val) {
-        const prod = productMap.get(val)
-        if (prod && prod.unit_price !== undefined) item.unit_price = Number(prod.unit_price || 0)
+      const next = { ...prev }
+      const lineItems = Array.isArray(next.lineItems) ? [...next.lineItems] : []
+      const li = { ...(lineItems[idx] || {}) }
+      li[key] = val
+      if (key === 'product_id') {
+        // ensure we look up by the option value string
+        const prod = productMap.get(String(val))
+        if (prod && prod.unit_price !== undefined) {
+          li.unit_price = Number(prod.unit_price || 0)
+        }
       }
-      list[idx] = item
-      return { ...prev, lineItems: list }
+      lineItems[idx] = li
+      next.lineItems = lineItems
+      return next
     })
-  }
 
   const addLineItem = () => setForm((p) => ({ ...p, lineItems: [...p.lineItems, emptyLineItem()] }))
   const removeLineItem = (idx) =>
