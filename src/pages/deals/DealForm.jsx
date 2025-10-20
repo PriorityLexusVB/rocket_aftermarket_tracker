@@ -1,921 +1,505 @@
-// src/pages/deals/components/DealForm.jsx
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTheme } from '../../contexts/ThemeContext';
-import { 
-  getDeliveryCoordinators, 
-  getSalesConsultants, 
-  getFinanceManagers, 
-  getProducts, 
-  getVendors 
-} from '../../services/dropdownService';
+// src/pages/deals/DealForm.jsx
+import React, { useEffect, useMemo, useState } from 'react'
+import {
+  getVendors,
+  getProducts,
+  getSalesConsultants,
+  getFinanceManagers,
+  getDeliveryCoordinators
+} from '../../services/dropdownService'
 
-const Field = ({ label, children, id, required = false, error }) => {
-  const fieldId = id || `field-${Math.random()?.toString(36)?.substr(2, 9)}`;
-  
-  return (
-    <div className="block">
-      <label htmlFor={fieldId} className="block text-xs font-medium text-gray-600 mb-1 cursor-pointer select-none">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      <div className="h-11 min-h-[44px]">
-        {React.cloneElement(children, { id: fieldId, className: `${children?.props?.className} ${error ? 'border-red-300' : ''}` })}
-      </div>
-      {error && (
-        <div className="text-xs text-red-600 mt-1" role="alert" aria-live="polite">
-          {error}
-        </div>
-      )}
-    </div>
-  );
-};
+// Optional fallback to service-layer create/update if parent didn't pass onSave
+let dealService
+try {
+  dealService = await import('../../services/dealService.js')
+} catch (_) {
+  // ignore if not present or already injected via props
+}
 
-export default function DealForm({ mode='create', initialData=null, onSubmit, onCancel, saving=false }) {
-  const { themeClasses } = useTheme();
-  
-  // Form state management with customer_name added to match schema
-  const [form, setForm] = useState(() => initialData || {
-    title: '',
-    description: '',
-    vendor_id: null,
-    vehicle_id: null,
-    job_status: 'pending',  // Updated to match schema enum default
-    priority: 'medium',     // Updated to match schema enum default
-    scheduled_start_time: '',
-    scheduled_end_time: '',
-    estimated_hours: '',
-    estimated_cost: '',
-    actual_cost: '',
-    location: '',
-    assigned_to: null,
-    delivery_coordinator_id: null,
-    finance_manager_id: null,
-    customer_needs_loaner: false,
-    customer_name: '',      // Added to match jobs table requirement
-    lineItems: [{ 
-      id: `new-${Date.now()}`,
-      product_id: null,     // Updated to match job_parts table
-      quantity_used: 1,     // Updated to match job_parts table
-      unit_price: 0,        // Updated to match job_parts table
-      notes: '',
-      isOffSite: false,
-      requiresScheduling: true,
-      lineItemPromisedDate: '',
-      noScheduleReason: '',
-      description: ''
-    }],
-    loanerForm: {
-      loaner_number: '',
-      eta_return_date: '',
-      notes: ''
-    }
-  });
+const emptyLineItem = () => ({
+  product_id: '',
+  quantity_used: 1,
+  unit_price: 0,
+  promised_date: '',
+  requires_scheduling: true,
+  no_schedule_reason: '',
+  is_off_site: false
+})
 
-  // Enhanced dropdown state with better error handling
-  const [dropdownData, setDropdownData] = useState({
-    vendors: [],
-    products: [], 
-    salesConsultants: [],
-    deliveryCoordinators: [],
-    financeManagers: []
-  });
-  
-  const [loading, setLoading] = useState({
-    vendors: false,
-    products: false,
-    salesConsultants: false,
-    deliveryCoordinators: false,
-    financeManagers: false
-  });
-  
-  const [errors, setErrors] = useState({});
+export default function DealForm({
+  initial = {},
+  mode = 'create', // 'create' | 'edit'
+  onCancel,
+  onSave // optional (payload) => Promise<{id}>
+}) {
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [vendors, setVendors] = useState([])
+  const [products, setProducts] = useState([])
+  const [sales, setSales] = useState([])
+  const [finance, setFinance] = useState([])
+  const [delivery, setDelivery] = useState([])
 
-  // Enhanced dropdown data loading with comprehensive error handling
+  const [form, setForm] = useState({
+    id: initial.id || undefined,
+    job_number: initial.job_number || '',
+    vehicle_id: initial.vehicle_id || '',
+    stock_number: initial.stock_number || '', // display only if you don’t want editable
+    title: initial.title || '',
+    description: initial.description || '',
+    vendor_id: initial.vendor_id || '',
+    assigned_to: initial.assigned_to || '',
+    finance_manager_id: initial.finance_manager_id || '',
+    delivery_coordinator_id: initial.delivery_coordinator_id || '',
+    customer_mobile: initial.customer_mobile || '',
+    customer_needs_loaner: !!initial.customer_needs_loaner,
+    lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
+    promised_date: initial.promised_date || '',
+    scheduled_start_time: initial.scheduled_start_time || '',
+    scheduled_end_time: initial.scheduled_end_time || '',
+    calendar_notes: initial.calendar_notes || ''
+  })
+
   useEffect(() => {
-    const loadAllDropdownData = async () => {
-      setLoading({
-        vendors: true,
-        products: true,
-        salesConsultants: true,
-        deliveryCoordinators: true,
-        financeManagers: true
-      });
-
+    let alive = true
+    ;(async () => {
       try {
-        // Load all dropdown data in parallel with individual error handling
-        const results = await Promise.allSettled([
+        const [v, p, s, f, d] = await Promise.all([
           getVendors(),
           getProducts(),
           getSalesConsultants(),
-          getDeliveryCoordinators(),
-          getFinanceManagers()
-        ]);
-
-        const [vendorsResult, productsResult, salesResult, deliveryResult, financeResult] = results;
-
-        // Process results with fallbacks for failed requests
-        const newDropdownData = {
-          vendors: vendorsResult?.status === 'fulfilled' ? (vendorsResult?.value || []) : [],
-          products: productsResult?.status === 'fulfilled' ? (productsResult?.value || []) : [],
-          salesConsultants: salesResult?.status === 'fulfilled' ? (salesResult?.value || []) : [],
-          deliveryCoordinators: deliveryResult?.status === 'fulfilled' ? (deliveryResult?.value || []) : [],
-          financeManagers: financeResult?.status === 'fulfilled' ? (financeResult?.value || []) : []
-        };
-
-        const newErrors = {};
-
-        // Track any failures for user feedback
-        if (vendorsResult?.status === 'rejected') {
-          newErrors.vendors = 'Failed to load vendors';
-          console.log('Failed to load vendors:', vendorsResult?.reason);
-        }
-        if (productsResult?.status === 'rejected') {
-          newErrors.products = 'Failed to load products';
-          console.log('Failed to load products:', productsResult?.reason);
-        }
-        if (salesResult?.status === 'rejected') {
-          newErrors.salesConsultants = 'Failed to load sales consultants';
-          console.log('Failed to load sales consultants:', salesResult?.reason);
-        }
-        if (deliveryResult?.status === 'rejected') {
-          newErrors.deliveryCoordinators = 'Failed to load delivery coordinators';
-          console.log('Failed to load delivery coordinators:', deliveryResult?.reason);
-        }
-        if (financeResult?.status === 'rejected') {
-          newErrors.financeManagers = 'Failed to load finance managers';
-          console.log('Failed to load finance managers:', financeResult?.reason);
-        }
-
-        setDropdownData(newDropdownData);
-        setErrors(newErrors);
-
-      } catch (error) {
-        console.log('Unexpected error loading dropdown data:', error);
-        setErrors({
-          global: 'Failed to load form data. Please refresh the page.'
-        });
+          getFinanceManagers(),
+          getDeliveryCoordinators()
+        ])
+        if (!alive) return
+        setVendors(v)
+        setProducts(p)
+        setSales(s)
+        setFinance(f)
+        setDelivery(d)
+      } catch (e) {
+        console.error('DealForm dropdown load error', e)
       } finally {
-        setLoading({
-          vendors: false,
-          products: false,
-          salesConsultants: false,
-          deliveryCoordinators: false,
-          financeManagers: false
-        });
+        if (alive) setLoading(false)
       }
-    };
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
 
-    loadAllDropdownData();
-  }, []);
+  const productMap = useMemo(() => {
+    const m = new Map()
+    products.forEach((p) => m.set(p.id, p))
+    return m
+  }, [products])
 
-  // Enhanced loaner data loading that matches database schema
-  useEffect(() => {
-    if (initialData?.id && initialData?.customer_needs_loaner) {
-      const loadExistingLoanerData = async () => {
-        try {
-          const { supabase } = await import('../../lib/supabase');
-          
-          // Query loaner_assignments table for existing assignment
-          const { data: loanerAssignment, error } = await supabase
-            ?.from('loaner_assignments')
-            ?.select('loaner_number, eta_return_date, notes')
-            ?.eq('job_id', initialData?.id)
-            ?.is('returned_at', null)  // Only get active assignments
-            ?.single();
+  const handleChange = (key, val) => setForm((prev) => ({ ...prev, [key]: val }))
 
-          if (error && error?.code !== 'PGRST116') {
-            console.log('Error loading loaner assignment:', error);
-            return;
-          }
+  const handleLineChange = (idx, key, val) =>
+    setForm((prev) => {
+      const list = [...prev.lineItems]
+      list[idx] = { ...list[idx], [key]: val }
+      // auto-fill unit_price when product selected
+      if (key === 'product_id') {
+        const prod = productMap.get(val)
+        if (prod) list[idx].unit_price = Number(prod.unit_price || 0)
+      }
+      return { ...prev, lineItems: list }
+    })
 
-          if (loanerAssignment) {
-            setForm(prev => ({
-              ...prev,
-              ...initialData,
-              loanerForm: {
-                loaner_number: loanerAssignment?.loaner_number || '',
-                eta_return_date: loanerAssignment?.eta_return_date || '',
-                notes: loanerAssignment?.notes || ''
-              }
-            }));
-          } else {
-            // No existing assignment, set up empty form
-            setForm(prev => ({ 
-              ...prev, 
-              ...initialData,
-              loanerForm: {
-                loaner_number: '',
-                eta_return_date: '',
-                notes: ''
-              }
-            }));
-          }
-        } catch (error) {
-          console.log('Failed to load loaner data:', error);
-          // Continue with empty loaner form
-          setForm(prev => ({ 
-            ...prev, 
-            ...initialData,
-            loanerForm: {
-              loaner_number: '',
-              eta_return_date: '',
-              notes: ''
-            }
-          }));
+  const addLineItem = () => setForm((p) => ({ ...p, lineItems: [...p.lineItems, emptyLineItem()] }))
+  const removeLineItem = (idx) =>
+    setForm((p) => ({ ...p, lineItems: p.lineItems.filter((_, i) => i !== idx) }))
+
+  const submit = async (e) => {
+    e?.preventDefault?.()
+    setSaving(true)
+    try {
+      const payload = {
+        ...form,
+        // normalize booleans
+        customer_needs_loaner: !!form.customer_needs_loaner,
+        lineItems: (form.lineItems || []).map((li) => ({
+          product_id: li.product_id || null,
+          quantity_used: Number(li.quantity_used || 1),
+          unit_price: Number(li.unit_price || 0),
+          promised_date: li.promised_date || null,
+          requires_scheduling: !!li.requires_scheduling,
+          no_schedule_reason: li.no_schedule_reason || null,
+          is_off_site: !!li.is_off_site
+        }))
+      }
+
+      if (onSave) {
+        await onSave(payload)
+      } else if (dealService) {
+        if (mode === 'edit' && payload.id) {
+          await dealService.updateDeal(payload.id, payload)
+        } else {
+          await dealService.createDeal(payload)
         }
-      };
-
-      loadExistingLoanerData();
-    } else if (initialData) {
-      // No loaner needed or new form, just set initial data
-      setForm(prev => ({ 
-        ...prev, 
-        ...initialData,
-        loanerForm: prev?.loanerForm || {
-          loaner_number: '',
-          eta_return_date: '',
-          notes: ''
-        }
-      }));
+      }
+      // success — back to parent
+      onCancel?.()
+    } catch (err) {
+      console.error('Deal save failed', err)
+      alert('Save failed. See console for details.')
+    } finally {
+      setSaving(false)
     }
-  }, [initialData]);
+  }
 
-  // Enhanced form validation that matches database constraints
-  const isFormValid = useMemo(() => {
-    // Required field: title (NOT NULL in jobs table)
-    if (!form?.title?.trim()) return false;
-    
-    // Conditional validation: loaner requirements
-    if (form?.customer_needs_loaner && !form?.loanerForm?.loaner_number?.trim()) {
-      return false;
-    }
-    
-    return true;
-  }, [form?.title, form?.customer_needs_loaner, form?.loanerForm?.loaner_number]);
-
-  // Form update functions
-  const update = (patch) => setForm(prev => ({ ...prev, ...patch }));
-  
-  const updateLoaner = (patch) => setForm(prev => ({
-    ...prev,
-    loanerForm: { ...prev?.loanerForm, ...patch }
-  }));
-  
-  const updateItem = (idx, patch) => {
-    setForm(prev => ({
-      ...prev,
-      lineItems: prev?.lineItems?.map((it, i) => 
-        i === idx ? { ...it, ...patch } : it
-      )
-    }));
-  };
-
-  const addItem = () => {
-    const newId = `new-${Date.now()}-${Math.random()?.toString(36)?.substr(2, 9)}`;
-    setForm(prev => ({ 
-      ...prev, 
-      lineItems: [...prev?.lineItems, { 
-        id: newId,
-        part_name: '', 
-        sku: '', 
-        quantity_used: 1, 
-        unit_price: 0, 
-        notes: '',
-        isOffSite: false,
-        requiresScheduling: true,
-        lineItemPromisedDate: '',
-        noScheduleReason: '',
-        description: ''
-      }] 
-    }));
-  };
-
-  const removeItem = (idx) => {
-    setForm(prev => ({ 
-      ...prev, 
-      lineItems: prev?.lineItems?.filter((_, i) => i !== idx) 
-    }));
-  };
-
-  const total = useMemo(() => {
-    return (form?.lineItems || [])?.reduce((sum, it) => {
-      const q = Number(it?.quantity_used || 0);
-      const p = Number(it?.unit_price || 0);
-      return sum + (q*p);
-    }, 0)?.toFixed(2);
-  }, [form?.lineItems]);
-
-  const submit = (e) => {
-    e?.preventDefault();
-    onSubmit?.(form);
-  };
-
-  // Render loading states for dropdowns
-  const renderDropdownOptions = (items, loadingKey, errorKey, defaultText, renderOption) => {
-    if (loading?.[loadingKey]) {
-      return <option value="">Loading...</option>;
-    }
-    
-    if (errors?.[errorKey]) {
-      return <option value="">Error loading data</option>;
-    }
-
-    if (!items || !Array.isArray(items) || items?.length === 0) {
-      return <option value="">No data available</option>;
-    }
-
-    return (
-      <>
-        <option value="">{defaultText}</option>
-        {items?.map(renderOption)}
-      </>
-    );
-  };
+  if (loading) return <div className="p-4">Loading…</div>
 
   return (
-    <form onSubmit={(e) => { e?.preventDefault(); onSubmit?.(form); }} className="space-y-6 pb-20">
-      {/* Global error display */}
-      {errors?.global && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          {errors?.global}
+    <form className="space-y-6 p-4" onSubmit={submit} data-testid="deal-form">
+      {/* Quick Identifiers */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Deal / Job #</label>
+          <input
+            data-testid="deal-number-input"
+            type="text"
+            value={form.job_number}
+            onChange={(e) => handleChange('job_number', e.target.value)}
+            className="mt-1 input-mobile w-full"
+            placeholder="Auto or manual"
+          />
         </div>
-      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Title - Required field matching jobs.title */}
-        <Field label="Title" required id="title-field" error="">
-          <input 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.title || ''} 
-            onChange={e => setForm(prev => ({ ...prev, title: e?.target?.value }))} 
-            placeholder="Enter deal title"
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Stock #</label>
+          <input
+            data-testid="stock-number-display"
+            type="text"
+            value={form.stock_number || ''}
+            onChange={(e) => handleChange('stock_number', e.target.value)}
+            className="mt-1 input-mobile w-full"
+            placeholder="e.g. A1234"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Customer Mobile</label>
+          <input
+            data-testid="customer-mobile-input"
+            type="tel"
+            value={form.customer_mobile}
+            onChange={(e) => handleChange('customer_mobile', e.target.value)}
+            className="mt-1 input-mobile w-full"
+            placeholder="+1 555 555 5555"
+          />
+        </div>
+      </section>
+
+      {/* Primary Info */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Title</label>
+          <input
+            data-testid="title-input"
+            type="text"
+            value={form.title}
+            onChange={(e) => handleChange('title', e.target.value)}
+            className="mt-1 input-mobile w-full"
+            placeholder="Describe the job"
             required
           />
-        </Field>
+        </div>
 
-        {/* Customer Name - Maps to job description or customer context */}
-        <Field label="Customer Name" id="customer-name-field" error="">
-          <input 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.customer_name || ''} 
-            onChange={e => setForm(prev => ({ ...prev, customer_name: e?.target?.value }))} 
-            placeholder="Enter customer name"
-          />
-        </Field>
-
-        {/* Salesperson - Maps to jobs.assigned_to */}
-        <Field label="Salesperson" id="salesperson-field" error="">
-          <select 
-            data-testid="salesperson-select"
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.assigned_to || ''} 
-            onChange={e => setForm(prev => ({ 
-              ...prev, 
-              assigned_to: e?.target?.value ? e?.target?.value : null 
-            }))}
-          >
-            {renderDropdownOptions(
-              dropdownData?.salesConsultants,
-              'salesConsultants',
-              'salesConsultants',
-              'Select salesperson',
-              (sc) => <option key={sc?.id} value={sc?.id}>{sc?.full_name}</option>
-            )}
-          </select>
-          {errors?.salesConsultants && (
-            <div className="text-xs text-red-600 mt-1">{errors?.salesConsultants}</div>
-          )}
-        </Field>
-
-        {/* Finance Manager - Maps to jobs.finance_manager_id */}
-        <Field label="Finance Manager" id="finance-manager-field" error="">
-          <select 
-            data-testid="finance-manager-select"
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.finance_manager_id || ''} 
-            onChange={e => setForm(prev => ({ 
-              ...prev, 
-              finance_manager_id: e?.target?.value ? e?.target?.value : null 
-            }))}
-          >
-            {renderDropdownOptions(
-              dropdownData?.financeManagers,
-              'financeManagers',
-              'financeManagers',
-              'Select finance manager',
-              (fm) => <option key={fm?.id} value={fm?.id}>{fm?.full_name}</option>
-            )}
-          </select>
-          {errors?.financeManagers && (
-            <div className="text-xs text-red-600 mt-1">{errors?.financeManagers}</div>
-          )}
-        </Field>
-
-        {/* Delivery Coordinator - Maps to jobs.delivery_coordinator_id */}
-        <Field label="Delivery Coordinator" id="delivery-coordinator-field" error="">
-          <select 
-            data-testid="delivery-coordinator-select"
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.delivery_coordinator_id || ''} 
-            onChange={e => setForm(prev => ({ 
-              ...prev, 
-              delivery_coordinator_id: e?.target?.value ? e?.target?.value : null 
-            }))}
-          >
-            {renderDropdownOptions(
-              dropdownData?.deliveryCoordinators,
-              'deliveryCoordinators',
-              'deliveryCoordinators',
-              'Select delivery coordinator',
-              (dc) => <option key={dc?.id} value={dc?.id}>{dc?.full_name}</option>
-            )}
-          </select>
-          {errors?.deliveryCoordinators && (
-            <div className="text-xs text-red-600 mt-1">{errors?.deliveryCoordinators}</div>
-          )}
-        </Field>
-
-        {/* Vendor - Maps to jobs.vendor_id */}
-        <Field label="Vendor" id="vendor-field" error="">
-          <select 
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Vendor</label>
+          <select
             data-testid="vendor-select"
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.vendor_id || ''} 
-            onChange={e => setForm(prev => ({ 
-              ...prev, 
-              vendor_id: e?.target?.value ? e?.target?.value : null 
-            }))}
+            value={form.vendor_id || ''}
+            onChange={(e) => handleChange('vendor_id', e.target.value || null)}
+            className="mt-1 input-mobile w-full"
           >
-            {renderDropdownOptions(
-              dropdownData?.vendors,
-              'vendors',
-              'vendors',
-              'Select vendor',
-              (v) => <option key={v?.id} value={v?.id}>{v?.name}</option>
-            )}
+            <option value="">— Select Vendor —</option>
+            {vendors.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
+              </option>
+            ))}
           </select>
-          {errors?.vendors && (
-            <div className="text-xs text-red-600 mt-1">{errors?.vendors}</div>
-          )}
-        </Field>
-
-        {/* Status - Maps to jobs.job_status enum */}
-        <Field label="Status" id="status-field" error="">
-          <select 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.job_status || 'pending'} 
-            onChange={e => setForm(prev => ({ ...prev, job_status: e?.target?.value }))}
-          >
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="quality_check">Quality Check</option>
-            <option value="delivered">Delivered</option>
-            <option value="draft">Draft</option>
-          </select>
-        </Field>
-        
-        {/* Priority - Maps to jobs.priority enum */}
-        <Field label="Priority" id="priority-field" error="">
-          <select 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.priority || 'medium'} 
-            onChange={e => setForm(prev => ({ ...prev, priority: e?.target?.value }))}
-          >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-        </Field>
-        
-        {/* Scheduling Fields - Map to jobs table columns */}
-        <Field label="Start time" id="start-time-field" error="">
-          <input 
-            type="datetime-local" 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.scheduled_start_time || ''} 
-            onChange={e => setForm(prev => ({ ...prev, scheduled_start_time: e?.target?.value }))} 
-          />
-        </Field>
-        
-        <Field label="End time" id="end-time-field" error="">
-          <input 
-            type="datetime-local" 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.scheduled_end_time || ''} 
-            onChange={e => setForm(prev => ({ ...prev, scheduled_end_time: e?.target?.value }))} 
-          />
-        </Field>
-        
-        <Field label="Estimated hours" id="estimated-hours-field" error="">
-          <input 
-            type="number" 
-            step="0.1" 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.estimated_hours || ''} 
-            onChange={e => setForm(prev => ({ ...prev, estimated_hours: e?.target?.value }))} 
-          />
-        </Field>
-        
-        <Field label="Location" id="location-field" error="">
-          <input 
-            className="w-full border rounded px-3 py-2 h-11" 
-            value={form?.location || ''} 
-            onChange={e => setForm(prev => ({ ...prev, location: e?.target?.value }))} 
-          />
-        </Field>
-        
-        {/* Description - Maps to jobs.description */}
-        <div className="md:col-span-2">
-          <Field label="Description" id="description-field" error="">
-            <textarea 
-              rows={4} 
-              className="w-full border rounded px-3 py-2" 
-              value={form?.description || ''} 
-              onChange={e => setForm(prev => ({ ...prev, description: e?.target?.value }))} 
-              placeholder="Enter deal description"
-            />
-          </Field>
         </div>
 
-        {/* Customer Loaner Requirements - Maps to jobs.customer_needs_loaner and loaner_assignments table */}
         <div className="md:col-span-2">
-          <Field label="Customer Requirements" id="customer-requirements-field" error="">
-            <div className="space-y-4">
-              <label className="inline-flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!!form?.customer_needs_loaner}
-                  onChange={(e) => setForm(prev => ({ 
-                    ...prev, 
-                    customer_needs_loaner: e?.target?.checked 
-                  }))}
-                  className="h-5 w-5"
-                />
-                <span className="text-sm">Customer needs loaner vehicle</span>
-              </label>
-              
-              {form?.customer_needs_loaner && (
-                <div className="ml-6 pl-4 border-l-2 border-blue-200 space-y-4 bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-800">Loaner Assignment Details</h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Loaner Number - Maps to loaner_assignments.loaner_number */}
-                    <Field label="Loaner Number" required id="loaner-number-field" error="">
-                      <input
-                        className="w-full border rounded px-3 py-2 h-11"
-                        value={form?.loanerForm?.loaner_number || ''}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          loanerForm: { ...prev?.loanerForm, loaner_number: e?.target?.value }
-                        }))}
-                        placeholder="e.g., LOANER-001"
-                        required={form?.customer_needs_loaner}
-                      />
-                    </Field>
-                    
-                    {/* ETA Return Date - Maps to loaner_assignments.eta_return_date */}
-                    <Field label="ETA Return Date" id="eta-return-date-field" error="">
-                      <input
-                        type="date"
-                        className="w-full border rounded px-3 py-2 h-11"
-                        value={form?.loanerForm?.eta_return_date || ''}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          loanerForm: { ...prev?.loanerForm, eta_return_date: e?.target?.value }
-                        }))}
-                        min={new Date()?.toISOString()?.split('T')?.[0]}
-                      />
-                    </Field>
-                  </div>
-                  
-                  {/* Loaner Notes - Maps to loaner_assignments.notes */}
-                  <Field label="Loaner Notes" id="loaner-notes-field" error="">
-                    <textarea
-                      rows={2}
-                      className="w-full border rounded px-3 py-2 resize-none"
-                      value={form?.loanerForm?.notes || ''}
-                      onChange={(e) => setForm(prev => ({
-                        ...prev,
-                        loanerForm: { ...prev?.loanerForm, notes: e?.target?.value }
-                      }))}
-                      placeholder="Additional notes about the loaner assignment..."
-                    />
-                  </Field>
-                </div>
-              )}
-            </div>
-          </Field>
+          <label className="block text-sm font-medium text-slate-700">Description</label>
+          <textarea
+            data-testid="description-input"
+            value={form.description}
+            onChange={(e) => handleChange('description', e.target.value)}
+            className="mt-1 input-mobile w-full"
+            rows={3}
+          />
         </div>
-      </div>
+      </section>
 
-      {/* Line Items Section - Maps to job_parts table */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold">Line Items</h3>
-          <button 
-            type="button" 
+      {/* Staff */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Sales Consultant</label>
+          <select
+            data-testid="sales-select"
+            value={form.assigned_to || ''}
+            onChange={(e) => handleChange('assigned_to', e.target.value || null)}
+            className="mt-1 input-mobile w-full"
+          >
+            <option value="">— Select Sales —</option>
+            {sales.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Finance Manager</label>
+          <select
+            data-testid="finance-select"
+            value={form.finance_manager_id || ''}
+            onChange={(e) => handleChange('finance_manager_id', e.target.value || null)}
+            className="mt-1 input-mobile w-full"
+          >
+            <option value="">— Select Finance —</option>
+            {finance.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Delivery Coordinator</label>
+          <select
+            data-testid="delivery-select"
+            value={form.delivery_coordinator_id || ''}
+            onChange={(e) => handleChange('delivery_coordinator_id', e.target.value || null)}
+            className="mt-1 input-mobile w-full"
+          >
+            <option value="">— Select Delivery —</option>
+            {delivery.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      {/* Customer needs loaner */}
+      <section className="flex items-center gap-3">
+        <input
+          data-testid="loaner-checkbox"
+          id="needsLoaner"
+          type="checkbox"
+          checked={!!form.customer_needs_loaner}
+          onChange={(e) => handleChange('customer_needs_loaner', e.target.checked)}
+          className="h-5 w-5 accent-blue-600 appearance-auto"
+        />
+        <label htmlFor="needsLoaner" className="text-sm text-slate-800">
+          Customer needs loaner
+        </label>
+      </section>
+
+      {/* Line Items */}
+      <section className="space-y-4" data-testid="line-items-section">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Line Items</h3>
+          <button
+            type="button"
+            onClick={addLineItem}
+            className="btn-mobile btn-mobile-sm"
             data-testid="add-line-item-btn"
-            className="px-3 py-2 h-11 rounded border hover:bg-gray-50 disabled:opacity-50"
-            onClick={() => {
-              const newId = `new-${Date.now()}-${Math.random()?.toString(36)?.substr(2, 9)}`;
-              setForm(prev => ({ 
-                ...prev, 
-                lineItems: [...(prev?.lineItems || []), { 
-                  id: newId,
-                  product_id: null,
-                  quantity_used: 1,
-                  unit_price: 0,
-                  notes: '',
-                  isOffSite: false,
-                  requiresScheduling: true,
-                  lineItemPromisedDate: '',
-                  noScheduleReason: '',
-                  description: ''
-                }] 
-              }));
-            }}
-            disabled={saving}
           >
-            Add Line Item
+            + Add Item
           </button>
         </div>
-        
-        <div className="space-y-3">
-          {(form?.lineItems || [])?.map((item, idx) => {
-            const itemKey = item?.id || `item-${idx}`;
-            
-            return (
-              <div key={itemKey} className="grid grid-cols-1 md:grid-cols-12 gap-3 border rounded p-3 bg-white">
-                {/* Product Selection - Maps to job_parts.product_id */}
+
+        {form.lineItems.map((item, idx) => {
+          const itemKey = `li-${idx}`
+          const onSiteSelected = !item.is_off_site
+          return (
+            <div key={itemKey} className="card-mobile space-y-3" data-testid={`line-${idx}`}>
+              {/* Product + qty + price */}
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                 <div className="md:col-span-3">
-                  <Field label="Product" id={`product-field-${itemKey}`} error="">
-                    <select 
-                      data-testid="product-select"
-                      className="w-full border rounded px-3 py-2 h-11" 
-                      value={item?.product_id || ''} 
-                      onChange={e => {
-                        const productId = e?.target?.value ? e?.target?.value : null;
-                        const selectedProduct = dropdownData?.products?.find(p => p?.id === productId);
-                        
-                        setForm(prev => ({
-                          ...prev,
-                          lineItems: prev?.lineItems?.map((it, i) => 
-                            i === idx ? { 
-                              ...it, 
-                              product_id: productId,
-                              unit_price: selectedProduct?.unit_price || it?.unit_price || 0
-                            } : it
-                          )
-                        }));
-                      }}
-                    >
-                      {renderDropdownOptions(
-                        dropdownData?.products,
-                        'products',
-                        'products',
-                        'Select product',
-                        (p) => <option key={p?.id} value={p?.id}>{p?.name}</option>
-                      )}
-                    </select>
-                  </Field>
+                  <label className="block text-sm font-medium text-slate-700">Product</label>
+                  <select
+                    data-testid={`product-select-${idx}`}
+                    value={item.product_id || ''}
+                    onChange={(e) => handleLineChange(idx, 'product_id', e.target.value || '')}
+                    className="mt-1 input-mobile w-full"
+                  >
+                    <option value="">— Select Product —</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Quantity - Maps to job_parts.quantity_used */}
-                <div className="md:col-span-2">
-                  <Field label="Quantity" id={`quantity-field-${itemKey}`} error="">
-                    <input 
-                      type="number" 
-                      min="1"
-                      className="w-full border rounded px-3 py-2 h-11" 
-                      value={item?.quantity_used || 1} 
-                      onChange={e => setForm(prev => ({
-                        ...prev,
-                        lineItems: prev?.lineItems?.map((it, i) => 
-                          i === idx ? { ...it, quantity_used: parseInt(e?.target?.value) || 1 } : it
-                        )
-                      }))}
-                    />
-                  </Field>
-                </div>
-                
-                {/* Unit Price - Maps to job_parts.unit_price */}
-                <div className="md:col-span-2">
-                  <Field label="Unit Price" id={`price-field-${itemKey}`} error="">
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      min="0"
-                      className="w-full border rounded px-3 py-2 h-11" 
-                      value={item?.unit_price || 0} 
-                      onChange={e => setForm(prev => ({
-                        ...prev,
-                        lineItems: prev?.lineItems?.map((it, i) => 
-                          i === idx ? { ...it, unit_price: parseFloat(e?.target?.value) || 0 } : it
-                        )
-                      }))}
-                    />
-                  </Field>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Qty</label>
+                  <input
+                    data-testid={`qty-input-${idx}`}
+                    type="number"
+                    min={1}
+                    value={item.quantity_used}
+                    onChange={(e) =>
+                      handleLineChange(idx, 'quantity_used', Number(e.target.value || 1))
+                    }
+                    className="mt-1 input-mobile w-full"
+                  />
                 </div>
 
-                {/* Total Price Display */}
-                <div className="md:col-span-2 flex items-end">
-                  <div className="w-full p-2 bg-gray-50 rounded border text-center">
-                    Total: ${((item?.quantity_used || 1) * (item?.unit_price || 0))?.toFixed(2)}
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Unit Price</label>
+                  <input
+                    data-testid={`unit-price-input-${idx}`}
+                    type="number"
+                    step="0.01"
+                    value={item.unit_price}
+                    onChange={(e) =>
+                      handleLineChange(idx, 'unit_price', Number(e.target.value || 0))
+                    }
+                    className="mt-1 input-mobile w-full"
+                  />
                 </div>
 
-                {/* Remove Button */}
-                <div className="md:col-span-3 flex items-end justify-end">
-                  <button 
-                    type="button" 
-                    className="px-3 py-2 h-11 rounded border text-red-700 border-red-300 hover:bg-red-50 disabled:opacity-50" 
-                    onClick={() => setForm(prev => ({ 
-                      ...prev, 
-                      lineItems: prev?.lineItems?.filter((_, i) => i !== idx) 
-                    }))}
-                    disabled={saving}
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => removeLineItem(idx)}
+                    className="btn-mobile btn-mobile-sm w-full"
+                    data-testid={`remove-line-item-btn-${idx}`}
                   >
                     Remove
                   </button>
                 </div>
-
-                {/* Service Location and Scheduling Options */}
-                <div className="md:col-span-12 mt-4 space-y-4 p-4 bg-gray-50 rounded">
-                  {/* Service Location */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Service Location</label>
-                    <div className="flex items-center space-x-4">
-                      <label className="inline-flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`serviceLocation_${itemKey}`}
-                          checked={!item?.isOffSite}
-                          onChange={() => setForm(prev => ({
-                            ...prev,
-                            lineItems: prev?.lineItems?.map((it, i) => 
-                              i === idx ? { ...it, isOffSite: false } : it
-                            )
-                          }))}
-                          className="h-4 w-4"
-                        />
-                        <span className="text-sm">On-Site</span>
-                      </label>
-                      <label className="inline-flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`serviceLocation_${itemKey}`}
-                          checked={!!item?.isOffSite}
-                          onChange={() => setForm(prev => ({
-                            ...prev,
-                            lineItems: prev?.lineItems?.map((it, i) => 
-                              i === idx ? { ...it, isOffSite: true } : it
-                            )
-                          }))}
-                          className="h-4 w-4"
-                        />
-                        <span className="text-sm">Off-Site</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Scheduling Options */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Scheduling</label>
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-4">
-                        <label className="inline-flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`scheduling_${itemKey}`}
-                            checked={!!item?.requiresScheduling}
-                            onChange={() => setForm(prev => ({
-                              ...prev,
-                              lineItems: prev?.lineItems?.map((it, i) => 
-                                i === idx ? { ...it, requiresScheduling: true, noScheduleReason: '' } : it
-                              )
-                            }))}
-                            className="h-4 w-4"
-                          />
-                          <span className="text-sm">Needs scheduling</span>
-                        </label>
-                        <label className="inline-flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={`scheduling_${itemKey}`}
-                            checked={!item?.requiresScheduling}
-                            onChange={() => setForm(prev => ({
-                              ...prev,
-                              lineItems: prev?.lineItems?.map((it, i) => 
-                                i === idx ? { ...it, requiresScheduling: false, lineItemPromisedDate: '' } : it
-                              )
-                            }))}
-                            className="h-4 w-4"
-                          />
-                          <span className="text-sm">No scheduling needed</span>
-                        </label>
-                      </div>
-
-                      {item?.requiresScheduling ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Field label="Promised Date" required id={`promised-date-field-${itemKey}`} error="">
-                            <input
-                              type="date"
-                              value={item?.lineItemPromisedDate || ''}
-                              min={new Date()?.toISOString()?.split('T')?.[0]}
-                              onChange={(e) => setForm(prev => ({
-                                ...prev,
-                                lineItems: prev?.lineItems?.map((it, i) => 
-                                  i === idx ? { ...it, lineItemPromisedDate: e?.target?.value } : it
-                                )
-                              }))}
-                              className="w-full p-3 text-sm rounded-lg border h-11"
-                              required={item?.requiresScheduling}
-                            />
-                          </Field>
-                          <Field label="Scheduling Notes" id={`scheduling-notes-field-${itemKey}`} error="">
-                            <textarea
-                              rows={2}
-                              placeholder="Special instructions or requirements..."
-                              className="w-full p-3 text-sm rounded-lg border resize-none"
-                              value={item?.description || ''}
-                              onChange={(e) => setForm(prev => ({
-                                ...prev,
-                                lineItems: prev?.lineItems?.map((it, i) => 
-                                  i === idx ? { ...it, description: e?.target?.value } : it
-                                )
-                              }))}
-                            />
-                          </Field>
-                        </div>
-                      ) : (
-                        <Field label="Reason for no schedule" required id={`no-schedule-reason-field-${itemKey}`} error="">
-                          <input
-                            type="text"
-                            placeholder="e.g., installed at delivery, no appointment needed"
-                            value={item?.noScheduleReason || ''}
-                            onChange={(e) => setForm(prev => ({
-                              ...prev,
-                              lineItems: prev?.lineItems?.map((it, i) => 
-                                i === idx ? { ...it, noScheduleReason: e?.target?.value } : it
-                              )
-                            }))}
-                            className="w-full p-3 text-sm rounded-lg border h-11"
-                            required={!item?.requiresScheduling}
-                          />
-                        </Field>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
-            );
-          })}
-        </div>
 
-        {/* Total Summary */}
-        <div className="flex items-center justify-end mt-3 text-sm text-gray-700">
-          <div className="px-3 py-1 bg-gray-50 rounded border">
-            Total: ${(form?.lineItems || [])?.reduce((sum, item) => {
-              return sum + ((item?.quantity_used || 1) * (item?.unit_price || 0));
-            }, 0)?.toFixed(2)}
-          </div>
-        </div>
-      </div>
+              {/* Service location tiles (On-Site vs Off-Site) */}
+              <div className="flex gap-3">
+                {/* On-Site */}
+                <label
+                  className={`inline-flex items-center gap-2 cursor-pointer border rounded px-3 py-2
+                    ${onSiteSelected ? 'ring-2 ring-blue-400 bg-blue-50 border-blue-300' : 'border-gray-300'}`}
+                >
+                  <input
+                    type="radio"
+                    name={`serviceLocation_${itemKey}`}
+                    checked={onSiteSelected}
+                    onChange={() => handleLineChange(idx, 'is_off_site', false)}
+                    className="h-4 w-4 accent-blue-600 appearance-auto"
+                    data-testid={`onsite-radio-${idx}`}
+                  />
+                  <span className="text-sm">On-Site</span>
+                </label>
 
-      {/* Form Actions */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t bg-white sticky bottom-0">
-        <button 
-          type="button" 
-          className="px-4 py-2 h-11 rounded border hover:bg-gray-50 disabled:opacity-50" 
-          onClick={onCancel}
+                {/* Off-Site */}
+                <label
+                  className={`inline-flex items-center gap-2 cursor-pointer border rounded px-3 py-2
+                    ${item.is_off_site ? 'ring-2 ring-blue-400 bg-blue-50 border-blue-300' : 'border-gray-300'}`}
+                >
+                  <input
+                    type="radio"
+                    name={`serviceLocation_${itemKey}`}
+                    checked={!!item.is_off_site}
+                    onChange={() => handleLineChange(idx, 'is_off_site', true)}
+                    className="h-4 w-4 accent-blue-600 appearance-auto"
+                    data-testid={`offsite-radio-${idx}`}
+                  />
+                  <span className="text-sm">Off-Site</span>
+                </label>
+              </div>
+
+              {/* Scheduling controls */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Promised Date</label>
+                  <input
+                    data-testid={`promised-date-${idx}`}
+                    type="date"
+                    value={item.promised_date || ''}
+                    onChange={(e) => handleLineChange(idx, 'promised_date', e.target.value || '')}
+                    className="mt-1 input-mobile w-full"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 mt-6">
+                  <input
+                    id={`requiresScheduling-${idx}`}
+                    data-testid={`requires-scheduling-${idx}`}
+                    type="checkbox"
+                    checked={!!item.requires_scheduling}
+                    onChange={(e) =>
+                      handleLineChange(idx, 'requires_scheduling', e.target.checked)
+                    }
+                    className="h-5 w-5 accent-blue-600 appearance-auto"
+                  />
+                  <label htmlFor={`requiresScheduling-${idx}`} className="text-sm">
+                    Requires Scheduling
+                  </label>
+                </div>
+
+                {!item.requires_scheduling && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">
+                      No Schedule Reason
+                    </label>
+                    <input
+                      data-testid={`no-schedule-reason-${idx}`}
+                      type="text"
+                      value={item.no_schedule_reason || ''}
+                      onChange={(e) =>
+                        handleLineChange(idx, 'no_schedule_reason', e.target.value || '')
+                      }
+                      className="mt-1 input-mobile w-full"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </section>
+
+      {/* Calendar notes (optional) */}
+      <section>
+        <label className="block text-sm font-medium text-slate-700">Calendar Notes</label>
+        <textarea
+          data-testid="calendar-notes-input"
+          value={form.calendar_notes || ''}
+          onChange={(e) => handleChange('calendar_notes', e.target.value)}
+          className="mt-1 input-mobile w-full"
+          rows={3}
+        />
+      </section>
+
+      {/* Actions */}
+      <section className="flex gap-3">
+        <button
+          type="submit"
           disabled={saving}
+          className="btn-mobile button-enhanced"
+          data-testid="save-deal-btn"
+        >
+          {saving ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Create Deal'}
+        </button>
+        <button
+          type="button"
+          onClick={() => onCancel?.()}
+          className="btn-mobile button-outline-enhanced"
         >
           Cancel
         </button>
-        <button 
-          type="submit" 
-          data-testid="save-deal-btn"
-          disabled={saving || !isFormValid} 
-          className="px-4 py-2 h-11 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {saving ? 'Saving...' : (mode === 'edit' ? 'Save Changes' : 'Create Deal')}
-        </button>
-        
-        {/* Validation Messages */}
-        {!isFormValid && !saving && (
-          <div className="text-xs text-red-600 ml-2" role="alert">
-            {!form?.title?.trim() 
-              ? 'Title is required' 
-              : form?.customer_needs_loaner && !form?.loanerForm?.loaner_number?.trim() 
-              ? 'Loaner number is required when loaner is needed' :'Please complete required fields'
-            }
-          </div>
-        )}
-      </div>
+      </section>
     </form>
-  );
+  )
 }
