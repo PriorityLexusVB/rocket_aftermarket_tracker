@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Environment variables with enhanced validation
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 console.log('Supabase Environment Check:', {
   url: supabaseUrl ? 'Present' : 'Missing',
@@ -87,7 +87,7 @@ export const testSupabaseConnection = async (retries = 2) => {
       return true;
     } catch (error) {
       console.warn(`⚠️ Supabase connection test failed (attempt ${attempt}/${retries}):`, error?.message);
-      
+
       if (attempt === retries) {
         console.error('❌ Supabase connection test failed after all attempts:', {
           message: error?.message,
@@ -97,12 +97,12 @@ export const testSupabaseConnection = async (retries = 2) => {
         });
         return false;
       }
-      
+
       // Wait before retry
       await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
   }
-  
+
   return false;
 };
 
