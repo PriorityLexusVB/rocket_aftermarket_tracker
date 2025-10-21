@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import { safeSelect } from '../lib/supabase/safeSelect'
+import { safeSelect } from '../lib/safeSelect'
 
 /**
  * Calendar Service - Handles calendar scheduling operations
@@ -23,7 +23,7 @@ export const calendarService = {
 
       return { data: data || [], error: null }
     } catch (error) {
-      console.error('Error in getJobsByDateRange:', error)
+      console.error('[calendar] getJobsByDateRange failed:', error)
       return { data: [], error }
     }
   },
@@ -46,7 +46,7 @@ export const calendarService = {
 
       return { hasConflict: data || false, error: null }
     } catch (error) {
-      console.error('Error checking scheduling conflict:', error)
+      console.error('[calendar] checkSchedulingConflict failed:', error)
       return { hasConflict: false, error }
     }
   },
@@ -90,7 +90,7 @@ export const calendarService = {
 
       return { data, error: null }
     } catch (error) {
-      console.error('Error updating job schedule:', error)
+      console.error('[calendar] updateJobSchedule failed:', error)
       return { data: null, error }
     }
   },
@@ -122,9 +122,10 @@ export const calendarService = {
         color_code: jobData?.colorCode || '#3b82f6',
         calendar_notes: jobData?.notes || '',
         created_by: jobData?.createdBy,
+        org_id: orgId ?? jobData?.org_id ?? null,
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         ?.from('jobs')
         ?.insert([newJobData])
         ?.select(
@@ -135,14 +136,11 @@ export const calendarService = {
         `
         )
         ?.single()
-
-      if (error) {
-        throw error
-      }
+        ?.throwOnError()
 
       return { data, error: null }
     } catch (error) {
-      console.error('Error creating scheduled job:', error)
+      console.error('[calendar] createScheduledJob failed:', error)
       return { data: null, error }
     }
   },
@@ -160,7 +158,7 @@ export const calendarService = {
 
       return { data: data || [], error: null }
     } catch (error) {
-      console.error('Error getting overdue jobs:', error)
+      console.error('[calendar] getOverdueJobs failed:', error)
       return { data: [], error }
     }
   },
@@ -237,7 +235,7 @@ export const calendarService = {
         error: null,
       }
     } catch (error) {
-      console.error('Error getting calendar stats:', error)
+      console.error('[calendar] getCalendarStats failed:', error)
       return {
         data: {
           totalJobs: 0,
@@ -255,29 +253,22 @@ export const calendarService = {
    */
   async getVendorAvailability(vendorId, startTime, endTime) {
     try {
-      const { data: jobs } = await this.getJobsByDateRange(startTime, endTime, {
-        vendorId,
-      })
+      const { data } = await this.getJobsByDateRange(startTime, endTime, { vendorId })
+      const jobs = data
 
-      if (!jobs) return { available: true, error: null }
+      const hasOverlap = Array.isArray(jobs)
+        ? jobs.some((job) => {
+            if (!job?.scheduled_start_time || !job?.scheduled_end_time) return false
 
-      // Check for any overlapping jobs
-      const hasOverlap = jobs?.data?.some((job) => {
-        if (!job?.scheduled_start_time || !job?.scheduled_end_time) return false
+            const jobStart = new Date(job.scheduled_start_time).getTime()
+            const jobEnd = new Date(job.scheduled_end_time).getTime()
+            return jobStart < endTime.getTime() && jobEnd > startTime.getTime()
+          })
+        : false
 
-        const jobStart = new Date(job.scheduled_start_time)
-        const jobEnd = new Date(job.scheduled_end_time)
-
-        return (
-          (jobStart <= startTime && jobEnd > startTime) ||
-          (jobStart < endTime && jobEnd >= endTime) ||
-          (jobStart >= startTime && jobEnd <= endTime)
-        )
-      })
-
-      return { available: !hasOverlap, conflictingJobs: hasOverlap ? jobs?.data : [], error: null }
+      return { available: !hasOverlap, conflictingJobs: hasOverlap ? jobs : [], error: null }
     } catch (error) {
-      console.error('Error checking vendor availability:', error)
+      console.error('[calendar] getVendorAvailability failed:', error)
       return { available: false, conflictingJobs: [], error }
     }
   },

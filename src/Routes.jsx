@@ -83,15 +83,17 @@ const Routes = () => {
                   </ProtectedRoute>
                 }
               />
-              {/* Temporary debug route for Step 6: session/org + counts */}
-              <Route
-                path="/debug-auth"
-                element={
-                  <ProtectedRoute>
-                    <DebugAuthPage />
-                  </ProtectedRoute>
-                }
-              />
+              {/* Debug route only in dev */}
+              {import.meta.env.DEV && (
+                <Route
+                  path="/debug-auth"
+                  element={
+                    <ProtectedRoute>
+                      <DebugAuthPage />
+                    </ProtectedRoute>
+                  }
+                />
+              )}
 
               {/* Advanced Management Centers */}
               <Route

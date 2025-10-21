@@ -60,7 +60,10 @@
     "start": "vite",
     "start:runner": "node scripts/runVite.js",
     "build": "vite build --sourcemap",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:debug": "PWDEBUG=1 playwright test --headed"
   },
   "eslintConfig": {
     "extends": [
@@ -81,6 +84,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/forms": "^0.5.10",
@@ -103,5 +107,3 @@
     "vitest": "^3.2.4"
   }
 }
-
-

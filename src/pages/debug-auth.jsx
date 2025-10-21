@@ -71,13 +71,17 @@ export default function DebugAuthPage() {
 
       <section className="mb-4">
         <h2 className="font-semibold">Session</h2>
+        <div className="mb-2">
+          <span className="text-sm text-slate-600">Session User ID: </span>
+          <strong data-testid="session-user-id">{session?.user?.id || '—'}</strong>
+        </div>
         <pre className="bg-gray-100 p-2 rounded">{JSON.stringify(session || null, null, 2)}</pre>
       </section>
 
       <section className="mb-4">
         <h2 className="font-semibold">Tenant</h2>
         <div>
-          orgId: <strong>{String(orgId)}</strong>
+          orgId: <strong data-testid="profile-org-id">{String(orgId)}</strong>
         </div>
         <div>
           loading: <strong>{String(tenantLoading)}</strong>
@@ -101,9 +105,16 @@ export default function DebugAuthPage() {
 
             <h3 className="mt-2">Org-scoped</h3>
             <ul>
-              <li>Vendors: {counts?.org?.vendors ?? 'N/A'}</li>
-              <li>Products: {counts?.org?.products ?? 'N/A'}</li>
-              <li>Users: {counts?.org?.users ?? 'N/A'}</li>
+              <li>
+                Vendors: <span data-testid="org-vendor-count">{counts?.org?.vendors ?? 'N/A'}</span>
+              </li>
+              <li>
+                Products:{' '}
+                <span data-testid="org-product-count">{counts?.org?.products ?? 'N/A'}</span>
+              </li>
+              <li>
+                Users: <span data-testid="org-staff-count">{counts?.org?.users ?? 'N/A'}</span>
+              </li>
               <li>SMS Templates: {counts?.org?.sms_templates ?? 'N/A'}</li>
             </ul>
           </div>
