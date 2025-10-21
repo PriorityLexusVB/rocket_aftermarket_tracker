@@ -40,6 +40,28 @@ function sanitizeDealPayload(input) {
   return pick(input || {}, JOB_COLS)
 }
 
+// Internal helper: load a fully-joined deal/job by id
+async function selectJoinedDealById(id) {
+  const { data: job, error: jobError } = await supabase
+    ?.from('jobs')
+    ?.select(
+      `
+        id, job_number, title, description, job_status, priority, location,
+        vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
+        estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
+        service_type, delivery_coordinator_id, assigned_to, created_at, finance_manager_id,
+        vehicle:vehicles(id, year, make, model, stock_number),
+        vendor:vendors(id, name),
+        job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
+      `
+    )
+    ?.eq('id', id)
+    ?.single()
+
+  if (jobError) throw new Error(`Failed to load deal: ${jobError.message}`)
+  return job
+}
+
 // Map UI form state into DB-friendly pieces: job payload, normalized lineItems, loaner form
 function mapFormToDb(formState = {}) {
   // Base payload constrained to known columns
@@ -275,24 +297,8 @@ export async function getAllDeals() {
 // ✅ FIXED: Updated getDeal to remove SQL RPC dependency
 export async function getDeal(id) {
   try {
-    // Use direct query instead of SQL RPC
-    const { data: job, error: jobError } = await supabase
-      ?.from('jobs')
-      ?.select(
-        `
-        id, job_number, title, description, job_status, priority, location,
-        vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
-        estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
-        service_type, delivery_coordinator_id, assigned_to, created_at, finance_manager_id,
-        vehicle:vehicles(id, year, make, model, stock_number),
-        vendor:vendors(id, name),
-        job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
-      `
-      )
-      ?.eq('id', id)
-      ?.single()
-
-    if (jobError) throw new Error(`Failed to load deal: ${jobError.message}`)
+    // Centralized joined selector
+    const job = await selectJoinedDealById(id)
 
     // Get transaction data separately
     const { data: transaction } = await supabase
@@ -309,7 +315,7 @@ export async function getDeal(id) {
       total_amount: transaction?.total_amount || 0,
     }
   } catch (error) {
-    console.error('Failed to get deal:', error)
+    console.error('[dealService:get] Failed to get deal:', error)
     throw new Error(`Failed to load deal: ${error?.message}`)
   }
 }
@@ -344,6 +350,7 @@ export async function createDeal(formState) {
     // 3) return full record (with joins)
     return await getDeal(job?.id)
   } catch (error) {
+    console.error('[dealService:create] Failed to create deal:', error)
     // rollback best-effort: delete parts first, then job
     try {
       await supabase?.from('job_parts')?.delete()?.eq('job_id', job?.id)
