@@ -8,3 +8,6 @@ package-lock.json
 vite.config.*s.*
 .env*
 !env.example
+/playwright-report/
+/test-results/
+/e2e/storageState.json

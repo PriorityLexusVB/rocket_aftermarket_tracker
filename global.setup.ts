@@ -1,0 +1,61 @@
+import { chromium } from '@playwright/test'
+import fs from 'fs/promises'
+import path from 'path'
+
+export default async function globalSetup() {
+  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+  const storageDir = path.join(process.cwd(), 'e2e')
+  const storagePath = path.join(storageDir, 'storageState.json')
+
+  const browser = await chromium.launch()
+  const storageExists = await fs
+    .stat(storagePath)
+    .then(() => true)
+    .catch(() => false)
+  const context = await browser.newContext(
+    storageExists ? { storageState: storagePath } : undefined
+  )
+  const page = await context.newPage()
+
+  // If storage exists and debug-auth shows both testids, skip login
+  let hasValidState = false
+  try {
+    await page.goto(base + '/debug-auth')
+    const hasSession = await page
+      .getByTestId('session-user-id')
+      .isVisible()
+      .catch(() => false)
+    const hasOrg = await page
+      .getByTestId('profile-org-id')
+      .isVisible()
+      .catch(() => false)
+    hasValidState = !!(hasSession && hasOrg)
+  } catch {}
+
+  if (!hasValidState) {
+    // Ensure auth flow (adjust selectors if needed)
+    await page.goto(base + '/auth')
+    const email = process.env.E2E_EMAIL!
+    const password = process.env.E2E_PASSWORD!
+
+    const emailInput = page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i))
+    const passInput = page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i))
+    await emailInput.fill(email)
+    await passInput.fill(password)
+
+    await page
+      .getByRole('button', { name: /continue|sign in|log in/i })
+      .first()
+      .click()
+    await page.waitForLoadState('networkidle')
+
+    // Confirm session on debug-auth then persist state
+    await page.goto(base + '/debug-auth')
+    await page.getByTestId('session-user-id').waitFor({ state: 'visible', timeout: 15000 })
+    await page.getByTestId('profile-org-id').waitFor({ state: 'visible', timeout: 15000 })
+  }
+
+  await fs.mkdir(storageDir, { recursive: true })
+  await context.storageState({ path: storagePath })
+  await browser.close()
+}

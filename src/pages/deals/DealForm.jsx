@@ -9,9 +9,9 @@ import {
 } from '../../services/dropdownService'
 
 // Optional fallback to service-layer create/update if parent didn't pass onSave
-let dealService
+let dealServicePromise
 try {
-  dealService = await import('../../services/dealService.js')
+  dealServicePromise = import('../../services/dealService.js')
 } catch (_) {
   // ignore if not present or already injected via props
 }
@@ -200,7 +200,9 @@ export default function DealForm({
         // parent-provided save handler is authoritative — let it close the form
         await onSave(payload)
         onCancel?.()
-      } else if (dealService) {
+      } else if (dealServicePromise) {
+        const mod = await dealServicePromise
+        const dealService = mod?.default ?? mod
         // Use service directly and reflect the saved record in the form (do not auto-close)
         let savedRecord = null
         if (mode === 'edit' && payload.id) {

@@ -115,7 +115,12 @@ export default function DebugAuthPage() {
               <li>
                 Users: <span data-testid="org-staff-count">{counts?.org?.users ?? 'N/A'}</span>
               </li>
-              <li>SMS Templates: {counts?.org?.sms_templates ?? 'N/A'}</li>
+              <li>
+                SMS Templates:{' '}
+                <span data-testid="org-sms-template-count">
+                  {counts?.org?.sms_templates ?? 'N/A'}
+                </span>
+              </li>
             </ul>
           </div>
         )}

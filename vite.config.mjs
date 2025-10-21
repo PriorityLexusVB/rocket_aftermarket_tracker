@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
   build: {
     sourcemap: true,
     chunkSizeWarningLimit: 3000,
@@ -11,9 +16,9 @@ export default defineConfig({
         manualChunks: {
           react: ['react', 'react-dom'],
           router: ['react-router-dom'],
-          supabase: ['@supabase/supabase-js']
-        }
-      }
-    }
-  }
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
 })
