@@ -49,8 +49,14 @@ function mapFormToDb(formState = {}) {
   const orgId = formState?.org_id ?? formState?.orgId
   const payload = orgId ? { ...base, org_id: orgId } : base
 
-  const lineItems = Array.isArray(formState?.lineItems) ? formState?.lineItems : []
-  const normalizedLineItems = (lineItems || []).map((li) => ({
+  // Accept either lineItems (current UI) or line_items (alternate callers)
+  const lineItemsInput = Array.isArray(formState?.line_items)
+    ? formState?.line_items
+    : Array.isArray(formState?.lineItems)
+      ? formState?.lineItems
+      : []
+
+  const normalizedLineItems = (lineItemsInput || []).map((li) => ({
     product_id: li.product_id ?? null,
     quantity_used: Number(li.quantity_used ?? li.quantity ?? 1),
     unit_price: Number(li.unit_price ?? li.price ?? 0),
