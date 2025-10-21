@@ -1,71 +1,85 @@
-import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../../contexts/AuthContext';
-import { Button, Input, Checkbox } from '../../../components/ui';
+import React, { useState, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AuthContext } from '../../../contexts/AuthContext'
+import { Button, Input, Checkbox } from '../../../components/ui'
 
 const LoginForm = () => {
-  const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false });
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isRetrying, setIsRetrying] = useState(false);
-  
-  const { signIn } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false })
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [isRetrying, setIsRetrying] = useState(false)
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e?.target
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+  const { signIn } = useContext(AuthContext)
+  const navigate = useNavigate()
+
+  const handleChange = (eOrValue, maybeEvent) => {
+    // Support both native events and Checkbox's onChange(value, event)
+    if (typeof eOrValue === 'boolean') {
+      const event = maybeEvent
+      const name = event?.target?.name
+      if (!name) return
+      setFormData((prev) => ({ ...prev, [name]: eOrValue }))
+      return
+    }
+
+    const target = eOrValue?.target || {}
+    const { name, value, type, checked } = target
+    if (!name) return
+    setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? !!checked : value }))
   }
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
-    
+    e?.preventDefault()
+
     if (isLoading) {
-      console.log('Already processing login, ignoring...');
-      return;
+      console.log('Already processing login, ignoring...')
+      return
     }
-    
-    setIsLoading(true);
-    setError('');
-    setIsRetrying(false);
+
+    setIsLoading(true)
+    setError('')
+    setIsRetrying(false)
 
     if (!formData?.email?.trim() || !formData?.password?.trim()) {
-      setError('Please enter both email and password.');
-      setIsLoading(false);
-      return;
+      setError('Please enter both email and password.')
+      setIsLoading(false)
+      return
     }
 
     try {
-      console.log('=== LOGIN FORM SUBMISSION ===');
-      console.log('Email:', formData?.email);
-      
-      const result = await signIn(formData?.email?.trim(), formData?.password?.trim(), formData?.rememberMe);
-      
-      console.log('Login result:', { success: result?.success, hasError: !!result?.error });
-      
+      console.log('=== LOGIN FORM SUBMISSION ===')
+      console.log('Email:', formData?.email)
+
+      const result = await signIn(
+        formData?.email?.trim(),
+        formData?.password?.trim(),
+        formData?.rememberMe
+      )
+
+      console.log('Login result:', { success: result?.success, hasError: !!result?.error })
+
       if (result?.success && result?.data?.user) {
-        console.log('✅ Login successful - redirecting...');
-        localStorage.removeItem('lastAuthError');
-        setError('');
-        
+        console.log('✅ Login successful - redirecting...')
+        localStorage.removeItem('lastAuthError')
+        setError('')
+
         setTimeout(() => {
-          navigate('/deals', { replace: true });
-        }, 100);
-        
+          navigate('/deals', { replace: true })
+        }, 100)
       } else {
-        const errorMsg = result?.error || 'Login failed. Please try again.';
-        console.error('❌ Login failed:', errorMsg);
-        setError(errorMsg);
-        
+        const errorMsg = result?.error || 'Login failed. Please try again.'
+        console.error('❌ Login failed:', errorMsg)
+        setError(errorMsg)
+
         if (errorMsg?.includes('timeout') || errorMsg?.includes('connection')) {
-          setIsRetrying(true);
+          setIsRetrying(true)
         }
       }
     } catch (err) {
-      console.error('Login submission error:', err);
-      setError('An unexpected error occurred. Please try again.');
+      console.error('Login submission error:', err)
+      setError('An unexpected error occurred. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
@@ -75,7 +89,7 @@ const LoginForm = () => {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block mb-2 text-sm font-medium text-gray-700">Email</label>
-          <Input 
+          <Input
             type="email"
             name="email"
             value={formData?.email}
@@ -95,7 +109,7 @@ const LoginForm = () => {
         </div>
         <div>
           <label className="block mb-2 text-sm font-medium text-gray-700">Password</label>
-          <Input 
+          <Input
             type="password"
             name="password"
             value={formData?.password}
@@ -114,7 +128,7 @@ const LoginForm = () => {
           />
         </div>
         <div className="flex items-center justify-between">
-          <Checkbox 
+          <Checkbox
             label="Remember me"
             name="rememberMe"
             checked={formData?.rememberMe}
@@ -122,14 +136,16 @@ const LoginForm = () => {
             id="rememberMe"
             description="Keep me logged in"
           />
-          <a href="#" className="text-sm text-blue-600 hover:underline">Forgot password?</a>
+          <a href="#" className="text-sm text-blue-600 hover:underline">
+            Forgot password?
+          </a>
         </div>
-        
+
         {error && <p className="text-sm text-red-600">{error}</p>}
-        
-        <Button 
-          type="submit" 
-          className="w-full" 
+
+        <Button
+          type="submit"
+          className="w-full"
           disabled={isLoading}
           onClick={handleSubmit}
           aria-label="Sign In"
@@ -140,7 +156,7 @@ const LoginForm = () => {
         </Button>
       </form>
     </div>
-  );
+  )
 }
 
-export default LoginForm;
+export default LoginForm

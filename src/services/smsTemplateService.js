@@ -8,4 +8,11 @@ export function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
   return safeSelect(q, 'sms_templates:listByOrg')
 }
 
-export default { listSmsTemplatesByOrg }
+export function listSmsTemplatesGlobal({ activeOnly = true } = {}) {
+  let q = supabase.from('sms_templates').select('*').order('title', { ascending: true })
+  if (activeOnly) q = q.eq('is_active', true)
+  // global: no org filter
+  return safeSelect(q, 'sms_templates:listGlobal')
+}
+
+export default { listSmsTemplatesByOrg, listSmsTemplatesGlobal }

@@ -37,6 +37,7 @@ export function useDropdownData(options = {}) {
   const [lastUpdate, setLastUpdate] = useState(null)
 
   const tenant = useTenant()
+  const auth = useAuth()
 
   // Enhanced load data with tenant-aware services and better error handling
   const loadData = async () => {
@@ -233,8 +234,6 @@ export function useDropdownData(options = {}) {
   // Load data on mount if requested
   useEffect(() => {
     let mounted = true
-    // call hook at top-level to inspect auth state
-    const auth = useAuth()
 
     ;(async () => {
       if (!loadOnMount) return
@@ -263,7 +262,7 @@ export function useDropdownData(options = {}) {
     return () => {
       mounted = false
     }
-  }, [loadOnMount])
+  }, [loadOnMount, auth?.loading, auth?.user?.id])
 
   return {
     // Original data arrays

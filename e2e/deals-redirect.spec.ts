@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+test.skip(missingAuthEnv, 'E2E auth env not set')
+
 test.describe('Deal create redirect', () => {
   test('saving a new deal redirects to /deals/:id/edit', async ({ page }) => {
     await page.goto('/deals/new')

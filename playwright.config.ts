@@ -16,7 +16,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // If our dev server script is not "dev", detect and adjust to the correct one (e.g., "start").
   webServer: {
-    command: 'npm run dev || npm run start',
+    command: 'npm run start',
     port: 5173,
     reuseExistingServer: !process.env.CI,
   },

@@ -1,13 +1,13 @@
 // src/pages/debug-auth.jsx
 import React, { useEffect, useState } from 'react'
 import useTenant from '../hooks/useTenant'
-import { supabase } from '../lib/supabaseClient'
 import {
   listVendorsByOrg,
   listProductsByOrg,
   listStaffByOrg,
   listSmsTemplatesByOrg,
 } from '../services/tenantService'
+import { listSmsTemplatesGlobal } from '../services/smsTemplateService'
 import {
   getVendors as getVendorsGlobal,
   getProducts as getProductsGlobal,
@@ -27,10 +27,11 @@ export default function DebugAuthPage() {
       setError(null)
       try {
         // Unfiltered/global counts
-        const [gVendors, gProducts, gUsers] = await Promise.all([
+        const [gVendors, gProducts, gUsers, gSms] = await Promise.all([
           getVendorsGlobal({ activeOnly: false }),
           getProductsGlobal({ activeOnly: false }),
           getUsersGlobal({ activeOnly: false }),
+          listSmsTemplatesGlobal?.({ activeOnly: false }).catch(() => []),
         ])
 
         // Org-filtered counts
@@ -43,7 +44,12 @@ export default function DebugAuthPage() {
 
         if (!mounted) return
         setCounts({
-          global: { vendors: gVendors.length, products: gProducts.length, users: gUsers.length },
+          global: {
+            vendors: gVendors.length,
+            products: gProducts.length,
+            users: gUsers.length,
+            sms_templates: gSms.length,
+          },
           org: {
             vendors: oVendors.length,
             products: oProducts.length,
@@ -101,6 +107,7 @@ export default function DebugAuthPage() {
               <li>Vendors: {counts?.global?.vendors ?? 'N/A'}</li>
               <li>Products: {counts?.global?.products ?? 'N/A'}</li>
               <li>Users: {counts?.global?.users ?? 'N/A'}</li>
+              <li>SMS Templates: {counts?.global?.sms_templates ?? 'N/A'}</li>
             </ul>
 
             <h3 className="mt-2">Org-scoped</h3>

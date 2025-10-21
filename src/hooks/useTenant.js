@@ -1,7 +1,7 @@
 // src/hooks/useTenant.js
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '../lib/supabase'
 
 /**
  * useTenant
@@ -48,8 +48,10 @@ function useTenant() {
 
         // Treat permission/RLS errors as non-fatal: log a warning and continue
         if (error) {
-          console.warn('useTenant: profile select error (possibly RLS/perm denied)',
-            error?.message || error)
+          console.warn(
+            'useTenant: profile select error (possibly RLS/perm denied)',
+            error?.message || error
+          )
           if (aliveRef.current && !didCancel) {
             setOrgId(null)
             setLoading(false)

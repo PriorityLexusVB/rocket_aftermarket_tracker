@@ -1,6 +1,6 @@
 // src/services/tenantService.js
-import { supabase } from '../lib/supabaseClient'
-import safeSelect from '../lib/safeSelect'
+import { supabase } from '@/lib/supabase'
+import safeSelect from '@/lib/safeSelect'
 
 export async function listVendorsByOrg(orgId, { activeOnly = true } = {}) {
   if (!orgId) return []

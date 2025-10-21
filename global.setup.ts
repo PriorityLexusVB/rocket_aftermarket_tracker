@@ -34,9 +34,16 @@ export default async function globalSetup() {
 
   if (!hasValidState) {
     // Ensure auth flow (adjust selectors if needed)
+    const email = process.env.E2E_EMAIL
+    const password = process.env.E2E_PASSWORD
+    if (!email || !password) {
+      console.error(
+        '[global.setup] Missing E2E_EMAIL/E2E_PASSWORD. Set env or pre-create e2e/storageState.json by logging in manually. Skipping login step.'
+      )
+      await browser.close()
+      return
+    }
     await page.goto(base + '/auth')
-    const email = process.env.E2E_EMAIL!
-    const password = process.env.E2E_PASSWORD!
 
     const emailInput = page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i))
     const passInput = page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i))
