@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useTenant } from './useTenant'
+import { listVendorsByOrg } from '../services/vendorService'
+import { listProductsByOrg } from '../services/productService'
 import {
   getDeliveryCoordinators,
   getSalesConsultants,
@@ -30,12 +33,18 @@ export function useDropdownData(options = {}) {
 
   const [lastUpdate, setLastUpdate] = useState(null)
 
-  // Enhanced load data with better error handling
+  const tenant = useTenant()
+
+  // Enhanced load data with tenant-aware services and better error handling
   const loadData = async () => {
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }))
 
-      // Load all data concurrently with individual error handling
+      if (!tenant.session?.user) throw new Error('No authenticated user')
+      if (tenant.loading) throw new Error('Tenant loading')
+      if (!tenant.orgId) throw new Error('No org_id on profile')
+
+      // Load vendors/products via tenant-aware services; keep staff using existing staff fetcher for now
       const promises = [
         getDeliveryCoordinators()?.catch((err) => {
           console.error('Delivery coordinators failed:', err)
@@ -53,11 +62,11 @@ export function useDropdownData(options = {}) {
           console.error('User profiles failed:', err)
           return []
         }),
-        getVendors({ activeOnly: true })?.catch((err) => {
+        listVendorsByOrg(tenant.orgId).catch((err) => {
           console.error('Vendors failed:', err)
           return []
         }),
-        getProducts({ activeOnly: true })?.catch((err) => {
+        listProductsByOrg(tenant.orgId).catch((err) => {
           console.error('Products failed:', err)
           return []
         }),
@@ -78,7 +87,7 @@ export function useDropdownData(options = {}) {
       })
       setLastUpdate(Date.now())
     } catch (err) {
-      // If everything fails, still provide empty arrays
+      // If everything fails, still provide empty arrays and persist error message
       setState((prev) => ({
         dc: [],
         sales: [],
