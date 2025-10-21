@@ -24,6 +24,8 @@ const JOB_COLS = [
   'delivery_coordinator_id',
   'finance_manager_id', // ✅ ADDED: Missing from previous list
   'assigned_to',
+  // Optional multi-tenant scoping when present
+  'org_id',
 ]
 
 function pick(obj, keys) {
@@ -40,7 +42,12 @@ function sanitizeDealPayload(input) {
 
 // Map UI form state into DB-friendly pieces: job payload, normalized lineItems, loaner form
 function mapFormToDb(formState = {}) {
-  const payload = sanitizeDealPayload(formState || {})
+  // Base payload constrained to known columns
+  const base = sanitizeDealPayload(formState || {})
+
+  // Optional tenant scoping if provided by caller
+  const orgId = formState?.org_id ?? formState?.orgId
+  const payload = orgId ? { ...base, org_id: orgId } : base
 
   const lineItems = Array.isArray(formState?.lineItems) ? formState?.lineItems : []
   const normalizedLineItems = (lineItems || []).map((li) => ({
@@ -59,6 +66,20 @@ function mapFormToDb(formState = {}) {
     isOffSite: !!li.isOffSite || !!li.is_off_site,
   }))
 
+  // Contract-friendly jobParts for callers that expect quantity + total_price (UI keeps snake_case)
+  const jobParts = (normalizedLineItems || []).map((it) => ({
+    product_id: it.product_id,
+    quantity: Number(it.quantity_used ?? 1),
+    unit_price: Number(it.unit_price ?? 0),
+    total_price: Number(it.unit_price ?? 0) * Number(it.quantity_used ?? 1),
+    // Preserve UI snake_case so consumers don't lose fields
+    quantity_used: it.quantity_used,
+    promised_date: it.promised_date,
+    requires_scheduling: it.requires_scheduling,
+    no_schedule_reason: it.no_schedule_reason,
+    is_off_site: it.is_off_site,
+  }))
+
   const loanerForm = formState?.loanerForm || null
 
   // customer fields normalization
@@ -69,8 +90,13 @@ function mapFormToDb(formState = {}) {
     formState?.customerEmail?.trim() || formState?.customer_email?.trim?.() || ''
 
   return {
+    // Back-compat keys used internally
     payload,
     normalizedLineItems,
+    // New contract-friendly keys (non-breaking additions)
+    jobPayload: payload,
+    jobParts,
+    // Extras
     loanerForm,
     customerName,
     customerPhone,

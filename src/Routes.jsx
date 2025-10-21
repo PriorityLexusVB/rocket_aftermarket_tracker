@@ -13,6 +13,8 @@ import AuthenticationPortal from './pages/authentication-portal'
 // 4 Main Pages - Updated with Currently Active Appointments
 import DealsPage from './pages/deals'
 import DealForm from './pages/deals/DealForm'
+import NewDeal from './pages/deals/NewDeal'
+import EditDeal from './pages/deals/EditDeal'
 import CurrentlyActiveAppointments from './pages/currently-active-appointments'
 
 // NEW: Calendar Flow Management Center
@@ -66,14 +68,10 @@ const Routes = () => {
                 }
               />
               <Route
-                path="/deals/:dealId/edit"
+                path="/deals/:id/edit"
                 element={
                   <ProtectedRoute>
-                    <DealForm
-                      mode="edit"
-                      propOnSubmit={(data) => console.log('Deal updated:', data)}
-                      propOnCancel={() => window.history?.back()}
-                    />
+                    <EditDeal />
                   </ProtectedRoute>
                 }
               />
@@ -81,11 +79,7 @@ const Routes = () => {
                 path="/deals/new"
                 element={
                   <ProtectedRoute>
-                    <DealForm
-                      mode="create"
-                      propOnSubmit={(data) => console.log('Deal created:', data)}
-                      propOnCancel={() => window.history?.back()}
-                    />
+                    <NewDeal />
                   </ProtectedRoute>
                 }
               />
