@@ -18,12 +18,7 @@
   "typescript.tsdk": "node_modules/typescript/lib",
 
   // ESLint
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact"
-  ],
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
 
   // Tailwind
   "tailwindCSS.experimental.configFile": "./tailwind.config.js",
@@ -44,5 +39,6 @@
   "editor.stickyScroll.enabled": true,
   "explorer.compactFolders": false,
   "search.useIgnoreFiles": true,
-  "editor.cursorBlinking": "smooth"
+  "editor.cursorBlinking": "smooth",
+  "cSpell.words": ["supabase"]
 }

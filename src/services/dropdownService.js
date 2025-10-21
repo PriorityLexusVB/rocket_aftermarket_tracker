@@ -27,29 +27,35 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
   if (departments.length) q = q.in('department', departments)
   if (roles.length) q = q.in('role', roles)
 
-  const { data: exact, error: exactErr, count } = await q
-  if (!exactErr && (count ?? 0) > 0) {
-    return toOptions(exact, 'full_name')
+  try {
+    const { data: exact, count } = await q.throwOnError()
+    if ((count ?? 0) > 0) return toOptions(exact, 'full_name')
+    // if no exact results and no filters provided, just return whatever we have
+    if (!departments.length && !roles.length) return toOptions(exact || [], 'full_name')
+  } catch (err) {
+    // fallthrough to fuzzy attempt but log loudly
+    console.error('getStaff exact query failed:', { err, departments, roles })
   }
 
   // 2) fuzzy fallback if exact returns zero
-  if (!departments.length && !roles.length) return toOptions(exact || [], 'full_name')
   const fuzzTerms = [...departments, ...roles].map((s) => s.trim()).filter(Boolean)
   const ors = fuzzTerms
     .map((t) => `department.ilike.%${t}%,role.ilike.%${t}%,full_name.ilike.%${t}%`)
     .join(',')
 
-  const { data: fuzzy, error: fuzzyErr } = await supabase
-    .from('user_profiles')
-    .select('id, full_name, email, department, role, is_active, vendor_id')
-    .eq('is_active', true)
-    .or(ors || 'full_name.ilike.%')
-    .order('full_name', { ascending: true })
-  if (fuzzyErr) {
-    console.error('getStaff fuzzy error:', { fuzzyErr, departments, roles })
-    return toOptions(exact || [], 'full_name')
+  try {
+    const { data: fuzzy } = await supabase
+      .from('user_profiles')
+      .select('id, full_name, email, department, role, is_active, vendor_id')
+      .eq('is_active', true)
+      .or(ors || 'full_name.ilike.%')
+      .order('full_name', { ascending: true })
+      .throwOnError()
+    return toOptions(fuzzy || [], 'full_name')
+  } catch (err) {
+    console.error('getStaff fuzzy query failed:', { err, departments, roles })
+    return []
   }
-  return toOptions((fuzzy || []).length ? fuzzy : exact || [], 'full_name')
 }
 
 /** Specific staff dropdowns (Admin sets department text) */
@@ -71,8 +77,7 @@ export async function getVendors({ activeOnly = true } = {}) {
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    const { data, error } = await q
-    if (error) throw error
+    const { data } = await q.throwOnError()
     return toOptions(data, 'name')
   } catch (e) {
     console.error('getVendors error:', e)
@@ -88,8 +93,7 @@ export async function getProducts({ activeOnly = true } = {}) {
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    const { data, error } = await q
-    if (error) throw error
+    const { data } = await q.throwOnError()
     return (data || []).map((p) => ({
       id: p.id,
       value: p.id,
@@ -113,25 +117,28 @@ export async function globalSearch(term) {
   if (!term || !String(term).trim()) return { users: [], vendors: [], products: [] }
   const q = `%${String(term).trim()}%`
   try {
-    const [uRes, vRes, pRes] = await Promise.all([
+    const [uData, vData, pData] = await Promise.all([
       supabase
         .from('user_profiles')
         .select('id, full_name, email, department, role')
         .or(`full_name.ilike.${q},email.ilike.${q}`)
-        .limit(20),
+        .limit(20)
+        .throwOnError(),
       supabase
         .from('vendors')
         .select('id, name, specialty')
         .or(`name.ilike.${q},specialty.ilike.${q}`)
-        .limit(20),
+        .limit(20)
+        .throwOnError(),
       supabase
         .from('products')
         .select('id, name, brand, unit_price')
         .or(`name.ilike.${q},brand.ilike.${q}`)
-        .limit(20),
+        .limit(20)
+        .throwOnError(),
     ])
 
-    const users = (uRes?.data || []).map((u) => ({
+    const users = (uData?.data || uData || []).map((u) => ({
       id: u.id,
       value: u.id,
       label: u.full_name,
@@ -139,13 +146,13 @@ export async function globalSearch(term) {
       department: u.department,
       role: u.role,
     }))
-    const vendors = (vRes?.data || []).map((v) => ({
+    const vendors = (vData?.data || vData || []).map((v) => ({
       id: v.id,
       value: v.id,
       label: v.name,
       specialty: v.specialty,
     }))
-    const products = (pRes?.data || []).map((p) => ({
+    const products = (pData?.data || pData || []).map((p) => ({
       id: p.id,
       value: p.id,
       label: p.brand ? `${p.name} - ${p.brand}` : p.name,

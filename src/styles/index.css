@@ -1,21 +1,35 @@
-@import './theme-neutral.css';
-@import './util-neutral.css';
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Global rules (imports moved to tailwind.css) */
+:root {
+  --brand: #111827;
+}
 
-:root { --brand: #111827; }
-
-html, body {
+html,
+body {
   background: #fff;
   color: #0f172a;
-  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
-    'Helvetica Neue', Arial, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    'Helvetica Neue',
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji',
+    'Segoe UI Symbol',
+    sans-serif;
 }
 
+/* Make checkboxes/radios show a clear tick on iOS/Android and desktop */
 input[type='checkbox'],
 input[type='radio'] {
-  accent-color: #2563eb;
+  accent-color: #2563eb; /* visible blue tick */
 }
 
+/* Optional: nicer focus ring for form controls */
 :where(input, select, textarea, button):focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);

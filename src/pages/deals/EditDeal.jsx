@@ -1,45 +1,47 @@
 // src/pages/deals/EditDeal.jsx
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import DealForm from './DealForm';
-import { dealService, mapDbDealToForm } from '../../services/dealService';
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import DealForm from './DealForm'
+import { dealService, mapDbDealToForm } from '../../services/dealService'
 
 export default function EditDeal() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [initial, setInitial] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [initial, setInitial] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    let alive = true;
-    (async () => {
+    let alive = true
+    ;(async () => {
       try {
-        const d = await dealService?.getDeal(id);
-        if (alive) setInitial(mapDbDealToForm(d));
+        const d = await dealService?.getDeal(id)
+        if (alive) setInitial(mapDbDealToForm(d))
       } catch (e) {
-        alert(e?.message || 'Failed to load deal');
+        alert(e?.message || 'Failed to load deal')
       } finally {
-        if (alive) setLoading(false);
+        if (alive) setLoading(false)
       }
-    })();
-    return () => { alive = false; };
-  }, [id]);
+    })()
+    return () => {
+      alive = false
+    }
+  }, [id])
 
   async function onSubmit(formState) {
-    setSaving(true);
+    setSaving(true)
     try {
-      await dealService?.updateDeal(id, formState);
-      navigate('/deals');
+      await dealService?.updateDeal(id, formState)
+      navigate('/deals')
     } catch (e) {
-      alert(e?.message || 'Failed to save deal');
+      alert(e?.message || 'Failed to save deal')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
   if (loading) {
-    return <div className="max-w-5xl mx-auto p-8">Loading...</div>;
+    return <div className="max-w-5xl mx-auto p-8">Loading...</div>
   }
 
   return (
@@ -48,7 +50,13 @@ export default function EditDeal() {
         <h1 className="text-2xl font-semibold">Edit Deal</h1>
         <p className="text-gray-600">Update details and save.</p>
       </div>
-      <DealForm mode="edit" initialData={initial} onSubmit={onSubmit} onCancel={()=>navigate('/deals')} saving={saving} />
+      <DealForm
+        mode="edit"
+        initial={initial}
+        onSave={onSubmit}
+        onCancel={() => navigate('/deals')}
+        saving={saving}
+      />
     </div>
-  );
+  )
 }

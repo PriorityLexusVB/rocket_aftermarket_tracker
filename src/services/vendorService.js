@@ -1,55 +1,68 @@
-// src/services/vendorService.js
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient'
+import { safeSelect } from '@/lib/supabase/safeSelect'
+
+export function listVendorsByOrg(orgId) {
+  return safeSelect(
+    supabase.from('vendors').select('*').eq('org_id', orgId).order('name', { ascending: true }),
+    'vendors:listByOrg'
+  )
+}
 
 export const vendorService = {
-  async getAll() {
-    const { data, error } = await supabase?.from('vendors')?.select('*')?.eq('is_active', true)?.order('name', { ascending: true });
-    if (error) {
-      console.error('Error fetching vendors:', error);
-      return [];
+  /**
+   * Get all active vendors. If orgId provided, filter by org.
+   */
+  async getAll(orgId = null) {
+    try {
+      let q = supabase
+        .from('vendors')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+      if (orgId) q = q.eq('org_id', orgId)
+      return await safeSelect(q, 'vendors:getAll')
+    } catch (e) {
+      console.error('vendorService.getAll failed', e)
+      return []
     }
-    return data || [];
   },
 
-  async search(term) {
-    if (!term?.trim()) return this.getAll();
-    const { data, error } = await supabase?.from('vendors')?.select('*')?.or(`name.ilike.%${term}%,specialty.ilike.%${term}%,contact_person.ilike.%${term}%`)?.eq('is_active', true)?.order('name', { ascending: true })?.limit(50);
-    if (error) {
-      console.error('Error searching vendors:', error);
-      return [];
+  /** Search vendors; optional org scoping */
+  async search(term, orgId = null) {
+    try {
+      if (!term?.trim()) return this.getAll(orgId)
+      let q = supabase
+        .from('vendors')
+        .select('*')
+        .or(`name.ilike.%${term}%,specialty.ilike.%${term}%,contact_person.ilike.%${term}%`)
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+        .limit(50)
+      if (orgId) q = q.eq('org_id', orgId)
+      return await safeSelect(q, 'vendors:search')
+    } catch (e) {
+      console.error('vendorService.search failed', e)
+      return []
     }
-    return data || [];
   },
 
-  async getById(id) {
-    if (!id) return null;
-    const { data, error } = await supabase?.from('vendors')?.select(`*, vendor_hours:vendor_hours(*), products:products(count)`)?.eq('id', id)?.single();
-    if (error) {
-      console.error('Error fetching vendor:', error);
-      return null;
+  /** Get a vendor by id (optionally scoped to org) */
+  async getById(id, orgId = null) {
+    if (!id) return null
+    try {
+      let q = supabase
+        .from('vendors')
+        .select(`*, vendor_hours:vendor_hours(*), products:products(count)`)
+        .eq('id', id)
+        .single()
+      if (orgId) q = q.eq('org_id', orgId)
+      const res = await q.throwOnError()
+      return res.data
+    } catch (e) {
+      console.error('vendorService.getById failed', e)
+      return null
     }
-    return data;
-  }
-};
-
-function getVendorVehicles(...args) {
-  // eslint-disable-next-line no-console
-  console.warn('Placeholder: getVendorVehicles is not implemented yet.', args);
-  return null;
+  },
 }
 
-export { getVendorVehicles };
-function getVendorJobs(...args) {
-  // eslint-disable-next-line no-console
-  console.warn('Placeholder: getVendorJobs is not implemented yet.', args);
-  return null;
-}
-
-export { getVendorJobs };
-function getVendors(...args) {
-  // eslint-disable-next-line no-console
-  console.warn('Placeholder: getVendors is not implemented yet.', args);
-  return null;
-}
-
-export { getVendors };
+export default vendorService
