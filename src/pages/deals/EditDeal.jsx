@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import DealForm from './DealForm'
-import { dealService, mapDbDealToForm } from '../../services/dealService'
+import * as dealService from '../../services/dealService'
 
 export default function EditDeal() {
   const { id } = useParams()
@@ -16,7 +16,10 @@ export default function EditDeal() {
     ;(async () => {
       try {
         const d = await dealService?.getDeal(id)
-        if (alive) setInitial(mapDbDealToForm(d))
+        if (alive) {
+          const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(d) : d
+          setInitial(mapped)
+        }
       } catch (e) {
         alert(e?.message || 'Failed to load deal')
       } finally {
@@ -34,7 +37,8 @@ export default function EditDeal() {
       // Update then re-fetch latest persisted values; stay on Edit
       await dealService?.updateDeal(id, formState)
       const fresh = await dealService?.getDeal(id)
-      setInitial(mapDbDealToForm(fresh))
+      const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(fresh) : fresh
+      setInitial(mapped)
     } catch (e) {
       alert(e?.message || 'Failed to save deal')
     } finally {
