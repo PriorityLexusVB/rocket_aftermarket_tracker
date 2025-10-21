@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useTenant } from './useTenant'
+import useTenant from './useTenant'
 import { listVendorsByOrg } from '../services/vendorService'
 import { listProductsByOrg } from '../services/productService'
+import { listStaffByOrg } from '../services/staffService'
+import { listSmsTemplatesByOrg } from '../services/smsTemplateService'
 import {
   getDeliveryCoordinators,
   getSalesConsultants,
@@ -26,6 +28,7 @@ export function useDropdownData(options = {}) {
     users: [],
     vendors: [],
     products: [],
+    smsTemplates: [],
     loading: true,
     error: null,
     searchResults: null,
@@ -40,39 +43,68 @@ export function useDropdownData(options = {}) {
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }))
 
-      if (!tenant.session?.user) throw new Error('No authenticated user')
+      // If tenant is still loading, bail
       if (tenant.loading) throw new Error('Tenant loading')
-      if (!tenant.orgId) throw new Error('No org_id on profile')
 
-      // Load vendors/products via tenant-aware services; keep staff using existing staff fetcher for now
+      // If no user session, prefer global safe fallbacks
+      if (!tenant.session?.user) {
+        console.warn('Dropdowns: no authenticated user; some queries may return empty due to RLS')
+        throw new Error('No authenticated user')
+      }
+
+      // If org is not present, fallback to global dropdownService calls
+      const useTenantLists = Boolean(tenant.orgId)
+
       const promises = [
         getDeliveryCoordinators()?.catch((err) => {
-          console.error('Delivery coordinators failed:', err)
+          console.error('[dropdowns:dc] Delivery coordinators failed:', err)
           return []
         }),
         getSalesConsultants()?.catch((err) => {
-          console.error('Sales consultants failed:', err)
+          console.error('[dropdowns:sales] Sales consultants failed:', err)
           return []
         }),
         getFinanceManagers()?.catch((err) => {
-          console.error('Finance managers failed:', err)
+          console.error('[dropdowns:finance] Finance managers failed:', err)
           return []
         }),
-        getUserProfiles({ activeOnly: true })?.catch((err) => {
-          console.error('User profiles failed:', err)
-          return []
-        }),
-        listVendorsByOrg(tenant.orgId).catch((err) => {
-          console.error('Vendors failed:', err)
-          return []
-        }),
-        listProductsByOrg(tenant.orgId).catch((err) => {
-          console.error('Products failed:', err)
-          return []
-        }),
+        useTenantLists
+          ? listStaffByOrg(tenant.orgId).catch((err) => {
+              console.error('[dropdowns:users] tenant staff failed:', err)
+              return []
+            })
+          : getUserProfiles({ activeOnly: true }).catch((err) => {
+              console.error('[dropdowns:users] global user profiles failed:', err)
+              return []
+            }),
+        useTenantLists
+          ? listVendorsByOrg(tenant.orgId).catch((err) => {
+              console.error('[dropdowns:vendors] tenant vendors failed:', err)
+              return []
+            })
+          : getVendors({ activeOnly: true }).catch((err) => {
+              console.error('[dropdowns:vendors] global vendors failed:', err)
+              return []
+            }),
+        useTenantLists
+          ? listProductsByOrg(tenant.orgId).catch((err) => {
+              console.error('[dropdowns:products] tenant products failed:', err)
+              return []
+            })
+          : getProducts({ activeOnly: true }).catch((err) => {
+              console.error('[dropdowns:products] global products failed:', err)
+              return []
+            }),
+        useTenantLists
+          ? listSmsTemplatesByOrg(tenant.orgId).catch((err) => {
+              console.error('[dropdowns:smsTemplates] tenant SMS templates failed:', err)
+              return []
+            })
+          : Promise.resolve([]),
       ]
 
-      const [dc, sales, finance, users, vendors, products] = await Promise.all(promises)
+      const [dc, sales, finance, users, vendors, products, smsTemplates] =
+        await Promise.all(promises)
 
       setState({
         dc,
@@ -81,25 +113,26 @@ export function useDropdownData(options = {}) {
         users,
         vendors,
         products,
+        smsTemplates,
         loading: false,
         error: null,
         searchResults: null,
       })
       setLastUpdate(Date.now())
     } catch (err) {
-      // If everything fails, still provide empty arrays and persist error message
-      setState((prev) => ({
+      setState({
         dc: [],
         sales: [],
         finance: [],
         users: [],
         vendors: [],
         products: [],
+        smsTemplates: [],
         loading: false,
         error: err?.message || 'Failed to load dropdown data',
         searchResults: null,
-      }))
-      console.error('Dropdown data load failed:', err)
+      })
+      console.error('[dropdowns] Dropdown data load failed:', err)
     }
   }
 
@@ -127,7 +160,7 @@ export function useDropdownData(options = {}) {
       const results = await globalSearch(searchTerm)
       setState((prev) => ({ ...prev, searchResults: results }))
     } catch (err) {
-      console.error('Search failed:', err)
+      console.error('[dropdowns:search] Search failed:', err)
       setState((prev) => ({ ...prev, searchResults: { users: [], vendors: [] } }))
     }
   }
@@ -240,6 +273,7 @@ export function useDropdownData(options = {}) {
     users: state?.users,
     vendors: state?.vendors,
     products: state?.products,
+    smsTemplates: state?.smsTemplates,
 
     // Loading state
     loading: state?.loading,

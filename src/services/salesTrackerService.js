@@ -1,9 +1,10 @@
-import { supabase } from '../lib/supabase';
-import logger, { ACTION_TYPES, ENTITY_TYPES } from '../utils/logger';
+// vehicles may not have org_id; tenant scoping flows via jobs/transactions policies
+import { supabase } from '@/lib/supabase'
+import logger, { ACTION_TYPES, ENTITY_TYPES } from '../utils/logger'
 
 class SalesTrackerService {
   // Fixed and simplified getAllSales with robust error handling
-  async getAllSales() {
+  async getAllSales(orgId = null) {
     try {
       await logger?.info(
         'api_call',
@@ -11,12 +12,13 @@ class SalesTrackerService {
         'sales-api',
         'Fetching all sales data from database',
         { endpoint: 'getAllSales', timestamp: new Date()?.toISOString() }
-      );
+      )
 
       // First try to get transactions - this is the primary table
-      const { data: transactions, error: transactionError } = await supabase
+      let tQuery = supabase
         ?.from('transactions')
-        ?.select(`
+        ?.select(
+          `
           id,
           customer_name,
           customer_email,
@@ -30,80 +32,85 @@ class SalesTrackerService {
           job_id,
           vehicle_id,
           transaction_number
-        `)
-        ?.order('created_at', { ascending: false });
-
-      if (transactionError) {
-        console.error('Transaction query error:', transactionError);
-        // If transactions table doesn't exist or has issues, return sample data
-        return this.getSampleSalesData();
-      }
+        `
+        )
+        ?.order('created_at', { ascending: false })
+      if (orgId) tQuery = tQuery?.eq('org_id', orgId)
+      const { data: transactions } = await tQuery.throwOnError()
 
       // If no transactions, return sample data for demo purposes
       if (!transactions || transactions?.length === 0) {
-        console.log('No transactions found, returning sample data');
-        return this.getSampleSalesData();
+        console.log('No transactions found, returning sample data')
+        return this.getSampleSalesData()
       }
 
       // Get related data separately to avoid complex join issues
-      const jobIds = transactions?.map(t => t?.job_id)?.filter(Boolean);
-      const vehicleIds = transactions?.map(t => t?.vehicle_id)?.filter(Boolean);
+      const jobIds = transactions?.map((t) => t?.job_id)?.filter(Boolean)
+      const vehicleIds = transactions?.map((t) => t?.vehicle_id)?.filter(Boolean)
 
       // Fetch jobs data
-      let jobsData = [];
+      let jobsData = []
       if (jobIds?.length > 0) {
-        const { data: jobs, error: jobsError } = await supabase
+        let jQuery = supabase
           ?.from('jobs')
           ?.select('id, title, job_status, delivery_coordinator_id, vehicle_id')
-          ?.in('id', jobIds);
-        
-        if (!jobsError) {
-          jobsData = jobs || [];
+          ?.in('id', jobIds)
+        if (orgId) jQuery = jQuery?.eq('org_id', orgId)
+        try {
+          const { data: jobs } = await jQuery.throwOnError()
+          jobsData = jobs || []
+        } catch (_) {
+          // leave jobsData empty on failure
         }
       }
 
-      // Fetch vehicles data  
-      let vehiclesData = [];
+      // Fetch vehicles data
+      let vehiclesData = []
       if (vehicleIds?.length > 0) {
-        const { data: vehicles, error: vehiclesError } = await supabase
+        let vQuery = supabase
           ?.from('vehicles')
-          ?.select('id, stock_number, year, make, model, color, owner_name, owner_email, owner_phone')
-          ?.in('id', vehicleIds);
-        
-        if (!vehiclesError) {
-          vehiclesData = vehicles || [];
+          ?.select(
+            'id, stock_number, year, make, model, color, owner_name, owner_email, owner_phone'
+          )
+          ?.in('id', vehicleIds)
+        try {
+          const { data: vehicles } = await vQuery.throwOnError()
+          vehiclesData = vehicles || []
+        } catch (_) {
+          // leave vehiclesData empty on failure
         }
       }
 
       // Get delivery coordinators
-      let deliveryCoordinators = [];
+      let deliveryCoordinators = []
       try {
-        const { data: coordinatorData } = await supabase
-          ?.from('user_profiles')
-          ?.select('id, full_name')
-          ?.eq('is_active', true);
-        deliveryCoordinators = coordinatorData || [];
+        let cQuery = supabase?.from('user_profiles')?.select('id, full_name')?.eq('is_active', true)
+        if (orgId) cQuery = cQuery?.eq('org_id', orgId)
+        const { data: coordinatorData } = await cQuery.throwOnError()
+        deliveryCoordinators = coordinatorData || []
       } catch (coordError) {
-        console.warn('Could not fetch delivery coordinators:', coordError);
+        console.warn('Could not fetch delivery coordinators:', coordError)
       }
 
       // Transform the data to match our sales tracker format
-      const salesData = transactions?.map(transaction => {
-        const job = jobsData?.find(j => j?.id === transaction?.job_id);
-        const vehicle = vehiclesData?.find(v => v?.id === transaction?.vehicle_id);
-        const coordinator = deliveryCoordinators?.find(c => c?.id === job?.delivery_coordinator_id);
+      const salesData = transactions?.map((transaction) => {
+        const job = jobsData?.find((j) => j?.id === transaction?.job_id)
+        const vehicle = vehiclesData?.find((v) => v?.id === transaction?.vehicle_id)
+        const coordinator = deliveryCoordinators?.find(
+          (c) => c?.id === job?.delivery_coordinator_id
+        )
 
         return {
           id: transaction?.id,
           stockNumber: vehicle?.stock_number || `STK-${transaction?.id?.slice(0, 8)}`,
           year: vehicle?.year || 2023,
-          make: vehicle?.make || 'Honda', 
+          make: vehicle?.make || 'Honda',
           model: vehicle?.model || 'Civic',
           color: vehicle?.color || 'Silver',
           customer: {
             name: transaction?.customer_name || vehicle?.owner_name || 'John Doe',
             email: transaction?.customer_email || vehicle?.owner_email || 'customer@example.com',
-            phone: transaction?.customer_phone || vehicle?.owner_phone || '555-0123'
+            phone: transaction?.customer_phone || vehicle?.owner_phone || '555-0123',
           },
           deliveryCoordinator: coordinator?.full_name || 'Sarah Johnson',
           status: transaction?.transaction_status || 'pending',
@@ -112,44 +119,44 @@ class SalesTrackerService {
             Exterior: Math.random() > 0.5,
             Tint: Math.random() > 0.7,
             PPF: Math.random() > 0.8,
-            Ceramic: Math.random() > 0.6
+            Ceramic: Math.random() > 0.6,
           },
           total: parseFloat(transaction?.total_amount || 2500),
           created_at: transaction?.created_at || new Date()?.toISOString(),
           transaction_number: transaction?.transaction_number,
           job: job,
-          vehicle: vehicle
-        };
-      });
+          vehicle: vehicle,
+        }
+      })
 
       await logger?.success(
         'sales_data_fetched',
         ENTITY_TYPES?.SALE,
         'bulk',
         `Successfully fetched ${salesData?.length} sales records`,
-        { 
+        {
           recordCount: salesData?.length,
-          fetchTime: new Date()?.toISOString()
+          fetchTime: new Date()?.toISOString(),
         }
-      );
+      )
 
-      return salesData;
+      return salesData
     } catch (error) {
       await logger?.error(
         'sales_fetch_error',
         ENTITY_TYPES?.SYSTEM,
         'sales-api',
         `Failed to fetch sales data: ${error?.message}`,
-        { 
+        {
           error: error?.message,
-          stack: error?.stack
+          stack: error?.stack,
         }
-      );
-      
-      console.error('Error fetching sales:', error);
-      
+      )
+
+      console.error('Error fetching sales:', error)
+
       // Return sample data as fallback
-      return this.getSampleSalesData();
+      return this.getSampleSalesData()
     }
   }
 
@@ -166,7 +173,7 @@ class SalesTrackerService {
         customer: {
           name: 'John Smith',
           email: 'john.smith@email.com',
-          phone: '555-0123'
+          phone: '555-0123',
         },
         deliveryCoordinator: 'Sarah Johnson',
         status: 'pending',
@@ -175,10 +182,10 @@ class SalesTrackerService {
           Exterior: true,
           Tint: true,
           PPF: false,
-          Ceramic: true
+          Ceramic: true,
         },
         total: 2850,
-        created_at: new Date(Date.now() - 86400000)?.toISOString() // Yesterday
+        created_at: new Date(Date.now() - 86400000)?.toISOString(), // Yesterday
       },
       {
         id: 'sample-2',
@@ -190,7 +197,7 @@ class SalesTrackerService {
         customer: {
           name: 'Maria Rodriguez',
           email: 'maria.r@email.com',
-          phone: '555-0124'
+          phone: '555-0124',
         },
         deliveryCoordinator: 'Mike Chen',
         status: 'completed',
@@ -199,10 +206,10 @@ class SalesTrackerService {
           Exterior: true,
           Tint: true,
           PPF: true,
-          Ceramic: false
+          Ceramic: false,
         },
         total: 3200,
-        created_at: new Date(Date.now() - 172800000)?.toISOString() // 2 days ago
+        created_at: new Date(Date.now() - 172800000)?.toISOString(), // 2 days ago
       },
       {
         id: 'sample-3',
@@ -214,7 +221,7 @@ class SalesTrackerService {
         customer: {
           name: 'David Kim',
           email: 'david.kim@email.com',
-          phone: '555-0125'
+          phone: '555-0125',
         },
         deliveryCoordinator: 'Alex Rodriguez',
         status: 'in_progress',
@@ -223,12 +230,12 @@ class SalesTrackerService {
           Exterior: false,
           Tint: false,
           PPF: true,
-          Ceramic: true
+          Ceramic: true,
         },
         total: 4500,
-        created_at: new Date(Date.now() - 259200000)?.toISOString() // 3 days ago
-      }
-    ];
+        created_at: new Date(Date.now() - 259200000)?.toISOString(), // 3 days ago
+      },
+    ]
   }
 
   // Enhanced createSale with comprehensive logging
@@ -239,11 +246,11 @@ class SalesTrackerService {
         ENTITY_TYPES?.SALE,
         'new',
         `Creating new sale for ${saleData?.year} ${saleData?.make} ${saleData?.model}`,
-        { 
+        {
           saleData,
-          initiatedAt: new Date()?.toISOString()
+          initiatedAt: new Date()?.toISOString(),
         }
-      );
+      )
 
       // Create vehicle first
       const vehicleData = {
@@ -254,16 +261,16 @@ class SalesTrackerService {
         stock_number: saleData?.stockNumber,
         owner_name: saleData?.customer?.name,
         owner_email: saleData?.customer?.email,
-        owner_phone: saleData?.customer?.phone
-      };
+        owner_phone: saleData?.customer?.phone,
+      }
 
       const { data: newVehicle, error: vehicleError } = await supabase
         ?.from('vehicles')
         ?.insert([vehicleData])
         ?.select()
-        ?.single();
+        ?.single()
 
-      if (vehicleError) throw vehicleError;
+      if (vehicleError) throw vehicleError
 
       // Create job
       const jobData = {
@@ -271,16 +278,16 @@ class SalesTrackerService {
         description: `Aftermarket services for ${saleData?.customer?.name}`,
         vehicle_id: newVehicle?.id,
         job_status: 'pending',
-        priority: 'medium'
-      };
+        priority: 'medium',
+      }
 
       const { data: newJob, error: jobError } = await supabase
         ?.from('jobs')
         ?.insert([jobData])
         ?.select()
-        ?.single();
+        ?.single()
 
-      if (jobError) throw jobError;
+      if (jobError) throw jobError
 
       // Create transaction
       const transactionData = {
@@ -292,16 +299,16 @@ class SalesTrackerService {
         subtotal: parseFloat(saleData?.total || 0),
         tax_amount: parseFloat(saleData?.total || 0) * 0.08,
         total_amount: parseFloat(saleData?.total || 0) * 1.08,
-        transaction_status: 'pending'
-      };
+        transaction_status: 'pending',
+      }
 
       const { data: newTransaction, error: transactionError } = await supabase
         ?.from('transactions')
         ?.insert([transactionData])
         ?.select()
-        ?.single();
+        ?.single()
 
-      if (transactionError) throw transactionError;
+      if (transactionError) throw transactionError
 
       const saleResult = {
         id: newTransaction?.id,
@@ -317,8 +324,8 @@ class SalesTrackerService {
         total: parseFloat(saleData?.total || 0),
         created_at: newTransaction?.created_at,
         vehicleId: newVehicle?.id,
-        jobId: newJob?.id
-      };
+        jobId: newJob?.id,
+      }
 
       await logger?.success(
         ACTION_TYPES?.SALE_CREATED,
@@ -326,9 +333,9 @@ class SalesTrackerService {
         newTransaction?.id,
         `Sale successfully created for ${saleData?.customer?.name}`,
         { saleData: saleResult }
-      );
+      )
 
-      return saleResult;
+      return saleResult
     } catch (error) {
       await logger?.error(
         'sale_creation_failed',
@@ -336,10 +343,10 @@ class SalesTrackerService {
         'failed',
         `Failed to create sale: ${error?.message}`,
         { error: error?.message, saleData }
-      );
-      
-      console.error('Error creating sale:', error);
-      throw error;
+      )
+
+      console.error('Error creating sale:', error)
+      throw error
     }
   }
 
@@ -352,14 +359,14 @@ class SalesTrackerService {
         saleId,
         `Updating sale ${saleId}`,
         { saleId, updates }
-      );
+      )
 
       // Get current transaction to track changes
       const { data: currentTransaction } = await supabase
         ?.from('transactions')
         ?.select('*, jobs!inner(*, vehicles!inner(*))')
         ?.eq('id', saleId)
-        ?.single();
+        ?.single()
 
       // Update transaction
       const transactionUpdates = {
@@ -367,17 +374,17 @@ class SalesTrackerService {
         customer_email: updates?.customer?.email,
         customer_phone: updates?.customer?.phone,
         total_amount: updates?.total,
-        updated_at: new Date()?.toISOString()
-      };
+        updated_at: new Date()?.toISOString(),
+      }
 
       const { data: updatedTransaction, error: transactionError } = await supabase
         ?.from('transactions')
         ?.update(transactionUpdates)
         ?.eq('id', saleId)
         ?.select()
-        ?.single();
+        ?.single()
 
-      if (transactionError) throw transactionError;
+      if (transactionError) throw transactionError
 
       // Update vehicle if needed
       if (updates?.year || updates?.make || updates?.model || updates?.color) {
@@ -386,13 +393,13 @@ class SalesTrackerService {
           make: updates?.make || currentTransaction?.jobs?.vehicles?.make,
           model: updates?.model || currentTransaction?.jobs?.vehicles?.model,
           color: updates?.color || currentTransaction?.jobs?.vehicles?.color,
-          stock_number: updates?.stockNumber || currentTransaction?.jobs?.vehicles?.stock_number
-        };
+          stock_number: updates?.stockNumber || currentTransaction?.jobs?.vehicles?.stock_number,
+        }
 
         await supabase
           ?.from('vehicles')
           ?.update(vehicleUpdates)
-          ?.eq('id', currentTransaction?.jobs?.vehicle_id);
+          ?.eq('id', currentTransaction?.jobs?.vehicle_id)
       }
 
       const updatedSale = {
@@ -405,14 +412,15 @@ class SalesTrackerService {
         customer: updates?.customer || {
           name: currentTransaction?.customer_name,
           email: currentTransaction?.customer_email,
-          phone: currentTransaction?.customer_phone
+          phone: currentTransaction?.customer_phone,
         },
-        deliveryCoordinator: updates?.deliveryCoordinator || currentTransaction?.deliveryCoordinator,
+        deliveryCoordinator:
+          updates?.deliveryCoordinator || currentTransaction?.deliveryCoordinator,
         status: updates?.status || currentTransaction?.transaction_status,
         services: updates?.services || {},
         total: updates?.total || currentTransaction?.total_amount,
-        updated_at: updatedTransaction?.updated_at
-      };
+        updated_at: updatedTransaction?.updated_at,
+      }
 
       await logger?.success(
         ACTION_TYPES?.SALE_UPDATED,
@@ -422,11 +430,11 @@ class SalesTrackerService {
         {
           oldData: currentTransaction,
           newData: updatedSale,
-          changes: updates
+          changes: updates,
         }
-      );
+      )
 
-      return updatedSale;
+      return updatedSale
     } catch (error) {
       await logger?.error(
         'sale_update_failed',
@@ -436,12 +444,12 @@ class SalesTrackerService {
         {
           error: error?.message,
           saleId,
-          updates
+          updates,
         }
-      );
-      
-      console.error('Error updating sale:', error);
-      throw error;
+      )
+
+      console.error('Error updating sale:', error)
+      throw error
     }
   }
 
@@ -454,22 +462,19 @@ class SalesTrackerService {
         saleId,
         `Initiating deletion of sale ${saleId}`,
         { saleId }
-      );
+      )
 
       // Get sale data before deletion for logging
       const { data: saleToDelete } = await supabase
         ?.from('transactions')
         ?.select('*, jobs!inner(*, vehicles!inner(*))')
         ?.eq('id', saleId)
-        ?.single();
+        ?.single()
 
       // Delete transaction (will cascade to related records)
-      const { error } = await supabase
-        ?.from('transactions')
-        ?.delete()
-        ?.eq('id', saleId);
+      const { error } = await supabase?.from('transactions')?.delete()?.eq('id', saleId)
 
-      if (error) throw error;
+      if (error) throw error
 
       await logger?.success(
         ACTION_TYPES?.SALE_DELETED,
@@ -478,11 +483,11 @@ class SalesTrackerService {
         `Sale successfully deleted`,
         {
           deletedSale: saleToDelete,
-          deletedAt: new Date()?.toISOString()
+          deletedAt: new Date()?.toISOString(),
         }
-      );
+      )
 
-      return true;
+      return true
     } catch (error) {
       await logger?.error(
         'sale_deletion_failed',
@@ -491,12 +496,12 @@ class SalesTrackerService {
         `Failed to delete sale: ${error?.message}`,
         {
           error: error?.message,
-          saleId
+          saleId,
         }
-      );
-      
-      console.error('Error deleting sale:', error);
-      throw error;
+      )
+
+      console.error('Error deleting sale:', error)
+      throw error
     }
   }
 
@@ -509,10 +514,13 @@ class SalesTrackerService {
         saleId,
         'Updating services for sale',
         { saleId, services }
-      );
+      )
 
       // In a real implementation, you'd update a services table // For now, we'll just log the change
-      const serviceChanges = Object.entries(services)?.map(([service, enabled]) => ({ service, enabled }));
+      const serviceChanges = Object.entries(services)?.map(([service, enabled]) => ({
+        service,
+        enabled,
+      }))
 
       for (const { service, enabled } of serviceChanges) {
         await logger?.info(
@@ -521,10 +529,10 @@ class SalesTrackerService {
           saleId,
           `Service ${service} ${enabled ? 'added to' : 'removed from'} sale`,
           { service, enabled, saleId }
-        );
+        )
       }
 
-      return { success: true, services };
+      return { success: true, services }
     } catch (error) {
       await logger?.error(
         'services_update_failed',
@@ -532,60 +540,64 @@ class SalesTrackerService {
         saleId,
         `Failed to update services: ${error?.message}`,
         { error: error?.message, saleId, services }
-      );
-      
-      throw error;
+      )
+
+      throw error
     }
   }
 
   // Enhanced getStaffMembers with logging
-  async getStaffMembers() {
+  async getStaffMembers(orgId = null) {
     try {
-      const { data: staffMembers, error } = await supabase
+      let sQuery = supabase
         ?.from('user_profiles')
-        ?.select(`
+        ?.select(
+          `
           id,
           full_name,
           email,
           role,
           department,
           created_at
-        `)
+        `
+        )
         ?.eq('is_active', true)
-        ?.order('full_name', { ascending: true });
+        ?.order('full_name', { ascending: true })
+      if (orgId) sQuery = sQuery?.eq('org_id', orgId)
+      const { data: staffMembers, error } = await sQuery
 
       if (error) {
-        console.error('Staff query error:', error);
+        console.error('Staff query error:', error)
         // Return sample staff data
         return [
           { id: 'staff-1', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Coordinator' },
           { id: 'staff-2', name: 'Mike Chen', email: 'mike@company.com', role: 'Coordinator' },
-          { id: 'staff-3', name: 'Alex Rodriguez', email: 'alex@company.com', role: 'Manager' }
-        ];
+          { id: 'staff-3', name: 'Alex Rodriguez', email: 'alex@company.com', role: 'Manager' },
+        ]
       }
 
-      const transformedStaff = (staffMembers || [])?.map(member => ({
+      const transformedStaff = (staffMembers || [])?.map((member) => ({
         id: member?.id,
         name: member?.full_name,
         email: member?.email,
         role: member?.role || 'Staff',
         department: member?.department || 'General',
-        created_at: member?.created_at
-      }));
+        created_at: member?.created_at,
+      }))
 
-      return transformedStaff;
+      return transformedStaff
     } catch (error) {
-      console.error('Error fetching staff members:', error);
+      console.error('Error fetching staff members:', error)
       // Return fallback sample data
       return [
         { id: 'staff-1', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Coordinator' },
         { id: 'staff-2', name: 'Mike Chen', email: 'mike@company.com', role: 'Coordinator' },
-        { id: 'staff-3', name: 'Alex Rodriguez', email: 'alex@company.com', role: 'Manager' }
-      ];
+        { id: 'staff-3', name: 'Alex Rodriguez', email: 'alex@company.com', role: 'Manager' },
+      ]
     }
   }
 }
 
 // Export singleton instance
-const salesTrackerService = new SalesTrackerService();
-export default salesTrackerService;
+const salesTrackerService = new SalesTrackerService()
+export default salesTrackerService

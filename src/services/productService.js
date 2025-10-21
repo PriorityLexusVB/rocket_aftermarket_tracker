@@ -1,28 +1,34 @@
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 
-export function listProductsByOrg(orgId) {
-  return safeSelect(
-    supabase.from('products').select('*').eq('org_id', orgId).order('name', { ascending: true }),
-    'products:listByOrg'
-  )
+// Tenant-aware list for dropdowns and consumers
+export function listProductsByOrg(orgId, { activeOnly = true } = {}) {
+  let q = supabase.from('products').select('*').order('name', { ascending: true })
+  if (activeOnly) q = q.eq('is_active', true)
+  if (orgId) q = q.eq('org_id', orgId)
+  return safeSelect(q, 'products:listByOrg')
 }
-
-export default { listProductsByOrg }
-// src/services/productService.js
-import { supabase } from '../lib/supabaseClient'
 
 export const productService = {
-  async getAllActive() {
-    const { data, error } = await supabase
-      ?.from('products')
-      ?.select('*')
-      ?.eq('is_active', true)
-      ?.order('name', { ascending: true })
-    if (error) {
-      console.error('Error fetching products:', error)
-      return []
+  async list({ orgId = null, activeOnly = true } = {}) {
+    let q = supabase.from('products').select('*').order('name', { ascending: true })
+    if (activeOnly) q = q.eq('is_active', true)
+    if (orgId) q = q.eq('org_id', orgId)
+    return await safeSelect(q, 'products:list')
+  },
+
+  async getById(id, orgId = null) {
+    if (!id) return null
+    try {
+      let q = supabase.from('products').select('*').eq('id', id).single()
+      if (orgId) q = q.eq('org_id', orgId)
+      const res = await q.throwOnError()
+      return res?.data ?? null
+    } catch (e) {
+      console.error('[products:getById] failed', e)
+      return null
     }
-    return data || []
   },
 }
+
+export default productService

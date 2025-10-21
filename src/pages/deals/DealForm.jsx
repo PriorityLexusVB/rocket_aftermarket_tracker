@@ -34,6 +34,7 @@ export default function DealForm({
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [lineErrors, setLineErrors] = useState({})
   const [vendors, setVendors] = useState([])
   const [products, setProducts] = useState([])
   const [sales, setSales] = useState([])
@@ -113,6 +114,30 @@ export default function DealForm({
           li.unit_price = Number(prod.unit_price || 0)
         }
       }
+      // Clear validation error when user fixes the issue
+      if (key === 'no_schedule_reason' && String(val || '').trim()) {
+        setLineErrors((errs) => {
+          if (!errs || !errs[idx]?.noScheduleReason) return errs
+          const copy = { ...errs }
+          const row = { ...(copy[idx] || {}) }
+          delete row.noScheduleReason
+          if (!Object.keys(row).length) delete copy[idx]
+          else copy[idx] = row
+          return copy
+        })
+      }
+      if (key === 'requires_scheduling' && !!val) {
+        // if user now requires scheduling, clear the previous missing-reason error
+        setLineErrors((errs) => {
+          if (!errs || !errs[idx]?.noScheduleReason) return errs
+          const copy = { ...errs }
+          const row = { ...(copy[idx] || {}) }
+          delete row.noScheduleReason
+          if (!Object.keys(row).length) delete copy[idx]
+          else copy[idx] = row
+          return copy
+        })
+      }
       lineItems[idx] = li
       next.lineItems = lineItems
       return next
@@ -126,6 +151,25 @@ export default function DealForm({
     e?.preventDefault?.()
     setSaving(true)
     try {
+      // Guard: If requires_scheduling === false, no_schedule_reason is required
+      const missingReasonIdxs = (form.lineItems || []).reduce((arr, li, idx) => {
+        const requires = !!li?.requires_scheduling
+        const reason = String(li?.no_schedule_reason || '').trim()
+        if (!requires && !reason) arr.push(idx)
+        return arr
+      }, [])
+      if (missingReasonIdxs.length > 0) {
+        const errs = {}
+        missingReasonIdxs.forEach((i) => {
+          errs[i] = { ...(errs[i] || {}), noScheduleReason: true }
+        })
+        setLineErrors(errs)
+        setSaving(false)
+        return
+      } else {
+        setLineErrors({})
+      }
+
       // Build payload that includes both snake_case (UI) and camelCase (service) fields
       const normalizedLineItems = (form.lineItems || []).map((li) => ({
         product_id: li.product_id || null,
@@ -497,6 +541,11 @@ export default function DealForm({
                       }
                       className="mt-1 input-mobile w-full"
                     />
+                    {lineErrors?.[idx]?.noScheduleReason && (
+                      <p className="mt-1 text-sm text-red-600">
+                        Reason is required when not scheduling.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

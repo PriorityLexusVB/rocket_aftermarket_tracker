@@ -31,8 +31,10 @@ export default function EditDeal() {
   async function onSubmit(formState) {
     setSaving(true)
     try {
+      // Update then re-fetch latest persisted values; stay on Edit
       await dealService?.updateDeal(id, formState)
-      navigate('/deals')
+      const fresh = await dealService?.getDeal(id)
+      setInitial(mapDbDealToForm(fresh))
     } catch (e) {
       alert(e?.message || 'Failed to save deal')
     } finally {
@@ -46,6 +48,15 @@ export default function EditDeal() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
+      {/* Deal/Stock area (visible above form header) */}
+      <div className="mb-4">
+        <div className="text-sm text-slate-600">Deal / Job #</div>
+        <div className="text-lg font-medium text-slate-900">{initial?.job_number || `#${id}`}</div>
+        <div className="text-sm text-slate-500">
+          Stock # {initial?.vehicle?.stock_number || initial?.stock_number || '—'}
+        </div>
+      </div>
+
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Edit Deal</h1>
         <p className="text-gray-600">Update details and save.</p>

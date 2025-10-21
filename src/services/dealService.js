@@ -312,8 +312,17 @@ export async function createDeal(formState) {
     // 3) return full record (with joins)
     return await getDeal(job?.id)
   } catch (error) {
-    // rollback best-effort
-    await supabase?.from('jobs')?.delete()?.eq('id', job?.id)
+    // rollback best-effort: delete parts first, then job
+    try {
+      await supabase?.from('job_parts')?.delete()?.eq('job_id', job?.id)
+    } catch (_) {
+      // ignore
+    }
+    try {
+      await supabase?.from('jobs')?.delete()?.eq('id', job?.id)
+    } catch (_) {
+      // ignore
+    }
     throw new Error(`Failed to create deal: ${error.message}`)
   }
 }
@@ -401,6 +410,7 @@ function mapDbDealToForm(dbDeal) {
 
   return {
     id: dbDeal?.id,
+    job_number: dbDeal?.job_number || '',
     title: dbDeal?.title || '',
     description: dbDeal?.description || '',
     vendor_id: dbDeal?.vendor_id,
@@ -420,15 +430,17 @@ function mapDbDealToForm(dbDeal) {
     customerName: dbDeal?.customer_name || '',
     customerPhone: dbDeal?.customer_phone || '',
     customerEmail: dbDeal?.customer_email || '',
+    // Preserve vehicle for header (stock number)
+    vehicle: dbDeal?.vehicle || null,
+    // Line items in snake_case shape expected by the form/UI
     lineItems: (dbDeal?.job_parts || [])?.map((part) => ({
       product_id: part?.product_id,
       unit_price: part?.unit_price || 0,
       quantity_used: part?.quantity_used || 1,
-      lineItemPromisedDate: part?.promised_date || '',
-      requiresScheduling: !!part?.requires_scheduling,
-      noScheduleReason: part?.no_schedule_reason || '',
-      isOffSite: !!part?.is_off_site,
-      // ❌ REMOVED: description mapping as column doesn't exist
+      promised_date: part?.promised_date || '',
+      requires_scheduling: !!part?.requires_scheduling,
+      no_schedule_reason: part?.no_schedule_reason || '',
+      is_off_site: !!part?.is_off_site,
     })),
   }
 }
