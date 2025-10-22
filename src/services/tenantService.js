@@ -12,8 +12,8 @@ export async function listVendorsByOrg(orgId, { activeOnly = true } = {}) {
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     q = q.or(`org_id.eq.${orgId},org_id.is.null`)
-  const data = await safeSelect(q)
-  return toOptions(data, { labelKey: 'name', valueKey: 'id' })
+    const data = await safeSelect(q)
+    return toOptions(data, { labelKey: 'name', valueKey: 'id' })
   } catch (err) {
     console.error('listVendorsByOrg error:', err?.message || err)
     return []
@@ -76,8 +76,8 @@ export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
       .order('created_at', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     q = q.or(`org_id.eq.${orgId},org_id.is.null`)
-  const data = await safeSelect(q)
-  return toOptions(data, { labelKey: 'name', valueKey: 'id' })
+    const data = await safeSelect(q)
+    return toOptions(data, { labelKey: 'name', valueKey: 'id' })
   } catch (err) {
     console.error('listSmsTemplatesByOrg error:', err?.message || err)
     return []
