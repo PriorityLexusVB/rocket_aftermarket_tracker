@@ -104,10 +104,24 @@ export default function DebugAuthPage() {
           <div>
             <h3 className="mt-2">Global</h3>
             <ul>
-              <li>Vendors: {counts?.global?.vendors ?? 'N/A'}</li>
-              <li>Products: {counts?.global?.products ?? 'N/A'}</li>
-              <li>Users: {counts?.global?.users ?? 'N/A'}</li>
-              <li>SMS Templates: {counts?.global?.sms_templates ?? 'N/A'}</li>
+              <li>
+                Vendors:{' '}
+                <span data-testid="global-vendor-count">{counts?.global?.vendors ?? 'N/A'}</span>
+              </li>
+              <li>
+                Products:{' '}
+                <span data-testid="global-product-count">{counts?.global?.products ?? 'N/A'}</span>
+              </li>
+              <li>
+                Users:{' '}
+                <span data-testid="global-staff-count">{counts?.global?.users ?? 'N/A'}</span>
+              </li>
+              <li>
+                SMS Templates:{' '}
+                <span data-testid="global-sms-template-count">
+                  {counts?.global?.sms_templates ?? 'N/A'}
+                </span>
+              </li>
             </ul>
 
             <h3 className="mt-2">Org-scoped</h3>
