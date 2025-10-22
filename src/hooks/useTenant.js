@@ -12,10 +12,12 @@ import { supabase } from '../lib/supabase'
  * - Uses an alive/ref flag to avoid state updates after unmount.
  */
 function useTenant() {
-  const { session, user } = useAuth() || {}
+  const { user } = useAuth() || {}
   const [orgId, setOrgId] = useState(null)
   const [loading, setLoading] = useState(Boolean(user) && orgId === null)
   const aliveRef = useRef(true)
+  // Derive a session-like shape for consumers that expect session.user
+  const derivedSession = user ? { user } : null
 
   useEffect(() => {
     aliveRef.current = true
@@ -91,7 +93,7 @@ function useTenant() {
     }
   }, [user?.id])
 
-  return { orgId, loading, session }
+  return { orgId, loading, session: derivedSession }
 }
 
 // Default export required by callers; also provide a named export for compatibility
