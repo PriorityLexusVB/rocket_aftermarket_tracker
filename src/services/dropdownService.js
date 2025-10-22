@@ -1,5 +1,5 @@
 // src/services/dropdownService.js
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 /**
  * Map any list to { id, value, label } options (keeps extra props if you spread them later).

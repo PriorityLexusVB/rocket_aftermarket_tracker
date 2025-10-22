@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase'
-import { safeSelect } from '../lib/safeSelect'
+import { supabase } from '@/lib/supabase'
+import { safeSelect } from '@/lib/supabase/safeSelect'
 
 /**
  * Calendar Service - Handles calendar scheduling operations

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 class ClaimsAnalyticsService {
   // Add error handling method

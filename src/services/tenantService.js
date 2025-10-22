@@ -1,6 +1,6 @@
 // src/services/tenantService.js
 import { supabase } from '@/lib/supabase'
-import safeSelect from '@/lib/safeSelect'
+import { safeSelect } from '@/lib/supabase/safeSelect'
 
 export async function listVendorsByOrg(orgId, { activeOnly = true } = {}) {
   if (!orgId) return []
@@ -10,9 +10,9 @@ export async function listVendorsByOrg(orgId, { activeOnly = true } = {}) {
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    q = q.eq('org_id', orgId)
-    const res = await safeSelect(q).exec()
-    return (res?.data || []).map((v) => ({ id: v.id, value: v.id, label: v.name, ...v }))
+    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    const data = await safeSelect(q)
+    return (data || []).map((v) => ({ id: v.id, value: v.id, label: v.name, ...v }))
   } catch (err) {
     console.error('listVendorsByOrg error:', err?.message || err)
     return []
@@ -27,9 +27,9 @@ export async function listProductsByOrg(orgId, { activeOnly = true } = {}) {
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    q = q.eq('org_id', orgId)
-    const res = await safeSelect(q).exec()
-    return (res?.data || []).map((p) => ({
+    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    const data = await safeSelect(q)
+    return (data || []).map((p) => ({
       id: p.id,
       value: p.id,
       label: p.brand ? `${p.name} - ${p.brand}` : p.name,
@@ -56,8 +56,8 @@ export async function listStaffByOrg(
     if (activeOnly) q = q.eq('is_active', true)
     if (departments.length) q = q.in('department', departments)
     if (roles.length) q = q.in('role', roles)
-    const res = await safeSelect(q).exec()
-    return (res?.data || []).map((u) => ({ id: u.id, value: u.id, label: u.full_name, ...u }))
+    const data = await safeSelect(q)
+    return (data || []).map((u) => ({ id: u.id, value: u.id, label: u.full_name, ...u }))
   } catch (err) {
     console.error('listStaffByOrg error:', err?.message || err)
     return []
@@ -72,9 +72,9 @@ export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
       .select('id, name, body, is_active')
       .order('created_at', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    q = q.eq('org_id', orgId)
-    const res = await safeSelect(q).exec()
-    return (res?.data || []).map((s) => ({ id: s.id, value: s.id, label: s.name, ...s }))
+    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    const data = await safeSelect(q)
+    return (data || []).map((s) => ({ id: s.id, value: s.id, label: s.name, ...s }))
   } catch (err) {
     console.error('listSmsTemplatesByOrg error:', err?.message || err)
     return []

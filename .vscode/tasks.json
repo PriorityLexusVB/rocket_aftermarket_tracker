@@ -1,9 +1,30 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    { "label":"Dev: Vite", "type":"npm", "script":"start" },
-    { "label":"Build: Vite", "type":"npm", "script":"build" },
-    { "label":"Preview: Vite", "type":"npm", "script":"serve" },
-    { "label":"Test: Vitest", "type":"npm", "script":"test" }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Dev: Vite",
+			"type": "npm",
+			"script": "start"
+		},
+		{
+			"label": "Build: Vite",
+			"type": "npm",
+			"script": "build"
+		},
+		{
+			"label": "Preview: Vite",
+			"type": "npm",
+			"script": "serve"
+		},
+		{
+			"label": "Test: Vitest",
+			"type": "npm",
+			"script": "test"
+		},
+		{
+			"label": "Build project",
+			"type": "shell",
+			"command": "pnpm run build"
+		}
+	]
 }

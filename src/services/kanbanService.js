@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { safeSelect } from '../lib/supabase/safeSelect'
 
 // Normalize customer-facing fields without changing component code.

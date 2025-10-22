@@ -1,5 +1,5 @@
 // src/services/dealService.js
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 // --- helpers -------------------------------------------------------------
 

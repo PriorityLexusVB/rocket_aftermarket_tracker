@@ -1,5 +1,5 @@
 // Photo Documentation Service - Handles photo uploads and documentation management
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { safeSelect } from '../lib/supabase/safeSelect'
 
 export const photoDocumentationService = {

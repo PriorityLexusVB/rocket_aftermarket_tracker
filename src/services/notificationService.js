@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export const notificationService = {
   // Get pending/recent communications as notifications
