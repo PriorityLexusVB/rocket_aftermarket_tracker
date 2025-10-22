@@ -7,6 +7,8 @@ import {
   getFinanceManagers,
   getDeliveryCoordinators,
 } from '../../services/dropdownService'
+import { listVendorsByOrg, listProductsByOrg } from '../../services/tenantService'
+import useTenant from '../../hooks/useTenant'
 
 // Optional fallback to service-layer create/update if parent didn't pass onSave
 let dealServicePromise
@@ -61,13 +63,15 @@ export default function DealForm({
     calendar_notes: initial.calendar_notes || '',
   })
 
+  const { orgId } = useTenant()
+
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
         const [vOpts, pOpts, sOpts, fOpts, dOpts] = await Promise.all([
-          getVendors(),
-          getProducts(),
+          orgId ? listVendorsByOrg(orgId, { activeOnly: true }) : getVendors(),
+          orgId ? listProductsByOrg(orgId, { activeOnly: true }) : getProducts(),
           getSalesConsultants(),
           getFinanceManagers(),
           getDeliveryCoordinators(),
