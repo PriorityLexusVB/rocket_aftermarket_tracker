@@ -18,9 +18,13 @@ export default function NewDeal() {
         navigate(`/deals/${created.id}/edit`)
       } else {
         alert('Deal created but no id was returned')
+        throw new Error('Deal created but no id was returned')
       }
     } catch (e) {
-      alert(e?.message || 'Failed to create deal')
+      const msg = e?.message || 'Failed to create deal'
+      alert(msg)
+      // Re-throw so DealForm can surface the error inline for E2E visibility
+      throw new Error(msg)
     } finally {
       setSaving(false)
     }

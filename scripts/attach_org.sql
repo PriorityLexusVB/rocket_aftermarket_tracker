@@ -8,6 +8,14 @@ update public.user_profiles
 set org_id = (select id from public.organizations where name='Priority Lexus VB')
 where id = 'e49cf323-1b81-4044-bcbb-b6f906b7b562';
 
+-- Alternatively, attach by email (recommended for E2E/test users)
+update public.user_profiles up
+set org_id = (select id from public.organizations where name='Priority Lexus VB'),
+		is_active = true
+where up.email in (
+	'rob.brasco@priorityautomotive.com'
+);
+
 -- (Optional) tag existing global rows so org counts light up immediately
 update public.vendors       set org_id = (select id from public.organizations where name='Priority Lexus VB') where org_id is null;
 update public.products      set org_id = (select id from public.organizations where name='Priority Lexus VB') where org_id is null;

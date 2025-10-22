@@ -36,6 +36,7 @@ export default function DealForm({
 }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
   const [lineErrors, setLineErrors] = useState({})
   const [vendors, setVendors] = useState([])
   const [products, setProducts] = useState([])
@@ -154,6 +155,7 @@ export default function DealForm({
   const submit = async (e) => {
     e?.preventDefault?.()
     setSaving(true)
+    setErrorMsg('')
     try {
       // Guard: If requires_scheduling === false, no_schedule_reason is required
       const missingReasonIdxs = (form.lineItems || []).reduce((arr, li, idx) => {
@@ -193,6 +195,8 @@ export default function DealForm({
 
       const payload = {
         ...form,
+        // attach tenant org for write policies when available
+        org_id: form.org_id || orgId || undefined,
         customer_needs_loaner: !!form.customer_needs_loaner,
         // mirror phone fields for downstream services
         customer_phone: form.customer_phone || form.customer_mobile || '',
@@ -201,9 +205,8 @@ export default function DealForm({
       }
 
       if (onSave) {
-        // parent-provided save handler is authoritative — let it close the form
+        // parent-provided save handler is authoritative (handles navigation/closing)
         await onSave(payload)
-        onCancel?.()
       } else if (dealServicePromise) {
         const mod = await dealServicePromise
         const dealService = mod?.default ?? mod
@@ -230,8 +233,9 @@ export default function DealForm({
         }
       }
     } catch (err) {
+      const msg = err?.message || String(err)
       console.error('Deal save failed', err)
-      alert('Save failed. See console for details.')
+      setErrorMsg(msg)
     } finally {
       setSaving(false)
     }
@@ -590,6 +594,12 @@ export default function DealForm({
           Cancel
         </button>
       </section>
+
+      {errorMsg ? (
+        <div className="mt-3 p-3 rounded bg-red-50 text-red-700" data-testid="save-error">
+          {errorMsg}
+        </div>
+      ) : null}
     </form>
   )
 }

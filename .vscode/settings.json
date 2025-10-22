@@ -40,5 +40,6 @@
   "explorer.compactFolders": false,
   "search.useIgnoreFiles": true,
   "editor.cursorBlinking": "smooth",
-  "cSpell.words": ["supabase"]
+  "cSpell.words": ["supabase"],
+  "github.copilot.nextEditSuggestions.enabled": true
 }

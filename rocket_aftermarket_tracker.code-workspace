@@ -1,1 +1,18 @@
-﻿{"folders":[{"path":"."}],"settings":{},"extensions":{"recommendations":["github.copilot","github.copilot-chat","esbenp.prettier-vscode"]}}
+{
+  "folders": [
+    {
+      "path": ".",
+    },
+  ],
+  "settings": {
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "github.copilot.chat.agent.thinkingTool": true,
+    "github.copilot.chat.executePrompt.enabled": true,
+    "github.copilot.chat.codesearch.enabled": true,
+    "github.copilot.advanced": {},
+    "reactSnippets.settings.prettierEnabled": true,
+  },
+  "extensions": {
+    "recommendations": ["github.copilot", "github.copilot-chat", "esbenp.prettier-vscode"],
+  },
+}

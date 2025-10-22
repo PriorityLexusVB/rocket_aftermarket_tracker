@@ -37,7 +37,12 @@ function pick(obj, keys) {
 }
 
 function sanitizeDealPayload(input) {
-  return pick(input || {}, JOB_COLS)
+  const out = pick(input || {}, JOB_COLS)
+  // Generic: coerce empty-string primitives to null so DB types (uuid/timestamp/numeric) don't error
+  Object.keys(out).forEach((k) => {
+    if (out[k] === '') out[k] = null
+  })
+  return out
 }
 
 // Internal helper: load a fully-joined deal/job by id
@@ -144,7 +149,10 @@ function toJobPartRows(jobId, items = []) {
         quantity_used: it?.quantity_used ?? it?.quantity ?? 1,
         unit_price: it?.unit_price ?? it?.price ?? 0,
         // Add new per-line-item scheduling fields
-        promised_date: it?.lineItemPromisedDate || null,
+        promised_date:
+          it?.lineItemPromisedDate ||
+          // If requires scheduling and no date provided, default to today to satisfy DB constraint
+          (it?.requiresScheduling ? new Date().toISOString().slice(0, 10) : null),
         requires_scheduling: !!it?.requiresScheduling,
         no_schedule_reason: it?.requiresScheduling ? null : it?.noScheduleReason || null,
         is_off_site: !!it?.isOffSite,
@@ -323,6 +331,20 @@ export async function getDeal(id) {
 // CREATE: deal + job_parts
 export async function createDeal(formState) {
   const { payload, normalizedLineItems, loanerForm } = mapFormToDb(formState || {})
+
+  // Ensure required fields the DB expects
+  // jobs.job_number is NOT NULL + UNIQUE in schema; auto-generate if missing
+  if (!payload?.job_number) {
+    const ts = Date.now()
+    const rand = Math.floor(Math.random() * 1_0000)
+    payload.job_number = `JOB-${ts}-${rand}`
+  }
+
+  // Some DB triggers enforce vendor jobs to have scheduled dates.
+  // If this is a vendor job and no scheduled_start_time provided, default to now.
+  if (payload?.vendor_id && !payload?.scheduled_start_time) {
+    payload.scheduled_start_time = new Date().toISOString()
+  }
 
   // 1) create job
   const { data: job, error: jobErr } = await supabase
