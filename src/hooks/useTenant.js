@@ -39,37 +39,48 @@ function useTenant() {
 
       if (aliveRef.current) setLoading(true)
 
-      try {
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .select('org_id')
-          .eq('id', user.id)
-          .single()
+      const CANDIDATES = ['org_id', 'organization_id', 'tenant_id']
+      let resolvedOrg = null
+      let nonFatal = false
+      for (const col of CANDIDATES) {
+        try {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select(col)
+            .eq('id', user.id)
+            .single()
 
-        // Treat permission/RLS errors as non-fatal: log a warning and continue
-        if (error) {
-          console.warn(
-            'useTenant: profile select error (possibly RLS/perm denied)',
-            error?.message || error
-          )
-          if (aliveRef.current && !didCancel) {
-            setOrgId(null)
-            setLoading(false)
+          if (!error && data && Object.prototype.hasOwnProperty.call(data, col)) {
+            resolvedOrg = data[col] ?? null
+            break
           }
-          return
+          if (error) {
+            const msg = String(error?.message || '').toLowerCase()
+            // If this column doesn't exist, try the next candidate
+            if (msg.includes('does not exist') || msg.includes('column')) continue
+            // Permission/RLS: treat as non-fatal (orgId=null); stop trying
+            if (msg.includes('permission') || msg.includes('rls')) {
+              nonFatal = true
+              break
+            }
+            // Other errors: log and continue fallback
+            console.warn('useTenant: profile select warning:', error?.message || error)
+          }
+        } catch (e) {
+          console.warn('useTenant: profile select attempt failed:', e?.message || e)
         }
+      }
 
-        if (aliveRef.current && !didCancel) {
-          setOrgId(data?.org_id ?? null)
-          setLoading(false)
-        }
-      } catch (err) {
-        // Unexpected errors are logged and treated like "no org"
-        console.error('useTenant unexpected error reading profile:', err)
-        if (aliveRef.current && !didCancel) {
+      if (aliveRef.current && !didCancel) {
+        if (resolvedOrg !== null) {
+          setOrgId(resolvedOrg)
+        } else {
+          if (nonFatal) {
+            console.warn('useTenant: treating RLS/permission as no-org')
+          }
           setOrgId(null)
-          setLoading(false)
         }
+        setLoading(false)
       }
     }
 

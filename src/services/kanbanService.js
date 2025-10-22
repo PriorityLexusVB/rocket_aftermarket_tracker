@@ -1,6 +1,21 @@
 import { supabase } from '../lib/supabase'
 import { safeSelect } from '../lib/supabase/safeSelect'
 
+// Normalize customer-facing fields without changing component code.
+// Pull from joined transaction first, then job fields, then vehicle owner as last resort.
+export function withCustomerFields(row) {
+  if (!row) return row
+  const t = row.transaction || row.transactions || {}
+  return {
+    ...row,
+    customer_name: t.customer_name ?? row.customer_name ?? row.vehicle?.owner_name ?? null,
+    customer_email: t.customer_email ?? row.customer_email ?? null,
+    customer_phone: t.customer_phone ?? row.customer_phone ?? null,
+    total_amount: t.total_amount ?? row.total_amount ?? null,
+    transaction_status: t.transaction_status ?? row.transaction_status ?? null,
+  }
+}
+
 /**
  * Kanban Service - Handles kanban board operations and status management
  */
@@ -15,7 +30,8 @@ export const kanbanService = {
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
           assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name, email),
-          created_user:user_profiles!jobs_created_by_fkey(id, full_name)
+          created_user:user_profiles!jobs_created_by_fkey(id, full_name),
+          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `)
       if (orgId) query = query?.eq('org_id', orgId)
 
@@ -53,8 +69,8 @@ export const kanbanService = {
         ?.order('created_at', { ascending: false })
 
       const data = await safeSelect(query, 'kanban:getAllJobsForKanban')
-
-      return { data: data || [], error: null }
+      const normalized = (data || [])?.map(withCustomerFields)
+      return { data: normalized, error: null }
     } catch (error) {
       console.error('Error in getAllJobsForKanban:', error)
       return { data: [], error }
@@ -119,12 +135,14 @@ export const kanbanService = {
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name)
+          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `
         )
         ?.single()
       if (orgId) updateQ = updateQ?.eq('org_id', orgId)
       const data = await safeSelect(updateQ, 'kanban:update:apply')
+      const mapped = withCustomerFields(data)
 
       // Log the activity
       try {
@@ -139,7 +157,7 @@ export const kanbanService = {
         // Don't fail the main operation if logging fails
       }
 
-      return { data, error: null }
+      return { data: mapped, error: null }
     } catch (error) {
       console.error('Error updating job status:', error)
       return { data: null, error }
@@ -158,7 +176,8 @@ export const kanbanService = {
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name)
+          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `
         )
         ?.in('job_status', statuses)
@@ -166,11 +185,12 @@ export const kanbanService = {
         ?.order('created_at', { ascending: false })
       if (orgId) q = q?.eq('org_id', orgId)
       const data = await safeSelect(q, 'kanban:getJobsByStatus')
+      const normalized = (data || [])?.map(withCustomerFields)
 
       // Group jobs by status
       const groupedJobs = {}
       statuses?.forEach((status) => {
-        groupedJobs[status] = data?.filter((job) => job?.job_status === status) || []
+        groupedJobs[status] = normalized?.filter((job) => job?.job_status === status) || []
       })
 
       return { data: groupedJobs, error: null }
@@ -336,7 +356,8 @@ export const kanbanService = {
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name)
+          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `)
       if (orgId) query = query?.eq('org_id', orgId)
 
@@ -366,8 +387,8 @@ export const kanbanService = {
         query?.order('created_at', { ascending: false }),
         'kanban:search'
       )
-
-      return { data: data || [], error: null }
+      const normalized = (data || [])?.map(withCustomerFields)
+      return { data: normalized, error: null }
     } catch (error) {
       console.error('Error searching jobs:', error)
       return { data: [], error }

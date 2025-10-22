@@ -50,16 +50,16 @@ export default function EditDeal() {
     return <div className="max-w-5xl mx-auto p-8">Loading...</div>
   }
 
+  const dealNumber = initial?.job_number || `#${id}`
+  const stockNumber = initial?.vehicle?.stock_number || initial?.stock_number || '—'
+
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
-      {/* Deal/Stock area (visible above form header) */}
-      <div className="mb-4">
-        <div className="text-sm text-slate-600">Deal / Job #</div>
-        <div className="text-lg font-medium text-slate-900">{initial?.job_number || `#${id}`}</div>
-        <div className="text-sm text-slate-500">
-          Stock # {initial?.vehicle?.stock_number || initial?.stock_number || '—'}
-        </div>
-      </div>
+      <header className="mb-4">
+        <h1 className="text-xl font-semibold">
+          Deal {dealNumber} / Stock # {stockNumber}
+        </h1>
+      </header>
 
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Edit Deal</h1>

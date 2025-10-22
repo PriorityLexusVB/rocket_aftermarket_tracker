@@ -28,12 +28,9 @@ export default function NewDeal() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
-      {/* Deal/Stock area (visible above form header) */}
-      <div className="mb-4">
-        <div className="text-sm text-slate-600">Deal / Job #</div>
-        <div className="text-lg font-medium text-slate-900">New Deal</div>
-        <div className="text-sm text-slate-500">Stock # —</div>
-      </div>
+      <header className="mb-4">
+        <h1 className="text-xl font-semibold">Deal # New / Stock # —</h1>
+      </header>
 
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Create Deal</h1>

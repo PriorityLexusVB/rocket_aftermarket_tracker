@@ -1,6 +1,4 @@
 // src/lib/supabase/safeSelect.js
-import { supabase } from '../supabaseClient'
-
 /**
  * Wrap a Postgrest query and make failures loud.
  * @param {any} q Postgrest query builder

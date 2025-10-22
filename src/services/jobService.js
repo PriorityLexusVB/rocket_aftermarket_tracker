@@ -1,5 +1,5 @@
 // src/services/jobService.js
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 
 const nowIso = () => new Date()?.toISOString()
 
