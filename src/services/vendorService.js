@@ -1,11 +1,12 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
+import { toOptions } from '@/lib/options'
 
-export function listVendorsByOrg(orgId) {
-  return safeSelect(
-    supabase.from('vendors').select('*').eq('org_id', orgId).order('name', { ascending: true }),
-    'vendors:listByOrg'
-  )
+export async function listVendorsByOrg(orgId) {
+  let q = supabase.from('vendors').select('*').order('name', { ascending: true })
+  if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+  const rows = await safeSelect(q, 'vendors:listByOrg')
+  return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
 }
 
 export const vendorService = {
@@ -19,8 +20,9 @@ export const vendorService = {
         .select('*')
         .eq('is_active', true)
         .order('name', { ascending: true })
-      if (orgId) q = q.eq('org_id', orgId)
-      return await safeSelect(q, 'vendors:getAll')
+      if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+      const rows = await safeSelect(q, 'vendors:getAll')
+      return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
     } catch (e) {
       console.error('vendorService.getAll failed', e)
       return []
@@ -38,8 +40,9 @@ export const vendorService = {
         .eq('is_active', true)
         .order('name', { ascending: true })
         .limit(50)
-      if (orgId) q = q.eq('org_id', orgId)
-      return await safeSelect(q, 'vendors:search')
+      if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+      const rows = await safeSelect(q, 'vendors:search')
+      return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
     } catch (e) {
       console.error('vendorService.search failed', e)
       return []

@@ -1,20 +1,23 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
+import { toOptions } from '@/lib/options'
 
 // Tenant-aware list for dropdowns and consumers
-export function listProductsByOrg(orgId, { activeOnly = true } = {}) {
+export async function listProductsByOrg(orgId, { activeOnly = true } = {}) {
   let q = supabase.from('products').select('*').order('name', { ascending: true })
   if (activeOnly) q = q.eq('is_active', true)
-  if (orgId) q = q.eq('org_id', orgId)
-  return safeSelect(q, 'products:listByOrg')
+  if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+  const rows = await safeSelect(q, 'products:listByOrg')
+  return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
 }
 
 export const productService = {
   async list({ orgId = null, activeOnly = true } = {}) {
     let q = supabase.from('products').select('*').order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.eq('org_id', orgId)
-    return await safeSelect(q, 'products:list')
+    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    const rows = await safeSelect(q, 'products:list')
+    return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
   },
 
   async getById(id, orgId = null) {

@@ -44,13 +44,17 @@ export function useDropdownData(options = {}) {
     try {
       setState((prev) => ({ ...prev, loading: true, error: null }))
 
-      // If tenant is still loading, bail
-      if (tenant.loading) throw new Error('Tenant loading')
+      // If tenant is still loading, defer without throwing to avoid noisy error banners
+      if (tenant.loading) {
+        setState((prev) => ({ ...prev, loading: true }))
+        return
+      }
 
       // If no user session, prefer global safe fallbacks
       if (!tenant.session?.user) {
         console.warn('Dropdowns: no authenticated user; some queries may return empty due to RLS')
-        throw new Error('No authenticated user')
+        setState((prev) => ({ ...prev, loading: false }))
+        return
       }
 
       // If org is not present, fallback to global dropdownService calls

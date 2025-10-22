@@ -139,13 +139,16 @@ const JobCard = ({
           </span>
         </div>
       )}
-      {/* Customer info */}
-      {job?.vehicle?.owner_name && (
-        <div className="flex items-center space-x-1 text-sm text-gray-600 mb-2">
-          <User className="h-4 w-4" />
-          <span className="truncate">{job?.vehicle?.owner_name}</span>
-        </div>
-      )}
+      {/* Customer info (fallback: job.customer_name → vehicle.owner_name → '—') */}
+      {(() => {
+        const customerName = job?.customer_name || job?.vehicle?.owner_name || null;
+        return customerName ? (
+          <div className="flex items-center space-x-1 text-sm text-gray-600 mb-2">
+            <User className="h-4 w-4" />
+            <span className="truncate">{customerName}</span>
+          </div>
+        ) : null;
+      })()}
       {/* Service Location Pills - NEW */}
       {job?.job_parts && job?.job_parts?.length > 0 && (
         <div className="mb-2">
