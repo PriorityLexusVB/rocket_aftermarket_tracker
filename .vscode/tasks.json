@@ -1,30 +1,62 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "Dev: Vite",
-			"type": "npm",
-			"script": "start"
-		},
-		{
-			"label": "Build: Vite",
-			"type": "npm",
-			"script": "build"
-		},
-		{
-			"label": "Preview: Vite",
-			"type": "npm",
-			"script": "serve"
-		},
-		{
-			"label": "Test: Vitest",
-			"type": "npm",
-			"script": "test"
-		},
-		{
-			"label": "Build project",
-			"type": "shell",
-			"command": "pnpm run build"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: Vite",
+      "type": "npm",
+      "script": "start"
+    },
+    {
+      "label": "Build: Vite",
+      "type": "npm",
+      "script": "build"
+    },
+    {
+      "label": "Preview: Vite",
+      "type": "npm",
+      "script": "serve"
+    },
+    {
+      "label": "Test: Vitest",
+      "type": "npm",
+      "script": "test"
+    },
+    {
+      "label": "Build project",
+      "type": "shell",
+      "command": "pnpm run build"
+    },
+    {
+      "label": "DB: Push migrations",
+      "type": "shell",
+      "command": "pnpm run db:push",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "DB: Audit (optional)",
+      "type": "shell",
+      "command": "pnpm run db:audit",
+      "problemMatcher": []
+    },
+    {
+      "label": "DB: Seed org data",
+      "type": "shell",
+      "command": "pnpm run db:seed-org",
+      "problemMatcher": []
+    },
+    {
+      "label": "App: Start",
+      "type": "shell",
+      "command": "pnpm start",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Provision DB + Seed + Start (local)",
+      "dependsOrder": "sequence",
+      "dependsOn": ["DB: Push migrations", "DB: Seed org data", "App: Start"]
+    }
+  ]
 }

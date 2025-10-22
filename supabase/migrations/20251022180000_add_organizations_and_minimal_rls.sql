@@ -46,7 +46,7 @@ alter table if exists public.vehicles enable row level security;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND polname='own profile read'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND policyname='own profile read'
   ) THEN
     CREATE POLICY "own profile read" ON public.user_profiles
     FOR SELECT TO authenticated
@@ -58,7 +58,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='vendors' AND polname='org read vendors'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='vendors' AND policyname='org read vendors'
   ) THEN
     CREATE POLICY "org read vendors" ON public.vendors
     FOR SELECT TO authenticated
@@ -70,7 +70,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND polname='org read products'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='org read products'
   ) THEN
     CREATE POLICY "org read products" ON public.products
     FOR SELECT TO authenticated
@@ -82,7 +82,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='sms_templates' AND polname='org read sms templates'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='sms_templates' AND policyname='org read sms templates'
   ) THEN
     CREATE POLICY "org read sms templates" ON public.sms_templates
     FOR SELECT TO authenticated
@@ -94,7 +94,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='transactions' AND polname='org read transactions'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='transactions' AND policyname='org read transactions'
   ) THEN
     CREATE POLICY "org read transactions" ON public.transactions
     FOR SELECT TO authenticated
@@ -106,7 +106,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='jobs' AND polname='org read jobs'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='jobs' AND policyname='org read jobs'
   ) THEN
     CREATE POLICY "org read jobs" ON public.jobs
     FOR SELECT TO authenticated
@@ -118,7 +118,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='job_parts' AND polname='org read job_parts via jobs'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='job_parts' AND policyname='org read job_parts via jobs'
   ) THEN
     CREATE POLICY "org read job_parts via jobs" ON public.job_parts
     FOR SELECT TO authenticated
@@ -134,7 +134,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='vehicles' AND polname='org read vehicles via jobs'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='vehicles' AND policyname='org read vehicles via jobs'
   ) THEN
     CREATE POLICY "org read vehicles via jobs" ON public.vehicles
     FOR SELECT TO authenticated

@@ -16,7 +16,7 @@ BEGIN
       JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE n.nspname = 'public' AND c.relname = 'loaner_assignments' AND c.relrowsecurity
     ) THEN
-      EXECUTE 'ALTER TABLE public.loaner_assignments ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE public.loaner_assignments ENABLE ROW LEVEL SECURITY';
     END IF;
   ELSE
     RAISE NOTICE 'loaner_assignments table not found, skipping RLS enable';
@@ -36,7 +36,7 @@ BEGIN
       SELECT 1 FROM pg_policies p
       WHERE p.schemaname = 'public' AND p.tablename = 'loaner_assignments' AND p.policyname = 'org_can_select_loaners_by_job_org'
     ) THEN
-      EXECUTE $$
+      EXECUTE $policy$
         CREATE POLICY "org_can_select_loaners_by_job_org"
         ON public.loaner_assignments
         FOR SELECT
@@ -47,7 +47,7 @@ BEGIN
               AND j.org_id = auth_user_org()
           )
         );
-      $$;
+      $policy$;
     END IF;
   END IF;
 END

@@ -64,7 +64,10 @@
     "serve": "vite preview",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "e2e:debug": "PWDEBUG=1 playwright test"
+    "e2e:debug": "PWDEBUG=1 playwright test",
+    "db:push": "supabase db push",
+    "db:audit": "supabase db query ./scripts/sql/audit_security_surface.sql",
+    "db:seed-org": "supabase db query ./scripts/attach_org.sql"
   },
   "eslintConfig": {
     "extends": [

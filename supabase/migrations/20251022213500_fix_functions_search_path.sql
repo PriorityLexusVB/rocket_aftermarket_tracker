@@ -18,6 +18,8 @@ BEGIN
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
+      -- Only alter functions owned by the current user/role to avoid extension-owned funcs
+      AND p.proowner = (SELECT usesysid FROM pg_user WHERE usename = current_user)
       AND NOT EXISTS (
         SELECT 1
         FROM unnest(coalesce(p.proconfig, ARRAY[]::text[])) AS kv

@@ -1,24 +1,15 @@
 -- Adds/ensures a standard updated_at trigger across selected tables.
 -- Safe to run multiple times; guards ensure idempotency.
 
--- 1) Create the timestamp trigger function if missing
-DO $$
+-- 1) Create or replace the timestamp trigger function (idempotent)
+CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
+RETURNS trigger AS $$
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public' AND p.proname = 'trigger_set_timestamp'
-  ) THEN
-    CREATE OR REPLACE FUNCTION public.trigger_set_timestamp()
-    RETURNS trigger AS $$
-    BEGIN
-      NEW.updated_at = now();
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    COMMENT ON FUNCTION public.trigger_set_timestamp() IS 'Standard BEFORE UPDATE trigger to refresh updated_at';
-  END IF;
-END $$;
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+COMMENT ON FUNCTION public.trigger_set_timestamp() IS 'Standard BEFORE UPDATE trigger to refresh updated_at';
 
 -- Helper to attach trigger if table has updated_at and trigger not already present
 DO $$

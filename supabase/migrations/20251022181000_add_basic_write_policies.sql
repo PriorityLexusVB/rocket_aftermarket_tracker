@@ -16,7 +16,7 @@ alter table if exists public.job_parts enable row level security;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='jobs' AND polname='org can insert jobs'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='jobs' AND policyname='org can insert jobs'
   ) THEN
     CREATE POLICY "org can insert jobs" ON public.jobs
     FOR INSERT TO authenticated
@@ -28,7 +28,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='jobs' AND polname='org can update jobs'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='jobs' AND policyname='org can update jobs'
   ) THEN
     CREATE POLICY "org can update jobs" ON public.jobs
     FOR UPDATE TO authenticated
@@ -41,7 +41,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='job_parts' AND polname='org can insert job_parts via jobs'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='job_parts' AND policyname='org can insert job_parts via jobs'
   ) THEN
     CREATE POLICY "org can insert job_parts via jobs" ON public.job_parts
     FOR INSERT TO authenticated
@@ -55,7 +55,7 @@ END$$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='job_parts' AND polname='org can update job_parts via jobs'
+    SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='job_parts' AND policyname='org can update job_parts via jobs'
   ) THEN
     CREATE POLICY "org can update job_parts via jobs" ON public.job_parts
     FOR UPDATE TO authenticated
