@@ -1,6 +1,22 @@
 // src/services/dropdownService.js
 import { supabase } from '@/lib/supabase'
 
+// Optional org scoping flag (enable via VITE_ORG_SCOPED_DROPDOWNS=true)
+const ORG_SCOPED =
+  String(import.meta?.env?.VITE_ORG_SCOPED_DROPDOWNS || '').toLowerCase() === 'true'
+
+async function getScopedOrgId() {
+  if (!ORG_SCOPED) return null
+  try {
+    const { data, error } = await supabase.rpc('auth_user_org')
+    if (error) throw error
+    return data || null
+  } catch (e) {
+    console.warn('getScopedOrgId: unable to resolve org, proceeding unscoped', e)
+    return null
+  }
+}
+
 /**
  * Map any list to { id, value, label } options (keeps extra props if you spread them later).
  */
@@ -17,6 +33,7 @@ function toOptions(list, labelKeyA = 'name', labelKeyB = 'full_name') {
  * Uses user_profiles saved via Admin page (department/role/is_active).
  */
 async function getStaff({ departments = [], roles = [], activeOnly = true } = {}) {
+  const orgId = await getScopedOrgId()
   // 1) exact filter by department/role
   let q = supabase
     .from('user_profiles')
@@ -26,6 +43,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
   if (activeOnly) q = q.eq('is_active', true)
   if (departments.length) q = q.in('department', departments)
   if (roles.length) q = q.in('role', roles)
+  if (orgId) q = q.eq('org_id', orgId)
 
   try {
     const { data: exact, count } = await q.throwOnError()
@@ -44,13 +62,16 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
     .join(',')
 
   try {
-    const { data: fuzzy } = await supabase
+    let q2 = supabase
       .from('user_profiles')
       .select('id, full_name, email, department, role, is_active, vendor_id')
       .eq('is_active', true)
       .or(ors || 'full_name.ilike.%')
       .order('full_name', { ascending: true })
-      .throwOnError()
+
+    if (orgId) q2 = q2.eq('org_id', orgId)
+
+    const { data: fuzzy } = await q2.throwOnError()
     return toOptions(fuzzy || [], 'full_name')
   } catch (err) {
     console.error('getStaff fuzzy query failed:', { err, departments, roles })
@@ -72,11 +93,13 @@ export async function getFinanceManagers() {
 /** Vendors → { id, value, label } */
 export async function getVendors({ activeOnly = true } = {}) {
   try {
+    const orgId = await getScopedOrgId()
     let q = supabase
       .from('vendors')
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
+    if (orgId) q = q.eq('org_id', orgId)
     const { data } = await q.throwOnError()
     return toOptions(data, 'name')
   } catch (e) {
@@ -88,11 +111,13 @@ export async function getVendors({ activeOnly = true } = {}) {
 /** Products → { id, value, label, unit_price } (label includes brand if present) */
 export async function getProducts({ activeOnly = true } = {}) {
   try {
+    const orgId = await getScopedOrgId()
     let q = supabase
       .from('products')
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
+    if (orgId) q = q.eq('org_id', orgId)
     const { data } = await q.throwOnError()
     return (data || []).map((p) => ({
       id: p.id,
@@ -117,25 +142,35 @@ export async function globalSearch(term) {
   if (!term || !String(term).trim()) return { users: [], vendors: [], products: [] }
   const q = `%${String(term).trim()}%`
   try {
+    const orgId = await getScopedOrgId()
     const [uData, vData, pData] = await Promise.all([
-      supabase
-        .from('user_profiles')
-        .select('id, full_name, email, department, role')
-        .or(`full_name.ilike.${q},email.ilike.${q}`)
-        .limit(20)
-        .throwOnError(),
-      supabase
-        .from('vendors')
-        .select('id, name, specialty')
-        .or(`name.ilike.${q},specialty.ilike.${q}`)
-        .limit(20)
-        .throwOnError(),
-      supabase
-        .from('products')
-        .select('id, name, brand, unit_price')
-        .or(`name.ilike.${q},brand.ilike.${q}`)
-        .limit(20)
-        .throwOnError(),
+      (async () => {
+        let uq = supabase
+          .from('user_profiles')
+          .select('id, full_name, email, department, role')
+          .or(`full_name.ilike.${q},email.ilike.${q}`)
+          .limit(20)
+        if (orgId) uq = uq.eq('org_id', orgId)
+        return uq.throwOnError()
+      })(),
+      (async () => {
+        let vq = supabase
+          .from('vendors')
+          .select('id, name, specialty')
+          .or(`name.ilike.${q},specialty.ilike.${q}`)
+          .limit(20)
+        if (orgId) vq = vq.eq('org_id', orgId)
+        return vq.throwOnError()
+      })(),
+      (async () => {
+        let pq = supabase
+          .from('products')
+          .select('id, name, brand, unit_price')
+          .or(`name.ilike.${q},brand.ilike.${q}`)
+          .limit(20)
+        if (orgId) pq = pq.eq('org_id', orgId)
+        return pq.throwOnError()
+      })(),
     ])
 
     const users = (uData?.data || uData || []).map((u) => ({

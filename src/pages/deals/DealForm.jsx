@@ -7,8 +7,9 @@ import {
   getFinanceManagers,
   getDeliveryCoordinators,
 } from '../../services/dropdownService'
-import { listVendorsByOrg, listProductsByOrg } from '../../services/tenantService'
+import { listVendorsByOrg, listProductsByOrg, listStaffByOrg } from '../../services/tenantService'
 import useTenant from '../../hooks/useTenant'
+import { useLogger } from '../../hooks/useLogger'
 
 // Optional fallback to service-layer create/update if parent didn't pass onSave
 let dealServicePromise
@@ -65,18 +66,61 @@ export default function DealForm({
   })
 
   const { orgId } = useTenant()
+  const { logFormSubmission, logError } = useLogger()
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
-        const [vOpts, pOpts, sOpts, fOpts, dOpts] = await Promise.all([
-          orgId ? listVendorsByOrg(orgId, { activeOnly: true }) : getVendors(),
-          orgId ? listProductsByOrg(orgId, { activeOnly: true }) : getProducts(),
-          getSalesConsultants(),
-          getFinanceManagers(),
-          getDeliveryCoordinators(),
+        const vendorsPromise = orgId ? listVendorsByOrg(orgId, { activeOnly: true }) : getVendors()
+        const productsPromise = orgId
+          ? listProductsByOrg(orgId, { activeOnly: true })
+          : getProducts()
+
+        // Prefer tenant-aware staff lists when orgId is available
+        const salesPromise = orgId
+          ? listStaffByOrg(orgId, {
+              departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
+              activeOnly: true,
+            })
+          : getSalesConsultants()
+        const financePromise = orgId
+          ? listStaffByOrg(orgId, {
+              departments: ['Finance', 'Finance Manager', 'Finance Managers', 'Managers'],
+              activeOnly: true,
+            })
+          : getFinanceManagers()
+        const deliveryPromise = orgId
+          ? listStaffByOrg(orgId, {
+              departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
+              activeOnly: true,
+            })
+          : getDeliveryCoordinators()
+
+        let [vOpts, pOpts, sOpts, fOpts, dOpts] = await Promise.all([
+          vendorsPromise,
+          productsPromise,
+          salesPromise,
+          financePromise,
+          deliveryPromise,
         ])
+
+        // Fallbacks: if org-scoped queries return empty, retry with broader filters,
+        // then fallback to global dropdownService which has fuzzy matching.
+        if (orgId) {
+          if (!Array.isArray(sOpts) || sOpts.length === 0) {
+            sOpts = await listStaffByOrg(orgId, { activeOnly: true }).catch(() => [])
+            if (!sOpts?.length) sOpts = await getSalesConsultants().catch(() => [])
+          }
+          if (!Array.isArray(fOpts) || fOpts.length === 0) {
+            fOpts = await listStaffByOrg(orgId, { activeOnly: true }).catch(() => [])
+            if (!fOpts?.length) fOpts = await getFinanceManagers().catch(() => [])
+          }
+          if (!Array.isArray(dOpts) || dOpts.length === 0) {
+            dOpts = await listStaffByOrg(orgId, { activeOnly: true }).catch(() => [])
+            if (!dOpts?.length) dOpts = await getDeliveryCoordinators().catch(() => [])
+          }
+        }
         if (!mounted) return
         setVendors(vOpts || [])
         setProducts(pOpts || [])
@@ -207,6 +251,11 @@ export default function DealForm({
       if (onSave) {
         // parent-provided save handler is authoritative (handles navigation/closing)
         await onSave(payload)
+        await logFormSubmission?.(
+          'DealForm',
+          { orgId, hasLineItems: payload?.lineItems?.length > 0 },
+          true
+        )
       } else if (dealServicePromise) {
         const mod = await dealServicePromise
         const dealService = mod?.default ?? mod
@@ -231,11 +280,19 @@ export default function DealForm({
             console.warn('Failed to map saved record to form:', e)
           }
         }
+        await logFormSubmission?.(
+          'DealForm',
+          { orgId, hasLineItems: payload?.lineItems?.length > 0 },
+          true
+        )
       }
     } catch (err) {
       const msg = err?.message || String(err)
       console.error('Deal save failed', err)
       setErrorMsg(msg)
+      try {
+        await logError?.(err, { where: 'DealForm.submit', orgId })
+      } catch (_) {}
     } finally {
       setSaving(false)
     }
@@ -314,6 +371,11 @@ export default function DealForm({
               </option>
             ))}
           </select>
+          {vendors.length === 0 && (
+            <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
+              No vendors available. Check Admin → Vendors to add or attach vendors to your org.
+            </p>
+          )}
         </div>
 
         <div className="md:col-span-2">
@@ -345,6 +407,11 @@ export default function DealForm({
               </option>
             ))}
           </select>
+          {sales.length === 0 && (
+            <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
+              No sales staff found. Use Admin → Staff Records to add staff and assign to your org.
+            </p>
+          )}
         </div>
 
         <div>
@@ -362,6 +429,11 @@ export default function DealForm({
               </option>
             ))}
           </select>
+          {finance.length === 0 && (
+            <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
+              No finance managers found. Add or attach staff in Admin → Staff Records.
+            </p>
+          )}
         </div>
 
         <div>
@@ -379,6 +451,11 @@ export default function DealForm({
               </option>
             ))}
           </select>
+          {delivery.length === 0 && (
+            <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
+              No delivery coordinators found. Add or attach staff in Admin → Staff Records.
+            </p>
+          )}
         </div>
       </section>
 
@@ -410,6 +487,11 @@ export default function DealForm({
             + Add Item
           </button>
         </div>
+        {products.length === 0 && (
+          <div className="p-3 rounded bg-amber-50 text-amber-800 text-sm">
+            No products available. Check Admin → Aftermarket Products to add/attach products.
+          </div>
+        )}
 
         {form.lineItems.map((item, idx) => {
           const itemKey = `li-${idx}`

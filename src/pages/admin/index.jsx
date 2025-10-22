@@ -20,15 +20,20 @@ import {
   QrCode,
 } from 'lucide-react'
 import Icon from '../../components/AppIcon'
+import { useLogger } from '../../hooks/useLogger'
 
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
   const { orgId } = useTenant()
+  const { logBusinessAction, logError: logErr } = useLogger()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('userAccounts')
   const [error, setError] = useState(null)
   const [onlyMyOrg, setOnlyMyOrg] = useState(true)
   const [staffActionMsg, setStaffActionMsg] = useState('')
+  const [accountsActionMsg, setAccountsActionMsg] = useState('')
+  const [vendorsActionMsg, setVendorsActionMsg] = useState('')
+  const [productsActionMsg, setProductsActionMsg] = useState('')
 
   // Debug states
   const [debugInfo, setDebugInfo] = useState({
@@ -288,7 +293,11 @@ const AdminPage = () => {
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
         ?.in('role', ['admin', 'manager'])
-        ?.order('created_at', { ascending: false })
+
+      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      q = q?.order('created_at', { ascending: false })
+
+      const { data, error, count } = await q
 
       if (error) {
         console.error('User accounts query error:', error)
@@ -343,17 +352,57 @@ const AdminPage = () => {
       if (error) throw error
       setStaffActionMsg('Assigned org to active staff without org.')
       await loadStaffRecords()
+      try {
+        await logBusinessAction?.(
+          'assign_org_staff',
+          'system',
+          null,
+          'Assigned org to staff without org',
+          { orgId }
+        )
+      } catch (_) {}
     } catch (e) {
       console.error('assignOrgToActiveStaff error:', e)
       setStaffActionMsg(e?.message || 'Failed to assign org to staff')
+      try {
+        await logErr?.(e, { where: 'assignOrgToActiveStaff', orgId })
+      } catch (_) {}
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Assign current org to all active admin/manager accounts missing org
+  const assignOrgToAccounts = async () => {
+    setAccountsActionMsg('')
+    if (!orgId) {
+      setAccountsActionMsg('No organization detected for current user.')
+      return
+    }
+    try {
+      setSubmitting(true)
+      const { error } = await supabase
+        ?.from('user_profiles')
+        ?.update({ org_id: orgId, is_active: true })
+        ?.is('org_id', null)
+        ?.in('role', ['admin', 'manager'])
+      if (error) throw error
+      setAccountsActionMsg('Assigned org to admin/manager accounts without org.')
+      await loadUserAccounts()
+    } catch (e) {
+      console.error('assignOrgToAccounts error:', e)
+      setAccountsActionMsg(e?.message || 'Failed to assign org to accounts')
     } finally {
       setSubmitting(false)
     }
   }
 
   useEffect(() => {
-    // Refresh staff list when org/toggle changes
+    // Refresh staff and accounts when org/toggle changes
     loadStaffRecords()
+    loadUserAccounts()
+    loadVendors()
+    loadProducts()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onlyMyOrg, orgId])
 
@@ -361,10 +410,11 @@ const AdminPage = () => {
     try {
       console.log('Loading vendors...')
 
-      const { data, error, count } = await supabase
-        ?.from('vendors')
-        ?.select('*', { count: 'exact' })
-        ?.order('created_at', { ascending: false })
+      let q = supabase?.from('vendors')?.select('*', { count: 'exact' })
+      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      q = q?.order('created_at', { ascending: false })
+
+      const { data, error, count } = await q
 
       if (error) {
         console.error('Vendors query error:', error)
@@ -382,10 +432,11 @@ const AdminPage = () => {
     try {
       console.log('Loading products...')
 
-      const { data, error, count } = await supabase
-        ?.from('products')
-        ?.select('*, vendors(name)', { count: 'exact' })
-        ?.order('created_at', { ascending: false })
+      let q = supabase?.from('products')?.select('*, vendors(name)', { count: 'exact' })
+      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      q = q?.order('created_at', { ascending: false })
+
+      const { data, error, count } = await q
 
       if (error) {
         console.error('Products query error:', error)
@@ -396,6 +447,78 @@ const AdminPage = () => {
       setProducts(data || [])
     } catch (error) {
       console.error('Error loading products:', error)
+    }
+  }
+
+  // Assign current org to vendors with null org
+  const assignOrgToVendors = async () => {
+    setVendorsActionMsg('')
+    if (!orgId) {
+      setVendorsActionMsg('No organization detected for current user.')
+      return
+    }
+    try {
+      setSubmitting(true)
+      const { error } = await supabase
+        ?.from('vendors')
+        ?.update({ org_id: orgId })
+        ?.is('org_id', null)
+      if (error) throw error
+      setVendorsActionMsg('Assigned org to vendors without org.')
+      await loadVendors()
+      try {
+        await logBusinessAction?.(
+          'assign_org_vendors',
+          'system',
+          null,
+          'Assigned org to vendors without org',
+          { orgId }
+        )
+      } catch (_) {}
+    } catch (e) {
+      console.error('assignOrgToVendors error:', e)
+      setVendorsActionMsg(e?.message || 'Failed to assign org to vendors')
+      try {
+        await logErr?.(e, { where: 'assignOrgToVendors', orgId })
+      } catch (_) {}
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Assign current org to products with null org
+  const assignOrgToProducts = async () => {
+    setProductsActionMsg('')
+    if (!orgId) {
+      setProductsActionMsg('No organization detected for current user.')
+      return
+    }
+    try {
+      setSubmitting(true)
+      const { error } = await supabase
+        ?.from('products')
+        ?.update({ org_id: orgId })
+        ?.is('org_id', null)
+      if (error) throw error
+      setProductsActionMsg('Assigned org to products without org.')
+      await loadProducts()
+      try {
+        await logBusinessAction?.(
+          'assign_org_products',
+          'system',
+          null,
+          'Assigned org to products without org',
+          { orgId }
+        )
+      } catch (_) {}
+    } catch (e) {
+      console.error('assignOrgToProducts error:', e)
+      setProductsActionMsg(e?.message || 'Failed to assign org to products')
+      try {
+        await logErr?.(e, { where: 'assignOrgToProducts', orgId })
+      } catch (_) {}
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -828,13 +951,32 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">User Accounts ({userAccounts?.length || 0})</h3>
-        <UIButton
-          onClick={() => openModal('userAccount')}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add User Account
-        </UIButton>
+        <div className="flex items-center gap-3">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-blue-600 appearance-auto"
+              checked={onlyMyOrg}
+              onChange={(e) => setOnlyMyOrg(e.target.checked)}
+            />
+            <span className="text-sm">Only my org</span>
+          </label>
+          <UIButton
+            onClick={assignOrgToAccounts}
+            disabled={!orgId || submitting}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50"
+          >
+            <Building className="w-4 h-4" />
+            Assign Org to Accounts
+          </UIButton>
+          <UIButton
+            onClick={() => openModal('userAccount')}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add User Account
+          </UIButton>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -921,6 +1063,9 @@ const AdminPage = () => {
           No user accounts found. Click "Add User Account" to create one.
         </div>
       )}
+      {accountsActionMsg ? (
+        <div className="mt-3 p-3 rounded bg-blue-50 text-blue-700">{accountsActionMsg}</div>
+      ) : null}
     </div>
   )
 
@@ -1050,13 +1195,32 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">Vendors ({vendors?.length || 0})</h3>
-        <UIButton
-          onClick={() => openModal('vendor')}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Vendor
-        </UIButton>
+        <div className="flex items-center gap-3">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-blue-600 appearance-auto"
+              checked={onlyMyOrg}
+              onChange={(e) => setOnlyMyOrg(e.target.checked)}
+            />
+            <span className="text-sm">Only my org</span>
+          </label>
+          <UIButton
+            onClick={assignOrgToVendors}
+            disabled={!orgId || submitting}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50"
+          >
+            <Building className="w-4 h-4" />
+            Assign Org to Vendors
+          </UIButton>
+          <UIButton
+            onClick={() => openModal('vendor')}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Vendor
+          </UIButton>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -1141,6 +1305,9 @@ const AdminPage = () => {
           No vendors found. Click "Add Vendor" to create one.
         </div>
       )}
+      {vendorsActionMsg ? (
+        <div className="mt-3 p-3 rounded bg-blue-50 text-blue-700">{vendorsActionMsg}</div>
+      ) : null}
     </div>
   )
 
@@ -1148,13 +1315,32 @@ const AdminPage = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold">Aftermarket Products ({products?.length || 0})</h3>
-        <UIButton
-          onClick={() => openModal('product')}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Product
-        </UIButton>
+        <div className="flex items-center gap-3">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-blue-600 appearance-auto"
+              checked={onlyMyOrg}
+              onChange={(e) => setOnlyMyOrg(e.target.checked)}
+            />
+            <span className="text-sm">Only my org</span>
+          </label>
+          <UIButton
+            onClick={assignOrgToProducts}
+            disabled={!orgId || submitting}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50"
+          >
+            <Building className="w-4 h-4" />
+            Assign Org to Products
+          </UIButton>
+          <UIButton
+            onClick={() => openModal('product')}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Product
+          </UIButton>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -1247,6 +1433,9 @@ const AdminPage = () => {
           No products found. Click "Add Product" to create one.
         </div>
       )}
+      {productsActionMsg ? (
+        <div className="mt-3 p-3 rounded bg-blue-50 text-blue-700">{productsActionMsg}</div>
+      ) : null}
     </div>
   )
 

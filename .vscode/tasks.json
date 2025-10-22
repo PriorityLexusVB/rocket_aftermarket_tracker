@@ -57,6 +57,11 @@
       "label": "Provision DB + Seed + Start (local)",
       "dependsOrder": "sequence",
       "dependsOn": ["DB: Push migrations", "DB: Seed org data", "App: Start"]
+    },
+    {
+      "label": "E2E: Playwright",
+      "type": "npm",
+      "script": "e2e"
     }
   ]
 }
