@@ -283,8 +283,8 @@ const AdminPage = () => {
     try {
       console.log('Loading user accounts...')
 
-      // RESTORED: Show all admin and manager level users without restrictive filters
-      const { data, error, count } = await supabase
+      // Admin & Manager accounts; optionally scoped by org
+      let q = supabase
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
         ?.in('role', ['admin', 'manager'])
