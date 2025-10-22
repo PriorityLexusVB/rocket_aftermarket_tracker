@@ -70,7 +70,7 @@ export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
     let q = supabase
       .from('sms_templates')
       .select('id, name, body, is_active')
-      .order('name', { ascending: true })
+      .order('created_at', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     q = q.eq('org_id', orgId)
     const res = await safeSelect(q).exec()
