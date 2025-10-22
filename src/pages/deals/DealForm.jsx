@@ -91,7 +91,7 @@ export default function DealForm({
     return () => {
       mounted = false
     }
-  }, [])
+  }, [orgId])
 
   const productMap = useMemo(() => {
     const m = new Map()

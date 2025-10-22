@@ -266,7 +266,7 @@ export function useDropdownData(options = {}) {
     return () => {
       mounted = false
     }
-  }, [loadOnMount, auth?.loading, auth?.user?.id])
+  }, [loadOnMount, auth?.loading, auth?.user?.id, tenant?.loading, tenant?.orgId])
 
   return {
     // Original data arrays
