@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
-    "baseUrl": "./src"
+    // Keep baseUrl pointing at src so absolute imports like "components/..." still work
+    "baseUrl": "./src",
+    // Add Vite-style alias support for the editor/JS language server
+    "paths": {
+      "@/*": ["*"]
+    }
   }
 }
