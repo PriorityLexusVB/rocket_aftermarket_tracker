@@ -38,6 +38,7 @@ export default function DealForm({
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+  const [savedAt, setSavedAt] = useState(null)
   const [lineErrors, setLineErrors] = useState({})
   const [vendors, setVendors] = useState([])
   const [products, setProducts] = useState([])
@@ -67,6 +68,27 @@ export default function DealForm({
 
   const { orgId } = useTenant()
   const { logFormSubmission, logError } = useLogger()
+  const [initialSnapshot] = useState(() =>
+    JSON.stringify({
+      id: initial.id || undefined,
+      job_number: initial.job_number || '',
+      vehicle_id: initial.vehicle_id || '',
+      stock_number: initial.stock_number || '',
+      title: initial.title || '',
+      description: initial.description || '',
+      vendor_id: initial.vendor_id || '',
+      assigned_to: initial.assigned_to || '',
+      finance_manager_id: initial.finance_manager_id || '',
+      delivery_coordinator_id: initial.delivery_coordinator_id || '',
+      customer_mobile: initial.customer_mobile || '',
+      customer_needs_loaner: !!initial.customer_needs_loaner,
+      lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
+      promised_date: initial.promised_date || '',
+      scheduled_start_time: initial.scheduled_start_time || '',
+      scheduled_end_time: initial.scheduled_end_time || '',
+      calendar_notes: initial.calendar_notes || '',
+    })
+  )
 
   useEffect(() => {
     let mounted = true
@@ -196,6 +218,35 @@ export default function DealForm({
   const removeLineItem = (idx) =>
     setForm((p) => ({ ...p, lineItems: p.lineItems.filter((_, i) => i !== idx) }))
 
+  // Dirty tracking for unsaved-changes guard
+  const isDirty = useMemo(() => {
+    try {
+      return JSON.stringify(form) !== initialSnapshot
+    } catch {
+      return true
+    }
+  }, [form, initialSnapshot])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (!isDirty || saving) return
+      e.preventDefault()
+      e.returnValue = ''
+      return ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty, saving])
+
+  const handleCancel = () => {
+    if (saving) return
+    if (isDirty) {
+      const ok = window.confirm('You have unsaved changes. Discard them?')
+      if (!ok) return
+    }
+    onCancel?.()
+  }
+
   const submit = async (e) => {
     e?.preventDefault?.()
     setSaving(true)
@@ -215,6 +266,15 @@ export default function DealForm({
         })
         setLineErrors(errs)
         setSaving(false)
+        // Focus first offending field for quicker correction
+        try {
+          const first = missingReasonIdxs[0]
+          const el = document.querySelector(
+            `[data-testid="no-schedule-reason-${'${'}first{'${'}'}"]`
+          )
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el?.focus?.()
+        } catch {}
         return
       } else {
         setLineErrors({})
@@ -256,6 +316,7 @@ export default function DealForm({
           { orgId, hasLineItems: payload?.lineItems?.length > 0 },
           true
         )
+        setSavedAt(Date.now())
       } else if (dealServicePromise) {
         const mod = await dealServicePromise
         const dealService = mod?.default ?? mod
@@ -285,6 +346,7 @@ export default function DealForm({
           { orgId, hasLineItems: payload?.lineItems?.length > 0 },
           true
         )
+        setSavedAt(Date.now())
       }
     } catch (err) {
       const msg = err?.message || String(err)
@@ -668,11 +730,7 @@ export default function DealForm({
         >
           {saving ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Create Deal'}
         </button>
-        <button
-          type="button"
-          onClick={() => onCancel?.()}
-          className="btn-mobile button-outline-enhanced"
-        >
+        <button type="button" onClick={handleCancel} className="btn-mobile button-outline-enhanced">
           Cancel
         </button>
       </section>
@@ -680,6 +738,11 @@ export default function DealForm({
       {errorMsg ? (
         <div className="mt-3 p-3 rounded bg-red-50 text-red-700" data-testid="save-error">
           {errorMsg}
+        </div>
+      ) : null}
+      {savedAt && !errorMsg ? (
+        <div className="mt-3 p-3 rounded bg-emerald-50 text-emerald-700" data-testid="save-success">
+          Saved successfully.
         </div>
       ) : null}
     </form>
