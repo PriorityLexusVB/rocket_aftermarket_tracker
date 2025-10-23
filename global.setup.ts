@@ -1,6 +1,17 @@
 import { chromium } from '@playwright/test'
 import fs from 'fs/promises'
 import path from 'path'
+// Ensure env vars (E2E_EMAIL/E2E_PASSWORD, PLAYWRIGHT_BASE_URL) load from .env.local/.env
+import dotenv from 'dotenv'
+import { existsSync } from 'fs'
+
+try {
+  const root = __dirname
+  for (const f of ['.env.local', '.env']) {
+    const p = path.resolve(root, f)
+    if (existsSync(p)) dotenv.config({ path: p })
+  }
+} catch {}
 
 export default async function globalSetup() {
   const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'

@@ -48,11 +48,15 @@ test.describe('Deal Form dropdowns and line items', () => {
 
     // Toggle scheduling off -> reason appears; then on -> reason disappears
     const requires = page.getByTestId('requires-scheduling-0')
-    await requires.check()
-    await requires.uncheck()
+    // Ensure initial state known
+    await expect(requires).toBeChecked()
+    // Toggle off via associated label to avoid styled-checkbox overlays
+    await page.locator('label[for="requiresScheduling-0"]').click()
+    await expect(requires).not.toBeChecked()
     const reason = page.getByTestId('no-schedule-reason-0')
     await expect(reason).toBeVisible()
-    await requires.check()
+    // Toggle back on
+    await page.locator('label[for="requiresScheduling-0"]').click()
     await expect(reason).toHaveCount(0)
   })
 })

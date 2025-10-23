@@ -8,7 +8,9 @@ test.describe('DealForm Unsaved Changes Guard', () => {
     await page.goto('/deals/new')
 
     // Type into Title to make form dirty
-    await page.getByTestId('title-input').fill('Tint Package')
+    const title = page.getByTestId('title-input')
+    await title.fill('Tint Package')
+    await expect(title).toHaveValue('Tint Package')
 
     // Click Cancel and intercept confirm dialog
     const [dialog] = await Promise.all([

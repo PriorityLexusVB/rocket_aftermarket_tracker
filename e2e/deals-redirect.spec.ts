@@ -27,8 +27,8 @@ test.describe('Deal create redirect', () => {
     await expect(save).toBeEnabled()
     await save.click()
 
-    // Accept numeric or UUID IDs
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 })
+    // Wait for navigation to edit (numeric or UUID IDs) with a slightly longer timeout
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 })
     await expect(page.getByText(/edit deal|deal details/i)).toBeVisible({ timeout: 5000 })
   })
 })

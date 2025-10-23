@@ -71,7 +71,21 @@ export const ACTION_TYPES = {
 class AppLogger {
   constructor() {
     this.isEnabled = true
-    this.consoleEnabled = process.env?.NODE_ENV === 'development'
+    // Determine dev mode safely across Vite (browser) and Node (tests)
+    let isDev = false
+    try {
+      // Vite exposes import.meta.env.DEV in the browser
+      // Guard in case import.meta is not available (older tooling)
+      // eslint-disable-next-line no-undef
+      isDev = Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV)
+    } catch (_) {
+      // no-op
+    }
+    if (!isDev && typeof process !== 'undefined') {
+      // Fallback for Node/test environments
+      isDev = process.env?.NODE_ENV === 'development'
+    }
+    this.consoleEnabled = isDev
   }
 
   /**

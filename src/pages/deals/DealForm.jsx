@@ -68,6 +68,32 @@ export default function DealForm({
     calendar_notes: initial.calendar_notes || '',
   })
 
+  // Keep local form state in sync when parent provides a new initial (e.g., after save/refetch or route change)
+  useEffect(() => {
+    setForm({
+      id: initial.id || undefined,
+      job_number: initial.job_number || '',
+      vehicle_id: initial.vehicle_id || '',
+      stock_number: initial.stock_number || '',
+      title: initial.title || '',
+      description: initial.description || '',
+      vendor_id: initial.vendor_id || '',
+      assigned_to: initial.assigned_to || '',
+      finance_manager_id: initial.finance_manager_id || '',
+      delivery_coordinator_id: initial.delivery_coordinator_id || '',
+      customer_mobile: initial.customer_mobile || '',
+      customer_needs_loaner: !!initial.customer_needs_loaner,
+      lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
+      promised_date: initial.promised_date || '',
+      scheduled_start_time: initial.scheduled_start_time || '',
+      scheduled_end_time: initial.scheduled_end_time || '',
+      calendar_notes: initial.calendar_notes || '',
+    })
+    // We intentionally do not update initialSnapshot here to preserve dirty tracking vs the very first load.
+    // The UnsavedChangesGuard still works because isDirty compares to the original initialSnapshot.
+    // For edit-after-save UX, the toast/success banner is shown and the new values render from props.
+  }, [initial])
+
   const { orgId } = useTenant()
   const { logFormSubmission, logError } = useLogger()
   const toast = useToast?.()

@@ -1,4 +1,17 @@
 import { defineConfig, devices } from '@playwright/test'
+// Load env vars from .env.local/.env so Playwright tests (and globalSetup) can access E2E_EMAIL/E2E_PASSWORD
+import dotenv from 'dotenv'
+import { existsSync } from 'fs'
+import path from 'path'
+
+try {
+  const root = __dirname
+  const envFiles = ['.env.local', '.env']
+  for (const f of envFiles) {
+    const p = path.resolve(root, f)
+    if (existsSync(p)) dotenv.config({ path: p })
+  }
+} catch {}
 
 export default defineConfig({
   testDir: './e2e',
