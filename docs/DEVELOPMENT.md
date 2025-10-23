@@ -58,3 +58,35 @@ pnpm run e2e
 In development, `/debug-auth` is available after signing in and shows session, org, and counts used to finalize RLS policies.
 
 If you see permission errors in the console while navigating (e.g., vehicles/photos/calendar), copy them verbatim so we can propose minimal SQL policies.
+
+## 6) Copilot tools and MCP (Playwright)
+
+Short answer: partly.
+
+- `.vscode/extensions.json` only tells VS Code which extensions to recommend/install. It does not by itself make Copilot “use” those extensions.
+- Copilot can actively use tools that are exposed to it via MCP (Model Context Protocol) or a dedicated Copilot integration. In this repo, Playwright is exposed to Copilot because we added `.vscode/mcp.json` pointing at `npx @playwright/mcp`. That’s the bit that actually “tells” Copilot about a tool it can invoke.
+
+What this means:
+
+- ESLint/Prettier/Tailwind/Error Lens/Supabase extensions → improve editor DX, diagnostics, code actions. Copilot benefits indirectly (better code, fewer errors), but it doesn’t “drive” them.
+- Playwright MCP → Copilot can drive a real browser, click through the app, and verify flows. This is the tool Copilot can actually “use” programmatically.
+
+How to make sure Copilot knows and can use it
+
+1. Install the recommendations
+   - Open the Extensions panel → “Workspace Recommendations” → Install All.
+
+2. Start the Playwright MCP server
+   - We added `.vscode/mcp.json` with a Playwright server. In Copilot Chat, ask:
+     - “Start the Playwright MCP server and confirm it’s connected. List all available MCP tools.”
+
+3. Verify Copilot can actually use it
+   - In Copilot Chat, ask:
+     - “Using the Playwright MCP tool, open <http://localhost:5173/debug-auth> and report the session and org counts. Then create a new Deal and confirm we’re redirected to /deals/:id/edit. If selectors are missing, patch the app to add data-testids and retry.”
+
+If Copilot replies with tool names including Playwright, you’re all set. If not, it means the server didn’t start—have it run `npx @playwright/mcp` (it may prompt) or start it from the ▶️ next to the server entry in `.vscode/mcp.json`.
+
+TL;DR
+
+- Yes for Playwright: our MCP config does “tell” Copilot about Playwright so it can use a browser.
+- No for the rest: `.vscode/extensions.json` is just recommendations; Copilot doesn’t automatically “use” ESLint/Prettier/Tailwind/Supabase extensions.

@@ -4,11 +4,14 @@
     "dbaeumer.vscode-eslint",
     "bradlc.vscode-tailwindcss",
     "github.copilot",
+    "GitHub.copilot-chat",
     "github.vscode-pull-request-github",
     "eamodio.gitlens",
     "streetsidesoftware.code-spell-checker",
     "yoavbls.pretty-ts-errors",
     "usernamehw.errorlens",
-    "supabase.vscode"
+    "supabase.vscode",
+    "ms-playwright.playwright",
+    "editorconfig.editorconfig"
   ]
 }

@@ -1,21 +1,29 @@
-import React, { useEffect } from 'react';
-import { suppressResizeObserverLoopError, initGlobalErrorSuppression } from './utils/resizeObserverHelper';
-import Routes from './Routes';
+import React, { useEffect } from 'react'
+import {
+  suppressResizeObserverLoopError,
+  initGlobalErrorSuppression,
+} from './utils/resizeObserverHelper'
+import Routes from './Routes'
+import { ToastProvider } from './components/ui/ToastProvider'
 
 function App() {
   // Lightweight ResizeObserver error suppression
   useEffect(() => {
     // Initialize basic error suppression
-    const cleanup1 = suppressResizeObserverLoopError();
-    const cleanup2 = initGlobalErrorSuppression();
-    
-    return () => {
-      cleanup1?.();
-      cleanup2?.();
-    };
-  }, []);
+    const cleanup1 = suppressResizeObserverLoopError()
+    const cleanup2 = initGlobalErrorSuppression()
 
-  return <Routes />;
+    return () => {
+      cleanup1?.()
+      cleanup2?.()
+    }
+  }, [])
+
+  return (
+    <ToastProvider>
+      <Routes />
+    </ToastProvider>
+  )
 }
 
-export default App;
+export default App

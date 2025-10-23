@@ -10,6 +10,8 @@ import {
 import { listVendorsByOrg, listProductsByOrg, listStaffByOrg } from '../../services/tenantService'
 import useTenant from '../../hooks/useTenant'
 import { useLogger } from '../../hooks/useLogger'
+import UnsavedChangesGuard from '../../components/common/UnsavedChangesGuard'
+import { useToast } from '../../components/ui/ToastProvider'
 
 // Optional fallback to service-layer create/update if parent didn't pass onSave
 let dealServicePromise
@@ -68,6 +70,7 @@ export default function DealForm({
 
   const { orgId } = useTenant()
   const { logFormSubmission, logError } = useLogger()
+  const toast = useToast?.()
   const [initialSnapshot] = useState(() =>
     JSON.stringify({
       id: initial.id || undefined,
@@ -317,6 +320,9 @@ export default function DealForm({
           true
         )
         setSavedAt(Date.now())
+        try {
+          toast?.success?.('Saved successfully')
+        } catch {}
       } else if (dealServicePromise) {
         const mod = await dealServicePromise
         const dealService = mod?.default ?? mod
@@ -347,6 +353,9 @@ export default function DealForm({
           true
         )
         setSavedAt(Date.now())
+        try {
+          toast?.success?.('Saved successfully')
+        } catch {}
       }
     } catch (err) {
       const msg = err?.message || String(err)
@@ -745,6 +754,7 @@ export default function DealForm({
           Saved successfully.
         </div>
       ) : null}
+      <UnsavedChangesGuard isDirty={isDirty} isSubmitting={saving} />
     </form>
   )
 }
