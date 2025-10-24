@@ -1,22 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { getDeal, updateDeal, deleteDeal, mapDbDealToForm } from '../../../services/dealService';
-import { supabase } from '../../../lib/supabase';
-import { useDealFormDropdowns } from '../../../hooks/useDropdownData';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-import SearchableSelect from '../../../components/ui/SearchableSelect';
-import Icon from '../../../components/ui/Icon';
+import React, { useEffect, useState } from 'react'
+import { getDeal, updateDeal, deleteDeal, mapDbDealToForm } from '../../../services/dealService'
+import { supabase } from '../../../lib/supabase'
+import { useDealFormDropdowns } from '../../../hooks/useDropdownData'
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
+import SearchableSelect from '../../../components/ui/SearchableSelect'
+import Icon from '../../../components/ui/Icon'
 
 const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
-  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
-  const [initialFormData, setInitialFormData] = useState(null);
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
+  const [initialFormData, setInitialFormData] = useState(null)
 
   // Enhanced dropdown data
   const {
@@ -26,12 +26,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     vendors,
     products,
     loading: dropdownLoading,
-    refresh: refreshDropdowns
-  } = useDealFormDropdowns();
+    refresh: refreshDropdowns,
+  } = useDealFormDropdowns()
 
   // Form state
   const [formData, setFormData] = useState({
-    title: '',
     customerName: '',
     customerPhone: '',
     customerEmail: '',
@@ -39,45 +38,45 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     priority: 'medium',
     customer_needs_loaner: false,
     financeManager: null,
-    lineItems: []
-  });
+    lineItems: [],
+  })
 
   // Dirty state tracking
   useEffect(() => {
     if (initialFormData) {
-      const hasChanges = JSON.stringify(formData) !== JSON.stringify(initialFormData);
-      setIsDirty(hasChanges);
+      const hasChanges = JSON.stringify(formData) !== JSON.stringify(initialFormData)
+      setIsDirty(hasChanges)
     }
-  }, [formData, initialFormData]);
+  }, [formData, initialFormData])
 
   // Load dropdown data when modal opens
   useEffect(() => {
     if (isOpen && !dropdownLoading) {
-      refreshDropdowns();
+      refreshDropdowns()
     }
-  }, [isOpen, refreshDropdowns, dropdownLoading]);
+  }, [isOpen, refreshDropdowns, dropdownLoading])
 
   // Load deal data
   useEffect(() => {
     if (isOpen && dealId) {
-      loadDealData();
+      loadDealData()
     }
-  }, [isOpen, dealId]);
+  }, [isOpen, dealId])
 
   // Enhanced Loaner Checkbox with mobile optimization and click propagation handling
   const LoanerCheckbox = ({ checked, onChange }) => (
-    <div 
-      className="bg-slate-50 p-4 rounded-lg border"
-      onClick={(e) => e?.stopPropagation()}
-    >
-      <label htmlFor="customer_needs_loaner" className="inline-flex items-center gap-3 min-h-11 px-2 cursor-pointer">
+    <div className="bg-slate-50 p-4 rounded-lg border" onClick={(e) => e?.stopPropagation()}>
+      <label
+        htmlFor="customer_needs_loaner"
+        className="inline-flex items-center gap-3 min-h-11 px-2 cursor-pointer"
+      >
         <input
           id="customer_needs_loaner"
           type="checkbox"
           checked={Boolean(checked)}
           onChange={(e) => {
-            e?.stopPropagation();
-            onChange(e?.target?.checked);
+            e?.stopPropagation()
+            onChange(e?.target?.checked)
           }}
           onClick={(e) => e?.stopPropagation()}
           className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -88,7 +87,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
         </span>
       </label>
     </div>
-  );
+  )
 
   // Enhanced Service Type Radio with proper mobile accessibility
   const ServiceTypeRadio = ({ value, selectedValue, onChange, itemIndex, disabled = false }) => (
@@ -104,9 +103,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
           data-testid="service-type-in-house"
           disabled={disabled}
         />
-        <span className="text-sm text-gray-700 select-none">
-          🏠 On-Site
-        </span>
+        <span className="text-sm text-gray-700 select-none">🏠 On-Site</span>
       </label>
       <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
         <input
@@ -119,12 +116,10 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
           data-testid="service-type-vendor"
           disabled={disabled}
         />
-        <span className="text-sm text-gray-700 select-none">
-          🏢 Off-Site
-        </span>
+        <span className="text-sm text-gray-700 select-none">🏢 Off-Site</span>
       </label>
     </div>
-  );
+  )
 
   // Enhanced Scheduling Radio with mobile optimization
   const SchedulingRadio = ({ requiresScheduling, onChange, itemIndex, disabled = false }) => (
@@ -139,9 +134,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
           data-testid="requires-scheduling-yes"
           disabled={disabled}
         />
-        <span className="text-sm text-gray-700 select-none">
-          Needs scheduling
-        </span>
+        <span className="text-sm text-gray-700 select-none">Needs scheduling</span>
       </label>
       <label className="inline-flex items-center gap-2 min-h-11 px-2 cursor-pointer">
         <input
@@ -153,40 +146,43 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
           data-testid="requires-scheduling-no"
           disabled={disabled}
         />
-        <span className="text-sm text-gray-700 select-none">
-          No scheduling needed
-        </span>
+        <span className="text-sm text-gray-700 select-none">No scheduling needed</span>
       </label>
     </div>
-  );
+  )
 
   const loadDealData = async () => {
     try {
-      setLoading(true);
-      setError('');
-      
-      const deal = await getDeal(dealId);
-      const formDeal = mapDbDealToForm(deal);
+      setLoading(true)
+      setError('')
+
+      const deal = await getDeal(dealId)
+      const formDeal = mapDbDealToForm(deal)
 
       // Get transaction data for customer info
-      const { data: transaction } = await supabase?.from('transactions')?.select('customer_name, customer_phone, customer_email')?.eq('job_id', dealId)?.single();
+      const { data: transaction } = await supabase
+        ?.from('transactions')
+        ?.select('customer_name, customer_phone, customer_email')
+        ?.eq('job_id', dealId)
+        ?.single()
 
       const loadedFormData = {
         ...formDeal,
         customerName: transaction?.customer_name || '',
         customerPhone: transaction?.customer_phone || '',
         customerEmail: transaction?.customer_email || '',
-        lineItems: (formDeal?.lineItems || [])?.length > 0 ? formDeal?.lineItems : [createEmptyLineItem()]
-      };
+        lineItems:
+          (formDeal?.lineItems || [])?.length > 0 ? formDeal?.lineItems : [createEmptyLineItem()],
+      }
 
-      setFormData(loadedFormData);
-      setInitialFormData(JSON.parse(JSON.stringify(loadedFormData))); // Deep copy for comparison
+      setFormData(loadedFormData)
+      setInitialFormData(JSON.parse(JSON.stringify(loadedFormData))) // Deep copy for comparison
     } catch (err) {
-      setError(`Failed to load deal: ${err?.message}`);
+      setError(`Failed to load deal: ${err?.message}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const createEmptyLineItem = () => ({
     product_id: null,
@@ -196,115 +192,110 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     requiresScheduling: false,
     noScheduleReason: '',
     isOffSite: false,
-    description: ''
-  });
+    description: '',
+  })
 
   const updateFormData = (updates) => {
-    setFormData(prev => ({ ...prev, ...updates }));
-  };
+    setFormData((prev) => ({ ...prev, ...updates }))
+  }
 
   const updateLineItem = (index, updates) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       lineItems: prev?.lineItems?.map((item, i) => {
         if (i === index) {
-          let updatedItem = { ...item, ...updates };
-          
+          let updatedItem = { ...item, ...updates }
+
           // Boolean coercion and paired field clearing
           if ('requiresScheduling' in updates) {
-            updatedItem.requiresScheduling = Boolean(updates?.requiresScheduling);
+            updatedItem.requiresScheduling = Boolean(updates?.requiresScheduling)
             if (updates?.requiresScheduling === true) {
-              updatedItem.noScheduleReason = '';
+              updatedItem.noScheduleReason = ''
             } else {
-              updatedItem.lineItemPromisedDate = '';
+              updatedItem.lineItemPromisedDate = ''
             }
           }
-          
+
           if ('isOffSite' in updates) {
-            updatedItem.isOffSite = Boolean(updates?.isOffSite);
+            updatedItem.isOffSite = Boolean(updates?.isOffSite)
             if (!updates?.isOffSite) {
-              updatedItem.vendorId = '';
+              updatedItem.vendorId = ''
             }
           }
-          
-          return updatedItem;
+
+          return updatedItem
         }
-        return item;
-      })
-    }));
+        return item
+      }),
+    }))
 
     // Auto-populate price when product is selected
     if (updates?.product_id) {
-      const selectedProduct = products?.find(p => p?.id === updates?.product_id);
+      const selectedProduct = products?.find((p) => p?.id === updates?.product_id)
       if (selectedProduct) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
-          lineItems: prev?.lineItems?.map((item, i) => 
-            i === index 
-              ? { 
-                  ...item, 
-                  unit_price: selectedProduct?.unitPrice || selectedProduct?.unit_price || item?.unit_price,
-                  cost_price: selectedProduct?.cost || item?.cost_price
-                } 
+          lineItems: prev?.lineItems?.map((item, i) =>
+            i === index
+              ? {
+                  ...item,
+                  unit_price:
+                    selectedProduct?.unitPrice || selectedProduct?.unit_price || item?.unit_price,
+                  cost_price: selectedProduct?.cost || item?.cost_price,
+                }
               : item
-          )
-        }));
+          ),
+        }))
       }
     }
-  };
+  }
 
   const addLineItem = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      lineItems: [...prev?.lineItems, createEmptyLineItem()]
-    }));
-  };
+      lineItems: [...prev?.lineItems, createEmptyLineItem()],
+    }))
+  }
 
   const removeLineItem = (index) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      lineItems: prev?.lineItems?.filter((_, i) => i !== index)
-    }));
-  };
+      lineItems: prev?.lineItems?.filter((_, i) => i !== index),
+    }))
+  }
 
   const handleSave = async () => {
     try {
-      setSaving(true);
-      setError('');
-
-      // Validate required fields
-      if (!formData?.title?.trim()) {
-        setError('Title is required');
-        return;
-      }
+      setSaving(true)
+      setError('')
 
       if (!formData?.customerName?.trim()) {
-        setError('Customer name is required');
-        return;
+        setError('Customer name is required')
+        return
       }
 
       // Validate line items with scheduling
       for (let i = 0; i < formData?.lineItems?.length; i++) {
-        const item = formData?.lineItems?.[i];
-        
+        const item = formData?.lineItems?.[i]
+
         if (!item?.product_id) {
-          setError(`Line item ${i + 1}: Product is required`);
-          return;
+          setError(`Line item ${i + 1}: Product is required`)
+          return
         }
 
         if (item?.requiresScheduling && !item?.lineItemPromisedDate) {
-          setError(`Line item ${i + 1}: Promised date is required when scheduling is needed`);
-          return;
+          setError(`Line item ${i + 1}: Promised date is required when scheduling is needed`)
+          return
         }
 
         if (!item?.requiresScheduling && !item?.noScheduleReason?.trim()) {
-          setError(`Line item ${i + 1}: Reason is required when no scheduling is needed`);
-          return;
+          setError(`Line item ${i + 1}: Reason is required when no scheduling is needed`)
+          return
         }
 
         if (item?.isOffSite && !item?.vendorId) {
-          setError(`Line item ${i + 1}: Vendor is required for off-site service`);
-          return;
+          setError(`Line item ${i + 1}: Vendor is required for off-site service`)
+          return
         }
       }
 
@@ -312,64 +303,66 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
       const updatedFormData = {
         ...formData,
         customer_needs_loaner: Boolean(formData?.customer_needs_loaner),
-        lineItems: formData?.lineItems?.map(item => ({
+        lineItems: formData?.lineItems?.map((item) => ({
           ...item,
           requiresScheduling: Boolean(item?.requiresScheduling),
           isOffSite: Boolean(item?.isOffSite),
           unit_price: parseFloat(item?.unit_price) || 0,
-          quantity_used: parseInt(item?.quantity_used) || 1
-        }))
-      };
+          quantity_used: parseInt(item?.quantity_used) || 1,
+        })),
+      }
 
-      await updateDeal(dealId, updatedFormData);
-      
-      onSuccess?.();
-      onClose?.();
+      await updateDeal(dealId, updatedFormData)
+
+      onSuccess?.()
+      onClose?.()
     } catch (err) {
-      setError(`Failed to save deal: ${err?.message}`);
+      setError(`Failed to save deal: ${err?.message}`)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const handleDelete = async () => {
     try {
-      setDeleting(true);
-      await deleteDeal(dealId);
-      onSuccess?.();
-      onClose?.();
+      setDeleting(true)
+      await deleteDeal(dealId)
+      onSuccess?.()
+      onClose?.()
     } catch (err) {
-      setError(`Failed to delete deal: ${err?.message}`);
+      setError(`Failed to delete deal: ${err?.message}`)
     } finally {
-      setDeleting(false);
-      setDeleteConfirm(false);
+      setDeleting(false)
+      setDeleteConfirm(false)
     }
-  };
+  }
 
   // Enhanced close handler with unsaved changes guard
   const handleClose = () => {
     if (isDirty) {
-      setShowUnsavedWarning(true);
+      setShowUnsavedWarning(true)
     } else {
-      onClose();
+      onClose()
     }
-  };
+  }
 
   const confirmClose = () => {
-    setShowUnsavedWarning(false);
-    onClose();
-  };
+    setShowUnsavedWarning(false)
+    onClose()
+  }
 
   // Calculate total with guard for NaN
   const calculateTotal = () => {
-    return formData?.lineItems?.reduce((total, item) => {
-      const price = parseFloat(item?.unit_price) || 0;
-      const quantity = parseInt(item?.quantity_used) || 1;
-      return total + (price * quantity);
-    }, 0) || 0;
-  };
+    return (
+      formData?.lineItems?.reduce((total, item) => {
+        const price = parseFloat(item?.unit_price) || 0
+        const quantity = parseInt(item?.quantity_used) || 1
+        return total + price * quantity
+      }, 0) || 0
+    )
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -409,26 +402,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                 {/* Basic Info with mobile-first layout */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Deal Title *
-                    </label>
-                    <Input
-                      id="deal-title"
-                      aria-label="Deal title input"
-                      label=""
-                      helperText=""
-                      maxLength={255}
-                      style={{}}
-                      value={formData?.title}
-                      onChange={(e) => updateFormData({ title: e?.target?.value })}
-                      placeholder="Enter deal title"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <Select
                       value={formData?.job_status}
                       onChange={(e) => updateFormData({ job_status: e?.target?.value })}
@@ -493,9 +467,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Priority
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                     <Select
                       value={formData?.priority}
                       onChange={(e) => updateFormData({ priority: e?.target?.value })}
@@ -513,9 +485,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   <h4 className="text-lg font-medium text-gray-900 mb-4">Vehicle Information</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Year
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
                       <Input
                         id="vehicle-year"
                         aria-label="Vehicle year input"
@@ -532,9 +502,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Make
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Make</label>
                       <Input
                         id="vehicle-make"
                         aria-label="Vehicle make input"
@@ -548,9 +516,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Model
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Model</label>
                       <Input
                         id="vehicle-model"
                         aria-label="Vehicle model input"
@@ -591,7 +557,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                 {/* Dealer Representatives */}
                 <div className="bg-slate-50 p-4 rounded-lg border">
                   <h4 className="text-lg font-medium text-gray-900 mb-4">Dealer Representatives</h4>
-                  
+
                   {/* Sales Consultant */}
                   <div className="mb-4">
                     <SearchableSelect
@@ -608,7 +574,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   {/* Delivery Coordinator */}
                   <div className="mb-4">
                     <SearchableSelect
-                      label="Delivery Coordinator" 
+                      label="Delivery Coordinator"
                       options={deliveryCoordinators}
                       value={formData?.deliveryCoordinator}
                       onChange={(value) => updateFormData({ deliveryCoordinator: value })}
@@ -673,7 +639,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                               label="Product *"
                               options={products}
                               value={item?.product_id || ''}
-                              onChange={(value) => updateLineItem(index, { product_id: value ? parseInt(value) : null })}
+                              onChange={(value) =>
+                                updateLineItem(index, {
+                                  product_id: value ? parseInt(value) : null,
+                                })
+                              }
                               placeholder="Select product"
                               searchable={true}
                               clearable={true}
@@ -695,7 +665,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                               type="number"
                               step="0.01"
                               value={item?.unit_price}
-                              onChange={(e) => updateLineItem(index, { unit_price: parseFloat(e?.target?.value) || 0 })}
+                              onChange={(e) =>
+                                updateLineItem(index, {
+                                  unit_price: parseFloat(e?.target?.value) || 0,
+                                })
+                              }
                               placeholder="0.00"
                             />
                           </div>
@@ -714,7 +688,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                               type="number"
                               min="1"
                               value={item?.quantity_used}
-                              onChange={(e) => updateLineItem(index, { quantity_used: parseInt(e?.target?.value) || 1 })}
+                              onChange={(e) =>
+                                updateLineItem(index, {
+                                  quantity_used: parseInt(e?.target?.value) || 1,
+                                })
+                              }
                               placeholder="1"
                             />
                           </div>
@@ -751,11 +729,13 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                         {/* Scheduling with enhanced styling */}
                         <div className="bg-white rounded-lg p-4 border">
                           <h5 className="font-medium text-gray-900 mb-3">Scheduling</h5>
-                          
+
                           <div className="mb-3">
                             <SchedulingRadio
                               requiresScheduling={item?.requiresScheduling}
-                              onChange={(value) => updateLineItem(index, { requiresScheduling: value })}
+                              onChange={(value) =>
+                                updateLineItem(index, { requiresScheduling: value })
+                              }
                               itemIndex={index}
                             />
                           </div>
@@ -775,7 +755,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                                   style={{}}
                                   type="date"
                                   value={item?.lineItemPromisedDate}
-                                  onChange={(e) => updateLineItem(index, { lineItemPromisedDate: e?.target?.value })}
+                                  onChange={(e) =>
+                                    updateLineItem(index, {
+                                      lineItemPromisedDate: e?.target?.value,
+                                    })
+                                  }
                                   min={new Date()?.toISOString()?.split('T')?.[0]}
                                   placeholder=""
                                 />
@@ -792,7 +776,9 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                                   maxLength={500}
                                   style={{}}
                                   value={item?.description || ''}
-                                  onChange={(e) => updateLineItem(index, { description: e?.target?.value })}
+                                  onChange={(e) =>
+                                    updateLineItem(index, { description: e?.target?.value })
+                                  }
                                   placeholder="Special instructions..."
                                 />
                               </div>
@@ -810,7 +796,9 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                                 maxLength={255}
                                 style={{}}
                                 value={item?.noScheduleReason}
-                                onChange={(e) => updateLineItem(index, { noScheduleReason: e?.target?.value })}
+                                onChange={(e) =>
+                                  updateLineItem(index, { noScheduleReason: e?.target?.value })
+                                }
                                 placeholder="e.g., installed at delivery, no appointment needed"
                               />
                             </div>
@@ -819,7 +807,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
 
                         {/* Line Total with NaN guard */}
                         <div className="text-right mt-3 text-sm text-gray-600">
-                          Line Total: ${((parseFloat(item?.unit_price) || 0) * (parseInt(item?.quantity_used) || 1))?.toFixed(2)}
+                          Line Total: $
+                          {(
+                            (parseFloat(item?.unit_price) || 0) *
+                            (parseInt(item?.quantity_used) || 1)
+                          )?.toFixed(2)}
                         </div>
                       </div>
                     ))}
@@ -850,12 +842,12 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
             <Icon name="Trash2" size={16} className="mr-2" />
             Delete Deal
           </Button>
-          
+
           <div className="flex space-x-3 w-full md:w-auto">
-            <Button 
-              className="w-full md:w-auto h-11" 
+            <Button
+              className="w-full md:w-auto h-11"
               aria-label="Cancel editing"
-              variant="outline" 
+              variant="outline"
               onClick={handleClose}
             >
               Cancel
@@ -877,7 +869,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
             <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
               <h3 className="text-lg font-semibold mb-4">Delete Deal</h3>
               <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this deal and all its line items? This action cannot be undone.
+                Are you sure you want to delete this deal and all its line items? This action cannot
+                be undone.
               </p>
               <div className="flex space-x-3">
                 <Button
@@ -931,7 +924,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default EditDealModal;
+export default EditDealModal

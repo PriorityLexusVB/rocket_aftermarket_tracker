@@ -53,7 +53,6 @@ export default function DealForm({
     job_number: initial.job_number || '',
     vehicle_id: initial.vehicle_id || '',
     stock_number: initial.stock_number || '', // display only if you don’t want editable
-    title: initial.title || '',
     description: initial.description || '',
     vendor_id: initial.vendor_id || '',
     assigned_to: initial.assigned_to || '',
@@ -76,7 +75,6 @@ export default function DealForm({
       initial &&
       (initial.id ||
         initial.job_number ||
-        initial.title ||
         (Array.isArray(initial.lineItems) && initial.lineItems.length > 0))
     if (!hasMeaningfulInitial) return
 
@@ -85,7 +83,6 @@ export default function DealForm({
       job_number: initial.job_number || '',
       vehicle_id: initial.vehicle_id || '',
       stock_number: initial.stock_number || '',
-      title: initial.title || '',
       description: initial.description || '',
       vendor_id: initial.vendor_id || '',
       assigned_to: initial.assigned_to || '',
@@ -113,7 +110,6 @@ export default function DealForm({
       job_number: initial.job_number || '',
       vehicle_id: initial.vehicle_id || '',
       stock_number: initial.stock_number || '',
-      title: initial.title || '',
       description: initial.description || '',
       vendor_id: initial.vendor_id || '',
       assigned_to: initial.assigned_to || '',
@@ -502,19 +498,6 @@ export default function DealForm({
       {/* Primary Info */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Title</label>
-          <input
-            data-testid="title-input"
-            type="text"
-            value={form.title}
-            onChange={(e) => handleChange('title', e.target.value)}
-            className="mt-1 input-mobile w-full"
-            placeholder="Describe the job"
-            required
-          />
-        </div>
-
-        <div>
           <label className="block text-sm font-medium text-slate-700">Vendor</label>
           <select
             data-testid="vendor-select"
@@ -536,7 +519,7 @@ export default function DealForm({
           )}
         </div>
 
-        <div className="md:col-span-2">
+        <div>
           <label className="block text-sm font-medium text-slate-700">Description</label>
           <textarea
             data-testid="description-input"

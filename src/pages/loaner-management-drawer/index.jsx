@@ -1,40 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
-import Navbar from '../../components/ui/Navbar';
-import Button from '../../components/ui/Button';
-import Icon from '../../components/ui/Icon';
+import React, { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
+import Navbar from '../../components/ui/Navbar'
+import Button from '../../components/ui/Button'
+import Icon from '../../components/ui/Icon'
 
 export default function LoanerManagementDrawer() {
-  const { user } = useAuth();
-  const [loaners, setLoaners] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedJob, setSelectedJob] = useState(null);
+  const { user } = useAuth()
+  const [loaners, setLoaners] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [selectedJob, setSelectedJob] = useState(null)
   const [inventory, setInventory] = useState({
     available: 0,
     assigned: 0,
-    overdue: 0
-  });
+    overdue: 0,
+  })
 
   // Loaner assignment form state
   const [assignmentForm, setAssignmentForm] = useState({
     loaner_number: '',
     eta_return_date: '',
-    notes: ''
-  });
+    notes: '',
+  })
 
   // Load loaner data
   const loadLoaners = async () => {
     try {
-      setLoading(true);
-      setError('');
+      setLoading(true)
+      setError('')
 
       // Get all loaner assignments with job and customer data
       const { data: assignments, error: assignmentsError } = await supabase
         ?.from('loaner_assignments')
-        ?.select(`
+        ?.select(
+          `
           id,
           job_id,
           loaner_number,
@@ -51,42 +52,42 @@ export default function LoanerManagementDrawer() {
               customer_phone
             )
           )
-        `)
-        ?.order('created_at', { ascending: false });
+        `
+        )
+        ?.order('created_at', { ascending: false })
 
-      if (assignmentsError) throw assignmentsError;
+      if (assignmentsError) throw assignmentsError
 
       // Calculate inventory stats
-      const today = new Date();
-      const assigned = assignments?.filter(a => !a?.returned_at)?.length || 0;
-      const overdue = assignments?.filter(a => 
-        !a?.returned_at && 
-        new Date(a?.eta_return_date) < today
-      )?.length || 0;
+      const today = new Date()
+      const assigned = assignments?.filter((a) => !a?.returned_at)?.length || 0
+      const overdue =
+        assignments?.filter((a) => !a?.returned_at && new Date(a?.eta_return_date) < today)
+          ?.length || 0
 
-      setLoaners(assignments || []);
+      setLoaners(assignments || [])
       setInventory({
         available: Math.max(0, 10 - assigned), // Assuming 10 total loaners
         assigned,
-        overdue
-      });
-
+        overdue,
+      })
     } catch (err) {
-      setError(`Failed to load loaner data: ${err?.message}`);
-      console.error('Load loaners error:', err);
+      setError(`Failed to load loaner data: ${err?.message}`)
+      console.error('Load loaners error:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   // Load jobs that need loaners
-  const [jobsNeedingLoaners, setJobsNeedingLoaners] = useState([]);
+  const [jobsNeedingLoaners, setJobsNeedingLoaners] = useState([])
 
   const loadJobsNeedingLoaners = async () => {
     try {
       const { data: jobs, error } = await supabase
         ?.from('jobs')
-        ?.select(`
+        ?.select(
+          `
           id,
           title,
           customer_needs_loaner,
@@ -98,128 +99,132 @@ export default function LoanerManagementDrawer() {
             id,
             returned_at
           )
-        `)
+        `
+        )
         ?.eq('customer_needs_loaner', true)
-        ?.in('job_status', ['pending', 'in_progress']);
+        ?.in('job_status', ['pending', 'in_progress'])
 
-      if (error) throw error;
+      if (error) throw error
 
       // Filter jobs that don't have active loaner assignments
-      const jobsWithoutActiveLoaners = jobs?.filter(job => {
-        const hasActiveLoaner = job?.loaner_assignments?.some(la => !la?.returned_at);
-        return !hasActiveLoaner;
-      });
+      const jobsWithoutActiveLoaners = jobs?.filter((job) => {
+        const hasActiveLoaner = job?.loaner_assignments?.some((la) => !la?.returned_at)
+        return !hasActiveLoaner
+      })
 
-      setJobsNeedingLoaners(jobsWithoutActiveLoaners || []);
+      setJobsNeedingLoaners(jobsWithoutActiveLoaners || [])
     } catch (err) {
-      console.error('Load jobs needing loaners error:', err);
+      console.error('Load jobs needing loaners error:', err)
     }
-  };
+  }
 
   // Handle loaner assignment
   const handleAssignLoaner = async () => {
-    if (!selectedJob || !assignmentForm?.loaner_number?.trim() || !assignmentForm?.eta_return_date) {
-      setError('Please fill in all required fields');
-      return;
+    if (
+      !selectedJob ||
+      !assignmentForm?.loaner_number?.trim() ||
+      !assignmentForm?.eta_return_date
+    ) {
+      setError('Please fill in all required fields')
+      return
     }
 
     try {
-      setError('');
-      
-      const { error } = await supabase
-        ?.from('loaner_assignments')
-        ?.insert([{
+      setError('')
+
+      const { error } = await supabase?.from('loaner_assignments')?.insert([
+        {
           job_id: selectedJob?.id,
           loaner_number: assignmentForm?.loaner_number?.trim(),
           eta_return_date: assignmentForm?.eta_return_date,
-          notes: assignmentForm?.notes?.trim() || null
-        }]);
+          notes: assignmentForm?.notes?.trim() || null,
+        },
+      ])
 
-      if (error) throw error;
+      if (error) throw error
 
       // Reset form and close modal
-      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' });
-      setShowAssignModal(false);
-      setSelectedJob(null);
-      
-      // Reload data
-      await Promise.all([loadLoaners(), loadJobsNeedingLoaners()]);
+      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' })
+      setShowAssignModal(false)
+      setSelectedJob(null)
 
+      // Reload data
+      await Promise.all([loadLoaners(), loadJobsNeedingLoaners()])
     } catch (err) {
-      setError(`Failed to assign loaner: ${err?.message}`);
+      setError(`Failed to assign loaner: ${err?.message}`)
     }
-  };
+  }
 
   // Handle mark returned
   const handleMarkReturned = async (assignmentId) => {
     try {
-      setError('');
-      
+      setError('')
+
       const { error } = await supabase
         ?.from('loaner_assignments')
         ?.update({ returned_at: new Date()?.toISOString() })
-        ?.eq('id', assignmentId);
+        ?.eq('id', assignmentId)
 
-      if (error) throw error;
+      if (error) throw error
 
-      await loadLoaners();
+      await loadLoaners()
     } catch (err) {
-      setError(`Failed to mark loaner as returned: ${err?.message}`);
+      setError(`Failed to mark loaner as returned: ${err?.message}`)
     }
-  };
+  }
 
   // Format date for display
   const formatDate = (dateString) => {
-    if (!dateString) return '—';
+    if (!dateString) return '—'
     return new Date(dateString)?.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
-    });
-  };
+      year: 'numeric',
+    })
+  }
 
   // Determine loaner status
   const getLoanerStatus = (assignment) => {
-    if (assignment?.returned_at) return 'returned';
-    
-    const today = new Date();
-    const etaDate = new Date(assignment?.eta_return_date);
-    
-    if (etaDate < today) return 'overdue';
-    
-    const daysDiff = Math.ceil((etaDate - today) / (1000 * 60 * 60 * 24));
-    if (daysDiff <= 2) return 'due-soon';
-    
-    return 'active';
-  };
+    if (assignment?.returned_at) return 'returned'
+
+    const today = new Date()
+    const etaDate = new Date(assignment?.eta_return_date)
+
+    if (etaDate < today) return 'overdue'
+
+    const daysDiff = Math.ceil((etaDate - today) / (1000 * 60 * 60 * 24))
+    if (daysDiff <= 2) return 'due-soon'
+
+    return 'active'
+  }
 
   // Status colors and labels
   const getStatusDisplay = (status) => {
     const statusMap = {
-      'active': { 
-        color: 'bg-green-100 text-green-800 border-green-200', 
-        label: 'Active' 
+      active: {
+        color: 'bg-green-100 text-green-800 border-green-200',
+        label: 'Active',
       },
-      'due-soon': { 
-        color: 'bg-yellow-100 text-yellow-800 border-yellow-200', 
-        label: 'Due Soon' 
+      'due-soon': {
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        label: 'Due Soon',
       },
-      'overdue': { 
-        color: 'bg-red-100 text-red-800 border-red-200', 
-        label: 'Overdue' 
+      overdue: {
+        color: 'bg-red-100 text-red-800 border-red-200',
+        label: 'Overdue',
       },
-      'returned': { 
-        color: 'bg-gray-100 text-gray-700 border-gray-200', 
-        label: 'Returned' 
-      }
-    };
-    
-    return statusMap?.[status] || statusMap?.['active'];
-  };
+      returned: {
+        color: 'bg-gray-100 text-gray-700 border-gray-200',
+        label: 'Returned',
+      },
+    }
+
+    return statusMap?.[status] || statusMap?.['active']
+  }
 
   useEffect(() => {
-    Promise.all([loadLoaners(), loadJobsNeedingLoaners()]);
-  }, []);
+    Promise.all([loadLoaners(), loadJobsNeedingLoaners()])
+  }, [])
 
   if (loading) {
     return (
@@ -234,14 +239,13 @@ export default function LoanerManagementDrawer() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
       <div className="p-4 md:p-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
-        
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -282,7 +286,9 @@ export default function LoanerManagementDrawer() {
                   <Icon name="Car" size={24} className="text-green-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Available</h3>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                    Available
+                  </h3>
                   <p className="text-slate-900 text-2xl font-bold">{inventory?.available}</p>
                 </div>
               </div>
@@ -295,7 +301,9 @@ export default function LoanerManagementDrawer() {
                   <Icon name="Users" size={24} className="text-blue-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Assigned</h3>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                    Assigned
+                  </h3>
                   <p className="text-slate-900 text-2xl font-bold">{inventory?.assigned}</p>
                 </div>
               </div>
@@ -308,7 +316,9 @@ export default function LoanerManagementDrawer() {
                   <Icon name="AlertTriangle" size={24} className="text-red-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Overdue</h3>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                    Overdue
+                  </h3>
                   <p className="text-slate-900 text-2xl font-bold">{inventory?.overdue}</p>
                 </div>
               </div>
@@ -321,7 +331,9 @@ export default function LoanerManagementDrawer() {
                   <Icon name="Clock" size={24} className="text-purple-700" />
                 </div>
                 <div>
-                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">Pending</h3>
+                  <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
+                    Pending
+                  </h3>
                   <p className="text-slate-900 text-2xl font-bold">{jobsNeedingLoaners?.length}</p>
                 </div>
               </div>
@@ -338,17 +350,23 @@ export default function LoanerManagementDrawer() {
                 <div>
                   <h3 className="font-medium text-yellow-800">Jobs Requiring Loaner Assignment</h3>
                   <p className="text-sm text-yellow-700 mt-1">
-                    {jobsNeedingLoaners?.length} job{jobsNeedingLoaners?.length !== 1 ? 's' : ''} need loaner vehicles assigned
+                    {jobsNeedingLoaners?.length} job{jobsNeedingLoaners?.length !== 1 ? 's' : ''}{' '}
+                    need loaner vehicles assigned
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-4">
-              {jobsNeedingLoaners?.map(job => (
-                <div key={job?.id} className="bg-white rounded-lg border p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              {jobsNeedingLoaners?.map((job) => (
+                <div
+                  key={job?.id}
+                  className="bg-white rounded-lg border p-4 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
                   <div>
-                    <h4 className="font-medium text-slate-900">{job?.title}</h4>
+                    <h4 className="font-medium text-slate-900">
+                      {job?.job_number || job?.transactions?.[0]?.customer_name || '—'}
+                    </h4>
                     <p className="text-sm text-slate-600">
                       Customer: {job?.transactions?.[0]?.customer_name || 'Unknown'}
                     </p>
@@ -360,8 +378,8 @@ export default function LoanerManagementDrawer() {
                   </div>
                   <Button
                     onClick={() => {
-                      setSelectedJob(job);
-                      setShowAssignModal(true);
+                      setSelectedJob(job)
+                      setShowAssignModal(true)
                     }}
                     className="bg-purple-600 hover:bg-purple-700 text-white h-11 px-6"
                   >
@@ -378,7 +396,9 @@ export default function LoanerManagementDrawer() {
         <div className="bg-white rounded-lg border overflow-hidden shadow-sm">
           <div className="p-6 border-b">
             <h2 className="text-lg font-semibold text-slate-900">Active Loaner Assignments</h2>
-            <p className="text-sm text-slate-600 mt-1">Track current and returned loaner vehicles</p>
+            <p className="text-sm text-slate-600 mt-1">
+              Track current and returned loaner vehicles
+            </p>
           </div>
 
           {loaners?.length === 0 ? (
@@ -412,10 +432,10 @@ export default function LoanerManagementDrawer() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
-                  {loaners?.map(assignment => {
-                    const status = getLoanerStatus(assignment);
-                    const statusDisplay = getStatusDisplay(status);
-                    
+                  {loaners?.map((assignment) => {
+                    const status = getLoanerStatus(assignment)
+                    const statusDisplay = getStatusDisplay(status)
+
                     return (
                       <tr key={assignment?.id} className="hover:bg-slate-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -440,7 +460,9 @@ export default function LoanerManagementDrawer() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-slate-900">
-                            {assignment?.jobs?.title || 'Unknown Job'}
+                            {assignment?.jobs?.job_number ||
+                              assignment?.jobs?.transactions?.[0]?.customer_name ||
+                              'Unknown Job'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -454,7 +476,9 @@ export default function LoanerManagementDrawer() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${statusDisplay?.color}`}>
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${statusDisplay?.color}`}
+                          >
                             {statusDisplay?.label}
                           </span>
                         </td>
@@ -471,7 +495,7 @@ export default function LoanerManagementDrawer() {
                           )}
                         </td>
                       </tr>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
@@ -485,14 +509,12 @@ export default function LoanerManagementDrawer() {
             <div className="bg-white rounded-xl w-full max-w-md">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Assign Loaner Vehicle
-                  </h3>
+                  <h3 className="text-lg font-semibold text-slate-900">Assign Loaner Vehicle</h3>
                   <button
                     onClick={() => {
-                      setShowAssignModal(false);
-                      setSelectedJob(null);
-                      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' });
+                      setShowAssignModal(false)
+                      setSelectedJob(null)
+                      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' })
                     }}
                     className="text-slate-400 hover:text-slate-600"
                   >
@@ -502,7 +524,11 @@ export default function LoanerManagementDrawer() {
 
                 {/* Job Info */}
                 <div className="mb-6 p-4 bg-slate-50 rounded-lg border">
-                  <h4 className="font-medium text-slate-900 mb-1">{selectedJob?.title}</h4>
+                  <h4 className="font-medium text-slate-900 mb-1">
+                    {selectedJob?.job_number ||
+                      selectedJob?.transactions?.[0]?.customer_name ||
+                      '—'}
+                  </h4>
                   <p className="text-sm text-slate-600">
                     {selectedJob?.transactions?.[0]?.customer_name}
                   </p>
@@ -517,10 +543,12 @@ export default function LoanerManagementDrawer() {
                     <input
                       type="text"
                       value={assignmentForm?.loaner_number}
-                      onChange={(e) => setAssignmentForm(prev => ({ 
-                        ...prev, 
-                        loaner_number: e?.target?.value 
-                      }))}
+                      onChange={(e) =>
+                        setAssignmentForm((prev) => ({
+                          ...prev,
+                          loaner_number: e?.target?.value,
+                        }))
+                      }
                       className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="e.g., L-001"
                       required
@@ -534,10 +562,12 @@ export default function LoanerManagementDrawer() {
                     <input
                       type="date"
                       value={assignmentForm?.eta_return_date}
-                      onChange={(e) => setAssignmentForm(prev => ({ 
-                        ...prev, 
-                        eta_return_date: e?.target?.value 
-                      }))}
+                      onChange={(e) =>
+                        setAssignmentForm((prev) => ({
+                          ...prev,
+                          eta_return_date: e?.target?.value,
+                        }))
+                      }
                       className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       min={new Date()?.toISOString()?.split('T')?.[0]}
                       required
@@ -550,10 +580,12 @@ export default function LoanerManagementDrawer() {
                     </label>
                     <textarea
                       value={assignmentForm?.notes}
-                      onChange={(e) => setAssignmentForm(prev => ({ 
-                        ...prev, 
-                        notes: e?.target?.value 
-                      }))}
+                      onChange={(e) =>
+                        setAssignmentForm((prev) => ({
+                          ...prev,
+                          notes: e?.target?.value,
+                        }))
+                      }
                       className="bg-white border border-slate-200 rounded-lg w-full px-3 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       rows={3}
                       placeholder="Any special instructions or notes..."
@@ -566,9 +598,9 @@ export default function LoanerManagementDrawer() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setShowAssignModal(false);
-                      setSelectedJob(null);
-                      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' });
+                      setShowAssignModal(false)
+                      setSelectedJob(null)
+                      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' })
                     }}
                     className="flex-1 h-11"
                   >
@@ -577,7 +609,9 @@ export default function LoanerManagementDrawer() {
                   <Button
                     onClick={handleAssignLoaner}
                     className="flex-1 h-11 bg-purple-600 hover:bg-purple-700 text-white"
-                    disabled={!assignmentForm?.loaner_number?.trim() || !assignmentForm?.eta_return_date}
+                    disabled={
+                      !assignmentForm?.loaner_number?.trim() || !assignmentForm?.eta_return_date
+                    }
                   >
                     Assign Loaner
                   </Button>
@@ -588,5 +622,5 @@ export default function LoanerManagementDrawer() {
         )}
       </div>
     </div>
-  );
+  )
 }

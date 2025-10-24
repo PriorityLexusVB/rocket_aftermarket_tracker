@@ -118,7 +118,7 @@ const VehiclesPage = () => {
         ...jobs?.map((job) => ({
           type: 'job',
           date: job?.created_at,
-          title: job?.title,
+          title: job?.job_number || job?.transactions?.[0]?.customer_name || '—',
           description: job?.description,
           status: job?.job_status,
           vendor: job?.vendors?.name,
