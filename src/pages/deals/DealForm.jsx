@@ -605,8 +605,8 @@ export default function DealForm({
           const onSiteSelected = !item.is_off_site
           return (
             <div key={itemKey} className="card-mobile space-y-3" data-testid={`line-${idx}`}>
-              {/* Product + qty + price */}
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+              {/* Product + price */}
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-slate-700">Product</label>
                   <select
@@ -622,20 +622,6 @@ export default function DealForm({
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">Qty</label>
-                  <input
-                    data-testid={`qty-input-${idx}`}
-                    type="number"
-                    min={1}
-                    value={item.quantity_used}
-                    onChange={(e) =>
-                      handleLineChange(idx, 'quantity_used', Number(e.target.value || 1))
-                    }
-                    className="mt-1 input-mobile w-full"
-                  />
                 </div>
 
                 <div>
