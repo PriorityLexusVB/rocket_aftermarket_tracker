@@ -423,8 +423,15 @@ export async function updateDeal(id, formState) {
   const { error: jobErr } = await supabase?.from('jobs')?.update(payload)?.eq('id', id)
   if (jobErr) throw new Error(`Failed to update deal: ${jobErr.message}`)
 
-  // 2) ✅ ENHANCED: Always upsert transaction with customer data
-  const transactionData = {
+  // Helper to generate a transaction number when inserting new records
+  const generateTransactionNumber = () => {
+    const ts = Date.now()
+    const rand = Math.floor(Math.random() * 1_0000)
+    return `TXN-${ts}-${rand}`
+  }
+
+  // 2) ✅ ENHANCED: Upsert transaction with customer data
+  const baseTransactionData = {
     job_id: id,
     vehicle_id: payload?.vehicle_id || null,
     total_amount: totalDealValue,
@@ -438,7 +445,7 @@ export async function updateDeal(id, formState) {
   try {
     const { data: existingTxn } = await supabase
       ?.from('transactions')
-      ?.select('id')
+      ?.select('id, transaction_number')
       ?.eq('job_id', id)
       ?.limit(1)
       ?.maybeSingle?.() // keep compatibility if maybeSingle exists
@@ -446,11 +453,12 @@ export async function updateDeal(id, formState) {
     if (existingTxn?.id) {
       const { error: updErr } = await supabase
         ?.from('transactions')
-        ?.update(transactionData)
+        ?.update(baseTransactionData) // don't overwrite transaction_number on update
         ?.eq('id', existingTxn.id)
       if (updErr) throw updErr
     } else {
-      const { error: insErr } = await supabase?.from('transactions')?.insert([transactionData])
+      const insertData = { ...baseTransactionData, transaction_number: generateTransactionNumber() }
+      const { error: insErr } = await supabase?.from('transactions')?.insert([insertData])
       if (insErr) throw insErr
     }
   } catch (e) {

@@ -9,7 +9,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; connect-src 'self' https://*.supabase.co https://*.supabase.net https://*.vercel-insights.com; img-src 'self' data: blob: https://*.supabase.co; script-src 'self' 'unsafe-inline' https://*.vercel-insights.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'self'; frame-src 'self' https://*.supabase.co; object-src 'none'"
+          "value": "default-src 'self'; connect-src 'self' https://*.supabase.co https://*.supabase.net wss://*.supabase.co wss://*.supabase.net https://*.vercel-insights.com; img-src 'self' data: blob: https://*.supabase.co; script-src 'self' 'unsafe-inline' https://*.vercel-insights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-ancestors 'self'; frame-src 'self' https://*.supabase.co; object-src 'none'"
         },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
