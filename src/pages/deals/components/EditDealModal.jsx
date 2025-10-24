@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { getDeal, updateDeal, deleteDeal, mapDbDealToForm } from '../../../services/dealService'
 import { supabase } from '../../../lib/supabase'
 import { useDealFormDropdowns } from '../../../hooks/useDropdownData'
@@ -18,6 +18,11 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
   const [initialFormData, setInitialFormData] = useState(null)
   const [loanerAssignment, setLoanerAssignment] = useState(null)
+  const [loanerForm, setLoanerForm] = useState({
+    loaner_number: '',
+    eta_return_date: '',
+    notes: '',
+  })
 
   // Enhanced dropdown data
   const {
@@ -193,6 +198,25 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
       setFormData(loadedFormData)
       setInitialFormData(JSON.parse(JSON.stringify(loadedFormData))) // Deep copy for comparison
       setLoanerAssignment(activeLoaner || null)
+
+      // Initialize loaner form
+      if (activeLoaner) {
+        setLoanerForm({
+          loaner_number: activeLoaner?.loaner_number || '',
+          eta_return_date: activeLoaner?.eta_return_date || '',
+          notes: activeLoaner?.notes || '',
+        })
+      } else {
+        // Default ETA to the latest scheduled promised_date among line items (if any)
+        const dates = (loadedFormData?.lineItems || [])
+          .filter((li) => li?.requiresScheduling && li?.lineItemPromisedDate)
+          .map((li) => new Date(li.lineItemPromisedDate).getTime())
+        const latest = dates?.length ? new Date(Math.max(...dates)) : null
+        setLoanerForm((prev) => ({
+          ...prev,
+          eta_return_date: latest ? latest.toISOString().split('T')[0] : '',
+        }))
+      }
     } catch (err) {
       setError(`Failed to load deal: ${err?.message}`)
     } finally {
@@ -328,7 +352,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
         })),
       }
 
-      await updateDeal(dealId, updatedFormData)
+      // Include inline loaner form (optional) for assignment upsert
+      await updateDeal(dealId, { ...updatedFormData, loanerForm })
 
       onSuccess?.()
       onClose?.()
@@ -568,7 +593,24 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                 <div className="space-y-3">
                   <LoanerCheckbox
                     checked={formData?.customer_needs_loaner}
-                    onChange={(checked) => updateFormData({ customer_needs_loaner: checked })}
+                    onChange={(checked) => {
+                      updateFormData({ customer_needs_loaner: checked })
+                      if (checked) {
+                        // If turning on and ETA empty, default to latest scheduled promised date
+                        if (!loanerForm?.eta_return_date) {
+                          const dates = (formData?.lineItems || [])
+                            .filter((li) => li?.requiresScheduling && li?.lineItemPromisedDate)
+                            .map((li) => new Date(li.lineItemPromisedDate).getTime())
+                          const latest = dates?.length ? new Date(Math.max(...dates)) : null
+                          if (latest) {
+                            setLoanerForm((prev) => ({
+                              ...prev,
+                              eta_return_date: latest.toISOString().split('T')[0],
+                            }))
+                          }
+                        }
+                      }
+                    }}
                   />
                   {/* Current Loaner summary (mirrors Deals page badge) */}
                   {loanerAssignment && (
@@ -576,9 +618,65 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                       🚗 Loaner #{loanerAssignment?.loaner_number}
                       {loanerAssignment?.eta_return_date && (
                         <span className="ml-1">
-                          • due {new Date(loanerAssignment?.eta_return_date)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          • due{' '}
+                          {new Date(loanerAssignment?.eta_return_date)?.toLocaleDateString(
+                            'en-US',
+                            { month: 'short', day: 'numeric' }
+                          )}
                         </span>
                       )}
+                    </div>
+                  )}
+
+                  {/* Inline Loaner editor */}
+                  {formData?.customer_needs_loaner && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white border rounded-lg p-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Loaner Number
+                        </label>
+                        <Input
+                          id="loaner-number"
+                          aria-label="Loaner number"
+                          value={loanerForm?.loaner_number || ''}
+                          onChange={(e) =>
+                            setLoanerForm((prev) => ({ ...prev, loaner_number: e?.target?.value }))
+                          }
+                          placeholder="e.g. 1234"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          ETA Return Date
+                        </label>
+                        <Input
+                          id="loaner-eta"
+                          aria-label="Loaner ETA"
+                          type="date"
+                          value={loanerForm?.eta_return_date || ''}
+                          onChange={(e) =>
+                            setLoanerForm((prev) => ({
+                              ...prev,
+                              eta_return_date: e?.target?.value,
+                            }))
+                          }
+                          min={new Date()?.toISOString()?.split('T')?.[0]}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Notes
+                        </label>
+                        <Input
+                          id="loaner-notes"
+                          aria-label="Loaner notes"
+                          value={loanerForm?.notes || ''}
+                          onChange={(e) =>
+                            setLoanerForm((prev) => ({ ...prev, notes: e?.target?.value }))
+                          }
+                          placeholder="Optional notes"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
