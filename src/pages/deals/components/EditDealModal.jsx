@@ -576,11 +576,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                       🚗 Loaner #{loanerAssignment?.loaner_number}
                       {loanerAssignment?.eta_return_date && (
                         <span className="ml-1">
-                          • due{' '}
-                          {new Date(loanerAssignment?.eta_return_date)?.toLocaleDateString(
-                            'en-US',
-                            { month: 'short', day: 'numeric' }
-                          )}
+                          • due {new Date(loanerAssignment?.eta_return_date)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       )}
                     </div>
