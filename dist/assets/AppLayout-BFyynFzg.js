@@ -1,2 +1,0 @@
-import{j as s}from"./index-BZ5rpnUn.js";import"./react-Czq5O75u.js";import{N as t}from"./Navbar-Cj7dmE_-.js";import{u as i}from"./router-CZES1Sa0.js";const u=({children:r})=>{const m=i(),o=["/guest-claims-submission-form"],a=!(o!=null&&o.includes(m==null?void 0:m.pathname));return s.jsxs("div",{className:"min-h-screen bg-gray-50",children:[a&&s.jsx(t,{}),s.jsx("main",{className:`${a?"pt-16 md:pt-16":""}`,children:s.jsx("div",{className:`${a?"pb-20 md:pb-0":""}`,children:r})})]})};export{u as A};
-//# sourceMappingURL=AppLayout-BFyynFzg.js.map
