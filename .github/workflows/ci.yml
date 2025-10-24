@@ -26,11 +26,38 @@ jobs:
       - name: Show pnpm version
         run: pnpm --version
 
+      # ===== NEW: ensure bin directory exists so pnpm can create shims =====
+      - name: Ensure node_modules/.bin exists
+        run: mkdir -p $GITHUB_WORKSPACE/node_modules/.bin
+
       - name: Install dependencies (locked)
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm run build
+      # ===== NEW: helpful debugging info after install =====
+      - name: Post-install debug (show node_modules + versions)
+        run: |
+          echo "PWD: $PWD"
+          echo "Listing top-level files:"
+          ls -la .
+          echo "node_modules and bin:"
+          ls -la node_modules || true
+          ls -la node_modules/.bin || true
+          ls -la node_modules/.pnpm || true
+          echo "pnpm list top-level:"
+          pnpm list --depth 0 || true
+          node -v && pnpm -v
+          echo "Find supabase packages (if any):"
+          find node_modules -maxdepth 4 -name "*supabase*" -print || true
+
+      - name: Build (capture full log)
+        run: pnpm run build 2>&1 | tee build.log
+
+      - name: Upload or show build log
+        if: always()
+        run: |
+          echo "---- BEGIN build.log ----"
+          cat build.log || true
+          echo "----  END build.log  ----"
 
       - name: Unit tests
         run: pnpm run test -- --run
