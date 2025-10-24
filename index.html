@@ -1,97 +1,124 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rocket Aftermarket Tracker - Vehicle Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1d4ed8" />
+    <meta
+      name="description"
+      content="Rocket Aftermarket Tracker - Professional vehicle management and aftermarket tracking system"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Rocket Aftermarket" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico" />
 
-<head>
-  <meta charset="utf-8" />
-  <title>Rocket Aftermarket Tracker - Vehicle Management System</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#1d4ed8" />
-  <meta name="description" content="Rocket Aftermarket Tracker - Professional vehicle management and aftermarket tracking system" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Rocket Aftermarket" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="format-detection" content="telephone=no" />
-  <link rel="icon" href="/favicon.ico" />
-  <link rel="manifest" href="/manifest.json" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico" />
-  
-  <!-- Google Fonts - Inter Font Family -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  
-  <style>
-    /* Critical CSS for mobile performance with proper font fallbacks */
-    html {
-      -webkit-tap-highlight-color: transparent;
-      -webkit-text-size-adjust: 100%;
-      text-size-adjust: 100%;
-    }
-    
-    body {
-      margin: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      background-color: #f8fafc;
-      overscroll-behavior: none;
-      font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-      font-variation-settings: normal;
-      text-rendering: optimizeLegibility;
-    }
-    
-    /* Loading spinner for initial load */
-    .loading-spinner {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #f8fafc;
-    }
-    
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #e5e7eb;
-      border-left: 4px solid #1d4ed8;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    /* Hide loading once React loads */
-    .dhiwise-code:not(:empty) + .loading-spinner {
-      display: none;
-    }
+    <!-- Google Fonts - Inter Font Family -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
 
-    /* Ensure all elements inherit the correct font */
-    *, *::before, *::after {
-      font-family: inherit;
-    }
-  </style>
-  
-  <script type="module" src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Frocketaft9234back.builtwithrocket.new&_be=https%3A%2F%2Fapplication.rocket.new&_v=0.1.9"></script>
-  <script type="module" src="https://static.rocket.new/rocket-shot.js?v=0.0.1"></script>
+    <style>
+      /* Critical CSS for mobile performance with proper font fallbacks */
+      html {
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          'Roboto',
+          'Oxygen',
+          'Ubuntu',
+          'Cantarell',
+          'Fira Sans',
+          'Droid Sans',
+          'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f8fafc;
+        overscroll-behavior: none;
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+        font-variation-settings: normal;
+        text-rendering: optimizeLegibility;
+      }
+
+      /* Loading spinner for initial load */
+      .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: #f8fafc;
+      }
+
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e5e7eb;
+        border-left: 4px solid #1d4ed8;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Hide loading once React loads */
+      .dhiwise-code:not(:empty) + .loading-spinner {
+        display: none;
+      }
+
+      /* Ensure all elements inherit the correct font */
+      *,
+      *::before,
+      *::after {
+        font-family: inherit;
+      }
+    </style>
+
+    <script
+      type="module"
+      src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Frocketaft9234back.builtwithrocket.new&_be=https%3A%2F%2Fapplication.rocket.new&_v=0.1.9"
+    ></script>
+    <script type="module" src="https://static.rocket.new/rocket-shot.js?v=0.0.1"></script>
   </head>
 
-<body>
-  <noscript>
-    <div style="padding: 20px; text-align: center; font-family: inherit;">
-      <h2>JavaScript Required</h2>
-      <p>Rocket Aftermarket Tracker requires JavaScript to function properly. Please enable JavaScript in your browser settings.</p>
+  <body>
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: inherit">
+        <h2>JavaScript Required</h2>
+        <p>
+          Rocket Aftermarket Tracker requires JavaScript to function properly. Please enable
+          JavaScript in your browser settings.
+        </p>
+      </div>
+    </noscript>
+    <div class="dhiwise-code" id="root"></div>
+    <div class="loading-spinner">
+      <div class="spinner"></div>
     </div>
-  </noscript>
-  <div class="dhiwise-code" id="root"></div>
-  <div class="loading-spinner">
-    <div class="spinner"></div>
-  </div>
-  <script type="module" src="/src/index.jsx"></script>
-</body>
-
+    <script type="module" src="/src/index.jsx"></script>
+  </body>
 </html>
