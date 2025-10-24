@@ -1,0 +1,2 @@
+async function s(t,e){try{const a=await t.throwOnError();return a.data??a}catch(a){throw console.error(`[safeSelect] ${e??"query"} failed`,a),a}}const n=(t,{labelKey:e="name",valueKey:a="id"}={})=>({id:t==null?void 0:t[a],value:t==null?void 0:t[a],label:(t==null?void 0:t[e])??(t==null?void 0:t.title)??(t==null?void 0:t.name)??String((t==null?void 0:t[a])??""),...t}),c=(t,e)=>Array.isArray(t)?t.map(a=>n(a,e)):[];export{s,c as t};
+//# sourceMappingURL=options-CllavUpK.js.map

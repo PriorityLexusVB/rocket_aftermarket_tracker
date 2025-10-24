@@ -246,10 +246,23 @@ const LoanerDrawer = ({ isOpen, onClose, deal, onSave, loading }) => {
   // Reset form when drawer opens/closes
   useEffect(() => {
     if (isOpen && deal) {
-      // Pre-populate if loaner exists
+      // Compute default ETA as the latest scheduled promised_date if none exists yet
+      let defaultEta = ''
+      try {
+        const dates = (deal?.job_parts || [])
+          .filter((p) => p?.requires_scheduling && p?.promised_date)
+          .map((p) => new Date(p.promised_date))
+        if (dates?.length > 0) {
+          const latest = new Date(Math.max.apply(null, dates))
+          // format YYYY-MM-DD for date input
+          defaultEta = latest.toISOString().split('T')[0]
+        }
+      } catch (_) {}
+
+      // Pre-populate if loaner exists; otherwise use computed default for ETA
       setLoanerForm({
         loaner_number: deal?.loaner_number || '',
-        eta_return_date: deal?.loaner_eta_return_date || '',
+        eta_return_date: deal?.loaner_eta_return_date || defaultEta || '',
         notes: deal?.loaner_notes || '',
       })
       setError('')
@@ -550,20 +563,39 @@ export default function DealsPage() {
       setLoanerLoading(true)
       setError('') // Clear previous errors
 
-      // Insert or update loaner assignment per existing schema
-      const { error } = await supabase?.from('loaner_assignments')?.upsert(
-        {
-          job_id: loanerData?.job_id,
-          loaner_number: loanerData?.loaner_number,
-          eta_return_date: loanerData?.eta_return_date,
-          notes: loanerData?.notes,
-        },
-        {
-          onConflict: 'job_id',
-        }
-      )
+      // Insert or update loaner assignment without relying on ON CONFLICT
+      let existing = null
+      try {
+        const { data: rows } = await supabase
+          ?.from('loaner_assignments')
+          ?.select('id')
+          ?.eq('job_id', loanerData?.job_id)
+          ?.is('returned_at', null)
+          ?.limit(1)
+        existing = Array.isArray(rows) ? rows[0] : rows
+      } catch (_) {}
 
-      if (error) throw error
+      if (existing?.id) {
+        const { error: updErr } = await supabase
+          ?.from('loaner_assignments')
+          ?.update({
+            loaner_number: loanerData?.loaner_number,
+            eta_return_date: loanerData?.eta_return_date,
+            notes: loanerData?.notes,
+          })
+          ?.eq('id', existing.id)
+        if (updErr) throw updErr
+      } else {
+        const { error: insErr } = await supabase?.from('loaner_assignments')?.insert([
+          {
+            job_id: loanerData?.job_id,
+            loaner_number: loanerData?.loaner_number,
+            eta_return_date: loanerData?.eta_return_date,
+            notes: loanerData?.notes,
+          },
+        ])
+        if (insErr) throw insErr
+      }
 
       // ✅ FIXED: Properly close drawer and reset state
       setShowLoanerDrawer(false)

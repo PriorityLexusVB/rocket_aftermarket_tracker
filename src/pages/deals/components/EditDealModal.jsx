@@ -17,6 +17,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
   const [isDirty, setIsDirty] = useState(false)
   const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
   const [initialFormData, setInitialFormData] = useState(null)
+  const [loanerAssignment, setLoanerAssignment] = useState(null)
 
   // Enhanced dropdown data
   const {
@@ -166,6 +167,20 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
         ?.eq('job_id', dealId)
         ?.single()
 
+      // Load active loaner assignment (if any)
+      let activeLoaner = null
+      try {
+        const { data: la } = await supabase
+          ?.from('loaner_assignments')
+          ?.select('id, loaner_number, eta_return_date, returned_at')
+          ?.eq('job_id', dealId)
+          ?.is('returned_at', null)
+          ?.limit(1)
+        activeLoaner = Array.isArray(la) ? la[0] : la
+      } catch (_) {
+        // ignore
+      }
+
       const loadedFormData = {
         ...formDeal,
         customerName: transaction?.customer_name || '',
@@ -177,6 +192,7 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
 
       setFormData(loadedFormData)
       setInitialFormData(JSON.parse(JSON.stringify(loadedFormData))) // Deep copy for comparison
+      setLoanerAssignment(activeLoaner || null)
     } catch (err) {
       setError(`Failed to load deal: ${err?.message}`)
     } finally {
@@ -549,10 +565,27 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                 </div>
 
                 {/* Customer Needs Loaner with enhanced styling and click propagation */}
-                <LoanerCheckbox
-                  checked={formData?.customer_needs_loaner}
-                  onChange={(checked) => updateFormData({ customer_needs_loaner: checked })}
-                />
+                <div className="space-y-3">
+                  <LoanerCheckbox
+                    checked={formData?.customer_needs_loaner}
+                    onChange={(checked) => updateFormData({ customer_needs_loaner: checked })}
+                  />
+                  {/* Current Loaner summary (mirrors Deals page badge) */}
+                  {loanerAssignment && (
+                    <div className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                      🚗 Loaner #{loanerAssignment?.loaner_number}
+                      {loanerAssignment?.eta_return_date && (
+                        <span className="ml-1">
+                          • due{' '}
+                          {new Date(loanerAssignment?.eta_return_date)?.toLocaleDateString(
+                            'en-US',
+                            { month: 'short', day: 'numeric' }
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Dealer Representatives */}
                 <div className="bg-slate-50 p-4 rounded-lg border">
