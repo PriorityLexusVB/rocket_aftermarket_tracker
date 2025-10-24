@@ -45,40 +45,7 @@ function sanitizeDealPayload(input) {
   return out
 }
 
-// Map a joined DB deal/job into the UI form shape expected by EditDealModal
-export function mapDbDealToForm(db = {}) {
-  const parts = Array.isArray(db?.job_parts) ? db.job_parts : []
-
-  const lineItems = parts.map((p) => ({
-    product_id: p?.product_id ?? null,
-    unit_price: Number(p?.unit_price ?? 0),
-    quantity_used: Number(p?.quantity_used ?? 1),
-    // UI camelCase mirrors editor fields
-    lineItemPromisedDate: p?.promised_date || '',
-    requiresScheduling: !!p?.requires_scheduling,
-    noScheduleReason: p?.no_schedule_reason || '',
-    isOffSite: !!p?.is_off_site,
-    // Optional free-text notes not in DB schema; keep empty to preserve UI contract
-    description: '',
-  }))
-
-  return {
-    job_status: db?.job_status || 'draft',
-    priority: db?.priority || 'medium',
-    customer_needs_loaner: !!db?.customer_needs_loaner,
-    // Dealer reps
-    assignedTo: db?.assigned_to || null,
-    deliveryCoordinator: db?.delivery_coordinator_id || null,
-    financeManager: db?.finance_manager_id || null,
-    // Vehicle snapshot (Edit modal shows text inputs)
-    vehicleYear: db?.vehicle?.year || '',
-    vehicleMake: db?.vehicle?.make || '',
-    vehicleModel: db?.vehicle?.model || '',
-    stockNumber: db?.vehicle?.stock_number || '',
-    // Lines
-    lineItems,
-  }
-}
+// (moved below): mapDbDealToForm is implemented near the end and re-exported
 
 // Internal helper: load a fully-joined deal/job by id
 async function selectJoinedDealById(id) {
