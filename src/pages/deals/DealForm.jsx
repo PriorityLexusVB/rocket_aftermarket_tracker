@@ -288,9 +288,28 @@ export default function DealForm({
 
   const submit = async (e) => {
     e?.preventDefault?.()
+    // Prevent duplicate submits
+    if (saving) return
     setSaving(true)
     setErrorMsg('')
     try {
+      // Guard: require at least one valid product selection
+      const validProductIdxs = (form.lineItems || []).reduce((arr, li, idx) => {
+        if (li?.product_id) arr.push(idx)
+        return arr
+      }, [])
+      if (validProductIdxs.length === 0) {
+        setSaving(false)
+        setErrorMsg('Please add at least one product to the deal.')
+        // Focus first product dropdown
+        try {
+          const el = document.querySelector('[data-testid="product-select-0"]')
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el?.focus?.()
+        } catch {}
+        return
+      }
+
       // Guard: If requires_scheduling === false, no_schedule_reason is required
       const missingReasonIdxs = (form.lineItems || []).reduce((arr, li, idx) => {
         const requires = !!li?.requires_scheduling
@@ -319,6 +338,18 @@ export default function DealForm({
         setLineErrors({})
       }
 
+      // Light phone normalization (digits only; prefix +1 for 10-digit US)
+      const normalizePhone = (s) => {
+        try {
+          const digits = String(s || '').replace(/\D+/g, '')
+          if (digits.length === 10) return `+1${digits}`
+          if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+          return s || ''
+        } catch {
+          return s || ''
+        }
+      }
+
       // Build payload that includes both snake_case (UI) and camelCase (service) fields
       const normalizedLineItems = (form.lineItems || []).map((li) => ({
         product_id: li.product_id || null,
@@ -342,8 +373,10 @@ export default function DealForm({
         org_id: form.org_id || orgId || undefined,
         customer_needs_loaner: !!form.customer_needs_loaner,
         // mirror phone fields for downstream services
-        customer_phone: form.customer_phone || form.customer_mobile || '',
-        customerPhone: form.customerPhone || form.customer_mobile || form.customer_phone || '',
+        customer_phone: normalizePhone(form.customer_phone || form.customer_mobile || ''),
+        customerPhone: normalizePhone(
+          form.customerPhone || form.customer_mobile || form.customer_phone || ''
+        ),
         lineItems: normalizedLineItems,
       }
 

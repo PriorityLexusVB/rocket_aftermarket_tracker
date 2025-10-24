@@ -99,6 +99,22 @@ function mapFormToDb(formState = {}) {
     isOffSite: !!li.isOffSite || !!li.is_off_site,
   }))
 
+  // Coerce invalid numerics and enforce business rules
+  for (const item of normalizedLineItems) {
+    if (Number.isNaN(item.quantity_used) || item.quantity_used == null) item.quantity_used = 1
+    if (Number.isNaN(item.unit_price) || item.unit_price == null) item.unit_price = 0
+    // Business rule: if not scheduling, reason is required
+    if (!item.requires_scheduling && !String(item.no_schedule_reason || '').trim()) {
+      throw new Error('Each non-scheduled line item must include a reason')
+    }
+  }
+
+  // Safety: require at least one product line item when any line items are provided
+  if ((normalizedLineItems?.length || 0) > 0) {
+    const hasProduct = normalizedLineItems.some((it) => !!it.product_id)
+    if (!hasProduct) throw new Error('At least one product is required')
+  }
+
   // Contract-friendly jobParts for callers that expect quantity + total_price (UI keeps snake_case)
   const jobParts = (normalizedLineItems || []).map((it) => ({
     product_id: it.product_id,

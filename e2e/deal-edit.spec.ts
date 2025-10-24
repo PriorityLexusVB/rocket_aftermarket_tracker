@@ -45,6 +45,9 @@ test.describe('Deal create + edit flow', () => {
     // Save changes
     await save.click()
 
+    // Wait for the inline success banner to confirm save completed
+    await expect(page.getByTestId('save-success')).toBeVisible({ timeout: 10000 })
+
     // Stay on edit page and ensure the title persisted after reload
     await page.reload()
     await expect(title).toHaveValue(editedTitle)
