@@ -1,17 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
-import Button from '../../components/ui/Button';
-import Icon from '../../components/ui/Icon';
+import React, { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
+import useTenant from '../../hooks/useTenant'
+import dealService from '../../services/dealService'
+import { vehicleService } from '../../services/vehicleService'
+import Button from '../../components/ui/Button'
+import Icon from '../../components/ui/Icon'
+// Prefer shared dropdown service helpers with fuzzy fallback and optional org scoping
+import {
+  getSalesConsultants,
+  getDeliveryCoordinators,
+  getFinanceManagers,
+  getVendors,
+  getProducts,
+} from '../../services/dropdownService'
 
 export default function NewDealModal({ isOpen, onClose, onSuccess }) {
-  const { user } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1); // 1 = Customer, 2 = Line Items
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [isDirty, setIsDirty] = useState(false);
-  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false);
-  
+  const { user } = useAuth()
+  const { orgId } = useTenant() || {}
+  const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [isDirty, setIsDirty] = useState(false)
+  const [showUnsavedWarning, setShowUnsavedWarning] = useState(false)
+
   // ✅ FIXED: Enhanced dropdown state with comprehensive error handling and retry logic
   const [dropdownData, setDropdownData] = useState({
     salesConsultants: [],
@@ -21,9 +33,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     products: [],
     loading: true,
     error: null,
-    retryCount: 0
-  });
-  
+    retryCount: 0,
+  })
+
   // Initial form state for dirty checking
   const initialFormState = {
     customerName: '',
@@ -36,133 +48,65 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     vehicleYear: new Date()?.getFullYear(),
     vehicleMake: 'Toyota',
     vehicleModel: 'Camry',
-    stockNumber: ''
-  };
+    stockNumber: '',
+  }
 
   // Customer form data
-  const [customerData, setCustomerData] = useState(initialFormState);
-  
-  // Line items data  
-  const [lineItems, setLineItems] = useState([]);
+  const [customerData, setCustomerData] = useState(initialFormState)
+
+  // Line items data
+  const [lineItems, setLineItems] = useState([])
 
   // ✅ FIXED: Enhanced dropdown data loading with comprehensive error handling and retry logic
   const loadDropdownData = async (retryCount = 0) => {
     try {
-      setDropdownData(prev => ({ ...prev, loading: true, error: null, retryCount }));
+      setDropdownData((prev) => ({ ...prev, loading: true, error: null, retryCount }))
 
-      // Load all dropdown data with individual error handling and proper department filtering
-      const [salesResult, dcResult, financeResult, vendorsResult, productsResult] = await Promise.allSettled([
-        // Sales Consultants - exact department match
-        supabase
-          ?.from('user_profiles')
-          ?.select('id, full_name, email, department, role, is_active')
-          ?.eq('is_active', true)
-          ?.eq('department', 'Sales Consultants')
-          ?.eq('role', 'staff')
-          ?.order('full_name'),
-        
-        // Delivery Coordinators - exact department match with broader role filtering
-        supabase
-          ?.from('user_profiles')
-          ?.select('id, full_name, email, department, role, is_active')
-          ?.eq('is_active', true)
-          ?.eq('department', 'Delivery Coordinator')
-          ?.in('role', ['admin', 'manager'])
-          ?.order('full_name'),
-        
-        // Finance Managers - exact department match
-        supabase
-          ?.from('user_profiles')
-          ?.select('id, full_name, email, department, role, is_active')
-          ?.eq('is_active', true)
-          ?.eq('department', 'Finance Manager')
-          ?.eq('role', 'staff')
-          ?.order('full_name'),
-        
-        // Active Vendors
-        supabase
-          ?.from('vendors')
-          ?.select('id, name, specialty, email, phone, is_active')
-          ?.eq('is_active', true)
-          ?.order('name'),
-        
-        // Active Products
-        supabase
-          ?.from('products')
-          ?.select('id, name, category, unit_price, cost, brand, is_active')
-          ?.eq('is_active', true)
-          ?.order('name')
-      ]);
-
-      // Process results with comprehensive error handling
-      const salesConsultants = salesResult?.status === 'fulfilled' && !salesResult?.value?.error 
-        ? salesResult?.value?.data || [] 
-        : [];
-      
-      const deliveryCoordinators = dcResult?.status === 'fulfilled' && !dcResult?.value?.error 
-        ? dcResult?.value?.data || [] 
-        : [];
-      
-      const financeManagers = financeResult?.status === 'fulfilled' && !financeResult?.value?.error 
-        ? financeResult?.value?.data || [] 
-        : [];
-      
-      const vendors = vendorsResult?.status === 'fulfilled' && !vendorsResult?.value?.error 
-        ? (vendorsResult?.value?.data || [])?.map(vendor => ({
-            id: vendor?.id,
-            value: vendor?.id,
-            label: `${vendor?.name}${vendor?.specialty ? ` - ${vendor?.specialty}` : ''}`,
-            name: vendor?.name,
-            specialty: vendor?.specialty
-          }))
-        : [];
-      
-      const products = productsResult?.status === 'fulfilled' && !productsResult?.value?.error 
-        ? (productsResult?.value?.data || [])?.map(product => ({
-            id: product?.id,
-            value: product?.id,
-            label: `${product?.name}${product?.brand ? ` - ${product?.brand}` : ''}`,
-            name: product?.name,
-            category: product?.category,
-            unitPrice: product?.unit_price,
-            cost: product?.cost
-          }))
-        : [];
+      // Use shared services with org-aware scoping and fuzzy fallbacks
+      const [sales, dc, finance, vendorsOpts, productsOpts] = await Promise.all([
+        getSalesConsultants().catch(() => []),
+        getDeliveryCoordinators().catch(() => []),
+        getFinanceManagers().catch(() => []),
+        getVendors({ activeOnly: true }).catch(() => []),
+        getProducts({ activeOnly: true }).catch(() => []),
+      ])
 
       setDropdownData({
-        salesConsultants,
-        deliveryCoordinators,
-        financeManagers,
-        vendors,
-        products,
+        salesConsultants: sales,
+        deliveryCoordinators: dc,
+        financeManagers: finance,
+        vendors: vendorsOpts,
+        products: productsOpts?.map((p) => ({ ...p, unitPrice: p?.unit_price })),
         loading: false,
         error: null,
-        retryCount
-      });
-
+        retryCount,
+      })
     } catch (err) {
-      console.error('Failed to load dropdown data:', err);
-      
+      console.error('Failed to load dropdown data:', err)
+
       // Retry logic for network failures
-      if (retryCount < 2 && (err?.message?.includes('fetch') || err?.message?.includes('network'))) {
-        setTimeout(() => loadDropdownData(retryCount + 1), 1000 * (retryCount + 1));
-        return;
+      if (
+        retryCount < 2 &&
+        (err?.message?.includes('fetch') || err?.message?.includes('network'))
+      ) {
+        setTimeout(() => loadDropdownData(retryCount + 1), 1000 * (retryCount + 1))
+        return
       }
-      
-      setDropdownData(prev => ({
+
+      setDropdownData((prev) => ({
         ...prev,
         loading: false,
         error: 'Failed to load dropdown data. Please check your connection and try again.',
-        retryCount
-      }));
+        retryCount,
+      }))
     }
-  };
+  }
 
   // ✅ FIXED: Enhanced loaner checkbox with proper mobile accessibility and boolean handling
   const LoanerCheckbox = ({ checked, onChange }) => (
     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-      <label 
-        htmlFor="needs-loaner-modal" 
+      <label
+        htmlFor="needs-loaner-modal"
         className="flex items-center gap-3 cursor-pointer select-none"
       >
         <input
@@ -170,23 +114,29 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
           type="checkbox"
           checked={Boolean(checked)}
           onChange={(e) => {
-            const isChecked = Boolean(e?.target?.checked);
-            onChange(isChecked);
+            const isChecked = Boolean(e?.target?.checked)
+            onChange(isChecked)
           }}
           className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
         />
-        <span className="text-sm font-medium text-gray-700">
-          Customer needs loaner vehicle
-        </span>
+        <span className="text-sm font-medium text-gray-700">Customer needs loaner vehicle</span>
       </label>
       <p className="text-xs text-gray-500 mt-2 ml-8">
         Check this if the customer requires a loaner vehicle during service
       </p>
     </div>
-  );
+  )
 
   // ✅ FIXED: Enhanced native select component with better error handling
-  const MobileSelect = ({ label, options, value, onChange, placeholder, required = false, helpText }) => (
+  const MobileSelect = ({
+    label,
+    options,
+    value,
+    onChange,
+    placeholder,
+    required = false,
+    helpText,
+  }) => (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
         {label} {required && <span className="text-red-500">*</span>}
@@ -199,26 +149,24 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
         required={required}
       >
         <option value="">{placeholder}</option>
-        {options?.map(option => (
+        {options?.map((option) => (
           <option key={option?.id} value={option?.id}>
             {option?.full_name || option?.label || option?.name}
           </option>
         ))}
       </select>
-      {helpText && (
-        <p className="mt-1 text-xs text-gray-500">{helpText}</p>
-      )}
+      {helpText && <p className="mt-1 text-xs text-gray-500">{helpText}</p>}
       {options?.length === 0 && !dropdownData?.loading && (
         <p className="mt-1 text-xs text-red-500">
           No {label?.toLowerCase()} found. Please check your database connection.
         </p>
       )}
     </div>
-  );
+  )
 
   // Dirty state tracking
   useEffect(() => {
-    const hasChanges = 
+    const hasChanges =
       customerData?.customerName !== initialFormState?.customerName ||
       customerData?.customerPhone !== initialFormState?.customerPhone ||
       customerData?.customerEmail !== initialFormState?.customerEmail ||
@@ -226,279 +174,267 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
       customerData?.assignedTo !== initialFormState?.assignedTo ||
       customerData?.deliveryCoordinator !== initialFormState?.deliveryCoordinator ||
       customerData?.financeManager !== initialFormState?.financeManager ||
-      lineItems?.length > 0;
-    
-    setIsDirty(hasChanges);
-  }, [customerData, lineItems]);
+      lineItems?.length > 0
+
+    setIsDirty(hasChanges)
+  }, [customerData, lineItems])
 
   // Load dropdown data when modal opens
   useEffect(() => {
     if (isOpen) {
-      loadDropdownData();
+      loadDropdownData()
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   // Add new line item
   const addLineItem = () => {
-    setLineItems(prev => [...prev, {
-      id: Date.now(),
-      productId: '',
-      unitPrice: '',
-      serviceType: 'in_house',
-      vendorId: '',
-      requiresScheduling: true,
-      promisedDate: '',
-      noScheduleReason: '',
-      serviceNotes: ''
-    }]);
-  };
+    setLineItems((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        productId: '',
+        unitPrice: '',
+        serviceType: 'in_house',
+        vendorId: '',
+        requiresScheduling: true,
+        promisedDate: '',
+        noScheduleReason: '',
+        serviceNotes: '',
+      },
+    ])
+  }
 
   // Update line item
   const updateLineItem = (id, field, value) => {
-    setLineItems(prev => prev?.map(item => {
-      if (item?.id === id) {
-        let updatedItem = { ...item, [field]: value };
-        
-        if (field === 'requiresScheduling') {
-          if (value === true) {
-            updatedItem.noScheduleReason = '';
-          } else {
-            updatedItem.promisedDate = '';
+    setLineItems((prev) =>
+      prev?.map((item) => {
+        if (item?.id === id) {
+          let updatedItem = { ...item, [field]: value }
+
+          if (field === 'requiresScheduling') {
+            if (value === true) {
+              updatedItem.noScheduleReason = ''
+            } else {
+              updatedItem.promisedDate = ''
+            }
           }
+
+          return updatedItem
         }
-        
-        return updatedItem;
-      }
-      return item;
-    }));
+        return item
+      })
+    )
 
     // Auto-populate price when product is selected
     if (field === 'productId' && value) {
-      const selectedProduct = dropdownData?.products?.find(p => p?.id === value);
+      const selectedProduct = dropdownData?.products?.find((p) => p?.id === value)
       if (selectedProduct) {
-        setLineItems(prev => prev?.map(item => 
-          item?.id === id 
-            ? { ...item, unitPrice: selectedProduct?.unitPrice || '' } 
-            : item
-        ));
+        setLineItems((prev) =>
+          prev?.map((item) =>
+            item?.id === id ? { ...item, unitPrice: selectedProduct?.unitPrice || '' } : item
+          )
+        )
       }
     }
-  };
+  }
 
   // Remove line item
   const removeLineItem = (id) => {
-    setLineItems(prev => prev?.filter(item => item?.id !== id));
-  };
+    setLineItems((prev) => prev?.filter((item) => item?.id !== id))
+  }
 
   // Validation
   const validateStep1 = () => {
-    return customerData?.customerName?.trim()?.length > 0;
-  };
+    return customerData?.customerName?.trim()?.length > 0
+  }
 
   const validateStep2 = () => {
-    if (lineItems?.length === 0) return false;
-    
-    return lineItems?.every(item => {
-      if (!item?.productId || !item?.unitPrice) return false;
-      if (item?.requiresScheduling && !item?.promisedDate) return false;
-      if (!item?.requiresScheduling && !item?.noScheduleReason?.trim()) return false;
-      if (item?.serviceType === 'vendor' && !item?.vendorId) return false;
-      return true;
-    });
-  };
+    if (lineItems?.length === 0) return false
+
+    return lineItems?.every((item) => {
+      if (!item?.productId || !item?.unitPrice) return false
+      if (item?.requiresScheduling && !item?.promisedDate) return false
+      if (!item?.requiresScheduling && !item?.noScheduleReason?.trim()) return false
+      if (item?.serviceType === 'vendor' && !item?.vendorId) return false
+      return true
+    })
+  }
 
   // Calculate total
   const calculateTotal = () => {
     return lineItems?.reduce((sum, item) => {
-      return sum + (parseFloat(item?.unitPrice) || 0);
-    }, 0);
-  };
+      return sum + (parseFloat(item?.unitPrice) || 0)
+    }, 0)
+  }
 
   // Handle save as draft
   const handleSaveDraft = async () => {
     if (!validateStep1()) {
-      setError('Customer name is required to save draft');
-      return;
+      setError('Customer name is required to save draft')
+      return
     }
 
-    setIsSubmitting(true);
-    setError('');
+    setIsSubmitting(true)
+    setError('')
 
     try {
-      // Create vehicle record
-      const { data: vehicle, error: vehicleError } = await supabase?.from('vehicles')?.insert([{
-          year: customerData?.vehicleYear || new Date()?.getFullYear(),
-          make: customerData?.vehicleMake || 'TBD',
-          model: customerData?.vehicleModel || 'TBD',
-          owner_name: customerData?.customerName?.trim(),
-          owner_phone: customerData?.customerPhone?.trim() || null,
-          owner_email: customerData?.customerEmail?.trim() || null,
-          stock_number: customerData?.stockNumber?.trim() || `DRAFT-${Date.now()}`,
-          vehicle_status: 'active',
-          created_by: user?.id
-        }])?.select()?.single();
+      // Create vehicle via service (service-layer boundary)
+      const vehiclePayload = {
+        year: customerData?.vehicleYear || new Date()?.getFullYear(),
+        make: customerData?.vehicleMake || 'TBD',
+        model: customerData?.vehicleModel || 'TBD',
+        owner_name: customerData?.customerName?.trim(),
+        owner_phone: customerData?.customerPhone?.trim() || null,
+        owner_email: customerData?.customerEmail?.trim() || null,
+        stock_number: customerData?.stockNumber?.trim() || `DRAFT-${Date.now()}`,
+        vehicle_status: 'active',
+        ...(orgId ? { org_id: orgId } : {}),
+      }
+      const vehicle = await vehicleService.create(vehiclePayload)
 
-      if (vehicleError) throw vehicleError;
+      // Create draft job via dealService
+      const payload = {
+        title: `Draft Deal - ${customerData?.customerName?.trim()}`,
+        description: `Draft deal for ${customerData?.customerName?.trim()}`,
+        job_status: 'draft',
+        service_type: 'in_house',
+        vehicle_id: vehicle?.id,
+        assigned_to: customerData?.assignedTo || user?.id,
+        delivery_coordinator_id: customerData?.deliveryCoordinator || null,
+        finance_manager_id: customerData?.financeManager || null,
+        customer_needs_loaner: Boolean(customerData?.needsLoaner),
+        customerName: customerData?.customerName?.trim(),
+        customerPhone: customerData?.customerPhone?.trim() || '',
+        customerEmail: customerData?.customerEmail?.trim() || '',
+        org_id: orgId || undefined,
+        lineItems: [],
+      }
+      await dealService.createDeal(payload)
 
-      // Create job as draft
-      const { data: job, error: jobError } = await supabase?.from('jobs')?.insert([{
-          title: `Draft Deal - ${customerData?.customerName?.trim()}`,
-          description: `Draft deal for ${customerData?.customerName?.trim()}`,
-          job_status: 'draft',
-          service_type: 'in_house',
-          vehicle_id: vehicle?.id,
-          assigned_to: customerData?.assignedTo || user?.id,
-          delivery_coordinator_id: customerData?.deliveryCoordinator || null,
-          finance_manager_id: customerData?.financeManager || null,
-          customer_needs_loaner: Boolean(customerData?.needsLoaner),
-          created_by: user?.id,
-          estimated_cost: 0
-        }])?.select()?.single();
-
-      if (jobError) throw jobError;
-
-      // Create transaction record
-      const { error: transactionError } = await supabase?.from('transactions')?.upsert([{
-          job_id: job?.id,
-          vehicle_id: vehicle?.id,
-          customer_name: customerData?.customerName?.trim(),
-          customer_phone: customerData?.customerPhone?.trim() || null,
-          customer_email: customerData?.customerEmail?.trim() || null,
-          total_amount: 0,
-          subtotal: 0,
-          tax_amount: 0,
-          transaction_status: 'pending'
-        }], { onConflict: 'job_id' });
-
-      if (transactionError) throw transactionError;
-
-      onSuccess?.();
-      resetForm();
-      onClose();
-
+      onSuccess?.()
+      resetForm()
+      onClose()
     } catch (err) {
-      setError(`Failed to save draft: ${err?.message}`);
+      setError(`Failed to save draft: ${err?.message}`)
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   // Handle create full deal
   const handleCreateDeal = async () => {
     if (!validateStep1() || !validateStep2()) {
-      setError('Please complete all required fields');
-      return;
+      setError('Please complete all required fields')
+      return
     }
 
-    setIsSubmitting(true);
-    setError('');
+    setIsSubmitting(true)
+    setError('')
 
     try {
-      // Create vehicle record
-      const { data: vehicle, error: vehicleError } = await supabase?.from('vehicles')?.insert([{
-          year: customerData?.vehicleYear || new Date()?.getFullYear(),
-          make: customerData?.vehicleMake || 'TBD',
-          model: customerData?.vehicleModel || 'TBD',
-          owner_name: customerData?.customerName?.trim(),
-          owner_phone: customerData?.customerPhone?.trim() || null,
-          owner_email: customerData?.customerEmail?.trim() || null,
-          stock_number: customerData?.stockNumber?.trim() || `DEAL-${Date.now()}`,
-          vehicle_status: 'active',
-          created_by: user?.id
-        }])?.select()?.single();
+      // Create vehicle via service
+      const vehiclePayload = {
+        year: customerData?.vehicleYear || new Date()?.getFullYear(),
+        make: customerData?.vehicleMake || 'TBD',
+        model: customerData?.vehicleModel || 'TBD',
+        owner_name: customerData?.customerName?.trim(),
+        owner_phone: customerData?.customerPhone?.trim() || null,
+        owner_email: customerData?.customerEmail?.trim() || null,
+        stock_number: customerData?.stockNumber?.trim() || `DEAL-${Date.now()}`,
+        vehicle_status: 'active',
+        ...(orgId ? { org_id: orgId } : {}),
+      }
+      const vehicle = await vehicleService.create(vehiclePayload)
 
-      if (vehicleError) throw vehicleError;
+      const total = calculateTotal()
+      const hasVendorItems = lineItems?.some((item) => item?.serviceType === 'vendor')
+      const serviceType = hasVendorItems ? 'vendor' : 'in_house'
+      const primaryVendor = lineItems?.find((item) => item?.vendorId)?.vendorId || null
 
-      const total = calculateTotal();
-      const hasVendorItems = lineItems?.some(item => item?.serviceType === 'vendor');
-      const serviceType = hasVendorItems ? 'vendor' : 'in_house';
-      const primaryVendor = lineItems?.find(item => item?.vendorId)?.vendorId || null;
+      // If vendor job, ensure scheduled_start_time is set (DB constraint)
+      let scheduledStart = null
+      if (serviceType === 'vendor') {
+        const vendorDates = (lineItems || [])
+          .filter(
+            (it) => it?.serviceType === 'vendor' && it?.requiresScheduling && it?.promisedDate
+          )
+          .map((it) => new Date(it?.promisedDate))
+          .sort((a, b) => a - b)
+        scheduledStart = (vendorDates?.[0] || new Date())?.toISOString()
+      }
 
-      // Create job
-      const { data: job, error: jobError } = await supabase?.from('jobs')?.insert([{
-          title: `Deal - ${customerData?.customerName?.trim()}`,
-          description: `Deal for ${customerData?.customerName?.trim()}`,
-          job_status: 'pending',
-          service_type: serviceType,
-          vehicle_id: vehicle?.id,
-          vendor_id: primaryVendor,
-          assigned_to: customerData?.assignedTo || user?.id,
-          delivery_coordinator_id: customerData?.deliveryCoordinator || null,
-          finance_manager_id: customerData?.financeManager || null,
-          customer_needs_loaner: Boolean(customerData?.needsLoaner),
-          created_by: user?.id,
-          estimated_cost: total
-        }])?.select()?.single();
-
-      if (jobError) throw jobError;
-
-      // Create job parts (line items) with proper field mapping
-      const jobPartsData = lineItems?.map(item => ({
-        job_id: job?.id,
+      // Build line items for dealService
+      const li = (lineItems || []).map((item) => ({
         product_id: item?.productId,
         quantity_used: 1,
-        unit_price: parseFloat(item?.unitPrice),
-        is_off_site: item?.serviceType === 'vendor',
-        requires_scheduling: Boolean(item?.requiresScheduling),
+        unit_price: parseFloat(item?.unitPrice || 0),
         promised_date: item?.requiresScheduling ? item?.promisedDate : null,
-        no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null
-      }));
+        requires_scheduling: Boolean(item?.requiresScheduling),
+        no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
+        is_off_site: item?.serviceType === 'vendor',
+      }))
 
-      const { error: jobPartsError } = await supabase?.from('job_parts')?.insert(jobPartsData);
+      const payload = {
+        title: `Deal - ${customerData?.customerName?.trim()}`,
+        description: `Deal for ${customerData?.customerName?.trim()}`,
+        job_status: 'pending',
+        service_type: serviceType,
+        vehicle_id: vehicle?.id,
+        vendor_id: primaryVendor,
+        assigned_to: customerData?.assignedTo || user?.id,
+        delivery_coordinator_id: customerData?.deliveryCoordinator || null,
+        finance_manager_id: customerData?.financeManager || null,
+        customer_needs_loaner: Boolean(customerData?.needsLoaner),
+        scheduled_start_time: scheduledStart,
+        estimated_cost: total,
+        org_id: orgId || undefined,
+        customerName: customerData?.customerName?.trim(),
+        customerPhone: customerData?.customerPhone?.trim() || '',
+        customerEmail: customerData?.customerEmail?.trim() || '',
+        lineItems: li,
+      }
 
-      if (jobPartsError) throw jobPartsError;
+      // Create via service (inserts job + parts)
+      const created = await dealService.createDeal(payload)
 
-      // Create/update transaction record
-      const { error: transactionError } = await supabase?.from('transactions')?.upsert([{
-          job_id: job?.id,
-          vehicle_id: vehicle?.id,
-          customer_name: customerData?.customerName?.trim(),
-          customer_phone: customerData?.customerPhone?.trim() || null,
-          customer_email: customerData?.customerEmail?.trim() || null,
-          total_amount: total,
-          subtotal: total,
-          tax_amount: 0,
-          transaction_status: 'pending'
-        }], { onConflict: 'job_id' });
+      // Upsert transaction and finalize totals via update
+      await dealService.updateDeal(created?.id, payload)
 
-      if (transactionError) throw transactionError;
-
-      onSuccess?.();
-      resetForm();
-      onClose();
-
+      onSuccess?.()
+      resetForm()
+      onClose()
     } catch (err) {
-      setError(`Failed to create deal: ${err?.message}`);
+      setError(`Failed to create deal: ${err?.message}`)
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const resetForm = () => {
-    setCurrentStep(1);
-    setCustomerData(initialFormState);
-    setLineItems([]);
-    setError('');
-    setIsDirty(false);
-  };
+    setCurrentStep(1)
+    setCustomerData(initialFormState)
+    setLineItems([])
+    setError('')
+    setIsDirty(false)
+  }
 
   // Enhanced close handler with unsaved changes guard
   const handleClose = () => {
     if (isDirty) {
-      setShowUnsavedWarning(true);
+      setShowUnsavedWarning(true)
     } else {
-      resetForm();
-      onClose();
+      resetForm()
+      onClose()
     }
-  };
+  }
 
   const confirmClose = () => {
-    setShowUnsavedWarning(false);
-    resetForm();
-    onClose();
-  };
+    setShowUnsavedWarning(false)
+    resetForm()
+    onClose()
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -522,19 +458,27 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
         {/* Progress indicator */}
         <div className="px-6 py-4 bg-slate-50 flex-shrink-0 border-b">
           <div className="flex items-center space-x-4">
-            <div className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}>
+            <div
+              className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                }`}
+              >
                 1
               </div>
               <span className="font-medium">Customer</span>
             </div>
             <div className="flex-1 h-px bg-gray-300"></div>
-            <div className={`flex items-center space-x-2 ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}>
+            <div
+              className={`flex items-center space-x-2 ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                }`}
+              >
                 2
               </div>
               <span className="font-medium">Line Items</span>
@@ -550,7 +494,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                 <div>
                   <strong>Error:</strong> {error}
                 </div>
-                <button 
+                <button
                   onClick={() => setError('')}
                   className="text-red-600 hover:text-red-800 ml-2"
                 >
@@ -575,7 +519,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                 <div>
                   <strong>Error:</strong> {dropdownData?.error}
                 </div>
-                <button 
+                <button
                   onClick={() => loadDropdownData()}
                   className="text-blue-600 hover:text-blue-800 ml-2 text-xs underline"
                 >
@@ -596,7 +540,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   <input
                     type="text"
                     value={customerData?.customerName}
-                    onChange={(e) => setCustomerData(prev => ({ ...prev, customerName: e?.target?.value }))}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
+                    }
                     className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter customer name"
                     required
@@ -610,7 +556,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   <input
                     type="tel"
                     value={customerData?.customerPhone}
-                    onChange={(e) => setCustomerData(prev => ({ ...prev, customerPhone: e?.target?.value }))}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, customerPhone: e?.target?.value }))
+                    }
                     className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter customer phone"
                   />
@@ -624,7 +572,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                 <input
                   type="email"
                   value={customerData?.customerEmail}
-                  onChange={(e) => setCustomerData(prev => ({ ...prev, customerEmail: e?.target?.value }))}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, customerEmail: e?.target?.value }))
+                  }
                   className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter customer email"
                 />
@@ -635,13 +585,13 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                 <h4 className="text-lg font-medium text-gray-900 mb-4">Vehicle Information</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Year
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
                     <input
                       type="number"
                       value={customerData?.vehicleYear || ''}
-                      onChange={(e) => setCustomerData(prev => ({ ...prev, vehicleYear: e?.target?.value }))}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, vehicleYear: e?.target?.value }))
+                      }
                       className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="2024"
                       min="1900"
@@ -649,25 +599,25 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Make
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Make</label>
                     <input
                       type="text"
                       value={customerData?.vehicleMake || ''}
-                      onChange={(e) => setCustomerData(prev => ({ ...prev, vehicleMake: e?.target?.value }))}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, vehicleMake: e?.target?.value }))
+                      }
                       className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Toyota"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Model
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Model</label>
                     <input
                       type="text"
                       value={customerData?.vehicleModel || ''}
-                      onChange={(e) => setCustomerData(prev => ({ ...prev, vehicleModel: e?.target?.value }))}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, vehicleModel: e?.target?.value }))
+                      }
                       className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Camry"
                     />
@@ -680,7 +630,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                   <input
                     type="text"
                     value={customerData?.stockNumber || ''}
-                    onChange={(e) => setCustomerData(prev => ({ ...prev, stockNumber: e?.target?.value }))}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, stockNumber: e?.target?.value }))
+                    }
                     className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter stock number (optional)"
                   />
@@ -691,20 +643,22 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
               <LoanerCheckbox
                 checked={customerData?.needsLoaner}
                 onChange={(checked) => {
-                  setCustomerData(prev => ({ ...prev, needsLoaner: Boolean(checked) }));
+                  setCustomerData((prev) => ({ ...prev, needsLoaner: Boolean(checked) }))
                 }}
               />
 
               {/* ✅ FIXED: Dealer Representatives with working dropdowns */}
               <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                 <h4 className="text-lg font-medium text-gray-900 mb-4">Dealer Representatives</h4>
-                
+
                 <div className="grid grid-cols-1 gap-4">
                   <MobileSelect
                     label="Sales Consultant"
                     options={dropdownData?.salesConsultants}
                     value={customerData?.assignedTo}
-                    onChange={(value) => setCustomerData(prev => ({ ...prev, assignedTo: value }))}
+                    onChange={(value) =>
+                      setCustomerData((prev) => ({ ...prev, assignedTo: value }))
+                    }
                     placeholder="Select sales consultant (optional)"
                     helpText="Choose the sales consultant responsible for this deal"
                   />
@@ -713,7 +667,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     label="Delivery Coordinator"
                     options={dropdownData?.deliveryCoordinators}
                     value={customerData?.deliveryCoordinator}
-                    onChange={(value) => setCustomerData(prev => ({ ...prev, deliveryCoordinator: value }))}
+                    onChange={(value) =>
+                      setCustomerData((prev) => ({ ...prev, deliveryCoordinator: value }))
+                    }
                     placeholder="Select delivery coordinator (optional)"
                     helpText="Choose the delivery coordinator for this deal"
                   />
@@ -722,7 +678,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     label="Finance Manager"
                     options={dropdownData?.financeManagers}
                     value={customerData?.financeManager}
-                    onChange={(value) => setCustomerData(prev => ({ ...prev, financeManager: value }))}
+                    onChange={(value) =>
+                      setCustomerData((prev) => ({ ...prev, financeManager: value }))
+                    }
                     placeholder="Select finance manager (optional)"
                     helpText="Choose the finance manager for this deal"
                   />
@@ -755,12 +713,17 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
               ) : (
                 <div className="space-y-4">
                   {lineItems?.map((item, index) => (
-                    <div key={item?.id} className="border rounded-xl p-4 bg-slate-50 border-slate-200">
+                    <div
+                      key={item?.id}
+                      className="border rounded-xl p-4 bg-slate-50 border-slate-200"
+                    >
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
                         <button
                           onClick={() => removeLineItem(item?.id)}
                           className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg"
+                          aria-label="Remove line item"
+                          title="Remove line item"
                         >
                           <Icon name="Trash2" size={16} />
                         </button>
@@ -774,12 +737,14 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                           </label>
                           <select
                             value={item?.productId || ''}
-                            onChange={(e) => updateLineItem(item?.id, 'productId', e?.target?.value)}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'productId', e?.target?.value)
+                            }
                             className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                             required
                           >
                             <option value="">Select product</option>
-                            {dropdownData?.products?.map(product => (
+                            {dropdownData?.products?.map((product) => (
                               <option key={product?.id} value={product?.id}>
                                 {product?.label}
                               </option>
@@ -796,7 +761,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                             step="0.01"
                             min="0"
                             value={item?.unitPrice}
-                            onChange={(e) => updateLineItem(item?.id, 'unitPrice', e?.target?.value)}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'unitPrice', e?.target?.value)
+                            }
                             className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="0.00"
                             required
@@ -807,7 +774,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                       {/* Service Configuration */}
                       <div className="bg-white rounded-lg p-4 border border-slate-200 mb-4">
                         <h5 className="font-medium text-gray-900 mb-3">Service Configuration</h5>
-                        
+
                         {/* Service Type */}
                         <div className="mb-4">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -820,7 +787,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                 name={`serviceType_${item?.id}`}
                                 value="in_house"
                                 checked={item?.serviceType === 'in_house'}
-                                onChange={(e) => updateLineItem(item?.id, 'serviceType', e?.target?.value)}
+                                onChange={(e) =>
+                                  updateLineItem(item?.id, 'serviceType', e?.target?.value)
+                                }
                                 className="mr-2 cursor-pointer"
                               />
                               🏠 On-Site (In-House)
@@ -831,7 +800,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                 name={`serviceType_${item?.id}`}
                                 value="vendor"
                                 checked={item?.serviceType === 'vendor'}
-                                onChange={(e) => updateLineItem(item?.id, 'serviceType', e?.target?.value)}
+                                onChange={(e) =>
+                                  updateLineItem(item?.id, 'serviceType', e?.target?.value)
+                                }
                                 className="mr-2 cursor-pointer"
                               />
                               🏢 Off-Site (Vendor)
@@ -847,12 +818,14 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                             </label>
                             <select
                               value={item?.vendorId || ''}
-                              onChange={(e) => updateLineItem(item?.id, 'vendorId', e?.target?.value)}
+                              onChange={(e) =>
+                                updateLineItem(item?.id, 'vendorId', e?.target?.value)
+                              }
                               className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                               required
                             >
                               <option value="">Select vendor</option>
-                              {dropdownData?.vendors?.map(vendor => (
+                              {dropdownData?.vendors?.map((vendor) => (
                                 <option key={vendor?.id} value={vendor?.id}>
                                   {vendor?.label}
                                 </option>
@@ -873,7 +846,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                   type="radio"
                                   name={`scheduling_${item?.id}`}
                                   checked={item?.requiresScheduling === true}
-                                  onChange={() => updateLineItem(item?.id, 'requiresScheduling', true)}
+                                  onChange={() =>
+                                    updateLineItem(item?.id, 'requiresScheduling', true)
+                                  }
                                   className="mr-2 cursor-pointer"
                                 />
                                 Needs Scheduling
@@ -883,7 +858,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                   type="radio"
                                   name={`scheduling_${item?.id}`}
                                   checked={item?.requiresScheduling === false}
-                                  onChange={() => updateLineItem(item?.id, 'requiresScheduling', false)}
+                                  onChange={() =>
+                                    updateLineItem(item?.id, 'requiresScheduling', false)
+                                  }
                                   className="mr-2 cursor-pointer"
                                 />
                                 No Scheduling Needed
@@ -898,7 +875,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                 <input
                                   type="date"
                                   value={item?.promisedDate}
-                                  onChange={(e) => updateLineItem(item?.id, 'promisedDate', e?.target?.value)}
+                                  onChange={(e) =>
+                                    updateLineItem(item?.id, 'promisedDate', e?.target?.value)
+                                  }
                                   min={new Date()?.toISOString()?.split('T')?.[0]}
                                   className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   required
@@ -912,7 +891,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                 <input
                                   type="text"
                                   value={item?.noScheduleReason}
-                                  onChange={(e) => updateLineItem(item?.id, 'noScheduleReason', e?.target?.value)}
+                                  onChange={(e) =>
+                                    updateLineItem(item?.id, 'noScheduleReason', e?.target?.value)
+                                  }
                                   className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                   placeholder="e.g., installed at delivery, no appointment needed"
                                   required
@@ -930,7 +911,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                           <textarea
                             rows={2}
                             value={item?.serviceNotes}
-                            onChange={(e) => updateLineItem(item?.id, 'serviceNotes', e?.target?.value)}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'serviceNotes', e?.target?.value)
+                            }
                             className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Special instructions, customer preferences, etc."
                           />
@@ -973,14 +956,10 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
             </div>
 
             <div className="flex space-x-3 w-full md:w-auto">
-              <Button
-                onClick={handleClose}
-                variant="outline"
-                className="w-full md:w-auto h-11"
-              >
+              <Button onClick={handleClose} variant="outline" className="w-full md:w-auto h-11">
                 Cancel
               </Button>
-              
+
               {currentStep === 1 && (
                 <>
                   <Button
@@ -1042,5 +1021,5 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
         )}
       </div>
     </div>
-  );
+  )
 }
