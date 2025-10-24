@@ -286,6 +286,24 @@ export default function DealForm({
     onCancel?.()
   }
 
+  // Totals bar calculation (qty is always 1, but keep quantity_used support)
+  const dealSubtotal = useMemo(() => {
+    try {
+      return (form.lineItems || []).reduce((sum, li) => {
+        const qty = Number(li?.quantity_used ?? 1) || 1
+        const price = Number(li?.unit_price ?? 0) || 0
+        return sum + qty * price
+      }, 0)
+    } catch {
+      return 0
+    }
+  }, [form.lineItems])
+
+  const currencyFmt = useMemo(
+    () => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }),
+    []
+  )
+
   const submit = async (e) => {
     e?.preventDefault?.()
     // Prevent duplicate submits
@@ -782,6 +800,17 @@ export default function DealForm({
           className="mt-1 input-mobile w-full"
           rows={3}
         />
+      </section>
+
+      {/* Totals */}
+      <section
+        className="flex items-center justify-end border rounded px-3 py-2 bg-slate-50"
+        data-testid="deal-total"
+      >
+        <span className="text-sm text-slate-600 mr-3">Total</span>
+        <span className="text-lg font-semibold" data-testid="deal-total-amount">
+          {currencyFmt.format(dealSubtotal || 0)}
+        </span>
       </section>
 
       {/* Actions */}

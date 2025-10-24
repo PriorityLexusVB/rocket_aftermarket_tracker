@@ -31,6 +31,8 @@ import LoanerManagementDrawer from './pages/loaner-management-drawer'
 // Admin page import - ensures proper loading
 import AdminPage from './pages/admin'
 import DebugAuthPage from './pages/debug-auth'
+import CommunicationsCenter from './pages/communications'
+import ProfileSettings from './pages/profile'
 
 const Routes = () => {
   return (
@@ -131,6 +133,26 @@ const Routes = () => {
                 }
               />
 
+              {/* Communications Center */}
+              <Route
+                path="/communications"
+                element={
+                  <ProtectedRoute>
+                    <CommunicationsCenter />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Profile Settings */}
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfileSettings />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Calendar route - redirect to new calendar flow center */}
               <Route
                 path="/calendar"
@@ -168,6 +190,14 @@ const Routes = () => {
               />
               <Route
                 path="/executive-analytics-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/advanced-business-intelligence-analytics" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/business-intelligence-reports"
                 element={
                   <ProtectedRoute>
                     <Navigate to="/advanced-business-intelligence-analytics" replace />
@@ -229,6 +259,14 @@ const Routes = () => {
                 element={
                   <ProtectedRoute>
                     <Navigate to="/currently-active-appointments" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/photo-documentation-center"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/deals" replace />
                   </ProtectedRoute>
                 }
               />
