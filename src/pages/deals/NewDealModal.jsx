@@ -118,6 +118,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
             onChange(isChecked)
           }}
           className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
+          data-testid="loaner-checkbox"
         />
         <span className="text-sm font-medium text-gray-700">Customer needs loaner vehicle</span>
       </label>
@@ -136,6 +137,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     placeholder,
     required = false,
     helpText,
+    testId,
   }) => (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -147,6 +149,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
         className="bg-white border border-gray-300 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
         disabled={dropdownData?.loading}
         required={required}
+        data-testid={testId}
       >
         <option value="">{placeholder}</option>
         {options?.map((option) => (
@@ -661,6 +664,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     }
                     placeholder="Select sales consultant (optional)"
                     helpText="Choose the sales consultant responsible for this deal"
+                    testId="sales-select"
                   />
 
                   <MobileSelect
@@ -672,6 +676,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     }
                     placeholder="Select delivery coordinator (optional)"
                     helpText="Choose the delivery coordinator for this deal"
+                    testId="delivery-select"
                   />
 
                   <MobileSelect
@@ -683,6 +688,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                     }
                     placeholder="Select finance manager (optional)"
                     helpText="Choose the finance manager for this deal"
+                    testId="finance-select"
                   />
                 </div>
               </div>
@@ -742,6 +748,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                             }
                             className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                             required
+                            data-testid={`product-select-${index}`}
                           >
                             <option value="">Select product</option>
                             {dropdownData?.products?.map((product) => (
@@ -767,6 +774,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                             className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="0.00"
                             required
+                            data-testid={`unit-price-input-${index}`}
                           />
                         </div>
                       </div>
@@ -841,7 +849,10 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                           </label>
                           <div className="space-y-3">
                             <div className="flex flex-col sm:flex-row gap-2">
-                              <label className="flex items-center cursor-pointer">
+                              <label
+                                className="flex items-center cursor-pointer"
+                                htmlFor={`requiresScheduling-${index}`}
+                              >
                                 <input
                                   type="radio"
                                   name={`scheduling_${item?.id}`}
@@ -850,10 +861,15 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                     updateLineItem(item?.id, 'requiresScheduling', true)
                                   }
                                   className="mr-2 cursor-pointer"
+                                  id={`requiresScheduling-${index}`}
+                                  data-testid={`requires-scheduling-${index}`}
                                 />
                                 Needs Scheduling
                               </label>
-                              <label className="flex items-center cursor-pointer">
+                              <label
+                                className="flex items-center cursor-pointer"
+                                htmlFor={`noScheduling-${index}`}
+                              >
                                 <input
                                   type="radio"
                                   name={`scheduling_${item?.id}`}
@@ -862,6 +878,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                     updateLineItem(item?.id, 'requiresScheduling', false)
                                   }
                                   className="mr-2 cursor-pointer"
+                                  id={`noScheduling-${index}`}
                                 />
                                 No Scheduling Needed
                               </label>

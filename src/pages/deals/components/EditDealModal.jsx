@@ -26,9 +26,10 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
 
   // Enhanced dropdown data
   const {
-    salesConsultants,
-    deliveryCoordinators,
-    financeManagers,
+    // Use pre-formatted option arrays so labels/ids match SearchableSelect expectations
+    salesConsultantOptions,
+    deliveryCoordinatorOptions,
+    financeManagerOptions,
     vendors,
     products,
     loading: dropdownLoading,
@@ -55,12 +56,14 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     }
   }, [formData, initialFormData])
 
-  // Load dropdown data when modal opens
+  // Load dropdown data once when the modal opens (avoid loop on loading state toggles)
   useEffect(() => {
-    if (isOpen && !dropdownLoading) {
+    if (isOpen) {
+      // Fire-and-forget refresh; underlying hook already caches
       refreshDropdowns()
     }
-  }, [isOpen, refreshDropdowns, dropdownLoading])
+    // Intentionally omit dropdownLoading from deps to prevent re-trigger loops
+  }, [isOpen, refreshDropdowns])
 
   // Load deal data
   useEffect(() => {
@@ -69,9 +72,9 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     }
   }, [isOpen, dealId])
 
-  // Enhanced Loaner Checkbox with mobile optimization and click propagation handling
+  // Simplified Loaner Checkbox (native behavior; single-click reliable)
   const LoanerCheckbox = ({ checked, onChange }) => (
-    <div className="bg-slate-50 p-4 rounded-lg border" onClick={(e) => e?.stopPropagation()}>
+    <div className="bg-slate-50 p-4 rounded-lg border">
       <label
         htmlFor="customer_needs_loaner"
         className="inline-flex items-center gap-3 min-h-11 px-2 cursor-pointer"
@@ -80,12 +83,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
           id="customer_needs_loaner"
           type="checkbox"
           checked={Boolean(checked)}
-          onChange={(e) => {
-            e?.stopPropagation()
-            onChange(e?.target?.checked)
-          }}
-          onClick={(e) => e?.stopPropagation()}
-          className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          onChange={(e) => onChange(Boolean(e?.target?.checked))}
+          className="w-5 h-5 accent-blue-600 appearance-auto border-2 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           data-testid="loaner-checkbox"
         />
         <span className="text-sm font-medium text-gray-700 select-none">
@@ -686,10 +685,10 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   <h4 className="text-lg font-medium text-gray-900 mb-4">Dealer Representatives</h4>
 
                   {/* Sales Consultant */}
-                  <div className="mb-4">
+                  <div className="mb-4" data-testid="sales-select">
                     <SearchableSelect
                       label="Sales Consultant"
-                      options={salesConsultants}
+                      options={salesConsultantOptions}
                       value={formData?.assignedTo}
                       onChange={(value) => updateFormData({ assignedTo: value })}
                       placeholder="Select sales consultant"
@@ -699,10 +698,10 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   </div>
 
                   {/* Delivery Coordinator */}
-                  <div className="mb-4">
+                  <div className="mb-4" data-testid="delivery-select">
                     <SearchableSelect
                       label="Delivery Coordinator"
-                      options={deliveryCoordinators}
+                      options={deliveryCoordinatorOptions}
                       value={formData?.deliveryCoordinator}
                       onChange={(value) => updateFormData({ deliveryCoordinator: value })}
                       placeholder="Select delivery coordinator"
@@ -712,10 +711,10 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   </div>
 
                   {/* Finance Manager */}
-                  <div>
+                  <div data-testid="finance-select">
                     <SearchableSelect
                       label="Finance Manager"
-                      options={financeManagers}
+                      options={financeManagerOptions}
                       value={formData?.financeManager}
                       onChange={(value) => updateFormData({ financeManager: value })}
                       placeholder="Select finance manager"

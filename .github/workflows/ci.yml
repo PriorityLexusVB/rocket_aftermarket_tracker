@@ -23,6 +23,10 @@ jobs:
         # Corepack manages package managers like pnpm and yarn in Node.js
         run: corepack enable
 
+      - name: Prepare pnpm via Corepack (failsafe)
+        # Ensure pnpm is available on PATH even if the setup action is skipped by cache logic
+        run: corepack prepare pnpm@10.0.0 --activate
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
