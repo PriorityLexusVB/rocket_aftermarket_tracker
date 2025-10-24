@@ -7,31 +7,39 @@ test.describe('DealForm Unsaved Changes Guard', () => {
     // Go to New Deal page
     await page.goto('/deals/new')
 
+    // Ensure the form has finished loading before interacting
+    await expect(page.getByTestId('deal-form')).toBeVisible()
+
     // Type into Title to make form dirty
     const title = page.getByTestId('title-input')
     await title.fill('Tint Package')
     await expect(title).toHaveValue('Tint Package')
 
-    // Click Cancel and intercept confirm dialog
-    const [dialog] = await Promise.all([
-      page.waitForEvent('dialog'),
-      page.getByRole('button', { name: 'Cancel' }).click(),
-    ])
-    expect(dialog.type()).toBe('confirm')
-
-    // Dismiss first to stay on page
-    await dialog.dismiss()
+    // First attempt: stub confirm to return false (stay on page) and capture invocation
+    await page.evaluate(() => {
+      // @ts-ignore
+      window.__confirmCalls = 0
+      const original = window.confirm
+      // @ts-ignore
+      window.__origConfirm = original
+      window.confirm = (msg) => {
+        // @ts-ignore
+        window.__confirmCalls = (window.__confirmCalls || 0) + 1
+        return false
+      }
+    })
+    await page.getByRole('button', { name: 'Cancel' }).click()
+    expect(await page.evaluate(() => (window as any).__confirmCalls)).toBe(1)
 
     // Ensure we are still on New Deal and title persists
     await expect(page).toHaveURL(/\/deals\/new$/)
     await expect(page.getByTestId('title-input')).toHaveValue('Tint Package')
 
-    // Try again and accept to navigate away
-    const [dialog2] = await Promise.all([
-      page.waitForEvent('dialog'),
-      page.getByRole('button', { name: 'Cancel' }).click(),
-    ])
-    await dialog2.accept()
+    // Second attempt: stub confirm to return true (navigate away)
+    await page.evaluate(() => {
+      window.confirm = () => true
+    })
+    await page.getByRole('button', { name: 'Cancel' }).click()
 
     // Expect to land on deals listing page
     await expect(page).toHaveURL(/\/deals(\?.*)?$/)

@@ -70,6 +70,16 @@ export default function DealForm({
 
   // Keep local form state in sync when parent provides a new initial (e.g., after save/refetch or route change)
   useEffect(() => {
+    // Only sync when a meaningful initial is provided (e.g., edit mode or refetch),
+    // not for an empty default object which would clear user input on every render.
+    const hasMeaningfulInitial =
+      initial &&
+      (initial.id ||
+        initial.job_number ||
+        initial.title ||
+        (Array.isArray(initial.lineItems) && initial.lineItems.length > 0))
+    if (!hasMeaningfulInitial) return
+
     setForm({
       id: initial.id || undefined,
       job_number: initial.job_number || '',
