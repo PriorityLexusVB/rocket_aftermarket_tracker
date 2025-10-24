@@ -19,14 +19,6 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      - name: Enable Corepack (required for pnpm)
-        # Corepack manages package managers like pnpm and yarn in Node.js
-        run: corepack enable
-
-      - name: Prepare pnpm via Corepack (failsafe)
-        # Ensure pnpm is available on PATH even if the setup action is skipped by cache logic
-        run: corepack prepare pnpm@10.0.0 --activate
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -34,8 +26,14 @@ jobs:
           version: 10
           run_install: false
 
-      - name: Show pnpm version
-        run: pnpm --version
+      - name: Ensure pnpm available (fallback to npm install if missing)
+        shell: bash
+        run: |
+          if ! command -v pnpm >/dev/null 2>&1; then
+            echo "pnpm not found on PATH; installing via npm..."
+            npm i -g pnpm@10
+          fi
+          echo "pnpm version: $(pnpm --version)"
 
       - name: Install dependencies (locked)
         run: pnpm install --frozen-lockfile
