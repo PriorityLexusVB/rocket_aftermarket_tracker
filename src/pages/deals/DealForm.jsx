@@ -802,30 +802,36 @@ export default function DealForm({
         />
       </section>
 
-      {/* Totals */}
+      {/* Sticky actions + total (mobile-safe) */}
       <section
-        className="flex items-center justify-end border rounded px-3 py-2 bg-slate-50"
-        data-testid="deal-total"
+        className="sticky bottom-20 md:bottom-0 z-40 -mx-4 px-4 py-3 bg-white/90 backdrop-blur border-t shadow-sm"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
       >
-        <span className="text-sm text-slate-600 mr-3">Total</span>
-        <span className="text-lg font-semibold" data-testid="deal-total-amount">
-          {currencyFmt.format(dealSubtotal || 0)}
-        </span>
-      </section>
-
-      {/* Actions */}
-      <section className="flex gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="btn-mobile button-enhanced"
-          data-testid="save-deal-btn"
-        >
-          {saving ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Create Deal'}
-        </button>
-        <button type="button" onClick={handleCancel} className="btn-mobile button-outline-enhanced">
-          Cancel
-        </button>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-baseline gap-2" data-testid="deal-total">
+            <span className="text-sm text-slate-600">Total</span>
+            <span className="text-lg font-semibold" data-testid="deal-total-amount">
+              {currencyFmt.format(dealSubtotal || 0)}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="btn-mobile button-outline-enhanced"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-mobile button-enhanced"
+              data-testid="save-deal-btn"
+            >
+              {saving ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Create Deal'}
+            </button>
+          </div>
+        </div>
       </section>
 
       {errorMsg ? (

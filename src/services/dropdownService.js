@@ -1,6 +1,32 @@
 // src/services/dropdownService.js
 import { supabase } from '@/lib/supabase'
 
+// Simple in-memory cache with TTL to speed dropdowns
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const _cache = new Map()
+
+function _cacheKey(base, extras = {}) {
+  const suffix = Object.entries(extras)
+    .filter(([_, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => `${k}:${v}`)
+    .join('|')
+  return suffix ? `${base}?${suffix}` : base
+}
+
+function _setCache(key, value) {
+  _cache.set(key, { value, ts: Date.now() })
+}
+
+function _getCache(key) {
+  const hit = _cache.get(key)
+  if (!hit) return null
+  if (Date.now() - hit.ts > CACHE_TTL_MS) {
+    _cache.delete(key)
+    return null
+  }
+  return hit.value
+}
+
 // Optional org scoping flag (enable via VITE_ORG_SCOPED_DROPDOWNS=true)
 const ORG_SCOPED =
   String(import.meta?.env?.VITE_ORG_SCOPED_DROPDOWNS || '').toLowerCase() === 'true'
@@ -34,6 +60,14 @@ function toOptions(list, labelKeyA = 'name', labelKeyB = 'full_name') {
  */
 async function getStaff({ departments = [], roles = [], activeOnly = true } = {}) {
   const orgId = await getScopedOrgId()
+  const key = _cacheKey('staff', {
+    departments: departments?.join(','),
+    roles: roles?.join(','),
+    activeOnly,
+    orgId,
+  })
+  const cached = _getCache(key)
+  if (cached) return cached
   // 1) exact filter by department/role
   let q = supabase
     .from('user_profiles')
@@ -47,7 +81,11 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
   try {
     const { data: exact, count } = await q.throwOnError()
-    if ((count ?? 0) > 0) return toOptions(exact, 'full_name')
+    if ((count ?? 0) > 0) {
+      const opts = toOptions(exact, 'full_name')
+      _setCache(key, opts)
+      return opts
+    }
     // if no exact results and no filters provided, just return whatever we have
     if (!departments.length && !roles.length) return toOptions(exact || [], 'full_name')
   } catch (err) {
@@ -72,7 +110,9 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
     if (orgId) q2 = q2.eq('org_id', orgId)
 
     const { data: fuzzy } = await q2.throwOnError()
-    return toOptions(fuzzy || [], 'full_name')
+    const opts = toOptions(fuzzy || [], 'full_name')
+    _setCache(key, opts)
+    return opts
   } catch (err) {
     console.error('getStaff fuzzy query failed:', { err, departments, roles })
     return []
@@ -94,6 +134,9 @@ export async function getFinanceManagers() {
 export async function getVendors({ activeOnly = true } = {}) {
   try {
     const orgId = await getScopedOrgId()
+    const key = _cacheKey('vendors', { activeOnly, orgId })
+    const cached = _getCache(key)
+    if (cached) return cached
     let q = supabase
       .from('vendors')
       .select('id, name, is_active, phone, email, specialty')
@@ -101,7 +144,9 @@ export async function getVendors({ activeOnly = true } = {}) {
     if (activeOnly) q = q.eq('is_active', true)
     if (orgId) q = q.eq('org_id', orgId)
     const { data } = await q.throwOnError()
-    return toOptions(data, 'name')
+    const opts = toOptions(data, 'name')
+    _setCache(key, opts)
+    return opts
   } catch (e) {
     console.error('getVendors error:', e)
     return []
@@ -112,6 +157,9 @@ export async function getVendors({ activeOnly = true } = {}) {
 export async function getProducts({ activeOnly = true } = {}) {
   try {
     const orgId = await getScopedOrgId()
+    const key = _cacheKey('products', { activeOnly, orgId })
+    const cached = _getCache(key)
+    if (cached) return cached
     let q = supabase
       .from('products')
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
@@ -119,12 +167,14 @@ export async function getProducts({ activeOnly = true } = {}) {
     if (activeOnly) q = q.eq('is_active', true)
     if (orgId) q = q.eq('org_id', orgId)
     const { data } = await q.throwOnError()
-    return (data || []).map((p) => ({
+    const opts = (data || []).map((p) => ({
       id: p.id,
       value: p.id,
       label: p.brand ? `${p.name} - ${p.brand}` : p.name,
       unit_price: p.unit_price,
     }))
+    _setCache(key, opts)
+    return opts
   } catch (e) {
     console.error('getProducts error:', e)
     return []
@@ -198,5 +248,21 @@ export async function globalSearch(term) {
   } catch (e) {
     console.error('globalSearch error:', e)
     return { users: [], vendors: [], products: [] }
+  }
+}
+
+// Fire-and-forget prefetch to warm common dropdowns on app load
+export async function prefetchDropdowns() {
+  try {
+    await Promise.all([
+      getVendors({ activeOnly: true }),
+      getProducts({ activeOnly: true }),
+      getSalesConsultants(),
+      getFinanceManagers(),
+      getDeliveryCoordinators(),
+    ])
+  } catch (e) {
+    // non-fatal
+    console.warn('prefetchDropdowns failed:', e)
   }
 }
