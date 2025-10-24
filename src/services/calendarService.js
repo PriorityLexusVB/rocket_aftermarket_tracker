@@ -63,6 +63,9 @@ export const calendarService = {
         location: scheduleData?.location,
         color_code: scheduleData?.colorCode,
         calendar_notes: scheduleData?.notes,
+        // Ensure scheduled jobs surface in Active Appointments views
+        // Default to 'scheduled' when we have a start time unless an explicit status was provided
+        job_status: scheduleData?.status ?? (scheduleData?.startTime ? 'scheduled' : undefined),
         updated_at: new Date()?.toISOString(),
       }
 
