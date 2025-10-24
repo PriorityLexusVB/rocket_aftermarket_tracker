@@ -155,7 +155,7 @@ function mapFormToDb(formState = {}) {
 
 // Normalize line items to match `job_parts` columns we know are present.
 // ✅ FIXED: Remove total_price as it's auto-generated
-function toJobPartRows(jobId, items = []) {
+export function toJobPartRows(jobId, items = []) {
   return (
     // drop null-only rows
     (items || [])

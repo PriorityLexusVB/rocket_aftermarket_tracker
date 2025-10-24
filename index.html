@@ -18,6 +18,11 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico" />
 
+    <!-- Supabase connection hints -->
+    <!-- If supported by your Vite version, %VITE_SUPABASE_URL% will be replaced at build time -->
+    <link rel="dns-prefetch" href="%VITE_SUPABASE_URL%" />
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
+
     <!-- Google Fonts - Inter Font Family -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
