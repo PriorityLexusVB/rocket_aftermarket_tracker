@@ -27,11 +27,51 @@ export default async function globalSetup() {
     storageExists ? { storageState: storagePath } : undefined
   )
   const page = await context.newPage()
+  // Debug: surface browser console and key auth responses during setup
+  page.on('console', (msg) => {
+    try {
+      // Trim noisy logs
+      const text = msg.text()
+      if (/vite\b|favicon|dev server/i.test(text)) return
+      // eslint-disable-next-line no-console
+      console.log(`[setup:console:${msg.type()}]`, text)
+    } catch {}
+  })
+  page.on('response', (res) => {
+    try {
+      const url = res.url()
+      if (/(auth|supabase)\//i.test(url)) {
+        // eslint-disable-next-line no-console
+        console.log(`[setup:response] ${res.status()} ${url}`)
+      }
+    } catch {}
+  })
+
+  // Helper: wait for server to be reachable to reduce flakes on slow start
+  const waitForServer = async (maxMs = 30000) => {
+    const start = Date.now()
+    let attempt = 0
+    while (Date.now() - start < maxMs) {
+      attempt += 1
+      try {
+        await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 5000 })
+        return true
+      } catch (e) {
+        // Small backoff then retry
+        await new Promise((r) => setTimeout(r, Math.min(500 + attempt * 250, 2000)))
+      }
+    }
+    return false
+  }
 
   // If storage exists and debug-auth shows both testids, skip login
   let hasValidState = false
   try {
-    await page.goto(base + '/debug-auth')
+    const up = await waitForServer(30000)
+    if (!up) {
+      console.error('[global.setup] Server at %s did not become reachable within timeout.', base)
+    }
+    await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 15000 })
     const hasSession = await page
       .getByTestId('session-user-id')
       .isVisible()
@@ -54,7 +94,7 @@ export default async function globalSetup() {
       await browser.close()
       return
     }
-    await page.goto(base + '/auth')
+    await page.goto(base + '/auth', { waitUntil: 'domcontentloaded', timeout: 15000 })
 
     const emailInput = page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i))
     const passInput = page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i))
@@ -65,12 +105,55 @@ export default async function globalSetup() {
       .getByRole('button', { name: /continue|sign in|log in/i })
       .first()
       .click()
-    await page.waitForLoadState('networkidle')
 
-    // Confirm session on debug-auth then persist state
-    await page.goto(base + '/debug-auth')
-    await page.getByTestId('session-user-id').waitFor({ state: 'visible', timeout: 15000 })
-    await page.getByTestId('profile-org-id').waitFor({ state: 'visible', timeout: 15000 })
+    // Wait for auth to settle: either navigation away from /auth or Supabase token response
+    const postAuthSettled = await Promise.race([
+      page
+        .waitForURL((url) => !url.pathname.startsWith('/auth'), { timeout: 30000 })
+        .then(() => true)
+        .catch(() => false),
+      page
+        .waitForResponse((res) => res.url().includes('/auth/v1/token') && res.ok(), {
+          timeout: 30000,
+        })
+        .then(() => true)
+        .catch(() => false),
+    ])
+    if (!postAuthSettled) {
+      console.warn('[global.setup] Post-auth did not settle; proceeding to debug-auth anyway.')
+    }
+
+    // Try a few attempts to reach debug-auth and see the session/org markers
+    let verified = false
+    for (let i = 0; i < 3 && !verified; i++) {
+      await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 30000 })
+      try {
+        await page.getByTestId('session-user-id').waitFor({ state: 'visible', timeout: 15000 })
+        await page.getByTestId('profile-org-id').waitFor({ state: 'visible', timeout: 15000 })
+        verified = true
+      } catch (e) {
+        // If still redirected to /auth, wait a bit and retry
+        if (page.url().includes('/auth')) {
+          await page.waitForTimeout(2000)
+        } else {
+          // Take a screenshot to help diagnose
+          try {
+            await page.screenshot({
+              path: path.join(storageDir, `setup-debug-auth-fail-${i + 1}.png`),
+            })
+          } catch {}
+          await page.waitForTimeout(1000)
+        }
+      }
+    }
+    if (!verified) {
+      try {
+        await page.screenshot({ path: path.join(storageDir, 'setup-final.png'), fullPage: true })
+        const html = await page.content()
+        await fs.writeFile(path.join(storageDir, 'setup-final.html'), html)
+      } catch {}
+      throw new Error('[global.setup] Unable to verify session on /debug-auth after login')
+    }
   }
 
   await fs.mkdir(storageDir, { recursive: true })
