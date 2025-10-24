@@ -15,6 +15,8 @@
       "https://github.com/PriorityLexusVB/Priority-Lead-Sync.git",
     ],
     "git.autofetch": "all",
+    "gitlens.autolinks": [],
+    "gitlens.gitkraken.activeOrganizationId": "5231deb8-33d6-44b4-8395-48b31bf4d647",
   },
   "extensions": {
     "recommendations": ["github.copilot", "github.copilot-chat", "esbenp.prettier-vscode"],
