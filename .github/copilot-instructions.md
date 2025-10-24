@@ -1,135 +1,70 @@
-# Priority Automotive — AI Coding Instructions
+# Priority Automotive — AI coding instructions
 
-## Stack & Commands
-- React 18 + Vite, TailwindCSS, Supabase (Auth/Postgres/Storage), Recharts, Framer Motion.
-- Dev: `npm run start` (http://localhost:5173) · Build: `npm run build` → `dist/` · Preview: `npm run serve`.
-- Vercel: SPA rewrites via `vercel.json` (`rewrites: [{ "source": "/(.*)", "destination": "/" }]`).
-- Bundle split in `vite.config.mjs` (`manualChunks`: `react`, `router`, `supabase`).
+Use these project-specific rules to move fast without breaking conventions.
 
-## Layout (key paths)
-- `src/pages/**` feature pages (e.g., `deals`, `admin`, `calendar`).
-- `src/services/**` Supabase I/O (use only `src/lib/supabase.js` client).
-- `src/contexts/AuthContext.jsx` = auth/session source of truth.
-- Global CSS: `src/styles/tailwind.css` + `src/styles/index.css`.
-	- **Rule:** All `@import` lines must be the first lines in `src/styles/index.css`.
+## Stack and run
 
-## Data Model (core)
-- `jobs` ("deals"): `job_number`, `vehicle_id`, `vendor_id`, `assigned_to`, `finance_manager_id`,
-	`delivery_coordinator_id`, `customer_needs_loaner`, dates, notes.
-- `job_parts`: line items for a job (`product_id`, `quantity_used`, `unit_price`, `promised_date`,
-	`requires_scheduling`, `no_schedule_reason`, `is_off_site`).
-- `products`, `vendors`, `user_profiles` (RBAC via `department`/`role`), `loaner_assignments`.
+- React 18 + Vite + TailwindCSS + Supabase (Auth/Postgres/Storage); charts via Recharts; motion via Framer Motion.
+- Dev: pnpm start (http://localhost:5173) · Build: pnpm build → dist/ · Preview: pnpm serve · Tests: pnpm test · E2E: pnpm e2e.
+- Vercel is configured as SPA: see `vercel.json` rewrites; CSP headers are defined there.
+- Code split is defined in `vite.config.mjs` manualChunks: `react`, `router`, `supabase`.
 
-## Service-Layer Pattern (do this)
-- **All DB I/O happens in services.** Components must not import Supabase directly.
-- `src/services/dropdownService.js` = single source of truth:
-	- `getSalesConsultants()`, `getFinanceManagers()`, `getDeliveryCoordinators()` → from `user_profiles` by `department`.
-	- `getVendors({ activeOnly })`, `getProducts({ activeOnly })` → return `{ id, value, label }`; products include `unit_price`.
+## Architecture and boundaries
 
-## Deal Form — correct behavior
+- Pages live under `src/pages/**` (e.g., `deals`, `admin`, `calendar`). Router in `src/App.jsx`/`src/Routes.jsx`.
+- All DB I/O stays in `src/services/**` using the singleton client in `src/lib/supabase.js`. Do not import Supabase in components.
+- Auth/session: `src/contexts/AuthContext.jsx` loads `user_profiles` and exposes `{ user, userProfile, signIn, signOut }`.
+- Dropdowns pattern: `src/services/dropdownService.js` returns option-shaped arrays `{ id, value, label }` (products include `unit_price`). Fuzzy fallback if exact department filter is empty.
+- Multi-tenant scoping: prefer `src/services/tenantService.js` with `orgId` from `useTenant()`; optional flag `VITE_ORG_SCOPED_DROPDOWNS=true` also scopes `dropdownService` via `auth_user_org()`.
+
+## Deal Form contract (source of truth)
+
 - File: `src/pages/deals/DealForm.jsx`.
-- Present & persist: Deal/Job #, Stock #, Customer Mobile, Vendor, Sales, Finance, Delivery, Description.
-- Line items: add/remove; selecting a product **auto-fills `unit_price`**; fields include `promised_date`,
-	`requires_scheduling` (or `no_schedule_reason`), and `is_off_site`.
-- Native inputs/selects/checkboxes only (mobile pickers). Use `accent-*` so ticks are visible.
-- On-Site vs Off-Site uses radio tiles with a visible highlight.
-- Submit payload mirrors phone into **both** `customer_phone` and `customerPhone`.
-- Line items use **snake_case** for DB fields.
-- If `onSave` prop exists: call it; otherwise call `dealService.createDeal/updateDeal`.
+- Fields: Deal/Job number, Stock number, Customer Mobile, Vendor, Sales, Finance, Delivery, Description.
+- Line items: add/remove; product selection auto-fills `unit_price`; per-line fields: `promised_date`, `requires_scheduling` (or `no_schedule_reason`), `is_off_site`.
+- Native inputs/selects/checkboxes only (mobile UX); checkboxes use `accent-blue-600 appearance-auto`. On/Off-Site are radio tiles with visible highlight.
+- Submit payload mirrors phone into both `customer_phone` and `customerPhone`; line items use snake_case to match `job_parts`.
+- Save flow: if `onSave` is passed, call it; otherwise use `dealService.createDeal/updateDeal`. Mapping lives in `src/services/dealService.js` (`mapFormToDb`, `mapDbDealToForm`).
 
-## Auth & Roles
-- `AuthContext` wires Supabase Auth; `user_profiles` holds `department`/`role`.
-- Staff dropdowns filter by department; prefer exact match, fuzzy fallback if empty.
+## Data model and joins (used by services)
 
-## Gotchas
-- Keep `@import` at the very top of `src/styles/index.css` (Vite CSS will error if not).
-- Do not add Supabase calls in components; use services.
-- Keep native form controls for mobile UX.
+- `jobs` (aka deals): `job_number`, `vendor_id`, `assigned_to`, `finance_manager_id`, `delivery_coordinator_id`, `customer_needs_loaner`, scheduling/cost fields, optional `org_id`.
+- `job_parts`: `product_id`, `quantity_used`, `unit_price`, `promised_date`, `requires_scheduling`, `no_schedule_reason`, `is_off_site`.
+- Related: `products`, `vendors`, `user_profiles`, `loaner_assignments`, `transactions` (customer + total).
+- `dealService.deleteDeal` uses RPC `delete_job_cascade`; reads/writes are standard table queries (no RPC dependency).
 
-## Quick Checks (manual)
-1) Dropdowns populate vendors/products/staff (options use `{ value, label }`).
-2) Selecting a product auto-fills `unit_price`.
-3) Checkboxes show ticks (`accent-blue-600 appearance-auto`).
-4) On-Site/Off-Site tiles highlight selected.
-5) Save a new deal → reopen in Edit → values persist (including line-items).
+## Testing and selectors
 
-Tech & Build
+- E2E tests live in `e2e/*.spec.ts` (Playwright). Components expose stable `data-testid` (see `DealForm.jsx`) used by specs like `deal-form-dropdowns.spec.ts`.
 
-Stack: React 18 + Vite, TailwindCSS, Supabase (Auth/Postgres/Storage), Recharts, Framer Motion.
+## Styling and other gotchas
 
-Run: npm run start (5173), Build: npm run build → dist/, Preview: npm run serve.
+- Keep all CSS `@import` statements at the top of `src/styles/tailwind.css` (Vite CSS requires imports first). Global tokens live in `src/styles/index.css`.
+- Options helpers: `src/lib/options.js` maps rows to `{ id,value,label }`. Safe querying via `src/lib/supabase/safeSelect.js`.
+- Supabase env vars are required: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Optional: `VITE_ORG_SCOPED_DROPDOWNS`.
 
-Vercel: SPA rewrites via vercel.json (rewrites: [{ source: "/(.*)", destination: "/" }]), chunking in vite.config.mjs (manual chunks for react, router, supabase).
+Quick self-checks before you ship:
 
-Project Layout (key paths)
+1. Dropdowns populate staff/vendors/products; products include `unit_price` for auto-fill.
+2. Line items enforce: if `requires_scheduling` is false, `no_schedule_reason` is required.
+3. On/Off-Site radio tiles visibly highlight; checkboxes show ticks.
+4. New deal save → reopen edit: values (incl. line items) persist via `dealService` mapping.
 
-src/pages/** feature modules (e.g., deals, admin, calendar).
+If anything here feels off or incomplete (e.g., additional fields you see in `jobs`/`job_parts`, or new tenant flags), tell me what to clarify and I’ll tighten these rules.
 
-src/services/** service-layer calls to Supabase (use only src/lib/supabase.js client).
+## Dev tasks (VS Code)
 
-src/contexts/AuthContext.jsx auth/session source of truth.
+- Provision DB + Seed + Start (local): runs migrations, seeds org data, then starts the app.
+- DB: Push migrations → `pnpm run db:push`.
+- DB: Seed org data → `pnpm run db:seed-org`.
+- App: Start → `pnpm start` (http://localhost:5173).
 
-src/styles/tailwind.css + src/styles/index.css are global CSS.
-Rule: in index.css, all @import lines MUST come first (avoids Vite CSS errors).
+Optional quick commands:
 
-Data Model (core tables)
+- `pnpm test` (Vitest), `pnpm e2e` (Playwright), `pnpm serve` (preview build).
 
-jobs (aka “deals”): job_number, vehicle_id, vendor_id, assigned_to, finance_manager_id, delivery_coordinator_id, customer_needs_loaner, dates, notes.
+## Examples (quick reference)
 
-job_parts: line items for a job (product_id, quantity_used, unit_price, promised_date, requires_scheduling, no_schedule_reason, is_off_site).
-
-products, vendors, user_profiles (RBAC via department/role), loaner_assignments (optional when loaner needed).
-
-Service-Layer Patterns
-
-Use the service layer for DB I/O. Example fetchers:
-
-src/services/dropdownService.js (single source of truth):
-
-getSalesConsultants(), getFinanceManagers(), getDeliveryCoordinators() → from user_profiles by department.
-
-getVendors({ activeOnly }), getProducts({ activeOnly }) → mapped for <select> value/label.
-
-Do not import Supabase ad-hoc in components—go through services to keep queries consistent and swappable.
-
-Deal Form (what “correct” looks like)
-
-File: src/pages/deals/DealForm.jsx
-
-Inputs present & persisted: Deal/Job #, Stock #, Customer Mobile, Vendor, Sales, Finance, Delivery, Description.
-
-Line items: add/remove; product → auto-fills unit price; Qty/Price editable; Promised Date; Requires Scheduling (or No Schedule Reason); On-Site vs Off-Site uses radio tiles with a visible highlight.
-
-Checkboxes: native with accent-* so ticks are obvious on iOS/Android.
-
-Submit path: preferred prop onSave(payload). Fallback calls dealService.createDeal / updateDeal.
-
-Auth & Roles
-
-Auth via AuthContext + Supabase Auth. User metadata/role/department live in user_profiles.
-
-Staff dropdowns filter by department (e.g., “Sales”, “Finance”, “Delivery”). Prefer exact text; fallback fuzzy if no results.
-
-UI/Styling Conventions
-
-Keep native <select> and native inputs for mobile pickers.
-
-Tailwind classes + small design tokens in index.css. Avoid heavy custom form UI.
-
-Gotcha: CSS @import must be first lines in src/styles/index.css (Vite will error otherwise).
-
-Workflows & Tests
-
-Dev: npm run start → verify dropdowns populate, loaner checkbox ticks, line-item scheduling toggles, and save succeeds.
-
-Optional Vitest setup lives under src/tests/**. Use data-testid attributes already present in DealForm.jsx.
-
-When adding code
-
-Put new DB calls in src/services/*. Keep parameters typed/validated at the boundary.
-
-Reuse dropdownService for any staff/vendor/product lists.
-
-If you add job fields, update both the DealForm payload mapping and the service-layer create/update so DB stays in sync.
-
-Keep routing simple: pages live in src/pages/* and are registered in the app router (check src/App.jsx / routes file).
+- Dropdown option shape: products → `{ id, value, label, unit_price }` (see `dropdownService.getProducts`).
+- Common test ids: `vendor-select`, `product-select-0`, `requires-scheduling-0`, `save-deal-btn` (see `DealForm.jsx`).
+- Tenant lists: prefer `listStaffByOrg(orgId)`; if org-scoped result is empty, fallback to `dropdownService` (see `useDropdownData`/`DealForm`).
