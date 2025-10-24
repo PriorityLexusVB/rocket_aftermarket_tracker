@@ -45,6 +45,13 @@ function sanitizeDealPayload(input) {
   return out
 }
 
+// Generate a readable unique-ish transaction number
+function generateTransactionNumber() {
+  const ts = Date.now()
+  const rand = Math.floor(Math.random() * 1_0000)
+  return `TXN-${ts}-${rand}`
+}
+
 // (moved below): mapDbDealToForm is implemented near the end and re-exported
 
 // Internal helper: load a fully-joined deal/job by id
@@ -348,7 +355,8 @@ export async function getDeal(id) {
 
 // CREATE: deal + job_parts
 export async function createDeal(formState) {
-  const { payload, normalizedLineItems, loanerForm } = mapFormToDb(formState || {})
+  const { payload, normalizedLineItems, loanerForm, customerName, customerPhone, customerEmail } =
+    mapFormToDb(formState || {})
 
   // Ensure required fields the DB expects
   // jobs.job_number is NOT NULL + UNIQUE in schema; auto-generate if missing
@@ -387,7 +395,41 @@ export async function createDeal(formState) {
       await upsertLoanerAssignment(job?.id, loanerForm)
     }
 
-    // 3) return full record (with joins)
+    // 3) Ensure a transaction row exists immediately to satisfy NOT NULLs in some environments
+    try {
+      const baseTransaction = {
+        job_id: job?.id,
+        vehicle_id: payload?.vehicle_id || null,
+        total_amount:
+          (normalizedLineItems || []).reduce((sum, item) => {
+            const qty = Number(item?.quantity_used || item?.quantity || 1)
+            const price = Number(item?.unit_price || item?.price || 0)
+            return sum + qty * price
+          }, 0) || 0,
+        customer_name: customerName || 'Unknown Customer',
+        customer_phone: customerPhone || null,
+        customer_email: customerEmail || null,
+        transaction_status: 'pending',
+        transaction_number: generateTransactionNumber(),
+      }
+
+      // best-effort: insert only if not exists (race-safe enough for single client)
+      const { data: existingTxn } = await supabase
+        ?.from('transactions')
+        ?.select('id')
+        ?.eq('job_id', job?.id)
+        ?.limit(1)
+        ?.maybeSingle?.()
+
+      if (!existingTxn?.id) {
+        await supabase?.from('transactions')?.insert([baseTransaction])
+      }
+    } catch (e) {
+      // non-fatal; updateDeal will try again, but we attempted to satisfy NOT NULL early
+      console.warn('[dealService:create] pre-create transaction insert skipped:', e?.message)
+    }
+
+    // 4) return full record (with joins)
     return await getDeal(job?.id)
   } catch (error) {
     console.error('[dealService:create] Failed to create deal:', error)
@@ -422,13 +464,6 @@ export async function updateDeal(id, formState) {
   // 1) Update job
   const { error: jobErr } = await supabase?.from('jobs')?.update(payload)?.eq('id', id)
   if (jobErr) throw new Error(`Failed to update deal: ${jobErr.message}`)
-
-  // Helper to generate a transaction number when inserting new records
-  const generateTransactionNumber = () => {
-    const ts = Date.now()
-    const rand = Math.floor(Math.random() * 1_0000)
-    return `TXN-${ts}-${rand}`
-  }
 
   // 2) ✅ ENHANCED: Upsert transaction with customer data
   const baseTransactionData = {
