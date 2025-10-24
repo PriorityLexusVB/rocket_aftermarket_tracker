@@ -432,11 +432,28 @@ export async function updateDeal(id, formState) {
     transaction_status: 'pending',
   }
 
-  const { error: txnErr } = await supabase
-    ?.from('transactions')
-    ?.upsert(transactionData, { onConflict: 'job_id' })
+  // Upsert without relying on a DB unique constraint (some envs lack a unique index on job_id)
+  try {
+    const { data: existingTxn } = await supabase
+      ?.from('transactions')
+      ?.select('id')
+      ?.eq('job_id', id)
+      ?.limit(1)
+      ?.maybeSingle?.() // keep compatibility if maybeSingle exists
 
-  if (txnErr) throw new Error(`Failed to upsert transaction: ${txnErr.message}`)
+    if (existingTxn?.id) {
+      const { error: updErr } = await supabase
+        ?.from('transactions')
+        ?.update(transactionData)
+        ?.eq('id', existingTxn.id)
+      if (updErr) throw updErr
+    } else {
+      const { error: insErr } = await supabase?.from('transactions')?.insert([transactionData])
+      if (insErr) throw insErr
+    }
+  } catch (e) {
+    throw new Error(`Failed to upsert transaction: ${e?.message || e}`)
+  }
 
   // 3) Replace job_parts with new scheduling fields
   // Delete existing
