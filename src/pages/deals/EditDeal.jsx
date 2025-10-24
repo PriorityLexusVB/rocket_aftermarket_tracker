@@ -67,7 +67,7 @@ export default function EditDeal() {
       </div>
       <DealForm
         mode="edit"
-        initial={initial}
+        initial={initial || {}}
         onSave={onSubmit}
         onCancel={() => navigate('/deals')}
         saving={saving}

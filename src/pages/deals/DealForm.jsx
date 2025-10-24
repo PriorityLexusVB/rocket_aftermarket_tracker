@@ -342,7 +342,7 @@ export default function DealForm({
         try {
           const first = missingReasonIndexes[0]
           const el = document.querySelector(
-            `[data-testid="no-schedule-reason-${'${'}first{'${'}'}"]`
+            `[data-testid="no-schedule-reason-${first}"]`
           )
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           el?.focus?.()
