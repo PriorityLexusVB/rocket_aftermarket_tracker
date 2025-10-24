@@ -1,6 +1,10 @@
 {
   "git.autofetch": false,
-  "gitlens.remotes": [
-    
+  "gitlens.remotes": [],
+  "cSpell.words": [
+    "supabase",
+    "ilike",
+    "prefetch",
+    "Idxs"
   ]
 }

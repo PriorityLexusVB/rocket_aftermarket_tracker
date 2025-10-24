@@ -22,6 +22,24 @@ Optional feature flags:
 
 - `VITE_ORG_SCOPED_DROPDOWNS=true` – scopes dropdowns (staff, vendors, products) and global search to the current user’s organization using the `auth_user_org()` helper. When omitted or set to false, dropdowns are unscoped (default).
 
+## Dropdown caching & prefetch
+
+To speed up the first render of forms (like Deals), dropdowns are cached in-memory for a short period and prefetched on app start.
+
+- Where: `src/services/dropdownService.js`
+- What: A 5‑minute TTL cache covers staff lists, vendors, and products. Keys include the current org id and filters.
+- Prefetch: `prefetchDropdowns()` is invoked in `src/App.jsx` on mount (fire‑and‑forget, non‑blocking).
+
+Adjust TTL
+
+- Update `CACHE_TTL_MS` near the top of `dropdownService.js`.
+
+Clear cache (for tests/troubleshooting)
+
+- Call `clearDropdownCache()` from `dropdownService.js` to reset the in‑memory cache.
+
+The cache is per tab/session and never persisted. Server‑side changes will naturally be picked up after the TTL expires or when the cache is cleared.
+
 ## Admin UX
 
 Admin → Staff Records and Admin → User Accounts both support:
@@ -38,6 +56,6 @@ These tools help keep tenant data clean without requiring additional logins for 
 
 To view the last Playwright report:
 
-```
+```bash
 pnpm exec playwright show-report
 ```

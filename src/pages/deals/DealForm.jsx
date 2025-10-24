@@ -329,22 +329,22 @@ export default function DealForm({
       }
 
       // Guard: If requires_scheduling === false, no_schedule_reason is required
-      const missingReasonIdxs = (form.lineItems || []).reduce((arr, li, idx) => {
+      const missingReasonIndexes = (form.lineItems || []).reduce((arr, li, idx) => {
         const requires = !!li?.requires_scheduling
         const reason = String(li?.no_schedule_reason || '').trim()
         if (!requires && !reason) arr.push(idx)
         return arr
       }, [])
-      if (missingReasonIdxs.length > 0) {
+      if (missingReasonIndexes.length > 0) {
         const errs = {}
-        missingReasonIdxs.forEach((i) => {
+        missingReasonIndexes.forEach((i) => {
           errs[i] = { ...(errs[i] || {}), noScheduleReason: true }
         })
         setLineErrors(errs)
         setSaving(false)
         // Focus first offending field for quicker correction
         try {
-          const first = missingReasonIdxs[0]
+          const first = missingReasonIndexes[0]
           const el = document.querySelector(
             `[data-testid="no-schedule-reason-${'${'}first{'${'}'}"]`
           )

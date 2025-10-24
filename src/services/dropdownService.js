@@ -266,3 +266,10 @@ export async function prefetchDropdowns() {
     console.warn('prefetchDropdowns failed:', e)
   }
 }
+
+// Utility for tests or troubleshooting to clear the in-memory cache
+export function clearDropdownCache() {
+  try {
+    _cache.clear()
+  } catch {}
+}

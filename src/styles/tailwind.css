@@ -14,3 +14,10 @@ body,
 #root {
   height: 100%;
 }
+
+/* Progressive enhancement fallbacks for older iOS */
+@supports not (overflow: clip) {
+  .overflow-clip {
+    overflow: hidden;
+  }
+}
