@@ -56,11 +56,13 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     }
   }, [formData, initialFormData])
 
-  // Load dropdown data once when the modal opens (avoid loop on loading state toggles)
+  // Load dropdown data when the modal opens (non-blocking; hook caches results)
   useEffect(() => {
     if (isOpen) {
-      // Fire-and-forget refresh; underlying hook already caches
-      refreshDropdowns()
+      // Only refresh if cache is stale; avoids resetting loading repeatedly
+      try {
+        refreshDropdowns?.()
+      } catch {}
     }
     // Intentionally omit dropdownLoading from deps to prevent re-trigger loops
   }, [isOpen, refreshDropdowns])
@@ -434,8 +436,18 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
             )}
 
             {loading ? (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <div className="text-gray-600">Loading deal...</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    loadDealData()
+                    try { refreshDropdowns?.() } catch {}
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Having trouble? Retry load
+                </button>
               </div>
             ) : (
               <>
