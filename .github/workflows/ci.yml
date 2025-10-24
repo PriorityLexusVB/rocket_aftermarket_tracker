@@ -17,23 +17,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          # Disable package-manager cache here to avoid early pnpm invocation
+          # We'll install pnpm explicitly in the next step.
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          # Align with Vercel default (pnpm 10.x) and lockfile v9 compatibility
-          version: 10
-          run_install: false
+      - name: Install pnpm
+        run: npm install -g pnpm@10
 
-      - name: Ensure pnpm available (fallback to npm install if missing)
-        shell: bash
-        run: |
-          if ! command -v pnpm >/dev/null 2>&1; then
-            echo "pnpm not found on PATH; installing via npm..."
-            npm i -g pnpm@10
-          fi
-          echo "pnpm version: $(pnpm --version)"
+      - name: Show pnpm version
+        run: pnpm --version
 
       - name: Install dependencies (locked)
         run: pnpm install --frozen-lockfile
