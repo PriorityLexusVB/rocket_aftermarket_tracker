@@ -45,16 +45,8 @@ jobs:
           echo "Find supabase packages (if any):"
           find node_modules -maxdepth 4 -name "*supabase*" -print || true
 
-      - name: Build (capture full log)
-        run: pnpm run build 2>&1 | tee build.log
-
-      - name: Upload or show build log
-        if: always()
-        run: |
-          echo "---- BEGIN build.log ----"
-          cat build.log || true
-          echo "----  END build.log  ----"
-
+      - name: Build
+        run: pnpm run build
       - name: Unit tests
         run: pnpm run test -- --run
 
