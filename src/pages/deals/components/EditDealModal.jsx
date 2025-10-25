@@ -77,6 +77,11 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
         const formDeal = mapDbDealToForm(initialDeal)
         const loadedFormData = {
           ...formDeal,
+          // Map DB snake_case to UI camelCase for staff + vendor selections
+          assignedTo: formDeal?.assigned_to || null,
+          deliveryCoordinator: formDeal?.delivery_coordinator_id || null,
+          financeManager: formDeal?.finance_manager_id || null,
+          vendor_id: formDeal?.vendor_id || null,
           customerName: initialDeal?.customer_name || '',
           customerPhone: initialDeal?.customer_phone || '',
           customerEmail: initialDeal?.customer_email || '',
@@ -244,6 +249,11 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
 
       const loadedFormData = {
         ...formDeal,
+        // Map DB snake_case to UI camelCase for staff + vendor selections
+        assignedTo: formDeal?.assigned_to || null,
+        deliveryCoordinator: formDeal?.delivery_coordinator_id || null,
+        financeManager: formDeal?.finance_manager_id || null,
+        vendor_id: formDeal?.vendor_id || null,
         customerName: transaction?.customer_name || '',
         customerPhone: transaction?.customer_phone || '',
         customerEmail: transaction?.customer_email || '',
@@ -391,10 +401,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
           return
         }
 
-        if (item?.isOffSite && !item?.vendorId) {
-          setError(`Line item ${i + 1}: Vendor is required for off-site service`)
-          return
-        }
+        // Vendor selection is tracked at the deal level (vendor_id). No per-line vendor requirement.
       }
 
       // Update the deal with proper boolean coercion
@@ -410,8 +417,17 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
         })),
       }
 
+      // Map UI camelCase fields back to DB snake_case keys for service layer
+      const payloadForSave = {
+        ...updatedFormData,
+        assigned_to: updatedFormData?.assignedTo ?? null,
+        delivery_coordinator_id: updatedFormData?.deliveryCoordinator ?? null,
+        finance_manager_id: updatedFormData?.financeManager ?? null,
+        vendor_id: updatedFormData?.vendor_id ?? null,
+      }
+
       // Include inline loaner form (optional) for assignment upsert
-      await updateDeal(dealId, { ...updatedFormData, loanerForm })
+      await updateDeal(dealId, { ...payloadForSave, loanerForm })
 
       onSuccess?.()
       onClose?.()
@@ -755,6 +771,20 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                 <div className="bg-slate-50 p-4 rounded-lg border">
                   <h4 className="text-lg font-medium text-gray-900 mb-4">Dealer Representatives</h4>
 
+                  {/* Vendor (job-level) */}
+                  <div className="mb-4" data-testid="vendor-select">
+                    <SearchableSelect
+                      label="Vendor"
+                      options={vendors}
+                      value={formData?.vendor_id || ''}
+                      onChange={(value) => updateFormData({ vendor_id: value || null })}
+                      placeholder="Select vendor"
+                      searchable={true}
+                      clearable={true}
+                      groupBy="specialty"
+                    />
+                  </div>
+
                   {/* Sales Consultant */}
                   <div className="mb-4" data-testid="sales-select">
                     <SearchableSelect
@@ -907,21 +937,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                           />
                         </div>
 
-                        {/* Vendor Selection (if off-site) */}
-                        {item?.isOffSite && (
-                          <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                            <SearchableSelect
-                              label="Vendor *"
-                              options={vendors}
-                              value={item?.vendorId || ''}
-                              onChange={(value) => updateLineItem(index, { vendorId: value })}
-                              placeholder="Select vendor"
-                              searchable={true}
-                              clearable={true}
-                              groupBy="specialty"
-                            />
-                          </div>
-                        )}
+                        {/* Vendor selection occurs at the deal level (above). */}
 
                         {/* Scheduling with enhanced styling */}
                         <div className="bg-white rounded-lg p-4 border">

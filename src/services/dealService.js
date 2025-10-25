@@ -565,6 +565,7 @@ function mapDbDealToForm(dbDeal) {
     customer_needs_loaner: !!dbDeal?.customer_needs_loaner,
     assigned_to: dbDeal?.assigned_to,
     delivery_coordinator_id: dbDeal?.delivery_coordinator_id,
+    finance_manager_id: dbDeal?.finance_manager_id,
     // ✅ ENHANCED: Include customer data from transactions
     customerName: dbDeal?.customer_name || '',
     customerPhone: dbDeal?.customer_phone || '',
