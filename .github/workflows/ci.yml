@@ -26,10 +26,6 @@ jobs:
       - name: Show pnpm version
         run: pnpm --version
 
-      # ===== NEW: ensure bin directory exists so pnpm can create shims =====
-      - name: Ensure node_modules/.bin exists
-        run: mkdir -p $GITHUB_WORKSPACE/node_modules/.bin
-
       - name: Install dependencies (locked)
         run: pnpm install --frozen-lockfile
 
