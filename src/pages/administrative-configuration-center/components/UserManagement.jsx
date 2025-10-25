@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { supabase } from '../../../lib/supabase';
-import Button from '../../../components/ui/Button';
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../../../contexts/AuthContext'
+import { supabase } from '../../../lib/supabase'
+import Button from '../../../components/ui/Button'
 
 const UserManagement = () => {
-  const { userProfile, isAdmin } = useAuth();
-  const [users, setUsers] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [organizations, setOrganizations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  
+  const { userProfile, isAdmin } = useAuth()
+  const [users, setUsers] = useState([])
+  const [vendors, setVendors] = useState([])
+  const [organizations, setOrganizations] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Simplified form state - starts minimal
   const [formData, setFormData] = useState({
     full_name: '',
@@ -26,8 +26,8 @@ const UserManagement = () => {
     role: 'staff',
     vendor_id: '',
     phone: '',
-    org_id: null
-  });
+    org_id: null,
+  })
 
   // Updated job title options with "Delivery Coordinator"
   const jobTitleOptions = [
@@ -41,56 +41,65 @@ const UserManagement = () => {
     'Assistant Manager',
     'Receptionist',
     'Quality Inspector',
-    'Detailer'
-  ];
+    'Detailer',
+  ]
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData()
+  }, [])
 
   const loadData = async () => {
     try {
-      setLoading(true);
-      
+      setLoading(true)
+
       // Load users with vendor information
-      const { data: usersData, error: usersError } = await supabase?.from('user_profiles')?.select(`
+      const { data: usersData, error: usersError } = await supabase
+        ?.from('user_profiles')
+        ?.select(
+          `
           *,
           vendor:vendors(id, name)
-        `)?.order('created_at', { ascending: false });
+        `
+        )
+        ?.order('created_at', { ascending: false })
 
-      if (usersError) throw usersError;
+      if (usersError) throw usersError
 
       // Load vendors for the dropdown
-      const { data: vendorsData, error: vendorsError } = await supabase?.from('vendors')?.select('id, name, is_active')?.eq('is_active', true)?.order('name');
+      const { data: vendorsData, error: vendorsError } = await supabase
+        ?.from('vendors')
+        ?.select('id, name, is_active')
+        ?.eq('is_active', true)
+        ?.order('name')
 
-      if (vendorsError) throw vendorsError;
+      if (vendorsError) throw vendorsError
 
       // Load organizations for org selection
       const { data: orgsData, error: orgsError } = await supabase
         ?.from('organizations')
         ?.select('id, name')
-        ?.order('name');
-      if (orgsError) throw orgsError;
+        ?.order('name')
+      if (orgsError) throw orgsError
 
-      setUsers(usersData || []);
-      setVendors(vendorsData || []);
-      setOrganizations(orgsData || []);
+      setUsers(usersData || [])
+      setVendors(vendorsData || [])
+      setOrganizations(orgsData || [])
       // Default org selection to current user's org if available
-      setFormData((prev) => ({ ...prev, org_id: userProfile?.org_id || null }));
+      setFormData((prev) => ({ ...prev, org_id: userProfile?.org_id || null }))
     } catch (error) {
-      console.error('Error loading data:', error);
-      setError('Failed to load users and vendors');
+      console.error('Error loading data:', error)
+      setError('Failed to load users and vendors')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleFormChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
-    }));
-  };
+      [field]: value,
+    }))
+  }
 
   const resetForm = () => {
     setFormData({
@@ -102,113 +111,127 @@ const UserManagement = () => {
       role: 'staff',
       vendor_id: '',
       phone: '',
-      org_id: userProfile?.org_id || null
-    });
-    setShowCreateForm(false);
-    setError(null);
-    setSuccess(null);
-  };
+      org_id: userProfile?.org_id || null,
+    })
+    setShowCreateForm(false)
+    setError(null)
+    setSuccess(null)
+  }
 
   const handleCreateUser = async (e) => {
-    e && e?.preventDefault();
-    e && e?.stopPropagation();
-    
+    e && e?.preventDefault()
+    e && e?.stopPropagation()
+
     if (!formData?.full_name || !formData?.full_name?.trim()) {
-      setError('Name is required');
-      return;
+      setError('Name is required')
+      return
     }
 
     // Only require login fields if needs_login is checked
     if (formData?.needs_login) {
       if (!formData?.email || !formData?.email?.trim()) {
-        setError('Email is required for login access');
-        return;
+        setError('Email is required for login access')
+        return
       }
       if (!formData?.password || !formData?.password?.trim() || formData?.password?.length < 6) {
-        setError('Password must be at least 6 characters for login access');
-        return;
+        setError('Password must be at least 6 characters for login access')
+        return
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/?.test(formData?.email)) {
-        setError('Please enter a valid email address');
-        return;
+        setError('Please enter a valid email address')
+        return
       }
     }
 
     try {
-      setCreating(true);
-      setError(null);
-      
+      setCreating(true)
+      setError(null)
+
       if (formData?.needs_login) {
         // Create user with authentication
         const { data: authUser, error: authError } = await supabase?.auth?.signUp({
           email: formData?.email,
           password: formData?.password,
-        });
+        })
 
-        if (authError) throw authError;
+        if (authError) throw authError
 
         // Create user profile with login access
-    const { data: profile, error: profileError } = await supabase?.from('user_profiles')?.insert([{
-            id: authUser?.user?.id,
-            email: formData?.email,
-            full_name: formData?.full_name,
-            role: formData?.role,
-            vendor_id: formData?.role === 'vendor' ? formData?.vendor_id : null,
-            phone: formData?.phone,
-            department: formData?.job_title,
-      is_active: true,
-      org_id: formData?.org_id || null
-          }])?.select()?.single();
+        const { data: profile, error: profileError } = await supabase
+          ?.from('user_profiles')
+          ?.insert([
+            {
+              id: authUser?.user?.id,
+              email: formData?.email,
+              full_name: formData?.full_name,
+              role: formData?.role,
+              vendor_id: formData?.role === 'vendor' ? formData?.vendor_id : null,
+              phone: formData?.phone,
+              department: formData?.job_title,
+              is_active: true,
+              org_id: formData?.org_id || null,
+            },
+          ])
+          ?.select()
+          ?.single()
 
-        if (profileError) throw profileError;
+        if (profileError) throw profileError
 
-        setUsers(prev => [profile, ...prev]);
-        setSuccess(`${formData?.full_name} created with login access!`);
+        setUsers((prev) => [profile, ...prev])
+        setSuccess(`${formData?.full_name} created with login access!`)
       } else {
         // Create staff-only record (no authentication needed)
-    const { data: staffRecord, error: staffError } = await supabase?.from('user_profiles')?.insert([{
-            id: crypto.randomUUID(),
-            full_name: formData?.full_name,
-            email: null, // No email for staff-only
-            phone: formData?.phone || null,
-            role: 'staff',
-            department: formData?.job_title,
-            is_active: true,
-      vendor_id: null,
-      org_id: formData?.org_id || null
-          }])?.select()?.single();
+        const { data: staffRecord, error: staffError } = await supabase
+          ?.from('user_profiles')
+          ?.insert([
+            {
+              id: crypto.randomUUID(),
+              full_name: formData?.full_name,
+              email: null, // No email for staff-only
+              phone: formData?.phone || null,
+              role: 'staff',
+              department: formData?.job_title,
+              is_active: true,
+              vendor_id: null,
+              org_id: formData?.org_id || null,
+            },
+          ])
+          ?.select()
+          ?.single()
 
-        if (staffError) throw staffError;
+        if (staffError) throw staffError
 
-        setUsers(prev => [staffRecord, ...prev]);
-        setSuccess(`${formData?.full_name} added to staff!`);
+        setUsers((prev) => [staffRecord, ...prev])
+        setSuccess(`${formData?.full_name} added to staff!`)
       }
-      
-      resetForm();
-      
+
+      resetForm()
     } catch (error) {
-      console.error('Error creating staff member:', error);
-      setError(`Error: ${error?.message}`);
+      console.error('Error creating staff member:', error)
+      setError(`Error: ${error?.message}`)
     } finally {
-      setCreating(false);
+      setCreating(false)
     }
-  };
+  }
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
-    if (!isAdmin) return;
+    if (!isAdmin) return
 
     try {
-      const { error } = await supabase?.from('user_profiles')?.update({ is_active: !currentStatus })?.eq('id', userId);
+      const { error } = await supabase
+        ?.from('user_profiles')
+        ?.update({ is_active: !currentStatus })
+        ?.eq('id', userId)
 
-      if (error) throw error;
+      if (error) throw error
 
-      setSuccess(`User status updated successfully`);
-      loadData();
+      setSuccess(`User status updated successfully`)
+      loadData()
     } catch (error) {
-      console.error('Error updating user status:', error);
-      setError('Failed to update user status');
+      console.error('Error updating user status:', error)
+      setError('Failed to update user status')
     }
-  };
+  }
 
   if (!isAdmin) {
     return (
@@ -216,7 +239,7 @@ const UserManagement = () => {
         <div className="text-red-600 text-lg font-medium">Access Denied</div>
         <p className="text-gray-600 mt-2">Only administrators can manage users.</p>
       </div>
-    );
+    )
   }
 
   if (loading) {
@@ -226,7 +249,7 @@ const UserManagement = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -234,8 +257,12 @@ const UserManagement = () => {
       {/* Header with User/Roles info moved here */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Staff Management &amp; User Access</h2>
-          <p className="text-sm text-muted-foreground">Manage staff members - add name only or create login access as needed</p>
+          <h2 className="text-xl font-semibold text-foreground">
+            Staff Management &amp; User Access
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Manage staff members - add name only or create login access as needed
+          </p>
         </div>
         <Button
           onClick={() => setShowCreateForm(true)}
@@ -247,7 +274,7 @@ const UserManagement = () => {
           Add Staff
         </Button>
       </div>
-      
+
       {/* Error and Success Messages */}
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -256,7 +283,7 @@ const UserManagement = () => {
           </div>
         </div>
       )}
-      
+
       {success && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
           <div className="text-green-800 text-sm">
@@ -269,15 +296,12 @@ const UserManagement = () => {
       {showCreateForm && (
         <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
           <h3 className="text-lg font-medium mb-4">Add Staff Member</h3>
-          
+
           <form onSubmit={handleCreateUser} className="space-y-4">
-            
             {/* Name and Job Title - Always visible */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                 <input
                   type="text"
                   value={formData?.full_name || ''}
@@ -290,9 +314,7 @@ const UserManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Job Title
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
                 <select
                   value={formData?.job_title || ''}
                   onChange={(e) => handleFormChange('job_title', e?.target?.value)}
@@ -300,8 +322,10 @@ const UserManagement = () => {
                   disabled={creating}
                 >
                   <option value="">Select job title</option>
-                  {jobTitleOptions?.map(title => (
-                    <option key={title} value={title}>{title}</option>
+                  {jobTitleOptions?.map((title) => (
+                    <option key={title} value={title}>
+                      {title}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -309,9 +333,7 @@ const UserManagement = () => {
 
             {/* Organization - optional but recommended */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Organization
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
               <select
                 value={formData?.org_id || ''}
                 onChange={(e) => handleFormChange('org_id', e?.target?.value || null)}
@@ -319,11 +341,16 @@ const UserManagement = () => {
                 disabled={creating}
               >
                 <option value="">Unassigned</option>
-                {organizations?.map(org => (
-                  <option key={org?.id} value={org?.id}>{org?.name}</option>
+                {organizations?.map((org) => (
+                  <option key={org?.id} value={org?.id}>
+                    {org?.name}
+                  </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">If you have multiple stores/companies, pick which this staff belongs to. Otherwise you can leave it unassigned.</p>
+              <p className="mt-1 text-xs text-gray-500">
+                If you have multiple stores/companies, pick which this staff belongs to. Otherwise
+                you can leave it unassigned.
+              </p>
             </div>
 
             {/* Login Access Checkbox */}
@@ -337,7 +364,10 @@ const UserManagement = () => {
                   className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   disabled={creating}
                 />
-                <label htmlFor="needs_login" className="text-sm font-medium text-gray-900 cursor-pointer">
+                <label
+                  htmlFor="needs_login"
+                  className="text-sm font-medium text-gray-900 cursor-pointer"
+                >
                   This person needs login access to the system
                 </label>
               </div>
@@ -347,7 +377,7 @@ const UserManagement = () => {
             {formData?.needs_login && (
               <div className="bg-white border border-blue-200 rounded-lg p-4 mt-4">
                 <h4 className="text-md font-medium text-gray-900 mb-3">User Access Setup</h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -399,9 +429,7 @@ const UserManagement = () => {
 
                   {formData?.role === 'vendor' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Vendor
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
                       <select
                         value={formData?.vendor_id || ''}
                         onChange={(e) => handleFormChange('vendor_id', e?.target?.value)}
@@ -409,7 +437,7 @@ const UserManagement = () => {
                         disabled={creating}
                       >
                         <option value="">Select vendor...</option>
-                        {vendors?.map(vendor => (
+                        {vendors?.map((vendor) => (
                           <option key={vendor?.id} value={vendor?.id}>
                             {vendor?.name}
                           </option>
@@ -460,8 +488,18 @@ const UserManagement = () => {
                   onChange={(e) => setSearchQuery(e?.target?.value)}
                   className="pl-8 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <svg className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
               </div>
             </div>
@@ -490,68 +528,66 @@ const UserManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users?.filter(user => {
-                if (!searchQuery) return true;
-                const query = searchQuery?.toLowerCase();
-                return user?.full_name?.toLowerCase()?.includes(query) ||
-                       user?.email?.toLowerCase()?.includes(query) ||
-                       user?.phone?.toLowerCase()?.includes(query) ||
-                       user?.department?.toLowerCase()?.includes(query);
-              })?.map((user) => (
-                <tr key={user?.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {user?.full_name}
-                    </div>
-                    {user?.email && (
-                      <div className="text-sm text-gray-500">
-                        {user?.email}
-                      </div>
-                    )}
-                    {user?.phone && (
-                      <div className="text-sm text-blue-600">
-                        📞 {user?.phone}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user?.department || 'Not specified'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user?.email && user?.role ? (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                        Can Login
-                      </span>
-                    ) : (
-                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-                        Name Only
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      user?.is_active 
-                        ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user?.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {user?.email && user?.role && (
-                      <button
-                        onClick={() => handleToggleUserStatus(user?.id, user?.is_active)}
-                        className={`${
+              {users
+                ?.filter((user) => {
+                  if (!searchQuery) return true
+                  const query = searchQuery?.toLowerCase()
+                  return (
+                    user?.full_name?.toLowerCase()?.includes(query) ||
+                    user?.email?.toLowerCase()?.includes(query) ||
+                    user?.phone?.toLowerCase()?.includes(query) ||
+                    user?.department?.toLowerCase()?.includes(query)
+                  )
+                })
+                ?.map((user) => (
+                  <tr key={user?.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{user?.full_name}</div>
+                      {user?.email && <div className="text-sm text-gray-500">{user?.email}</div>}
+                      {user?.phone && <div className="text-sm text-blue-600">📞 {user?.phone}</div>}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user?.department || 'Not specified'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user?.email && user?.role ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                          Can Login
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                          Name Only
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                           user?.is_active
-                            ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
                         }`}
-                        disabled={!isAdmin}
                       >
-                        {user?.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                        {user?.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {user?.email && user?.role && (
+                        <button
+                          onClick={() => handleToggleUserStatus(user?.id, user?.is_active)}
+                          className={`${
+                            user?.is_active
+                              ? 'text-red-600 hover:text-red-900'
+                              : 'text-green-600 hover:text-green-900'
+                          }`}
+                          disabled={!isAdmin}
+                        >
+                          {user?.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
 
@@ -563,7 +599,7 @@ const UserManagement = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default UserManagement;
+export default UserManagement

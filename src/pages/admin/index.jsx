@@ -53,6 +53,7 @@ const AdminPage = () => {
   const [staffRecords, setStaffRecords] = useState([])
   const [vendors, setVendors] = useState([])
   const [products, setProducts] = useState([])
+  const [organizations, setOrganizations] = useState([])
   const [smsTemplates, setSmsTemplates] = useState([])
 
   // Loading states
@@ -86,6 +87,7 @@ const AdminPage = () => {
     email: '',
     specialty: '',
     rating: '',
+    org_id: null,
   })
 
   const [productForm, setProductForm] = useState({
@@ -97,6 +99,7 @@ const AdminPage = () => {
     part_number: '',
     description: '',
     op_code: '',
+    org_id: null,
   })
 
   const [templateForm, setTemplateForm] = useState({
@@ -274,6 +277,7 @@ const AdminPage = () => {
         loadVendors(),
         loadProducts(),
         loadSmsTemplates(),
+        loadOrganizations(),
       ])
 
       results?.forEach((result, index) => {
@@ -287,6 +291,20 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading admin data:', error)
       setError('Failed to load some admin data. Please try refreshing the page.')
+    }
+  }
+
+  const loadOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        ?.from('organizations')
+        ?.select('id, name')
+        ?.order('name')
+      if (error) throw error
+      setOrganizations(data || [])
+    } catch (e) {
+      console.warn('Failed to load organizations (optional):', e?.message)
+      setOrganizations([])
     }
   }
 
@@ -618,6 +636,7 @@ const AdminPage = () => {
           email: '',
           specialty: '',
           rating: '',
+          org_id: orgId || null,
         }
       )
     } else if (type === 'product') {
@@ -631,6 +650,7 @@ const AdminPage = () => {
           part_number: '',
           description: '',
           op_code: '',
+          org_id: orgId || null,
         }
       )
     } else if (type === 'template') {
@@ -779,6 +799,7 @@ const AdminPage = () => {
       email: vendorForm?.email,
       specialty: vendorForm?.specialty,
       rating: vendorForm?.rating ? parseFloat(vendorForm?.rating) : null,
+      org_id: vendorForm?.org_id || orgId || null,
     }
 
     if (editingItem) {
@@ -807,6 +828,7 @@ const AdminPage = () => {
       part_number: productForm?.part_number,
       description: productForm?.description,
       op_code: productForm?.op_code || null,
+      org_id: productForm?.org_id || orgId || null,
     }
 
     if (editingItem) {
