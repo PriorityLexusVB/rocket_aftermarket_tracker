@@ -1,4 +1,19 @@
 {
+  // Silence noisy CSS compatibility warnings in the VS Code Problems panel.
+  // We already target modern browsers; older iOS/Firefox notes are non-blocking.
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+
+  // Reduce churn from generated files.
+  "files.watcherExclude": {
+    "**/dist/**": true
+  },
+  "search.exclude": {
+    "**/dist/**": true
+  },
+
+  // Repo/UX niceties
   "git.autofetch": false,
   "gitlens.remotes": [],
   "cSpell.words": ["supabase", "ilike", "prefetch", "Idxs"],
