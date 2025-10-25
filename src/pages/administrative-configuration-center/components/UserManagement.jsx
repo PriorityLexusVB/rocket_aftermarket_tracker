@@ -7,6 +7,7 @@ const UserManagement = () => {
   const { userProfile, isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -24,7 +25,8 @@ const UserManagement = () => {
     password: '',
     role: 'staff',
     vendor_id: '',
-    phone: ''
+    phone: '',
+    org_id: null
   });
 
   // Updated job title options with "Delivery Coordinator"
@@ -63,8 +65,18 @@ const UserManagement = () => {
 
       if (vendorsError) throw vendorsError;
 
+      // Load organizations for org selection
+      const { data: orgsData, error: orgsError } = await supabase
+        ?.from('organizations')
+        ?.select('id, name')
+        ?.order('name');
+      if (orgsError) throw orgsError;
+
       setUsers(usersData || []);
       setVendors(vendorsData || []);
+      setOrganizations(orgsData || []);
+      // Default org selection to current user's org if available
+      setFormData((prev) => ({ ...prev, org_id: userProfile?.org_id || null }));
     } catch (error) {
       console.error('Error loading data:', error);
       setError('Failed to load users and vendors');
@@ -89,7 +101,8 @@ const UserManagement = () => {
       password: '',
       role: 'staff',
       vendor_id: '',
-      phone: ''
+      phone: '',
+      org_id: userProfile?.org_id || null
     });
     setShowCreateForm(false);
     setError(null);
@@ -135,7 +148,7 @@ const UserManagement = () => {
         if (authError) throw authError;
 
         // Create user profile with login access
-        const { data: profile, error: profileError } = await supabase?.from('user_profiles')?.insert([{
+    const { data: profile, error: profileError } = await supabase?.from('user_profiles')?.insert([{
             id: authUser?.user?.id,
             email: formData?.email,
             full_name: formData?.full_name,
@@ -143,7 +156,8 @@ const UserManagement = () => {
             vendor_id: formData?.role === 'vendor' ? formData?.vendor_id : null,
             phone: formData?.phone,
             department: formData?.job_title,
-            is_active: true
+      is_active: true,
+      org_id: formData?.org_id || null
           }])?.select()?.single();
 
         if (profileError) throw profileError;
@@ -152,7 +166,7 @@ const UserManagement = () => {
         setSuccess(`${formData?.full_name} created with login access!`);
       } else {
         // Create staff-only record (no authentication needed)
-        const { data: staffRecord, error: staffError } = await supabase?.from('user_profiles')?.insert([{
+    const { data: staffRecord, error: staffError } = await supabase?.from('user_profiles')?.insert([{
             id: crypto.randomUUID(),
             full_name: formData?.full_name,
             email: null, // No email for staff-only
@@ -160,7 +174,8 @@ const UserManagement = () => {
             role: 'staff',
             department: formData?.job_title,
             is_active: true,
-            vendor_id: null
+      vendor_id: null,
+      org_id: formData?.org_id || null
           }])?.select()?.single();
 
         if (staffError) throw staffError;
@@ -290,6 +305,25 @@ const UserManagement = () => {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Organization - optional but recommended */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Organization
+              </label>
+              <select
+                value={formData?.org_id || ''}
+                onChange={(e) => handleFormChange('org_id', e?.target?.value || null)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={creating}
+              >
+                <option value="">Unassigned</option>
+                {organizations?.map(org => (
+                  <option key={org?.id} value={org?.id}>{org?.name}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">If you have multiple stores/companies, pick which this staff belongs to. Otherwise you can leave it unassigned.</p>
             </div>
 
             {/* Login Access Checkbox */}

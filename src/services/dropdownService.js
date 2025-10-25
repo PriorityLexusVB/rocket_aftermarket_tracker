@@ -27,20 +27,10 @@ function _getCache(key) {
   return hit.value
 }
 
-// Optional org scoping flag (enable via VITE_ORG_SCOPED_DROPDOWNS=true)
-const ORG_SCOPED =
-  String(import.meta?.env?.VITE_ORG_SCOPED_DROPDOWNS || '').toLowerCase() === 'true'
-
+// Org scoping via DB function has been removed.
+// Keep a no-op resolver to avoid breaking call sites; always return null (unscoped).
 async function getScopedOrgId() {
-  if (!ORG_SCOPED) return null
-  try {
-    const { data, error } = await supabase.rpc('auth_user_org')
-    if (error) throw error
-    return data || null
-  } catch (e) {
-    console.warn('getScopedOrgId: unable to resolve org, proceeding unscoped', e)
-    return null
-  }
+  return null
 }
 
 /**

@@ -14,8 +14,8 @@ Use these project-specific rules to move fast without breaking conventions.
 - Pages live under `src/pages/**` (e.g., `deals`, `admin`, `calendar`). Router in `src/App.jsx`/`src/Routes.jsx`.
 - All DB I/O stays in `src/services/**` using the singleton client in `src/lib/supabase.js`. Do not import Supabase in components.
 - Auth/session: `src/contexts/AuthContext.jsx` loads `user_profiles` and exposes `{ user, userProfile, signIn, signOut }`.
-- Dropdowns pattern: `src/services/dropdownService.js` returns option-shaped arrays `{ id, value, label }` (products include `unit_price`). Fuzzy fallback if exact department filter is empty.
-- Multi-tenant scoping: prefer `src/services/tenantService.js` with `orgId` from `useTenant()`; optional flag `VITE_ORG_SCOPED_DROPDOWNS=true` also scopes `dropdownService` via `auth_user_org()`.
+- Dropdowns pattern: `src/services/dropdownService.js` returns option-shaped arrays `{ id, value, label }` (products include `unit_price`). Fuzzy fallback if exact department filter is empty. Dropdowns are unscoped by default.
+- Multi-tenant scoping: prefer `src/services/tenantService.js` with `orgId` from `useTenant()`; avoid DB helper functions for scoping.
 
 ## Deal Form contract (source of truth)
 
@@ -41,7 +41,7 @@ Use these project-specific rules to move fast without breaking conventions.
 
 - Keep all CSS `@import` statements at the top of `src/styles/tailwind.css` (Vite CSS requires imports first). Global tokens live in `src/styles/index.css`.
 - Options helpers: `src/lib/options.js` maps rows to `{ id,value,label }`. Safe querying via `src/lib/supabase/safeSelect.js`.
-- Supabase env vars are required: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Optional: `VITE_ORG_SCOPED_DROPDOWNS`.
+- Supabase env vars are required: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Note: `VITE_ORG_SCOPED_DROPDOWNS` is deprecated/ignored.
 
 Quick self-checks before you ship:
 
@@ -67,4 +67,4 @@ Optional quick commands:
 
 - Dropdown option shape: products → `{ id, value, label, unit_price }` (see `dropdownService.getProducts`).
 - Common test ids: `vendor-select`, `product-select-0`, `requires-scheduling-0`, `save-deal-btn` (see `DealForm.jsx`).
-- Tenant lists: prefer `listStaffByOrg(orgId)`; if org-scoped result is empty, fallback to `dropdownService` (see `useDropdownData`/`DealForm`).
+- Tenant lists: prefer `listStaffByOrg(orgId)`; `dropdownService` provides unscoped lists (see `useDropdownData`/`DealForm`).
