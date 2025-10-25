@@ -9,10 +9,10 @@ test.describe('Deal create + edit flow', () => {
     // Create new deal
     await page.goto('/deals/new')
 
-    const title = page.getByTestId('title-input')
-    await expect(title).toBeVisible()
-    const initialTitle = `E2E Deal ${Date.now()}`
-    await title.fill(initialTitle)
+    const description = page.getByTestId('description-input')
+    await expect(description).toBeVisible()
+    const initialDescription = `E2E Deal ${Date.now()}`
+    await description.fill(initialDescription)
 
     const vendor = page.getByTestId('vendor-select')
     await expect(vendor).toBeVisible()
@@ -30,8 +30,8 @@ test.describe('Deal create + edit flow', () => {
     await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 })
 
     // Edit: change title and toggle scheduling flags
-    const editedTitle = `${initialTitle} - Edited`
-    await title.fill(editedTitle)
+    const editedDescription = `${initialDescription} - Edited`
+    await description.fill(editedDescription)
 
     // For line item 0: uncheck requires scheduling to reveal reason, then re-check
     const requires = page.getByTestId('requires-scheduling-0')
@@ -50,6 +50,6 @@ test.describe('Deal create + edit flow', () => {
 
     // Stay on edit page and ensure the title persisted after reload
     await page.reload()
-    await expect(title).toHaveValue(editedTitle)
+    await expect(description).toHaveValue(editedDescription)
   })
 })
