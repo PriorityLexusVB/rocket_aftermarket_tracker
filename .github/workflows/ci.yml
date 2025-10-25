@@ -17,46 +17,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Disable package-manager cache here to avoid early pnpm invocation
-          # We'll install pnpm explicitly in the next step.
 
       - name: Install pnpm
         run: npm install -g pnpm@10
 
-      - name: Show pnpm version
-        run: pnpm --version
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      # ===== NEW: ensure bin directory exists so pnpm can create shims =====
-      - name: Ensure node_modules/.bin exists
-        run: mkdir -p $GITHUB_WORKSPACE/node_modules/.bin
-
-      - name: Fix Permissions
-        run: sudo chown -R $USER:$USER $GITHUB_WORKSPACE
-
-      - name: Install dependencies (clean)
-        run: pnpm install --no-frozen-lockfile
-
-      # ===== NEW: helpful debugging info after install =====
-      - name: Post-install debug (show node_modules + versions)
-        run: |
-          echo "PWD: $PWD"
-          echo "Listing top-level files:"
-          ls -la .
-          echo "node_modules and bin:"
-          ls -la node_modules || true
-          ls -la node_modules/.bin || true
-          ls -la node_modules/.pnpm || true
-          echo "pnpm list top-level:"
-          pnpm list --depth 0 || true
-          node -v && pnpm -v
-          echo "Find supabase packages (if any):"
-          find node_modules -maxdepth 4 -name "*supabase*" -print || true
+      - name: Run unit tests
+        run: pnpm test
 
       - name: Build
-        run: pnpm run build
-      - name: Unit tests
-        run: pnpm run test -- --run
-
-      # E2E are intentionally excluded here because they require authenticated storage state
-      # and secret credentials. We can add a separate job that runs on environment-protected
-      # branches once creds are wired.
+        run: pnpm build

@@ -59,3 +59,23 @@ To view the last Playwright report:
 ```bash
 pnpm exec playwright show-report
 ```
+
+## Auto-deployment (Vercel)
+
+This repo includes GitHub Actions to automate deploys to Vercel.
+
+- CI (`.github/workflows/ci.yml`) runs on PRs and pushes to `main` and performs unit tests and a production build.
+- Deploy (`.github/workflows/deploy-vercel.yml`) runs on pushes to `main` and deploys to Vercel Production.
+
+Required GitHub repository secrets (Settings → Secrets and variables → Actions):
+
+- `VERCEL_TOKEN` – Vercel Personal Token with access to the project
+- `VERCEL_ORG_ID` – Vercel Organization ID
+- `VERCEL_PROJECT_ID` – Vercel Project ID
+
+Environment variables (set in Vercel Project Settings → Environment Variables):
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Routing and CSP headers are defined in `vercel.json`. Vercel’s Git integration can also be used directly (auto-deploy `main`); if you prefer that path, you may disable the GitHub Action deploy.

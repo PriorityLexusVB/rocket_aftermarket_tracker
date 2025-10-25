@@ -160,8 +160,16 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
       </select>
       {helpText && <p className="mt-1 text-xs text-gray-500">{helpText}</p>}
       {options?.length === 0 && !dropdownData?.loading && (
-        <p className="mt-1 text-xs text-red-500">
-          No {label?.toLowerCase()} found. Please check your database connection.
+        <p className="mt-1 text-xs text-gray-500">
+          No {label?.toLowerCase()} found yet. Add it in Admin.{' '}
+          <a
+            href="/admin"
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            Open Admin
+          </a>
         </p>
       )}
     </div>
@@ -750,6 +758,20 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                               </option>
                             ))}
                           </select>
+                          {!dropdownData?.loading &&
+                            (dropdownData?.products?.length || 0) === 0 && (
+                              <p className="mt-1 text-xs text-gray-500">
+                                No products found yet. Add one in Admin.{' '}
+                                <a
+                                  href="/admin"
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  Open Admin
+                                </a>
+                              </p>
+                            )}
                         </div>
 
                         <div>
@@ -832,6 +854,20 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
                                 </option>
                               ))}
                             </select>
+                            {!dropdownData?.loading &&
+                              (dropdownData?.vendors?.length || 0) === 0 && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                  No vendors found yet. Add one in Admin.{' '}
+                                  <a
+                                    href="/admin"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    Open Admin
+                                  </a>
+                                </p>
+                              )}
                           </div>
                         )}
 

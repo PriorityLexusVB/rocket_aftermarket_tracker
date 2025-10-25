@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 // Simple in-memory cache with TTL to speed dropdowns
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const _cache = new Map()
+// Track in-flight fetches to dedupe parallel requests
+const _pending = new Map()
 
 function _cacheKey(base, extras = {}) {
   const suffix = Object.entries(extras)
@@ -25,6 +27,18 @@ function _getCache(key) {
     return null
   }
   return hit.value
+}
+
+function _getPending(key) {
+  return _pending.get(key) || null
+}
+
+function _setPending(key, promise) {
+  _pending.set(key, promise)
+}
+
+function _clearPending(key) {
+  _pending.delete(key)
 }
 
 // Org scoping via DB function has been removed.
@@ -82,54 +96,67 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
   })
   const cached = _getCache(key)
   if (cached) return cached
-  // 1) exact filter by department/role
-  let q = supabase
-    .from('user_profiles')
-    .select('id, full_name, email, department, role, is_active, vendor_id', { count: 'exact' })
-    .order('full_name', { ascending: true })
+  const inflight = _getPending(key)
+  if (inflight) return inflight
 
-  if (activeOnly) q = q.eq('is_active', true)
-  if (departments.length) q = q.in('department', departments)
-  if (roles.length) q = q.in('role', roles)
-  if (orgId) q = q.eq('org_id', orgId)
-
-  try {
-    const { data: exact, count } = await q.throwOnError()
-    if ((count ?? 0) > 0) {
-      const opts = toOptions(exact, 'full_name')
-      _setCache(key, opts)
-      return opts
-    }
-    // if no exact results and no filters provided, just return whatever we have
-    if (!departments.length && !roles.length) return toOptions(exact || [], 'full_name')
-  } catch (err) {
-    // fallthrough to fuzzy attempt but log loudly
-    console.error('getStaff exact query failed:', { err, departments, roles })
-  }
-
-  // 2) fuzzy fallback if exact returns zero
-  const fuzzTerms = [...departments, ...roles].map((s) => s.trim()).filter(Boolean)
-  const ors = fuzzTerms
-    .map((t) => `department.ilike.%${t}%,role.ilike.%${t}%,full_name.ilike.%${t}%`)
-    .join(',')
-
-  try {
-    let q2 = supabase
+  const promise = (async () => {
+    // 1) exact filter by department/role
+    let q = supabase
       .from('user_profiles')
-      .select('id, full_name, email, department, role, is_active, vendor_id')
-      .eq('is_active', true)
-      .or(ors || 'full_name.ilike.%')
+      .select('id, full_name, email, department, role, is_active, vendor_id', { count: 'exact' })
       .order('full_name', { ascending: true })
 
-    if (orgId) q2 = q2.eq('org_id', orgId)
+    if (activeOnly) q = q.eq('is_active', true)
+    if (departments.length) q = q.in('department', departments)
+    if (roles.length) q = q.in('role', roles)
+    if (orgId) q = q.eq('org_id', orgId)
 
-    const { data: fuzzy } = await q2.throwOnError()
-    const opts = toOptions(fuzzy || [], 'full_name')
-    _setCache(key, opts)
-    return opts
-  } catch (err) {
-    console.error('getStaff fuzzy query failed:', { err, departments, roles })
-    return []
+    try {
+      const { data: exact, count } = await q.throwOnError()
+      if ((count ?? 0) > 0) {
+        const opts = toOptions(exact, 'full_name')
+        _setCache(key, opts)
+        return opts
+      }
+      // if no exact results and no filters provided, just return whatever we have
+      if (!departments.length && !roles.length) return toOptions(exact || [], 'full_name')
+    } catch (err) {
+      // fallthrough to fuzzy attempt but log loudly
+      console.error('getStaff exact query failed:', { err, departments, roles })
+    }
+
+    // 2) fuzzy fallback if exact returns zero
+    const fuzzTerms = [...departments, ...roles].map((s) => s.trim()).filter(Boolean)
+    const ors = fuzzTerms
+      .map((t) => `department.ilike.%${t}%,role.ilike.%${t}%,full_name.ilike.%${t}%`)
+      .join(',')
+
+    try {
+      let q2 = supabase
+        .from('user_profiles')
+        .select('id, full_name, email, department, role, is_active, vendor_id')
+        .eq('is_active', true)
+        .or(ors || 'full_name.ilike.%')
+        .order('full_name', { ascending: true })
+
+      if (orgId) q2 = q2.eq('org_id', orgId)
+
+      const { data: fuzzy } = await q2.throwOnError()
+      const opts = toOptions(fuzzy || [], 'full_name')
+      _setCache(key, opts)
+      return opts
+    } catch (err) {
+      console.error('getStaff fuzzy query failed:', { err, departments, roles })
+      return []
+    }
+  })()
+
+  _setPending(key, promise)
+  try {
+    const result = await promise
+    return result
+  } finally {
+    _clearPending(key)
   }
 }
 
@@ -151,16 +178,27 @@ export async function getVendors({ activeOnly = true } = {}) {
     const key = _cacheKey('vendors', { activeOnly, orgId })
     const cached = _getCache(key)
     if (cached) return cached
+    const inflight = _getPending(key)
+    if (inflight) return inflight
     let q = supabase
       .from('vendors')
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     if (orgId) q = q.eq('org_id', orgId)
-    const { data } = await q.throwOnError()
-    const opts = toOptions(data, 'name')
-    _setCache(key, opts)
-    return opts
+    const promise = (async () => {
+      const { data } = await q.throwOnError()
+      const opts = toOptions(data, 'name')
+      _setCache(key, opts)
+      return opts
+    })()
+    _setPending(key, promise)
+    try {
+      const result = await promise
+      return result
+    } finally {
+      _clearPending(key)
+    }
   } catch (e) {
     console.error('getVendors error:', e)
     return []
@@ -174,21 +212,32 @@ export async function getProducts({ activeOnly = true } = {}) {
     const key = _cacheKey('products', { activeOnly, orgId })
     const cached = _getCache(key)
     if (cached) return cached
+    const inflight = _getPending(key)
+    if (inflight) return inflight
     let q = supabase
       .from('products')
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     if (orgId) q = q.eq('org_id', orgId)
-    const { data } = await q.throwOnError()
-    const opts = (data || []).map((p) => ({
-      id: p.id,
-      value: p.id,
-      label: p.brand ? `${p.name} - ${p.brand}` : p.name,
-      unit_price: p.unit_price,
-    }))
-    _setCache(key, opts)
-    return opts
+    const promise = (async () => {
+      const { data } = await q.throwOnError()
+      const opts = (data || []).map((p) => ({
+        id: p.id,
+        value: p.id,
+        label: p.brand ? `${p.name} - ${p.brand}` : p.name,
+        unit_price: p.unit_price,
+      }))
+      _setCache(key, opts)
+      return opts
+    })()
+    _setPending(key, promise)
+    try {
+      const result = await promise
+      return result
+    } finally {
+      _clearPending(key)
+    }
   } catch (e) {
     console.error('getProducts error:', e)
     return []
@@ -285,5 +334,9 @@ export async function prefetchDropdowns() {
 export function clearDropdownCache() {
   try {
     _cache.clear()
+    // Also clear in-flight dedupers so tests don't hang onto prior promises
+    if (typeof _pending?.clear === 'function') {
+      _pending.clear()
+    }
   } catch {}
 }

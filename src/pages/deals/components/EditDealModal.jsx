@@ -803,6 +803,19 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                       clearable={true}
                       groupBy="specialty"
                     />
+                    {!dropdownLoading && (vendors?.length || 0) === 0 && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        No vendors found yet. Add one in Admin.{' '}
+                        <a
+                          href="/admin"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Open Admin
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   {/* Sales Consultant */}
@@ -816,6 +829,19 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                       searchable={true}
                       clearable={true}
                     />
+                    {!dropdownLoading && (salesConsultantOptions?.length || 0) === 0 && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        No staff found for this role. Add staff in Admin.{' '}
+                        <a
+                          href="/admin"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Open Admin
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   {/* Delivery Coordinator */}
@@ -829,6 +855,19 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                       searchable={true}
                       clearable={true}
                     />
+                    {!dropdownLoading && (deliveryCoordinatorOptions?.length || 0) === 0 && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        No staff found for this role. Add staff in Admin.{' '}
+                        <a
+                          href="/admin"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Open Admin
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   {/* Finance Manager */}
@@ -843,6 +882,19 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                       clearable={true}
                       helperText="Optional - does not block saves"
                     />
+                    {!dropdownLoading && (financeManagerOptions?.length || 0) === 0 && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        No staff found for this role. Add staff in Admin.{' '}
+                        <a
+                          href="/admin"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Open Admin
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
 
