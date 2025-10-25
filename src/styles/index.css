@@ -21,6 +21,9 @@ body {
     'Segoe UI Emoji',
     'Segoe UI Symbol',
     sans-serif;
+  /* Improve mobile text rendering compatibility across browsers */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* Make checkboxes/radios show a clear tick on iOS/Android and desktop */
