@@ -451,6 +451,7 @@ export default function DealsPage() {
   const [showNewDealModal, setShowNewDealModal] = useState(false)
   const [showEditDealModal, setShowEditDealModal] = useState(false)
   const [editingDealId, setEditingDealId] = useState(null)
+  const [editingDeal, setEditingDeal] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   // ✅ FIXED: Added missing error state management
@@ -847,12 +848,21 @@ export default function DealsPage() {
 
   const handleEditDeal = (dealId) => {
     setEditingDealId(dealId)
+    // Preload full deal object from current list for instant modal render
+    try {
+      const found = (filteredDeals?.length ? filteredDeals : deals)?.find((d) => d?.id === dealId)
+      if (found) setEditingDeal(found)
+      else setEditingDeal(null)
+    } catch (_) {
+      setEditingDeal(null)
+    }
     setShowEditDealModal(true)
   }
 
   const closeEditModal = () => {
     setShowEditDealModal(false)
     setEditingDealId(null)
+    setEditingDeal(null)
   }
 
   // ✅ FIXED: Enhanced loading state without dropdown dependency
@@ -1343,6 +1353,7 @@ export default function DealsPage() {
         <EditDealModal
           isOpen={showEditDealModal}
           dealId={editingDealId}
+          deal={editingDeal}
           onClose={closeEditModal}
           onSuccess={() => {
             loadDeals()

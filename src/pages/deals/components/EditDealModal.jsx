@@ -8,7 +8,8 @@ import Select from '../../../components/ui/Select'
 import SearchableSelect from '../../../components/ui/SearchableSelect'
 import Icon from '../../../components/ui/Icon'
 
-const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
+// Accept either a dealId to fetch or a preloaded deal object to render immediately
+const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -67,12 +68,37 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     }
   }, [isOpen, refreshDropdowns])
 
-  // Load deal data
+  // If a preloaded deal object is provided, use it; otherwise load by id
   useEffect(() => {
-    if (isOpen && dealId) {
+    if (!isOpen) return
+    // Prefer preloaded deal for instant render (avoids a second network call)
+    if (initialDeal && initialDeal?.id) {
+      try {
+        const formDeal = mapDbDealToForm(initialDeal)
+        const loadedFormData = {
+          ...formDeal,
+          customerName: initialDeal?.customer_name || '',
+          customerPhone: initialDeal?.customer_phone || '',
+          customerEmail: initialDeal?.customer_email || '',
+          lineItems:
+            (formDeal?.lineItems || [])?.length > 0 ? formDeal?.lineItems : [createEmptyLineItem()],
+        }
+        setFormData(loadedFormData)
+        setInitialFormData(JSON.parse(JSON.stringify(loadedFormData)))
+        setLoading(false)
+        setError('')
+      } catch (e) {
+        console.warn('[EditDealModal] failed to preload deal, falling back to fetch:', e)
+        loadDealData()
+      }
+    } else if (dealId) {
       loadDealData()
+    } else {
+      // If opened with neither dealId nor deal, show a friendly error instead of spinning forever
+      setError('No deal selected to edit.')
+      setLoading(false)
     }
-  }, [isOpen, dealId])
+  }, [isOpen, dealId, initialDeal?.id])
 
   // Simplified Loaner Checkbox (native behavior; single-click reliable)
   const LoanerCheckbox = ({ checked, onChange }) => (
