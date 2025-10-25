@@ -10,6 +10,7 @@ export default function EditDeal() {
   const [initial, setInitial] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState(null)
 
   useEffect(() => {
     let alive = true
@@ -39,6 +40,7 @@ export default function EditDeal() {
       const fresh = await dealService?.getDeal(id)
       const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(fresh) : fresh
       setInitial(mapped)
+      setLastSavedAt(new Date())
     } catch (e) {
       alert(e?.message || 'Failed to save deal')
     } finally {
@@ -55,15 +57,33 @@ export default function EditDeal() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-8">
-      <header className="mb-4">
+      <header className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">
           Deal {dealNumber} / Stock # {stockNumber}
         </h1>
+        <button
+          type="button"
+          onClick={() => navigate('/deals')}
+          className="btn-mobile button-outline-enhanced"
+        >
+          ← Back to Deals
+        </button>
       </header>
 
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Edit Deal</h1>
         <p className="text-gray-600">Update details and save.</p>
+        {lastSavedAt ? (
+          <p className="text-sm text-gray-500 mt-1" data-testid="last-saved-timestamp">
+            Last saved:{' '}
+            {lastSavedAt.toLocaleTimeString('en-US', {
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })}
+          </p>
+        ) : null}
       </div>
       <DealForm
         mode="edit"

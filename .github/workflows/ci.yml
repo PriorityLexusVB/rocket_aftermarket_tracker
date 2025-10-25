@@ -30,8 +30,11 @@ jobs:
       - name: Ensure node_modules/.bin exists
         run: mkdir -p $GITHUB_WORKSPACE/node_modules/.bin
 
-      - name: Install dependencies (locked)
-        run: pnpm install --frozen-lockfile
+      - name: Fix Permissions
+        run: sudo chown -R $USER:$USER $GITHUB_WORKSPACE
+
+      - name: Install dependencies (clean)
+        run: pnpm install --no-frozen-lockfile
 
       # ===== NEW: helpful debugging info after install =====
       - name: Post-install debug (show node_modules + versions)

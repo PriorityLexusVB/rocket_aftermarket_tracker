@@ -34,6 +34,11 @@ const AdminPage = () => {
   const [accountsActionMsg, setAccountsActionMsg] = useState('')
   const [vendorsActionMsg, setVendorsActionMsg] = useState('')
   const [productsActionMsg, setProductsActionMsg] = useState('')
+  // Quick filters
+  const [accountsQuery, setAccountsQuery] = useState('')
+  const [accountsDeptFilter, setAccountsDeptFilter] = useState('')
+  const [staffQuery, setStaffQuery] = useState('')
+  const [staffDeptFilter, setStaffDeptFilter] = useState('')
 
   // Debug states
   const [debugInfo, setDebugInfo] = useState({
@@ -119,6 +124,7 @@ const AdminPage = () => {
   const userDepartmentOptions = [
     { value: 'Delivery Coordinator', label: 'Delivery Coordinator' },
     { value: 'Managers', label: 'Managers' },
+    { value: 'Finance Manager', label: 'Finance Manager' },
   ]
 
   const staffDepartmentOptions = [
@@ -717,6 +723,8 @@ const AdminPage = () => {
     }
 
     await loadUserAccounts()
+    setAccountsActionMsg('User account saved.')
+    setTimeout(() => setAccountsActionMsg(''), 3000)
   }
 
   const handleStaffSubmit = async () => {
@@ -759,6 +767,8 @@ const AdminPage = () => {
     }
 
     await loadStaffRecords()
+    setStaffActionMsg('Staff profile saved.')
+    setTimeout(() => setStaffActionMsg(''), 3000)
   }
 
   const handleVendorSubmit = async () => {
@@ -849,7 +859,17 @@ const AdminPage = () => {
   }
 
   const handleDelete = async (table, id, itemType = null) => {
-    if (!confirm('Are you sure you want to delete this item?')) return
+    // Friendlier confirm
+    const context = (() => {
+      if (table === 'user_profiles')
+        return itemType === 'userAccount' ? 'this user account' : 'this staff profile'
+      if (table === 'vendors') return 'this vendor'
+      if (table === 'products') return 'this product'
+      if (table === 'sms_templates') return 'this template'
+      return 'this item'
+    })()
+    if (!confirm(`Are you sure you want to delete ${context}? This action cannot be undone.`))
+      return
 
     setDeletingId(id)
     setSubmitting(true)
@@ -927,12 +947,14 @@ const AdminPage = () => {
             console.log(`User accounts updated: ${filtered?.length} remaining`)
             return filtered || []
           })
+          setAccountsActionMsg('User account deleted.')
         } else {
           setStaffRecords((prev) => {
             const filtered = prev?.filter((item) => item?.id !== id)
             console.log(`Staff records updated: ${filtered?.length} remaining`)
             return filtered || []
           })
+          setStaffActionMsg('Staff profile deleted.')
         }
 
         // Force a complete refresh after successful deletion with proper delay
@@ -990,6 +1012,11 @@ const AdminPage = () => {
 
       // Show success message
       console.log(`Successfully deleted item from ${table}`)
+      // Auto clear messages after a short while
+      setTimeout(() => {
+        setAccountsActionMsg('')
+        setStaffActionMsg('')
+      }, 3000)
     } catch (error) {
       console.error('Error deleting item:', error)
       alert('Error deleting item: ' + (error?.message || 'Unknown error'))
@@ -1042,6 +1069,34 @@ const AdminPage = () => {
         </div>
       </div>
 
+      <div className="mb-3 text-sm text-gray-600">
+        Tip: You can edit any account. If it belongs to another org, you’ll be prompted to reassign
+        it to your org on save. Or click the building icon to attach immediately.
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
+        <input
+          type="text"
+          value={accountsQuery}
+          onChange={(e) => setAccountsQuery(e.target.value)}
+          placeholder="Search by name or email"
+          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-sm"
+        />
+        <select
+          value={accountsDeptFilter}
+          onChange={(e) => setAccountsDeptFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-xs"
+        >
+          <option value="">All departments</option>
+          {userDepartmentOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -1062,9 +1117,6 @@ const AdminPage = () => {
                 Org
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Org
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1073,102 +1125,100 @@ const AdminPage = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {userAccounts?.map((account) => (
-              <tr key={account?.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {account?.full_name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {account?.email}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      account?.role === 'admin'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
-                    {account?.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {account?.department}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <span>{account?.org_id ? String(account?.org_id).slice(0, 8) : '—'}</span>
-                    {orgId && account?.org_id && account?.org_id !== orgId ? (
-                      <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
-                        Other org
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <span>{account?.org_id ? String(account?.org_id).slice(0, 8) : '—'}</span>
-                    {orgId && account?.org_id && account?.org_id !== orgId ? (
-                      <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
-                        Other org
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      account?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {account?.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openModal('userAccount', account)}
-                      className={`text-blue-600 hover:text-blue-900 ${orgId && account?.org_id && account?.org_id !== orgId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={!!(orgId && account?.org_id && account?.org_id !== orgId)}
-                      title={
-                        orgId && account?.org_id && account?.org_id !== orgId
-                          ? 'Account belongs to another org — you cannot edit it here'
-                          : 'Edit user'
-                      }
+            {(userAccounts || [])
+              .filter((a) => {
+                const q = accountsQuery.trim().toLowerCase()
+                if (!q) return true
+                return (
+                  String(a?.full_name || '')
+                    .toLowerCase()
+                    .includes(q) ||
+                  String(a?.email || '')
+                    .toLowerCase()
+                    .includes(q)
+                )
+              })
+              .filter((a) => {
+                if (!accountsDeptFilter) return true
+                return String(a?.department || '') === accountsDeptFilter
+              })
+              .map((account) => (
+                <tr key={account?.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {account?.full_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {account?.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        account?.role === 'admin'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
                     >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    {orgId && account?.org_id && account?.org_id !== orgId && (
-                      <button
-                        title="Attach to my org"
-                        onClick={() => attachProfileToMyOrg(account?.id)}
-                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                        disabled={submitting}
-                      >
-                        <Building className="w-4 h-4" />
-                      </button>
-                    )}
-                    {orgId && account?.org_id && account?.org_id !== orgId && (
-                      <button
-                        title="Attach to my org"
-                        onClick={() => attachProfileToMyOrg(account?.id)}
-                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                        disabled={submitting}
-                      >
-                        <Building className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete('user_profiles', account?.id, 'userAccount')}
-                      disabled={deletingId === account?.id}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                      {account?.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {account?.department}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <span>{account?.org_id ? String(account?.org_id).slice(0, 8) : '—'}</span>
+                      {orgId && account?.org_id && account?.org_id !== orgId ? (
+                        <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                          Other org
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        account?.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {account?.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openModal('userAccount', account)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title={
+                          orgId && account?.org_id && account?.org_id !== orgId
+                            ? 'Edit user (will prompt to reassign to your org on save)'
+                            : 'Edit user'
+                        }
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      {orgId && account?.org_id && account?.org_id !== orgId && (
+                        <button
+                          title="Attach to my org"
+                          onClick={() => attachProfileToMyOrg(account?.id)}
+                          className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                          disabled={submitting}
+                        >
+                          <Building className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete('user_profiles', account?.id, 'userAccount')}
+                        disabled={deletingId === account?.id}
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
@@ -1216,6 +1266,34 @@ const AdminPage = () => {
         </div>
       </div>
 
+      <div className="mb-3 text-sm text-gray-600">
+        Tip: You can edit any staff profile. If it belongs to another org, you’ll be prompted to
+        reassign it to your org on save. Or click the building icon to attach immediately.
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
+        <input
+          type="text"
+          value={staffQuery}
+          onChange={(e) => setStaffQuery(e.target.value)}
+          placeholder="Search by name, phone or email"
+          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-sm"
+        />
+        <select
+          value={staffDeptFilter}
+          onChange={(e) => setStaffDeptFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-xs"
+        >
+          <option value="">All departments</option>
+          {staffDepartmentOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -1244,82 +1322,101 @@ const AdminPage = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {staffRecords?.map((staff) => (
-              <tr key={staff?.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {staff?.full_name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      staff?.department === 'Sales Consultants'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-purple-100 text-purple-800'
-                    }`}
-                  >
-                    {staff?.department}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {staff?.phone || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {staff?.email || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <span>{staff?.org_id ? String(staff?.org_id).slice(0, 8) : '—'}</span>
-                    {orgId && staff?.org_id && staff?.org_id !== orgId ? (
-                      <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
-                        Other org
-                      </span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      staff?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {staff?.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openModal('staff', staff)}
-                      className={`text-blue-600 hover:text-blue-900 ${orgId && staff?.org_id && staff?.org_id !== orgId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={!!(orgId && staff?.org_id && staff?.org_id !== orgId)}
-                      title={
-                        orgId && staff?.org_id && staff?.org_id !== orgId
-                          ? 'Staff belongs to another org — attach to your org to edit'
-                          : 'Edit staff'
-                      }
+            {(staffRecords || [])
+              .filter((s) => {
+                const q = staffQuery.trim().toLowerCase()
+                if (!q) return true
+                return (
+                  String(s?.full_name || '')
+                    .toLowerCase()
+                    .includes(q) ||
+                  String(s?.phone || '')
+                    .toLowerCase()
+                    .includes(q) ||
+                  String(s?.email || '')
+                    .toLowerCase()
+                    .includes(q)
+                )
+              })
+              .filter((s) => {
+                if (!staffDeptFilter) return true
+                return String(s?.department || '') === staffDeptFilter
+              })
+              .map((staff) => (
+                <tr key={staff?.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {staff?.full_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        staff?.department === 'Sales Consultants'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-purple-100 text-purple-800'
+                      }`}
                     >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    {orgId && staff?.org_id && staff?.org_id !== orgId && (
+                      {staff?.department}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {staff?.phone || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {staff?.email || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex items-center gap-2">
+                      <span>{staff?.org_id ? String(staff?.org_id).slice(0, 8) : '—'}</span>
+                      {orgId && staff?.org_id && staff?.org_id !== orgId ? (
+                        <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                          Other org
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        staff?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {staff?.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
                       <button
-                        title="Attach to my org"
-                        onClick={() => attachProfileToMyOrg(staff?.id)}
-                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                        disabled={submitting}
+                        onClick={() => openModal('staff', staff)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title={
+                          orgId && staff?.org_id && staff?.org_id !== orgId
+                            ? 'Edit staff (will prompt to reassign to your org on save)'
+                            : 'Edit staff'
+                        }
                       >
-                        <Building className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDelete('user_profiles', staff?.id, 'staff')}
-                      disabled={deletingId === staff?.id}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {orgId && staff?.org_id && staff?.org_id !== orgId && (
+                        <button
+                          title="Attach to my org"
+                          onClick={() => attachProfileToMyOrg(staff?.id)}
+                          className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                          disabled={submitting}
+                        >
+                          <Building className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete('user_profiles', staff?.id, 'staff')}
+                        disabled={deletingId === staff?.id}
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
