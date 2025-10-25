@@ -22,7 +22,6 @@ test.describe('Deal Form dropdowns and line items', () => {
     // Vendor dropdown should have options beyond the placeholder
     const vendorSelect = page.getByTestId('vendor-select')
     await expect(vendorSelect).toBeVisible()
-    // Ensure vendors loaded (at least one non-empty option)
     const vendorOptions = vendorSelect.locator('option')
     expect(await vendorOptions.count()).toBeGreaterThan(1)
 

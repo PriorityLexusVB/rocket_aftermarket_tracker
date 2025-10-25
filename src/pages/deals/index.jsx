@@ -855,7 +855,7 @@ export default function DealsPage() {
     setEditingDealId(null)
   }
 
-  // ✅ FIXED: Enhanced loading state with proper dropdown loading reference
+  // ✅ FIXED: Enhanced loading state without dropdown dependency
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -864,9 +864,6 @@ export default function DealsPage() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="text-slate-600">Loading deals...</div>
-              {dropdownLoading && (
-                <div className="text-sm text-slate-500 mt-2">Loading dropdown data...</div>
-              )}
             </div>
           </div>
         </div>
@@ -1052,90 +1049,6 @@ export default function DealsPage() {
                   className="bg-white border border-slate-200 rounded-lg w-full h-11 pl-9 pr-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-            </div>
-
-            {/* ✅ FIXED: Separate dropdown filters with proper binding */}
-            <div className="min-w-[200px]">
-              <select
-                value={filters?.salesAssigned || ''}
-                onChange={(e) => updateFilter('salesAssigned', e?.target?.value || null)}
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                disabled={dropdownLoading}
-                id="sales-filter"
-              >
-                <option value="">Sales Consultants</option>
-                {getSalesConsultants()?.map((user) => (
-                  <option key={user?.id} value={user?.id}>
-                    {formatStaffName(user?.name)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="min-w-[200px]">
-              <select
-                value={filters?.deliveryAssigned || ''}
-                onChange={(e) => updateFilter('deliveryAssigned', e?.target?.value || null)}
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                disabled={dropdownLoading}
-                id="delivery-filter"
-              >
-                <option value="">Delivery Coordinator</option>
-                {getDeliveryCoordinators()?.map((user) => (
-                  <option key={user?.id} value={user?.id}>
-                    {formatStaffName(user?.name)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="min-w-[200px]">
-              <select
-                value={filters?.financeAssigned || ''}
-                onChange={(e) => updateFilter('financeAssigned', e?.target?.value || null)}
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                disabled={dropdownLoading}
-                id="finance-filter"
-              >
-                <option value="">Finance Manager</option>
-                {getFinanceManagers()?.map((user) => (
-                  <option key={user?.id} value={user?.id}>
-                    {formatStaffName(user?.name)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="min-w-[180px]">
-              <select
-                value={filters?.vendor || ''}
-                onChange={(e) => updateFilter('vendor', e?.target?.value || null)}
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                disabled={dropdownLoading}
-                id="vendor-filter"
-              >
-                <option value="">Vendors</option>
-                {getSafeVendorOptions({ activeOnly: true })?.map((vendor) => (
-                  <option key={vendor?.id} value={vendor?.id}>
-                    {vendor?.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Refresh button for dropdowns */}
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={refreshDropdowns}
-                className="text-slate-600 hover:text-slate-800"
-                disabled={dropdownLoading}
-                aria-label="Refresh dropdown data"
-              >
-                <Icon name="RefreshCw" size={16} className="mr-1" />
-                {dropdownLoading ? 'Loading...' : 'Refresh'}
-              </Button>
             </div>
 
             {/* Clear Filters */}

@@ -125,6 +125,7 @@ export default function DealForm({
     })
   )
 
+  // Load vendors/products/staff dropdown data
   useEffect(() => {
     let mounted = true
     ;(async () => {
@@ -162,8 +163,7 @@ export default function DealForm({
           deliveryPromise,
         ])
 
-        // Fallbacks: if org-scoped queries return empty, retry with broader filters,
-        // then fallback to global dropdownService which has fuzzy matching.
+        // Fallbacks
         if (orgId) {
           if (!Array.isArray(sOpts) || sOpts.length === 0) {
             sOpts = await listStaffByOrg(orgId, { activeOnly: true }).catch(() => [])
@@ -341,9 +341,7 @@ export default function DealForm({
         // Focus first offending field for quicker correction
         try {
           const first = missingReasonIndexes[0]
-          const el = document.querySelector(
-            `[data-testid="no-schedule-reason-${first}"]`
-          )
+          const el = document.querySelector(`[data-testid="no-schedule-reason-${first}"]`)
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           el?.focus?.()
         } catch {}
