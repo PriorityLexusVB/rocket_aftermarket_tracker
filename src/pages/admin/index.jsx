@@ -335,6 +335,40 @@ const AdminPage = () => {
     }
   }
 
+  // Attach/assign a single profile to current org
+  const attachProfileToMyOrg = async (profileId) => {
+    if (!orgId) {
+      alert('No organization detected for current user')
+      return
+    }
+    try {
+      setSubmitting(true)
+      const { error } = await supabase
+        ?.from('user_profiles')
+        ?.update({ org_id: orgId, is_active: true })
+        ?.eq('id', profileId)
+      if (error) throw error
+      await Promise.all([loadUserAccounts(), loadStaffRecords()])
+      try {
+        await logBusinessAction?.(
+          'attach_profile_to_org',
+          'admin',
+          profileId,
+          'Attached user profile to current org',
+          { orgId }
+        )
+      } catch (_) {}
+    } catch (e) {
+      console.error('attachProfileToMyOrg error:', e)
+      alert('Failed to attach to org: ' + (e?.message || 'Unknown error'))
+      try {
+        await logErr?.(e, { where: 'attachProfileToMyOrg', orgId, profileId })
+      } catch (_) {}
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   // Assign current org to all active staff missing org
   const assignOrgToActiveStaff = async () => {
     setStaffActionMsg('')
@@ -633,6 +667,20 @@ const AdminPage = () => {
 
   const handleUserAccountSubmit = async () => {
     if (editingItem) {
+      // If editing a user in another org, optionally reassign to current org before updating
+      if (orgId && editingItem?.org_id && editingItem?.org_id !== orgId) {
+        const doReassign = window.confirm(
+          'This user belongs to another organization. Reassign to your org and continue editing?'
+        )
+        if (!doReassign) {
+          throw new Error('Edit cancelled. User belongs to another organization.')
+        }
+        const { error: reassignErr } = await supabase
+          ?.from('user_profiles')
+          ?.update({ org_id: orgId, is_active: true })
+          ?.eq('id', editingItem?.id)
+        if (reassignErr) throw reassignErr
+      }
       // Update existing user
       const { error } = await supabase
         ?.from('user_profiles')
@@ -680,9 +728,24 @@ const AdminPage = () => {
       role: 'staff', // Always staff role for directory entries
       is_active: true,
       vendor_id: null,
+      org_id: staffForm?.org_id || orgId || null,
     }
 
     if (editingItem) {
+      // If editing a staff in another org, optionally reassign to current org before updating
+      if (orgId && editingItem?.org_id && editingItem?.org_id !== orgId) {
+        const doReassign = window.confirm(
+          'This staff profile belongs to another organization. Reassign to your org and continue editing?'
+        )
+        if (!doReassign) {
+          throw new Error('Edit cancelled. Staff belongs to another organization.')
+        }
+        const { error: reassignErr } = await supabase
+          ?.from('user_profiles')
+          ?.update({ org_id: orgId, is_active: true })
+          ?.eq('id', editingItem?.id)
+        if (reassignErr) throw reassignErr
+      }
       const { error } = await supabase
         ?.from('user_profiles')
         ?.update(staffData)
@@ -950,7 +1013,7 @@ const AdminPage = () => {
   const renderUserAccountsTab = () => (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">User Accounts ({userAccounts?.length || 0})</h3>
+        <h3 className="text-lg font-semibold">User Accounts ({userAccounts.length})</h3>
         <div className="flex items-center gap-3">
           <label className="inline-flex items-center gap-2">
             <input
@@ -996,6 +1059,12 @@ const AdminPage = () => {
                 Department
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Org
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Org
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1026,6 +1095,26 @@ const AdminPage = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {account?.department}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <span>{account?.org_id ? String(account?.org_id).slice(0, 8) : '—'}</span>
+                    {orgId && account?.org_id && account?.org_id !== orgId ? (
+                      <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                        Other org
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <span>{account?.org_id ? String(account?.org_id).slice(0, 8) : '—'}</span>
+                    {orgId && account?.org_id && account?.org_id !== orgId ? (
+                      <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                        Other org
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -1039,10 +1128,36 @@ const AdminPage = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openModal('userAccount', account)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className={`text-blue-600 hover:text-blue-900 ${orgId && account?.org_id && account?.org_id !== orgId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={!!(orgId && account?.org_id && account?.org_id !== orgId)}
+                      title={
+                        orgId && account?.org_id && account?.org_id !== orgId
+                          ? 'Account belongs to another org — you cannot edit it here'
+                          : 'Edit user'
+                      }
                     >
                       <Edit className="w-4 h-4" />
                     </button>
+                    {orgId && account?.org_id && account?.org_id !== orgId && (
+                      <button
+                        title="Attach to my org"
+                        onClick={() => attachProfileToMyOrg(account?.id)}
+                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                        disabled={submitting}
+                      >
+                        <Building className="w-4 h-4" />
+                      </button>
+                    )}
+                    {orgId && account?.org_id && account?.org_id !== orgId && (
+                      <button
+                        title="Attach to my org"
+                        onClick={() => attachProfileToMyOrg(account?.id)}
+                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                        disabled={submitting}
+                      >
+                        <Building className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete('user_profiles', account?.id, 'userAccount')}
                       disabled={deletingId === account?.id}
@@ -1072,7 +1187,7 @@ const AdminPage = () => {
   const renderStaffRecordsTab = () => (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">Staff Records ({staffRecords?.length || 0})</h3>
+        <h3 className="text-lg font-semibold">Staff Records ({staffRecords.length})</h3>
         <div className="flex items-center gap-3">
           <label className="inline-flex items-center gap-2">
             <input
@@ -1118,6 +1233,9 @@ const AdminPage = () => {
                 Email
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Org
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1148,6 +1266,16 @@ const AdminPage = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {staff?.email || 'N/A'}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <span>{staff?.org_id ? String(staff?.org_id).slice(0, 8) : '—'}</span>
+                    {orgId && staff?.org_id && staff?.org_id !== orgId ? (
+                      <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                        Other org
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -1161,10 +1289,26 @@ const AdminPage = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openModal('staff', staff)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className={`text-blue-600 hover:text-blue-900 ${orgId && staff?.org_id && staff?.org_id !== orgId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={!!(orgId && staff?.org_id && staff?.org_id !== orgId)}
+                      title={
+                        orgId && staff?.org_id && staff?.org_id !== orgId
+                          ? 'Staff belongs to another org — attach to your org to edit'
+                          : 'Edit staff'
+                      }
                     >
                       <Edit className="w-4 h-4" />
                     </button>
+                    {orgId && staff?.org_id && staff?.org_id !== orgId && (
+                      <button
+                        title="Attach to my org"
+                        onClick={() => attachProfileToMyOrg(staff?.id)}
+                        className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                        disabled={submitting}
+                      >
+                        <Building className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete('user_profiles', staff?.id, 'staff')}
                       disabled={deletingId === staff?.id}
@@ -1194,7 +1338,7 @@ const AdminPage = () => {
   const renderVendorsTab = () => (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">Vendors ({vendors?.length || 0})</h3>
+        <h3 className="text-lg font-semibold">Vendors ({vendors.length})</h3>
         <div className="flex items-center gap-3">
           <label className="inline-flex items-center gap-2">
             <input
@@ -1314,7 +1458,7 @@ const AdminPage = () => {
   const renderProductsTab = () => (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">Aftermarket Products ({products?.length || 0})</h3>
+        <h3 className="text-lg font-semibold">Aftermarket Products ({products.length})</h3>
         <div className="flex items-center gap-3">
           <label className="inline-flex items-center gap-2">
             <input

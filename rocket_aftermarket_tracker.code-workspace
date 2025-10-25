@@ -17,6 +17,8 @@
     "git.autofetch": "all",
     "gitlens.autolinks": [],
     "gitlens.gitkraken.activeOrganizationId": "5231deb8-33d6-44b4-8395-48b31bf4d647",
+    "editor.formatOnSave": true,
+    "editor.codeActions.triggerOnFocusChange": true,
   },
   "extensions": {
     "recommendations": ["github.copilot", "github.copilot-chat", "esbenp.prettier-vscode"],

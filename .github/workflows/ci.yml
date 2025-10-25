@@ -29,9 +29,24 @@ jobs:
       - name: Install dependencies (locked)
         run: pnpm install --frozen-lockfile
 
+      # ===== NEW: helpful debugging info after install =====
+      - name: Post-install debug (show node_modules + versions)
+        run: |
+          echo "PWD: $PWD"
+          echo "Listing top-level files:"
+          ls -la .
+          echo "node_modules and bin:"
+          ls -la node_modules || true
+          ls -la node_modules/.bin || true
+          ls -la node_modules/.pnpm || true
+          echo "pnpm list top-level:"
+          pnpm list --depth 0 || true
+          node -v && pnpm -v
+          echo "Find supabase packages (if any):"
+          find node_modules -maxdepth 4 -name "*supabase*" -print || true
+
       - name: Build
         run: pnpm run build
-
       - name: Unit tests
         run: pnpm run test -- --run
 

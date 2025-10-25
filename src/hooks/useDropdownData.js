@@ -42,13 +42,13 @@ export function useDropdownData(options = {}) {
   // Enhanced load data with tenant-aware services and better error handling
   const loadData = async () => {
     try {
-      setState((prev) => ({ ...prev, loading: true, error: null }))
-
-      // If tenant is still loading, defer without throwing to avoid noisy error banners
+      // If tenant is still loading, skip without toggling the loading flag here.
+      // The effect below re-invokes loadData when tenant.loading flips to false.
       if (tenant.loading) {
-        setState((prev) => ({ ...prev, loading: true }))
         return
       }
+
+      setState((prev) => ({ ...prev, loading: true, error: null }))
 
       // If no user session, prefer global safe fallbacks
       if (!tenant.session?.user) {
