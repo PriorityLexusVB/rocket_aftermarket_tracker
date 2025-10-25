@@ -23,6 +23,7 @@ body {
     sans-serif;
   /* Improve mobile text rendering compatibility across browsers */
   -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
@@ -30,6 +31,9 @@ body {
 input[type='checkbox'],
 input[type='radio'] {
   accent-color: #2563eb; /* visible blue tick */
+  /* Add explicit appearance fallbacks for broader engine support */
+  -webkit-appearance: auto;
+  appearance: auto;
 }
 
 /* Optional: nicer focus ring for form controls */
