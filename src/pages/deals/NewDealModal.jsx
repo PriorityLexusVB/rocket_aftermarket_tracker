@@ -507,14 +507,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          {dropdownData?.loading && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
-              <div className="flex items-center">
-                <Icon name="Loader" size={16} className="mr-2 animate-spin" />
-                Loading dropdown data...
-              </div>
-            </div>
-          )}
+          {/* Inline, non-blocking loading UX: remove global banner; controls handle loading state */}
 
           {dropdownData?.error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">

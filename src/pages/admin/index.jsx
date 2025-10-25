@@ -2052,6 +2052,25 @@ const AdminPage = () => {
                   value={vendorForm?.rating}
                   onChange={(e) => setVendorForm({ ...vendorForm, rating: e?.target?.value })}
                 />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Organization
+                  </label>
+                  <select
+                    value={vendorForm?.org_id || ''}
+                    onChange={(e) =>
+                      setVendorForm({ ...vendorForm, org_id: e?.target?.value || null })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Unassigned</option>
+                    {(organizations || []).map((org) => (
+                      <option key={org?.id} value={org?.id}>
+                        {org?.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </>
             )}
 
@@ -2114,6 +2133,25 @@ const AdminPage = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     rows="3"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Organization
+                  </label>
+                  <select
+                    value={productForm?.org_id || ''}
+                    onChange={(e) =>
+                      setProductForm({ ...productForm, org_id: e?.target?.value || null })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Unassigned</option>
+                    {(organizations || []).map((org) => (
+                      <option key={org?.id} value={org?.id}>
+                        {org?.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </>
             )}

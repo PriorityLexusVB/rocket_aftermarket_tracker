@@ -33,6 +33,30 @@ async function getScopedOrgId() {
   return null
 }
 
+// Lightweight cache peekers to enable cached-first UI rendering without awaiting network
+export function peekVendors({ activeOnly = true } = {}) {
+  const orgId = null
+  const key = _cacheKey('vendors', { activeOnly, orgId })
+  return _getCache(key) || []
+}
+
+export function peekProducts({ activeOnly = true } = {}) {
+  const orgId = null
+  const key = _cacheKey('products', { activeOnly, orgId })
+  return _getCache(key) || []
+}
+
+export function peekStaff({ departments = [], roles = [], activeOnly = true } = {}) {
+  const orgId = null
+  const key = _cacheKey('staff', {
+    departments: departments?.join(','),
+    roles: roles?.join(','),
+    activeOnly,
+    orgId,
+  })
+  return _getCache(key) || []
+}
+
 /**
  * Map any list to { id, value, label } options (keeps extra props if you spread them later).
  */

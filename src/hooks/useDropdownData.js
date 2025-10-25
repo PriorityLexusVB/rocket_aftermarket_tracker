@@ -12,6 +12,9 @@ import {
   getUserProfiles,
   getVendors,
   getProducts,
+  peekVendors,
+  peekProducts,
+  peekStaff,
   globalSearch,
 } from '../services/dropdownService'
 
@@ -140,6 +143,49 @@ export function useDropdownData(options = {}) {
       console.error('[dropdowns] Dropdown data load failed:', err)
     }
   }
+
+  // Optimistic cached-first hydrate to avoid initial loading UI where possible
+  useEffect(() => {
+    try {
+      const cachedSales = peekStaff({
+        departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
+      })
+      const cachedDC = peekStaff({
+        departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
+      })
+      const cachedFinance = peekStaff({
+        departments: ['Finance', 'Finance Manager', 'Finance Managers'],
+      })
+      const cachedVendors = peekVendors({ activeOnly: true })
+      const cachedProducts = peekProducts({ activeOnly: true })
+
+      const anyCached = [
+        cachedSales?.length,
+        cachedDC?.length,
+        cachedFinance?.length,
+        cachedVendors?.length,
+        cachedProducts?.length,
+      ].some(Boolean)
+
+      if (anyCached) {
+        setState((prev) => ({
+          ...prev,
+          sales: cachedSales || prev.sales,
+          dc: cachedDC || prev.dc,
+          finance: cachedFinance || prev.finance,
+          vendors: cachedVendors || prev.vendors,
+          products: cachedProducts || prev.products,
+          loading: false,
+          error: null,
+        }))
+      }
+    } catch (e) {
+      // Non-fatal; continue to normal load
+      console.info('[dropdowns] cached-first hydrate skipped:', e?.message)
+    }
+    // run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Check if cache is still valid
   const isCacheValid = () => {

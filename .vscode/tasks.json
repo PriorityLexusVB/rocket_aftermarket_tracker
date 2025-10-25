@@ -70,6 +70,21 @@
 			"label": "Build project",
 			"type": "shell",
 			"command": "pnpm run build"
+		},
+		{
+			"label": "Quick build",
+			"type": "shell",
+			"command": "pnpm run build"
+		},
+		{
+			"label": "Quick build",
+			"type": "shell",
+			"command": "pnpm run build"
+		},
+		{
+			"label": "Quick build",
+			"type": "shell",
+			"command": "pnpm run build"
 		}
 	]
 }

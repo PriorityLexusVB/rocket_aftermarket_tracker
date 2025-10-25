@@ -51,6 +51,30 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
     lineItems: [],
   })
 
+  // Synthetic option reconciliation so selections show immediately even before lists load
+  const withSelected = (opts = [], selectedId, placeholder = 'Selected') => {
+    if (!selectedId) return opts
+    if (Array.isArray(opts) && opts.some((o) => o?.id === selectedId)) return opts
+    return [...(opts || []), { id: selectedId, value: selectedId, label: placeholder }]
+  }
+
+  const vendorOptionsEffective = useMemo(
+    () => withSelected(vendors, formData?.vendor_id, 'Selected vendor'),
+    [vendors, formData?.vendor_id]
+  )
+  const salesOptionsEffective = useMemo(
+    () => withSelected(salesConsultantOptions, formData?.assignedTo, 'Selected user'),
+    [salesConsultantOptions, formData?.assignedTo]
+  )
+  const deliveryOptionsEffective = useMemo(
+    () => withSelected(deliveryCoordinatorOptions, formData?.deliveryCoordinator, 'Selected user'),
+    [deliveryCoordinatorOptions, formData?.deliveryCoordinator]
+  )
+  const financeOptionsEffective = useMemo(
+    () => withSelected(financeManagerOptions, formData?.financeManager, 'Selected user'),
+    [financeManagerOptions, formData?.financeManager]
+  )
+
   // Dirty state tracking
   useEffect(() => {
     if (initialFormData) {
@@ -502,11 +526,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
               </div>
             )}
 
-            {dropdownLoading && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="text-blue-800 text-sm">Loading dropdown data...</div>
-              </div>
-            )}
+            {/* Inline, non-blocking loading UX: remove global banner; fields show their own state */}
 
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -775,7 +795,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                   <div className="mb-4" data-testid="vendor-select">
                     <SearchableSelect
                       label="Vendor"
-                      options={vendors}
+                      options={vendorOptionsEffective}
                       value={formData?.vendor_id || ''}
                       onChange={(value) => updateFormData({ vendor_id: value || null })}
                       placeholder="Select vendor"
@@ -789,7 +809,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                   <div className="mb-4" data-testid="sales-select">
                     <SearchableSelect
                       label="Sales Consultant"
-                      options={salesConsultantOptions}
+                      options={salesOptionsEffective}
                       value={formData?.assignedTo}
                       onChange={(value) => updateFormData({ assignedTo: value })}
                       placeholder="Select sales consultant"
@@ -802,7 +822,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                   <div className="mb-4" data-testid="delivery-select">
                     <SearchableSelect
                       label="Delivery Coordinator"
-                      options={deliveryCoordinatorOptions}
+                      options={deliveryOptionsEffective}
                       value={formData?.deliveryCoordinator}
                       onChange={(value) => updateFormData({ deliveryCoordinator: value })}
                       placeholder="Select delivery coordinator"
@@ -815,7 +835,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                   <div data-testid="finance-select">
                     <SearchableSelect
                       label="Finance Manager"
-                      options={financeManagerOptions}
+                      options={financeOptionsEffective}
                       value={formData?.financeManager}
                       onChange={(value) => updateFormData({ financeManager: value })}
                       placeholder="Select finance manager"
