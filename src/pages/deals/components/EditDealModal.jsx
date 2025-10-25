@@ -81,7 +81,9 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
           customerPhone: initialDeal?.customer_phone || '',
           customerEmail: initialDeal?.customer_email || '',
           lineItems:
-            (formDeal?.lineItems || [])?.length > 0 ? formDeal?.lineItems : [createEmptyLineItem()],
+            (formDeal?.lineItems || [])?.length > 0
+              ? toCamelLineItems(formDeal?.lineItems)
+              : [createEmptyLineItem()],
         }
         setFormData(loadedFormData)
         setInitialFormData(JSON.parse(JSON.stringify(loadedFormData)))
@@ -99,6 +101,17 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
       setLoading(false)
     }
   }, [isOpen, dealId, initialDeal?.id])
+
+  // Safety: if something goes sideways, stop showing the spinner after a short timeout
+  useEffect(() => {
+    if (!isOpen) return
+    if (!loading) return
+    const t = setTimeout(() => {
+      setLoading(false)
+      setError((prev) => prev || 'Took longer than expected to load. You can retry the load.')
+    }, 8000)
+    return () => clearTimeout(t)
+  }, [isOpen, loading])
 
   // Simplified Loaner Checkbox (native behavior; single-click reliable)
   const LoanerCheckbox = ({ checked, onChange }) => (
@@ -184,6 +197,22 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
     </div>
   )
 
+  // Normalize DB/Supabase line items into the camelCase keys this modal expects
+  const toCamelLineItems = (items = []) =>
+    (items || []).map((part) => ({
+      product_id: part?.product_id ?? null,
+      unit_price: part?.unit_price ?? 0,
+      quantity_used: part?.quantity_used ?? 1,
+      lineItemPromisedDate: part?.lineItemPromisedDate || part?.promised_date || '',
+      requiresScheduling:
+        typeof part?.requiresScheduling === 'boolean'
+          ? part?.requiresScheduling
+          : !!part?.requires_scheduling,
+      noScheduleReason: part?.noScheduleReason || part?.no_schedule_reason || '',
+      isOffSite: typeof part?.isOffSite === 'boolean' ? part?.isOffSite : !!part?.is_off_site,
+      description: part?.description || '',
+    }))
+
   const loadDealData = async () => {
     try {
       setLoading(true)
@@ -219,7 +248,9 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
         customerPhone: transaction?.customer_phone || '',
         customerEmail: transaction?.customer_email || '',
         lineItems:
-          (formDeal?.lineItems || [])?.length > 0 ? formDeal?.lineItems : [createEmptyLineItem()],
+          (formDeal?.lineItems || [])?.length > 0
+            ? toCamelLineItems(formDeal?.lineItems)
+            : [createEmptyLineItem()],
       }
 
       setFormData(loadedFormData)
