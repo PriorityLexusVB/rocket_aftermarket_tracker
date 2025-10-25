@@ -633,6 +633,12 @@ const AdminPage = () => {
 
   const handleUserAccountSubmit = async () => {
     if (editingItem) {
+      // Prevent editing users that belong to another org (avoid RLS/update errors)
+      if (orgId && editingItem?.org_id && editingItem?.org_id !== orgId) {
+        throw new Error(
+          'Cannot edit user from another organization. Attach or reassign the profile to your org before editing.'
+        )
+      }
       // Update existing user
       const { error } = await supabase
         ?.from('user_profiles')
@@ -1039,7 +1045,13 @@ const AdminPage = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openModal('userAccount', account)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className={`text-blue-600 hover:text-blue-900 ${orgId && account?.org_id && account?.org_id !== orgId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={!!(orgId && account?.org_id && account?.org_id !== orgId)}
+                      title={
+                        orgId && account?.org_id && account?.org_id !== orgId
+                          ? 'Account belongs to another org — you cannot edit it here'
+                          : 'Edit user'
+                      }
                     >
                       <Edit className="w-4 h-4" />
                     </button>
