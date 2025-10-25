@@ -30,8 +30,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     salesConsultantOptions,
     deliveryCoordinatorOptions,
     financeManagerOptions,
-    vendors,
-    products,
+    vendorOptions: vendors,
+    productOptions: products,
     loading: dropdownLoading,
     refresh: refreshDropdowns,
   } = useDealFormDropdowns()
@@ -44,6 +44,8 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
     job_status: 'draft',
     priority: 'medium',
     customer_needs_loaner: false,
+    assignedTo: null,
+    deliveryCoordinator: null,
     financeManager: null,
     lineItems: [],
   })
@@ -59,12 +61,10 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
   // Load dropdown data when the modal opens (non-blocking; hook caches results)
   useEffect(() => {
     if (isOpen) {
-      // Only refresh if cache is stale; avoids resetting loading repeatedly
       try {
         refreshDropdowns?.()
       } catch {}
     }
-    // Intentionally omit dropdownLoading from deps to prevent re-trigger loops
   }, [isOpen, refreshDropdowns])
 
   // Load deal data
@@ -442,7 +442,9 @@ const EditDealModal = ({ isOpen, dealId, onClose, onSuccess }) => {
                   type="button"
                   onClick={() => {
                     loadDealData()
-                    try { refreshDropdowns?.() } catch {}
+                    try {
+                      refreshDropdowns?.()
+                    } catch {}
                   }}
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >

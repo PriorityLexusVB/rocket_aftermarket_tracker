@@ -29,7 +29,7 @@ test.describe('Deal create + edit flow', () => {
     // Redirect to edit page
     await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 })
 
-    // Edit: change title and toggle scheduling flags
+    // Edit: change description and toggle scheduling flags
     const editedDescription = `${initialDescription} - Edited`
     await description.fill(editedDescription)
 
