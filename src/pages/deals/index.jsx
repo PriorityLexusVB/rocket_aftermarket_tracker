@@ -28,6 +28,26 @@ const StatusPill = ({ status }) => {
   return <span className={`px-2 py-1 rounded text-xs font-medium ${color}`}>{displayStatus}</span>
 }
 
+// Small helper: "2h ago", "3d ago" fallback to date if invalid
+const relativeTimeFromNow = (iso) => {
+  try {
+    if (!iso) return '—'
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return '—'
+    const diff = Date.now() - d.getTime()
+    const sec = Math.floor(diff / 1000)
+    const min = Math.floor(sec / 60)
+    const hr = Math.floor(min / 60)
+    const day = Math.floor(hr / 24)
+    if (day > 0) return `${day}d ago`
+    if (hr > 0) return `${hr}h ago`
+    if (min > 0) return `${min}m ago`
+    return 'just now'
+  } catch (_) {
+    return '—'
+  }
+}
+
 // ✅ ADDED: Helper to format names as "Lastname, F."
 const formatStaffName = (fullName) => {
   if (!fullName) return ''
@@ -41,40 +61,34 @@ const formatStaffName = (fullName) => {
   return `${lastName}, ${firstInitial}.`
 }
 
-// ✅ UPDATED: Enhanced "Next" promised chip with exact functionality per requirements
-const NextPromisedChip = ({ nextPromisedShort }) => {
-  if (!nextPromisedShort) {
+// ✅ UPDATED: Next promised chip with <24h amber and overdue red; accepts ISO datetime
+const NextPromisedChip = ({ nextPromisedAt }) => {
+  if (!nextPromisedAt) {
     return <span className="text-xs text-gray-500">—</span>
   }
 
-  // Parse the date to determine urgency
-  const promiseDate = new Date(nextPromisedShort)
-  const today = new Date()
-  today?.setHours(0, 0, 0, 0)
-  promiseDate?.setHours(0, 0, 0, 0)
+  const now = new Date()
+  const due = new Date(nextPromisedAt)
+  const diffMs = due - now
+  const isOverdue = diffMs < 0
+  const isSoon = diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000 // <24h
 
-  const todayPlus2 = new Date(today)
-  todayPlus2?.setDate(today?.getDate() + 2)
+  const urgencyClass = isOverdue
+    ? 'bg-red-100 text-red-800 border-red-200'
+    : isSoon
+      ? 'bg-amber-100 text-amber-800 border-amber-200'
+      : 'bg-green-100 text-green-800 border-green-200'
 
-  let urgencyClass = ''
-
-  // Compute urgency per requirements
-  if (promiseDate < today) {
-    // overdue: date < today
-    urgencyClass = 'bg-red-100 text-red-800 border-red-200'
-  } else if (promiseDate <= todayPlus2) {
-    // soon: today ≤ date ≤ today+2
-    urgencyClass = 'bg-amber-100 text-amber-800 border-amber-200'
-  } else {
-    // ok: otherwise
-    urgencyClass = 'bg-green-100 text-green-800 border-green-200'
-  }
+  const short = new Date(nextPromisedAt)?.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
 
   return (
     <span
       className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${urgencyClass}`}
     >
-      Next: {nextPromisedShort}
+      Next: {short}
     </span>
   )
 }
@@ -1087,22 +1101,49 @@ export default function DealsPage() {
             filters?.search) && <span className="ml-2 text-blue-600">(filtered)</span>}
         </div>
 
-        {/* ✅ UPDATED: Desktop Table with exact columns per requirements */}
+        {/* ✅ UPDATED: Desktop Table with expanded At-a-Glance columns */}
         <div className="hidden md:block bg-white border rounded-lg overflow-hidden shadow-sm">
           <table className="min-w-full">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Age
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Promise
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Appt Window
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Value
+                  Phone
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Next
+                  Vehicle
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Service
+                  $/Margin
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Work
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Vendor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Location
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Last Activity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Loaner
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Actions
@@ -1113,19 +1154,116 @@ export default function DealsPage() {
               {filteredDeals?.map((deal) => (
                 <tr key={deal?.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4">
+                    <StatusPill status={deal?.job_status} />
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-slate-700">
+                      {typeof deal?.age_days === 'number' ? `${deal?.age_days}d` : '—'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <NextPromisedChip nextPromisedAt={deal?.next_promised_iso} />
+                  </td>
+                  <td className="px-6 py-4">
+                    {deal?.appt_start ? (
+                      <span className="text-sm text-slate-700">
+                        {new Date(deal?.appt_start).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                        {' • '}
+                        {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                        {'–'}
+                        {deal?.appt_end
+                          ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : ''}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-500">—</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
                     <CustomerDisplay deal={deal} />
                   </td>
                   <td className="px-6 py-4">
-                    <ValueDisplay amount={deal?.total_amount} />
+                    <span className="text-sm text-slate-700">
+                      {deal?.customer_phone_e164 || deal?.customer_phone || '—'}
+                      {deal?.customer_phone_last4 ? (
+                        <span className="text-slate-400">
+                          {' '}
+                          ({`…${deal?.customer_phone_last4}`})
+                        </span>
+                      ) : null}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
-                    <NextPromisedChip nextPromisedShort={deal?.next_promised_short} />
+                    <span className="text-sm text-slate-700">
+                      {deal?.vehicle
+                        ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                        : '—'}
+                      {deal?.vehicle?.stock_number ? (
+                        <span className="text-slate-400">
+                          {' '}
+                          • Stock: {deal?.vehicle?.stock_number}
+                        </span>
+                      ) : null}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <ValueDisplay amount={deal?.total_amount} />
+                      <span className="text-xs text-slate-500">
+                        est.{' '}
+                        {new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD',
+                        }).format((parseFloat(deal?.total_amount) || 0) * 0.25)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {(deal?.work_tags || []).map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {(!deal?.work_tags || deal?.work_tags?.length === 0) && (
+                        <span className="text-xs text-gray-500">—</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-slate-700">
+                      {deal?.vendor_name || 'Unassigned'}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <ServiceLocationTag
                       serviceType={deal?.service_type}
                       jobParts={deal?.job_parts}
                     />
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-slate-700">
+                      {relativeTimeFromNow(deal?.created_at)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {deal?.loaner_number || deal?.has_active_loaner ? (
+                      <LoanerBadge deal={deal} />
+                    ) : (
+                      <span className="text-xs text-gray-500">—</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
@@ -1235,7 +1373,7 @@ export default function DealsPage() {
                       <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
                         Next
                       </div>
-                      <NextPromisedChip nextPromisedShort={deal?.next_promised_short} />
+                      <NextPromisedChip nextPromisedAt={deal?.next_promised_iso} />
                     </div>
                   </div>
 

@@ -259,8 +259,10 @@ export async function getAllDeals() {
         `
         id, created_at, job_status, service_type, color_code, title, job_number,
         customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
+        scheduled_start_time, scheduled_end_time,
         vehicle:vehicles(year, make, model, stock_number),
-        job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site)
+        vendor:vendors(id, name),
+        job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
       `
       )
       ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
@@ -302,19 +304,52 @@ export async function getAllDeals() {
               )?.[0]?.promised_date
             : null
 
+        // Compute helpful display fields
+        const createdAt = job?.created_at ? new Date(job.created_at) : null
+        const now = new Date()
+        const ageDays = createdAt
+          ? Math.max(0, Math.floor((now - createdAt) / (1000 * 60 * 60 * 24)))
+          : null
+
+        // Normalize phone to E.164 (best-effort, default country US)
+        const rawPhone = transaction?.customer_phone || ''
+        const digits = (rawPhone || '').replace(/\D/g, '')
+        const phoneLast4 = digits?.slice(-4) || ''
+        const phoneE164 =
+          digits?.length === 11 && digits.startsWith('1')
+            ? `+${digits}`
+            : digits?.length === 10
+              ? `+1${digits}`
+              : rawPhone || ''
+
+        // Appointment window formatting helpers (leave raw timestamps for UI)
+        const apptStart = job?.scheduled_start_time || null
+        const apptEnd = job?.scheduled_end_time || null
+
+        // Work tags (simple mapping from product/category/name)
+        const workTags = (job?.job_parts || [])
+          .map((p) => p?.product?.category || p?.product?.name || '')
+          .map((label) => {
+            const l = (label || '').toLowerCase()
+            if (/ppf|paint protection/.test(l)) return 'PPF'
+            if (/tint|window/.test(l)) return 'Tint'
+            if (/ceramic/.test(l)) return 'Ceramic'
+            if (/detail|wash|interior|exterior/.test(l)) return 'Detail'
+            return null
+          })
+          .filter(Boolean)
+          .filter((v, i, a) => a.indexOf(v) === i)
+
         return {
           ...job,
           customer_name: transaction?.customer_name || '',
           customer_phone: transaction?.customer_phone || '',
+          customer_phone_e164: phoneE164,
+          customer_phone_last4: phoneLast4,
           customer_email: transaction?.customer_email || '',
           total_amount: transaction?.total_amount || 0,
           has_active_loaner: !!loaner?.id,
-          next_promised_short: nextPromisedDate
-            ? new Date(nextPromisedDate)?.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              })
-            : null,
+          next_promised_iso: nextPromisedDate || null,
           loaner_id: loaner?.id || null,
           loaner_number: loaner?.loaner_number || null,
           loaner_eta_short: loaner?.eta_return_date
@@ -323,6 +358,11 @@ export async function getAllDeals() {
                 day: 'numeric',
               })
             : null,
+          age_days: ageDays,
+          appt_start: apptStart,
+          appt_end: apptEnd,
+          vendor_name: job?.vendor?.name || null,
+          work_tags: workTags,
           vehicle:
             job?.vehicle_id && job?.vehicle
               ? {
