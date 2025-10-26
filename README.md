@@ -131,3 +131,28 @@ Routing and CSP headers are defined in `vercel.json`.
 Notes:
 
 - A manual fallback GitHub Action exists at `.github/workflows/deploy-vercel.yml` (manual only) for emergencies. Normally, you won't need it, as Vercel Git integration handles auto-deploys.
+
+## CI (GitHub Actions)
+
+This repo includes a CI workflow at `.github/workflows/ci.yml` that runs:
+
+- Typecheck (tsc) against `tsconfig.e2e.json`
+- Build (Vite)
+- Optional E2E seed (Node-based) if `DATABASE_URL` is provided
+- Unit tests (Vitest)
+- E2E tests (Playwright) with artifacts on failure
+
+Required repository secrets:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Optional secrets:
+
+- `DATABASE_URL` — Postgres connection string for the seed runner (`pnpm run db:seed-e2e`)
+- `E2E_EMAIL`, `E2E_PASSWORD` — only used if you prefer env-based login instead of the bundled `e2e/storageState.json`
+
+Notes:
+
+- Playwright uses `webServer` to start the app via `npm run start` on port 5173.
+- If you change the dev server port, update `PLAYWRIGHT_BASE_URL` in the workflow or `playwright.config.ts`.

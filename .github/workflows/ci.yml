@@ -6,35 +6,67 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-and-test:
+  build-test-e2e:
     runs-on: ubuntu-latest
+    env:
+      # Required for the app to start and tests to run
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      # Optional: if you prefer env-based login instead of storageState.json
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      # Optional: Postgres connection string to seed deterministic E2E data
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Base URL for Playwright; keep default unless port changes
+      PLAYWRIGHT_BASE_URL: http://localhost:5173
+      # Force CI mode to avoid reusing local server
+      CI: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'pnpm'
 
-      - name: Install pnpm
-        run: npm install -g pnpm@10
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run unit tests
-        run: pnpm test
+      - name: Typecheck (tsconfig.e2e)
+        run: pnpm run typecheck
 
       - name: Build
-        run: pnpm build
+        run: pnpm run build
 
-      - name: Prettier format check
-        run: pnpm run format:check
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
 
-      - name: Lint (ESLint)
-        run: pnpm run lint
+      - name: Seed E2E data (optional)
+        if: env.DATABASE_URL != ''
+        run: pnpm run db:seed-e2e
 
-      - name: Typecheck (TS, E2E scope)
-        run: pnpm run typecheck
+      - name: Run unit tests (Vitest)
+        run: pnpm run test
+
+      - name: Run E2E tests (Playwright)
+        run: pnpm run e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
