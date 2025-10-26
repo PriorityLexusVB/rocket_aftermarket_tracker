@@ -92,21 +92,28 @@ function mapFormToDb(formState = {}) {
       ? formState?.lineItems
       : []
 
-  const normalizedLineItems = (lineItemsInput || []).map((li) => ({
-    product_id: li.product_id ?? null,
-    quantity_used: Number(li.quantity_used ?? li.quantity ?? 1),
-    unit_price: Number(li.unit_price ?? li.price ?? 0),
-    // snake_case for DB
-    promised_date: li.promised_date || li.lineItemPromisedDate || null,
-    requires_scheduling: !!li.requires_scheduling || !!li.requiresScheduling,
-    no_schedule_reason: li.no_schedule_reason || li.noScheduleReason || null,
-    is_off_site: !!li.is_off_site || !!li.isOffSite,
-    // keep camelCase too for internal callers
-    lineItemPromisedDate: li.lineItemPromisedDate || li.promised_date || null,
-    requiresScheduling: !!li.requiresScheduling || !!li.requires_scheduling,
-    noScheduleReason: li.noScheduleReason || li.no_schedule_reason || null,
-    isOffSite: !!li.isOffSite || !!li.is_off_site,
-  }))
+  const normalizedLineItems = (lineItemsInput || []).map((li) => {
+    const requiresSchedulingNorm =
+      li?.requires_scheduling ?? li?.requiresScheduling ?? true /* default to true */
+    const noScheduleReasonNorm = li?.no_schedule_reason || li?.noScheduleReason || null
+    const lineItemPromisedDateNorm = li?.promised_date || li?.lineItemPromisedDate || null
+    const isOffSiteNorm = li?.is_off_site ?? li?.isOffSite ?? false
+    return {
+      product_id: li.product_id ?? null,
+      quantity_used: Number(li.quantity_used ?? li.quantity ?? 1),
+      unit_price: Number(li.unit_price ?? li.price ?? 0),
+      // snake_case for DB
+      promised_date: lineItemPromisedDateNorm,
+      requires_scheduling: !!requiresSchedulingNorm,
+      no_schedule_reason: requiresSchedulingNorm ? null : noScheduleReasonNorm,
+      is_off_site: !!isOffSiteNorm,
+      // keep camelCase too for internal callers
+      lineItemPromisedDate: lineItemPromisedDateNorm,
+      requiresScheduling: !!requiresSchedulingNorm,
+      noScheduleReason: requiresSchedulingNorm ? null : noScheduleReasonNorm,
+      isOffSite: !!isOffSiteNorm,
+    }
+  })
 
   // Coerce invalid numerics and enforce business rules
   for (const item of normalizedLineItems) {
@@ -359,6 +366,24 @@ export async function createDeal(formState) {
   const { payload, normalizedLineItems, loanerForm, customerName, customerPhone, customerEmail } =
     mapFormToDb(formState || {})
 
+  // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
+  if (!payload?.org_id) {
+    try {
+      const { data: auth } = await supabase?.auth?.getUser?.()
+      const userId = auth?.user?.id
+      if (userId) {
+        const { data: prof } = await supabase
+          ?.from('user_profiles')
+          ?.select('org_id')
+          ?.eq('id', userId)
+          ?.single()
+        if (prof?.org_id) payload.org_id = prof.org_id
+      }
+    } catch (e) {
+      console.warn('[dealService:create] Unable to infer org_id from profile:', e?.message)
+    }
+  }
+
   // Ensure required fields the DB expects
   // jobs.job_number is NOT NULL + UNIQUE in schema; auto-generate if missing
   if (!payload?.job_number) {
@@ -430,8 +455,13 @@ export async function createDeal(formState) {
       console.warn('[dealService:create] pre-create transaction insert skipped:', e?.message)
     }
 
-    // 4) return full record (with joins)
-    return await getDeal(job?.id)
+    // 4) return full record (with joins). If joins are restricted by RLS/policies, fall back to minimal shape with id so callers can navigate to edit.
+    try {
+      return await getDeal(job?.id)
+    } catch (e) {
+      console.warn('[dealService:create] getDeal fallback due to error:', e?.message)
+      return { id: job?.id }
+    }
   } catch (error) {
     console.error('[dealService:create] Failed to create deal:', error)
     // rollback best-effort: delete parts first, then job
