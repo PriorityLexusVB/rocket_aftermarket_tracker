@@ -19,9 +19,19 @@ const clickEditInRow = async (page, rowText: string) => {
 const clickDeleteInRow = async (page, rowText: string) => {
   const row = rowByText(page, rowText)
   await expect(row).toHaveCount(1)
+  // Confirm dialog must be registered BEFORE clicking, otherwise it can race and miss
+  const once = new Promise<void>((resolve) =>
+    page.once('dialog', (dialog) => {
+      try {
+        dialog.accept()
+      } finally {
+        resolve()
+      }
+    })
+  )
   await row.locator('button').nth(1).click()
-  // Confirm browser confirm() dialog
-  page.once('dialog', (dialog) => dialog.accept())
+  // Ensure the dialog was handled to avoid flakiness on slow machines
+  await once
 }
 
 // Navigates to Admin page and waits for it to be ready
@@ -90,7 +100,12 @@ test.describe('Admin CRUD - Vendors and Products', () => {
     await page.getByLabel('Cost').fill('10.00')
     await page.getByLabel('Unit Price').fill('25.00')
     await page.getByLabel('Part Number').fill('PN-TEST')
-    await page.getByLabel('Description').fill('E2E created test product')
+    // The Description field is a textarea without an explicit htmlFor/id linkage; target it within the modal container
+    await page
+      .locator('.fixed.inset-0')
+      .locator('textarea')
+      .first()
+      .fill('E2E created test product')
 
     await page.getByRole('button', { name: /create/i }).click()
 
