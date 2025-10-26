@@ -7,10 +7,10 @@ test.describe('Deal create redirect', () => {
   test('saving a new deal redirects to /deals/:id/edit', async ({ page }) => {
     await page.goto('/deals/new')
 
-    // Title (required)
-    const title = page.getByTestId('title-input')
-    await expect(title).toBeVisible()
-    await title.fill('E2E Deal ' + Date.now())
+    // Description (required in current form)
+    const description = page.getByTestId('description-input')
+    await expect(description).toBeVisible()
+    await description.fill('E2E Deal ' + Date.now())
 
     // Vendor
     const vendor = page.getByTestId('vendor-select')

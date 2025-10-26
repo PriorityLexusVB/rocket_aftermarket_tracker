@@ -60,6 +60,11 @@ export default function DealForm({
     delivery_coordinator_id: initial.delivery_coordinator_id || '',
     customer_mobile: initial.customer_mobile || '',
     customer_needs_loaner: !!initial.customer_needs_loaner,
+    loanerForm: {
+      loaner_number: initial?.loanerForm?.loaner_number || '',
+      eta_return_date: initial?.loanerForm?.eta_return_date || '',
+      notes: initial?.loanerForm?.notes || '',
+    },
     lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
     promised_date: initial.promised_date || '',
     scheduled_start_time: initial.scheduled_start_time || '',
@@ -90,6 +95,11 @@ export default function DealForm({
       delivery_coordinator_id: initial.delivery_coordinator_id || '',
       customer_mobile: initial.customer_mobile || '',
       customer_needs_loaner: !!initial.customer_needs_loaner,
+      loanerForm: {
+        loaner_number: initial?.loanerForm?.loaner_number || '',
+        eta_return_date: initial?.loanerForm?.eta_return_date || '',
+        notes: initial?.loanerForm?.notes || '',
+      },
       lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
       promised_date: initial.promised_date || '',
       scheduled_start_time: initial.scheduled_start_time || '',
@@ -259,6 +269,9 @@ export default function DealForm({
   }, [products])
 
   const handleChange = (key, val) => setForm((prev) => ({ ...prev, [key]: val }))
+
+  const handleLoanerChange = (key, val) =>
+    setForm((prev) => ({ ...prev, loanerForm: { ...(prev.loanerForm || {}), [key]: val } }))
 
   const handleLineChange = (idx, key, val) =>
     setForm((prev) => {
@@ -437,6 +450,14 @@ export default function DealForm({
         // attach tenant org for write policies when available
         org_id: form.org_id || orgId || undefined,
         customer_needs_loaner: !!form.customer_needs_loaner,
+        // pass loaner details to the service (service gracefully ignores when number is empty)
+        loanerForm: form.customer_needs_loaner
+          ? {
+              loaner_number: form?.loanerForm?.loaner_number?.trim() || '',
+              eta_return_date: form?.loanerForm?.eta_return_date || null,
+              notes: form?.loanerForm?.notes || '',
+            }
+          : null,
         // mirror phone fields for downstream services
         customer_phone: normalizePhone(form.customer_phone || form.customer_mobile || ''),
         customerPhone: normalizePhone(
@@ -665,6 +686,43 @@ export default function DealForm({
           Customer needs loaner
         </label>
       </section>
+
+      {form.customer_needs_loaner ? (
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="loaner-section">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Loaner Number</label>
+            <input
+              data-testid="loaner-number-input"
+              type="text"
+              value={form?.loanerForm?.loaner_number || ''}
+              onChange={(e) => handleLoanerChange('loaner_number', e.target.value)}
+              className="mt-1 input-mobile w-full"
+              placeholder="e.g. L-1024"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">ETA Return Date</label>
+            <input
+              data-testid="loaner-eta-input"
+              type="date"
+              value={form?.loanerForm?.eta_return_date || ''}
+              onChange={(e) => handleLoanerChange('eta_return_date', e.target.value || '')}
+              className="mt-1 input-mobile w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Notes</label>
+            <input
+              data-testid="loaner-notes-input"
+              type="text"
+              value={form?.loanerForm?.notes || ''}
+              onChange={(e) => handleLoanerChange('notes', e.target.value)}
+              className="mt-1 input-mobile w-full"
+              placeholder="Optional"
+            />
+          </div>
+        </section>
+      ) : null}
 
       {/* Line Items */}
       <section className="space-y-4" data-testid="line-items-section">

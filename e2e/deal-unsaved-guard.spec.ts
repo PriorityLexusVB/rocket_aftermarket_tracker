@@ -10,10 +10,10 @@ test.describe('DealForm Unsaved Changes Guard', () => {
     // Ensure the form has finished loading before interacting
     await expect(page.getByTestId('deal-form')).toBeVisible()
 
-    // Type into Title to make form dirty
-    const title = page.getByTestId('title-input')
-    await title.fill('Tint Package')
-    await expect(title).toHaveValue('Tint Package')
+    // Type into Description to make form dirty
+    const description = page.getByTestId('description-input')
+    await description.fill('Tint Package')
+    await expect(description).toHaveValue('Tint Package')
 
     // First attempt: stub confirm to return false (stay on page) and capture invocation
     await page.evaluate(() => {
@@ -33,7 +33,7 @@ test.describe('DealForm Unsaved Changes Guard', () => {
 
     // Ensure we are still on New Deal and title persists
     await expect(page).toHaveURL(/\/deals\/new$/)
-    await expect(page.getByTestId('title-input')).toHaveValue('Tint Package')
+    await expect(page.getByTestId('description-input')).toHaveValue('Tint Package')
 
     // Second attempt: stub confirm to return true (navigate away)
     await page.evaluate(() => {

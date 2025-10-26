@@ -13,12 +13,14 @@ import {
   getProducts as getProductsGlobal,
   getUserProfiles as getUsersGlobal,
 } from '../services/dropdownService'
+import { isSupabaseConfigured, testSupabaseConnection } from '@/lib/supabase'
 
 export default function DebugAuthPage() {
   const { orgId, loading: tenantLoading, session } = useTenant()
   const [counts, setCounts] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [conn, setConn] = useState({ configured: false, ok: null, last: null })
 
   useEffect(() => {
     let mounted = true
@@ -66,6 +68,8 @@ export default function DebugAuthPage() {
     }
 
     load()
+    // initial env/config snapshot
+    setConn((c) => ({ ...c, configured: !!isSupabaseConfigured?.() }))
     return () => {
       mounted = false
     }
@@ -92,6 +96,44 @@ export default function DebugAuthPage() {
         <div>
           loading: <strong>{String(tenantLoading)}</strong>
         </div>
+      </section>
+
+      <section className="mb-4">
+        <h2 className="font-semibold">Supabase connection</h2>
+        <div className="flex items-center gap-3 mb-2">
+          <span>Configured:</span>
+          <strong data-testid="sb-configured">{conn.configured ? 'Yes' : 'No'}</strong>
+          <button
+            type="button"
+            className="btn-mobile btn-mobile-sm"
+            onClick={async () => {
+              try {
+                const ok = await testSupabaseConnection?.(2)
+                setConn({ configured: !!isSupabaseConfigured?.(), ok, last: new Date() })
+              } catch (_) {
+                setConn({ configured: !!isSupabaseConfigured?.(), ok: false, last: new Date() })
+              }
+            }}
+            data-testid="sb-test-btn"
+          >
+            Test
+          </button>
+        </div>
+        <div>
+          Status:{' '}
+          <strong data-testid="sb-status">
+            {conn.ok == null ? '—' : conn.ok ? 'OK' : 'Error'}
+          </strong>
+          {conn.last ? (
+            <span className="ml-2 text-slate-600 text-sm" data-testid="sb-last">
+              ({conn.last.toLocaleTimeString()})
+            </span>
+          ) : null}
+        </div>
+        <p className="text-slate-500 text-sm mt-1">
+          If you see “Error” but the app otherwise works, it may be an RLS-permission message. The
+          test treats those as reachable.
+        </p>
       </section>
 
       <section className="mb-4">

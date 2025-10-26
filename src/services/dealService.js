@@ -294,6 +294,7 @@ export async function getAllDeals() {
           customer_phone: transaction?.customer_phone || '',
           customer_email: transaction?.customer_email || '',
           total_amount: transaction?.total_amount || 0,
+          has_active_loaner: !!loaner?.id,
           next_promised_short: nextPromisedDate
             ? new Date(nextPromisedDate)?.toLocaleDateString('en-US', {
                 month: 'short',

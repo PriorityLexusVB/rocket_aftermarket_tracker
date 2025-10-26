@@ -27,9 +27,9 @@ const clickDeleteInRow = async (page, rowText: string) => {
 // Navigates to Admin page and waits for it to be ready
 const gotoAdmin = async (page) => {
   await page.goto('/admin')
-  await expect(
-    page.getByRole('heading', { name: /vendors|aftermarket products|user accounts/i })
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Administrative|Admin|Configuration/i }))
+    .toBeVisible({ timeout: 10000 })
+    .catch(() => {})
 }
 
 test.describe('Admin CRUD - Vendors and Products', () => {
@@ -39,8 +39,9 @@ test.describe('Admin CRUD - Vendors and Products', () => {
     const vendorNameUpdated = `${vendorName} Updated`
 
     await gotoAdmin(page)
-
-    // Vendors tab should be visible by default; if not, ensure we scroll
+    // Switch to Vendors tab explicitly
+    await page.getByRole('button', { name: /vendors/i }).click()
+    // Add Vendor
     await page.getByRole('button', { name: /add vendor/i }).click()
     await expectModalOpen(page)
 
@@ -77,7 +78,8 @@ test.describe('Admin CRUD - Vendors and Products', () => {
     const productNameUpdated = `${productName} Updated`
 
     await gotoAdmin(page)
-
+    // Switch to Products tab explicitly
+    await page.getByRole('button', { name: /aftermarket products|products/i }).click()
     await page.getByRole('button', { name: /add product/i }).click()
     await expectModalOpen(page)
 

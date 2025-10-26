@@ -1,288 +1,298 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, Car, Building2, AlertTriangle, Search, Download, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
-import AppLayout from '../../components/layouts/AppLayout';
-import { calendarService } from '../../services/calendarService';
-import { vendorService } from '../../services/vendorService';
-import QuickFilters from './components/QuickFilters';
+import React, { useState, useEffect, useRef } from 'react'
+import {
+  Calendar,
+  Clock,
+  Car,
+  Building2,
+  AlertTriangle,
+  Search,
+  Download,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
+import AppLayout from '../../components/layouts/AppLayout'
+import { calendarService } from '../../services/calendarService'
+import { vendorService } from '../../services/vendorService'
+import QuickFilters from './components/QuickFilters'
 
-import UnassignedQueue from './components/UnassignedQueue';
-import JobDrawer from './components/JobDrawer';
-import RoundUpModal from './components/RoundUpModal';
-import { formatTime, isOverdue, getStatusBadge } from '../../lib/time';
+import UnassignedQueue from './components/UnassignedQueue'
+import JobDrawer from './components/JobDrawer'
+import RoundUpModal from './components/RoundUpModal'
+import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 
 const CalendarFlowManagementCenter = () => {
   // State management
-  const [loading, setLoading] = useState(true);
-  
+  const [loading, setLoading] = useState(true)
+
   // Separate original data from filtered data
-  const [originalJobs, setOriginalJobs] = useState([]);
-  const [originalUnassignedJobs, setOriginalUnassignedJobs] = useState([]);
-  const [filteredJobs, setFilteredJobs] = useState([]);
-  const [filteredUnassignedJobs, setFilteredUnassignedJobs] = useState([]);
-  
-  const [vendors, setVendors] = useState([]);
-  const [selectedJob, setSelectedJob] = useState(null);
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [showRoundUp, setShowRoundUp] = useState(false);
-  const [roundUpType, setRoundUpType] = useState('daily');
-  
+  const [originalJobs, setOriginalJobs] = useState([])
+  const [originalUnassignedJobs, setOriginalUnassignedJobs] = useState([])
+  const [filteredJobs, setFilteredJobs] = useState([])
+  const [filteredUnassignedJobs, setFilteredUnassignedJobs] = useState([])
+
+  const [vendors, setVendors] = useState([])
+  const [selectedJob, setSelectedJob] = useState(null)
+  const [showDrawer, setShowDrawer] = useState(false)
+  const [showRoundUp, setShowRoundUp] = useState(false)
+  const [roundUpType, setRoundUpType] = useState('daily')
+
   // View settings - Updated default and possible values
-  const [viewMode, setViewMode] = useState('week'); // week, day, month
-  const [vendorLanesEnabled, setVendorLanesEnabled] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState('week') // week, day, month
+  const [vendorLanesEnabled, setVendorLanesEnabled] = useState(true)
+  const [currentDate, setCurrentDate] = useState(new Date())
 
   // Filters
   const [filters, setFilters] = useState({
     vendors: [],
     statuses: [],
     showUnassigned: true,
-    searchQuery: ''
-  });
+    searchQuery: '',
+  })
 
   // Drag and drop
-  const [draggedJob, setDraggedJob] = useState(null);
-  const [dropZoneActive, setDropZoneActive] = useState(null);
+  const [draggedJob, setDraggedJob] = useState(null)
+  const [dropZoneActive, setDropZoneActive] = useState(null)
 
   // Load initial data
   useEffect(() => {
-    loadCalendarData();
-    loadVendors();
-  }, [currentDate, viewMode]);
+    loadCalendarData()
+    loadVendors()
+  }, [currentDate, viewMode])
 
   // Apply filters whenever filters or original data change
   useEffect(() => {
-    applyFilters();
-  }, [filters, originalJobs, originalUnassignedJobs]);
+    applyFilters()
+  }, [filters, originalJobs, originalUnassignedJobs])
 
   const loadCalendarData = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const startDate = getViewStartDate();
-      const endDate = getViewEndDate();
-      
+      const startDate = getViewStartDate()
+      const endDate = getViewEndDate()
+
       // Load all jobs without status filtering to allow client-side filtering
       const { data: jobsData, error } = await calendarService?.getJobsByDateRange(
-        startDate, 
-        endDate, 
+        startDate,
+        endDate,
         {
-          vendorId: filters?.vendors?.length > 0 ? filters?.vendors?.[0] : null
+          vendorId: filters?.vendors?.length > 0 ? filters?.vendors?.[0] : null,
           // Removed status filter to load all jobs for client-side filtering
         }
-      );
+      )
 
       if (!error && jobsData) {
-        const assignedJobs = jobsData?.filter(job => job?.vendor_id);
-        const unassigned = jobsData?.filter(job => !job?.vendor_id);
-        
+        const assignedJobs = jobsData?.filter((job) => job?.vendor_id)
+        const unassigned = jobsData?.filter((job) => !job?.vendor_id)
+
         // Store original data separately
-        setOriginalJobs(assignedJobs);
-        setOriginalUnassignedJobs(unassigned);
+        setOriginalJobs(assignedJobs)
+        setOriginalUnassignedJobs(unassigned)
       }
     } catch (error) {
-      console.error('Error loading calendar data:', error);
+      console.error('Error loading calendar data:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   // New centralized filter application function
   const applyFilters = () => {
     // Apply filters to assigned jobs
-    const filteredAssigned = applyFiltersToJobList(originalJobs);
-    setFilteredJobs(filteredAssigned);
-    
+    const filteredAssigned = applyFiltersToJobList(originalJobs)
+    setFilteredJobs(filteredAssigned)
+
     // Apply filters to unassigned jobs
-    const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs);
-    setFilteredUnassignedJobs(filteredUnassigned);
-  };
+    const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs)
+    setFilteredUnassignedJobs(filteredUnassigned)
+  }
 
   // Enhanced filter application function
   const applyFiltersToJobList = (jobList) => {
-    if (!jobList || jobList?.length === 0) return [];
-    
-    let filteredJobs = [...jobList];
-    
+    if (!jobList || jobList?.length === 0) return []
+
+    let filteredJobs = [...jobList]
+
     // Apply search filter
     if (filters?.searchQuery) {
-      const query = filters?.searchQuery?.toLowerCase();
-      filteredJobs = filteredJobs?.filter(job => 
-        job?.job_number?.toLowerCase()?.includes(query) ||
-        job?.title?.toLowerCase()?.includes(query) ||
-        job?.vehicle_info?.toLowerCase()?.includes(query) ||
-        job?.customer_name?.toLowerCase()?.includes(query) ||
-        job?.customer_phone?.toLowerCase()?.includes(query)
-      );
+      const query = filters?.searchQuery?.toLowerCase()
+      filteredJobs = filteredJobs?.filter(
+        (job) =>
+          job?.job_number?.toLowerCase()?.includes(query) ||
+          job?.title?.toLowerCase()?.includes(query) ||
+          job?.vehicle_info?.toLowerCase()?.includes(query) ||
+          job?.customer_name?.toLowerCase()?.includes(query) ||
+          job?.customer_phone?.toLowerCase()?.includes(query)
+      )
     }
-    
+
     // Apply status filters (multiple statuses)
     if (filters?.statuses?.length > 0) {
-      filteredJobs = filteredJobs?.filter(job => {
+      filteredJobs = filteredJobs?.filter((job) => {
         // Map filter IDs to actual job status values
         const statusMapping = {
-          'today': () => {
-            const jobDate = new Date(job?.scheduled_start_time);
-            const today = new Date();
-            return jobDate?.toDateString() === today?.toDateString();
+          today: () => {
+            const jobDate = new Date(job?.scheduled_start_time)
+            const today = new Date()
+            return jobDate?.toDateString() === today?.toDateString()
           },
-          'in_progress': () => job?.job_status === 'in_progress',
-          'overdue': () => isOverdue(job?.promised_date),
-          'no_show': () => job?.job_status === 'no_show',
-          'completed': () => job?.job_status === 'completed'
-        };
-        
+          in_progress: () => job?.job_status === 'in_progress',
+          overdue: () => isOverdue(job?.promised_date),
+          no_show: () => job?.job_status === 'no_show',
+          completed: () => job?.job_status === 'completed',
+        }
+
         // Check if job matches any of the selected statuses
-        return filters?.statuses?.some(statusId => statusMapping?.[statusId]?.());
-      });
+        return filters?.statuses?.some((statusId) => statusMapping?.[statusId]?.())
+      })
     }
-    
+
     // Apply vendor filters
     if (filters?.vendors?.length > 0) {
-      filteredJobs = filteredJobs?.filter(job => 
-        filters?.vendors?.includes(job?.vendor_id)
-      );
+      filteredJobs = filteredJobs?.filter((job) => filters?.vendors?.includes(job?.vendor_id))
     }
-    
-    return filteredJobs;
-  };
+
+    return filteredJobs
+  }
 
   const loadVendors = async () => {
     try {
-      const { data: vendorsData } = await vendorService?.getVendors({ is_active: true });
+      const { data: vendorsData } = await vendorService?.getVendors({ is_active: true })
       if (vendorsData) {
-        setVendors(vendorsData);
+        setVendors(vendorsData)
       }
     } catch (error) {
-      console.error('Error loading vendors:', error);
+      console.error('Error loading vendors:', error)
     }
-  };
+  }
 
   const getViewStartDate = () => {
-    const date = new Date(currentDate);
+    const date = new Date(currentDate)
     switch (viewMode) {
       case 'day':
-        date?.setHours(0, 0, 0, 0);
-        return date;
+        date?.setHours(0, 0, 0, 0)
+        return date
       case 'week':
-        const dayOfWeek = date?.getDay();
-        date?.setDate(date?.getDate() - dayOfWeek + 1); // Monday start
-        date?.setHours(0, 0, 0, 0);
-        return date;
+        const dayOfWeek = date?.getDay()
+        date?.setDate(date?.getDate() - dayOfWeek + 1) // Monday start
+        date?.setHours(0, 0, 0, 0)
+        return date
       case 'month':
-        date?.setDate(1); // First day of the month
-        date?.setHours(0, 0, 0, 0);
-        return date;
+        date?.setDate(1) // First day of the month
+        date?.setHours(0, 0, 0, 0)
+        return date
       default:
-        date?.setHours(0, 0, 0, 0);
-        return date;
+        date?.setHours(0, 0, 0, 0)
+        return date
     }
-  };
+  }
 
   const getViewEndDate = () => {
-    const date = getViewStartDate();
+    const date = getViewStartDate()
     switch (viewMode) {
       case 'day':
-        date?.setDate(date?.getDate() + 1);
-        return date;
+        date?.setDate(date?.getDate() + 1)
+        return date
       case 'week':
-        date?.setDate(date?.getDate() + 6); // Monday to Saturday
-        return date;
+        date?.setDate(date?.getDate() + 6) // Monday to Saturday
+        return date
       case 'month':
-        date?.setMonth(date?.getMonth() + 1); // Next month
-        date?.setDate(0); // Last day of current month
-        return date;
+        date?.setMonth(date?.getMonth() + 1) // Next month
+        date?.setDate(0) // Last day of current month
+        return date
       default:
-        date?.setDate(date?.getDate() + 1);
-        return date;
+        date?.setDate(date?.getDate() + 1)
+        return date
     }
-  };
+  }
 
   const handleJobClick = (job) => {
-    setSelectedJob(job);
-    setShowDrawer(true);
-  };
+    setSelectedJob(job)
+    setShowDrawer(true)
+  }
 
   const handleJobStatusUpdate = async (jobId, newStatus) => {
     try {
       // Update job status via calendar service
-      await calendarService?.updateJobSchedule(jobId, { status: newStatus });
-      loadCalendarData(); // Refresh data
+      await calendarService?.updateJobSchedule(jobId, { status: newStatus })
+      loadCalendarData() // Refresh data
     } catch (error) {
-      console.error('Error updating job status:', error);
+      console.error('Error updating job status:', error)
     }
-  };
+  }
 
   const handleDragStart = (job) => {
-    setDraggedJob(job);
-  };
+    setDraggedJob(job)
+  }
 
   const handleDragEnd = () => {
-    setDraggedJob(null);
-    setDropZoneActive(null);
-  };
+    setDraggedJob(null)
+    setDropZoneActive(null)
+  }
 
   const handleDrop = async (vendorId, timeSlot) => {
-    if (!draggedJob) return;
-    
+    if (!draggedJob) return
+
     try {
-      const startTime = new Date(timeSlot);
-      const endTime = new Date(startTime);
-      endTime?.setHours(startTime?.getHours() + (draggedJob?.estimated_hours || 2));
+      const startTime = new Date(timeSlot)
+      const endTime = new Date(startTime)
+      endTime?.setHours(startTime?.getHours() + (draggedJob?.estimated_hours || 2))
 
       await calendarService?.updateJobSchedule(draggedJob?.id, {
         vendorId,
         startTime,
         endTime,
-        location: vendorId ? 'off_site' : 'on_site'
-      });
+        location: vendorId ? 'off_site' : 'on_site',
+      })
 
-      loadCalendarData();
+      loadCalendarData()
     } catch (error) {
-      console.error('Error updating job assignment:', error);
+      console.error('Error updating job assignment:', error)
     }
-  };
+  }
 
   // New month view render function
   const renderMonthView = () => {
-    const monthStart = getViewStartDate();
-    const monthEnd = getViewEndDate();
-    const startDate = new Date(monthStart);
-    const endDate = new Date(monthEnd);
-    
+    const monthStart = getViewStartDate()
+    const monthEnd = getViewEndDate()
+    const startDate = new Date(monthStart)
+    const endDate = new Date(monthEnd)
+
     // Get first day of the week that contains the first day of the month
-    startDate?.setDate(startDate?.getDate() - startDate?.getDay() + 1); // Monday start
+    startDate?.setDate(startDate?.getDate() - startDate?.getDay() + 1) // Monday start
     // Get last day of the week that contains the last day of the month
-    endDate?.setDate(endDate?.getDate() + (6 - endDate?.getDay()) + 1);
-    
-    const weeks = [];
-    const currentWeekStart = new Date(startDate);
-    
+    endDate?.setDate(endDate?.getDate() + (6 - endDate?.getDay()) + 1)
+
+    const weeks = []
+    const currentWeekStart = new Date(startDate)
+
     while (currentWeekStart <= endDate) {
-      const week = [];
+      const week = []
       for (let day = 0; day < 7; day++) {
-        const currentDate = new Date(currentWeekStart);
-        currentDate?.setDate(currentWeekStart?.getDate() + day);
-        
-        const dayJobs = filteredJobs?.filter(job => {
-          const jobDate = new Date(job?.scheduled_start_time);
-          return jobDate?.toDateString() === currentDate?.toDateString();
-        });
-        
+        const currentDate = new Date(currentWeekStart)
+        currentDate?.setDate(currentWeekStart?.getDate() + day)
+
+        const dayJobs = filteredJobs?.filter((job) => {
+          const jobDate = new Date(job?.scheduled_start_time)
+          return jobDate?.toDateString() === currentDate?.toDateString()
+        })
+
         week?.push({
           date: new Date(currentDate),
           jobs: dayJobs,
           isCurrentMonth: currentDate?.getMonth() === monthStart?.getMonth(),
-          isToday: currentDate?.toDateString() === new Date()?.toDateString()
-        });
+          isToday: currentDate?.toDateString() === new Date()?.toDateString(),
+        })
       }
-      weeks?.push(week);
-      currentWeekStart?.setDate(currentWeekStart?.getDate() + 7);
+      weeks?.push(week)
+      currentWeekStart?.setDate(currentWeekStart?.getDate() + 7)
     }
 
     return (
       <div className="h-full flex flex-col">
         {/* Month header with days of week */}
         <div className="grid grid-cols-7 gap-2 mb-4 border-b border-gray-200 pb-2">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']?.map(day => (
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']?.map((day) => (
             <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
               {day}
             </div>
@@ -303,22 +313,24 @@ const CalendarFlowManagementCenter = () => {
                   `}
                 >
                   {/* Day number */}
-                  <div className={`
+                  <div
+                    className={`
                     text-sm font-medium mb-2
                     ${day?.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
                     ${day?.isToday ? 'text-indigo-600' : ''}
-                  `}>
+                  `}
+                  >
                     {day?.date?.getDate()}
                   </div>
 
                   {/* Jobs for this day */}
                   <div className="space-y-1">
-                    {day?.jobs?.slice(0, 2)?.map(job => (
+                    {day?.jobs?.slice(0, 2)?.map((job) => (
                       <div
                         key={job?.id}
                         className={`
                           text-xs p-1 rounded cursor-pointer truncate
-                          ${!job?.vendor_id || job?.location === 'on_site' ?'bg-green-100 text-green-800 border border-green-200' :'bg-orange-100 text-orange-800 border border-orange-200'}
+                          ${!job?.vendor_id || job?.location === 'on_site' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-orange-100 text-orange-800 border border-orange-200'}
                         `}
                         onClick={() => handleJobClick(job)}
                         title={`${job?.job_number} - ${job?.title}`}
@@ -338,15 +350,15 @@ const CalendarFlowManagementCenter = () => {
           ))}
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   // Updated renderEventChip to work with filtered data
   const renderEventChip = (job) => {
-    const isOnSite = !job?.vendor_id || job?.location === 'on_site';
-    const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500';
-    const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500';
-    const overdue = isOverdue(job?.promised_date);
+    const isOnSite = !job?.vendor_id || job?.location === 'on_site'
+    const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500'
+    const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500'
+    const overdue = isOverdue(job?.promised_date)
 
     return (
       <div
@@ -362,14 +374,21 @@ const CalendarFlowManagementCenter = () => {
       >
         {/* Status stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColor} rounded-l-lg`} />
-        
+
         {/* Main content */}
         <div className="ml-2">
           {/* Top line */}
           <div className="flex items-center justify-between mb-1">
-            <div className="font-bold truncate flex items-center">
+            <div className="font-bold truncate flex items-center gap-2">
               <Car className="h-3 w-3 mr-1" />
-              <span className="truncate">{job?.job_number?.split('-')?.pop()} • {job?.title}</span>
+              <span className="truncate">
+                {job?.job_number?.split('-')?.pop()} • {job?.title}
+              </span>
+              {(job?.has_active_loaner || job?.loaner_id || job?.customer_needs_loaner) && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-800 whitespace-nowrap">
+                  Loaner
+                </span>
+              )}
             </div>
             {overdue && (
               <div className="flex items-center text-red-200">
@@ -378,7 +397,7 @@ const CalendarFlowManagementCenter = () => {
               </div>
             )}
           </div>
-          
+
           {/* Second line */}
           <div className="text-xs opacity-90 flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -388,16 +407,20 @@ const CalendarFlowManagementCenter = () => {
               </div>
               <div className="flex items-center">
                 <Calendar className="h-3 w-3 mr-1" />
-                Promise: {new Date(job?.promised_date)?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {job?.next_promised_short
+                  ? `Promise: ${job?.next_promised_short}`
+                  : `Promise: ${new Date(job?.promised_date)?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`}
               </div>
             </div>
-            
+
             {/* Status badge */}
-            <div className={`px-2 py-1 rounded-full text-xs ${getStatusBadge(job?.job_status)?.bg || 'bg-gray-500'} text-white`}>
+            <div
+              className={`px-2 py-1 rounded-full text-xs ${getStatusBadge(job?.job_status)?.bg || 'bg-gray-500'} text-white`}
+            >
               {getStatusBadge(job?.job_status)?.label || job?.job_status}
             </div>
           </div>
-          
+
           {/* Vendor line for off-site */}
           {!isOnSite && (
             <div className="text-xs opacity-90 mt-1 flex items-center">
@@ -407,19 +430,19 @@ const CalendarFlowManagementCenter = () => {
           )}
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   const renderWeekView = () => {
-    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i); // 8AM to 6PM
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i) // 8AM to 6PM
 
     return (
       <div className="grid grid-cols-7 gap-2 h-full">
         {/* Time header */}
         <div className="col-span-1 space-y-12">
           <div className="h-12"></div> {/* Header spacer */}
-          {timeSlots?.map(hour => (
+          {timeSlots?.map((hour) => (
             <div key={hour} className="text-xs text-gray-500 text-right pr-2">
               {hour}:00
             </div>
@@ -427,12 +450,12 @@ const CalendarFlowManagementCenter = () => {
         </div>
         {/* Week days */}
         {weekDays?.map((day, dayIndex) => {
-          const dayDate = new Date(getViewStartDate());
-          dayDate?.setDate(dayDate?.getDate() + dayIndex);
-          const dayJobs = filteredJobs?.filter(job => {
-            const jobDate = new Date(job?.scheduled_start_time);
-            return jobDate?.toDateString() === dayDate?.toDateString();
-          });
+          const dayDate = new Date(getViewStartDate())
+          dayDate?.setDate(dayDate?.getDate() + dayIndex)
+          const dayJobs = filteredJobs?.filter((job) => {
+            const jobDate = new Date(job?.scheduled_start_time)
+            return jobDate?.toDateString() === dayDate?.toDateString()
+          })
 
           return (
             <div key={day} className="border-l border-gray-200 pl-2">
@@ -445,7 +468,7 @@ const CalendarFlowManagementCenter = () => {
               </div>
               {/* Time slots */}
               <div className="space-y-12">
-                {timeSlots?.map(hour => (
+                {timeSlots?.map((hour) => (
                   <div
                     key={`${day}-${hour}`}
                     className="h-12 border-b border-gray-100 relative"
@@ -454,24 +477,24 @@ const CalendarFlowManagementCenter = () => {
                   >
                     {/* Jobs for this time slot */}
                     {dayJobs
-                      ?.filter(job => {
-                        const jobStart = new Date(job?.scheduled_start_time);
-                        return jobStart?.getHours() === hour;
+                      ?.filter((job) => {
+                        const jobStart = new Date(job?.scheduled_start_time)
+                        return jobStart?.getHours() === hour
                       })
                       ?.map(renderEventChip)}
                   </div>
                 ))}
               </div>
             </div>
-          );
+          )
         })}
       </div>
-    );
-  };
+    )
+  }
 
   const renderVendorLanes = () => {
-    const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i);
-    
+    const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i)
+
     return (
       <div className="space-y-4">
         {/* On-Site Lane */}
@@ -482,21 +505,25 @@ const CalendarFlowManagementCenter = () => {
               <h3 className="font-medium">On-Site (PLV)</h3>
             </div>
             <div className="text-sm text-gray-600">
-              {filteredJobs?.filter(job => !job?.vendor_id || job?.location === 'on_site')?.length} jobs
+              {
+                filteredJobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
+                  ?.length
+              }{' '}
+              jobs
             </div>
           </div>
-          
+
           <div className="grid grid-cols-6 gap-2">
             {filteredJobs
-              ?.filter(job => !job?.vendor_id || job?.location === 'on_site')
+              ?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
               ?.map(renderEventChip)}
           </div>
         </div>
         {/* Vendor Lanes */}
-        {vendors?.map(vendor => {
-          const vendorJobs = filteredJobs?.filter(job => job?.vendor_id === vendor?.id);
-          const capacity = vendorJobs?.length;
-          const maxCapacity = 7; // Default capacity
+        {vendors?.map((vendor) => {
+          const vendorJobs = filteredJobs?.filter((job) => job?.vendor_id === vendor?.id)
+          const capacity = vendorJobs?.length
+          const maxCapacity = 7 // Default capacity
 
           return (
             <div key={vendor?.id} className="bg-orange-50 rounded-lg p-4">
@@ -523,11 +550,11 @@ const CalendarFlowManagementCenter = () => {
                 {vendorJobs?.map(renderEventChip)}
               </div>
             </div>
-          );
+          )
         })}
       </div>
-    );
-  };
+    )
+  }
 
   return (
     <AppLayout>
@@ -539,7 +566,7 @@ const CalendarFlowManagementCenter = () => {
               <h1 className="text-2xl font-bold text-gray-900">Calendar Flow Management Center</h1>
               <p className="text-gray-600">Visual scheduling and workflow management</p>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {/* Updated View Toggle - Replace Agenda with Month */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
@@ -568,8 +595,9 @@ const CalendarFlowManagementCenter = () => {
                 <button
                   onClick={() => setVendorLanesEnabled(!vendorLanesEnabled)}
                   className={`flex items-center px-4 py-2 rounded-lg border ${
-                    vendorLanesEnabled 
-                      ? 'bg-blue-50 border-blue-200 text-blue-700' :'bg-white border-gray-200 text-gray-700'
+                    vendorLanesEnabled
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-700'
                   }`}
                 >
                   <Eye className="h-4 w-4 mr-2" />
@@ -594,46 +622,51 @@ const CalendarFlowManagementCenter = () => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => {
-                  const newDate = new Date(currentDate);
+                  const newDate = new Date(currentDate)
                   if (viewMode === 'month') {
-                    newDate?.setMonth(newDate?.getMonth() - 1);
+                    newDate?.setMonth(newDate?.getMonth() - 1)
                   } else if (viewMode === 'week') {
-                    newDate?.setDate(newDate?.getDate() - 7);
+                    newDate?.setDate(newDate?.getDate() - 7)
                   } else {
-                    newDate?.setDate(newDate?.getDate() - 1);
+                    newDate?.setDate(newDate?.getDate() - 1)
                   }
-                  setCurrentDate(newDate);
+                  setCurrentDate(newDate)
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              
+
               <div className="text-lg font-medium">
-                {viewMode === 'month' ? currentDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                  : viewMode === 'week' 
+                {viewMode === 'month'
+                  ? currentDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                  : viewMode === 'week'
                     ? `Week of ${currentDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-                    : currentDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-                }
+                    : currentDate?.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
               </div>
-              
+
               <button
                 onClick={() => {
-                  const newDate = new Date(currentDate);
+                  const newDate = new Date(currentDate)
                   if (viewMode === 'month') {
-                    newDate?.setMonth(newDate?.getMonth() + 1);
+                    newDate?.setMonth(newDate?.getMonth() + 1)
                   } else if (viewMode === 'week') {
-                    newDate?.setDate(newDate?.getDate() + 7);
+                    newDate?.setDate(newDate?.getDate() + 7)
                   } else {
-                    newDate?.setDate(newDate?.getDate() + 1);
+                    newDate?.setDate(newDate?.getDate() + 1)
                   }
-                  setCurrentDate(newDate);
+                  setCurrentDate(newDate)
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
-              
+
               <button
                 onClick={() => setCurrentDate(new Date())}
                 className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
@@ -650,7 +683,9 @@ const CalendarFlowManagementCenter = () => {
                   type="text"
                   placeholder="Search stock #, phone, customer..."
                   value={filters?.searchQuery}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e?.target?.value }))}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, searchQuery: e?.target?.value }))
+                  }
                   className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-80"
                 />
               </div>
@@ -659,19 +694,27 @@ const CalendarFlowManagementCenter = () => {
         </div>
 
         {/* Quick Filters - Updated to use original data for counts */}
-        <QuickFilters 
+        <QuickFilters
           filters={filters}
           onFiltersChange={setFilters}
           jobCounts={{
-            today: [...originalJobs, ...originalUnassignedJobs]?.filter(j => {
-              const jobDate = new Date(j?.scheduled_start_time);
-              const today = new Date();
-              return jobDate?.toDateString() === today?.toDateString();
+            today: [...originalJobs, ...originalUnassignedJobs]?.filter((j) => {
+              const jobDate = new Date(j?.scheduled_start_time)
+              const today = new Date()
+              return jobDate?.toDateString() === today?.toDateString()
             })?.length,
-            inProgress: [...originalJobs, ...originalUnassignedJobs]?.filter(j => j?.job_status === 'in_progress')?.length,
-            overdue: [...originalJobs, ...originalUnassignedJobs]?.filter(j => isOverdue(j?.promised_date))?.length,
-            noShow: [...originalJobs, ...originalUnassignedJobs]?.filter(j => j?.job_status === 'no_show')?.length,
-            completed: [...originalJobs, ...originalUnassignedJobs]?.filter(j => j?.job_status === 'completed')?.length
+            inProgress: [...originalJobs, ...originalUnassignedJobs]?.filter(
+              (j) => j?.job_status === 'in_progress'
+            )?.length,
+            overdue: [...originalJobs, ...originalUnassignedJobs]?.filter((j) =>
+              isOverdue(j?.promised_date)
+            )?.length,
+            noShow: [...originalJobs, ...originalUnassignedJobs]?.filter(
+              (j) => j?.job_status === 'no_show'
+            )?.length,
+            completed: [...originalJobs, ...originalUnassignedJobs]?.filter(
+              (j) => j?.job_status === 'completed'
+            )?.length,
           }}
         />
 
@@ -679,7 +722,7 @@ const CalendarFlowManagementCenter = () => {
         <div className="flex h-screen">
           {/* Unassigned Queue Sidebar - Hide for month view */}
           {viewMode !== 'month' && (
-            <UnassignedQueue 
+            <UnassignedQueue
               jobs={filteredUnassignedJobs}
               onJobClick={handleJobClick}
               onDragStart={handleDragStart}
@@ -695,12 +738,11 @@ const CalendarFlowManagementCenter = () => {
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
-                {viewMode === 'month' 
+                {viewMode === 'month'
                   ? renderMonthView()
-                  : vendorLanesEnabled 
-                    ? renderVendorLanes() 
-                    : renderWeekView()
-                }
+                  : vendorLanesEnabled
+                    ? renderVendorLanes()
+                    : renderWeekView()}
               </div>
             )}
           </div>
@@ -724,7 +766,7 @@ const CalendarFlowManagementCenter = () => {
         />
       </div>
     </AppLayout>
-  );
-};
+  )
+}
 
-export default CalendarFlowManagementCenter;
+export default CalendarFlowManagementCenter
