@@ -127,16 +127,17 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
     // 2) fuzzy fallback if exact returns zero
     const fuzzTerms = [...departments, ...roles].map((s) => s.trim()).filter(Boolean)
-    const ors = fuzzTerms
-      .map((t) => `department.ilike.%${t}%,role.ilike.%${t}%,full_name.ilike.%${t}%`)
-      .join(',')
+    // Important: do not use ilike on enum columns (role). Some environments store role as an enum,
+    // which doesn't support ILIKE. Restrict fuzzy matching to text columns only.
+    const ors = fuzzTerms.map((t) => `department.ilike.%${t}%,full_name.ilike.%${t}%`).join(',')
 
     try {
       let q2 = supabase
         .from('user_profiles')
         .select('id, full_name, email, department, role, is_active, vendor_id')
         .eq('is_active', true)
-        .or(ors || 'full_name.ilike.%')
+        // Only apply OR when we have filters; otherwise skip fuzzy query
+        .or(ors || 'full_name.ilike.%placeholder%')
         .order('full_name', { ascending: true })
 
       if (orgId) q2 = q2.eq('org_id', orgId)

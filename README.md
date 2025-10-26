@@ -60,6 +60,60 @@ To view the last Playwright report:
 pnpm exec playwright show-report
 ```
 
+## Database and seed (local/CI)
+
+Migrations
+
+- Apply migrations to your local Supabase database:
+
+```bash
+pnpm run db:push
+```
+
+Seed org data (optional)
+
+- Populate baseline org/vendor/product/staff data into your Supabase project:
+
+```bash
+pnpm run db:seed-org
+```
+
+E2E seed (Node-based)
+
+- For deterministic E2E data (org, vendor, products, a scheduled job with a loaner), use the Node seed runner. It requires a Postgres connection string.
+
+Environment variables accepted by the seed runner:
+
+- `DATABASE_URL` or `SUPABASE_DB_URL` — a direct Postgres connection string with credentials that can create/insert into your Supabase database.
+
+Run locally:
+
+```bash
+pnpm run db:seed-e2e
+```
+
+Run in CI (examples):
+
+- GitHub Actions: set `DATABASE_URL` as an encrypted repository secret and call `pnpm run db:seed-e2e` in a step before E2E.
+- Vercel/other: not required for deployments; this seed is only for test data.
+
+E2E test auth
+
+- Playwright’s global setup supports two modes:
+  - Storage state present at `e2e/storageState.json`: tests reuse it.
+  - Or environment-based login. Set:
+    - `E2E_EMAIL`
+    - `E2E_PASSWORD`
+
+Optional Playwright settings:
+
+- `PLAYWRIGHT_BASE_URL` — defaults to `http://localhost:5173`.
+
+Notes:
+
+- Dropdowns are cached briefly in-memory; tests use explicit testids to remain stable.
+- Multi-tenant writes: services will include `org_id` (from the form or inferred from the signed-in user profile) to satisfy org-scoped RLS policies.
+
 ## Auto-deployment (Vercel)
 
 We use Vercel's native Git integration for auto-deploys (recommended):

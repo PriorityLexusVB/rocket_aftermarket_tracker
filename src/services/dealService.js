@@ -84,6 +84,13 @@ function mapFormToDb(formState = {}) {
   // Optional tenant scoping if provided by caller
   const orgId = formState?.org_id ?? formState?.orgId
   const payload = orgId ? { ...base, org_id: orgId } : base
+  // Ensure required title is populated; derive from description or job_number as fallback
+  if (!payload?.title) {
+    const desc = (formState?.description || '').trim()
+    if (desc) payload.title = desc
+    else if (payload?.job_number) payload.title = `Deal ${payload.job_number}`
+    else payload.title = 'Untitled Deal'
+  }
 
   // Accept either lineItems (current UI) or line_items (alternate callers)
   const lineItemsInput = Array.isArray(formState?.line_items)
