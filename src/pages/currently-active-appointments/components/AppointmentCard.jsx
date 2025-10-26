@@ -136,6 +136,11 @@ const AppointmentCard = ({
                 >
                   {appointment?.priority?.toUpperCase()}
                 </div>
+                {(appointment?.has_active_loaner || appointment?.customer_needs_loaner) && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-800 whitespace-nowrap">
+                    Loaner
+                  </span>
+                )}
                 {appointment?.assigned_to_profile && (
                   <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                     <User className="w-3 h-3 mr-1" />

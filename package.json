@@ -74,7 +74,7 @@
     "db:push": "npx supabase@latest db push",
     "db:audit": "npx supabase@latest db query ./scripts/sql/audit_security_surface.sql",
     "db:seed-org": "npx supabase@latest db query ./scripts/attach_org.sql",
-    "db:seed-e2e": "npx supabase@latest db query ./scripts/sql/seed_e2e.sql"
+    "db:seed-e2e": "node scripts/seedE2E.js"
   },
   "eslintConfig": {
     "extends": [
@@ -113,6 +113,7 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "jsdom": "^27.0.1",
     "playwright": "^1.56.1",
+    "pg": "^8.13.1",
     "postcss": "8.4.8",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.7.1",

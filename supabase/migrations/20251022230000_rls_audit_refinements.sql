@@ -11,10 +11,12 @@ BEGIN
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname = 'auth_user_org'
   ) THEN
-    EXECUTE $$CREATE FUNCTION public.auth_user_org() RETURNS uuid
-    LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-      select org_id from public.user_profiles where id = auth.uid();
-    $$;$$;
+    EXECUTE '
+      CREATE FUNCTION public.auth_user_org() RETURNS uuid
+      LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $fn$
+        select org_id from public.user_profiles where id = auth.uid();
+      $fn$;
+    ';
   END IF;
 END $$;
 
@@ -86,12 +88,12 @@ BEGIN
   ) THEN
     EXECUTE 'DROP POLICY "admin_manager_full_vendor_access" ON public.vendors';
   END IF;
-  EXECUTE $$
+  EXECUTE '
     CREATE POLICY "admin_manager_full_vendor_access" ON public.vendors
     FOR ALL TO authenticated
     USING (public.is_admin_or_manager() AND (org_id = public.auth_user_org() OR org_id IS NULL))
     WITH CHECK (public.is_admin_or_manager() AND (org_id = public.auth_user_org() OR org_id IS NULL));
-  $$;
+  ';
 
   -- products: drop and recreate with org guard
   IF EXISTS (
@@ -99,12 +101,12 @@ BEGIN
   ) THEN
     EXECUTE 'DROP POLICY "admin_manager_manage_products" ON public.products';
   END IF;
-  EXECUTE $$
+  EXECUTE '
     CREATE POLICY "admin_manager_manage_products" ON public.products
     FOR ALL TO authenticated
     USING (public.is_admin_or_manager() AND (org_id = public.auth_user_org() OR org_id IS NULL))
     WITH CHECK (public.is_admin_or_manager() AND (org_id = public.auth_user_org() OR org_id IS NULL));
-  $$;
+  ';
 END $$;
 
 -- 4) Add org-scoped SELECT policies for dropdown reads (authenticated users only)
@@ -114,33 +116,33 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_profiles' AND policyname='org members read user_profiles'
   ) THEN
-    EXECUTE $$
+    EXECUTE '
       CREATE POLICY "org members read user_profiles" ON public.user_profiles
       FOR SELECT TO authenticated
       USING (org_id = public.auth_user_org() AND coalesce(is_active, true));
-    $$;
+    ';
   END IF;
 
   -- vendors: org members can read active vendors in their org or shared (NULL org)
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='vendors' AND policyname='org members read vendors'
   ) THEN
-    EXECUTE $$
+    EXECUTE '
       CREATE POLICY "org members read vendors" ON public.vendors
       FOR SELECT TO authenticated
       USING ((org_id = public.auth_user_org() OR org_id IS NULL) AND coalesce(is_active, true));
-    $$;
+    ';
   END IF;
 
   -- products: org members can read active products in their org or shared (NULL org)
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='products' AND policyname='org members read products'
   ) THEN
-    EXECUTE $$
+    EXECUTE '
       CREATE POLICY "org members read products" ON public.products
       FOR SELECT TO authenticated
       USING ((org_id = public.auth_user_org() OR org_id IS NULL) AND coalesce(is_active, true));
-    $$;
+    ';
   END IF;
 END $$;
 
