@@ -41,7 +41,7 @@ export default function NewDeal() {
         <p className="text-gray-600">Enter details below. You can edit later.</p>
       </div>
 
-      <DealForm mode="create" onSave={onSave} onCancel={() => navigate('/deals')} saving={saving} />
+      <DealForm mode="create" onSave={onSave} onCancel={() => navigate('/deals')} />
     </div>
   )
 }

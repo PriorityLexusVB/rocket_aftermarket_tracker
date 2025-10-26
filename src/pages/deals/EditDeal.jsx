@@ -90,7 +90,6 @@ export default function EditDeal() {
         initial={initial || {}}
         onSave={onSubmit}
         onCancel={() => navigate('/deals')}
-        saving={saving}
       />
     </div>
   )
