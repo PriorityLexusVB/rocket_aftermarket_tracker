@@ -29,3 +29,12 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Prettier format check
+        run: pnpm run format:check
+
+      - name: Lint (ESLint)
+        run: pnpm run lint
+
+      - name: Typecheck (TS, E2E scope)
+        run: pnpm run typecheck

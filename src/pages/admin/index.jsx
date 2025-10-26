@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Icon from '../../components/AppIcon'
 import { useLogger } from '../../hooks/useLogger'
+import { clearDropdownCache } from '../../services/dropdownService'
 
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
@@ -787,6 +788,10 @@ const AdminPage = () => {
     }
 
     await loadStaffRecords()
+    try {
+      // Invalidate dropdown caches so staff options refresh immediately across the app
+      clearDropdownCache()
+    } catch {}
     setStaffActionMsg('Staff profile saved.')
     setTimeout(() => setStaffActionMsg(''), 3000)
   }
@@ -816,6 +821,9 @@ const AdminPage = () => {
     }
 
     await loadVendors()
+    try {
+      clearDropdownCache()
+    } catch {}
   }
 
   const handleProductSubmit = async () => {
@@ -845,6 +853,9 @@ const AdminPage = () => {
     }
 
     await loadProducts()
+    try {
+      clearDropdownCache()
+    } catch {}
   }
 
   const handleTemplateSubmit = async () => {
@@ -1002,6 +1013,9 @@ const AdminPage = () => {
             console.error('Error refreshing vendors:', refreshError)
           }
         }, 500)
+        try {
+          clearDropdownCache()
+        } catch {}
       } else if (table === 'products') {
         setProducts((prev) => {
           const filtered = prev?.filter((item) => item?.id !== id)
@@ -1016,6 +1030,9 @@ const AdminPage = () => {
             console.error('Error refreshing products:', refreshError)
           }
         }, 500)
+        try {
+          clearDropdownCache()
+        } catch {}
       } else if (table === 'sms_templates') {
         setSmsTemplates((prev) => {
           const filtered = prev?.filter((item) => item?.id !== id)

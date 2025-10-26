@@ -64,13 +64,17 @@
     "build": "vite build --sourcemap",
     "serve": "vite preview",
     "postinstall": "pnpm rebuild supabase",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --ext js,jsx,ts,tsx",
+    "typecheck": "tsc -p tsconfig.e2e.json --noEmit",
     "dev:create-test-user": "node scripts/bootstrapTestUser.js",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "PWDEBUG=1 playwright test",
     "db:push": "npx supabase@latest db push",
     "db:audit": "npx supabase@latest db query ./scripts/sql/audit_security_surface.sql",
-    "db:seed-org": "npx supabase@latest db query ./scripts/attach_org.sql"
+    "db:seed-org": "npx supabase@latest db query ./scripts/attach_org.sql",
+    "db:seed-e2e": "npx supabase@latest db query ./scripts/sql/seed_e2e.sql"
   },
   "eslintConfig": {
     "extends": [
@@ -100,6 +104,10 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/testing-library__jest-dom": "^5.14.9",
+    "@eslint/js": "^9.13.0",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
     "@vitejs/plugin-react": "4.3.4",
     "autoprefixer": "10.4.2",
     "jsdom": "^27.0.1",

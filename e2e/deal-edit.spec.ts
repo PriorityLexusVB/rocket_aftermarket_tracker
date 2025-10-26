@@ -42,6 +42,17 @@ test.describe('Deal create + edit flow', () => {
     await requires.check()
     await expect(reason).toHaveCount(0)
 
+    // Toggle on/off-site radios (ensure both states function)
+    const onsite = page.getByTestId('onsite-radio-0')
+    const offsite = page.getByTestId('offsite-radio-0')
+    await offsite.check()
+    await onsite.check()
+
+    // Toggle loaner need and ensure it remains after save
+    const loaner = page.getByTestId('loaner-checkbox')
+    const wasChecked = await loaner.isChecked()
+    await loaner.setChecked(!wasChecked)
+
     // Save changes
     await save.click()
 
@@ -51,5 +62,8 @@ test.describe('Deal create + edit flow', () => {
     // Stay on edit page and ensure the title persisted after reload
     await page.reload()
     await expect(description).toHaveValue(editedDescription)
+
+    // Verify loaner checkbox state persisted
+    await expect(page.getByTestId('loaner-checkbox')).toHaveJSProperty('checked', !wasChecked)
   })
 })

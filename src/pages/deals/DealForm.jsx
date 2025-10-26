@@ -195,6 +195,59 @@ export default function DealForm({
     }
   }, [orgId])
 
+  // Synthetic option reconciliation so selected values render immediately
+  useEffect(() => {
+    // Vendors
+    if (!vendors?.length && form?.vendor_id) {
+      setVendors([{ id: form.vendor_id, value: form.vendor_id, label: 'Selected vendor' }])
+    }
+    // Sales
+    if (!sales?.length && form?.assigned_to) {
+      setSales([{ id: form.assigned_to, value: form.assigned_to, label: 'Selected sales' }])
+    }
+    // Finance
+    if (!finance?.length && form?.finance_manager_id) {
+      setFinance([
+        { id: form.finance_manager_id, value: form.finance_manager_id, label: 'Selected finance' },
+      ])
+    }
+    // Delivery
+    if (!delivery?.length && form?.delivery_coordinator_id) {
+      setDelivery([
+        {
+          id: form.delivery_coordinator_id,
+          value: form.delivery_coordinator_id,
+          label: 'Selected delivery',
+        },
+      ])
+    }
+    // Products – seed any selected product ids from line items with their current unit_price
+    const selectedProductIds = new Set(
+      (form?.lineItems || [])
+        .map((li) => (li?.product_id ? String(li.product_id) : null))
+        .filter(Boolean)
+    )
+    if (!products?.length && selectedProductIds.size > 0) {
+      const synthetic = []
+      ;(form?.lineItems || []).forEach((li) => {
+        if (!li?.product_id) return
+        const pid = String(li.product_id)
+        if (selectedProductIds.has(pid)) {
+          synthetic.push({
+            id: pid,
+            value: pid,
+            label: 'Selected product',
+            unit_price: Number(li?.unit_price ?? 0),
+          })
+          selectedProductIds.delete(pid)
+        }
+      })
+      if (synthetic.length) setProducts(synthetic)
+    }
+    // We intentionally do not include vendors/products/sales/... in deps to avoid loops when real data loads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form])
+
   const productMap = useMemo(() => {
     const m = new Map()
     ;(products || []).forEach((p) => {

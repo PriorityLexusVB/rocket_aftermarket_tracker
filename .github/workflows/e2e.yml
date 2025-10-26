@@ -1,12 +1,16 @@
 name: E2E Tests (Playwright)
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  e2e:
+  e2e-smoke:
+    name: E2E Smoke (PR)
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -27,7 +31,68 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install --with-deps
 
-      - name: Run E2E tests
+      - name: Run E2E smoke tests (fast subset)
+        env:
+          # App runtime env (Vite reads VITE_* at dev server start)
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # Playwright/global.setup auth and base URL
+          PLAYWRIGHT_BASE_URL: http://localhost:5173
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: |
+          pnpm exec playwright test \
+            e2e/deal-form-dropdowns.spec.ts \
+            e2e/deal-edit.spec.ts
+
+      - name: Upload Playwright HTML report (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-smoke
+          path: playwright-report
+          if-no-files-found: ignore
+
+  e2e-full:
+    name: E2E Full (Main)
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Verify required secrets for full E2E (main)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::error::Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in repo secrets"
+            exit 1
+          fi
+          if [ -z "$E2E_EMAIL" ] || [ -z "$E2E_PASSWORD" ]; then
+            echo "::error::Missing E2E_EMAIL or E2E_PASSWORD in repo secrets; required for full E2E on main"
+            exit 1
+          fi
+
+      - name: Run E2E tests (full suite)
         env:
           # App runtime env (Vite reads VITE_* at dev server start)
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -42,6 +107,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-full
           path: playwright-report
           if-no-files-found: ignore
