@@ -5,6 +5,7 @@ import { getAllDeals, markLoanerReturned } from '../../services/dealService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
+import DealDetailDrawer from './components/DealDetailDrawer'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -488,6 +489,8 @@ export default function DealsPage() {
   const [markReturnedModal, setMarkReturnedModal] = useState(null)
   const [returningLoaner, setReturningLoaner] = useState(false)
   const [searchDebounce, setSearchDebounce] = useState('')
+  const [showDetailDrawer, setShowDetailDrawer] = useState(false)
+  const [selectedDealForDetail, setSelectedDealForDetail] = useState(null)
 
   // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
   const {
@@ -689,6 +692,11 @@ export default function DealsPage() {
   const handleManageLoaner = (deal) => {
     setSelectedDealForLoaner(deal)
     setShowLoanerDrawer(true)
+  }
+
+  const handleOpenDetail = (deal) => {
+    setSelectedDealForDetail(deal)
+    setShowDetailDrawer(true)
   }
 
   // ✅ FIXED: Enhanced error display component
@@ -1152,7 +1160,11 @@ export default function DealsPage() {
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredDeals?.map((deal) => (
-                <tr key={deal?.id} className="hover:bg-slate-50">
+                <tr
+                  key={deal?.id}
+                  className="hover:bg-slate-50 cursor-pointer"
+                  onClick={() => handleOpenDetail(deal)}
+                >
                   <td className="px-6 py-4">
                     <StatusPill status={deal?.job_status} />
                   </td>
@@ -1270,7 +1282,10 @@ export default function DealsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleEditDeal(deal?.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditDeal(deal?.id)
+                        }}
                         className="text-blue-600 hover:text-blue-800"
                         aria-label="Edit deal"
                       >
@@ -1282,7 +1297,10 @@ export default function DealsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleManageLoaner(deal)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleManageLoaner(deal)
+                          }}
                           className="text-purple-600 hover:text-purple-800"
                           aria-label="Manage loaner"
                         >
@@ -1295,13 +1313,15 @@ export default function DealsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() =>
+                          onClick={(e) => {
+                            e.stopPropagation()
+
                             setMarkReturnedModal({
                               loaner_id: deal?.loaner_id,
                               loaner_number: deal?.loaner_number,
                               job_title: getDealPrimaryRef(deal),
                             })
-                          }
+                          }}
                           className="text-green-600 hover:text-green-800"
                           aria-label="Mark loaner returned"
                         >
@@ -1312,7 +1332,10 @@ export default function DealsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setDeleteConfirm(deal)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteConfirm(deal)
+                        }}
                         className="text-red-600 hover:text-red-800"
                         aria-label="Delete deal"
                       >
@@ -1350,52 +1373,81 @@ export default function DealsPage() {
                   </div>
                 </div>
 
-                {/* Card Content with enhanced mobile layout */}
-                <div className="p-4 space-y-4">
-                  {/* Customer Display */}
-                  {(deal?.customer_name || deal?.customer_phone) && (
-                    <div>
-                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
-                        Customer
+                {/* Card Content with compact 3-line mobile layout */}
+                <div className="p-4 space-y-2">
+                  {/* Line 1: Customer + Phone */}
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-slate-900 text-sm">
+                        {deal?.customer_name || '—'}
                       </div>
-                      <CustomerDisplay deal={deal} />
+                      <div className="text-xs text-slate-500 truncate">
+                        {deal?.customer_phone ? (
+                          <a
+                            href={`tel:${deal?.customer_phone}`}
+                            onClick={(e) => e?.stopPropagation?.()}
+                            className="underline"
+                          >
+                            {deal?.customer_phone}
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </div>
                     </div>
-                  )}
+                    <div className="ml-3 shrink-0">
+                      <ServiceLocationTag
+                        serviceType={deal?.service_type}
+                        jobParts={deal?.job_parts}
+                      />
+                    </div>
+                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
-                        Value
-                      </div>
-                      <ValueDisplay amount={deal?.total_amount} />
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
-                        Next
-                      </div>
+                  {/* Line 2: Vehicle + Vendor */}
+                  <div className="text-xs text-slate-600 truncate">
+                    {(deal?.vehicle
+                      ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                      : '') || '—'}
+                    {deal?.vehicle?.stock_number ? (
+                      <span className="text-slate-400">
+                        {' '}
+                        • Stock: {deal?.vehicle?.stock_number}
+                      </span>
+                    ) : null}
+                    {deal?.vendor_name ? (
+                      <span className="text-slate-400"> • {deal?.vendor_name}</span>
+                    ) : null}
+                  </div>
+
+                  {/* Line 3: Promise + Appt Window + Loaner */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span data-testid="mobile-next-chip">
                       <NextPromisedChip nextPromisedAt={deal?.next_promised_iso} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
-                      Service
-                    </div>
-                    <ServiceLocationTag
-                      serviceType={deal?.service_type}
-                      jobParts={deal?.job_parts}
-                    />
-                  </div>
-
-                  {/* ✅ ADDED: Loaner badge display for mobile */}
-                  {deal?.loaner_number && (
-                    <div>
-                      <div className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
-                        Loaner Assignment
-                      </div>
+                    </span>
+                    {deal?.appt_start && (
+                      <span className="text-xs text-slate-700" data-testid="mobile-appt-window">
+                        {new Date(deal?.appt_start).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                        {' • '}
+                        {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                        {'–'}
+                        {deal?.appt_end
+                          ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : ''}
+                      </span>
+                    )}
+                    {(deal?.loaner_number || deal?.has_active_loaner) && (
                       <LoanerBadge deal={deal} />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* ✅ FIXED: Enhanced mobile footer with proper loaner actions */}
@@ -1541,6 +1593,16 @@ export default function DealsPage() {
           deal={selectedDealForLoaner}
           onSave={handleSaveLoaner}
           loading={loanerLoading}
+        />
+
+        {/* Deal Detail Drawer (read-only) */}
+        <DealDetailDrawer
+          isOpen={showDetailDrawer}
+          onClose={() => {
+            setShowDetailDrawer(false)
+            setSelectedDealForDetail(null)
+          }}
+          deal={selectedDealForDetail}
         />
 
         {/* Mark Loaner Returned Modal */}
