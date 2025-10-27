@@ -41,10 +41,32 @@ function _clearPending(key) {
   _pending.delete(key)
 }
 
-// Org scoping via DB function has been removed.
-// Keep a no-op resolver to avoid breaking call sites; always return null (unscoped).
+// Resolve current user's org_id once per session for org-scoped dropdowns
+let _orgIdCache = null
+let _orgIdPending = null
 async function getScopedOrgId() {
-  return null
+  if (_orgIdCache) return _orgIdCache
+  if (_orgIdPending) return _orgIdPending
+  _orgIdPending = (async () => {
+    try {
+      const { data: auth } = await supabase?.auth?.getUser?.()
+      const userId = auth?.user?.id
+      if (!userId) return null
+      const { data: prof } = await supabase
+        .from('user_profiles')
+        .select('org_id')
+        .eq('id', userId)
+        .single()
+      _orgIdCache = prof?.org_id || null
+      return _orgIdCache
+    } catch (e) {
+      console.warn('[dropdownService] getScopedOrgId failed:', e?.message || e)
+      return null
+    } finally {
+      _orgIdPending = null
+    }
+  })()
+  return _orgIdPending
 }
 
 // Lightweight cache peekers to enable cached-first UI rendering without awaiting network
@@ -109,7 +131,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
     if (activeOnly) q = q.eq('is_active', true)
     if (departments.length) q = q.in('department', departments)
     if (roles.length) q = q.in('role', roles)
-    if (orgId) q = q.eq('org_id', orgId)
+    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
 
     try {
       const { data: exact, count } = await q.throwOnError()
@@ -140,7 +162,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
         .or(ors || 'full_name.ilike.%placeholder%')
         .order('full_name', { ascending: true })
 
-      if (orgId) q2 = q2.eq('org_id', orgId)
+      if (orgId) q2 = q2.or(`org_id.eq.${orgId},org_id.is.null`)
 
       const { data: fuzzy } = await q2.throwOnError()
       const opts = toOptions(fuzzy || [], 'full_name')
@@ -186,7 +208,7 @@ export async function getVendors({ activeOnly = true } = {}) {
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.eq('org_id', orgId)
+    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
     const promise = (async () => {
       const { data } = await q.throwOnError()
       const opts = toOptions(data, 'name')
@@ -220,7 +242,7 @@ export async function getProducts({ activeOnly = true } = {}) {
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.eq('org_id', orgId)
+    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
     const promise = (async () => {
       const { data } = await q.throwOnError()
       const opts = (data || []).map((p) => ({
@@ -264,7 +286,7 @@ export async function globalSearch(term) {
           .select('id, full_name, email, department, role')
           .or(`full_name.ilike.${q},email.ilike.${q}`)
           .limit(20)
-        if (orgId) uq = uq.eq('org_id', orgId)
+        if (orgId) uq = uq.or(`org_id.eq.${orgId},org_id.is.null`)
         return uq.throwOnError()
       })(),
       (async () => {
@@ -273,7 +295,7 @@ export async function globalSearch(term) {
           .select('id, name, specialty')
           .or(`name.ilike.${q},specialty.ilike.${q}`)
           .limit(20)
-        if (orgId) vq = vq.eq('org_id', orgId)
+        if (orgId) vq = vq.or(`org_id.eq.${orgId},org_id.is.null`)
         return vq.throwOnError()
       })(),
       (async () => {
@@ -282,7 +304,7 @@ export async function globalSearch(term) {
           .select('id, name, brand, unit_price')
           .or(`name.ilike.${q},brand.ilike.${q}`)
           .limit(20)
-        if (orgId) pq = pq.eq('org_id', orgId)
+        if (orgId) pq = pq.or(`org_id.eq.${orgId},org_id.is.null`)
         return pq.throwOnError()
       })(),
     ])

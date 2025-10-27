@@ -36,12 +36,14 @@ export default function DebugAuthPage() {
           listSmsTemplatesGlobal?.({ activeOnly: false }).catch(() => []),
         ])
 
-        // Org-filtered counts
+        // Org+global counts (matches dropdownService logic)
         const [oVendors, oProducts, oUsers, oSms] = await Promise.all([
-          orgId ? listVendorsByOrg(orgId, { activeOnly: false }) : Promise.resolve([]),
-          orgId ? listProductsByOrg(orgId, { activeOnly: false }) : Promise.resolve([]),
-          orgId ? listStaffByOrg(orgId, { activeOnly: false }) : Promise.resolve([]),
-          orgId ? listSmsTemplatesByOrg(orgId, { activeOnly: false }) : Promise.resolve([]),
+          orgId ? getVendorsGlobal({ activeOnly: false }) : Promise.resolve([]),
+          orgId ? getProductsGlobal({ activeOnly: false }) : Promise.resolve([]),
+          orgId ? getUsersGlobal({ activeOnly: false }) : Promise.resolve([]),
+          orgId
+            ? listSmsTemplatesGlobal({ activeOnly: false }).catch(() => [])
+            : Promise.resolve([]),
         ])
 
         if (!mounted) return

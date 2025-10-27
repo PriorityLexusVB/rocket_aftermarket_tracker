@@ -52,7 +52,9 @@ export async function listStaffByOrg(
       .from('user_profiles')
       .select('id, full_name, email, department, role, is_active, vendor_id')
       .order('full_name', { ascending: true })
-    q = q.eq('org_id', orgId)
+    // Include both org-scoped and global (NULL org_id) staff so dropdowns aren't empty
+    // when shared/global staff are used across multiple orgs.
+    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
     if (activeOnly) q = q.eq('is_active', true)
     if (departments.length) q = q.in('department', departments)
     if (roles.length) q = q.in('role', roles)

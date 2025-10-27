@@ -18,6 +18,12 @@ export default defineConfig({
   timeout: 30_000,
   retries: 0,
   fullyParallel: false,
+  // Stabilize defaults in CI while allowing local override via PLAYWRIGHT_WORKERS
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Number(process.env.PLAYWRIGHT_WORKERS)
+    : process.env.CI
+      ? 1
+      : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',

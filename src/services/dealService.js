@@ -84,12 +84,17 @@ function mapFormToDb(formState = {}) {
   // Optional tenant scoping if provided by caller
   const orgId = formState?.org_id ?? formState?.orgId
   const payload = orgId ? { ...base, org_id: orgId } : base
-  // Ensure required title is populated; derive from description or job_number as fallback
-  if (!payload?.title) {
+  // Ensure title stays meaningful and mirrors description edits for UX consistency
+  // - If description was provided/edited, use it as the title (primary display)
+  // - Else, if title missing, fall back to job_number or a generic default
+  {
     const desc = (formState?.description || '').trim()
-    if (desc) payload.title = desc
-    else if (payload?.job_number) payload.title = `Deal ${payload.job_number}`
-    else payload.title = 'Untitled Deal'
+    if (desc) {
+      payload.title = desc
+    } else if (!payload?.title) {
+      if (payload?.job_number) payload.title = `Deal ${payload.job_number}`
+      else payload.title = 'Untitled Deal'
+    }
   }
 
   // Accept either lineItems (current UI) or line_items (alternate callers)
@@ -532,6 +537,12 @@ export async function updateDeal(id, formState) {
   const { payload, normalizedLineItems, loanerForm, customerName, customerPhone, customerEmail } =
     mapFormToDb(formState || {})
 
+  // Ensure description is explicitly updated when provided (some environments rely on it for display)
+  {
+    const desc = (formState?.description || '').trim()
+    if (desc) payload.description = desc
+  }
+
   // Calculate total deal value for transactions
   const totalDealValue =
     (normalizedLineItems || []).reduce((sum, item) => {
@@ -543,6 +554,8 @@ export async function updateDeal(id, formState) {
   // 1) Update job
   const { error: jobErr } = await supabase?.from('jobs')?.update(payload)?.eq('id', id)
   if (jobErr) throw new Error(`Failed to update deal: ${jobErr.message}`)
+
+  // Prefer server-truth; do not write localStorage fallbacks for description
 
   // 2) ✅ ENHANCED: Upsert transaction with customer data
   const baseTransactionData = {
@@ -630,7 +643,9 @@ function mapDbDealToForm(dbDeal) {
     id: dbDeal?.id,
     job_number: dbDeal?.job_number || '',
     title: dbDeal?.title || '',
-    description: dbDeal?.description || '',
+    // Prefer title as the primary description source (we sync title to description on save)
+    // Fall back to DB description for older records
+    description: dbDeal?.title || dbDeal?.description || '',
     vendor_id: dbDeal?.vendor_id,
     vehicle_id: dbDeal?.vehicle_id,
     job_status: dbDeal?.job_status || 'pending',

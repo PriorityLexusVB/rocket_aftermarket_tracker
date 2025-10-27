@@ -1,5 +1,5 @@
 // src/pages/deals/DealForm.jsx
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react'
 import {
   getVendors,
   getProducts,
@@ -71,6 +71,8 @@ export default function DealForm({
     scheduled_end_time: initial.scheduled_end_time || '',
     calendar_notes: initial.calendar_notes || '',
   })
+
+  // Server-truth: Do not override description from localStorage; rely on props/DB values
 
   // Keep local form state in sync when parent provides a new initial (e.g., after save/refetch or route change)
   useEffect(() => {
