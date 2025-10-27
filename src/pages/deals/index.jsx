@@ -94,7 +94,7 @@ const NextPromisedChip = ({ nextPromisedAt }) => {
   )
 }
 
-// ✅ UPDATED: Service Location Tag with exact colors per checklist (#22c55e in-house / #f97316 vendor)
+// ✅ UPDATED: Service Location Tag with exact colors per checklist (#22c55e in-house / blue off-site)
 const ServiceLocationTag = ({ serviceType, jobParts }) => {
   // Check if any line items are off-site to determine vendor status
   const hasOffSiteItems = jobParts?.some((part) => part?.is_off_site)
@@ -105,7 +105,7 @@ const ServiceLocationTag = ({ serviceType, jobParts }) => {
       <div className="flex flex-col space-y-1">
         <span
           className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white"
-          style={{ backgroundColor: '#f97316' }}
+          style={{ backgroundColor: '#3b82f6' }}
         >
           🏢 Off-Site
         </span>
@@ -123,7 +123,7 @@ const ServiceLocationTag = ({ serviceType, jobParts }) => {
     return (
       <span
         className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white"
-        style={{ backgroundColor: '#f97316' }}
+        style={{ backgroundColor: '#3b82f6' }}
       >
         🏢 Off-Site
       </span>
@@ -235,14 +235,39 @@ const ValueDisplay = ({ amount }) => {
   )
 }
 
-// ✅ ADDED: Enhanced Loaner Badge component for tracker rows
+// ✅ UPDATED: Enhanced Loaner Badge component for tracker rows (teal active, red outline when overdue)
 const LoanerBadge = ({ deal }) => {
   if (!deal?.loaner_number) {
     return null
   }
 
+  const now = new Date()
+  const startOfToday = new Date(now)
+  startOfToday.setHours(0, 0, 0, 0)
+  const due = deal?.loaner_eta_return_date ? new Date(deal?.loaner_eta_return_date) : null
+  const isOverdue = !!(due && due < startOfToday)
+
+  const baseClasses = 'inline-flex items-center px-2 py-1 rounded text-xs font-medium border'
+  const colorClasses = isOverdue
+    ? 'bg-white text-red-700 border-red-300'
+    : 'bg-teal-100 text-teal-800 border-teal-200'
+
+  const copyLoaner = async (e) => {
+    e?.stopPropagation?.()
+    try {
+      await navigator.clipboard.writeText(String(deal?.loaner_number))
+      console.log('Loaner number copied')
+    } catch (err) {
+      console.warn('Clipboard copy failed', err)
+    }
+  }
+
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+    <span
+      className={`${baseClasses} ${colorClasses} cursor-pointer`}
+      onClick={copyLoaner}
+      title="Click to copy loaner number"
+    >
       🚗 Loaner #{deal?.loaner_number}
       {deal?.loaner_eta_short && <span className="ml-1">• due {deal?.loaner_eta_short}</span>}
     </span>
@@ -475,10 +500,16 @@ export default function DealsPage() {
   // ✅ UPDATED: Status tabs & quick search with enhanced filtering
   const [filters, setFilters] = useState({
     status: 'All',
+    presetView: 'All',
     salesAssigned: null,
     deliveryAssigned: null,
     financeAssigned: null,
     vendor: null,
+    location: 'All', // All | In-House | Off-Site | Mixed
+    workTags: [], // array of strings
+    loanerStatus: 'All', // All | Active | Due Today | Overdue | None
+    promiseStartDate: '', // YYYY-MM-DD
+    promiseEndDate: '', // YYYY-MM-DD
     search: '',
   })
 
@@ -504,6 +535,10 @@ export default function DealsPage() {
 
   const navigate = useNavigate()
   const { user } = useAuth()
+
+  // ✅ ADDED: Saved views state (localStorage persistence)
+  const [savedViews, setSavedViews] = useState([])
+  const [selectedSavedView, setSelectedSavedView] = useState('')
 
   // ✅ FIXED: Replace direct function calls with hook-based calls
   const getSalesConsultants = () => {
@@ -683,6 +718,17 @@ export default function DealsPage() {
     loadDeals()
   }, [])
 
+  // ✅ ADDED: Load saved views from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('dealsSavedViews')
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (Array.isArray(parsed)) setSavedViews(parsed)
+      }
+    } catch (_) {}
+  }, [])
+
   // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
   const loadDropdownData = async () => {
     await refreshDropdowns()
@@ -762,9 +808,74 @@ export default function DealsPage() {
   const filteredDeals = deals?.filter((deal) => {
     // Status filter with tab-based logic
     if (filters?.status !== 'All') {
-      const targetStatus = filters?.status?.toLowerCase()?.replace(' ', '_')
+      let targetStatus = filters?.status?.toLowerCase()?.replace(' ', '_')
+      // Map UI label "Active" to backend status "in_progress"
+      if (targetStatus === 'active') targetStatus = 'in_progress'
       if (deal?.job_status !== targetStatus) {
         return false
+      }
+    }
+
+    // Preset views filter
+    if (filters?.presetView && filters?.presetView !== 'All') {
+      const now = new Date()
+      const startOfToday = new Date(now)
+      startOfToday.setHours(0, 0, 0, 0)
+      const endOfToday = new Date(now)
+      endOfToday.setHours(23, 59, 59, 999)
+
+      const apptStart = deal?.appt_start ? new Date(deal?.appt_start) : null
+      const promiseAt = deal?.next_promised_iso ? new Date(deal?.next_promised_iso) : null
+      const loanerDue = deal?.loaner_eta_return_date ? new Date(deal?.loaner_eta_return_date) : null
+      const hasSchedLine = Array.isArray(deal?.job_parts)
+        ? deal?.job_parts?.some((p) => p?.requires_scheduling)
+        : false
+      const hasActiveLoaner = !!(deal?.has_active_loaner || deal?.loaner_id)
+
+      switch (filters?.presetView) {
+        case 'Today':
+          if (!(apptStart && apptStart >= startOfToday && apptStart <= endOfToday)) return false
+          break
+        case 'Past Due':
+          if (!(promiseAt && promiseAt < now)) return false
+          break
+        case 'Unscheduled':
+          if (!(hasSchedLine && !apptStart)) return false
+          break
+        case 'Off-site Today': {
+          const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
+          const hasOff = parts.some((p) => p?.is_off_site)
+          const isToday = (d) => d && d >= startOfToday && d <= endOfToday
+          if (!(hasOff && (isToday(apptStart) || isToday(promiseAt)))) return false
+          break
+        }
+        case 'Awaiting Vendor/Parts': {
+          const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
+          const awaiting = parts.some((p) => p?.requires_scheduling && !p?.promised_date)
+          if (!awaiting) return false
+          break
+        }
+        case 'Completed—awaiting pickup':
+          if (!(deal?.job_status === 'completed' && (deal?.has_active_loaner || deal?.loaner_id)))
+            return false
+          break
+        case 'My Deals':
+          if (!(deal?.assigned_to && user?.id && deal.assigned_to === user.id)) return false
+          break
+        case 'Loaners Out':
+          if (!hasActiveLoaner) return false
+          break
+        case 'Loaners Due':
+          if (
+            !(hasActiveLoaner && loanerDue && loanerDue >= startOfToday && loanerDue <= endOfToday)
+          )
+            return false
+          break
+        case 'Loaners Overdue':
+          if (!(hasActiveLoaner && loanerDue && loanerDue < startOfToday)) return false
+          break
+        default:
+          break
       }
     }
 
@@ -786,6 +897,67 @@ export default function DealsPage() {
     // Vendor filter
     if (filters?.vendor && deal?.vendor_id !== filters?.vendor) {
       return false
+    }
+
+    // Location filter
+    if (filters?.location && filters?.location !== 'All') {
+      const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
+      const hasOff = parts.some((p) => p?.is_off_site)
+      const hasOn = parts.some((p) => !p?.is_off_site)
+      const loc = hasOff && hasOn ? 'Mixed' : hasOff ? 'Off-Site' : 'In-House'
+      if (loc !== filters.location) return false
+    }
+
+    // Work tags filter (ANY match)
+    if (filters?.workTags?.length) {
+      const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
+      const intersects = filters.workTags.some((t) => tags.includes(t))
+      if (!intersects) return false
+    }
+
+    // Loaner status filter
+    if (filters?.loanerStatus && filters?.loanerStatus !== 'All') {
+      const now = new Date()
+      const startOfToday = new Date(now)
+      startOfToday.setHours(0, 0, 0, 0)
+      const endOfToday = new Date(now)
+      endOfToday.setHours(23, 59, 59, 999)
+      const hasActiveLoaner = !!(deal?.has_active_loaner || deal?.loaner_id)
+      const loanerDue = deal?.loaner_eta_return_date ? new Date(deal?.loaner_eta_return_date) : null
+
+      switch (filters.loanerStatus) {
+        case 'Active':
+          if (!hasActiveLoaner) return false
+          break
+        case 'Due Today':
+          if (
+            !(hasActiveLoaner && loanerDue && loanerDue >= startOfToday && loanerDue <= endOfToday)
+          )
+            return false
+          break
+        case 'Overdue':
+          if (!(hasActiveLoaner && loanerDue && loanerDue < startOfToday)) return false
+          break
+        case 'None':
+          if (hasActiveLoaner) return false
+          break
+        default:
+          break
+      }
+    }
+
+    // Promise date range filter
+    if (filters?.promiseStartDate || filters?.promiseEndDate) {
+      const promiseAt = deal?.next_promised_iso ? new Date(deal?.next_promised_iso) : null
+      if (!promiseAt) return false
+      if (filters?.promiseStartDate) {
+        const start = new Date(filters.promiseStartDate + 'T00:00:00')
+        if (promiseAt < start) return false
+      }
+      if (filters?.promiseEndDate) {
+        const end = new Date(filters.promiseEndDate + 'T23:59:59.999')
+        if (promiseAt > end) return false
+      }
     }
 
     // ✅ UPDATED: Search filter with debounced search (matches stock, name, phone with stripped non-digits)
@@ -856,16 +1028,66 @@ export default function DealsPage() {
   const clearAllFilters = () => {
     setFilters({
       status: 'All',
+      presetView: 'All',
       salesAssigned: null,
       deliveryAssigned: null,
       financeAssigned: null,
       vendor: null,
+      location: 'All',
+      workTags: [],
+      loanerStatus: 'All',
+      promiseStartDate: '',
+      promiseEndDate: '',
       search: '',
     })
     clearSearch()
 
     // Clear URL params
     window.history?.replaceState({}, '', window.location?.pathname)
+  }
+
+  // ✅ ADDED: Unique work tags across current dataset
+  const allWorkTags = React.useMemo(() => {
+    const set = new Set()
+    for (const d of deals || []) {
+      for (const t of d?.work_tags || []) set.add(t)
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [deals])
+
+  // ✅ ADDED: Vendor and staff options
+  const vendorOptions = getSafeVendorOptions({ activeOnly: true })
+  const salesOptions = getSalesConsultants()
+  const deliveryOptions = getDeliveryCoordinators()
+  const financeOptions = getFinanceManagers()
+
+  // ✅ ADDED: Saved views helpers
+  const saveCurrentView = () => {
+    try {
+      const name = window.prompt('Save view as:')
+      if (!name || !name.trim()) return
+      const view = { name: name.trim(), filters }
+      const next = [...savedViews.filter((v) => v.name !== view.name), view]
+      setSavedViews(next)
+      localStorage.setItem('dealsSavedViews', JSON.stringify(next))
+      setSelectedSavedView(view.name)
+    } catch (e) {
+      console.error('saveCurrentView failed', e)
+    }
+  }
+
+  const applySavedView = (name) => {
+    setSelectedSavedView(name)
+    const view = savedViews.find((v) => v.name === name)
+    if (view?.filters) setFilters(view.filters)
+  }
+
+  const deleteSavedView = () => {
+    if (!selectedSavedView) return
+    const next = savedViews.filter((v) => v.name !== selectedSavedView)
+    setSavedViews(next)
+    localStorage.setItem('dealsSavedViews', JSON.stringify(next))
+    setSelectedSavedView('')
   }
 
   const handleEditDeal = (dealId) => {
@@ -1064,6 +1286,36 @@ export default function DealsPage() {
             ))}
           </div>
 
+          {/* Preset Views */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[
+              'All',
+              'Today',
+              'Past Due',
+              'Unscheduled',
+              'Off-site Today',
+              'Awaiting Vendor/Parts',
+              'Completed—awaiting pickup',
+              'My Deals',
+              'Loaners Out',
+              'Loaners Due',
+              'Loaners Overdue',
+            ]?.map((view) => (
+              <button
+                key={view}
+                onClick={() => updateFilter('presetView', view)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border
+                    ${
+                      filters?.presetView === view
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
+
           <div className="flex flex-col lg:flex-row gap-4">
             {/* ✅ UPDATED: Search box with 300ms debounce, matches stock, name, phone (strip non-digits) */}
             <div className="flex-1">
@@ -1097,6 +1349,181 @@ export default function DealsPage() {
               </Button>
             </div>
           </div>
+
+          {/* ✅ ADDED: Advanced filters row */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Vendor */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Vendor</label>
+              <select
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                value={filters.vendor || ''}
+                onChange={(e) => updateFilter('vendor', e.target.value || null)}
+              >
+                <option value="">All</option>
+                {vendorOptions.map((v) => (
+                  <option key={v.value} value={v.value}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sales */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Sales</label>
+              <select
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                value={filters.salesAssigned || ''}
+                onChange={(e) => updateFilter('salesAssigned', e.target.value || null)}
+              >
+                <option value="">All</option>
+                {salesOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Finance */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Finance</label>
+              <select
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                value={filters.financeAssigned || ''}
+                onChange={(e) => updateFilter('financeAssigned', e.target.value || null)}
+              >
+                <option value="">All</option>
+                {financeOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Delivery */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Delivery</label>
+              <select
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                value={filters.deliveryAssigned || ''}
+                onChange={(e) => updateFilter('deliveryAssigned', e.target.value || null)}
+              >
+                <option value="">All</option>
+                {deliveryOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Location */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Location</label>
+              <select
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                value={filters.location}
+                onChange={(e) => updateFilter('location', e.target.value)}
+              >
+                {['All', 'In-House', 'Off-Site', 'Mixed'].map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Loaner */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Loaner</label>
+              <select
+                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                value={filters.loanerStatus}
+                onChange={(e) => updateFilter('loanerStatus', e.target.value)}
+              >
+                {['All', 'Active', 'Due Today', 'Overdue', 'None'].map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Promise Date Range */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Promise from
+                </label>
+                <input
+                  type="date"
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                  value={filters.promiseStartDate}
+                  onChange={(e) => updateFilter('promiseStartDate', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Promise to</label>
+                <input
+                  type="date"
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                  value={filters.promiseEndDate}
+                  onChange={(e) => updateFilter('promiseEndDate', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Work tags (multi-select) */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Work tags</label>
+              <select
+                multiple
+                className="bg-white border border-slate-200 rounded-lg w-full min-h-[44px] px-3 py-2"
+                value={filters.workTags}
+                onChange={(e) => {
+                  const selected = Array.from(e.target.selectedOptions).map((o) => o.value)
+                  updateFilter('workTags', selected)
+                }}
+              >
+                {allWorkTags.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* ✅ ADDED: Saved views controls */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <label className="text-xs text-slate-600">Saved views</label>
+            <select
+              className="bg-white border border-slate-200 rounded-lg h-9 px-3"
+              value={selectedSavedView}
+              onChange={(e) => applySavedView(e.target.value)}
+            >
+              <option value="">— Select view —</option>
+              {savedViews.map((v) => (
+                <option key={v.name} value={v.name}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" variant="outline" onClick={saveCurrentView}>
+              Save current
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={deleteSavedView}
+              disabled={!selectedSavedView}
+            >
+              Delete selected
+            </Button>
+          </div>
         </div>
 
         {/* Results count */}
@@ -1106,6 +1533,11 @@ export default function DealsPage() {
             filters?.deliveryAssigned ||
             filters?.financeAssigned ||
             filters?.vendor ||
+            filters?.location !== 'All' ||
+            (filters?.workTags && filters?.workTags.length) ||
+            filters?.loanerStatus !== 'All' ||
+            filters?.promiseStartDate ||
+            filters?.promiseEndDate ||
             filters?.search) && <span className="ml-2 text-blue-600">(filtered)</span>}
         </div>
 

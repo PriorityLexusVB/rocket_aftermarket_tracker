@@ -358,6 +358,7 @@ export async function getAllDeals() {
                 day: 'numeric',
               })
             : null,
+          loaner_eta_return_date: loaner?.eta_return_date || null,
           age_days: ageDays,
           appt_start: apptStart,
           appt_end: apptEnd,
