@@ -692,6 +692,24 @@ const AdminPage = () => {
     }
   }
 
+  // Generate a decent random password when auto-provisioning staff accounts
+  const generateStrongPassword = (length = 16) => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-='
+    let pwd = ''
+    const array = new Uint32Array(length)
+    if (typeof window !== 'undefined' && window?.crypto?.getRandomValues) {
+      window.crypto.getRandomValues(array)
+      for (let i = 0; i < length; i++) {
+        pwd += chars[array[i] % chars.length]
+      }
+    } else {
+      for (let i = 0; i < length; i++) {
+        pwd += chars[Math.floor(Math.random() * chars.length)]
+      }
+    }
+    return pwd
+  }
+
   const handleUserAccountSubmit = async () => {
     if (editingItem) {
       // If editing a user in another org, optionally reassign to current org before updating
@@ -782,9 +800,39 @@ const AdminPage = () => {
 
       if (error) throw error
     } else {
-      const { error } = await supabase?.from('user_profiles')?.insert([staffData])
+      // If an email is provided, provision an auth account so the trigger creates the profile
+      if (staffData.email) {
+        const autoPassword = generateStrongPassword()
+        const { data: authData, error: authError } = await supabase?.auth?.signUp({
+          email: staffData.email,
+          password: autoPassword,
+          options: {
+            data: {
+              full_name: staffData.full_name,
+              role: 'staff',
+              department: staffData.department,
+            },
+          },
+        })
+        if (authError) throw authError
 
-      if (error) throw error
+        // Best-effort: update org/phone on the newly created profile row
+        const createdUserId = authData?.user?.id
+        if (createdUserId) {
+          const { error: upErr } = await supabase
+            ?.from('user_profiles')
+            ?.update({ org_id: staffData.org_id, phone: staffData.phone, is_active: true })
+            ?.or(`id.eq.${createdUserId},auth_user_id.eq.${createdUserId}`)
+          if (upErr) {
+            // Non-fatal; log and continue
+            console.warn('Post-signUp profile update failed:', upErr?.message)
+          }
+        }
+      } else {
+        // No email: create a directory-only staff profile (no login) — allowed by relaxed schema
+        const { error } = await supabase?.from('user_profiles')?.insert([staffData])
+        if (error) throw error
+      }
     }
 
     await loadStaffRecords()
