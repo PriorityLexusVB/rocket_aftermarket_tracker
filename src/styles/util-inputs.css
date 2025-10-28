@@ -1,0 +1,21 @@
+/* Input utilities: keep native controls simple and consistent on mobile */
+
+/* Remove number input spinners in Chromium-based browsers */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Remove number input spinners in Firefox */
+input[type='number'] {
+  -moz-appearance: textfield;
+  -webkit-appearance: none;
+  appearance: textfield;
+}
+
+/* Optional: improve numeric readability for currency fields */
+.input-currency {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

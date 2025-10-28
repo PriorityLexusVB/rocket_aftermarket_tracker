@@ -825,12 +825,13 @@ export default function DealForm({
                   <input
                     data-testid={`unit-price-input-${idx}`}
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     value={item.unit_price}
                     onChange={(e) =>
                       handleLineChange(idx, 'unit_price', Number(e.target.value || 0))
                     }
-                    className="mt-1 input-mobile w-full"
+                    className="mt-1 input-mobile w-full input-currency"
                   />
                 </div>
 
