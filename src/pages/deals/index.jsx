@@ -6,6 +6,7 @@ import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
+import LoanerDrawer from './components/LoanerDrawer'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
