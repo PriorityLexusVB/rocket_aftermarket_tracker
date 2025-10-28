@@ -185,13 +185,22 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
 /** Specific staff dropdowns (Admin sets department text) */
 export async function getSalesConsultants() {
-  return getStaff({ departments: ['Sales', 'Sales Consultant', 'Sales Consultants'] })
+  return getStaff({
+    departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
+    roles: ['staff'],
+  })
 }
 export async function getDeliveryCoordinators() {
-  return getStaff({ departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'] })
+  return getStaff({
+    departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
+    roles: ['staff'],
+  })
 }
 export async function getFinanceManagers() {
-  return getStaff({ departments: ['Finance', 'Finance Manager', 'Finance Managers'] })
+  return getStaff({
+    departments: ['Finance', 'Finance Manager', 'Finance Managers'],
+    roles: ['staff'],
+  })
 }
 
 /** Vendors → { id, value, label } */

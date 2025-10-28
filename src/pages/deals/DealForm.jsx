@@ -151,18 +151,21 @@ export default function DealForm({
         const salesPromise = orgId
           ? listStaffByOrg(orgId, {
               departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
+              roles: ['staff'],
               activeOnly: true,
             })
           : getSalesConsultants()
         const financePromise = orgId
           ? listStaffByOrg(orgId, {
               departments: ['Finance', 'Finance Manager', 'Finance Managers', 'Managers'],
+              roles: ['staff'],
               activeOnly: true,
             })
           : getFinanceManagers()
         const deliveryPromise = orgId
           ? listStaffByOrg(orgId, {
               departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
+              roles: ['staff'],
               activeOnly: true,
             })
           : getDeliveryCoordinators()
@@ -188,21 +191,21 @@ export default function DealForm({
           // Staff: avoid showing admins/managers when department-scoped list is empty.
           // Prefer global department-specific list first, then a strict staff-only org list.
           if (!Array.isArray(sOpts) || sOpts.length === 0) {
-            sOpts = await getSalesConsultants().catch(() => [])
+            sOpts = (await getSalesConsultants().catch(() => [])) || []
             if (!sOpts?.length)
               sOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
                 () => []
               )
           }
           if (!Array.isArray(fOpts) || fOpts.length === 0) {
-            fOpts = await getFinanceManagers().catch(() => [])
+            fOpts = (await getFinanceManagers().catch(() => [])) || []
             if (!fOpts?.length)
               fOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
                 () => []
               )
           }
           if (!Array.isArray(dOpts) || dOpts.length === 0) {
-            dOpts = await getDeliveryCoordinators().catch(() => [])
+            dOpts = (await getDeliveryCoordinators().catch(() => [])) || []
             if (!dOpts?.length)
               dOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
                 () => []
@@ -216,11 +219,14 @@ export default function DealForm({
             pOpts = await getProducts().catch(() => [])
         }
         if (!mounted) return
+        // Extra safety: filter to role==='staff' if role is present
+        const onlyStaff = (arr) =>
+          Array.isArray(arr) ? arr.filter((u) => u?.role === 'staff' || u?.role === undefined) : []
         setVendors(vOpts || [])
         setProducts(pOpts || [])
-        setSales(sOpts || [])
-        setFinance(fOpts || [])
-        setDelivery(dOpts || [])
+        setSales(onlyStaff(sOpts))
+        setFinance(onlyStaff(fOpts))
+        setDelivery(onlyStaff(dOpts))
       } catch (e) {
         console.error('DealForm dropdown load error', e)
       } finally {
