@@ -1086,8 +1086,8 @@ export default function DealsPage() {
           </div>
         </div>
 
-        {/* ✅ FIXED: Status tabs & enhanced dropdown filters */}
-        <div className="mb-6 bg-white rounded-lg border p-4">
+  {/* Status tabs and search (advanced dropdowns removed) */}
+  <div className="mb-6 bg-white rounded-lg border p-4">
           {/* Status Tabs */}
           <div className="flex flex-wrap gap-2 mb-4">
             {['All', 'Draft', 'Pending', 'Active', 'Completed']?.map((status) => (
@@ -1170,7 +1170,8 @@ export default function DealsPage() {
             </div>
           </div>
 
-          {/* ✅ ADDED: Advanced filters row */}
+          {/* Advanced filter dropdowns removed; search covers all filtering needs */}
+          {/*
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Vendor */}
             <div>
@@ -1316,34 +1317,7 @@ export default function DealsPage() {
               </select>
             </div>
           </div>
-
-          {/* ✅ ADDED: Saved views controls */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <label className="text-xs text-slate-600">Saved views</label>
-            <select
-              className="bg-white border border-slate-200 rounded-lg h-9 px-3"
-              value={selectedSavedView}
-              onChange={(e) => applySavedView(e.target.value)}
-            >
-              <option value="">— Select view —</option>
-              {savedViews.map((v) => (
-                <option key={v.name} value={v.name}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-            <Button size="sm" variant="outline" onClick={saveCurrentView}>
-              Save current
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={deleteSavedView}
-              disabled={!selectedSavedView}
-            >
-              Delete selected
-            </Button>
-          </div>
+          */}
         </div>
 
         {/* Results count */}
