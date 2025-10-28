@@ -6,12 +6,14 @@ import {
   getSalesConsultants,
   getFinanceManagers,
   getDeliveryCoordinators,
+  getUserProfiles,
 } from '../../services/dropdownService'
 import { listVendorsByOrg, listProductsByOrg, listStaffByOrg } from '../../services/tenantService'
 import useTenant from '../../hooks/useTenant'
 import { useLogger } from '../../hooks/useLogger'
 import UnsavedChangesGuard from '../../components/common/UnsavedChangesGuard'
 import { useToast } from '../../components/ui/ToastProvider'
+import { UI_FLAGS } from '../../config/ui'
 
 // Optional fallback to service-layer create/update if parent didn't pass onSave
 let dealServicePromise
@@ -142,33 +144,37 @@ export default function DealForm({
     let mounted = true
     ;(async () => {
       try {
-        const vendorsPromise = orgId ? listVendorsByOrg(orgId, { activeOnly: true }) : getVendors()
-        const productsPromise = orgId
-          ? listProductsByOrg(orgId, { activeOnly: true })
-          : getProducts()
+        const ignoreOrg = UI_FLAGS?.forceGlobalDropdowns === true
+        const vendorsPromise =
+          orgId && !ignoreOrg ? listVendorsByOrg(orgId, { activeOnly: true }) : getVendors()
+        const productsPromise =
+          orgId && !ignoreOrg ? listProductsByOrg(orgId, { activeOnly: true }) : getProducts()
 
         // Prefer tenant-aware staff lists when orgId is available
-        const salesPromise = orgId
-          ? listStaffByOrg(orgId, {
-              departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
-              roles: ['staff'],
-              activeOnly: true,
-            })
-          : getSalesConsultants()
-        const financePromise = orgId
-          ? listStaffByOrg(orgId, {
-              departments: ['Finance', 'Finance Manager', 'Finance Managers', 'Managers'],
-              roles: ['staff'],
-              activeOnly: true,
-            })
-          : getFinanceManagers()
-        const deliveryPromise = orgId
-          ? listStaffByOrg(orgId, {
-              departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
-              roles: ['staff'],
-              activeOnly: true,
-            })
-          : getDeliveryCoordinators()
+        const salesPromise =
+          orgId && !ignoreOrg
+            ? listStaffByOrg(orgId, {
+                departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
+                roles: ['staff'],
+                activeOnly: true,
+              })
+            : getSalesConsultants()
+        const financePromise =
+          orgId && !ignoreOrg
+            ? listStaffByOrg(orgId, {
+                departments: ['Finance', 'Finance Manager', 'Finance Managers', 'Managers'],
+                roles: ['staff'],
+                activeOnly: true,
+              })
+            : getFinanceManagers()
+        const deliveryPromise =
+          orgId && !ignoreOrg
+            ? listStaffByOrg(orgId, {
+                departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
+                roles: ['staff'],
+                activeOnly: true,
+              })
+            : getDeliveryCoordinators()
 
         let [vOpts, pOpts, sOpts, fOpts, dOpts] = await Promise.all([
           vendorsPromise,
@@ -179,7 +185,7 @@ export default function DealForm({
         ])
 
         // Fallbacks
-        if (orgId) {
+        if (orgId && !ignoreOrg) {
           // Vendors/products: if org-scoped is empty, fall back to global lists
           if (!Array.isArray(vOpts) || vOpts.length === 0) {
             vOpts = await getVendors().catch(() => [])
@@ -218,15 +224,29 @@ export default function DealForm({
           if (!Array.isArray(pOpts) || pOpts.length === 0)
             pOpts = await getProducts().catch(() => [])
         }
+
+        // Last resort: if staff lists are still empty, use all active users to keep UI functional
+        if (!Array.isArray(sOpts) || sOpts.length === 0) {
+          sOpts = (await getUserProfiles({ activeOnly: true }).catch(() => [])) || []
+        }
+        if (!Array.isArray(fOpts) || fOpts.length === 0) {
+          fOpts = (await getUserProfiles({ activeOnly: true }).catch(() => [])) || []
+        }
+        if (!Array.isArray(dOpts) || dOpts.length === 0) {
+          dOpts = (await getUserProfiles({ activeOnly: true }).catch(() => [])) || []
+        }
         if (!mounted) return
         // Extra safety: filter to role==='staff' if role is present
         const onlyStaff = (arr) =>
           Array.isArray(arr) ? arr.filter((u) => u?.role === 'staff' || u?.role === undefined) : []
         setVendors(vOpts || [])
         setProducts(pOpts || [])
-        setSales(onlyStaff(sOpts))
-        setFinance(onlyStaff(fOpts))
-        setDelivery(onlyStaff(dOpts))
+        const sFiltered = onlyStaff(sOpts)
+        const fFiltered = onlyStaff(fOpts)
+        const dFiltered = onlyStaff(dOpts)
+        setSales(sFiltered?.length ? sFiltered : sOpts || [])
+        setFinance(fFiltered?.length ? fFiltered : fOpts || [])
+        setDelivery(dFiltered?.length ? dFiltered : dOpts || [])
       } catch (e) {
         console.error('DealForm dropdown load error', e)
       } finally {
