@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 // Helper: skip when not authenticated
-async function ensureAuth(page) {
+async function ensureAuth(page: Page) {
   await page.goto('/debug-auth')
   const hasSession = await page
     .getByTestId('session-user-id')

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import useTenant from './useTenant'
-import { listVendorsByOrg } from '../services/vendorService'
-import { listProductsByOrg } from '../services/productService'
-import { listStaffByOrg } from '../services/staffService'
-import { listSmsTemplatesByOrg } from '../services/smsTemplateService'
+import {
+  listVendorsByOrg,
+  listProductsByOrg,
+  listStaffByOrg,
+  listSmsTemplatesByOrg,
+} from '../services/tenantService'
 import {
   getDeliveryCoordinators,
   getSalesConsultants,
@@ -111,8 +113,31 @@ export function useDropdownData(options = {}) {
           : Promise.resolve([]),
       ]
 
-      const [dc, sales, finance, users, vendors, products, smsTemplates] =
-        await Promise.all(promises)
+      let [dc, sales, finance, users, vendors, products, smsTemplates] = await Promise.all(promises)
+
+      if (useTenantLists) {
+        if (!Array.isArray(users) || users.length === 0) {
+          users = await getUserProfiles({ activeOnly: true }).catch((err) => {
+            console.error('[dropdowns:users] tenant fallback to global failed:', err)
+            return []
+          })
+        }
+        if (!Array.isArray(vendors) || vendors.length === 0) {
+          vendors = await getVendors({ activeOnly: true }).catch((err) => {
+            console.error('[dropdowns:vendors] tenant fallback to global failed:', err)
+            return []
+          })
+        }
+        if (!Array.isArray(products) || products.length === 0) {
+          products = await getProducts({ activeOnly: true }).catch((err) => {
+            console.error('[dropdowns:products] tenant fallback to global failed:', err)
+            return []
+          })
+        }
+        if (!Array.isArray(smsTemplates) || smsTemplates.length === 0) {
+          smsTemplates = []
+        }
+      }
 
       setState({
         dc,
@@ -183,8 +208,6 @@ export function useDropdownData(options = {}) {
       // Non-fatal; continue to normal load
       console.info('[dropdowns] cached-first hydrate skipped:', e?.message)
     }
-    // run only once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Check if cache is still valid
@@ -292,7 +315,6 @@ export function useDropdownData(options = {}) {
       const start = Date.now()
       while (mounted && auth?.loading && Date.now() - start < 5000) {
         // small sleep
-        // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, 200))
       }
 

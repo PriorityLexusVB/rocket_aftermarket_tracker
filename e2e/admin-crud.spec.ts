@@ -1,27 +1,28 @@
 import { test, expect } from '@playwright/test'
+import type { Page, Dialog } from '@playwright/test'
 
 // Helper to locate a table row by its text content
-const rowByText = (page, text: string) => page.locator('tbody tr').filter({ hasText: text })
+const rowByText = (page: Page, text: string) => page.locator('tbody tr').filter({ hasText: text })
 
 // Ensures we wait for modals to appear
-const expectModalOpen = async (page) => {
+const expectModalOpen = async (page: Page) => {
   await expect(page.locator('div[role="dialog"], .fixed.inset-0')).toBeVisible()
 }
 
 // Clicks the first button (edit) within a row
-const clickEditInRow = async (page, rowText: string) => {
+const clickEditInRow = async (page: Page, rowText: string) => {
   const row = rowByText(page, rowText)
   await expect(row).toHaveCount(1)
   await row.locator('button').first().click()
 }
 
 // Clicks the second button (delete) within a row
-const clickDeleteInRow = async (page, rowText: string) => {
+const clickDeleteInRow = async (page: Page, rowText: string) => {
   const row = rowByText(page, rowText)
   await expect(row).toHaveCount(1)
   // Confirm dialog must be registered BEFORE clicking, otherwise it can race and miss
   const once = new Promise<void>((resolve) =>
-    page.once('dialog', (dialog) => {
+    page.once('dialog', (dialog: Dialog) => {
       try {
         dialog.accept()
       } finally {
@@ -35,7 +36,7 @@ const clickDeleteInRow = async (page, rowText: string) => {
 }
 
 // Navigates to Admin page and waits for it to be ready
-const gotoAdmin = async (page) => {
+const gotoAdmin = async (page: Page) => {
   await page.goto('/admin')
   await expect(page.getByRole('heading', { name: /Administrative|Admin|Configuration/i }))
     .toBeVisible({ timeout: 10000 })
