@@ -122,6 +122,48 @@ const CustomerDisplay = ({ deal }) => {
   )
 }
 
+// Determine primary label for a deal card/table row (job number > title > stock > customer)
+const getDealPrimaryRef = (deal) => {
+  if (!deal) return 'Deal'
+
+  const jobNumber = deal?.job_number || deal?.jobNumber
+  const title = (deal?.title || deal?.description || '').trim()
+  const stockNumber =
+    deal?.vehicle?.stock_number || deal?.stock_no || deal?.stockNumber || deal?.vehicle_stock
+  const fallbackId = deal?.id ? `Job-${String(deal.id).slice(0, 8)}` : ''
+  const customer = (deal?.customer_name || deal?.customerName || '').trim()
+
+  if (jobNumber && title) return `${jobNumber} • ${title}`
+  if (jobNumber && stockNumber) return `${jobNumber} • Stock ${stockNumber}`
+  if (jobNumber) return jobNumber
+  if (title && stockNumber) return `${title} • Stock ${stockNumber}`
+  if (title) return title
+  if (stockNumber) return `Stock ${stockNumber}`
+  if (customer) return customer
+  return fallbackId || 'Deal'
+}
+
+// Secondary descriptor for compact cards (vehicle, vendor, work tags)
+const getDealSubtitle = (deal) => {
+  if (!deal) return ''
+
+  const vehicleParts = [deal?.vehicle?.year, deal?.vehicle?.make, deal?.vehicle?.model]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+  const stock = deal?.vehicle?.stock_number || deal?.stock_no
+  const vendor = deal?.vendor_name || ''
+  const tags = Array.isArray(deal?.work_tags) ? deal.work_tags.slice(0, 2) : []
+
+  const pieces = []
+  if (vehicleParts) pieces.push(vehicleParts)
+  if (stock) pieces.push(`Stock ${stock}`)
+  if (vendor) pieces.push(vendor)
+  if (tags.length) pieces.push(tags.join(', '))
+
+  return pieces.join(' • ')
+}
+
 const ValueDisplay = ({ amount }) => {
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
