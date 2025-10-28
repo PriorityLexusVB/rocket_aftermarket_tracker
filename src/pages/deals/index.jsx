@@ -122,6 +122,20 @@ const CustomerDisplay = ({ deal }) => {
   )
 }
 
+const ValueDisplay = ({ amount }) => {
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+  })
+
+  if (typeof amount !== 'number' || Number.isNaN(amount)) {
+    return <span className="text-sm text-slate-700">—</span>
+  }
+
+  return <span className="text-sm text-slate-700">{formatter.format(amount)}</span>
+}
+
 // ✅ UPDATED: Service Location Tag with exact colors per checklist (#22c55e in-house / blue off-site)
 const ServiceLocationTag = ({ serviceType, jobParts }) => {
   // Check if any line items are off-site to determine vendor status
