@@ -30,6 +30,23 @@ const StatusPill = ({ status }) => {
   return <span className={`px-2 py-1 rounded text-xs font-medium ${color}`}>{displayStatus}</span>
 }
 
+// Small badge for loaner status in lists
+const LoanerBadge = ({ deal }) => {
+  const dueShort = deal?.loaner_eta_return_date
+    ? new Date(deal.loaner_eta_return_date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      })
+    : null
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+      <Icon name="Car" size={12} className="mr-1" />
+      {deal?.loaner_number ? `#${deal.loaner_number}` : 'Loaner'}
+      {dueShort ? ` • Due ${dueShort}` : ''}
+    </span>
+  )
+}
+
 // Small helper: "2h ago", "3d ago" fallback to date if invalid
 const relativeTimeFromNow = (iso) => {
   try {
@@ -102,9 +119,12 @@ const CustomerDisplay = ({ deal }) => {
   const name = deal?.customer_name || deal?.customerEmail || '—'
   const email = deal?.customer_email || ''
   const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
+  const title = [name, email, tags.length ? `Tags: ${tags.join(', ')}` : null]
+    .filter(Boolean)
+    .join(' • ')
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1" title={title}>
       <span className="text-sm font-medium text-slate-800">{name}</span>
       {email ? <span className="text-xs text-slate-500">{email}</span> : null}
       {tags.length ? (
@@ -1086,8 +1106,8 @@ export default function DealsPage() {
           </div>
         </div>
 
-  {/* Status tabs and search (advanced dropdowns removed) */}
-  <div className="mb-6 bg-white rounded-lg border p-4">
+        {/* Status tabs and search (advanced dropdowns removed) */}
+        <div className="mb-6 bg-white rounded-lg border p-4">
           {/* Status Tabs */}
           <div className="flex flex-wrap gap-2 mb-4">
             {['All', 'Draft', 'Pending', 'Active', 'Completed']?.map((status) => (
@@ -1106,35 +1126,37 @@ export default function DealsPage() {
             ))}
           </div>
 
-          {/* Preset Views */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[
-              'All',
-              'Today',
-              'Past Due',
-              'Unscheduled',
-              'Off-site Today',
-              'Awaiting Vendor/Parts',
-              'Completed—awaiting pickup',
-              'My Deals',
-              'Loaners Out',
-              'Loaners Due',
-              'Loaners Overdue',
-            ]?.map((view) => (
-              <button
-                key={view}
-                onClick={() => updateFilter('presetView', view)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border
+          {/* Preset Views (hidden per request) */}
+          {false && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                'All',
+                'Today',
+                'Past Due',
+                'Unscheduled',
+                'Off-site Today',
+                'Awaiting Vendor/Parts',
+                'Completed—awaiting pickup',
+                'My Deals',
+                'Loaners Out',
+                'Loaners Due',
+                'Loaners Overdue',
+              ]?.map((view) => (
+                <button
+                  key={view}
+                  onClick={() => updateFilter('presetView', view)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border
                     ${
                       filters?.presetView === view
                         ? 'bg-slate-900 text-white border-slate-900'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                     }`}
-              >
-                {view}
-              </button>
-            ))}
-          </div>
+                >
+                  {view}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex flex-col lg:flex-row gap-4">
             {/* ✅ UPDATED: Search box with 300ms debounce, matches stock, name, phone (strip non-digits) */}
@@ -1171,153 +1193,155 @@ export default function DealsPage() {
           </div>
 
           {/* Advanced filter dropdowns removed; search covers all filtering needs */}
-          {/*
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Vendor */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Vendor</label>
-              <select
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                value={filters.vendor || ''}
-                onChange={(e) => updateFilter('vendor', e.target.value || null)}
-              >
-                <option value="">All</option>
-                {vendorOptions.map((v) => (
-                  <option key={v.value} value={v.value}>
-                    {v.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Sales */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Sales</label>
-              <select
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                value={filters.salesAssigned || ''}
-                onChange={(e) => updateFilter('salesAssigned', e.target.value || null)}
-              >
-                <option value="">All</option>
-                {salesOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Finance */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Finance</label>
-              <select
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                value={filters.financeAssigned || ''}
-                onChange={(e) => updateFilter('financeAssigned', e.target.value || null)}
-              >
-                <option value="">All</option>
-                {financeOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Delivery */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Delivery</label>
-              <select
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                value={filters.deliveryAssigned || ''}
-                onChange={(e) => updateFilter('deliveryAssigned', e.target.value || null)}
-              >
-                <option value="">All</option>
-                {deliveryOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Location */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Location</label>
-              <select
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                value={filters.location}
-                onChange={(e) => updateFilter('location', e.target.value)}
-              >
-                {['All', 'In-House', 'Off-Site', 'Mixed'].map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Loaner */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Loaner</label>
-              <select
-                className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                value={filters.loanerStatus}
-                onChange={(e) => updateFilter('loanerStatus', e.target.value)}
-              >
-                {['All', 'Active', 'Due Today', 'Overdue', 'None'].map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Promise Date Range */}
-            <div className="grid grid-cols-2 gap-2">
+          {false && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Vendor */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">
-                  Promise from
-                </label>
-                <input
-                  type="date"
+                <label className="block text-xs font-medium text-slate-600 mb-1">Vendor</label>
+                <select
                   className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                  value={filters.promiseStartDate}
-                  onChange={(e) => updateFilter('promiseStartDate', e.target.value)}
-                />
+                  value={filters.vendor || ''}
+                  onChange={(e) => updateFilter('vendor', e.target.value || null)}
+                >
+                  <option value="">All</option>
+                  {vendorOptions.map((v) => (
+                    <option key={v.value} value={v.value}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Promise to</label>
-                <input
-                  type="date"
-                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
-                  value={filters.promiseEndDate}
-                  onChange={(e) => updateFilter('promiseEndDate', e.target.value)}
-                />
-              </div>
-            </div>
 
-            {/* Work tags (multi-select) */}
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Work tags</label>
-              <select
-                multiple
-                className="bg-white border border-slate-200 rounded-lg w-full min-h-[44px] px-3 py-2"
-                value={filters.workTags}
-                onChange={(e) => {
-                  const selected = Array.from(e.target.selectedOptions).map((o) => o.value)
-                  updateFilter('workTags', selected)
-                }}
-              >
-                {allWorkTags.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              {/* Sales */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Sales</label>
+                <select
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                  value={filters.salesAssigned || ''}
+                  onChange={(e) => updateFilter('salesAssigned', e.target.value || null)}
+                >
+                  <option value="">All</option>
+                  {salesOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Finance */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Finance</label>
+                <select
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                  value={filters.financeAssigned || ''}
+                  onChange={(e) => updateFilter('financeAssigned', e.target.value || null)}
+                >
+                  <option value="">All</option>
+                  {financeOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Delivery */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Delivery</label>
+                <select
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                  value={filters.deliveryAssigned || ''}
+                  onChange={(e) => updateFilter('deliveryAssigned', e.target.value || null)}
+                >
+                  <option value="">All</option>
+                  {deliveryOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Location</label>
+                <select
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                  value={filters.location}
+                  onChange={(e) => updateFilter('location', e.target.value)}
+                >
+                  {['All', 'In-House', 'Off-Site', 'Mixed'].map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Loaner */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Loaner</label>
+                <select
+                  className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                  value={filters.loanerStatus}
+                  onChange={(e) => updateFilter('loanerStatus', e.target.value)}
+                >
+                  {['All', 'Active', 'Due Today', 'Overdue', 'None'].map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Promise Date Range */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Promise from
+                  </label>
+                  <input
+                    type="date"
+                    className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                    value={filters.promiseStartDate}
+                    onChange={(e) => updateFilter('promiseStartDate', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Promise to
+                  </label>
+                  <input
+                    type="date"
+                    className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3"
+                    value={filters.promiseEndDate}
+                    onChange={(e) => updateFilter('promiseEndDate', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Work tags (multi-select) */}
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Work tags</label>
+                <select
+                  multiple
+                  className="bg-white border border-slate-200 rounded-lg w-full min-h-[44px] px-3 py-2"
+                  value={filters.workTags}
+                  onChange={(e) => {
+                    const selected = Array.from(e.target.selectedOptions).map((o) => o.value)
+                    updateFilter('workTags', selected)
+                  }}
+                >
+                  {allWorkTags.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
-          */}
+          )}
         </div>
 
         {/* Results count */}
@@ -1326,9 +1350,9 @@ export default function DealsPage() {
           {filters?.search && <span className="ml-2 text-blue-600">(filtered)</span>}
         </div>
 
-        {/* ✅ UPDATED: Desktop Table with expanded At-a-Glance columns */}
-        <div className="hidden md:block bg-white border rounded-lg overflow-hidden shadow-sm">
-          <table className="min-w-full">
+        {/* Desktop Table with horizontal scroll to view all columns */}
+        <div className="hidden md:block bg-white border rounded-lg overflow-x-auto shadow-sm">
+          <table className="table-fixed min-w-[1200px] w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -1352,19 +1376,19 @@ export default function DealsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Vehicle
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  $/Margin
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[120px]">
+                  $
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Work
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden xl:table-cell">
                   Vendor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Location
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden xl:table-cell">
                   Last Activity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -1382,18 +1406,18 @@ export default function DealsPage() {
                   className="hover:bg-slate-50 cursor-pointer"
                   onClick={() => handleOpenDetail(deal)}
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3">
                     <StatusPill status={deal?.job_status} />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 w-[72px]">
                     <span className="text-sm text-slate-700">
                       {typeof deal?.age_days === 'number' ? `${deal?.age_days}d` : '—'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 w-[120px]">
                     <NextPromisedChip nextPromisedAt={deal?.next_promised_iso} />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 w-[180px]">
                     {deal?.appt_start ? (
                       <span className="text-sm text-slate-700">
                         {new Date(deal?.appt_start).toLocaleDateString('en-US', {
@@ -1417,10 +1441,12 @@ export default function DealsPage() {
                       <span className="text-xs text-gray-500">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-4">
-                    <CustomerDisplay deal={deal} />
+                  <td className="px-4 py-3 max-w-[220px]">
+                    <div className="truncate">
+                      <CustomerDisplay deal={deal} />
+                    </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 w-[150px]">
                     <span className="text-sm text-slate-700">
                       {deal?.customer_phone_e164 || deal?.customer_phone || '—'}
                       {deal?.customer_phone_last4 ? (
@@ -1431,8 +1457,14 @@ export default function DealsPage() {
                       ) : null}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-slate-700">
+                  <td className="px-4 py-3 max-w-[220px]">
+                    <span
+                      className="text-sm text-slate-700 truncate inline-block max-w-full"
+                      title={
+                        `${deal?.vehicle ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim() : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
+                        ''
+                      }
+                    >
                       {deal?.vehicle
                         ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
                         : '—'}
@@ -1444,21 +1476,12 @@ export default function DealsPage() {
                       ) : null}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <ValueDisplay amount={deal?.total_amount} />
-                      <span className="text-xs text-slate-500">
-                        est.{' '}
-                        {new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD',
-                        }).format((parseFloat(deal?.total_amount) || 0) * 0.25)}
-                      </span>
-                    </div>
+                  <td className="px-4 py-3 w-[120px]">
+                    <ValueDisplay amount={deal?.total_amount} />
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {(deal?.work_tags || []).map((tag) => (
+                  <td className="px-4 py-3 max-w-[180px]">
+                    <div className="flex flex-wrap gap-1 truncate">
+                      {(deal?.work_tags || []).slice(0, 2).map((tag) => (
                         <span
                           key={tag}
                           className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
@@ -1466,35 +1489,41 @@ export default function DealsPage() {
                           {tag}
                         </span>
                       ))}
+                      {deal?.work_tags && deal?.work_tags.length > 2 && (
+                        <span className="text-xs text-slate-500">+{deal.work_tags.length - 2}</span>
+                      )}
                       {(!deal?.work_tags || deal?.work_tags?.length === 0) && (
                         <span className="text-xs text-gray-500">—</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-slate-700">
+                  <td className="px-4 py-3 max-w-[160px] hidden xl:table-cell">
+                    <span
+                      className="text-sm text-slate-700 truncate inline-block max-w-full"
+                      title={deal?.vendor_name || 'Unassigned'}
+                    >
                       {deal?.vendor_name || 'Unassigned'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 w-[120px]">
                     <ServiceLocationTag
                       serviceType={deal?.service_type}
                       jobParts={deal?.job_parts}
                     />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 w-[120px] hidden xl:table-cell">
                     <span className="text-sm text-slate-700">
                       {relativeTimeFromNow(deal?.created_at)}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3 w-[140px]">
                     {deal?.loaner_number || deal?.has_active_loaner ? (
                       <LoanerBadge deal={deal} />
                     ) : (
                       <span className="text-xs text-gray-500">—</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-3 text-right w-[160px]">
                     <div className="flex items-center justify-end space-x-2">
                       <Button
                         size="sm"
@@ -1636,7 +1665,7 @@ export default function DealsPage() {
                     ) : null}
                   </div>
 
-                  {/* Line 3: Promise + Appt Window + Loaner */}
+                  {/* Line 3: Promise + Appt Window + Loaner + Value */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span data-testid="mobile-next-chip">
                       <NextPromisedChip nextPromisedAt={deal?.next_promised_iso} />
@@ -1664,6 +1693,9 @@ export default function DealsPage() {
                     {(deal?.loaner_number || deal?.has_active_loaner) && (
                       <LoanerBadge deal={deal} />
                     )}
+                    <div className="ml-auto font-medium text-slate-900 text-sm">
+                      <ValueDisplay amount={deal?.total_amount} />
+                    </div>
                   </div>
                 </div>
 
