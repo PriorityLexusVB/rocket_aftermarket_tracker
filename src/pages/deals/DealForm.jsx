@@ -177,18 +177,43 @@ export default function DealForm({
 
         // Fallbacks
         if (orgId) {
+          // Vendors/products: if org-scoped is empty, fall back to global lists
+          if (!Array.isArray(vOpts) || vOpts.length === 0) {
+            vOpts = await getVendors().catch(() => [])
+          }
+          if (!Array.isArray(pOpts) || pOpts.length === 0) {
+            pOpts = await getProducts().catch(() => [])
+          }
+
+          // Staff: avoid showing admins/managers when department-scoped list is empty.
+          // Prefer global department-specific list first, then a strict staff-only org list.
           if (!Array.isArray(sOpts) || sOpts.length === 0) {
-            sOpts = await listStaffByOrg(orgId, { activeOnly: true }).catch(() => [])
-            if (!sOpts?.length) sOpts = await getSalesConsultants().catch(() => [])
+            sOpts = await getSalesConsultants().catch(() => [])
+            if (!sOpts?.length)
+              sOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
+                () => []
+              )
           }
           if (!Array.isArray(fOpts) || fOpts.length === 0) {
-            fOpts = await listStaffByOrg(orgId, { activeOnly: true }).catch(() => [])
-            if (!fOpts?.length) fOpts = await getFinanceManagers().catch(() => [])
+            fOpts = await getFinanceManagers().catch(() => [])
+            if (!fOpts?.length)
+              fOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
+                () => []
+              )
           }
           if (!Array.isArray(dOpts) || dOpts.length === 0) {
-            dOpts = await listStaffByOrg(orgId, { activeOnly: true }).catch(() => [])
-            if (!dOpts?.length) dOpts = await getDeliveryCoordinators().catch(() => [])
+            dOpts = await getDeliveryCoordinators().catch(() => [])
+            if (!dOpts?.length)
+              dOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
+                () => []
+              )
           }
+        } else {
+          // No orgId: at minimum ensure products/vendors load globally
+          if (!Array.isArray(vOpts) || vOpts.length === 0)
+            vOpts = await getVendors().catch(() => [])
+          if (!Array.isArray(pOpts) || pOpts.length === 0)
+            pOpts = await getProducts().catch(() => [])
         }
         if (!mounted) return
         setVendors(vOpts || [])
