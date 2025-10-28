@@ -94,6 +94,34 @@ const NextPromisedChip = ({ nextPromisedAt }) => {
   )
 }
 
+// ✅ ADDED: Customer display helper so table renders without missing component
+const CustomerDisplay = ({ deal }) => {
+  if (!deal) return <span className="text-sm text-slate-700">—</span>
+
+  const name = deal?.customer_name || deal?.customerEmail || '—'
+  const email = deal?.customer_email || ''
+  const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-medium text-slate-800">{name}</span>
+      {email ? <span className="text-xs text-slate-500">{email}</span> : null}
+      {tags.length ? (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 // ✅ UPDATED: Service Location Tag with exact colors per checklist (#22c55e in-house / blue off-site)
 const ServiceLocationTag = ({ serviceType, jobParts }) => {
   // Check if any line items are off-site to determine vendor status
@@ -101,34 +129,6 @@ const ServiceLocationTag = ({ serviceType, jobParts }) => {
   const hasOnSiteItems = jobParts?.some((part) => !part?.is_off_site)
 
   if (hasOffSiteItems && hasOnSiteItems) {
-    // ✅ ADDED: Customer display helper so table renders without missing component
-    const CustomerDisplay = ({ deal }) => {
-      if (!deal) return <span className="text-sm text-slate-700">—</span>
-
-      const name = deal?.customer_name || deal?.customerEmail || '—'
-      const email = deal?.customer_email || ''
-      const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
-
-      return (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-slate-800">{name}</span>
-          {email ? <span className="text-xs text-slate-500">{email}</span> : null}
-          {tags.length ? (
-            <div className="flex flex-wrap gap-1">
-              {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      )
-    }
-
     return (
       <div className="flex flex-col space-y-1">
         <span
