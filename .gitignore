@@ -26,3 +26,19 @@ workspace.json
 .env
 .env.*
 !.env.example
+# VS Code chat/state
+.vscode_state/
+Code/
+chatSessions/
+chatEditingSessions/
+state.vscdb
+state.vscdb.backup
+workspace.json
+
+# VS Code settings
+.vscode/
+
+# env
+.env
+.env.*
+!.env.example
