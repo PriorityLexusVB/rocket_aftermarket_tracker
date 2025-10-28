@@ -11,3 +11,34 @@ vite.config.*s.*
 /playwright-report/
 /test-results/
 /e2e/storageState.json
+# VS Code chat state (keep out of git)
+.vscode_state/
+chatSessions/
+chatEditingSessions/
+state.vscdb
+state.vscdb.backup
+workspace.json
+
+# VSCode
+.vscode/
+
+# env files
+.env
+.env.*
+!.env.example
+# VS Code chat/state
+.vscode_state/
+Code/
+chatSessions/
+chatEditingSessions/
+state.vscdb
+state.vscdb.backup
+workspace.json
+
+# VS Code settings
+.vscode/
+
+# env
+.env
+.env.*
+!.env.example
