@@ -1,70 +1,52 @@
-# Priority Automotive — AI coding instructions
+# Rocket Aftermarket Tracker — AI agent quickstart
 
-Use these project-specific rules to move fast without breaking conventions.
+Use these repo-specific rules so agents can contribute safely and fast.
 
 ## Stack and run
 
-- React 18 + Vite + TailwindCSS + Supabase (Auth/Postgres/Storage); charts via Recharts; motion via Framer Motion.
-- Dev: pnpm start (http://localhost:5173) · Build: pnpm build → dist/ · Preview: pnpm serve · Tests: pnpm test · E2E: pnpm e2e.
-- Vercel is configured as SPA: see `vercel.json` rewrites; CSP headers are defined there.
-- Code split is defined in `vite.config.mjs` manualChunks: `react`, `router`, `supabase`.
+- React 18 + Vite + TailwindCSS + Supabase (Auth/Postgres/Storage). Charts: Recharts; motion: Framer Motion.
+- Dev: pnpm start (http://localhost:5173) · Build: pnpm build → dist/ · Preview: pnpm serve · Unit: pnpm test · E2E: pnpm e2e.
+- Vercel SPA: rewrites + CSP in `vercel.json`. Code-split in `vite.config.mjs` via manualChunks (`react`, `router`, `supabase`).
 
 ## Architecture and boundaries
 
-- Pages live under `src/pages/**` (e.g., `deals`, `admin`, `calendar`). Router in `src/App.jsx`/`src/Routes.jsx`.
-- All DB I/O stays in `src/services/**` using the singleton client in `src/lib/supabase.js`. Do not import Supabase in components.
+- Routing: `src/App.jsx` + `src/Routes.jsx`; pages under `src/pages/**` (e.g., `deals`, `admin`, `calendar`).
+- Data layer: all Supabase I/O in `src/services/**` using singleton client `src/lib/supabase.js` and `src/lib/supabase/safeSelect.js`. Never import Supabase in components.
 - Auth/session: `src/contexts/AuthContext.jsx` loads `user_profiles` and exposes `{ user, userProfile, signIn, signOut }`.
-- Dropdowns pattern: `src/services/dropdownService.js` returns option-shaped arrays `{ id, value, label }` (products include `unit_price`). Fuzzy fallback if exact department filter is empty. Dropdowns are unscoped by default.
-- Multi-tenant scoping: prefer `src/services/tenantService.js` with `orgId` from `useTenant()`; avoid DB helper functions for scoping.
+- Multi-tenant: prefer `src/services/tenantService.js` with `orgId` from `useTenant()`; dropdowns default to unscoped with smart fallbacks.
 
-## Deal Form contract (source of truth)
+## Dropdowns (performance and UX)
 
-- File: `src/pages/deals/DealForm.jsx`.
-- Fields: Deal/Job number, Stock number, Customer Mobile, Vendor, Sales, Finance, Delivery, Description.
-- Line items: add/remove; product selection auto-fills `unit_price`; per-line fields: `promised_date`, `requires_scheduling` (or `no_schedule_reason`), `is_off_site`.
-- Native inputs/selects/checkboxes only (mobile UX); checkboxes use `accent-blue-600 appearance-auto`. On/Off-Site are radio tiles with visible highlight.
-- Submit payload mirrors phone into both `customer_phone` and `customerPhone`; line items use snake_case to match `job_parts`.
-- Save flow: if `onSave` is passed, call it; otherwise use `dealService.createDeal/updateDeal`. Mapping lives in `src/services/dealService.js` (`mapFormToDb`, `mapDbDealToForm`).
+- Source: `src/services/dropdownService.js`. Options are `{ id, value, label }`; products also include `unit_price`.
+- Caching: in‑memory TTL (~5 min) + prefetch on app mount (`prefetchDropdowns()` in `src/App.jsx`).
+- Deal form synthesizes selected options so values render immediately before fetch completes; product change auto-fills `unit_price` via a `productMap`.
 
-## Data model and joins (used by services)
+## Deal form contract (source of truth)
 
-- `jobs` (aka deals): `job_number`, `vendor_id`, `assigned_to`, `finance_manager_id`, `delivery_coordinator_id`, `customer_needs_loaner`, scheduling/cost fields, optional `org_id`.
-- `job_parts`: `product_id`, `quantity_used`, `unit_price`, `promised_date`, `requires_scheduling`, `no_schedule_reason`, `is_off_site`.
-- Related: `products`, `vendors`, `user_profiles`, `loaner_assignments`, `transactions` (customer + total).
-- `dealService.deleteDeal` uses RPC `delete_job_cascade`; reads/writes are standard table queries (no RPC dependency).
+- File: `src/pages/deals/DealForm.jsx`. Fields include: job_number, stock_number, customer_mobile, vendor_id, assigned_to, finance_manager_id, delivery_coordinator_id, description.
+- Line items: `product_id`, `quantity_used`, `unit_price`, `promised_date`, `requires_scheduling` (else require `no_schedule_reason`), `is_off_site`.
+- Save flow: if `onSave` provided use it; otherwise call `dealService.createDeal/updateDeal`. Mapping lives in `src/services/dealService.js` (`mapFormToDb`, `toJobPartRows`, `mapDbDealToForm`).
+- UI patterns: native inputs/selects; checkboxes use `accent-blue-600 appearance-auto`; On/Off‑Site is a radio‑tile pair with visible selection.
 
-## Testing and selectors
+## Data model and service notes
 
-- E2E tests live in `e2e/*.spec.ts` (Playwright). Components expose stable `data-testid` (see `DealForm.jsx`) used by specs like `deal-form-dropdowns.spec.ts`.
+- Tables: `jobs` (core deal fields incl. `finance_manager_id`, optional `org_id`) and `job_parts` (per‑line scheduling fields). Related: `products`, `vendors`, `user_profiles`, `loaner_assignments`.
+- `dealService.deleteDeal` uses RPC `delete_job_cascade`; other reads/writes are standard table queries.
+- `toJobPartRows` writes only columns that exist; `total_price` is computed server‑side (don’t send).
 
-## Styling and other gotchas
+## Tests and selectors
 
-- Keep all CSS `@import` statements at the top of `src/styles/tailwind.css` (Vite CSS requires imports first). Global tokens live in `src/styles/index.css`.
-- Options helpers: `src/lib/options.js` maps rows to `{ id,value,label }`. Safe querying via `src/lib/supabase/safeSelect.js`.
-- Supabase env vars are required: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Note: `VITE_ORG_SCOPED_DROPDOWNS` is deprecated/ignored.
+- E2E: `e2e/*.spec.ts` (Playwright). Stable `data-testid` in `DealForm.jsx` (e.g., `vendor-select`, `product-select-0`, `requires-scheduling-0`, `save-deal-btn`).
+- Playwright uses `e2e/storageState.json` by default; optional env login via `E2E_EMAIL`/`E2E_PASSWORD`.
 
-Quick self-checks before you ship:
+## Environment and CI/CD
 
-1. Dropdowns populate staff/vendors/products; products include `unit_price` for auto-fill.
-2. Line items enforce: if `requires_scheduling` is false, `no_schedule_reason` is required.
-3. On/Off-Site radio tiles visibly highlight; checkboxes show ticks.
-4. New deal save → reopen edit: values (incl. line items) persist via `dealService` mapping.
+- Required env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. The old `VITE_ORG_SCOPED_DROPDOWNS` flag is ignored.
+- Local DB flows: `pnpm run db:push` (migrations), `pnpm run db:seed-org` (seed). E2E seed: `pnpm run db:seed-e2e` with `DATABASE_URL`.
+- Vercel auto‑deploys from `main`; CI workflow runs build, tests, and optional seeds (see `README.md`).
 
-If anything here feels off or incomplete (e.g., additional fields you see in `jobs`/`job_parts`, or new tenant flags), tell me what to clarify and I’ll tighten these rules.
+## Quick references
 
-## Dev tasks (VS Code)
-
-- Provision DB + Seed + Start (local): runs migrations, seeds org data, then starts the app.
-- DB: Push migrations → `pnpm run db:push`.
-- DB: Seed org data → `pnpm run db:seed-org`.
-- App: Start → `pnpm start` (http://localhost:5173).
-
-Optional quick commands:
-
-- `pnpm test` (Vitest), `pnpm e2e` (Playwright), `pnpm serve` (preview build).
-
-## Examples (quick reference)
-
-- Dropdown option shape: products → `{ id, value, label, unit_price }` (see `dropdownService.getProducts`).
-- Common test ids: `vendor-select`, `product-select-0`, `requires-scheduling-0`, `save-deal-btn` (see `DealForm.jsx`).
-- Tenant lists: prefer `listStaffByOrg(orgId)`; `dropdownService` provides unscoped lists (see `useDropdownData`/`DealForm`).
+- Options helper: `src/lib/options.js` maps rows → `{ id, value, label }`.
+- Tenant lists: `tenantService.listStaffByOrg(orgId)`; dropdowns fallback to global staff/product/vendor lists with safe filters.
+- Code examples: see `DealForm.jsx` synthetic option seeding and `productMap` for unit_price auto‑fill.
