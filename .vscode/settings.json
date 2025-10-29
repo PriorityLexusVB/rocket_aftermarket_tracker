@@ -19,5 +19,6 @@
   "cSpell.words": ["supabase", "ilike", "prefetch", "Idxs"],
   // Ensure VS Code uses the workspace TypeScript version to avoid TS server path warnings
   "typescript.tsdk": "node_modules/typescript/lib",
-  "editor.codeActions.triggerOnFocusChange": true
+  "editor.codeActions.triggerOnFocusChange": true,
+  "github.copilot.nextEditSuggestions.enabled": true
 }
