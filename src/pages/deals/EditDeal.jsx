@@ -3,6 +3,10 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import DealForm from './DealForm'
 import * as dealService from '../../services/dealService'
+import { entityToDraft, draftToUpdatePayload } from '../../components/deals/formAdapters'
+
+// Feature flag for V2 unified form with adapters
+const useV2 = import.meta.env.VITE_DEAL_FORM_V2 === 'true'
 
 export default function EditDeal() {
   const { id } = useParams()
@@ -18,7 +22,12 @@ export default function EditDeal() {
       try {
         const d = await dealService?.getDeal(id)
         if (alive) {
-          const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(d) : d
+          // When V2 flag is on, use adapter to normalize entity to draft
+          const mapped = useV2
+            ? entityToDraft(d)
+            : dealService.mapDbDealToForm
+              ? dealService.mapDbDealToForm(d)
+              : d
           setInitial(mapped)
         }
       } catch (e) {
@@ -35,10 +44,16 @@ export default function EditDeal() {
   async function onSubmit(formState) {
     setSaving(true)
     try {
+      // When V2 flag is on, use adapter to normalize payload
+      const payload = useV2 ? draftToUpdatePayload(id, formState) : formState
       // Update then re-fetch latest persisted values; stay on Edit
-      await dealService?.updateDeal(id, formState)
+      await dealService?.updateDeal(id, payload)
       const fresh = await dealService?.getDeal(id)
-      const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(fresh) : fresh
+      const mapped = useV2
+        ? entityToDraft(fresh)
+        : dealService.mapDbDealToForm
+          ? dealService.mapDbDealToForm(fresh)
+          : fresh
       setInitial(mapped)
       setLastSavedAt(new Date())
     } catch (e) {
