@@ -324,7 +324,24 @@ export default function DealForm({
     return m
   }, [products])
 
-  const handleChange = (key, val) => setForm((prev) => ({ ...prev, [key]: val }))
+  const handleChange = (key, val) => {
+    // V2: Clear loaner fields when toggle is unchecked
+    if (key === 'customer_needs_loaner' && !val) {
+      const isV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+      if (isV2) {
+        return setForm((prev) => ({
+          ...prev,
+          [key]: val,
+          loanerForm: {
+            loaner_number: '',
+            eta_return_date: '',
+            notes: '',
+          },
+        }))
+      }
+    }
+    return setForm((prev) => ({ ...prev, [key]: val }))
+  }
 
   const handleLoanerChange = (key, val) =>
     setForm((prev) => ({ ...prev, loanerForm: { ...(prev.loanerForm || {}), [key]: val } }))
@@ -569,6 +586,20 @@ export default function DealForm({
         } catch {}
       }
     } catch (err) {
+      // V2: Handle version conflicts with friendly non-blocking message
+      const isV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+      const isConflict =
+        err?.code === 'VERSION_CONFLICT' ||
+        err?.status === 409 ||
+        (err?.message || '').startsWith('Conflict:')
+      
+      if (isV2 && isConflict) {
+        // Non-blocking conflict message - user can see the error and reload
+        setErrorMsg(err?.message || 'This deal was updated by someone else. Please reload and try again.')
+        console.warn('Version conflict detected:', err)
+        return // Early return - don't overwrite data
+      }
+
       const msg = err?.message || String(err)
       console.error('Deal save failed', err)
       setErrorMsg(msg)
