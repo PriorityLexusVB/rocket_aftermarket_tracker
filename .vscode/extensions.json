@@ -6,5 +6,7 @@
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "streetsidesoftware.code-spell-checker"
-  ]
+  ],
+  // Discourage enabling PowerShell extension in this workspace (use WSL/bash)
+  "unwantedRecommendations": ["ms-vscode.PowerShell"]
 }

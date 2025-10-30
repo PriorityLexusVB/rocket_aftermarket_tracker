@@ -1,90 +1,33 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "Dev: Vite",
-			"type": "npm",
-			"script": "start"
-		},
-		{
-			"label": "Build: Vite",
-			"type": "npm",
-			"script": "build"
-		},
-		{
-			"label": "Preview: Vite",
-			"type": "npm",
-			"script": "serve"
-		},
-		{
-			"label": "Test: Vitest",
-			"type": "npm",
-			"script": "test"
-		},
-		{
-			"label": "Build project",
-			"type": "shell",
-			"command": "pnpm run build"
-		},
-		{
-			"label": "DB: Push migrations",
-			"type": "shell",
-			"command": "pnpm run db:push",
-			"group": "build",
-			"problemMatcher": []
-		},
-		{
-			"label": "DB: Audit (optional)",
-			"type": "shell",
-			"command": "pnpm run db:audit",
-			"problemMatcher": []
-		},
-		{
-			"label": "DB: Seed org data",
-			"type": "shell",
-			"command": "pnpm run db:seed-org",
-			"problemMatcher": []
-		},
-		{
-			"label": "App: Start",
-			"type": "shell",
-			"command": "pnpm start",
-			"isBackground": true,
-			"problemMatcher": []
-		},
-		{
-			"label": "Provision DB + Seed + Start (local)",
-			"dependsOrder": "sequence",
-			"dependsOn": [
-				"DB: Push migrations",
-				"DB: Seed org data",
-				"App: Start"
-			]
-		},
-		{
-			"label": "E2E: Playwright",
-			"type": "npm",
-			"script": "e2e"
-		},
-		{
-			"label": "Build project",
-			"type": "shell",
-			"command": "pnpm run build"
-		},
-		{
-			"label": "Quick build",
-			"type": "shell",
-			"command": "pnpm run build"
-		},
-		{
-			"label": "Quick build",
-			"type": "shell",
-			"command": "pnpm run build"
-		},
-		{
-			"label": "Quick build",
-			"type": "shell",
-			"command": "pnpm run build"
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: Vite (WSL)",
+      "type": "shell",
+      "command": "pnpm dev",
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Preview: Vite",
+      "type": "shell",
+      "command": "pnpm preview",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "pnpm build",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Test (vitest run)",
+      "type": "shell",
+      "command": "pnpm test",
+      "options": { "cwd": "${workspaceFolder}" }
+    }
+  ]
 }

@@ -4,7 +4,8 @@
   "editor.tabSize": 2,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "typescript.tsdk": "node_modules/typescript/lib",
-  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  // Use WSL Ubuntu as the default Windows terminal profile
+  "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)",
   "git.confirmSync": false,
   // Ensure WSL Bash is the default terminal for Linux
   "terminal.integrated.defaultProfile.linux": "bash",

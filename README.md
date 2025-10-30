@@ -41,15 +41,19 @@ pwsh scripts/setup-workspace.ps1
 ### Workspace Scripts
 
 **Backup Copilot Chat State** (Windows):
+
 ```powershell
 pwsh scripts/backup-copilot-chat.ps1
 ```
+
 This backs up your Copilot chat history to `.vscode_state/` so you can restore it on another machine.
 
 **One-Click Workspace Setup** (Windows):
+
 ```powershell
 pwsh scripts/setup-workspace.ps1
 ```
+
 This installs all dependencies and recommended extensions automatically.
 
 ## Dev server
@@ -198,3 +202,17 @@ Notes:
 
 - Playwright uses `webServer` to start the app via `npm run start` on port 5173.
 - If you change the dev server port, update `PLAYWRIGHT_BASE_URL` in the workflow or `playwright.config.ts`.
+
+## Environment Health Check (WSL)
+
+- Terminal shows `rob@...` (WSL), not `PS C:\...`
+- Node 20: `node -v` → v20.x
+- pnpm present: `pnpm -v` (>=10)
+- Build & test: `pnpm i && pnpm run build && pnpm run test` → all green
+
+### VS Code (WSL) workspace tips
+
+- Disable PowerShell extension for this workspace: Extensions (Ctrl+Shift+X) → search "PowerShell" → gear icon → Disable (Workspace).
+- Terminal profiles are locked to WSL/bash in this repo: see `.vscode/settings.json` with
+  - `"terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)"`
+  - `"terminal.integrated.defaultProfile.linux": "bash"`
