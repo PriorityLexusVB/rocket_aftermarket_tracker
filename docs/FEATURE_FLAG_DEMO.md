@@ -139,7 +139,8 @@ $ pnpm dev
 ### Step 2: Toggle to Legacy
 
 ```bash
-$ echo "VITE_DEAL_FORM_V2=false" > .env.development
+# Edit .env.development manually or use sed
+$ sed -i 's/VITE_DEAL_FORM_V2=.*/VITE_DEAL_FORM_V2=false/' .env.development
 $ pnpm dev
 # App uses legacy behavior
 # Phone numbers not normalized
@@ -149,7 +150,8 @@ $ pnpm dev
 ### Step 3: Toggle Back to V2
 
 ```bash
-$ echo "VITE_DEAL_FORM_V2=true" > .env.development
+# Edit .env.development manually or use sed
+$ sed -i 's/VITE_DEAL_FORM_V2=.*/VITE_DEAL_FORM_V2=true/' .env.development
 $ pnpm dev
 # App uses form adapters again
 # All V2 features restored
