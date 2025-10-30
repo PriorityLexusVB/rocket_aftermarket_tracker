@@ -3,10 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import DealForm from './DealForm'
 import * as dealService from '../../services/dealService'
-import { entityToDraft, draftToUpdatePayload } from '../../components/deals/formAdapters'
-
-// Feature flag for V2 unified form with adapters
-const useV2 = import.meta.env.VITE_DEAL_FORM_V2 === 'true'
+import { entityToDraft, draftToUpdatePayload } from '@/components/deals/formAdapters'
 
 export default function EditDeal() {
   const { id } = useParams()
@@ -22,13 +19,9 @@ export default function EditDeal() {
       try {
         const d = await dealService?.getDeal(id)
         if (alive) {
-          // When V2 flag is on, use adapter to normalize entity to draft
-          const mapped = useV2
-            ? entityToDraft(d)
-            : dealService.mapDbDealToForm
-              ? dealService.mapDbDealToForm(d)
-              : d
-          setInitial(mapped)
+          const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(d) : d
+          const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+          setInitial(useV2 ? entityToDraft(mapped) : mapped)
         }
       } catch (e) {
         alert(e?.message || 'Failed to load deal')
@@ -47,14 +40,12 @@ export default function EditDeal() {
       // When V2 flag is on, use adapter to normalize payload
       const payload = useV2 ? draftToUpdatePayload(id, formState) : formState
       // Update then re-fetch latest persisted values; stay on Edit
+      const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+      const payload = useV2 ? draftToUpdatePayload({ id }, formState) : formState
       await dealService?.updateDeal(id, payload)
       const fresh = await dealService?.getDeal(id)
-      const mapped = useV2
-        ? entityToDraft(fresh)
-        : dealService.mapDbDealToForm
-          ? dealService.mapDbDealToForm(fresh)
-          : fresh
-      setInitial(mapped)
+      const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(fresh) : fresh
+      setInitial(useV2 ? entityToDraft(mapped) : mapped)
       setLastSavedAt(new Date())
     } catch (e) {
       alert(e?.message || 'Failed to save deal')
