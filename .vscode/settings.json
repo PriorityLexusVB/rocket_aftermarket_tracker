@@ -5,5 +5,11 @@
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "typescript.tsdk": "node_modules/typescript/lib",
   "terminal.integrated.defaultProfile.windows": "PowerShell",
-  "git.confirmSync": false
+  "git.confirmSync": false,
+  // Ensure WSL Bash is the default terminal for Linux
+  "terminal.integrated.defaultProfile.linux": "bash",
+  // Set default WSL user
+  "remote.WSL.defaultLinuxUser": "rob",
+  // Optimize file watching in WSL
+  "remote.WSL.fileWatcher.polling": "auto"
 }
