@@ -49,3 +49,4 @@ workspace.json
 dist/
 
 dist/
+build-output.log
