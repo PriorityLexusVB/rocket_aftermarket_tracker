@@ -66,7 +66,7 @@ Create a `.env.local` with your Supabase config and any feature flags.
 
 Optional feature flags:
 
-- **`VITE_DEAL_FORM_V2`** (default: `true` in development) – When `true`, deal creation and editing flows use unified form adapters for safer data handling. Set to `false` to revert to legacy behavior without modifying services or database. Recommended to keep `true` for local and preview environments.
+- **`VITE_DEAL_FORM_V2`** (default: `true` in development) – When `true`, deal creation and editing flows use unified form adapters for safer data handling. Set to `false` to revert to legacy behavior without modifying services or database. Recommended to keep `true` for local and preview environments. See [Feature Flag Guide](docs/FEATURE_FLAG_GUIDE.md) for detailed usage instructions.
 - Deprecated: `VITE_ORG_SCOPED_DROPDOWNS` – previously scoped dropdowns via a database helper. This flag is now ignored and dropdowns are unscoped by default. Prefer tenant-aware lists via `tenantService` or Admin filters where applicable.
 
 ## Dropdown caching & prefetch
