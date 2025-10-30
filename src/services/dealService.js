@@ -63,7 +63,7 @@ async function selectJoinedDealById(id) {
         id, job_number, title, description, job_status, priority, location,
         vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
         estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
-        service_type, delivery_coordinator_id, assigned_to, created_at, finance_manager_id,
+        service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
         vehicle:vehicles(id, year, make, model, stock_number),
         vendor:vendors(id, name),
         job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
@@ -451,6 +451,33 @@ export async function createDeal(formState) {
     payload.scheduled_start_time = new Date().toISOString()
   }
 
+  // Pre-insert FK guard: ensure all referenced products exist to avoid FK failure
+  try {
+    const productIds = Array.from(
+      new Set(
+        (normalizedLineItems || [])
+          .map((it) => (it?.product_id ? String(it.product_id) : null))
+          .filter(Boolean)
+      )
+    )
+    if (productIds.length) {
+      const { data: prodRows, error: prodErr } = await supabase
+        ?.from('products')
+        ?.select('id')
+        ?.in('id', productIds)
+      if (prodErr) throw prodErr
+      const found = new Set((prodRows || []).map((r) => String(r.id)))
+      const missing = productIds.filter((pid) => !found.has(String(pid)))
+      if (missing.length) {
+        throw new Error(
+          'One or more selected products no longer exist. Please re-select a valid product.'
+        )
+      }
+    }
+  } catch (fkErr) {
+    throw new Error(`Failed to create deal: ${fkErr?.message || fkErr}`)
+  }
+
   // 1) create job
   const { data: job, error: jobErr } = await supabase
     ?.from('jobs')
@@ -551,9 +578,29 @@ export async function updateDeal(id, formState) {
       return sum + qty * price
     }, 0) || 0
 
-  // 1) Update job
-  const { error: jobErr } = await supabase?.from('jobs')?.update(payload)?.eq('id', id)
-  if (jobErr) throw new Error(`Failed to update deal: ${jobErr.message}`)
+  // 1) Update job with optimistic concurrency and tenant scope where possible
+  let jobErr
+  try {
+    let q = supabase?.from('jobs')?.update(payload)?.eq('id', id)
+    // Tenant scope if provided
+    if (payload?.org_id) q = q?.eq?.('org_id', payload.org_id)
+    // Optimistic concurrency using updated_at if provided by caller
+    if (formState?.updated_at) q = q?.eq?.('updated_at', formState.updated_at)
+
+    const { data: updRow, error: updErr } = await q?.select('id, updated_at')?.maybeSingle?.()
+    if (updErr) throw updErr
+    if (!updRow?.id) {
+      // No rows matched: treat as 409/Conflict
+      const conflict = new Error(
+        'Conflict: This deal was updated by someone else. Refresh and try again.'
+      )
+      conflict.status = 409
+      throw conflict
+    }
+  } catch (e) {
+    jobErr = e
+  }
+  if (jobErr) throw new Error(`Failed to update deal: ${jobErr.message || jobErr}`)
 
   // Prefer server-truth; do not write localStorage fallbacks for description
 
@@ -641,6 +688,7 @@ function mapDbDealToForm(dbDeal) {
 
   return {
     id: dbDeal?.id,
+    updated_at: dbDeal?.updated_at,
     job_number: dbDeal?.job_number || '',
     title: dbDeal?.title || '',
     // Prefer title as the primary description source (we sync title to description on save)

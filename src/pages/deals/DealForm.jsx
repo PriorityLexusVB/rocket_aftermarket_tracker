@@ -52,6 +52,7 @@ export default function DealForm({
 
   const [form, setForm] = useState({
     id: initial.id || undefined,
+    updated_at: initial.updated_at || undefined,
     job_number: initial.job_number || '',
     vehicle_id: initial.vehicle_id || '',
     stock_number: initial.stock_number || '', // display only if you don’t want editable
@@ -89,6 +90,7 @@ export default function DealForm({
 
     setForm({
       id: initial.id || undefined,
+      updated_at: initial.updated_at || undefined,
       job_number: initial.job_number || '',
       vehicle_id: initial.vehicle_id || '',
       stock_number: initial.stock_number || '',
@@ -121,6 +123,7 @@ export default function DealForm({
   const [initialSnapshot] = useState(() =>
     JSON.stringify({
       id: initial.id || undefined,
+      updated_at: initial.updated_at || undefined,
       job_number: initial.job_number || '',
       vehicle_id: initial.vehicle_id || '',
       stock_number: initial.stock_number || '',
