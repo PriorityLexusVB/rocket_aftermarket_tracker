@@ -1,15 +1,21 @@
 $ErrorActionPreference = "Stop"
-# Ensure corepack/pnpm
-corepack enable
-# Recommended extensions (re-applied even if Settings Sync misses any)
+Write-Host "==> Enabling corepack/pnpm"
+corepack enable | Out-Null
+
+Write-Host "==> Installing recommended VS Code extensions"
 $exts = @(
   "github.copilot",
   "github.copilot-chat",
   "dbaeumer.vscode-eslint",
-  "esbenp.prettier-vscode"
+  "esbenp.prettier-vscode",
+  "ms-vscode.vscode-typescript-next",
+  "streetsidesoftware.code-spell-checker"
 )
-foreach ($e in $exts) { code --install-extension $e | Out-Null }
+foreach ($e in $exts) {
+  try { code --install-extension $e | Out-Null } catch {}
+}
 
-# Install deps
+Write-Host "==> Installing project dependencies"
 pnpm i
-Write-Host "Workspace ready. If you see a prompt, choose 'Reopen in Container'."
+
+Write-Host "Done. If prompted, use: 'Dev Containers: Reopen in Container' for identical env."

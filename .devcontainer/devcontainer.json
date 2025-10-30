@@ -8,7 +8,9 @@
         "github.copilot",
         "github.copilot-chat",
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "streetsidesoftware.code-spell-checker"
       ]
     }
   }
