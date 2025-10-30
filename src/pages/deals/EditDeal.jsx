@@ -38,8 +38,6 @@ export default function EditDeal() {
     setSaving(true)
     try {
       // When V2 flag is on, use adapter to normalize payload
-      const payload = useV2 ? draftToUpdatePayload(id, formState) : formState
-      // Update then re-fetch latest persisted values; stay on Edit
       const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
       const payload = useV2 ? draftToUpdatePayload({ id }, formState) : formState
       await dealService?.updateDeal(id, payload)
