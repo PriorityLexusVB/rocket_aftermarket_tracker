@@ -2,6 +2,9 @@
   "name": "rocket-aftermarket-tracker",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <21"
+  },
   "rocketCritical": {
     "dependencies": [
       "@dhiwise/component-tagger",

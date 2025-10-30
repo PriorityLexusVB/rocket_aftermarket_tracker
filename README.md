@@ -10,6 +10,48 @@ This project is a React 18 + Vite app using TailwindCSS and Supabase (Auth/Postg
 - `pnpm test` – run unit tests (Vitest)
 - `pnpm e2e` – run end-to-end tests (Playwright)
 
+## Development Environment Setup
+
+### Using Dev Containers (Recommended)
+
+For a consistent development environment across machines:
+
+1. Open the repository in VS Code
+2. When prompted, click "Reopen in Container" (or run `Dev Containers: Reopen in Container` from the command palette)
+3. The container will automatically set up Node 20 and install dependencies
+
+The Dev Container configuration (`.devcontainer/devcontainer.json`) ensures everyone uses the same Node version, pnpm, and VS Code extensions.
+
+### Manual Setup
+
+If not using Dev Containers:
+
+1. Ensure you have Node 20 installed (check with `node -v`)
+   - If using nvm: `nvm use` (reads from `.nvmrc`)
+2. Enable pnpm: `corepack enable`
+3. Install dependencies: `pnpm install`
+4. Install recommended VS Code extensions (listed in `.vscode/extensions.json`)
+
+Alternatively, run the setup script on Windows:
+
+```powershell
+pwsh scripts/setup-workspace.ps1
+```
+
+### Workspace Scripts
+
+**Backup Copilot Chat State** (Windows):
+```powershell
+pwsh scripts/backup-copilot-chat.ps1
+```
+This backs up your Copilot chat history to `.vscode_state/` so you can restore it on another machine.
+
+**One-Click Workspace Setup** (Windows):
+```powershell
+pwsh scripts/setup-workspace.ps1
+```
+This installs all dependencies and recommended extensions automatically.
+
 ## Dev server
 
 The app runs at <http://localhost:5173> in development.

@@ -1,17 +1,10 @@
 {
   "recommendations": [
-    "esbenp.prettier-vscode",
-    "dbaeumer.vscode-eslint",
-    "bradlc.vscode-tailwindcss",
     "github.copilot",
-    "GitHub.copilot-chat",
-    "github.vscode-pull-request-github",
-    "eamodio.gitlens",
-    "streetsidesoftware.code-spell-checker",
-    "yoavbls.pretty-ts-errors",
-    "usernamehw.errorlens",
-    "supabase.vscode",
-    "ms-playwright.playwright",
-    "editorconfig.editorconfig"
+    "github.copilot-chat",
+    "ms-vscode.vscode-typescript-next",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "streetsidesoftware.code-spell-checker"
   ]
 }
