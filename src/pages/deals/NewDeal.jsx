@@ -3,6 +3,10 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import DealForm from './DealForm'
 import * as dealService from '../../services/dealService'
+import { draftToCreatePayload } from '../../components/deals/formAdapters'
+
+// Feature flag for V2 unified form with adapters
+const useV2 = import.meta.env.VITE_DEAL_FORM_V2 === 'true'
 
 export default function NewDeal() {
   const navigate = useNavigate()
@@ -12,7 +16,9 @@ export default function NewDeal() {
   async function onSave(formState) {
     setSaving(true)
     try {
-      const created = await dealService.createDeal(formState)
+      // When V2 flag is on, use adapter to normalize payload
+      const payload = useV2 ? draftToCreatePayload(formState) : formState
+      const created = await dealService.createDeal(payload)
       if (created?.id) {
         // Routes expect /deals/:dealId/edit
         navigate(`/deals/${created.id}/edit`)
