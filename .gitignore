@@ -42,3 +42,5 @@ workspace.json
 .env
 .env.*
 !.env.example
+
+dist/
