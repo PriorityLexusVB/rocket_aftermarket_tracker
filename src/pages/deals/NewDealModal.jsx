@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
 import dealService from '../../services/dealService'
+import { draftToCreatePayload, draftToUpdatePayload } from '@/components/deals/formAdapters'
 import { vehicleService } from '../../services/vehicleService'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -320,7 +321,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
         org_id: orgId || undefined,
         lineItems: [],
       }
-      await dealService.createDeal(payload)
+      const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+      const adapted = useV2 ? draftToCreatePayload(payload) : payload
+      await dealService.createDeal(adapted)
 
       onSuccess?.()
       resetForm()
@@ -406,10 +409,13 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
       }
 
       // Create via service (inserts job + parts)
-      const created = await dealService.createDeal(payload)
+      const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+      const adaptedCreate = useV2 ? draftToCreatePayload(payload) : payload
+      const created = await dealService.createDeal(adaptedCreate)
 
       // Upsert transaction and finalize totals via update
-      await dealService.updateDeal(created?.id, payload)
+      const adaptedUpdate = useV2 ? draftToUpdatePayload({ id: created?.id }, payload) : payload
+      await dealService.updateDeal(created?.id, adaptedUpdate)
 
       onSuccess?.()
       resetForm()
