@@ -12,6 +12,7 @@ export default defineConfig({
     // Run only core unit tests for fast, stable CI; Playwright E2E runs via `pnpm e2e`
     include: [
       'src/tests/dealService.*.test.js',
+      'src/tests/dealForm.*.test.jsx',
     ],
     exclude: [
       'e2e/**',
