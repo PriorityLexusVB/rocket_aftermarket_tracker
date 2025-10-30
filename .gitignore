@@ -37,6 +37,8 @@ workspace.json
 
 # VS Code settings
 .vscode/
+!/.vscode_state/*.zip
+
 
 # env
 .env
