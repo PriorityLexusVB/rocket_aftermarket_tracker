@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { getDeal, updateDeal, deleteDeal, mapDbDealToForm } from '../../../services/dealService'
+import { draftToUpdatePayload } from '@/components/deals/formAdapters'
 import { supabase } from '../../../lib/supabase'
 import { useDealFormDropdowns } from '../../../hooks/useDropdownData'
 import Button from '../../../components/ui/Button'
@@ -451,7 +452,10 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
       }
 
       // Include inline loaner form (optional) for assignment upsert
-      await updateDeal(dealId, { ...payloadForSave, loanerForm })
+      const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+      const base = { ...payloadForSave, loanerForm }
+      const adapted = useV2 ? draftToUpdatePayload({ id: dealId }, base) : base
+      await updateDeal(dealId, adapted)
 
       onSuccess?.()
       onClose?.()
