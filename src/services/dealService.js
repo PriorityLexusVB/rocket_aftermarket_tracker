@@ -601,7 +601,11 @@ export async function updateDeal(id, formState) {
   } catch (e) {
     jobErr = e
   }
+<<<<<<< HEAD
   // Don't re-wrap conflict errors - they need to propagate with their code property
+=======
+  // Preserve conflict details; only wrap non-conflict errors
+>>>>>>> b98c4d7 (feat(deal-form): enhance loaner handling and error management)
   if (jobErr) {
     if (jobErr.code === 'VERSION_CONFLICT' || jobErr.status === 409) {
       throw jobErr
