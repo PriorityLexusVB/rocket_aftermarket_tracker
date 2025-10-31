@@ -592,15 +592,22 @@ export async function updateDeal(id, formState) {
     if (!updRow?.id) {
       // No rows matched: treat as 409/Conflict
       const conflict = new Error(
-        'Conflict: This deal was updated by someone else. Refresh and try again.'
+        'Conflict: This deal was updated by someone else. Please reload and try again.'
       )
+      conflict.code = 'VERSION_CONFLICT'
       conflict.status = 409
       throw conflict
     }
   } catch (e) {
     jobErr = e
   }
-  if (jobErr) throw new Error(`Failed to update deal: ${jobErr.message || jobErr}`)
+  // Preserve conflict details; only wrap non-conflict errors
+  if (jobErr) {
+    if (jobErr.code === 'VERSION_CONFLICT' || jobErr.status === 409) {
+      throw jobErr
+    }
+    throw new Error(`Failed to update deal: ${jobErr.message || jobErr}`)
+  }
 
   // Prefer server-truth; do not write localStorage fallbacks for description
 
