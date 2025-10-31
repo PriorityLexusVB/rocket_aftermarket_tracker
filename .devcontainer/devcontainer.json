@@ -1,17 +1,43 @@
-{
-  "name": "aftermarket-tracker",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
-  "postCreateCommand": "corepack enable && pnpm i",
+﻿{
+  "name": "rocket_aftermarket_tracker",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/pnpm:1": {}
+  },
+  "remoteUser": "node",
+  "workspaceFolder": "/workspaces/rocket_aftermarket_tracker",
+  "mounts": [
+    "source=${localEnv:HOME}/.gitconfig,target=/home/node/.gitconfig,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder},target=/workspaces/rocket_aftermarket_tracker,type=bind,consistency=cached"
+  ],
+  "runArgs": [
+    "--init",
+    // allow tools inside the container (e.g., supabase CLI) to talk to host Docker
+    "-v", "/var/run/docker.sock:/var/run/docker.sock"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
-        "github.copilot",
-        "github.copilot-chat",
-        "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "ms-vscode.vscode-typescript-next",
-        "streetsidesoftware.code-spell-checker"
-      ]
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "vitest.explorer",
+        "ms-vsliveshare.vsliveshare",
+        "github.vscode-pull-request-github"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true
+      }
     }
+  },
+  "containerEnv": {
+    "FORCE_COLOR": "1"
+  },
+  "forwardPorts": [5173, 9229],
+  "postCreateCommand": "corepack enable && pnpm install && pnpm exec playwright install --with-deps || true",
+  "postAttachCommand": {
+    "server": "pnpm run dev"
   }
 }
