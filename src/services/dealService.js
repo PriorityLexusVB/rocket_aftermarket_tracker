@@ -601,7 +601,7 @@ export async function updateDeal(id, formState) {
   } catch (e) {
     jobErr = e
   }
-  // Preserve conflict details; only wrap non-conflict errors
+  // Don't re-wrap conflict errors - they need to propagate with their code property
   if (jobErr) {
     if (jobErr.code === 'VERSION_CONFLICT' || jobErr.status === 409) {
       throw jobErr
