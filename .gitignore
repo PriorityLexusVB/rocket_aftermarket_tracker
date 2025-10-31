@@ -26,6 +26,7 @@ workspace.json
 .env
 .env.*
 !.env.example
+!.env.development
 # VS Code chat/state
 .vscode_state/
 Code/
@@ -48,3 +49,4 @@ workspace.json
 dist/
 
 dist/
+build-output.log
