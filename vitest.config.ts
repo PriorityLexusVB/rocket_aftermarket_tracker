@@ -1,12 +1,11 @@
+// vitest.config.ts
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  resolve: { alias: { '@': '/src' } },
   test: {
-    environment: 'jsdom',
+    environment: 'happy-dom',
     globals: true,
     setupFiles: ['src/tests/setup.ts'],
     include: ['src/tests/**/*.{test,spec}.{js,jsx,ts,tsx}'],
-    css: false,
   },
 })

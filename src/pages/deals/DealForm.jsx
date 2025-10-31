@@ -594,11 +594,12 @@ export default function DealForm({
         (err?.message || '').startsWith('Conflict:')
 
       if (isV2 && isConflict) {
+        // Non-blocking conflict message - user can see the error and reload
         setErrorMsg(
           err?.message || 'This deal was updated by someone else. Please reload and try again.'
         )
         console.warn('Version conflict detected:', err)
-        return
+        return // Early return - don't overwrite data
       }
 
       const msg = err?.message || String(err)
