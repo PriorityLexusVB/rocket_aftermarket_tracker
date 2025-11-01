@@ -213,6 +213,16 @@ function tableApi(table: string) {
             ? { id: vendor.id, name: vendor.name, is_active: vendor.is_active }
             : null
         }
+        // Support assigned_to:user_profiles!jobs_assigned_to_fkey (full_name) syntax
+        if (_selectCols?.includes('assigned_to:user_profiles')) {
+          const user = db.user_profiles.find((u) => u.id === row.assigned_to) || null
+          r.assigned_to = user ? { full_name: user.full_name } : null
+        }
+        // Support delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey (full_name) syntax
+        if (_selectCols?.includes('delivery_coordinator:user_profiles')) {
+          const user = db.user_profiles.find((u) => u.id === row.delivery_coordinator_id) || null
+          r.delivery_coordinator = user ? { full_name: user.full_name } : null
+        }
         if (_selectCols?.includes('job_parts')) {
           const parts = db.job_parts.filter((p) => p.job_id === row.id)
           r.job_parts = parts.map((p) => {
