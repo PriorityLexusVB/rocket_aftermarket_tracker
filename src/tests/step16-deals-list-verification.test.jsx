@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import DealsPage from '../pages/deals/index.jsx';
 import * as dealService from '../services/dealService';
@@ -375,7 +375,7 @@ describe('Step 16: Deals List Screen Verification', () => {
       expect(screen?.getByText(/\d+ overdue/))?.toBeInTheDocument();
     });
     
-    console.log('✅ Scheduling status displays correctly with overdue, upcoming, and no-schedule indicators');
+    console.log('✅ Scheduling status displays correctly with deterministic chip label');
   });
 });
 
