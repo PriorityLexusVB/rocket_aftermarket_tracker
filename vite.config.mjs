@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'node:path'
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': '/src',
+      '@': path.resolve(process.cwd(), './src'),
     },
   },
   build: {
@@ -19,6 +20,18 @@ export default defineConfig({
           supabase: ['@supabase/supabase-js'],
         },
       },
+    },
+  },
+  esbuild: {
+    jsx: 'automatic',
+    jsxDev: true,
+  },
+  test: {
+    environment: 'happy-dom',
+    setupFiles: './src/tests/setup.ts',
+    globals: true,
+    alias: {
+      '@': path.resolve(process.cwd(), './src'),
     },
   },
 })
