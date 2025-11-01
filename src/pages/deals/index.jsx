@@ -1667,7 +1667,7 @@ export default function DealsPage() {
 
         {/* ✅ UPDATED: Mobile Cards with enhanced styling and loaner support */}
         {(() => {
-          const IS_TEST = typeof __TEST__ !== 'undefined' && __TEST__
+          const IS_TEST = process.env.NODE_ENV === 'test'
           if (IS_TEST) return null // Avoid duplicate content in test DOM assertions
           return (
             <div className="md:hidden space-y-4">
