@@ -322,12 +322,35 @@ function tableApi(table: string) {
     },
     upsert(payload: Row | Row[]) {
       const arr = Array.isArray(payload) ? payload : [payload]
+      const now = new Date().toISOString()
+      const upserted: Row[] = []
       for (const row of arr) {
         const idx = db[table].findIndex((r) => r.id && row.id && r.id === row.id)
-        if (idx >= 0) db[table][idx] = clone(row)
-        else db[table].push(clone(row))
+        const withTimestamp = { ...row, updated_at: now }
+        if (idx >= 0) {
+          db[table][idx] = clone(withTimestamp)
+          upserted.push(clone(withTimestamp))
+        } else {
+          const withCreated = { ...withTimestamp, created_at: now }
+          db[table].push(clone(withCreated))
+          upserted.push(clone(withCreated))
+        }
       }
-      return Promise.resolve({ data: clone(arr), error: null })
+      // Return chainable result supporting .select()
+      const upsertChain: any = {
+        select(cols?: string) {
+          _selectCols = cols
+          return {
+            single: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
+            maybeSingle: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
+            then: (resolve: any) => resolve({ data: upserted, error: null }),
+          }
+        },
+        single: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
+        maybeSingle: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
+        then: (resolve: any) => resolve({ data: upserted, error: null }),
+      }
+      return upsertChain
     },
     update(patch: Row) {
       // Create a sub-chain that can accept more filters before executing
@@ -344,6 +367,101 @@ function tableApi(table: string) {
           const s = new Set(vals)
           filters.push((r) => s.has(r?.[c]))
           return updateChain
+        },
+        select(cols?: string) {
+          _selectCols = cols
+          return {
+            single: () => {
+              const toUpdate = rows.filter((r) => filters.every((f) => f(r)))
+              const nowIso = new Date().toISOString()
+              let allowed = true
+              if (table === 'jobs') {
+                const target = toUpdate?.[0]
+                if (target) {
+                  const user = currentUser
+                  const role = user?.role
+                  const isManager = role === 'manager' || role === 'admin'
+                  const targetAssignedTo = target?.assigned_to ? String(target.assigned_to) : null
+                  const userId = user?.id ? String(user.id) : null
+                  const isOwner = user && targetAssignedTo && userId && targetAssignedTo === userId
+                  allowed = !user || isManager || isOwner
+                  if (!allowed)
+                    policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+                }
+              } else if (table === 'job_parts') {
+                const role = currentUser?.role
+                const isManager = role === 'manager' || role === 'admin'
+                allowed = !currentUser || !!isManager
+                if (!allowed)
+                  policyError = { message: 'denied by RLS policy: managers only for job parts' }
+              }
+              if (allowed) {
+                toUpdate.forEach((r) => Object.assign(r, clone(patch), { updated_at: nowIso }))
+              }
+              const out = allowed ? clone(toUpdate) : []
+              return Promise.resolve({ data: out?.[0] ?? null, error: policyError })
+            },
+            maybeSingle: () => {
+              const toUpdate = rows.filter((r) => filters.every((f) => f(r)))
+              const nowIso = new Date().toISOString()
+              let allowed = true
+              if (table === 'jobs') {
+                const target = toUpdate?.[0]
+                if (target) {
+                  const user = currentUser
+                  const role = user?.role
+                  const isManager = role === 'manager' || role === 'admin'
+                  const targetAssignedTo = target?.assigned_to ? String(target.assigned_to) : null
+                  const userId = user?.id ? String(user.id) : null
+                  const isOwner = user && targetAssignedTo && userId && targetAssignedTo === userId
+                  allowed = !user || isManager || isOwner
+                  if (!allowed)
+                    policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+                }
+              } else if (table === 'job_parts') {
+                const role = currentUser?.role
+                const isManager = role === 'manager' || role === 'admin'
+                allowed = !currentUser || !!isManager
+                if (!allowed)
+                  policyError = { message: 'denied by RLS policy: managers only for job parts' }
+              }
+              if (allowed) {
+                toUpdate.forEach((r) => Object.assign(r, clone(patch), { updated_at: nowIso }))
+              }
+              const out = allowed ? clone(toUpdate) : []
+              return Promise.resolve({ data: out?.[0] ?? null, error: policyError })
+            },
+            then: (resolve: any) => {
+              const toUpdate = rows.filter((r) => filters.every((f) => f(r)))
+              const nowIso = new Date().toISOString()
+              let allowed = true
+              if (table === 'jobs') {
+                const target = toUpdate?.[0]
+                if (target) {
+                  const user = currentUser
+                  const role = user?.role
+                  const isManager = role === 'manager' || role === 'admin'
+                  const targetAssignedTo = target?.assigned_to ? String(target.assigned_to) : null
+                  const userId = user?.id ? String(user.id) : null
+                  const isOwner = user && targetAssignedTo && userId && targetAssignedTo === userId
+                  allowed = !user || isManager || isOwner
+                  if (!allowed)
+                    policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+                }
+              } else if (table === 'job_parts') {
+                const role = currentUser?.role
+                const isManager = role === 'manager' || role === 'admin'
+                allowed = !currentUser || !!isManager
+                if (!allowed)
+                  policyError = { message: 'denied by RLS policy: managers only for job parts' }
+              }
+              if (allowed) {
+                toUpdate.forEach((r) => Object.assign(r, clone(patch), { updated_at: nowIso }))
+              }
+              const out = allowed ? clone(toUpdate) : []
+              return resolve({ data: out, error: policyError })
+            },
+          }
         },
         then(resolve: any, reject?: any) {
           try {
