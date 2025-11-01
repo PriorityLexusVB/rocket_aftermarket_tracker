@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom'
 import { vi, expect as vitestExpect, beforeEach as vitestBeforeEach } from 'vitest'
 
+// Force consistent timezone for date formatting stability in tests
+process.env.TZ = 'America/New_York'
+
 // Ensure globals some tests spy on are real spies on both globalThis and window
 const openModalSpy = vi.fn()
 const closeModalSpy = vi.fn()
