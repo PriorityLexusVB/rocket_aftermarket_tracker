@@ -340,8 +340,9 @@ describe('Step 16: Deals List Screen Verification', () => {
       const row2 = screen?.getByTestId('deal-row-job-002');
       
       // Job 001: Michael Johnson (delivery coordinator) and Jennifer Martinez (sales consultant)
-      expect(within(row1).getByTestId('deal-customer-job-001'))?.toHaveTextContent('Johnson, M.');
-      expect(within(row1).getByTestId('deal-customer-job-001'))?.toHaveTextContent('Martinez, J.');
+      const cell1 = within(row1).getByTestId('deal-customer-job-001');
+      expect(cell1)?.toHaveTextContent('Johnson, M.');
+      expect(cell1)?.toHaveTextContent('Martinez, J.');
       
       // Job 002: Robert Wilson (delivery coordinator), no sales consultant
       expect(within(row2).getByTestId('deal-customer-job-002'))?.toHaveTextContent('Wilson, R.');
