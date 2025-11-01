@@ -12,6 +12,7 @@
  * - Edit persist: Create deal with line items, reopen Edit and confirm selections are preselected
  */
 
+import React from 'react'
 import { supabase } from '@/lib/supabase'
 
 // Add missing test framework functions
