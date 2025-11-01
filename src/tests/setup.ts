@@ -559,6 +559,10 @@ function tableApi(table: string) {
       filters.push((r) => (v === null ? r?.[c] == null : r?.[c] === v))
       return chain
     },
+    or(filter: string) {
+      // Simple OR filter support - just return chain for now
+      return chain
+    },
     order(c: string, opts?: { ascending?: boolean }) {
       orderBy = c
       asc = opts?.ascending !== false
@@ -621,6 +625,9 @@ vi.mock('@/lib/supabase', () => ({
         },
       },
     },
+    channel: () => ({
+      on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
+    }),
     __reset: () => {
       Object.keys(db).forEach((k) => (db[k] = []))
       currentUser = null
