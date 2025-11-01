@@ -3,6 +3,8 @@
  * Goal: Editing an existing deal works end-to-end.
  */
 
+import React from 'react'
+
 // Add Jest testing framework globals
 const describe = globalThis.describe || function(name, fn) { fn(); };
 const beforeEach = globalThis.beforeEach || function(fn) { fn(); };
