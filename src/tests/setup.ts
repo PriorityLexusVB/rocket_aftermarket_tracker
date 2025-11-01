@@ -1,5 +1,5 @@
-// Vitest setup
-import '@testing-library/jest-dom/vitest'
+// src/tests/setup.ts
+import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
 // Window helpers some tests expect:

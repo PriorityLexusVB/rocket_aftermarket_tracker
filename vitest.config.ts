@@ -1,13 +1,18 @@
 // vitest.config.ts
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import path from 'node:path'
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': '/src',
+      '@': path.resolve(process.cwd(), './src'),
     },
+  },
+  esbuild: {
+    jsx: 'automatic',
+    jsxDev: true,
   },
   test: {
     environment: 'happy-dom',
@@ -15,6 +20,8 @@ export default defineConfig({
     setupFiles: ['src/tests/setup.ts'],
     css: false,
     include: ['src/tests/**/*.{test,spec}.{js,jsx,ts,tsx}'],
+    alias: {
+      '@': path.resolve(process.cwd(), './src'),
+    },
   },
-  esbuild: { jsx: 'automatic', jsxDev: true },
 })
