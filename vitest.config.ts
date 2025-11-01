@@ -16,4 +16,5 @@ export default defineConfig({
     css: false,
     include: ['src/tests/**/*.{test,spec}.{js,jsx,ts,tsx}'],
   },
+  esbuild: { jsx: 'automatic', jsxDev: true },
 })
