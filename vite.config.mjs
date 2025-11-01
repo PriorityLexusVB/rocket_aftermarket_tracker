@@ -1,12 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import path from 'node:path'
+import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(process.cwd(), './src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   build: {
@@ -30,8 +30,6 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: './src/tests/setup.ts',
     globals: true,
-    alias: {
-      '@': path.resolve(process.cwd(), './src'),
-    },
+    css: true,
   },
 })
