@@ -11,6 +11,7 @@
  * - Export produces CSV with the visible rows (print first 2 lines)
  */
 
+import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
