@@ -8,6 +8,7 @@ import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
+import { money0, pct1 } from '../../lib/format'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -104,7 +105,7 @@ const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
 
   return (
     <span
-      data-testid={jobId ? `promise-chip-${jobId}` : undefined}
+      data-testid="promise-chip"
       className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${urgencyClass}`}
     >
       Next: {short}
@@ -1028,7 +1029,7 @@ export default function DealsPage() {
                   <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
                     Revenue
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">${kpis?.revenue}</p>
+                  <p className="text-slate-900 text-2xl font-bold">{money0.format(parseFloat(kpis?.revenue) || 0)}</p>
                 </div>
               </div>
             </div>
@@ -1043,7 +1044,7 @@ export default function DealsPage() {
                   <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
                     Profit
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">${kpis?.profit}</p>
+                  <p className="text-slate-900 text-2xl font-bold">{money0.format(parseFloat(kpis?.profit) || 0)}</p>
                 </div>
               </div>
             </div>
@@ -1058,7 +1059,7 @@ export default function DealsPage() {
                   <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
                     Margin
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{kpis?.margin}%</p>
+                  <p className="text-slate-900 text-2xl font-bold">{pct1(parseFloat(kpis?.margin) / 100 || 0)}</p>
                 </div>
               </div>
             </div>
@@ -1397,7 +1398,7 @@ export default function DealsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Vehicle
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[120px]">
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-[120px]">
                   $
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -1432,7 +1433,7 @@ export default function DealsPage() {
                   <tr
                     key={deal?.id}
                     data-testid={`deal-row-${deal?.id}`}
-                    className="hover:bg-slate-50 cursor-pointer"
+                    className="even:bg-slate-50 hover:bg-slate-100 cursor-pointer"
                     onClick={() => handleOpenDetail(deal)}
                   >
                     <td className="px-4 py-3">
@@ -1542,7 +1543,7 @@ export default function DealsPage() {
                         ) : null}
                       </span>
                     </td>
-                    <td className="px-4 py-3 w-[120px]">
+                    <td className="px-4 py-3 w-[120px] text-right tabular-nums">
                       <ValueDisplay amount={deal?.total_amount} />
                     </td>
                     <td className="px-4 py-3 max-w-[180px]">
