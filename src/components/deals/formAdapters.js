@@ -17,22 +17,38 @@ export function normalizeLineItems(draft = {}) {
     .map((it) => {
       const unitPrice = Number(it.unitPrice ?? it.unit_price ?? it.price ?? 0)
       const quantity = Number(it.quantity ?? it.qty ?? it.quantity_used ?? 1)
-      return {
+      const result = {
         ...it,
         unitPrice,
         quantity,
-        // Remove redundant fields for clean output
-        unit_price: undefined,
-        qty: undefined,
-        price: undefined,
-        quantity_used: undefined,
       }
+      
+      // Preserve scheduling fields with proper naming
+      if (it.requires_scheduling !== undefined || it.requiresScheduling !== undefined) {
+        result.requiresScheduling = it.requiresScheduling ?? it.requires_scheduling ?? true
+      }
+      if (it.is_off_site !== undefined || it.isOffSite !== undefined) {
+        result.isOffSite = it.isOffSite ?? it.is_off_site ?? false
+      }
+      if (it.promised_date !== undefined) {
+        result.promisedDate = it.promised_date
+      }
+      
+      // Remove redundant fields for clean output
+      delete result.unit_price
+      delete result.qty
+      delete result.price
+      delete result.quantity_used
+      delete result.requires_scheduling
+      delete result.is_off_site
+      delete result.promised_date
+      
+      return result
     })
     .filter(
       (it) => Number.isFinite(it.unitPrice) && Number(isNaN(it.quantity) ? 0 : it.quantity) >= 0
     )
     .filter((it) => it.quantity > 0)
-    .map(({ unit_price, qty, price, quantity_used, ...rest }) => rest) // Clean up undefined fields
 }
 
 export function stripLoanerWhenOff(draft = {}) {
@@ -126,10 +142,22 @@ export function draftToCreatePayload(draft = {}) {
 }
 
 export function draftToUpdatePayload(original = {}, draft = {}) {
-  const payload = draftToCreatePayload(draft)
-  if (original?.id && !payload.id) payload.id = original.id
-  if (draft.id) payload.id = draft.id
-  payload.updated_at = draft.updated_at ?? new Date().toISOString()
+  // Support both signatures: (id, draft) and (original, draft)
+  let id, actualDraft
+  if (typeof original === 'string') {
+    // Signature: (id, draft)
+    id = original
+    actualDraft = draft
+  } else {
+    // Signature: (original, draft)
+    id = original?.id
+    actualDraft = draft
+  }
+  
+  const payload = draftToCreatePayload(actualDraft)
+  if (id && !payload.id) payload.id = id
+  if (actualDraft.id) payload.id = actualDraft.id
+  payload.updated_at = actualDraft.updated_at ?? new Date().toISOString()
   return payload
 }
 
