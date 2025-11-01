@@ -22,10 +22,6 @@ export default defineConfig({
       },
     },
   },
-  esbuild: {
-    jsx: 'automatic',
-    jsxDev: true,
-  },
   test: {
     environment: 'happy-dom',
     setupFiles: './src/tests/setup.ts',
