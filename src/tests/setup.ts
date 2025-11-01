@@ -176,44 +176,44 @@ const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x))
 const genId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`
 
 function tableApi(table: string) {
-  let working: Row[] = db[table] ?? (db[table] = [])
-  let filterFn: (r: Row) => boolean = () => true
+  let rows: Row[] = db[table] ?? (db[table] = [])
+  let filters: Array<(r: Row) => boolean> = []
   let orderBy: string | null = null
-  let ascending = true
+  let asc = true
   let limitN: number | null = null
-  let selectedCols: string | undefined
+  let _selectCols: string | undefined
   // Track any policy error generated during the operation (for update/delete)
   let policyError: { message: string } | null = null
 
-  const buildResult = () => {
-    let out = working.filter(filterFn)
+  const exec = () => {
+    let out = rows.filter((r) => filters.every((f) => f(r)))
     if (orderBy) {
       out = out.slice().sort((a, b) => {
         const av = a?.[orderBy!]
         const bv = b?.[orderBy!]
-        return (av > bv ? 1 : av < bv ? -1 : 0) * (ascending ? 1 : -1)
+        return (av > bv ? 1 : av < bv ? -1 : 0) * (asc ? 1 : -1)
       })
     }
     if (limitN != null) out = out.slice(0, limitN)
     // Expand simple joins for jobs and job_parts when specifically requested in select() string
-    if (table === 'jobs' && selectedCols && out.length) {
+    if (table === 'jobs' && _selectCols && out.length) {
       out = out.map((row) => {
         const r: any = { ...row }
-        if (selectedCols?.includes('vehicle:vehicles')) {
+        if (_selectCols?.includes('vehicle:vehicles')) {
           r.vehicle = db.vehicles.find((v) => v.id === row.vehicle_id) || null
         }
         // Support either vendor:vendors(alias) or vendors!inner(...) syntax returning `vendors` key
-        if (selectedCols?.includes('vendor:vendors')) {
+        if (_selectCols?.includes('vendor:vendors')) {
           const vendor = db.vendors.find((v) => v.id === row.vendor_id)
           r.vendor = vendor ? { id: vendor.id, name: vendor.name } : null
         }
-        if (selectedCols?.includes('vendors')) {
+        if (_selectCols?.includes('vendors')) {
           const vendor = db.vendors.find((v) => v.id === row.vendor_id) || null
           r.vendors = vendor
             ? { id: vendor.id, name: vendor.name, is_active: vendor.is_active }
             : null
         }
-        if (selectedCols?.includes('job_parts')) {
+        if (_selectCols?.includes('job_parts')) {
           const parts = db.job_parts.filter((p) => p.job_id === row.id)
           r.job_parts = parts.map((p) => {
             const prod = db.products.find((pr) => pr.id === p.product_id) || null
@@ -237,32 +237,32 @@ function tableApi(table: string) {
         return r
       })
     }
-    if (table === 'job_parts' && selectedCols && out.length) {
+    if (table === 'job_parts' && _selectCols && out.length) {
       out = out.map((row) => {
         const r: any = { ...row }
-        if (selectedCols?.includes('products')) {
+        if (_selectCols?.includes('products')) {
           const prod = db.products.find((p) => p.id === row.product_id) || null
           r.products = prod ? { id: prod.id, name: prod.name, is_active: prod.is_active } : null
         }
         return r
       })
     }
-    return clone(out)
+    return { data: clone(out), error: null }
   }
 
   const chain: any = {
-    // SELECT family
-    select(_cols?: string) {
-      selectedCols = _cols
+    // SELECT DOES NOT RESOLVE — keeps building
+    select(cols?: string) {
+      _selectCols = cols
       return chain
     },
     single() {
-      const data = buildResult()?.[0] ?? null
-      return Promise.resolve({ data, error: null })
+      const { data } = exec()
+      return Promise.resolve({ data: data[0] ?? null, error: null })
     },
     maybeSingle() {
-      const data = buildResult()?.[0] ?? null
-      return Promise.resolve({ data, error: null })
+      const { data } = exec()
+      return Promise.resolve({ data: data[0] ?? null, error: null })
     },
 
     // Mutations
@@ -288,26 +288,27 @@ function tableApi(table: string) {
             if (!assigned.calendar_event_id) assigned.calendar_event_id = `deal_${assigned.id}`
             if (!assigned.color_code) assigned.color_code = '#3366FF'
           }
+          // Preserve assigned_to exactly as passed (RLS simulation polish)
         }
         return assigned
       })
       db[table].push(...clone(withIds))
       const inserted = clone(withIds)
-      // Support .select().single() and thenable usage
-      const chainResult: any = {
-        select: () => ({
-          single: () => Promise.resolve({ data: inserted?.[0] ?? null, error: null }),
-          maybeSingle: () => Promise.resolve({ data: inserted?.[0] ?? null, error: null }),
-          then: (resolve: any) => resolve({ data: inserted, error: null }),
-        }),
+      // Return chainable result supporting .select()
+      const insertChain: any = {
+        select(cols?: string) {
+          _selectCols = cols
+          return {
+            single: () => Promise.resolve({ data: inserted?.[0] ?? null, error: null }),
+            maybeSingle: () => Promise.resolve({ data: inserted?.[0] ?? null, error: null }),
+            then: (resolve: any) => resolve({ data: inserted, error: null }),
+          }
+        },
         single: () => Promise.resolve({ data: inserted?.[0] ?? null, error: null }),
         maybeSingle: () => Promise.resolve({ data: inserted?.[0] ?? null, error: null }),
         then: (resolve: any) => resolve({ data: inserted, error: null }),
-        // Allow post-mutation filters to be chained (no-op for compatibility)
-        eq: (_col: string, _val: any) => chainResult,
-        in: (_col: string, _vals: any[]) => chainResult,
       }
-      return chainResult
+      return insertChain
     },
     upsert(payload: Row | Row[]) {
       const arr = Array.isArray(payload) ? payload : [payload]
@@ -316,110 +317,123 @@ function tableApi(table: string) {
         if (idx >= 0) db[table][idx] = clone(row)
         else db[table].push(clone(row))
       }
-      const upserted = clone(arr)
-      const chainResult: any = {
-        select: () => ({
-          single: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
-          maybeSingle: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
-          then: (resolve: any) => resolve({ data: upserted, error: null }),
-        }),
-        single: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
-        maybeSingle: () => Promise.resolve({ data: upserted?.[0] ?? null, error: null }),
-        then: (resolve: any) => resolve({ data: upserted, error: null }),
-        eq: (_col: string, _val: any) => chainResult,
-        in: (_col: string, _vals: any[]) => chainResult,
-      }
-      return chainResult
+      return Promise.resolve({ data: clone(arr), error: null })
     },
     update(patch: Row) {
-      const toUpdate = working.filter(filterFn)
-      // Apply minimal RLS-like checks for specific tables used in Step 20
-      const nowIso = new Date().toISOString()
-      let allowed = true
-      if (table === 'jobs') {
-        // Staff can edit only their assigned jobs; managers/admin can edit all
-        const target = toUpdate?.[0]
-        if (target) {
-          const user = currentUser
-          const role = user?.role
-          const isManager = role === 'manager' || role === 'admin'
-          const isOwner = user && target?.assigned_to && target.assigned_to === user.id
-          // If no session, allow (tests not simulating auth)
-          allowed = !user || isManager || isOwner
-          if (!allowed)
-            policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
-        }
-      } else if (table === 'job_parts') {
-        // Only managers/admin can update job parts
-        const role = currentUser?.role
-        const isManager = role === 'manager' || role === 'admin'
-        // If no session, allow (non-RLS tests)
-        allowed = !currentUser || !!isManager
-        if (!allowed) policyError = { message: 'denied by RLS policy: managers only for job parts' }
-      }
+      // Create a sub-chain that can accept more filters before executing
+      const updateChain: any = {
+        eq(c: string, v: any) {
+          filters.push((r) => r?.[c] === v)
+          return updateChain
+        },
+        neq(c: string, v: any) {
+          filters.push((r) => r?.[c] !== v)
+          return updateChain
+        },
+        in(c: string, vals: any[]) {
+          const s = new Set(vals)
+          filters.push((r) => s.has(r?.[c]))
+          return updateChain
+        },
+        then(resolve: any, reject?: any) {
+          try {
+            const toUpdate = rows.filter((r) => filters.every((f) => f(r)))
+            // Apply minimal RLS-like checks for specific tables used in Step 20
+            const nowIso = new Date().toISOString()
+            let allowed = true
+            if (table === 'jobs') {
+              // Staff can edit only their assigned jobs; managers/admin can edit all
+              const target = toUpdate?.[0]
+              if (target) {
+                const user = currentUser
+                const role = user?.role
+                const isManager = role === 'manager' || role === 'admin'
+                // Ensure string-to-string comparison for user IDs (RLS simulation polish)
+                const targetAssignedTo = target?.assigned_to ? String(target.assigned_to) : null
+                const userId = user?.id ? String(user.id) : null
+                const isOwner = user && targetAssignedTo && userId && targetAssignedTo === userId
+                // If no session, allow (tests not simulating auth)
+                allowed = !user || isManager || isOwner
+                if (!allowed)
+                  policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+              }
+            } else if (table === 'job_parts') {
+              // Only managers/admin can update job parts
+              const role = currentUser?.role
+              const isManager = role === 'manager' || role === 'admin'
+              // If no session, allow (non-RLS tests)
+              allowed = !currentUser || !!isManager
+              if (!allowed)
+                policyError = { message: 'denied by RLS policy: managers only for job parts' }
+            }
 
-      if (allowed) {
-        toUpdate.forEach((r) => Object.assign(r, clone(patch), { updated_at: nowIso }))
+            if (allowed) {
+              toUpdate.forEach((r) => Object.assign(r, clone(patch), { updated_at: nowIso }))
+            }
+            const out = allowed ? clone(toUpdate) : []
+            return Promise.resolve(resolve({ data: out, error: policyError }))
+          } catch (e) {
+            return reject?.(e)
+          }
+        },
       }
-      const updated = allowed ? clone(toUpdate) : []
-      const chainResult: any = {
-        select: () => ({
-          single: () => Promise.resolve({ data: updated?.[0] ?? null, error: policyError }),
-          maybeSingle: () => Promise.resolve({ data: updated?.[0] ?? null, error: policyError }),
-          then: (resolve: any) => resolve({ data: updated, error: policyError }),
-        }),
-        single: () => Promise.resolve({ data: updated?.[0] ?? null, error: policyError }),
-        maybeSingle: () => Promise.resolve({ data: updated?.[0] ?? null, error: policyError }),
-        then: (resolve: any) => resolve({ data: updated, error: policyError }),
-        eq: (_col: string, _val: any) => chainResult,
-        in: (_col: string, _vals: any[]) => chainResult,
-      }
-      return chainResult
+      return updateChain
     },
     delete() {
-      const before = db[table].length
-      db[table] = db[table].filter((r) => !filterFn(r))
-      const removed = before - db[table].length
-      const deleted = Array.from({ length: removed })
-      const chainResult: any = {
-        then: (resolve: any) => resolve({ data: deleted, error: null }),
-        eq: (_col: string, _val: any) => chainResult,
-        in: (_col: string, _vals: any[]) => chainResult,
+      // Create a sub-chain that can accept more filters before executing
+      const deleteChain: any = {
+        eq(c: string, v: any) {
+          filters.push((r) => r?.[c] === v)
+          return deleteChain
+        },
+        neq(c: string, v: any) {
+          filters.push((r) => r?.[c] !== v)
+          return deleteChain
+        },
+        in(c: string, vals: any[]) {
+          const s = new Set(vals)
+          filters.push((r) => s.has(r?.[c]))
+          return deleteChain
+        },
+        then(resolve: any, reject?: any) {
+          try {
+            const before = db[table].length
+            db[table] = db[table].filter((r) => !filters.every((f) => f(r)))
+            const removed = before - db[table].length
+            return Promise.resolve(resolve({ data: Array.from({ length: removed }), error: null }))
+          } catch (e) {
+            return reject?.(e)
+          }
+        },
       }
-      return chainResult
+      return deleteChain
     },
 
-    // Filters / order / limit
-    eq(col: string, val: any) {
-      const prev = filterFn
-      filterFn = (r) => prev(r) && r?.[col] === val
+    // filters (order agnostic wrt select)
+    eq(c: string, v: any) {
+      filters.push((r) => r?.[c] === v)
       return chain
     },
-    neq(col: string, val: any) {
-      const prev = filterFn
-      filterFn = (r) => prev(r) && r?.[col] !== val
+    neq(c: string, v: any) {
+      filters.push((r) => r?.[c] !== v)
       return chain
     },
-    in(col: string, vals: any[]) {
+    in(c: string, vals: any[]) {
       const s = new Set(vals)
-      const prev = filterFn
-      filterFn = (r) => prev(r) && s.has(r?.[col])
+      filters.push((r) => s.has(r?.[c]))
       return chain
     },
-    // Supabase-style: .not(column, operator, value). For our simple use, treat 'is' (null) and 'eq' inverse
-    not(col: string, _operator: string, val: any) {
-      const prev = filterFn
-      filterFn = (r) => prev(r) && r?.[col] !== val
+    not(_op: string, c: string, v: any) {
+      filters.push((r) => r?.[c] !== v)
       return chain
     },
-    is(col: string, val: any) {
-      const prev = filterFn
-      filterFn = (r) => prev(r) && (val === null ? r?.[col] == null : r?.[col] === val)
+    is(c: string, v: any) {
+      filters.push((r) => (v === null ? r?.[c] == null : r?.[c] === v))
       return chain
     },
-    order(col: string, opts?: { ascending?: boolean }) {
-      orderBy = col
-      ascending = opts?.ascending !== false
+    order(c: string, opts?: { ascending?: boolean }) {
+      orderBy = c
+      asc = opts?.ascending !== false
       return chain
     },
     limit(n: number) {
@@ -427,9 +441,13 @@ function tableApi(table: string) {
       return chain
     },
 
-    // Thenable so `await ...select().eq().order()` resolves to rows
-    then(resolve: any) {
-      return resolve({ data: buildResult(), error: null })
+    // thenable to allow: await supabase.from(...).select().eq(...).order(...)
+    then(resolve: any, reject?: any) {
+      try {
+        return Promise.resolve(resolve(exec()))
+      } catch (e) {
+        return reject?.(e)
+      }
     },
   }
   return chain
