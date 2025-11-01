@@ -981,6 +981,7 @@ export default function DealsPage() {
               variant="outline"
               size="sm"
               className="bg-white hover:bg-gray-50"
+              data-testid="export-button"
             />
             <Button
               onClick={() => setShowNewDealModal(true)}
@@ -1000,7 +1001,7 @@ export default function DealsPage() {
         />
 
         {/* ✅ UPDATED: KPI Row - Enhanced with profit analysis */}
-        <div className="mb-6">
+        <div className="mb-6" data-testid="kpi-row">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             {/* Active Jobs */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">

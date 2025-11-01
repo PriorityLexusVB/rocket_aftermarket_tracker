@@ -15,7 +15,8 @@ const ExportButton = ({
   disabled = false,
   variant = 'outline',
   size = 'sm',
-  className = ''
+  className = '',
+  'data-testid': dataTestId
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -274,6 +275,7 @@ const ExportButton = ({
         iconPosition="left"
         className={`${className} ${isExporting ? 'cursor-wait' : ''}`}
         aria-label={`Export ${getExportTypeLabel()}`}
+        data-testid={dataTestId}
       >
         {isExporting ? (
           <div className="flex items-center space-x-2">
