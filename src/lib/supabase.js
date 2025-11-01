@@ -1,32 +1,107 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Check if we're in test mode
+const isTestMode = import.meta.env.MODE === 'test' || typeof global !== 'undefined' && global.process?.env?.NODE_ENV === 'test';
+
 // Environment variables with enhanced validation
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log('Supabase Environment Check:', {
-  url: supabaseUrl ? 'Present' : 'Missing',
-  anonKey: supabaseAnonKey ? 'Present' : 'Missing',
-  urlValid: supabaseUrl?.includes('supabase.co') || supabaseUrl?.includes('localhost'),
-  keyValid: supabaseAnonKey?.length > 50
-});
+// In test mode, allow placeholder values
+if (!isTestMode) {
+  console.log('Supabase Environment Check:', {
+    url: supabaseUrl ? 'Present' : 'Missing',
+    anonKey: supabaseAnonKey ? 'Present' : 'Missing',
+    urlValid: supabaseUrl?.includes('supabase.co') || supabaseUrl?.includes('localhost'),
+    keyValid: supabaseAnonKey?.length > 50
+  });
 
-// Validate environment variables
-if (!supabaseUrl) {
-  console.error('❌ VITE_SUPABASE_URL is not defined. Please check your .env file.');
-  throw new Error('Missing VITE_SUPABASE_URL environment variable');
-}
+  // Validate environment variables
+  if (!supabaseUrl) {
+    console.error('❌ VITE_SUPABASE_URL is not defined. Please check your .env file.');
+    throw new Error('Missing VITE_SUPABASE_URL environment variable');
+  }
 
-if (!supabaseAnonKey) {
-  console.error('❌ VITE_SUPABASE_ANON_KEY is not defined. Please check your .env file.');
-  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+  if (!supabaseAnonKey) {
+    console.error('❌ VITE_SUPABASE_ANON_KEY is not defined. Please check your .env file.');
+    throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+  }
 }
 
 // Ensure single instance to prevent multiple GoTrueClient warnings
 let supabaseInstance = null;
 
+// Create a minimal mock Supabase client for tests
+const createMockSupabaseClient = () => {
+  const mockChain = {
+    select: () => mockChain,
+    insert: () => mockChain,
+    update: () => mockChain,
+    delete: () => mockChain,
+    eq: () => mockChain,
+    neq: () => mockChain,
+    gt: () => mockChain,
+    gte: () => mockChain,
+    lt: () => mockChain,
+    lte: () => mockChain,
+    like: () => mockChain,
+    ilike: () => mockChain,
+    is: () => mockChain,
+    in: () => mockChain,
+    contains: () => mockChain,
+    containedBy: () => mockChain,
+    range: () => mockChain,
+    rangeGt: () => mockChain,
+    rangeGte: () => mockChain,
+    rangeLt: () => mockChain,
+    rangeLte: () => mockChain,
+    rangeAdjacent: () => mockChain,
+    overlaps: () => mockChain,
+    textSearch: () => mockChain,
+    match: () => mockChain,
+    not: () => mockChain,
+    or: () => mockChain,
+    filter: () => mockChain,
+    order: () => mockChain,
+    limit: () => mockChain,
+    range: () => mockChain,
+    single: () => Promise.resolve({ data: null, error: null }),
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+    csv: () => Promise.resolve({ data: '', error: null }),
+    then: (resolve) => resolve({ data: [], error: null }),
+    catch: () => Promise.resolve({ data: [], error: null }),
+  };
+
+  return {
+    from: () => mockChain,
+    rpc: () => Promise.resolve({ data: null, error: null }),
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      signIn: () => Promise.resolve({ data: null, error: null }),
+      signOut: () => Promise.resolve({ error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
+    storage: {
+      from: () => ({
+        upload: () => Promise.resolve({ data: null, error: null }),
+        download: () => Promise.resolve({ data: null, error: null }),
+        list: () => Promise.resolve({ data: [], error: null }),
+        remove: () => Promise.resolve({ data: null, error: null }),
+      }),
+    },
+  };
+};
+
 const createSupabaseClient = () => {
   if (!supabaseInstance) {
+    // In test mode, return a mock client
+    if (isTestMode) {
+      supabaseInstance = createMockSupabaseClient();
+      console.log('✅ Mock Supabase client created for tests');
+      return supabaseInstance;
+    }
+
     try {
       // Only surface a storage object when running in the browser to avoid SSR issues
       const browserStorage = (typeof window !== 'undefined' && window?.localStorage) ? window.localStorage : undefined;
