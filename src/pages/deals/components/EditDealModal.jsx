@@ -850,8 +850,19 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
 
                   {/* Delivery Coordinator */}
                   <div className="mb-4" data-testid="delivery-select">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Delivery Coordinator
+                      </label>
+                      <a
+                        href="/admin"
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        Open Admin
+                      </a>
+                    </div>
                     <SearchableSelect
-                      label="Delivery Coordinator"
+                      label=""
                       options={deliveryOptionsEffective}
                       value={formData?.deliveryCoordinator}
                       onChange={(value) => updateFormData({ deliveryCoordinator: value })}
@@ -861,15 +872,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                     />
                     {!dropdownLoading && (deliveryCoordinatorOptions?.length || 0) === 0 && (
                       <div className="mt-1 text-xs text-gray-500">
-                        No staff found for this role. Add staff in Admin.{' '}
-                        <a
-                          href="/admin"
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Open Admin
-                        </a>
+                        No staff found for this role. Add staff in Admin.
                       </div>
                     )}
                   </div>
