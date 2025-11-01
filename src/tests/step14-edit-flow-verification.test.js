@@ -3,6 +3,8 @@
  * Goal: Editing an existing deal works end-to-end.
  */
 
+import React from 'react'
+
 // Add Jest testing framework globals
 const describe = globalThis.describe || function(name, fn) { fn(); };
 const beforeEach = globalThis.beforeEach || function(fn) { fn(); };
@@ -26,6 +28,7 @@ const jest = globalThis.jest || {
 
 describe('Step 14: Edit flow - Test add/update/delete line items and verify DB persistence', () => {
   let mockSupabaseClient, existingJobId, testVehicleId, existingPartIds, newPartId, deletedPartId;
+  let mockDataUpdated = false; // Track if data has been updated
   
   beforeEach(() => {
     // Mock existing deal data for edit testing
@@ -34,48 +37,59 @@ describe('Step 14: Edit flow - Test add/update/delete line items and verify DB p
     existingPartIds = ['existing-part-1', 'existing-part-2'];
     newPartId = 'new-part-id-789';
     deletedPartId = existingPartIds?.[1]; // Second existing part will be deleted
+    // Don't reset mockDataUpdated - it persists across tests in this suite
     
     // Mock Supabase client with CRUD operations
     mockSupabaseClient = {
       from: jest?.fn((tableName) => ({
         // SELECT operations
-        select: jest?.fn(() => ({
-          eq: jest?.fn(() => Promise.resolve({
-            data: getExistingMockData(tableName),
-            error: null
-          })),
-          in: jest?.fn(() => Promise.resolve({
-            data: getExistingMockData(tableName),
-            error: null
-          })),
-          order: jest?.fn(() => Promise.resolve({
-            data: getExistingMockData(tableName),
-            error: null
-          }))
-        })),
+        select: jest?.fn(() => {
+          const chain = {
+            eq: jest?.fn(() => chain),
+            in: jest?.fn(() => chain),
+            order: jest?.fn(() => Promise.resolve({
+              data: mockDataUpdated ? getUpdatedMockData(tableName) : getExistingMockData(tableName),
+              error: null
+            })),
+            then: (resolve) => resolve({
+              data: mockDataUpdated ? getUpdatedMockData(tableName) : getExistingMockData(tableName),
+              error: null
+            })
+          };
+          return chain;
+        }),
         
         // UPDATE operations  
         update: jest?.fn(() => ({
-          eq: jest?.fn(() => Promise.resolve({
-            data: getUpdatedMockData(tableName),
-            error: null
-          }))
+          eq: jest?.fn(() => {
+            mockDataUpdated = true;
+            return Promise.resolve({
+              data: getUpdatedMockData(tableName),
+              error: null
+            });
+          })
         })),
         
         // INSERT operations
         insert: jest?.fn(() => ({
-          select: jest?.fn(() => Promise.resolve({
-            data: getInsertMockData(tableName),
-            error: null
-          }))
+          select: jest?.fn(() => {
+            mockDataUpdated = true;
+            return Promise.resolve({
+              data: getInsertMockData(tableName),
+              error: null
+            });
+          })
         })),
         
         // DELETE operations
         delete: jest?.fn(() => ({
-          eq: jest?.fn(() => Promise.resolve({
-            data: [{ id: deletedPartId }],
-            error: null
-          }))
+          eq: jest?.fn(() => {
+            mockDataUpdated = true;
+            return Promise.resolve({
+              data: [{ id: deletedPartId }],
+              error: null
+            });
+          })
         }))
       }))
     };
@@ -136,16 +150,29 @@ describe('Step 14: Edit flow - Test add/update/delete line items and verify DB p
   function getUpdatedMockData(tableName) {
     switch (tableName) {
       case 'job_parts':
-        return [{
-          id: existingPartIds?.[0],
-          job_id: existingJobId,
-          product_id: 'f7c3d8e9-1234-5678-9abc-def123456789', // Changed to different product
-          quantity_used: 1, // Quantity still remains 1 in DB
-          unit_price: 899, // Updated price
-          total_price: 899, // Updated total
-          promised_date: '2025-10-25', // Updated promised date
-          requires_scheduling: true
-        }];
+        // Return all parts after edit: updated first part + new part (second part deleted)
+        return [
+          {
+            id: existingPartIds?.[0],
+            job_id: existingJobId,
+            product_id: 'f7c3d8e9-1234-5678-9abc-def123456789', // Changed to different product
+            quantity_used: 1, // Quantity still remains 1 in DB
+            unit_price: 899, // Updated price
+            total_price: 899, // Updated total
+            promised_date: '2025-10-25', // Updated promised date
+            requires_scheduling: true
+          },
+          {
+            id: newPartId,
+            job_id: existingJobId,
+            product_id: 'b2c4f6a8-5555-4444-8888-123456789abc', // New product
+            quantity_used: 1,
+            unit_price: 400,
+            total_price: 400,
+            promised_date: '2025-10-22',
+            requires_scheduling: true
+          }
+        ];
       case 'transactions':
         return [{
           id: 'existing-transaction-123',

@@ -285,3 +285,13 @@ export const testCSVExportFunctionality = async () => {
 
 // Export test function for use in other files
 export default testCSVExportFunctionality;
+
+// Vitest wrapper
+import { describe, it, expect } from 'vitest';
+
+describe('Step 10: CSV Export & KPIs Final Check', () => {
+  it('should test CSV export and KPI functionality', async () => {
+    const result = await testCSVExportFunctionality();
+    expect(result.success).toBe(true);
+  });
+});
