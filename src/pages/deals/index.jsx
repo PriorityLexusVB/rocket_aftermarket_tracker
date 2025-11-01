@@ -81,7 +81,7 @@ const formatStaffName = (fullName) => {
 }
 
 // ✅ UPDATED: Next promised chip with <24h amber and overdue red; accepts ISO datetime
-const NextPromisedChip = ({ nextPromisedAt }) => {
+const NextPromisedChip = ({ nextPromisedAt, 'data-testid': testId }) => {
   if (!nextPromisedAt) {
     return <span className="text-xs text-gray-500">—</span>
   }
@@ -105,6 +105,7 @@ const NextPromisedChip = ({ nextPromisedAt }) => {
 
   return (
     <span
+      data-testid={testId}
       className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${urgencyClass}`}
     >
       Next: {short}
@@ -1403,6 +1404,7 @@ export default function DealsPage() {
               {filteredDeals?.map((deal) => (
                 <tr
                   key={deal?.id}
+                  data-testid={`deal-row-${deal?.id}`}
                   className="hover:bg-slate-50 cursor-pointer"
                   onClick={() => handleOpenDetail(deal)}
                 >
@@ -1429,7 +1431,7 @@ export default function DealsPage() {
                           fallback = dates?.[0]?.toISOString() || null
                         }
                       } catch {}
-                      return <NextPromisedChip nextPromisedAt={explicit || fallback} />
+                      return <NextPromisedChip nextPromisedAt={explicit || fallback} data-testid={`promise-chip-${deal?.id}`} />
                     })()}
                   </td>
                   <td className="px-4 py-3 w-[180px]">
@@ -1456,7 +1458,7 @@ export default function DealsPage() {
                       <span className="text-xs text-gray-500">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 max-w-[220px]">
+                  <td className="px-4 py-3 max-w-[220px]" data-testid={`deal-customer-${deal?.id}`}>
                     <div className="truncate">
                       <CustomerDisplay deal={deal} />
                       {/* Render staff names in "Lastname, F." format for visibility in tests */}
