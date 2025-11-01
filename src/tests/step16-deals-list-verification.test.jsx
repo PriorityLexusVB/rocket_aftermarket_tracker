@@ -251,12 +251,13 @@ describe('Step 16: Deals List Screen Verification', () => {
     renderComponent();
     
     await waitFor(() => {
-      // Calculate expected totals from mock data
-      const expectedRevenue = (850.00 + 1200.50 + 500.00)?.toFixed(2);
+      // Calculate expected totals from mock data (now formatted with 0 decimals)
+      const expectedRevenue = Math.round(850.00 + 1200.50 + 500.00);
       
-      // Verify KPI row contains the expected revenue value (with $ prefix as rendered)
+      // Verify KPI row contains the expected revenue value (formatted with 0 decimals, comma separators)
       const kpiRow = screen?.getByTestId('kpi-row');
-      expect(kpiRow)?.toHaveTextContent(`$${expectedRevenue}`);
+      // Using regex to allow for comma separators in formatted currency
+      expect(kpiRow?.textContent)?.toMatch(new RegExp(`\\$${expectedRevenue.toLocaleString('en-US')}`));
     });
     
     // Verify individual deal values match job_parts totals
@@ -367,7 +368,7 @@ describe('Step 16: Deals List Screen Verification', () => {
       const { within } = require('@testing-library/react');
       
       // Job-002 has earliest promised_date of 2025-01-18, should show "Next: Jan 18"
-      const chip = within(row2)?.getByTestId('promise-chip-job-002');
+      const chip = within(row2)?.getByTestId('promise-chip');
       expect(chip)?.toHaveTextContent('Next: Jan 18');
       
       // Check for overdue count indicator (all 3 jobs are overdue given current date Nov 2025)
