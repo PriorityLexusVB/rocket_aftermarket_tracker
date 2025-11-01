@@ -12,59 +12,8 @@
  * - Edit persist: Create deal with line items, reopen Edit and confirm selections are preselected
  */
 
+import { describe, test, expect, beforeAll, afterAll } from 'vitest'
 import { supabase } from '@/lib/supabase'
-
-// Add missing test framework functions
-const describe = (description, fn) => {
-  console.log(`\n${description}`)
-  fn()
-}
-
-const test = (description, fn) => {
-  console.log(`  ${description}`)
-  return fn()
-}
-
-const beforeAll = (fn) => {
-  return fn()
-}
-
-const afterAll = (fn) => {
-  return fn()
-}
-
-const expect = (actual) => ({
-  toBeNull: () => {
-    if (actual !== null) {
-      throw new Error(`Expected ${actual} to be null`)
-    }
-  },
-  toBeGreaterThan: (expected) => {
-    if (actual <= expected) {
-      throw new Error(`Expected ${actual} to be greater than ${expected}`)
-    }
-  },
-  toBe: (expected) => {
-    if (actual !== expected) {
-      throw new Error(`Expected ${actual} to be ${expected}`)
-    }
-  },
-  toEqual: (expected) => {
-    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-      throw new Error(`Expected ${JSON.stringify(actual)} to equal ${JSON.stringify(expected)}`)
-    }
-  },
-  toHaveLength: (expected) => {
-    if (actual?.length !== expected) {
-      throw new Error(`Expected ${actual} to have length ${expected}`)
-    }
-  },
-  toBeDefined: () => {
-    if (actual === undefined) {
-      throw new Error(`Expected ${actual} to be defined`)
-    }
-  },
-})
 
 describe('Step 11: Dropdowns Verification', () => {
   let testJobId

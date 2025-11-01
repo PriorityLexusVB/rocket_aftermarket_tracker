@@ -568,6 +568,10 @@ function tableApi(table: string) {
       limitN = n
       return chain
     },
+    throwOnError() {
+      // In test mode, just return the chain for fluent API
+      return chain
+    },
 
     // thenable to allow: await supabase.from(...).select().eq(...).order(...)
     then(resolve: any, reject?: any) {
