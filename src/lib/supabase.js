@@ -64,7 +64,6 @@ const createMockSupabaseClient = () => {
     filter: () => mockChain,
     order: () => mockChain,
     limit: () => mockChain,
-    range: () => mockChain,
     single: () => Promise.resolve({ data: null, error: null }),
     maybeSingle: () => Promise.resolve({ data: null, error: null }),
     csv: () => Promise.resolve({ data: '', error: null }),
