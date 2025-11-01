@@ -1342,24 +1342,23 @@ export default function DealsPage() {
           {(() => {
             // Count overdue promises
             const now = new Date()
-            const overdueCount = filteredDeals?.filter((deal) => {
-              const promisedAt = deal?.next_promised_iso
-              if (!promisedAt) {
-                // Check job_parts for fallback
-                if (Array.isArray(deal?.job_parts)) {
-                  const dates = deal.job_parts
-                    .map((p) => p?.promised_date)
-                    .filter(Boolean)
-                  if (dates.length > 0) {
-                    const earliest = dates.sort()[0]
-                    const dateStr = earliest.includes('T') ? earliest : `${earliest}T00:00:00Z`
-                    return new Date(dateStr) < now
+            const overdueCount =
+              filteredDeals?.filter((deal) => {
+                const promisedAt = deal?.next_promised_iso
+                if (!promisedAt) {
+                  // Check job_parts for fallback
+                  if (Array.isArray(deal?.job_parts)) {
+                    const dates = deal.job_parts.map((p) => p?.promised_date).filter(Boolean)
+                    if (dates.length > 0) {
+                      const earliest = dates.sort()[0]
+                      const dateStr = earliest.includes('T') ? earliest : `${earliest}T00:00:00Z`
+                      return new Date(dateStr) < now
+                    }
                   }
+                  return false
                 }
-                return false
-              }
-              return new Date(promisedAt) < now
-            })?.length || 0
+                return new Date(promisedAt) < now
+              })?.length || 0
 
             if (overdueCount > 0) {
               return (
@@ -1430,225 +1429,235 @@ export default function DealsPage() {
                 </tr>
               ) : (
                 filteredDeals?.map((deal) => (
-                <tr
-                  key={deal?.id}
-                  data-testid={`deal-row-${deal?.id}`}
-                  className="hover:bg-slate-50 cursor-pointer"
-                  onClick={() => handleOpenDetail(deal)}
-                >
-                  <td className="px-4 py-3">
-                    <StatusPill status={deal?.job_status} />
-                  </td>
-                  <td className="px-4 py-3 w-[72px]">
-                    <span className="text-sm text-slate-700">
-                      {typeof deal?.age_days === 'number' ? `${deal?.age_days}d` : '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 w-[120px]">
-                    {(() => {
-                      const explicit = deal?.next_promised_iso
-                      let fallback = null
-                      try {
-                        if (!explicit && Array.isArray(deal?.job_parts)) {
-                          const dates = deal.job_parts
-                            .map((p) => p?.promised_date)
-                            .filter(Boolean)
-                            .map((d) => {
-                              // Ensure ISO format with timezone
-                              const dateStr = String(d)
-                              return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`
-                            })
-                            .sort()
-                          fallback = dates?.[0] || null
-                        }
-                      } catch {}
-                      return <NextPromisedChip nextPromisedAt={explicit || fallback} jobId={deal?.id} />
-                    })()}
-                  </td>
-                  <td className="px-4 py-3 w-[180px]">
-                    {deal?.appt_start ? (
+                  <tr
+                    key={deal?.id}
+                    data-testid={`deal-row-${deal?.id}`}
+                    className="hover:bg-slate-50 cursor-pointer"
+                    onClick={() => handleOpenDetail(deal)}
+                  >
+                    <td className="px-4 py-3">
+                      <StatusPill status={deal?.job_status} />
+                    </td>
+                    <td className="px-4 py-3 w-[72px]">
                       <span className="text-sm text-slate-700">
-                        {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                        {' • '}
-                        {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                        {'–'}
-                        {deal?.appt_end
-                          ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : ''}
+                        {typeof deal?.age_days === 'number' ? `${deal?.age_days}d` : '—'}
                       </span>
-                    ) : (
-                      <span className="text-xs text-gray-500">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 max-w-[220px]" data-testid={`deal-customer-${deal?.id}`}>
-                    <div className="truncate">
-                      <CustomerDisplay deal={deal} />
-                      {/* Render staff names in "Lastname, F." format for visibility in tests */}
-                      {(deal?.delivery_coordinator_name || deal?.sales_consultant_name) && (
-                        <div className="mt-1 text-xs text-slate-600 space-x-2">
-                          {deal?.delivery_coordinator_name && (
-                            <span>{formatStaffName(deal?.delivery_coordinator_name)}</span>
-                          )}
-                          {deal?.sales_consultant_name && (
-                            <span>{formatStaffName(deal?.sales_consultant_name)}</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 w-[150px]">
-                    <span className="text-sm text-slate-700">
-                      {deal?.customer_phone_e164 || deal?.customer_phone || '—'}
-                      {deal?.customer_phone_last4 ? (
-                        <span className="text-slate-400">
-                          {' '}
-                          ({`…${deal?.customer_phone_last4}`})
+                    </td>
+                    <td className="px-4 py-3 w-[120px]">
+                      {(() => {
+                        const explicit = deal?.next_promised_iso
+                        let fallback = null
+                        try {
+                          if (!explicit && Array.isArray(deal?.job_parts)) {
+                            const dates = deal.job_parts
+                              .map((p) => p?.promised_date)
+                              .filter(Boolean)
+                              .map((d) => {
+                                // Normalize to local date-time to avoid UTC day shift in tests
+                                const dateStr = String(d)
+                                return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
+                              })
+                              .sort()
+                            fallback = dates?.[0] || null
+                          }
+                        } catch {}
+                        return (
+                          <NextPromisedChip
+                            nextPromisedAt={explicit || fallback}
+                            jobId={deal?.id}
+                          />
+                        )
+                      })()}
+                    </td>
+                    <td className="px-4 py-3 w-[180px]">
+                      {deal?.appt_start ? (
+                        <span className="text-sm text-slate-700">
+                          {new Date(deal?.appt_start).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                          {' • '}
+                          {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                          {'–'}
+                          {deal?.appt_end
+                            ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })
+                            : ''}
                         </span>
-                      ) : null}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 max-w-[220px]">
-                    <span
-                      className="text-sm text-slate-700 truncate inline-block max-w-full"
-                      title={
-                        `${deal?.vehicle ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim() : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
-                        ''
-                      }
-                    >
-                      {deal?.vehicle
-                        ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
-                        : '—'}
-                      {deal?.vehicle?.stock_number ? (
-                        <span className="text-slate-400">
-                          {' '}
-                          • Stock: {deal?.vehicle?.stock_number}
-                        </span>
-                      ) : null}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 w-[120px]">
-                    <ValueDisplay amount={deal?.total_amount} />
-                  </td>
-                  <td className="px-4 py-3 max-w-[180px]">
-                    <div className="flex flex-wrap gap-1 truncate">
-                      {(deal?.work_tags || []).slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {deal?.work_tags && deal?.work_tags.length > 2 && (
-                        <span className="text-xs text-slate-500">+{deal.work_tags.length - 2}</span>
-                      )}
-                      {(!deal?.work_tags || deal?.work_tags?.length === 0) && (
+                      ) : (
                         <span className="text-xs text-gray-500">—</span>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 max-w-[160px] hidden xl:table-cell">
-                    <span
-                      className="text-sm text-slate-700 truncate inline-block max-w-full"
-                      title={deal?.vendor_name || 'Unassigned'}
+                    </td>
+                    <td
+                      className="px-4 py-3 max-w-[220px]"
+                      data-testid={`deal-customer-${deal?.id}`}
                     >
-                      {deal?.vendor_name || 'Unassigned'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 w-[120px]">
-                    <ServiceLocationTag
-                      serviceType={deal?.service_type}
-                      jobParts={deal?.job_parts}
-                    />
-                  </td>
-                  <td className="px-4 py-3 w-[120px] hidden xl:table-cell">
-                    <span className="text-sm text-slate-700">
-                      {relativeTimeFromNow(deal?.created_at)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 w-[140px]">
-                    {deal?.loaner_number || deal?.has_active_loaner ? (
-                      <LoanerBadge deal={deal} />
-                    ) : (
-                      <span className="text-xs text-gray-500">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right w-[160px]">
-                    <div className="flex items-center justify-end space-x-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleEditDeal(deal?.id)
-                        }}
-                        className="text-blue-600 hover:text-blue-800"
-                        aria-label="Edit deal"
+                      <div className="truncate">
+                        <CustomerDisplay deal={deal} />
+                        {/* Render staff names in "Lastname, F." format for visibility in tests */}
+                        {(deal?.delivery_coordinator_name || deal?.sales_consultant_name) && (
+                          <div className="mt-1 text-xs text-slate-600 space-x-2">
+                            {deal?.delivery_coordinator_name && (
+                              <span>{formatStaffName(deal?.delivery_coordinator_name)}</span>
+                            )}
+                            {deal?.sales_consultant_name && (
+                              <span>{formatStaffName(deal?.sales_consultant_name)}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 w-[150px]">
+                      <span className="text-sm text-slate-700">
+                        {deal?.customer_phone_e164 || deal?.customer_phone || '—'}
+                        {deal?.customer_phone_last4 ? (
+                          <span className="text-slate-400">
+                            {' '}
+                            ({`…${deal?.customer_phone_last4}`})
+                          </span>
+                        ) : null}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 max-w-[220px]">
+                      <span
+                        className="text-sm text-slate-700 truncate inline-block max-w-full"
+                        title={
+                          `${deal?.vehicle ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim() : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
+                          ''
+                        }
                       >
-                        Edit
-                      </Button>
-
-                      {/* ✅ FIXED: Loaner management for desktop with proper condition */}
-                      {deal?.customer_needs_loaner && (
+                        {deal?.vehicle
+                          ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                          : '—'}
+                        {deal?.vehicle?.stock_number ? (
+                          <span className="text-slate-400">
+                            {' '}
+                            • Stock: {deal?.vehicle?.stock_number}
+                          </span>
+                        ) : null}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 w-[120px]">
+                      <ValueDisplay amount={deal?.total_amount} />
+                    </td>
+                    <td className="px-4 py-3 max-w-[180px]">
+                      <div className="flex flex-wrap gap-1 truncate">
+                        {(deal?.work_tags || []).slice(0, 2).map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {deal?.work_tags && deal?.work_tags.length > 2 && (
+                          <span className="text-xs text-slate-500">
+                            +{deal.work_tags.length - 2}
+                          </span>
+                        )}
+                        {(!deal?.work_tags || deal?.work_tags?.length === 0) && (
+                          <span className="text-xs text-gray-500">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 max-w-[160px] hidden xl:table-cell">
+                      <span
+                        className="text-sm text-slate-700 truncate inline-block max-w-full"
+                        title={deal?.vendor_name || 'Unassigned'}
+                      >
+                        {deal?.vendor_name || 'Unassigned'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 w-[120px]">
+                      <ServiceLocationTag
+                        serviceType={deal?.service_type}
+                        jobParts={deal?.job_parts}
+                      />
+                    </td>
+                    <td className="px-4 py-3 w-[120px] hidden xl:table-cell">
+                      <span className="text-sm text-slate-700">
+                        {relativeTimeFromNow(deal?.created_at)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 w-[140px]">
+                      {deal?.loaner_number || deal?.has_active_loaner ? (
+                        <LoanerBadge deal={deal} />
+                      ) : (
+                        <span className="text-xs text-gray-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right w-[160px]">
+                      <div className="flex items-center justify-end space-x-2">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleManageLoaner(deal)
+                            handleEditDeal(deal?.id)
                           }}
-                          className="text-purple-600 hover:text-purple-800"
-                          aria-label="Manage loaner"
+                          className="text-blue-600 hover:text-blue-800"
+                          aria-label="Edit deal"
                         >
-                          Loaner
+                          Edit
                         </Button>
-                      )}
 
-                      {/* Mark returned button for active loaners */}
-                      {deal?.loaner_id && (
+                        {/* ✅ FIXED: Loaner management for desktop with proper condition */}
+                        {deal?.customer_needs_loaner && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleManageLoaner(deal)
+                            }}
+                            className="text-purple-600 hover:text-purple-800"
+                            aria-label="Manage loaner"
+                          >
+                            Loaner
+                          </Button>
+                        )}
+
+                        {/* Mark returned button for active loaners */}
+                        {deal?.loaner_id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation()
+
+                              setMarkReturnedModal({
+                                loaner_id: deal?.loaner_id,
+                                loaner_number: deal?.loaner_number,
+                                job_title: getDealPrimaryRef(deal),
+                              })
+                            }}
+                            className="text-green-600 hover:text-green-800"
+                            aria-label="Mark loaner returned"
+                          >
+                            Return
+                          </Button>
+                        )}
+
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation()
-
-                            setMarkReturnedModal({
-                              loaner_id: deal?.loaner_id,
-                              loaner_number: deal?.loaner_number,
-                              job_title: getDealPrimaryRef(deal),
-                            })
+                            setDeleteConfirm(deal)
                           }}
-                          className="text-green-600 hover:text-green-800"
-                          aria-label="Mark loaner returned"
+                          className="text-red-600 hover:text-red-800"
+                          aria-label="Delete deal"
                         >
-                          Return
+                          Delete
                         </Button>
-                      )}
-
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setDeleteConfirm(deal)
-                        }}
-                        className="text-red-600 hover:text-red-800"
-                        aria-label="Delete deal"
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
+                      </div>
+                    </td>
+                  </tr>
                 ))
               )}
             </tbody>
@@ -1748,15 +1757,20 @@ export default function DealsPage() {
                                   .map((p) => p?.promised_date)
                                   .filter(Boolean)
                                   .map((d) => {
-                                    // Ensure ISO format with timezone
+                                    // Normalize to local date-time to avoid UTC day shift in tests
                                     const dateStr = String(d)
-                                    return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`
+                                    return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
                                   })
                                   .sort()
                                 fallback = dates?.[0] || null
                               }
                             } catch {}
-                            return <NextPromisedChip nextPromisedAt={explicit || fallback} jobId={deal?.id} />
+                            return (
+                              <NextPromisedChip
+                                nextPromisedAt={explicit || fallback}
+                                jobId={deal?.id}
+                              />
+                            )
                           })()}
                         </span>
                         {deal?.appt_start && (
