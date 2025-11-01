@@ -50,3 +50,9 @@ dist/
 
 dist/
 build-output.log
+
+# allow select VS Code files
+!.vscode/extensions.list
+!.vscode/profiles/
+!.vscode/settings.json
+!.vscode/extensions.json
