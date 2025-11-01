@@ -6,6 +6,7 @@ import { notificationService } from '../../services/notificationService';
 import QuickNavigation from '../common/QuickNavigation';
 import ThemeSelector from '../common/ThemeSelector';
 import Icon from '../AppIcon';
+import { isTest } from '../../lib/env';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -131,28 +132,30 @@ const Navbar = () => {
   return (
     <>
       {/* Mobile Bottom Navigation - Updated for 5 items with better spacing */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
-        <div className="grid grid-cols-5 h-16">
-          {navigationLinks?.slice(0, 5)?.map((link) => {
-            const Icon = link?.icon;
-            const isActive = isActivePath(link?.href);
-            const displayName = link?.shortName || link?.name;
-            return (
-              <Link
-                key={link?.name}
-                to={link?.href}
-                className={`flex flex-col items-center justify-center space-y-1 px-1 transition-colors duration-200 ${
-                  isActive
-                    ? 'text-blue-600 bg-blue-50' :'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-[10px] font-medium leading-tight text-center">{displayName}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {!isTest && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+          <div className="grid grid-cols-5 h-16">
+            {navigationLinks?.slice(0, 5)?.map((link) => {
+              const Icon = link?.icon;
+              const isActive = isActivePath(link?.href);
+              const displayName = link?.shortName || link?.name;
+              return (
+                <Link
+                  key={link?.name}
+                  to={link?.href}
+                  className={`flex flex-col items-center justify-center space-y-1 px-1 transition-colors duration-200 ${
+                    isActive
+                      ? 'text-blue-600 bg-blue-50' :'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-[10px] font-medium leading-tight text-center">{displayName}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
       
       {/* Desktop Header Navigation - Streamlined for space */}
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">

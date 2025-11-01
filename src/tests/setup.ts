@@ -1,3 +1,6 @@
+// Lock timezone for deterministic date formatting in tests
+process.env.TZ = 'America/New_York'
+
 import '@testing-library/jest-dom'
 import { vi, expect as vitestExpect, beforeEach as vitestBeforeEach } from 'vitest'
 
