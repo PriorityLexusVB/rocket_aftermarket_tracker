@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Check if we're in test mode
-const isTestMode = import.meta.env.MODE === 'test' || typeof global !== 'undefined' && global.process?.env?.NODE_ENV === 'test';
+const isTestMode = import.meta.env.MODE === 'test';
 
 // Environment variables with enhanced validation
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
