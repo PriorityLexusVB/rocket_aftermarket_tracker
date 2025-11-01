@@ -23,5 +23,9 @@ vi.mock('@/lib/supabase', () => {
     single: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
     then: (resolve: any) => resolve({ data: rows, error: null }),
   })
-  return { supabase: { from: () => chain(), rpc: () => Promise.resolve({ data: null, error: null }) } }
+  const rpcChain = () => ({
+    single: () => Promise.resolve({ data: null, error: null }),
+    then: (resolve: any) => resolve({ data: null, error: null }),
+  })
+  return { supabase: { from: () => chain(), rpc: () => rpcChain() } }
 })
