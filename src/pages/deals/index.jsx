@@ -1,6 +1,7 @@
 // src/pages/deals/index.jsx
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { parseISO, format } from 'date-fns'
 import { getAllDeals, markLoanerReturned } from '../../services/dealService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
@@ -70,18 +71,18 @@ const relativeTimeFromNow = (iso) => {
 // ✅ ADDED: Helper to format names as "Lastname, F."
 const formatStaffName = (fullName) => {
   if (!fullName) return ''
-  const parts = fullName?.trim()?.split(' ')
-  if (parts?.length < 2) return fullName
+  const parts = fullName?.trim()?.split(/\s+/)
+  if (parts?.length === 0) return ''
+  if (parts?.length === 1) return parts[0]
 
-  const firstName = parts?.[0]
-  const lastName = parts?.slice(1)?.join(' ')
-  const firstInitial = firstName?.[0]?.toUpperCase()
+  const lastName = parts[parts.length - 1]
+  const firstInitial = parts[0]?.[0] ?? ''
 
   return `${lastName}, ${firstInitial}.`
 }
 
 // ✅ UPDATED: Next promised chip with <24h amber and overdue red; accepts ISO datetime
-const NextPromisedChip = ({ nextPromisedAt }) => {
+const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
   if (!nextPromisedAt) {
     return <span className="text-xs text-gray-500">—</span>
   }
@@ -98,13 +99,12 @@ const NextPromisedChip = ({ nextPromisedAt }) => {
       ? 'bg-amber-100 text-amber-800 border-amber-200'
       : 'bg-green-100 text-green-800 border-green-200'
 
-  const short = new Date(nextPromisedAt)?.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
+  // Use date-fns for consistent formatting: "MMM d" (e.g., "Jan 18")
+  const short = format(parseISO(nextPromisedAt), 'MMM d')
 
   return (
     <span
+      data-testid={jobId ? `promise-chip-${jobId}` : undefined}
       className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${urgencyClass}`}
     >
       Next: {short}
@@ -199,7 +199,7 @@ const ValueDisplay = ({ amount }) => {
   return <span className="text-sm text-slate-700">{formatter.format(amount)}</span>
 }
 
-// ✅ UPDATED: Service Location Tag with exact colors per checklist (#22c55e in-house / blue off-site)
+// ✅ UPDATED: Service Location Tag with color styling per requirements
 const ServiceLocationTag = ({ serviceType, jobParts }) => {
   // Check if any line items are off-site to determine vendor status
   const hasOffSiteItems = jobParts?.some((part) => part?.is_off_site)
@@ -208,17 +208,11 @@ const ServiceLocationTag = ({ serviceType, jobParts }) => {
   if (hasOffSiteItems && hasOnSiteItems) {
     return (
       <div className="flex flex-col space-y-1">
-        <span
-          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white"
-          style={{ backgroundColor: '#3b82f6' }}
-        >
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
           🏢 Off-Site
         </span>
-        <span
-          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white"
-          style={{ backgroundColor: '#22c55e' }}
-        >
-          🏠 In-House
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+          🏠 On-Site
         </span>
       </div>
     )
@@ -226,21 +220,15 @@ const ServiceLocationTag = ({ serviceType, jobParts }) => {
 
   if (hasOffSiteItems) {
     return (
-      <span
-        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white"
-        style={{ backgroundColor: '#3b82f6' }}
-      >
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
         🏢 Off-Site
       </span>
     )
   }
 
   return (
-    <span
-      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white"
-      style={{ backgroundColor: '#22c55e' }}
-    >
-      🏠 In-House
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+      🏠 On-Site
     </span>
   )
 }
@@ -993,6 +981,7 @@ export default function DealsPage() {
               variant="outline"
               size="sm"
               className="bg-white hover:bg-gray-50"
+              data-testid="export-button"
             />
             <Button
               onClick={() => setShowNewDealModal(true)}
@@ -1012,7 +1001,7 @@ export default function DealsPage() {
         />
 
         {/* ✅ UPDATED: KPI Row - Enhanced with profit analysis */}
-        <div className="mb-6">
+        <div className="mb-6" data-testid="kpi-row">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             {/* Active Jobs */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
@@ -1345,9 +1334,42 @@ export default function DealsPage() {
         </div>
 
         {/* Results count */}
-        <div className="mb-4 text-sm text-slate-600">
-          Showing {filteredDeals?.length} of {deals?.length} deals
-          {filters?.search && <span className="ml-2 text-blue-600">(filtered)</span>}
+        <div className="mb-4 text-sm text-slate-600 flex items-center gap-3">
+          <span>
+            Showing {filteredDeals?.length} of {deals?.length} deals
+            {filters?.search && <span className="ml-2 text-blue-600">(filtered)</span>}
+          </span>
+          {(() => {
+            // Count overdue promises
+            const now = new Date()
+            const overdueCount = filteredDeals?.filter((deal) => {
+              const promisedAt = deal?.next_promised_iso
+              if (!promisedAt) {
+                // Check job_parts for fallback
+                if (Array.isArray(deal?.job_parts)) {
+                  const dates = deal.job_parts
+                    .map((p) => p?.promised_date)
+                    .filter(Boolean)
+                  if (dates.length > 0) {
+                    const earliest = dates.sort()[0]
+                    const dateStr = earliest.includes('T') ? earliest : `${earliest}T00:00:00Z`
+                    return new Date(dateStr) < now
+                  }
+                }
+                return false
+              }
+              return new Date(promisedAt) < now
+            })?.length || 0
+
+            if (overdueCount > 0) {
+              return (
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                  {overdueCount} overdue
+                </span>
+              )
+            }
+            return null
+          })()}
         </div>
 
         {/* Desktop Table with horizontal scroll to view all columns */}
@@ -1400,9 +1422,17 @@ export default function DealsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {filteredDeals?.map((deal) => (
+              {filteredDeals?.length === 0 ? (
+                <tr>
+                  <td colSpan="14" className="px-6 py-12 text-center text-slate-500">
+                    No deals
+                  </td>
+                </tr>
+              ) : (
+                filteredDeals?.map((deal) => (
                 <tr
                   key={deal?.id}
+                  data-testid={`deal-row-${deal?.id}`}
                   className="hover:bg-slate-50 cursor-pointer"
                   onClick={() => handleOpenDetail(deal)}
                 >
@@ -1423,13 +1453,16 @@ export default function DealsPage() {
                           const dates = deal.job_parts
                             .map((p) => p?.promised_date)
                             .filter(Boolean)
-                            .map((d) => new Date(d))
-                            .filter((d) => !Number.isNaN(d.getTime()))
-                            .sort((a, b) => a.getTime() - b.getTime())
-                          fallback = dates?.[0]?.toISOString() || null
+                            .map((d) => {
+                              // Ensure ISO format with timezone
+                              const dateStr = String(d)
+                              return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`
+                            })
+                            .sort()
+                          fallback = dates?.[0] || null
                         }
                       } catch {}
-                      return <NextPromisedChip nextPromisedAt={explicit || fallback} />
+                      return <NextPromisedChip nextPromisedAt={explicit || fallback} jobId={deal?.id} />
                     })()}
                   </td>
                   <td className="px-4 py-3 w-[180px]">
@@ -1456,7 +1489,7 @@ export default function DealsPage() {
                       <span className="text-xs text-gray-500">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 max-w-[220px]">
+                  <td className="px-4 py-3 max-w-[220px]" data-testid={`deal-customer-${deal?.id}`}>
                     <div className="truncate">
                       <CustomerDisplay deal={deal} />
                       {/* Render staff names in "Lastname, F." format for visibility in tests */}
@@ -1616,7 +1649,8 @@ export default function DealsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1713,13 +1747,16 @@ export default function DealsPage() {
                                 const dates = deal.job_parts
                                   .map((p) => p?.promised_date)
                                   .filter(Boolean)
-                                  .map((d) => new Date(d))
-                                  .filter((d) => !Number.isNaN(d.getTime()))
-                                  .sort((a, b) => a.getTime() - b.getTime())
-                                fallback = dates?.[0]?.toISOString() || null
+                                  .map((d) => {
+                                    // Ensure ISO format with timezone
+                                    const dateStr = String(d)
+                                    return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`
+                                  })
+                                  .sort()
+                                fallback = dates?.[0] || null
                               }
                             } catch {}
-                            return <NextPromisedChip nextPromisedAt={explicit || fallback} />
+                            return <NextPromisedChip nextPromisedAt={explicit || fallback} jobId={deal?.id} />
                           })()}
                         </span>
                         {deal?.appt_start && (
