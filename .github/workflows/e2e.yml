@@ -17,21 +17,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Install pnpm
-        run: npm install -g pnpm@10
+      - name: Check for required secrets
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
+             [ -z "${{ secrets.E2E_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD }}" ]; then
+            echo "secrets_available=false" >> $GITHUB_OUTPUT
+            echo "::warning::E2E secrets not available for this PR. Smoke tests will be skipped."
+          else
+            echo "secrets_available=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Install dependencies
+        if: steps.check-secrets.outputs.secrets_available == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
+        if: steps.check-secrets.outputs.secrets_available == 'true'
         run: pnpm exec playwright install --with-deps
 
       - name: Run E2E smoke tests (fast subset)
+        if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
           # App runtime env (Vite reads VITE_* at dev server start)
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -46,7 +65,7 @@ jobs:
             e2e/deal-edit.spec.ts
 
       - name: Upload Playwright HTML report (always)
-        if: always()
+        if: always() && steps.check-secrets.outputs.secrets_available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-smoke
@@ -62,13 +81,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install pnpm
-        run: npm install -g pnpm@10
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
