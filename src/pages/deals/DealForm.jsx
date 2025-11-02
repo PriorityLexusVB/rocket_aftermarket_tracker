@@ -873,16 +873,16 @@ export default function DealForm({
         </div>
         {products.length === 0 && (
           <div className="p-3 rounded bg-amber-50 text-amber-800 text-sm">
-            No products found yet.{' '}
+            No products found yet. Add aftermarket products in{' '}
             <button
               type="button"
               onClick={() => navigate('/admin?section=products')}
               className="underline hover:text-amber-900"
               data-testid="admin-link-products"
             >
-              Open Admin
-            </button>{' '}
-            to add aftermarket products.
+              Admin
+            </button>
+            .
           </div>
         )}
 

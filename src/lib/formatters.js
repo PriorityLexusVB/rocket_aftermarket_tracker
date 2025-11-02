@@ -7,7 +7,7 @@
  * @returns {string} Formatted currency string or '—' for null/undefined
  */
 export function formatCurrency0(n) {
-  if (n == null) return '—'
+  if (n === null || n === undefined) return '—'
   return n.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -22,7 +22,7 @@ export function formatCurrency0(n) {
  * @returns {string} Formatted currency string or '—' for null/undefined
  */
 export function formatCurrency2(n) {
-  if (n == null) return '—'
+  if (n === null || n === undefined) return '—'
   return n.toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -37,6 +37,6 @@ export function formatCurrency2(n) {
  * @returns {string} Formatted number string or '—' for null/undefined
  */
 export function formatNumber(n) {
-  if (n == null) return '—'
+  if (n === null || n === undefined) return '—'
   return n.toLocaleString('en-US')
 }
