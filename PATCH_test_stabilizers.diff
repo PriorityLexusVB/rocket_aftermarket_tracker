@@ -1,0 +1,49 @@
+*** 1.1/src/tests/dealService.loanerToggle.test.jsx
+--- 1.2/src/tests/dealService.loanerToggle.test.jsx
+@@
+-    renderForm()
+-
+-    await waitFor(() => {
+-      const lineItem0 = screen.getByTestId('line-0')
+-      expect(lineItem0).toBeDefined()
+-    })
++    renderForm()
++    await waitFor(() => {
++      // JSDOM renders multiple copies (modal/inline, mobile/desktop).
++      const all = screen.getAllByTestId('line-0')
++      expect(all.length).toBeGreaterThan(0)
++    })
+@@
+-    const line0 = screen.getByTestId('line-0')
++    const [line0] = screen.getAllByTestId('line-0')
+@@
+-    const removeBtn = screen.getByTestId('remove-line-item-btn-0')
++    const [removeBtn] = screen.getAllByTestId('remove-line-item-btn-0')
+
+*** 1.1/src/tests/step16-deals-list-verification.test.jsx
+--- 1.2/src/tests/step16-deals-list-verification.test.jsx
+@@
+-    // Verify staff formatting "Lastname, F."
+-    const staff = screen.getByText('Martinez, J.')
+-    expect(staff).toBeInTheDocument()
++    // Mobile & desktop both render under JSDOM; accept any visible match.
++    const staffAll = screen.getAllByText('Martinez, J.')
++    expect(staffAll.length).toBeGreaterThan(0)
+@@
+-    // Verify next scheduling chip
+-    expect(screen.getByText('Next: Jan 18')).toBeInTheDocument()
++    // The chip text can be split across nodes; target the test id instead.
++    const chips = screen.getAllByTestId('promise-chip')
++    expect(chips.some(el => /Next:\s*Jan 18/.test(el.textContent || ''))).toBe(true)
+@@
+-    // Delivery coordinator name appears
+-    expect(screen.getByText('Wilson, R.')).toBeInTheDocument()
++    // Delivery coordinator name (allow duplicates from mobile/desktop)
++    const names = screen.getAllByText('Wilson, R.')
++    expect(names.length).toBeGreaterThan(0)
+@@
+-    const exportButton = screen.getByRole('button', { name: /export/i })
+-    expect(exportButton)?.toBeDefined()
++    // "Export" button may exist twice; just ensure it's present.
++    const exports = screen.getAllByRole('button', { name: /export/i })
++    expect(exports.length).toBeGreaterThan(0)

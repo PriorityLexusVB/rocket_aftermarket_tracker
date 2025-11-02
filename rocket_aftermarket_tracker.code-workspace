@@ -20,6 +20,11 @@
     "editor.codeActions.triggerOnFocusChange": true,
   },
   "extensions": {
-    "recommendations": ["github.copilot", "github.copilot-chat", "esbenp.prettier-vscode"],
+    "recommendations": [
+      "github.copilot",
+      "github.copilot-chat",
+      "esbenp.prettier-vscode",
+      "ms-vscode-remote.remote-containers"
+    ],
   },
 }
