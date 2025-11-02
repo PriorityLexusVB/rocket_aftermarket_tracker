@@ -69,46 +69,53 @@ describe('DealForm Loaner Toggle', () => {
   })
 
   it('renders loaner checkbox', async () => {
-    renderForm()
+    const { container } = renderForm()
 
     await waitFor(() => {
-      const checkbox = screen.getByTestId('loaner-checkbox')
+      // Use container to scope query and avoid duplicates
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
       expect(checkbox).toBeDefined()
       expect(checkbox).toHaveProperty('type', 'checkbox')
     })
   })
 
   it('hides loaner section when checkbox is unchecked', async () => {
-    renderForm()
+    const { container } = renderForm()
 
     await waitFor(() => {
-      const checkbox = screen.getByTestId('loaner-checkbox')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
       expect(checkbox.checked).toBe(false)
     })
 
     // Loaner section should not be visible
-    const loanerSection = screen.queryByTestId('loaner-section')
+    const dealForm = container.querySelector('[data-testid="deal-form"]')
+    const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
     expect(loanerSection).toBeNull()
   })
 
   it('shows loaner section when checkbox is checked', async () => {
-    renderForm()
+    const { container } = renderForm()
 
     await waitFor(() => {
-      const checkbox = screen.getByTestId('loaner-checkbox')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
       fireEvent.click(checkbox)
     })
 
     // Loaner section should now be visible
     await waitFor(() => {
-      const loanerSection = screen.getByTestId('loaner-section')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
       expect(loanerSection).toBeDefined()
     })
 
     // Check that loaner fields are present
-    const loanerNumberInput = screen.getByTestId('loaner-number-input')
-    const loanerEtaInput = screen.getByTestId('loaner-eta-input')
-    const loanerNotesInput = screen.getByTestId('loaner-notes-input')
+    const dealForm = container.querySelector('[data-testid="deal-form"]')
+    const loanerNumberInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
+    const loanerEtaInput = dealForm?.querySelector('[data-testid="loaner-eta-input"]')
+    const loanerNotesInput = dealForm?.querySelector('[data-testid="loaner-notes-input"]')
 
     expect(loanerNumberInput).toBeDefined()
     expect(loanerEtaInput).toBeDefined()
@@ -116,29 +123,33 @@ describe('DealForm Loaner Toggle', () => {
   })
 
   it('toggles loaner section visibility', async () => {
-    renderForm()
+    const { container } = renderForm()
 
     await waitFor(() => {
-      const checkbox = screen.getByTestId('loaner-checkbox')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
       expect(checkbox).toBeDefined()
     })
 
-    const checkbox = screen.getByTestId('loaner-checkbox')
+    const dealForm = container.querySelector('[data-testid="deal-form"]')
+    const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
 
     // Initially unchecked - section hidden
     expect(checkbox.checked).toBe(false)
-    expect(screen.queryByTestId('loaner-section')).toBeNull()
+    expect(dealForm?.querySelector('[data-testid="loaner-section"]')).toBeNull()
 
     // Check it - section appears
     fireEvent.click(checkbox)
     await waitFor(() => {
-      expect(screen.getByTestId('loaner-section')).toBeDefined()
+      const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
+      expect(loanerSection).toBeDefined()
     })
 
     // Uncheck it - section disappears
     fireEvent.click(checkbox)
     await waitFor(() => {
-      expect(screen.queryByTestId('loaner-section')).toBeNull()
+      const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
+      expect(loanerSection).toBeNull()
     })
   })
 
@@ -152,87 +163,95 @@ describe('DealForm Loaner Toggle', () => {
       },
     }
 
-    renderForm({ initial: initialWithLoaner })
+    const { container } = renderForm({ initial: initialWithLoaner })
 
     await waitFor(() => {
-      const checkbox = screen.getByTestId('loaner-checkbox')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
       expect(checkbox.checked).toBe(true)
     })
 
-    // Loaner section should be visible
-    const loanerSection = screen.getByTestId('loaner-section')
+    // Loaner section should be visible within the deal form
+    const dealForm = container.querySelector('[data-testid="deal-form"]')
+    const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
     expect(loanerSection).toBeDefined()
 
     // Check that values are populated
-    const loanerNumberInput = screen.getByTestId('loaner-number-input')
+    const loanerNumberInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
     expect(loanerNumberInput.value).toBe('L-1234')
   })
 
   it('renders line items section with proper grid', async () => {
-    renderForm()
+    const { container } = renderForm()
 
     await waitFor(() => {
-      const lineItemsSection = screen.getByTestId('line-items-section')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const lineItemsSection = dealForm?.querySelector('[data-testid="line-items-section"]')
       expect(lineItemsSection).toBeDefined()
     })
 
     // Check for add button
-    const addButton = screen.getByTestId('add-line-item-btn')
+    const dealForm = container.querySelector('[data-testid="deal-form"]')
+    const addButton = dealForm?.querySelector('[data-testid="add-line-item-btn"]')
     expect(addButton).toBeDefined()
 
     // Should have at least one line item by default
-    const lineItem0 = screen.getByTestId('line-0')
+    const lineItem0 = dealForm?.querySelector('[data-testid="line-0"]')
     expect(lineItem0).toBeDefined()
 
     // Check for product select
-    const productSelect = screen.getByTestId('product-select-0')
+    const productSelect = dealForm?.querySelector('[data-testid="product-select-0"]')
     expect(productSelect).toBeDefined()
 
     // Check for unit price input
-    const unitPriceInput = screen.getByTestId('unit-price-input-0')
+    const unitPriceInput = dealForm?.querySelector('[data-testid="unit-price-input-0"]')
     expect(unitPriceInput).toBeDefined()
 
     // Check for scheduling controls
-    const requiresSchedulingCheckbox = screen.getByTestId('requires-scheduling-0')
+    const requiresSchedulingCheckbox = dealForm?.querySelector('[data-testid="requires-scheduling-0"]')
     expect(requiresSchedulingCheckbox).toBeDefined()
   })
 
   it('adds a new line item when add button is clicked', async () => {
-    renderForm()
+    const { container } = renderForm()
 
     await waitFor(() => {
-      const addButton = screen.getByTestId('add-line-item-btn')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const addButton = dealForm?.querySelector('[data-testid="add-line-item-btn"]')
       expect(addButton).toBeDefined()
     })
 
-    const addButton = screen.getByTestId('add-line-item-btn')
+    const dealForm = container.querySelector('[data-testid="deal-form"]')
+    const addButton = dealForm?.querySelector('[data-testid="add-line-item-btn"]')
 
     // Should have 1 line item initially
-    expect(screen.getByTestId('line-0')).toBeDefined()
-    expect(screen.queryByTestId('line-1')).toBeNull()
+    expect(dealForm?.querySelector('[data-testid="line-0"]')).toBeDefined()
+    expect(dealForm?.querySelector('[data-testid="line-1"]')).toBeNull()
 
     // Click add button
     fireEvent.click(addButton)
 
     // Should now have 2 line items
     await waitFor(() => {
-      expect(screen.getByTestId('line-1')).toBeDefined()
+      expect(dealForm?.querySelector('[data-testid="line-1"]')).toBeDefined()
     })
   })
 
   it('preserves line item field order and labels', async () => {
-    renderForm()
+    const { container } = renderForm()
 
     await waitFor(() => {
-      const lineItem0 = screen.getByTestId('line-0')
+      const dealForm = container.querySelector('[data-testid="deal-form"]')
+      const lineItem0 = dealForm?.querySelector('[data-testid="line-0"]')
       expect(lineItem0).toBeDefined()
     })
 
+    const dealForm = container.querySelector('[data-testid="deal-form"]')
     // Check that all expected fields are present in order
-    const productSelect = screen.getByTestId('product-select-0')
-    const unitPriceInput = screen.getByTestId('unit-price-input-0')
-    const promisedDateInput = screen.getByTestId('promised-date-0')
-    const requiresSchedulingCheckbox = screen.getByTestId('requires-scheduling-0')
+    const productSelect = dealForm?.querySelector('[data-testid="product-select-0"]')
+    const unitPriceInput = dealForm?.querySelector('[data-testid="unit-price-input-0"]')
+    const promisedDateInput = dealForm?.querySelector('[data-testid="promised-date-0"]')
+    const requiresSchedulingCheckbox = dealForm?.querySelector('[data-testid="requires-scheduling-0"]')
 
     expect(productSelect).toBeDefined()
     expect(unitPriceInput).toBeDefined()
@@ -240,8 +259,8 @@ describe('DealForm Loaner Toggle', () => {
     expect(requiresSchedulingCheckbox).toBeDefined()
 
     // Check for On-Site/Off-Site radio buttons
-    const onsiteRadio = screen.getByTestId('onsite-radio-0')
-    const offsiteRadio = screen.getByTestId('offsite-radio-0')
+    const onsiteRadio = dealForm?.querySelector('[data-testid="onsite-radio-0"]')
+    const offsiteRadio = dealForm?.querySelector('[data-testid="offsite-radio-0"]')
 
     expect(onsiteRadio).toBeDefined()
     expect(offsiteRadio).toBeDefined()

@@ -1,5 +1,6 @@
 // src/pages/deals/DealForm.jsx
 import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   getVendors,
   getProducts,
@@ -39,6 +40,7 @@ export default function DealForm({
   onCancel,
   onSave, // optional (payload) => Promise<{id}>
 }) {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -736,6 +738,14 @@ export default function DealForm({
               No finance managers found. Add or attach staff in Admin → Staff Records.
             </p>
           )}
+          <button
+            type="button"
+            onClick={() => navigate('/admin/staff')}
+            className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+            data-testid="admin-staff-link"
+          >
+            → Admin: Manage Staff
+          </button>
         </div>
 
         <div>
