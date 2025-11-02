@@ -1,16 +1,11 @@
 {
   "editor.formatOnSave": true,
   "files.eol": "\n",
-  "editor.tabSize": 2,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.insertFinalNewline": true,
+  "eslint.useFlatConfig": true,
+  "eslint.validate": ["javascript","javascriptreact","typescript","typescriptreact"],
   "typescript.tsdk": "node_modules/typescript/lib",
-  // Use WSL Ubuntu as the default Windows terminal profile
-  "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)",
-  "git.confirmSync": false,
-  // Ensure WSL Bash is the default terminal for Linux
-  "terminal.integrated.defaultProfile.linux": "bash",
-  // Set default WSL user
-  "remote.WSL.defaultLinuxUser": "rob",
-  // Optimize file watching in WSL
-  "remote.WSL.fileWatcher.polling": "auto"
+  "testing.defaultGutterClickAction": "run",
+  "vitest.commandLine": "pnpm test -- --watch",
+  "search.exclude": { "dist": true, "coverage": true, "node_modules": true }
 }

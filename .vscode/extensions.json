@@ -1,13 +1,5 @@
-{
-  "recommendations": [
-    "github.copilot",
-    "github.copilot-chat",
-    "ms-vscode.vscode-typescript-next",
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
-    "streetsidesoftware.code-spell-checker",
-    "ms-vscode-remote.remote-containers"
-  ],
-  // Discourage extensions not used in this WSL/bash + js-debug setup
-  "unwantedRecommendations": ["ms-vscode.PowerShell", "msjsdiag.debugger-for-chrome"]
-}
+{ "recommendations": [
+  "github.copilot","github.copilot-chat",
+  "dbaeumer.vscode-eslint","esbenp.prettier-vscode",
+  "bradlc.vscode-tailwindcss","github.vscode-pull-request-github"
+]}

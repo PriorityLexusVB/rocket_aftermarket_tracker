@@ -1,33 +1,7 @@
 {
   "version": "2.0.0",
   "tasks": [
-    {
-      "label": "Dev: Vite (WSL)",
-      "type": "shell",
-      "command": "pnpm dev",
-      "options": { "cwd": "${workspaceFolder}" },
-      "isBackground": true,
-      "presentation": { "reveal": "always", "panel": "dedicated" },
-      "group": { "kind": "build", "isDefault": true },
-      "problemMatcher": []
-    },
-    {
-      "label": "Preview: Vite",
-      "type": "shell",
-      "command": "pnpm preview",
-      "options": { "cwd": "${workspaceFolder}" }
-    },
-    {
-      "label": "Build",
-      "type": "shell",
-      "command": "pnpm build",
-      "options": { "cwd": "${workspaceFolder}" }
-    },
-    {
-      "label": "Test (vitest run)",
-      "type": "shell",
-      "command": "pnpm test",
-      "options": { "cwd": "${workspaceFolder}" }
-    }
+    { "label": "Dev: Vite",  "type": "shell", "command": "pnpm dev",  "group": "build" },
+    { "label": "Test: Vitest","type": "shell", "command": "pnpm test", "group": "test"  }
   ]
 }
