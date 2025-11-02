@@ -56,9 +56,4 @@ build-output.log
 !.vscode/profiles/
 !.vscode/settings.json
 !.vscode/extensions.json
-
-# allow select VS Code files
-!.vscode/extensions.list
-!.vscode/profiles/
-!.vscode/settings.json
-!.vscode/extensions.json
+test-output*.log

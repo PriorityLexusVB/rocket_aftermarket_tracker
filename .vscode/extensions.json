@@ -5,7 +5,8 @@
     "ms-vscode.vscode-typescript-next",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
-    "streetsidesoftware.code-spell-checker"
+    "streetsidesoftware.code-spell-checker",
+    "ms-vscode-remote.remote-containers"
   ],
   // Discourage extensions not used in this WSL/bash + js-debug setup
   "unwantedRecommendations": ["ms-vscode.PowerShell", "msjsdiag.debugger-for-chrome"]

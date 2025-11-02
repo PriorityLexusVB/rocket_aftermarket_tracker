@@ -56,8 +56,11 @@ describe('DealForm V2 - Loaner Toggle', () => {
   })
 
   it('Create mode: toggle on shows loaner section, toggle off hides and clears fields', async () => {
+    const { BrowserRouter } = await import('react-router-dom')
     const { container } = render(
-      <DealForm mode="create" onSave={mockOnSave} onCancel={mockOnCancel} />
+      <BrowserRouter>
+        <DealForm mode="create" onSave={mockOnSave} onCancel={mockOnCancel} />
+      </BrowserRouter>
     )
 
     // Wait for component to load
@@ -125,6 +128,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
   })
 
   it('Edit mode: toggle off with existing loaner data hides section and clears payload', async () => {
+    const { BrowserRouter } = await import('react-router-dom')
     const initialData = {
       id: 'deal-123',
       updated_at: '2025-10-30T12:00:00Z',
@@ -149,12 +153,14 @@ describe('DealForm V2 - Loaner Toggle', () => {
     }
 
     const { container } = render(
-      <DealForm
-        mode="edit"
-        initial={initialData}
-        onSave={mockOnSave}
-        onCancel={mockOnCancel}
-      />
+      <BrowserRouter>
+        <DealForm
+          mode="edit"
+          initial={initialData}
+          onSave={mockOnSave}
+          onCancel={mockOnCancel}
+        />
+      </BrowserRouter>
     )
 
     // Wait for component to load
@@ -206,10 +212,15 @@ describe('DealForm V2 - Loaner Toggle', () => {
   })
 
   it('Create mode with flag OFF: legacy behavior (no field clearing)', async () => {
+    const { BrowserRouter } = await import('react-router-dom')
     // Disable V2 flag
     import.meta.env.VITE_DEAL_FORM_V2 = 'false'
 
-    const { container } = render(<DealForm mode="create" onSave={mockOnSave} onCancel={mockOnCancel} />)
+    const { container } = render(
+      <BrowserRouter>
+        <DealForm mode="create" onSave={mockOnSave} onCancel={mockOnCancel} />
+      </BrowserRouter>
+    )
 
     await waitFor(
       () => {
