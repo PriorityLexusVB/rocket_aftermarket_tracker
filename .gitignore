@@ -56,3 +56,4 @@ build-output.log
 !.vscode/profiles/
 !.vscode/settings.json
 !.vscode/extensions.json
+test-output*.log
