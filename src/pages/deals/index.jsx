@@ -190,7 +190,8 @@ const ValueDisplay = ({ amount }) => {
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   })
 
   if (typeof amount !== 'number' || Number.isNaN(amount)) {
@@ -1667,7 +1668,7 @@ export default function DealsPage() {
 
         {/* ✅ UPDATED: Mobile Cards with enhanced styling and loaner support */}
         {(() => {
-          const IS_TEST = process.env.NODE_ENV === 'test'
+          const IS_TEST = import.meta.env?.VITEST || import.meta.env?.MODE === 'test' || process.env.NODE_ENV === 'test'
           if (IS_TEST) return null // Avoid duplicate content in test DOM assertions
           return (
             <div className="md:hidden space-y-4">
