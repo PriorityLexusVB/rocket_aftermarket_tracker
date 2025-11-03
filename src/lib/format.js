@@ -14,3 +14,9 @@ export const money2 = new Intl.NumberFormat('en-US', {
 })
 
 export const pct1 = (v) => `${(Number(v) * 100).toFixed(1)}%`
+
+// Title case transformation for vehicle descriptions
+export const titleCase = (s = '') => {
+  if (!s) return ''
+  return s.replace(/\w\S*/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+}
