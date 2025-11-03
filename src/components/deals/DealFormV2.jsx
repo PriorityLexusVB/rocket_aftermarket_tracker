@@ -427,6 +427,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 }
                 className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter stock number"
+                data-testid="stock-number-display"
               />
             </div>
 
@@ -442,6 +443,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 }
                 className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter phone"
+                data-testid="customer-mobile-input"
               />
             </div>
           </div>

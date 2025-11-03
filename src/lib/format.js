@@ -34,3 +34,23 @@ export const titleCase = (s = '') => {
     })
     .join(' ')
 }
+
+// Phone number normalization to E.164 format (+1XXXXXXXXXX for US)
+export const normalizePhoneE164 = (s = '') => {
+  const digits = String(s).replace(/\D+/g, '')
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  return s || ''
+}
+
+// Pretty phone formatting: (555) 123-4567
+export const prettyPhone = (s = '') => {
+  const d = String(s).replace(/\D+/g, '')
+  if (d.length === 11 && d.startsWith('1')) {
+    return `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}`
+  }
+  if (d.length === 10) {
+    return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+  }
+  return s || ''
+}

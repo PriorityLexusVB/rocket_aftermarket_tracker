@@ -8,7 +8,7 @@ import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
-import { money0, pct1, titleCase } from '../../lib/format'
+import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -1533,13 +1533,7 @@ export default function DealsPage() {
                     </td>
                     <td className="px-4 py-3 w-[150px]">
                       <span className="text-sm text-slate-700">
-                        {deal?.customer_phone_e164 || deal?.customer_phone || '—'}
-                        {deal?.customer_phone_last4 ? (
-                          <span className="text-slate-400">
-                            {' '}
-                            ({`…${deal?.customer_phone_last4}`})
-                          </span>
-                        ) : null}
+                        {prettyPhone(deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile || '') || '—'}
                       </span>
                     </td>
                     <td className="px-4 py-3 max-w-[220px]">
@@ -1729,7 +1723,7 @@ export default function DealsPage() {
                                 onClick={(e) => e?.stopPropagation?.()}
                                 className="underline"
                               >
-                                {deal?.customer_phone}
+                                {prettyPhone(deal?.customer_phone)}
                               </a>
                             ) : (
                               '—'
