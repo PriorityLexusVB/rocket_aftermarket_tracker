@@ -102,6 +102,17 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     loadDropdownData()
   }, [])
 
+  // Normalize customer name and vehicle description on initial load (idempotent)
+  useEffect(() => {
+    if (job && mode === 'edit') {
+      setCustomerData(prev => ({
+        ...prev,
+        customerName: titleCase(prev.customerName),
+        vehicleDescription: titleCase(prev.vehicleDescription),
+      }))
+    }
+  }, [job?.id, mode])
+
   // Native select component
   const MobileSelect = ({ label, options, value, onChange, placeholder, testId, helpLink }) => (
     <div>
@@ -347,7 +358,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
                 }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onBlur={(e) =>
+                  setCustomerData((prev) => ({ ...prev, customerName: titleCase(e?.target?.value) }))
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg text-base capitalize focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter customer name"
                 required
                 data-testid="customer-name-input"
@@ -380,11 +394,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               <input
                 type="text"
                 value={customerData?.vehicleDescription}
-                onChange={(e) => {
-                  const titleCased = titleCase(e?.target?.value)
-                  setCustomerData((prev) => ({ ...prev, vehicleDescription: titleCased }))
-                }}
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 capitalize"
+                onChange={(e) =>
+                  setCustomerData((prev) => ({ ...prev, vehicleDescription: e?.target?.value }))
+                }
+                onBlur={(e) =>
+                  setCustomerData((prev) => ({ ...prev, vehicleDescription: titleCase(e?.target?.value) }))
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg text-base capitalize focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="2025 Lexus RX350"
                 data-testid="vehicle-description-input"
               />

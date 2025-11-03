@@ -8,7 +8,7 @@ import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
-import { money0, pct1 } from '../../lib/format'
+import { money0, pct1, titleCase } from '../../lib/format'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -117,7 +117,8 @@ const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
 const CustomerDisplay = ({ deal }) => {
   if (!deal) return <span className="text-sm text-slate-700">—</span>
 
-  const name = deal?.customer_name || deal?.customerEmail || '—'
+  const rawName = deal?.customer_name || deal?.customerEmail || '—'
+  const name = rawName !== '—' ? titleCase(rawName) : rawName
   const email = deal?.customer_email || ''
   const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
   const title = [name, email, tags.length ? `Tags: ${tags.join(', ')}` : null]
@@ -1545,12 +1546,12 @@ export default function DealsPage() {
                       <span
                         className="text-sm text-slate-700 truncate inline-block max-w-full"
                         title={
-                          `${deal?.vehicle ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim() : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
+                          `${deal?.vehicle ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()) : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
                           ''
                         }
                       >
                         {deal?.vehicle
-                          ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                          ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim())
                           : '—'}
                         {deal?.vehicle?.stock_number ? (
                           <span className="text-slate-400">
@@ -1719,7 +1720,7 @@ export default function DealsPage() {
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
                           <div className="truncate font-medium text-slate-900 text-sm">
-                            {deal?.customer_name || '—'}
+                            {deal?.customer_name ? titleCase(deal.customer_name) : '—'}
                           </div>
                           <div className="text-xs text-slate-500 truncate">
                             {deal?.customer_phone ? (
@@ -1746,7 +1747,7 @@ export default function DealsPage() {
                       {/* Line 2: Vehicle + Vendor */}
                       <div className="text-xs text-slate-600 truncate">
                         {(deal?.vehicle
-                          ? `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                          ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim())
                           : '') || '—'}
                         {deal?.vehicle?.stock_number ? (
                           <span className="text-slate-400">

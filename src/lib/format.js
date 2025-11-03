@@ -15,8 +15,11 @@ export const money2 = new Intl.NumberFormat('en-US', {
 
 export const pct1 = (v) => `${(Number(v) * 100).toFixed(1)}%`
 
-// Title case transformation for vehicle descriptions
+// Title case transformation for names and vehicle descriptions
+// Unicode-aware, handles apostrophes and hyphens properly
 export const titleCase = (s = '') => {
   if (!s) return ''
-  return s.replace(/\w\S*/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+  return String(s)
+    .toLowerCase()
+    .replace(/\b[\p{L}'']+[\p{L}'']*/gu, w => w[0].toUpperCase() + w.slice(1))
 }

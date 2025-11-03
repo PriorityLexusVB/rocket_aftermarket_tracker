@@ -700,14 +700,31 @@ export async function updateDealStatus(id, job_status) {
 function mapDbDealToForm(dbDeal) {
   if (!dbDeal) return null
 
+  // Compose vehicle_description from vehicle fields if not explicitly provided
+  let vehicleDescription = dbDeal?.vehicle_description || ''
+  if (!vehicleDescription && dbDeal?.vehicle) {
+    const parts = [
+      dbDeal?.vehicle?.year,
+      dbDeal?.vehicle?.make,
+      dbDeal?.vehicle?.model
+    ].filter(Boolean)
+    if (parts.length > 0) {
+      vehicleDescription = parts.join(' ')
+    }
+  }
+
   return {
     id: dbDeal?.id,
     updated_at: dbDeal?.updated_at,
+    // Deal date (local YYYY-MM-DD format)
+    deal_date: dbDeal?.deal_date || dbDeal?.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
     job_number: dbDeal?.job_number || '',
     title: dbDeal?.title || '',
     // Prefer title as the primary description source (we sync title to description on save)
     // Fall back to DB description for older records
     description: dbDeal?.title || dbDeal?.description || '',
+    vehicle_description: vehicleDescription,
+    stock_number: dbDeal?.stock_number || dbDeal?.vehicle?.stock_number || '',
     vendor_id: dbDeal?.vendor_id,
     vehicle_id: dbDeal?.vehicle_id,
     job_status: dbDeal?.job_status || 'pending',
@@ -723,20 +740,41 @@ function mapDbDealToForm(dbDeal) {
     delivery_coordinator_id: dbDeal?.delivery_coordinator_id,
     finance_manager_id: dbDeal?.finance_manager_id,
     // ✅ ENHANCED: Include customer data from transactions
+    customer_name: dbDeal?.customer_name || '',
     customerName: dbDeal?.customer_name || '',
+    customer_phone: dbDeal?.customer_phone || '',
     customerPhone: dbDeal?.customer_phone || '',
+    customer_mobile: dbDeal?.customer_mobile || dbDeal?.customer_phone || '',
+    customerMobile: dbDeal?.customer_mobile || dbDeal?.customer_phone || '',
+    customer_email: dbDeal?.customer_email || '',
     customerEmail: dbDeal?.customer_email || '',
+    // Loaner data
+    loaner_number: dbDeal?.loaner_number || '',
+    loanerNumber: dbDeal?.loaner_number || '',
     // Preserve vehicle for header (stock number)
     vehicle: dbDeal?.vehicle || null,
     // Line items in snake_case shape expected by the form/UI
     lineItems: (dbDeal?.job_parts || [])?.map((part) => ({
+      id: part?.id || Date.now() + Math.random(),
       product_id: part?.product_id,
+      productId: part?.product_id,
       unit_price: part?.unit_price || 0,
+      unitPrice: part?.unit_price || 0,
       quantity_used: part?.quantity_used || 1,
       promised_date: part?.promised_date || '',
+      promisedDate: part?.promised_date || '',
+      scheduled_start_time: part?.scheduled_start_time || '',
+      scheduledStartTime: part?.scheduled_start_time || '',
+      scheduled_end_time: part?.scheduled_end_time || '',
+      scheduledEndTime: part?.scheduled_end_time || '',
       requires_scheduling: !!part?.requires_scheduling,
+      requiresScheduling: !!part?.requires_scheduling,
       no_schedule_reason: part?.no_schedule_reason || '',
+      noScheduleReason: part?.no_schedule_reason || '',
       is_off_site: !!part?.is_off_site,
+      isOffSite: !!part?.is_off_site,
+      vendor_id: part?.vendor_id || null,
+      vendorId: part?.vendor_id || null,
     })),
   }
 }
