@@ -49,26 +49,6 @@ const LoanerBadge = ({ deal }) => {
   )
 }
 
-// Small helper: "2h ago", "3d ago" fallback to date if invalid
-const relativeTimeFromNow = (iso) => {
-  try {
-    if (!iso) return '—'
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return '—'
-    const diff = Date.now() - d.getTime()
-    const sec = Math.floor(diff / 1000)
-    const min = Math.floor(sec / 60)
-    const hr = Math.floor(min / 60)
-    const day = Math.floor(hr / 24)
-    if (day > 0) return `${day}d ago`
-    if (hr > 0) return `${hr}h ago`
-    if (min > 0) return `${min}m ago`
-    return 'just now'
-  } catch (_) {
-    return '—'
-  }
-}
-
 // Helper: Get display phone from deal, preferring normalized E.164 field
 const getDisplayPhone = (deal) => {
   // Prefer customer_phone_e164 (normalized), fallback to customer_phone, then customer_mobile
