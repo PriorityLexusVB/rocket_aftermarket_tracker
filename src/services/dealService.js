@@ -418,12 +418,23 @@ export async function getDeal(id) {
     // Centralized joined selector
     const job = await selectJoinedDealById(id)
 
-    // Get transaction data separately
-    const { data: transaction } = await supabase
-      ?.from('transactions')
-      ?.select('customer_name, customer_phone, customer_email, total_amount')
-      ?.eq('job_id', id)
-      ?.single()
+    // Get transaction data and loaner data separately
+    const [transactionResult, loanerResult] = await Promise.all([
+      supabase
+        ?.from('transactions')
+        ?.select('customer_name, customer_phone, customer_email, total_amount')
+        ?.eq('job_id', id)
+        ?.single(),
+      supabase
+        ?.from('loaner_assignments')
+        ?.select('id, loaner_number, eta_return_date, notes')
+        ?.eq('job_id', id)
+        ?.is('returned_at', null)
+        ?.maybeSingle(),
+    ])
+
+    const transaction = transactionResult?.data
+    const loaner = loanerResult?.data
 
     // For UI compatibility tests: present unit_price as string under nested job_parts
     const jobForUi = {
@@ -440,6 +451,10 @@ export async function getDeal(id) {
       customer_phone: transaction?.customer_phone || '',
       customer_email: transaction?.customer_email || '',
       total_amount: transaction?.total_amount || 0,
+      loaner_number: loaner?.loaner_number || '',
+      loaner_id: loaner?.id || null,
+      loaner_eta_return_date: loaner?.eta_return_date || null,
+      loaner_notes: loaner?.notes || '',
     }
   } catch (error) {
     console.error('[dealService:get] Failed to get deal:', error)
