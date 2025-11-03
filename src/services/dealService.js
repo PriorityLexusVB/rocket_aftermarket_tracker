@@ -1,5 +1,6 @@
 // src/services/dealService.js
 import { supabase } from '@/lib/supabase'
+import { titleCase, normalizePhoneE164 } from '@/lib/format'
 
 // --- helpers -------------------------------------------------------------
 
@@ -85,11 +86,15 @@ function mapFormToDb(formState = {}) {
   const orgId = formState?.org_id ?? formState?.orgId
   const payload = orgId ? { ...base, org_id: orgId } : base
   // Ensure title stays meaningful and mirrors description edits for UX consistency
-  // - If description was provided/edited, use it as the title (primary display)
-  // - Else, if title missing, fall back to job_number or a generic default
+  // Priority: vehicle_description > description > job_number > default
+  // Apply Title Case to vehicle_description when present
   {
+    const vehicleDesc = (formState?.vehicle_description || formState?.vehicleDescription || '').trim()
     const desc = (formState?.description || '').trim()
-    if (!payload?.title) {
+    
+    if (vehicleDesc) {
+      payload.title = titleCase(vehicleDesc)
+    } else if (!payload?.title) {
       if (desc) {
         payload.title = desc
       } else if (payload?.job_number) payload.title = `Deal ${payload.job_number}`
@@ -159,12 +164,21 @@ function mapFormToDb(formState = {}) {
 
   const loanerForm = formState?.loanerForm || null
 
-  // customer fields normalization
-  const customerName = formState?.customerName?.trim() || formState?.customer_name?.trim?.() || ''
-  const customerPhone =
-    formState?.customerPhone?.trim() || formState?.customer_phone?.trim?.() || ''
-  const customerEmail =
-    formState?.customerEmail?.trim() || formState?.customer_email?.trim?.() || ''
+  // customer fields normalization - apply Title Case to customer name
+  const rawCustomerName = (formState?.customerName || formState?.customer_name || '').trim()
+  const customerName = rawCustomerName ? titleCase(rawCustomerName) : ''
+  
+  // Normalize phone to E.164 format for storage
+  const rawPhone = (formState?.customerMobile || 
+                   formState?.customer_mobile || 
+                   formState?.customerPhone || 
+                   formState?.customer_phone || '').trim()
+  const customerPhone = rawPhone ? normalizePhoneE164(rawPhone) : ''
+  
+  const customerEmail = (formState?.customerEmail || formState?.customer_email || '').trim()
+  
+  // Extract stock_number for vehicle upsert
+  const stockNumber = formState?.stockNumber?.trim() || formState?.stock_number?.trim() || ''
 
   return {
     // Back-compat keys used internally
@@ -178,6 +192,7 @@ function mapFormToDb(formState = {}) {
     customerName,
     customerPhone,
     customerEmail,
+    stockNumber,
   }
 }
 
@@ -425,7 +440,7 @@ export async function getDeal(id) {
 
 // CREATE: deal + job_parts
 export async function createDeal(formState) {
-  const { payload, normalizedLineItems, loanerForm, customerName, customerPhone, customerEmail } =
+  const { payload, normalizedLineItems, loanerForm, customerName, customerPhone, customerEmail, stockNumber } =
     mapFormToDb(formState || {})
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
@@ -494,6 +509,22 @@ export async function createDeal(formState) {
   if (jobErr) throw new Error(`Failed to create deal: ${jobErr.message}`)
 
   try {
+    // 1.5) Update vehicle with stock_number and owner_phone if vehicle_id is present
+    if (payload?.vehicle_id && (stockNumber || customerPhone)) {
+      const vehicleUpdate = {}
+      if (stockNumber) vehicleUpdate.stock_number = stockNumber
+      if (customerPhone) vehicleUpdate.owner_phone = customerPhone
+      
+      if (Object.keys(vehicleUpdate).length > 0) {
+        const { error: vehicleErr } = await supabase
+          ?.from('vehicles')
+          ?.update(vehicleUpdate)
+          ?.eq('id', payload.vehicle_id)
+        // Non-fatal: log but don't fail the deal creation if vehicle update fails
+        if (vehicleErr) console.warn('[dealService:create] Vehicle update failed:', vehicleErr.message)
+      }
+    }
+    
     // 2) insert parts (if any)
     if ((normalizedLineItems || []).length > 0) {
       const rows = toJobPartRows(job?.id, normalizedLineItems)
@@ -568,7 +599,7 @@ export async function createDeal(formState) {
 
 // UPDATE: deal + replace job_parts - FIXED with proper transaction handling and customer data
 export async function updateDeal(id, formState) {
-  const { payload, normalizedLineItems, loanerForm, customerName, customerPhone, customerEmail } =
+  const { payload, normalizedLineItems, loanerForm, customerName, customerPhone, customerEmail, stockNumber } =
     mapFormToDb(formState || {})
 
   // Ensure description is explicitly updated when provided (some environments rely on it for display)
@@ -672,6 +703,22 @@ export async function updateDeal(id, formState) {
     await upsertLoanerAssignment(id, loanerForm)
   }
 
+  // 3.5) Update vehicle with stock_number and owner_phone if vehicle_id is present
+  if (payload?.vehicle_id && (stockNumber || customerPhone)) {
+    const vehicleUpdate = {}
+    if (stockNumber) vehicleUpdate.stock_number = stockNumber
+    if (customerPhone) vehicleUpdate.owner_phone = customerPhone
+    
+    if (Object.keys(vehicleUpdate).length > 0) {
+      const { error: vehicleErr } = await supabase
+        ?.from('vehicles')
+        ?.update(vehicleUpdate)
+        ?.eq('id', payload.vehicle_id)
+      // Non-fatal: log but don't fail the deal update if vehicle update fails
+      if (vehicleErr) console.warn('[dealService:update] Vehicle update failed:', vehicleErr.message)
+    }
+  }
+
   // 4) Return full record (with joins and transaction data)
   return await getDeal(id)
 }
@@ -724,7 +771,9 @@ function mapDbDealToForm(dbDeal) {
     // Fall back to DB description for older records
     description: dbDeal?.title || dbDeal?.description || '',
     vehicle_description: vehicleDescription,
+    vehicleDescription: vehicleDescription,
     stock_number: dbDeal?.stock_number || dbDeal?.vehicle?.stock_number || '',
+    stockNumber: dbDeal?.stock_number || dbDeal?.vehicle?.stock_number || '',
     vendor_id: dbDeal?.vendor_id,
     vehicle_id: dbDeal?.vehicle_id,
     job_status: dbDeal?.job_status || 'pending',
