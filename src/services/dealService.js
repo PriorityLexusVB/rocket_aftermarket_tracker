@@ -165,18 +165,17 @@ function mapFormToDb(formState = {}) {
   const loanerForm = formState?.loanerForm || null
 
   // customer fields normalization - apply Title Case to customer name
-  const rawCustomerName = formState?.customerName?.trim() || formState?.customer_name?.trim?.() || ''
+  const rawCustomerName = (formState?.customerName || formState?.customer_name || '').trim()
   const customerName = rawCustomerName ? titleCase(rawCustomerName) : ''
   
   // Normalize phone to E.164 format for storage
-  const rawPhone = formState?.customerMobile?.trim() || 
-                   formState?.customer_mobile?.trim() || 
-                   formState?.customerPhone?.trim() || 
-                   formState?.customer_phone?.trim?.() || ''
+  const rawPhone = (formState?.customerMobile || 
+                   formState?.customer_mobile || 
+                   formState?.customerPhone || 
+                   formState?.customer_phone || '').trim()
   const customerPhone = rawPhone ? normalizePhoneE164(rawPhone) : ''
   
-  const customerEmail =
-    formState?.customerEmail?.trim() || formState?.customer_email?.trim?.() || ''
+  const customerEmail = (formState?.customerEmail || formState?.customer_email || '').trim()
   
   // Extract stock_number for vehicle upsert
   const stockNumber = formState?.stockNumber?.trim() || formState?.stock_number?.trim() || ''

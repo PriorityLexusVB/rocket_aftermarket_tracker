@@ -69,6 +69,13 @@ const relativeTimeFromNow = (iso) => {
   }
 }
 
+// Helper: Get display phone from deal, preferring normalized E.164 field
+const getDisplayPhone = (deal) => {
+  // Prefer customer_phone_e164 (normalized), fallback to customer_phone, then customer_mobile
+  const phone = deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile || ''
+  return prettyPhone(phone) || '—'
+}
+
 // ✅ ADDED: Helper to format names as "Lastname, F."
 const formatStaffName = (fullName) => {
   if (!fullName) return ''
@@ -1533,7 +1540,7 @@ export default function DealsPage() {
                     </td>
                     <td className="px-4 py-3 w-[150px]">
                       <span className="text-sm text-slate-700">
-                        {prettyPhone(deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile || '') || '—'}
+                        {getDisplayPhone(deal)}
                       </span>
                     </td>
                     <td className="px-4 py-3 max-w-[220px]">
@@ -1717,13 +1724,13 @@ export default function DealsPage() {
                             {deal?.customer_name ? titleCase(deal.customer_name) : '—'}
                           </div>
                           <div className="text-xs text-slate-500 truncate">
-                            {deal?.customer_phone ? (
+                            {(deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile) ? (
                               <a
-                                href={`tel:${deal?.customer_phone}`}
+                                href={`tel:${deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile}`}
                                 onClick={(e) => e?.stopPropagation?.()}
                                 className="underline"
                               >
-                                {prettyPhone(deal?.customer_phone)}
+                                {getDisplayPhone(deal)}
                               </a>
                             ) : (
                               '—'
