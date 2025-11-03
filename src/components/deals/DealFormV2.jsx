@@ -1,6 +1,6 @@
 // src/components/deals/DealFormV2.jsx
 // Shared two-step wizard form for Create and Edit modes
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
@@ -20,6 +20,7 @@ import {
 export default function DealFormV2({ mode = 'create', job = null, onSave, onCancel }) {
   const { user } = useAuth()
   const { orgId } = useTenant() || {}
+  const loanerRef = useRef(null)
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -117,7 +118,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           {helpLink}
         </p>
       )}
-      {options?.length === 0 && !dropdownData?.loading && (
+      {!helpLink && options?.length === 0 && !dropdownData?.loading && (
         <p className="mt-1 text-xs text-gray-500">
           No {label?.toLowerCase()} found yet. Add it in Admin.
         </p>
@@ -437,7 +438,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               className="h-5 w-5 accent-blue-600 appearance-auto"
               type="checkbox"
               checked={customerData?.needsLoaner}
-              onChange={(e) => setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))}
+              onChange={(e) => {
+                setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))
+                if (e.target.checked) {
+                  setTimeout(() => loanerRef?.current?.focus?.(), 0)
+                }
+              }}
             />
             <label htmlFor="needsLoaner" className="text-sm text-slate-800">
               Customer needs loaner
@@ -449,11 +455,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               <div>
                 <label className="block text-sm font-medium text-slate-700">Loaner #</label>
                 <input
+                  ref={loanerRef}
                   data-testid="loaner-number-input"
                   className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
                   placeholder="Enter loaner vehicle number"
                   value={customerData?.loanerNumber ?? ''}
                   onChange={(e) => setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))}
+                  required
                 />
               </div>
             </div>
