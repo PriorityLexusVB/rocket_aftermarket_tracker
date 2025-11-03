@@ -9,6 +9,7 @@ import { draftToCreatePayload, draftToUpdatePayload } from './formAdapters'
 import { vehicleService } from '../../services/vehicleService'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
+import { titleCase } from '../../lib/format'
 import {
   getSalesConsultants,
   getDeliveryCoordinators,
@@ -45,6 +46,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     customerMobile: job?.customer_mobile || '',
     vendorId: job?.vendor_id || null,
     description: job?.description || '',
+    vehicleDescription: job?.vehicle_description || '',
     assignedTo: job?.assigned_to || null,
     deliveryCoordinator: job?.delivery_coordinator_id || null,
     financeManager: job?.finance_manager_id || null,
@@ -58,6 +60,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       ? job.lineItems.map(item => ({
           ...item,
           vendorId: item?.vendor_id || item?.vendorId || (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) || null,
+          scheduledStartTime: item?.scheduled_start_time || '',
+          scheduledEndTime: item?.scheduled_end_time || '',
         }))
       : []
   )
@@ -141,6 +145,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         unitPrice: '',
         requiresScheduling: true,
         promisedDate: '',
+        scheduledStartTime: '',
+        scheduledEndTime: '',
         noScheduleReason: '',
         isOffSite: false,
         vendorId: null,
@@ -232,6 +238,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         customer_mobile: customerData?.customerMobile?.trim() || null,
         vendor_id: customerData?.vendorId || null,
         description: customerData?.description?.trim() || null,
+        vehicle_description: customerData?.vehicleDescription?.trim() || null,
         assigned_to: customerData?.assignedTo || user?.id,
         delivery_coordinator_id: customerData?.deliveryCoordinator || null,
         finance_manager_id: customerData?.financeManager || null,
@@ -242,6 +249,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           quantity_used: 1,
           unit_price: parseFloat(item?.unitPrice || 0),
           promised_date: item?.requiresScheduling ? item?.promisedDate : null,
+          scheduled_start_time: item?.requiresScheduling ? item?.scheduledStartTime || null : null,
+          scheduled_end_time: item?.requiresScheduling ? item?.scheduledEndTime || null : null,
           requires_scheduling: Boolean(item?.requiresScheduling),
           no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
           is_off_site: Boolean(item?.isOffSite),
@@ -315,6 +324,21 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
+                Deal Date
+              </label>
+              <input
+                type="date"
+                value={customerData?.dealDate}
+                onChange={(e) =>
+                  setCustomerData((prev) => ({ ...prev, dealDate: e?.target?.value }))
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                data-testid="deal-date-input"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Customer Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -332,24 +356,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Deal Date
-              </label>
-              <input
-                type="date"
-                value={customerData?.dealDate}
-                onChange={(e) =>
-                  setCustomerData((prev) => ({ ...prev, dealDate: e?.target?.value }))
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                data-testid="deal-date-input"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Deal / Job # <span className="text-red-500">*</span>
+                Deal # <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -358,8 +365,28 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                   setCustomerData((prev) => ({ ...prev, jobNumber: e?.target?.value }))
                 }
                 className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter job number"
+                placeholder="Enter deal number"
                 required
+                data-testid="deal-number-input"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Vehicle Description
+              </label>
+              <input
+                type="text"
+                value={customerData?.vehicleDescription}
+                onChange={(e) => {
+                  const titleCased = titleCase(e?.target?.value)
+                  setCustomerData((prev) => ({ ...prev, vehicleDescription: titleCased }))
+                }}
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 capitalize"
+                placeholder="2025 Lexus RX350"
+                data-testid="vehicle-description-input"
               />
             </div>
 
@@ -628,19 +655,51 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     </label>
 
                     {item?.requiresScheduling ? (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Promised Date <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={item?.promisedDate}
-                          onChange={(e) =>
-                            updateLineItem(item?.id, 'promisedDate', e?.target?.value)
-                          }
-                          min={new Date()?.toISOString()?.split('T')?.[0]}
-                          className="w-full p-3 border border-gray-300 rounded-lg"
-                        />
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Promised Date <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            value={item?.promisedDate}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'promisedDate', e?.target?.value)
+                            }
+                            min={new Date()?.toISOString()?.split('T')?.[0]}
+                            className="w-full p-3 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Start Time
+                            </label>
+                            <input
+                              type="time"
+                              value={item?.scheduledStartTime}
+                              onChange={(e) =>
+                                updateLineItem(item?.id, 'scheduledStartTime', e?.target?.value)
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-lg"
+                              data-testid={`start-time-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              End Time
+                            </label>
+                            <input
+                              type="time"
+                              value={item?.scheduledEndTime}
+                              onChange={(e) =>
+                                updateLineItem(item?.id, 'scheduledEndTime', e?.target?.value)
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-lg"
+                              data-testid={`end-time-${index}`}
+                            />
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <div>

@@ -1378,6 +1378,9 @@ export default function DealsPage() {
           <table className="table-fixed min-w-[1200px] w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[120px]">
+                  Date
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Status
                 </th>
@@ -1425,7 +1428,7 @@ export default function DealsPage() {
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredDeals?.length === 0 ? (
                 <tr>
-                  <td colSpan="14" className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan="15" className="px-6 py-12 text-center text-slate-500">
                     No deals
                   </td>
                 </tr>
@@ -1437,6 +1440,19 @@ export default function DealsPage() {
                     className="even:bg-slate-50 hover:bg-slate-100 cursor-pointer"
                     onClick={() => handleOpenDetail(deal)}
                   >
+                    <td className="px-4 py-3 w-[120px]">
+                      <span className="text-sm text-slate-700">
+                        {(() => {
+                          try {
+                            const date = deal?.deal_date || deal?.created_at
+                            if (!date) return '—'
+                            return format(parseISO(date), 'MMM d, yyyy')
+                          } catch {
+                            return '—'
+                          }
+                        })()}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <StatusPill status={deal?.job_status} />
                     </td>
@@ -1594,41 +1610,37 @@ export default function DealsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right w-[160px]">
-                      <div className="flex items-center justify-end space-x-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                      <div className="flex items-center justify-end space-x-1">
+                        <button
                           onClick={(e) => {
                             e.stopPropagation()
                             handleEditDeal(deal?.id)
                           }}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="h-9 w-9 rounded flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                           aria-label="Edit deal"
+                          title="Edit deal"
                         >
-                          Edit
-                        </Button>
+                          <Icon name="Pencil" size={16} />
+                        </button>
 
                         {/* ✅ FIXED: Loaner management for desktop with proper condition */}
                         {deal?.customer_needs_loaner && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
+                          <button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleManageLoaner(deal)
                             }}
-                            className="text-purple-600 hover:text-purple-800"
+                            className="h-9 w-9 rounded flex items-center justify-center text-purple-600 hover:text-purple-800 hover:bg-purple-50"
                             aria-label="Manage loaner"
+                            title="Manage loaner"
                           >
-                            Loaner
-                          </Button>
+                            <Icon name="Car" size={16} />
+                          </button>
                         )}
 
                         {/* Mark returned button for active loaners */}
                         {deal?.loaner_id && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
+                          <button
                             onClick={(e) => {
                               e.stopPropagation()
 
@@ -1638,25 +1650,25 @@ export default function DealsPage() {
                                 job_title: getDealPrimaryRef(deal),
                               })
                             }}
-                            className="text-green-600 hover:text-green-800"
+                            className="h-9 w-9 rounded flex items-center justify-center text-green-600 hover:text-green-800 hover:bg-green-50"
                             aria-label="Mark loaner returned"
+                            title="Mark loaner returned"
                           >
-                            Return
-                          </Button>
+                            <Icon name="Car" size={16} />
+                          </button>
                         )}
 
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                        <button
                           onClick={(e) => {
                             e.stopPropagation()
                             setDeleteConfirm(deal)
                           }}
-                          className="text-red-600 hover:text-red-800"
+                          className="h-9 w-9 rounded flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50"
                           aria-label="Delete deal"
+                          title="Delete deal"
                         >
-                          Delete
-                        </Button>
+                          <Icon name="Trash2" size={16} />
+                        </button>
                       </div>
                     </td>
                   </tr>
