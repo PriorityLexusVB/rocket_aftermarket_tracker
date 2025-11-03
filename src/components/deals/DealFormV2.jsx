@@ -38,6 +38,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Customer form data
   const [customerData, setCustomerData] = useState({
+    customerName: job?.customer_name || '',
+    dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
     jobNumber: job?.job_number || '',
     stockNumber: job?.stock_number || '',
     customerMobile: job?.customer_mobile || '',
@@ -50,10 +52,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     loanerNumber: job?.loaner_number || '',
   })
 
-  // Line items data
+  // Line items data - pre-hydrate vendor_id from job level if missing
   const [lineItems, setLineItems] = useState(
     job?.lineItems?.length
-      ? job.lineItems
+      ? job.lineItems.map(item => ({
+          ...item,
+          vendorId: item?.vendor_id || item?.vendorId || (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) || null,
+        }))
       : []
   )
 
@@ -138,6 +143,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         promisedDate: '',
         noScheduleReason: '',
         isOffSite: false,
+        vendorId: null,
       },
     ])
   }
@@ -183,7 +189,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Validation
   const validateStep1 = () => {
-    return customerData?.jobNumber?.trim()?.length > 0
+    return (
+      customerData?.customerName?.trim()?.length > 0 &&
+      customerData?.jobNumber?.trim()?.length > 0
+    )
   }
 
   const validateStep2 = () => {
@@ -216,6 +225,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
     try {
       const payload = {
+        customer_name: customerData?.customerName?.trim(),
+        deal_date: customerData?.dealDate,
         job_number: customerData?.jobNumber?.trim(),
         stock_number: customerData?.stockNumber?.trim() || null,
         customer_mobile: customerData?.customerMobile?.trim() || null,
@@ -234,6 +245,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           requires_scheduling: Boolean(item?.requiresScheduling),
           no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
           is_off_site: Boolean(item?.isOffSite),
+          vendor_id: item?.vendorId || null,
         })),
       }
 
@@ -303,6 +315,40 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
+                Customer Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={customerData?.customerName}
+                onChange={(e) =>
+                  setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter customer name"
+                required
+                data-testid="customer-name-input"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Deal Date
+              </label>
+              <input
+                type="date"
+                value={customerData?.dealDate}
+                onChange={(e) =>
+                  setCustomerData((prev) => ({ ...prev, dealDate: e?.target?.value }))
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                data-testid="deal-date-input"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Deal / Job # <span className="text-red-500">*</span>
               </label>
               <input
@@ -346,30 +392,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 placeholder="Enter phone"
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MobileSelect
-              label="Vendor"
-              options={dropdownData?.vendors}
-              value={customerData?.vendorId}
-              onChange={(value) =>
-                setCustomerData((prev) => ({ ...prev, vendorId: value }))
-              }
-              placeholder="Select vendor (optional)"
-              testId="vendor-select"
-              helpLink={
-                dropdownData?.vendors?.length === 0 && (
-                  <>
-                    No vendors available. Check{' '}
-                    <a className="underline" href="/admin?section=vendors">
-                      Admin → Vendors
-                    </a>{' '}
-                    to add or attach vendors.
-                  </>
-                )
-              }
-            />
           </div>
 
           <div>
@@ -561,6 +583,36 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                       />
                       <span className="text-sm">Off-Site (Vendor)</span>
                     </label>
+
+                    {item?.isOffSite && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700">Vendor</label>
+                          <select
+                            data-testid={`line-vendor-${index}`}
+                            value={item?.vendorId || ''}
+                            onChange={(e) => updateLineItem(item?.id, 'vendorId', e?.target?.value || null)}
+                            className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="">— Select Vendor —</option>
+                            {dropdownData?.vendors?.map((v) => (
+                              <option key={v?.id} value={v?.id}>
+                                {v?.full_name || v?.label || v?.name}
+                              </option>
+                            ))}
+                          </select>
+                          {dropdownData?.vendors?.length === 0 && (
+                            <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
+                              No vendors available. Check{' '}
+                              <a className="underline" href="/admin?section=vendors">
+                                Admin → Vendors
+                              </a>{' '}
+                              to add or attach vendors.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <label className="flex items-center gap-2">
                       <input
