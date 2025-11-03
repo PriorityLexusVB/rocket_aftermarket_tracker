@@ -53,8 +53,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     financeManager: job?.finance_manager_id || null,
     needsLoaner: Boolean(job?.customer_needs_loaner),
     loanerNumber: job?.loaner_number || '',
-    scheduledStartTime: job?.scheduled_start_time?.slice(11, 16) || '', // Extract time part (HH:MM)
-    scheduledEndTime: job?.scheduled_end_time?.slice(11, 16) || '', // Extract time part (HH:MM)
   })
 
   // Line items data - pre-hydrate vendor_id from job level if missing
@@ -253,14 +251,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     setError('')
 
     try {
-      // Combine deal date with time for ISO format
-      const scheduledStartISO = customerData?.scheduledStartTime 
-        ? `${customerData.dealDate}T${customerData.scheduledStartTime}:00`
-        : null
-      const scheduledEndISO = customerData?.scheduledEndTime
-        ? `${customerData.dealDate}T${customerData.scheduledEndTime}:00`
-        : null
-
       const payload = {
         customer_name: customerData?.customerName?.trim(),
         deal_date: customerData?.dealDate,
@@ -269,15 +259,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         customer_mobile: customerData?.customerMobile?.trim() || null,
         vendor_id: customerData?.vendorId || null,
         description: customerData?.description?.trim() || null,
-        notes: customerData?.notes?.trim() || null, // Add notes field
+        notes: customerData?.notes?.trim() || null, // Notes field maps to description in dealService
         vehicle_description: customerData?.vehicleDescription?.trim() || null,
         assigned_to: customerData?.assignedTo || user?.id,
         delivery_coordinator_id: customerData?.deliveryCoordinator || null,
         finance_manager_id: customerData?.financeManager || null,
         customer_needs_loaner: Boolean(customerData?.needsLoaner),
         loaner_number: customerData?.needsLoaner ? customerData?.loanerNumber?.trim() || null : null,
-        scheduled_start_time: scheduledStartISO,
-        scheduled_end_time: scheduledEndISO,
         lineItems: lineItems.map((item) => ({
           product_id: item?.productId,
           quantity_used: 1,
@@ -557,39 +545,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </div>
             </div>
           )}
-
-          {/* Appointment Time Window */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Appointment Time Window
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-slate-600 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={customerData?.scheduledStartTime}
-                  onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, scheduledStartTime: e?.target?.value }))
-                  }
-                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  data-testid="appt-start-time"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-600 mb-1">End Time</label>
-                <input
-                  type="time"
-                  value={customerData?.scheduledEndTime}
-                  onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, scheduledEndTime: e?.target?.value }))
-                  }
-                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  data-testid="appt-end-time"
-                />
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

@@ -10,7 +10,7 @@ const JOB_COLS = [
   'job_number',
   'title',
   'description',
-  'notes', // ✅ ADDED: Notes field separate from description
+  // NOTE: 'notes' column does not exist in DB schema yet - UI "Notes" maps to description
   'vehicle_id',
   'vendor_id',
   'job_status',
@@ -62,7 +62,7 @@ async function selectJoinedDealById(id) {
     ?.from('jobs')
     ?.select(
       `
-        id, job_number, title, description, notes, job_status, priority, location,
+        id, job_number, title, description, job_status, priority, location,
         vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
         estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
         service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
@@ -103,11 +103,11 @@ function mapFormToDb(formState = {}) {
     }
   }
 
-  // ✅ ADDED: Handle notes field separately from description
+  // Map UI "Notes" field to jobs.description (no jobs.notes column exists)
   {
     const notes = (formState?.notes || '').trim()
     if (notes) {
-      payload.notes = notes
+      payload.description = notes
     }
   }
 
@@ -794,8 +794,8 @@ function mapDbDealToForm(dbDeal) {
     // Prefer title as the primary description source (we sync title to description on save)
     // Fall back to DB description for older records
     description: dbDeal?.title || dbDeal?.description || '',
-    // ✅ ADDED: Notes field with backward compatibility (notes || description)
-    notes: dbDeal?.notes || dbDeal?.description || '',
+    // Map DB description to UI notes field (no jobs.notes column exists)
+    notes: dbDeal?.description || '',
     vehicle_description: vehicleDescription,
     vehicleDescription: vehicleDescription,
     stock_number: dbDeal?.stock_number || dbDeal?.vehicle?.stock_number || '',
