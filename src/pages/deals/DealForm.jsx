@@ -677,7 +677,15 @@ export default function DealForm({
           </select>
           {vendors.length === 0 && (
             <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
-              No vendors available. Check Admin → Vendors to add or attach vendors to your org.
+              No vendors found yet.{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/admin?section=vendors')}
+                className="underline hover:text-amber-900"
+                data-testid="admin-link-vendors"
+              >
+                Open Admin
+              </button>
             </p>
           )}
         </div>
@@ -713,7 +721,15 @@ export default function DealForm({
           </select>
           {sales.length === 0 && (
             <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
-              No sales staff found. Use Admin → Staff Records to add staff and assign to your org.
+              No sales staff found yet.{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/admin/staff')}
+                className="underline hover:text-amber-900"
+                data-testid="admin-link-sales"
+              >
+                Open Admin
+              </button>
             </p>
           )}
         </div>
@@ -735,16 +751,27 @@ export default function DealForm({
           </select>
           {finance.length === 0 && (
             <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
-              No finance managers found. Add or attach staff in Admin → Staff Records.
+              No finance managers found yet.{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/admin/staff')}
+                className="underline hover:text-amber-900"
+                data-testid="admin-link-finance-empty"
+              >
+                Open Admin
+              </button>
             </p>
           )}
           <button
             type="button"
-            onClick={() => navigate('/admin/staff')}
-            className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+            onClick={() => {
+              const currentPath = window.location.pathname
+              navigate(`/admin/staff?return=${encodeURIComponent(currentPath)}`)
+            }}
+            className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             data-testid="admin-staff-link"
           >
-            → Admin: Manage Staff
+            <span>Admin</span>
           </button>
         </div>
 
@@ -765,7 +792,15 @@ export default function DealForm({
           </select>
           {delivery.length === 0 && (
             <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
-              No delivery coordinators found. Add or attach staff in Admin → Staff Records.
+              No delivery coordinators found yet.{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/admin/staff')}
+                className="underline hover:text-amber-900"
+                data-testid="admin-link-delivery"
+              >
+                Open Admin
+              </button>
             </p>
           )}
         </div>
@@ -838,7 +873,16 @@ export default function DealForm({
         </div>
         {products.length === 0 && (
           <div className="p-3 rounded bg-amber-50 text-amber-800 text-sm">
-            No products available. Check Admin → Aftermarket Products to add/attach products.
+            No products found yet. Add aftermarket products in{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/admin?section=products')}
+              className="underline hover:text-amber-900"
+              data-testid="admin-link-products"
+            >
+              Admin
+            </button>
+            .
           </div>
         )}
 
