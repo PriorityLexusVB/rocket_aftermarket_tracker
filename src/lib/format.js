@@ -17,9 +17,20 @@ export const pct1 = (v) => `${(Number(v) * 100).toFixed(1)}%`
 
 // Title case transformation for names and vehicle descriptions
 // Unicode-aware, handles apostrophes and hyphens properly
+// Preserves acronyms (all-caps words with 2+ letters)
 export const titleCase = (s = '') => {
   if (!s) return ''
-  return String(s)
-    .toLowerCase()
-    .replace(/\b[\p{L}'']+[\p{L}'']*/gu, w => w[0].toUpperCase() + w.slice(1))
+  const original = String(s).trim()
+  
+  return original
+    .split(/\s+/)
+    .map(word => {
+      // Preserve acronyms (2+ uppercase letters, no lowercase)
+      if (word.length >= 2 && word === word.toUpperCase() && /^[A-Z]+$/.test(word)) {
+        return word
+      }
+      // Apply title case to normal words
+      return word.toLowerCase().replace(/\b[\p{L}'']+[\p{L}'']*/gu, w => w[0].toUpperCase() + w.slice(1))
+    })
+    .join(' ')
 }
