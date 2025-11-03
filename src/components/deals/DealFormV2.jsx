@@ -45,7 +45,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     stockNumber: job?.stock_number || '',
     customerMobile: job?.customer_mobile || '',
     vendorId: job?.vendor_id || null,
-    description: job?.description || '',
     notes: job?.notes || job?.description || '', // Notes field with legacy fallback
     vehicleDescription: job?.vehicle_description || '',
     assignedTo: job?.assigned_to || null,
@@ -258,7 +257,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         stock_number: customerData?.stockNumber?.trim() || null,
         customer_mobile: customerData?.customerMobile?.trim() || null,
         vendor_id: customerData?.vendorId || null,
-        description: customerData?.description?.trim() || null,
         notes: customerData?.notes?.trim() || null, // Notes field maps to description in dealService
         vehicle_description: customerData?.vehicleDescription?.trim() || null,
         assigned_to: customerData?.assignedTo || user?.id,

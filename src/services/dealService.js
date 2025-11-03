@@ -104,6 +104,7 @@ function mapFormToDb(formState = {}) {
   }
 
   // Map UI "Notes" field to jobs.description (no jobs.notes column exists)
+  // This intentionally overwrites any legacy description value since the UI only shows "Notes"
   {
     const notes = (formState?.notes || '').trim()
     if (notes) {
@@ -791,10 +792,10 @@ function mapDbDealToForm(dbDeal) {
     deal_date: dbDeal?.deal_date || dbDeal?.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
     job_number: dbDeal?.job_number || '',
     title: dbDeal?.title || '',
-    // Prefer title as the primary description source (we sync title to description on save)
-    // Fall back to DB description for older records
-    description: dbDeal?.title || dbDeal?.description || '',
+    // Legacy: description kept for backward compatibility with old code
+    description: dbDeal?.description || '',
     // Map DB description to UI notes field (no jobs.notes column exists)
+    // The UI displays "Notes" which reads/writes jobs.description
     notes: dbDeal?.description || '',
     vehicle_description: vehicleDescription,
     vehicleDescription: vehicleDescription,
