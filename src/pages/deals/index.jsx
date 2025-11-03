@@ -49,26 +49,6 @@ const LoanerBadge = ({ deal }) => {
   )
 }
 
-// Small helper: "2h ago", "3d ago" fallback to date if invalid
-const relativeTimeFromNow = (iso) => {
-  try {
-    if (!iso) return '—'
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return '—'
-    const diff = Date.now() - d.getTime()
-    const sec = Math.floor(diff / 1000)
-    const min = Math.floor(sec / 60)
-    const hr = Math.floor(min / 60)
-    const day = Math.floor(hr / 24)
-    if (day > 0) return `${day}d ago`
-    if (hr > 0) return `${hr}h ago`
-    if (min > 0) return `${min}m ago`
-    return 'just now'
-  } catch (_) {
-    return '—'
-  }
-}
-
 // Helper: Get display phone from deal, preferring normalized E.164 field
 const getDisplayPhone = (deal) => {
   // Prefer customer_phone_e164 (normalized), fallback to customer_phone, then customer_mobile
@@ -1413,17 +1393,11 @@ export default function DealsPage() {
                 <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-[120px]">
                   $
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Work
-                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden xl:table-cell">
                   Vendor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden xl:table-cell">
-                  Last Activity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Loaner
@@ -1436,7 +1410,7 @@ export default function DealsPage() {
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredDeals?.length === 0 ? (
                 <tr>
-                  <td colSpan="15" className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan="13" className="px-6 py-12 text-center text-slate-500">
                     No deals
                   </td>
                 </tr>
@@ -1565,26 +1539,6 @@ export default function DealsPage() {
                     <td className="px-4 py-3 w-[120px] text-right tabular-nums">
                       <ValueDisplay amount={deal?.total_amount} />
                     </td>
-                    <td className="px-4 py-3 max-w-[180px]">
-                      <div className="flex flex-wrap gap-1 truncate">
-                        {(deal?.work_tags || []).slice(0, 2).map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        {deal?.work_tags && deal?.work_tags.length > 2 && (
-                          <span className="text-xs text-slate-500">
-                            +{deal.work_tags.length - 2}
-                          </span>
-                        )}
-                        {(!deal?.work_tags || deal?.work_tags?.length === 0) && (
-                          <span className="text-xs text-gray-500">—</span>
-                        )}
-                      </div>
-                    </td>
                     <td className="px-4 py-3 max-w-[160px] hidden xl:table-cell">
                       <span
                         className="text-sm text-slate-700 truncate inline-block max-w-full"
@@ -1598,11 +1552,6 @@ export default function DealsPage() {
                         serviceType={deal?.service_type}
                         jobParts={deal?.job_parts}
                       />
-                    </td>
-                    <td className="px-4 py-3 w-[120px] hidden xl:table-cell">
-                      <span className="text-sm text-slate-700">
-                        {relativeTimeFromNow(deal?.created_at)}
-                      </span>
                     </td>
                     <td className="px-4 py-3 w-[140px]">
                       {deal?.loaner_number || deal?.has_active_loaner ? (

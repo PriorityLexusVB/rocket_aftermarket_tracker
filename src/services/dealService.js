@@ -10,6 +10,7 @@ const JOB_COLS = [
   'job_number',
   'title',
   'description',
+  'notes', // ✅ ADDED: Notes field separate from description
   'vehicle_id',
   'vendor_id',
   'job_status',
@@ -61,7 +62,7 @@ async function selectJoinedDealById(id) {
     ?.from('jobs')
     ?.select(
       `
-        id, job_number, title, description, job_status, priority, location,
+        id, job_number, title, description, notes, job_status, priority, location,
         vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
         estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
         service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
@@ -99,6 +100,14 @@ function mapFormToDb(formState = {}) {
         payload.title = desc
       } else if (payload?.job_number) payload.title = `Deal ${payload.job_number}`
       else payload.title = 'Untitled Deal'
+    }
+  }
+
+  // ✅ ADDED: Handle notes field separately from description
+  {
+    const notes = (formState?.notes || '').trim()
+    if (notes) {
+      payload.notes = notes
     }
   }
 
@@ -409,12 +418,23 @@ export async function getDeal(id) {
     // Centralized joined selector
     const job = await selectJoinedDealById(id)
 
-    // Get transaction data separately
-    const { data: transaction } = await supabase
-      ?.from('transactions')
-      ?.select('customer_name, customer_phone, customer_email, total_amount')
-      ?.eq('job_id', id)
-      ?.single()
+    // Get transaction data and loaner data separately
+    const [transactionResult, loanerResult] = await Promise.all([
+      supabase
+        ?.from('transactions')
+        ?.select('customer_name, customer_phone, customer_email, total_amount')
+        ?.eq('job_id', id)
+        ?.single(),
+      supabase
+        ?.from('loaner_assignments')
+        ?.select('id, loaner_number, eta_return_date, notes')
+        ?.eq('job_id', id)
+        ?.is('returned_at', null)
+        ?.maybeSingle(),
+    ])
+
+    const transaction = transactionResult?.data
+    const loaner = loanerResult?.data
 
     // For UI compatibility tests: present unit_price as string under nested job_parts
     const jobForUi = {
@@ -431,6 +451,10 @@ export async function getDeal(id) {
       customer_phone: transaction?.customer_phone || '',
       customer_email: transaction?.customer_email || '',
       total_amount: transaction?.total_amount || 0,
+      loaner_number: loaner?.loaner_number || '',
+      loaner_id: loaner?.id || null,
+      loaner_eta_return_date: loaner?.eta_return_date || null,
+      loaner_notes: loaner?.notes || '',
     }
   } catch (error) {
     console.error('[dealService:get] Failed to get deal:', error)
@@ -770,6 +794,8 @@ function mapDbDealToForm(dbDeal) {
     // Prefer title as the primary description source (we sync title to description on save)
     // Fall back to DB description for older records
     description: dbDeal?.title || dbDeal?.description || '',
+    // ✅ ADDED: Notes field with backward compatibility (notes || description)
+    notes: dbDeal?.notes || dbDeal?.description || '',
     vehicle_description: vehicleDescription,
     vehicleDescription: vehicleDescription,
     stock_number: dbDeal?.stock_number || dbDeal?.vehicle?.stock_number || '',
