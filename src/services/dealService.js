@@ -754,8 +754,9 @@ function mapDbDealToForm(dbDeal) {
     // Preserve vehicle for header (stock number)
     vehicle: dbDeal?.vehicle || null,
     // Line items in snake_case shape expected by the form/UI
-    lineItems: (dbDeal?.job_parts || [])?.map((part) => ({
-      id: part?.id || Date.now() + Math.random(),
+    lineItems: (dbDeal?.job_parts || [])?.map((part, index) => ({
+      // Use existing ID or generate a stable temporary ID for new items
+      id: part?.id || `temp-${dbDeal?.id || 'new'}-${index}`,
       product_id: part?.product_id,
       productId: part?.product_id,
       unit_price: part?.unit_price || 0,

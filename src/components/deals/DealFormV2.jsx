@@ -105,11 +105,20 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Normalize customer name and vehicle description on initial load (idempotent)
   useEffect(() => {
     if (job && mode === 'edit') {
-      setCustomerData(prev => ({
-        ...prev,
-        customerName: titleCase(prev.customerName),
-        vehicleDescription: titleCase(prev.vehicleDescription),
-      }))
+      setCustomerData(prev => {
+        const normalizedName = titleCase(prev.customerName)
+        const normalizedVehicle = titleCase(prev.vehicleDescription)
+        
+        // Only update if values actually changed to prevent unnecessary re-renders
+        if (normalizedName !== prev.customerName || normalizedVehicle !== prev.vehicleDescription) {
+          return {
+            ...prev,
+            customerName: normalizedName,
+            vehicleDescription: normalizedVehicle,
+          }
+        }
+        return prev
+      })
     }
   }, [job?.id, mode])
 

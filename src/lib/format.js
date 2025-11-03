@@ -26,11 +26,11 @@ export const titleCase = (s = '') => {
     .split(/\s+/)
     .map(word => {
       // Preserve acronyms (2+ uppercase letters, no lowercase)
-      if (word.length >= 2 && word === word.toUpperCase() && /^[A-Z]+$/.test(word)) {
+      if (word.length >= 2 && word === word.toUpperCase()) {
         return word
       }
       // Apply title case to normal words
-      return word.toLowerCase().replace(/\b[\p{L}'']+[\p{L}'']*/gu, w => w[0].toUpperCase() + w.slice(1))
+      return word.toLowerCase().replace(/\b[\p{L}'']+/gu, w => w[0].toUpperCase() + w.slice(1))
     })
     .join(' ')
 }
