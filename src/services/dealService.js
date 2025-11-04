@@ -484,7 +484,7 @@ async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, or
       ?.select('id')
       ?.single()
 
-    if (partsErr) {
+    if (createErr) {
       // Log but don't fail - vehicle creation is best-effort
       console.warn('[dealService:attachVehicle] Create failed:', createErr.message)
       return null
@@ -494,7 +494,7 @@ async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, or
   } catch (error) {
     // Best-effort: log and return null if anything fails
     console.warn('[dealService:attachVehicle] Exception:', error?.message)
-    throw wrapDbError(partsErr, 'create line items')
+    return null
   }
 }
 
