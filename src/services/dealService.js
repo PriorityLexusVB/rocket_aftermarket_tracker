@@ -366,9 +366,10 @@ export async function getAllDeals() {
 
         // Appointment window derived from earliest scheduled line item with both start and end times
         // Falls back to job-level scheduled_start_time/end_time if no line items have scheduling
+        // Use string comparison for ISO datetime strings (lexicographic order matches chronological)
         const lineItemsWithSchedule = (job?.job_parts || [])
           .filter((part) => part?.scheduled_start_time && part?.scheduled_end_time)
-          .sort((a, b) => new Date(a.scheduled_start_time) - new Date(b.scheduled_start_time))
+          .sort((a, b) => (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || ''))
         
         const apptStart = lineItemsWithSchedule?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
         const apptEnd = lineItemsWithSchedule?.[0]?.scheduled_end_time || job?.scheduled_end_time || null
