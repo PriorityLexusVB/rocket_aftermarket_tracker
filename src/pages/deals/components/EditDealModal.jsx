@@ -46,8 +46,9 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
   // Handle save
   const handleSave = async (payload) => {
     try {
-      await updateDeal(dealId || initialDeal?.id, payload)
-      if (onSuccess) onSuccess()
+      const savedDeal = await updateDeal(dealId || initialDeal?.id, payload)
+      // Pass the saved deal back to parent for in-place update
+      if (onSuccess) onSuccess(savedDeal)
     } catch (err) {
       throw err
     }
