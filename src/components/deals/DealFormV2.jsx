@@ -1,7 +1,6 @@
 // src/components/deals/DealFormV2.jsx
 // Shared two-step wizard form for Create and Edit modes
 import React, { useState, useEffect, useRef } from 'react'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
 import dealService, { getCapabilities } from '../../services/dealService'
@@ -57,9 +56,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Line items data - pre-hydrate vendor_id from job level if missing
   const [lineItems, setLineItems] = useState(
     job?.lineItems?.length
-      ? job.lineItems.map(item => ({
+      ? job.lineItems.map((item) => ({
           ...item,
-          vendorId: item?.vendor_id || item?.vendorId || (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) || null,
+          vendorId:
+            item?.vendor_id ||
+            item?.vendorId ||
+            (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
+            null,
           scheduledStartTime: item?.scheduled_start_time || '',
           scheduledEndTime: item?.scheduled_end_time || '',
         }))
@@ -105,10 +108,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Normalize customer name and vehicle description on initial load (idempotent)
   useEffect(() => {
     if (job && mode === 'edit') {
-      setCustomerData(prev => {
+      setCustomerData((prev) => {
         const normalizedName = titleCase(prev.customerName)
         const normalizedVehicle = titleCase(prev.vehicleDescription)
-        
+
         // Only update if values actually changed to prevent unnecessary re-renders
         if (normalizedName !== prev.customerName || normalizedVehicle !== prev.vehicleDescription) {
           return {
@@ -125,9 +128,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Native select component
   const MobileSelect = ({ label, options, value, onChange, placeholder, testId, helpLink }) => (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
-        {label}
-      </label>
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
       <select
         value={value || ''}
         onChange={(e) => onChange(e?.target?.value || null)}
@@ -142,11 +143,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           </option>
         ))}
       </select>
-      {helpLink && (
-        <p className="mt-2 text-xs text-slate-500">
-          {helpLink}
-        </p>
-      )}
+      {helpLink && <p className="mt-2 text-xs text-slate-500">{helpLink}</p>}
       {!helpLink && options?.length === 0 && !dropdownData?.loading && (
         <p className="mt-1 text-xs text-gray-500">
           No {label?.toLowerCase()} found yet. Add it in Admin.
@@ -216,8 +213,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Validation
   const validateStep1 = () => {
     return (
-      customerData?.customerName?.trim()?.length > 0 &&
-      customerData?.jobNumber?.trim()?.length > 0
+      customerData?.customerName?.trim()?.length > 0 && customerData?.jobNumber?.trim()?.length > 0
     )
   }
 
@@ -264,11 +260,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         finance_manager_id: customerData?.financeManager || null,
         customer_needs_loaner: Boolean(customerData?.needsLoaner),
         // Send loanerForm when needsLoaner is true for proper persistence via loaner_assignments
-        loanerForm: customerData?.needsLoaner ? {
-          loaner_number: customerData?.loanerNumber?.trim() || '',
-          eta_return_date: null,
-          notes: null,
-        } : null,
+        loanerForm: customerData?.needsLoaner
+          ? {
+              loaner_number: customerData?.loanerNumber?.trim() || '',
+              eta_return_date: null,
+              notes: null,
+            }
+          : null,
         lineItems: lineItems.map((item) => ({
           product_id: item?.productId,
           quantity_used: 1,
@@ -348,9 +346,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Deal Date
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Deal Date</label>
               <input
                 type="date"
                 value={customerData?.dealDate}
@@ -373,7 +369,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                   setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
                 }
                 onBlur={(e) =>
-                  setCustomerData((prev) => ({ ...prev, customerName: titleCase(e?.target?.value) }))
+                  setCustomerData((prev) => ({
+                    ...prev,
+                    customerName: titleCase(e?.target?.value),
+                  }))
                 }
                 className="w-full p-3 border border-gray-300 rounded-lg text-base capitalize focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter customer name"
@@ -412,7 +411,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                   setCustomerData((prev) => ({ ...prev, vehicleDescription: e?.target?.value }))
                 }
                 onBlur={(e) =>
-                  setCustomerData((prev) => ({ ...prev, vehicleDescription: titleCase(e?.target?.value) }))
+                  setCustomerData((prev) => ({
+                    ...prev,
+                    vehicleDescription: titleCase(e?.target?.value),
+                  }))
                 }
                 className="w-full p-3 border border-gray-300 rounded-lg text-base capitalize focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="2025 Lexus RX350"
@@ -421,9 +423,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Stock #
-              </label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Stock #</label>
               <input
                 type="text"
                 value={customerData?.stockNumber}
@@ -454,15 +454,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Notes
-            </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
             <textarea
               rows={3}
               value={customerData?.notes}
-              onChange={(e) =>
-                setCustomerData((prev) => ({ ...prev, notes: e?.target?.value }))
-              }
+              onChange={(e) => setCustomerData((prev) => ({ ...prev, notes: e?.target?.value }))}
               className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter notes"
               data-testid="notes-input"
@@ -474,9 +470,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               label="Sales"
               options={dropdownData?.salesConsultants}
               value={customerData?.assignedTo}
-              onChange={(value) =>
-                setCustomerData((prev) => ({ ...prev, assignedTo: value }))
-              }
+              onChange={(value) => setCustomerData((prev) => ({ ...prev, assignedTo: value }))}
               placeholder="Select sales consultant"
               testId="sales-select"
             />
@@ -485,9 +479,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               label="Finance"
               options={dropdownData?.financeManagers}
               value={customerData?.financeManager}
-              onChange={(value) =>
-                setCustomerData((prev) => ({ ...prev, financeManager: value }))
-              }
+              onChange={(value) => setCustomerData((prev) => ({ ...prev, financeManager: value }))}
               placeholder="Select finance manager"
               testId="finance-select"
             />
@@ -504,7 +496,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               helpLink={
                 <span>
                   Need to edit coordinators?{' '}
-                  <a data-testid="admin-link-delivery" className="underline" href="/admin?section=staff">
+                  <a
+                    data-testid="admin-link-delivery"
+                    className="underline"
+                    href="/admin?section=staff"
+                  >
                     Open Admin
                   </a>
                 </span>
@@ -542,7 +538,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                   className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
                   placeholder="Enter loaner vehicle number"
                   value={customerData?.loanerNumber ?? ''}
-                  onChange={(e) => setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
+                  }
                   required
                 />
               </div>
@@ -569,10 +567,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
           {/* Capability notice: per-line time windows not supported */}
           {!getCapabilities().jobPartsHasTimes && (
-            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg" data-testid="capability-notice-job-parts-times">
+            <div
+              className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+              data-testid="capability-notice-job-parts-times"
+            >
               <Icon name="Info" size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-900">
-                <strong>Note:</strong> This environment doesn't store per-line time windows yet. Promised dates will save; time windows are ignored.
+                <strong>Note:</strong> This environment doesn't store per-line time windows yet.
+                Promised dates will save; time windows are ignored.
               </div>
             </div>
           )}
@@ -586,10 +588,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           ) : (
             <div className="space-y-4">
               {lineItems?.map((item, index) => (
-                <div
-                  key={item?.id}
-                  className="border rounded-xl p-4 bg-slate-50 border-slate-200"
-                >
+                <div key={item?.id} className="border rounded-xl p-4 bg-slate-50 border-slate-200">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
                     <button
@@ -607,9 +606,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                       </label>
                       <select
                         value={item?.productId || ''}
-                        onChange={(e) =>
-                          updateLineItem(item?.id, 'productId', e?.target?.value)
-                        }
+                        onChange={(e) => updateLineItem(item?.id, 'productId', e?.target?.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg text-base"
                         data-testid={`product-select-${index}`}
                       >
@@ -631,9 +628,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                         step="0.01"
                         min="0"
                         value={item?.unitPrice}
-                        onChange={(e) =>
-                          updateLineItem(item?.id, 'unitPrice', e?.target?.value)
-                        }
+                        onChange={(e) => updateLineItem(item?.id, 'unitPrice', e?.target?.value)}
                         className="w-full p-3 border border-gray-300 rounded-lg"
                         placeholder="0.00"
                       />
@@ -645,9 +640,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                       <input
                         type="checkbox"
                         checked={item?.isOffSite}
-                        onChange={(e) =>
-                          updateLineItem(item?.id, 'isOffSite', e?.target?.checked)
-                        }
+                        onChange={(e) => updateLineItem(item?.id, 'isOffSite', e?.target?.checked)}
                         className="h-5 w-5 accent-blue-600"
                         data-testid={`is-off-site-${index}`}
                       />
@@ -661,7 +654,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                           <select
                             data-testid={`line-vendor-${index}`}
                             value={item?.vendorId || ''}
-                            onChange={(e) => updateLineItem(item?.id, 'vendorId', e?.target?.value || null)}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'vendorId', e?.target?.value || null)
+                            }
                             className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           >
                             <option value="">— Select Vendor —</option>
