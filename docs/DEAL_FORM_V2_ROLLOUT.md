@@ -225,9 +225,37 @@ src/
 .gitignore                           (MODIFIED: track .env.development)
 ```
 
+## Capability Fallback
+
+### Per-Line Time Windows
+
+The application supports per-line time windows (`scheduled_start_time`, `scheduled_end_time`) on `job_parts` when the database schema includes these columns. When these columns are not present:
+
+**Automatic Detection:**
+- On first save attempt, if columns are missing, the service detects the error and retries without those fields
+- Capability status is cached in `sessionStorage` (`cap_jobPartsTimes=false`) to avoid re-probing
+- Future saves within the same session automatically exclude these fields
+
+**User Experience:**
+- A small info banner appears in the Line Items section: "Note: This environment doesn't store per-line time windows yet. Promised dates will save; time windows are ignored."
+- Users can still enter time values in the UI, but they won't be persisted where unsupported
+- All other line item fields (promised dates, scheduling flags, etc.) save normally
+
+**Technical Details:**
+- Read operations already have built-in fallbacks and use job-level times when per-line times are unavailable
+- Write operations now match this resilience with automatic retry logic
+- Service exposes `getCapabilities()` for UI components to check feature availability
+- Unit tests verify both fallback paths and error propagation
+
+**Files Modified:**
+- `src/services/dealService.js`: Capability detection, retry logic in createDeal/updateDeal
+- `src/components/deals/DealFormV2.jsx`: Optional capability banner
+- `tests/unit/dealService.jobPartsTimesFallback.test.js`: Fallback tests
+
 ## Support
 
 For questions or issues, contact the development team or refer to:
 - Adapter implementation: `src/components/deals/formAdapters.js`
 - Unit tests: `src/tests/dealService.formAdapters.test.js`
 - Integration: `src/pages/deals/{NewDeal,EditDeal}.jsx`
+- Capability fallback tests: `tests/unit/dealService.jobPartsTimesFallback.test.js`
