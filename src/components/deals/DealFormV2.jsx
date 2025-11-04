@@ -767,25 +767,25 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       <div className="mt-6 flex justify-between">
         <div className="flex space-x-3">
           {currentStep === 2 && (
-            <Button onClick={() => setCurrentStep(1)} variant="outline">
+            <Button onClick={() => setCurrentStep(1)} variant="outline" disabled={isSubmitting}>
               ← Back
             </Button>
           )}
         </div>
 
         <div className="flex space-x-3">
-          <Button onClick={onCancel} variant="outline">
+          <Button onClick={onCancel} variant="outline" disabled={isSubmitting}>
             Cancel
           </Button>
 
           {currentStep === 1 && (
             <Button
               onClick={() => setCurrentStep(2)}
-              disabled={!validateStep1()}
+              disabled={!validateStep1() || isSubmitting}
               className="bg-blue-600 hover:bg-blue-700 text-white"
-              data-testid="save-deal-btn"
+              data-testid="next-to-line-items-btn"
             >
-              Add Line Items →
+              Next → Line Items
             </Button>
           )}
 
