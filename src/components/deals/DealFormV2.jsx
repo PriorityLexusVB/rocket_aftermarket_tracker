@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
-import dealService from '../../services/dealService'
+import dealService, { getCapabilities } from '../../services/dealService'
 import { draftToCreatePayload, draftToUpdatePayload } from './formAdapters'
 import { vehicleService } from '../../services/vehicleService'
 import Button from '../ui/Button'
@@ -561,6 +561,16 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               <span>Add Item</span>
             </Button>
           </div>
+
+          {/* Capability notice: per-line time windows not supported */}
+          {!getCapabilities().jobPartsHasTimes && (
+            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg" data-testid="capability-notice-job-parts-times">
+              <Icon name="Info" size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-900">
+                <strong>Note:</strong> This environment doesn't store per-line time windows yet. Promised dates will save; time windows are ignored.
+              </div>
+            </div>
+          )}
 
           {lineItems?.length === 0 ? (
             <div className="text-center py-8 text-gray-500 bg-slate-50 rounded-lg border-2 border-dashed border-gray-300">
