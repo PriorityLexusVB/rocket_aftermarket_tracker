@@ -246,7 +246,16 @@ function mapFormToDb(formState = {}) {
     scheduled_end_time: it.scheduled_end_time,
   }))
 
-  const loanerForm = formState?.loanerForm || null
+  // Accept both loanerForm (new) and legacy loaner_number shape
+  let loanerForm = formState?.loanerForm || null
+  if (!loanerForm && formState?.loaner_number) {
+    // Legacy shape: derive loanerForm from loaner_number
+    loanerForm = {
+      loaner_number: formState.loaner_number,
+      eta_return_date: null,
+      notes: null,
+    }
+  }
 
   // customer fields normalization - apply Title Case to customer name
   const rawCustomerName = (formState?.customerName || formState?.customer_name || '').trim()
@@ -363,6 +372,106 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       )
     }
     throw error
+  }
+}
+
+// Helper: Compute earliest time window from line items for job-level fallback
+function computeEarliestTimeWindow(normalizedLineItems) {
+  if (!normalizedLineItems || normalizedLineItems.length === 0) {
+    return null
+  }
+  
+  // Find line items with both start and end times
+  const itemsWithTimes = normalizedLineItems
+    .filter(item => item?.scheduledStartTime && item?.scheduledEndTime)
+    .sort((a, b) => {
+      // Sort by start time (lexicographic comparison works for ISO datetime strings)
+      const startA = a.scheduledStartTime || ''
+      const startB = b.scheduledStartTime || ''
+      return startA.localeCompare(startB)
+    })
+  
+  if (itemsWithTimes.length === 0) {
+    return null
+  }
+  
+  const earliest = itemsWithTimes[0]
+  
+  // Convert time-only strings (HH:MM) to datetime strings if needed
+  let startTime = earliest.scheduledStartTime
+  let endTime = earliest.scheduledEndTime
+  
+  // If we have a promised date, combine it with the time
+  if (earliest.promised_date && /^\d{2}:\d{2}/.test(startTime)) {
+    startTime = `${earliest.promised_date}T${startTime}:00`
+    endTime = `${earliest.promised_date}T${endTime}:00`
+  }
+  
+  return {
+    scheduled_start_time: startTime,
+    scheduled_end_time: endTime,
+  }
+}
+
+// Helper: Attach or create vehicle by stock number when vehicle_id is missing
+async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, orgId = null) {
+  if (!stockNumber?.trim()) {
+    return null // No stock number provided
+  }
+
+  const normalizedStock = stockNumber.trim()
+  
+  try {
+    // Try to find existing vehicle by stock_number
+    let query = supabase
+      ?.from('vehicles')
+      ?.select('id')
+      ?.eq('stock_number', normalizedStock)
+    
+    // Optionally scope by org_id if provided
+    if (orgId) {
+      query = query?.eq('org_id', orgId)
+    }
+    
+    const { data: existing, error: lookupErr } = await query?.maybeSingle()
+    
+    if (lookupErr && lookupErr.code !== 'PGRST116') {
+      // Log but don't fail if lookup fails (except for "no rows" which is expected)
+      console.warn('[dealService:attachVehicle] Lookup failed:', lookupErr.message)
+    }
+    
+    if (existing?.id) {
+      // Vehicle found, return its ID
+      return existing.id
+    }
+    
+    // Vehicle not found, create minimal vehicle record
+    const vehicleData = {
+      stock_number: normalizedStock,
+      owner_phone: customerPhone || null,
+    }
+    
+    if (orgId) {
+      vehicleData.org_id = orgId
+    }
+    
+    const { data: newVehicle, error: createErr } = await supabase
+      ?.from('vehicles')
+      ?.insert([vehicleData])
+      ?.select('id')
+      ?.single()
+    
+    if (createErr) {
+      // Log but don't fail - vehicle creation is best-effort
+      console.warn('[dealService:attachVehicle] Create failed:', createErr.message)
+      return null
+    }
+    
+    return newVehicle?.id || null
+  } catch (error) {
+    // Best-effort: log and return null if anything fails
+    console.warn('[dealService:attachVehicle] Exception:', error?.message)
+    return null
   }
 }
 
@@ -716,6 +825,24 @@ export async function createDeal(formState) {
   // In tests and general use, avoid auto-populating scheduled times to preserve null-safety expectations
   // (previously defaulted scheduled_start_time for vendor jobs)
 
+  // Attach or create vehicle by stock number if vehicle_id is missing
+  if (!payload?.vehicle_id && stockNumber) {
+    const vehicleId = await attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, payload?.org_id)
+    if (vehicleId) {
+      payload.vehicle_id = vehicleId
+    }
+  }
+
+  // Job-level time fallback: when per-line times unsupported, set job.scheduled_* from earliest line item
+  if (!JOB_PARTS_HAS_PER_LINE_TIMES) {
+    const earliestWindow = computeEarliestTimeWindow(normalizedLineItems)
+    if (earliestWindow) {
+      payload.scheduled_start_time = earliestWindow.scheduled_start_time
+      payload.scheduled_end_time = earliestWindow.scheduled_end_time
+      console.log('[dealService:create] Setting job-level times from earliest line item:', earliestWindow)
+    }
+  }
+
   // Pre-insert FK guard: ensure all referenced products exist to avoid FK failure
   try {
     const productIds = Array.from(
@@ -870,6 +997,24 @@ export async function updateDeal(id, formState) {
       const price = Number(item?.unit_price || item?.price || 0)
       return sum + qty * price
     }, 0) || 0
+
+  // Attach or create vehicle by stock number if vehicle_id is missing
+  if (!payload?.vehicle_id && stockNumber) {
+    const vehicleId = await attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, payload?.org_id)
+    if (vehicleId) {
+      payload.vehicle_id = vehicleId
+    }
+  }
+
+  // Job-level time fallback: when per-line times unsupported, set job.scheduled_* from earliest line item
+  if (!JOB_PARTS_HAS_PER_LINE_TIMES) {
+    const earliestWindow = computeEarliestTimeWindow(normalizedLineItems)
+    if (earliestWindow) {
+      payload.scheduled_start_time = earliestWindow.scheduled_start_time
+      payload.scheduled_end_time = earliestWindow.scheduled_end_time
+      console.log('[dealService:update] Setting job-level times from earliest line item:', earliestWindow)
+    }
+  }
 
   // 1) Update job with optimistic concurrency and tenant scope where possible
   let jobErr

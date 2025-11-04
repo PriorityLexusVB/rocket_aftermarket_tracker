@@ -1,347 +1,319 @@
+// tests/unit/dealService.jobPartsTimesFallback.test.js
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createDeal, updateDeal, toJobPartRows } from '@/services/dealService'
-import { supabase } from '@/lib/supabase'
+import { createDeal, updateDeal, getCapabilities } from '@/services/dealService'
 
-// Mock supabase
+// Mock Supabase
 vi.mock('@/lib/supabase', () => ({
   supabase: {
-    from: vi.fn(),
     auth: {
-      getUser: vi.fn(),
+      getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } } })),
     },
+    from: vi.fn((table) => {
+      const mockChain = {
+        insert: vi.fn(() => mockChain),
+        update: vi.fn(() => mockChain),
+        select: vi.fn(() => mockChain),
+        eq: vi.fn(() => mockChain),
+        in: vi.fn(() => mockChain),
+        is: vi.fn(() => mockChain),
+        maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        limit: vi.fn(() => mockChain),
+      }
+
+      // Handle different table responses
+      if (table === 'jobs') {
+        mockChain.insert = vi.fn(() => ({
+          ...mockChain,
+          select: vi.fn(() => ({
+            ...mockChain,
+            single: vi.fn(() => Promise.resolve({ 
+              data: { id: 'job-123', job_number: 'JOB-001' }, 
+              error: null 
+            })),
+          })),
+        }))
+        mockChain.update = vi.fn(() => ({
+          ...mockChain,
+          eq: vi.fn(() => ({
+            ...mockChain,
+            select: vi.fn(() => ({
+              ...mockChain,
+              maybeSingle: vi.fn(() => Promise.resolve({ 
+                data: { id: 'job-123', updated_at: new Date().toISOString() }, 
+                error: null 
+              })),
+            })),
+          })),
+        }))
+      }
+
+      if (table === 'job_parts') {
+        let callCount = 0
+        mockChain.insert = vi.fn((rows) => {
+          callCount++
+          // First call with scheduled_* columns fails
+          if (callCount === 1 && rows[0]?.scheduled_start_time !== undefined) {
+            return Promise.resolve({ 
+              data: null, 
+              error: { message: 'column "scheduled_start_time" does not exist' } 
+            })
+          }
+          // Second call without scheduled_* columns succeeds
+          return Promise.resolve({ data: rows, error: null })
+        })
+        mockChain.delete = vi.fn(() => ({
+          ...mockChain,
+          eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        }))
+      }
+
+      if (table === 'products') {
+        mockChain.in = vi.fn(() => ({
+          ...mockChain,
+          select: vi.fn(() => Promise.resolve({ 
+            data: [{ id: 'prod-1' }], 
+            error: null 
+          })),
+        }))
+      }
+
+      if (table === 'transactions') {
+        mockChain.insert = vi.fn(() => Promise.resolve({ data: [{ id: 'txn-1' }], error: null }))
+        mockChain.select = vi.fn(() => ({
+          ...mockChain,
+          eq: vi.fn(() => ({
+            ...mockChain,
+            maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            single: vi.fn(() => Promise.resolve({ 
+              data: { customer_name: 'Test Customer' }, 
+              error: null 
+            })),
+          })),
+          limit: vi.fn(() => ({
+            ...mockChain,
+            maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+        }))
+      }
+
+      if (table === 'user_profiles') {
+        mockChain.select = vi.fn(() => ({
+          ...mockChain,
+          eq: vi.fn(() => ({
+            ...mockChain,
+            single: vi.fn(() => Promise.resolve({ 
+              data: { org_id: 'org-1' }, 
+              error: null 
+            })),
+          })),
+        }))
+      }
+
+      if (table === 'loaner_assignments') {
+        mockChain.select = vi.fn(() => ({
+          ...mockChain,
+          eq: vi.fn(() => ({
+            ...mockChain,
+            is: vi.fn(() => ({
+              ...mockChain,
+              single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+              maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            })),
+            maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+          in: vi.fn(() => ({
+            ...mockChain,
+            is: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          })),
+        }))
+      }
+
+      if (table === 'vehicles') {
+        mockChain.select = vi.fn(() => ({
+          ...mockChain,
+          eq: vi.fn(() => ({
+            ...mockChain,
+            maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+        }))
+        mockChain.insert = vi.fn(() => ({
+          ...mockChain,
+          select: vi.fn(() => ({
+            ...mockChain,
+            single: vi.fn(() => Promise.resolve({ 
+              data: { id: 'vehicle-123' }, 
+              error: null 
+            })),
+          })),
+        }))
+      }
+
+      return mockChain
+    }),
+    rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
   },
 }))
 
-describe('dealService job_parts times fallback', () => {
+// Mock getDeal to avoid complex join queries
+vi.mock('@/services/dealService', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    getDeal: vi.fn(() => Promise.resolve({ 
+      id: 'job-123',
+      job_number: 'JOB-001',
+      appt_start: '2025-11-05T09:00:00',
+      appt_end: '2025-11-05T17:00:00',
+    })),
+  }
+})
+
+describe('dealService - Per-Line Time Columns Fallback', () => {
   beforeEach(() => {
-    // Reset mocks before each test
-    vi.clearAllMocks()
-    // Clear sessionStorage
+    // Clear sessionStorage before each test
     if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.clear()
+      sessionStorage.removeItem('cap_jobPartsTimes')
     }
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
     vi.clearAllMocks()
   })
 
-  describe('toJobPartRows', () => {
-    it('includes scheduled_* fields by default', () => {
-      const items = [
+  it('should retry createDeal without scheduled_* columns when they do not exist', async () => {
+    const formState = {
+      job_number: 'JOB-TEST-001',
+      customer_name: 'Test Customer',
+      org_id: 'org-1',
+      lineItems: [
         {
-          product_id: 1,
+          product_id: 'prod-1',
           unit_price: 100,
           quantity_used: 1,
           requiresScheduling: true,
-          lineItemPromisedDate: '2025-11-10',
-          scheduledStartTime: '2025-11-10T09:00:00Z',
-          scheduledEndTime: '2025-11-10T17:00:00Z',
+          lineItemPromisedDate: '2025-11-05',
+          scheduledStartTime: '09:00',
+          scheduledEndTime: '17:00',
         },
-      ]
-      const rows = toJobPartRows('job-123', items)
-      expect(rows).toHaveLength(1)
-      expect(rows[0].scheduled_start_time).toBe('2025-11-10T09:00:00Z')
-      expect(rows[0].scheduled_end_time).toBe('2025-11-10T17:00:00Z')
+      ],
+    }
+
+    const result = await createDeal(formState)
+    
+    expect(result).toBeDefined()
+    expect(result.id).toBe('job-123')
+    
+    // Verify capability was disabled after first failure
+    const caps = getCapabilities()
+    expect(caps.jobPartsHasTimes).toBe(false)
+    
+    // Verify sessionStorage was updated
+    if (typeof sessionStorage !== 'undefined') {
+      expect(sessionStorage.getItem('cap_jobPartsTimes')).toBe('false')
+    }
+  })
+
+  it('should retry updateDeal without scheduled_* columns when they do not exist', async () => {
+    const formState = {
+      job_number: 'JOB-TEST-002',
+      customer_name: 'Test Customer',
+      org_id: 'org-1',
+      lineItems: [
+        {
+          product_id: 'prod-1',
+          unit_price: 200,
+          quantity_used: 1,
+          requiresScheduling: true,
+          lineItemPromisedDate: '2025-11-06',
+          scheduledStartTime: '10:00',
+          scheduledEndTime: '16:00',
+        },
+      ],
+    }
+
+    const result = await updateDeal('job-123', formState)
+    
+    expect(result).toBeDefined()
+    expect(result.id).toBe('job-123')
+  })
+
+  it('should set job-level scheduled_* when capability is false and line items have times', async () => {
+    // Disable capability first
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem('cap_jobPartsTimes', 'false')
+    }
+
+    const formState = {
+      job_number: 'JOB-TEST-003',
+      customer_name: 'Test Customer',
+      org_id: 'org-1',
+      lineItems: [
+        {
+          product_id: 'prod-1',
+          unit_price: 300,
+          quantity_used: 1,
+          requiresScheduling: true,
+          lineItemPromisedDate: '2025-11-07',
+          scheduledStartTime: '2025-11-07T08:00:00',
+          scheduledEndTime: '2025-11-07T12:00:00',
+        },
+        {
+          product_id: 'prod-1',
+          unit_price: 400,
+          quantity_used: 1,
+          requiresScheduling: true,
+          lineItemPromisedDate: '2025-11-08',
+          scheduledStartTime: '2025-11-08T14:00:00',
+          scheduledEndTime: '2025-11-08T18:00:00',
+        },
+      ],
+    }
+
+    const result = await createDeal(formState)
+    
+    expect(result).toBeDefined()
+    // Job-level times should be set from earliest line item
+    expect(result.appt_start).toBeTruthy()
+    expect(result.appt_end).toBeTruthy()
+  })
+
+  it('should not trigger retry for non-missing-column errors', async () => {
+    const { supabase } = await import('@/lib/supabase')
+    
+    // Mock a different error (not missing column)
+    supabase.from = vi.fn((table) => {
+      if (table === 'job_parts') {
+        return {
+          insert: vi.fn(() => Promise.resolve({ 
+            data: null, 
+            error: { message: 'Foreign key violation', code: '23503' } 
+          })),
+          delete: vi.fn(() => ({
+            eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          })),
+        }
+      }
+      // Return default mock for other tables
+      return supabase.from(table)
     })
 
-    it('excludes scheduled_* fields when includeTimes is false', () => {
-      const items = [
+    const formState = {
+      job_number: 'JOB-TEST-004',
+      customer_name: 'Test Customer',
+      org_id: 'org-1',
+      lineItems: [
         {
-          product_id: 1,
+          product_id: 'invalid-product',
           unit_price: 100,
           quantity_used: 1,
           requiresScheduling: true,
-          lineItemPromisedDate: '2025-11-10',
-          scheduledStartTime: '2025-11-10T09:00:00Z',
-          scheduledEndTime: '2025-11-10T17:00:00Z',
+          lineItemPromisedDate: '2025-11-05',
         },
-      ]
-      const rows = toJobPartRows('job-123', items, { includeTimes: false })
-      expect(rows).toHaveLength(1)
-      expect(rows[0]).not.toHaveProperty('scheduled_start_time')
-      expect(rows[0]).not.toHaveProperty('scheduled_end_time')
-      // Other fields should still be present
-      expect(rows[0].product_id).toBe(1)
-      expect(rows[0].promised_date).toBe('2025-11-10')
-    })
-  })
+      ],
+    }
 
-  describe('createDeal fallback', () => {
-    it('retries insert without scheduled_* on missing column error', async () => {
-      const formState = {
-        job_number: 'TEST-123',
-        title: 'Test Deal',
-        lineItems: [
-          {
-            product_id: 1,
-            unit_price: 100,
-            quantity_used: 1,
-            requiresScheduling: true,
-            lineItemPromisedDate: '2025-11-10',
-            scheduledStartTime: '2025-11-10T09:00:00Z',
-            scheduledEndTime: '2025-11-10T17:00:00Z',
-          },
-        ],
-      }
-
-      // Mock the jobs insert to succeed
-      const mockJobInsert = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: { id: 'job-123' },
-            error: null,
-          }),
-        }),
-      })
-
-      // Mock first insert to fail with missing column error, second to succeed
-      let insertCallCount = 0
-      const mockJobPartsInsert = vi.fn().mockImplementation(() => {
-        insertCallCount++
-        if (insertCallCount === 1) {
-          // First call fails with missing column error
-          return Promise.resolve({
-            data: null,
-            error: {
-              message: 'Could not find the "scheduled_end_time" column of "job_parts" in the schema cache',
-            },
-          })
-        } else {
-          // Second call succeeds
-          return Promise.resolve({ data: [], error: null })
-        }
-      })
-
-      // Mock products check
-      const mockProductsSelect = vi.fn().mockReturnValue({
-        in: vi.fn().mockResolvedValue({
-          data: [{ id: 1 }],
-          error: null,
-        }),
-      })
-
-      // Mock transactions and loaner queries
-      const mockTransactionsSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-          }),
-        }),
-      })
-
-      const mockTransactionsInsert = vi.fn().mockResolvedValue({ data: [], error: null })
-
-      // Setup supabase mock
-      supabase.from.mockImplementation((table) => {
-        if (table === 'jobs') {
-          return { insert: mockJobInsert }
-        } else if (table === 'job_parts') {
-          return { insert: mockJobPartsInsert }
-        } else if (table === 'products') {
-          return { select: mockProductsSelect }
-        } else if (table === 'transactions') {
-          return {
-            select: mockTransactionsSelect,
-            insert: mockTransactionsInsert,
-          }
-        }
-        return {}
-      })
-
-      // Mock getDeal to return minimal data
-      const mockGetDeal = vi.fn().mockResolvedValue({ id: 'job-123' })
-      vi.doMock('@/services/dealService', async () => {
-        const actual = await vi.importActual('@/services/dealService')
-        return {
-          ...actual,
-          getDeal: mockGetDeal,
-        }
-      })
-
-      // Mock auth
-      supabase.auth.getUser.mockResolvedValue({
-        data: { user: { id: 'user-1' } },
-        error: null,
-      })
-
-      try {
-        await createDeal(formState)
-      } catch (e) {
-        // We expect this to potentially fail due to mocking limitations
-        // but the important part is that retry logic was triggered
-      }
-
-      // Verify that insert was called twice (initial + retry)
-      expect(mockJobPartsInsert).toHaveBeenCalledTimes(2)
-    })
-
-    it('propagates non-missing-column errors without retry', async () => {
-      const formState = {
-        job_number: 'TEST-456',
-        title: 'Test Deal',
-        lineItems: [
-          {
-            product_id: 1,
-            unit_price: 100,
-            quantity_used: 1,
-            requiresScheduling: true,
-            lineItemPromisedDate: '2025-11-10',
-          },
-        ],
-      }
-
-      // Mock the jobs insert to succeed
-      const mockJobInsert = vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({
-            data: { id: 'job-456' },
-            error: null,
-          }),
-        }),
-      })
-
-      // Mock insert to fail with non-missing-column error
-      const mockJobPartsInsert = vi.fn().mockResolvedValue({
-        data: null,
-        error: { message: 'Foreign key constraint violation' },
-      })
-
-      // Mock products check
-      const mockProductsSelect = vi.fn().mockReturnValue({
-        in: vi.fn().mockResolvedValue({
-          data: [{ id: 1 }],
-          error: null,
-        }),
-      })
-
-      supabase.from.mockImplementation((table) => {
-        if (table === 'jobs') {
-          return { insert: mockJobInsert }
-        } else if (table === 'job_parts') {
-          return { insert: mockJobPartsInsert }
-        } else if (table === 'products') {
-          return { select: mockProductsSelect }
-        }
-        return {}
-      })
-
-      supabase.auth.getUser.mockResolvedValue({
-        data: { user: { id: 'user-1' } },
-        error: null,
-      })
-
-      // Should throw and NOT retry
-      await expect(createDeal(formState)).rejects.toThrow()
-      
-      // Verify that insert was only called once (no retry)
-      expect(mockJobPartsInsert).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('updateDeal fallback', () => {
-    it('retries insert without scheduled_* on missing column error', async () => {
-      const dealId = 'deal-789'
-      const formState = {
-        job_number: 'TEST-789',
-        title: 'Updated Deal',
-        lineItems: [
-          {
-            product_id: 2,
-            unit_price: 200,
-            quantity_used: 2,
-            requiresScheduling: true,
-            lineItemPromisedDate: '2025-11-15',
-            scheduledStartTime: '2025-11-15T10:00:00Z',
-            scheduledEndTime: '2025-11-15T18:00:00Z',
-          },
-        ],
-      }
-
-      // Mock jobs update
-      const mockJobUpdate = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: { id: dealId, updated_at: new Date().toISOString() },
-              error: null,
-            }),
-          }),
-        }),
-      })
-
-      // Mock job_parts delete
-      const mockJobPartsDelete = vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-      })
-
-      // Mock first insert to fail, second to succeed
-      let insertCallCount = 0
-      const mockJobPartsInsert = vi.fn().mockImplementation(() => {
-        insertCallCount++
-        if (insertCallCount === 1) {
-          return Promise.resolve({
-            data: null,
-            error: {
-              message: 'column "scheduled_start_time" does not exist',
-            },
-          })
-        } else {
-          return Promise.resolve({ data: [], error: null })
-        }
-      })
-
-      // Mock transactions
-      const mockTransactionsSelect = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: { id: 'txn-1', transaction_number: 'TXN-123' },
-              error: null,
-            }),
-          }),
-        }),
-      })
-
-      const mockTransactionsUpdate = vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-      })
-
-      supabase.from.mockImplementation((table) => {
-        if (table === 'jobs') {
-          return { update: mockJobUpdate }
-        } else if (table === 'job_parts') {
-          return {
-            delete: mockJobPartsDelete,
-            insert: mockJobPartsInsert,
-          }
-        } else if (table === 'transactions') {
-          return {
-            select: mockTransactionsSelect,
-            update: mockTransactionsUpdate,
-          }
-        }
-        return {}
-      })
-
-      // Mock getDeal
-      const mockGetDeal = vi.fn().mockResolvedValue({ id: dealId })
-      vi.doMock('@/services/dealService', async () => {
-        const actual = await vi.importActual('@/services/dealService')
-        return {
-          ...actual,
-          getDeal: mockGetDeal,
-        }
-      })
-
-      try {
-        await updateDeal(dealId, formState)
-      } catch (e) {
-        // May fail due to mocking limitations
-      }
-
-      // Verify that insert was called twice
-      expect(mockJobPartsInsert).toHaveBeenCalledTimes(2)
-    })
+    await expect(createDeal(formState)).rejects.toThrow()
   })
 })

@@ -236,21 +236,69 @@ The application supports per-line time windows (`scheduled_start_time`, `schedul
 - Capability status is cached in `sessionStorage` (`cap_jobPartsTimes=false`) to avoid re-probing
 - Future saves within the same session automatically exclude these fields
 
+**Job-Level Fallback:**
+- When per-line times are unsupported, the service sets `jobs.scheduled_start_time` and `jobs.scheduled_end_time` to the earliest line item's time window
+- This ensures the deals list can still display appointment windows even when per-line columns don't exist
+- The fallback uses the earliest scheduled line item (sorted by start time) to represent the overall deal window
+
 **User Experience:**
 - A small info banner appears in the Line Items section: "Note: This environment doesn't store per-line time windows yet. Promised dates will save; time windows are ignored."
-- Users can still enter time values in the UI, but they won't be persisted where unsupported
+- Users can still enter time values in the UI, but they won't be persisted to `job_parts` where unsupported
 - All other line item fields (promised dates, scheduling flags, etc.) save normally
+- The deals list displays the job-level appointment window when per-line times are unavailable
 
 **Technical Details:**
 - Read operations already have built-in fallbacks and use job-level times when per-line times are unavailable
-- Write operations now match this resilience with automatic retry logic
+- Write operations now match this resilience with automatic retry logic plus job-level fallback
 - Service exposes `getCapabilities()` for UI components to check feature availability
 - Unit tests verify both fallback paths and error propagation
 
 **Files Modified:**
-- `src/services/dealService.js`: Capability detection, retry logic in createDeal/updateDeal
+- `src/services/dealService.js`: Capability detection, retry logic, job-level fallback in createDeal/updateDeal
 - `src/components/deals/DealFormV2.jsx`: Optional capability banner
 - `tests/unit/dealService.jobPartsTimesFallback.test.js`: Fallback tests
+
+### Loaner Number Persistence
+
+Loaner assignments are stored in the `loaner_assignments` table, not directly on the `jobs` table:
+
+**Contract:**
+- The form sends `loanerForm: { loaner_number, eta_return_date, notes }` when `customer_needs_loaner` is true
+- The service accepts both the new `loanerForm` shape and legacy `loaner_number` field for backward compatibility
+- After job save, `upsertLoanerAssignment()` is called to persist the loaner data
+
+**Behavior:**
+- If an active loaner assignment already exists for the job, it's updated
+- Otherwise, a new loaner assignment record is created
+- The saved deal returned by `getDeal()` includes joined loaner data (`loaner_number`, `loaner_id`)
+- The deals list displays the loaner badge and number when an active assignment exists
+
+**Files Modified:**
+- `src/components/deals/DealFormV2.jsx`: Sends `loanerForm` when loaner is needed
+- `src/services/dealService.js`: Accepts both `loanerForm` and legacy `loaner_number`, calls `upsertLoanerAssignment()`
+- `tests/unit/dealService.vehicleAttachAndLoaner.test.js`: Loaner persistence tests
+
+### Vehicle Attachment by Stock Number
+
+When a deal is saved without a `vehicle_id` but with a `stock_number`, the service automatically attaches or creates the vehicle:
+
+**Lookup:**
+- Before saving the job, the service queries `vehicles` by `stock_number` (scoped by `org_id` if available)
+- If found, the vehicle's ID is set on `payload.vehicle_id`
+
+**Creation:**
+- If not found, a minimal vehicle record is created with `stock_number` and `owner_phone`
+- The new vehicle's ID is set on `payload.vehicle_id`
+- This ensures the job has a linked vehicle immediately after save
+
+**Behavior:**
+- The saved deal returned by `getDeal()` includes joined vehicle data
+- The deals list displays vehicle information and stock number
+- Vehicle creation is best-effort; failures are logged but don't fail the deal save
+
+**Files Modified:**
+- `src/services/dealService.js`: `attachOrCreateVehicleByStockNumber()` helper, called in createDeal/updateDeal
+- `tests/unit/dealService.vehicleAttachAndLoaner.test.js`: Vehicle attach tests
 
 ## Support
 
