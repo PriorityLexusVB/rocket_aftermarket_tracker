@@ -57,7 +57,7 @@ function generateTransactionNumber() {
 // Helper to detect missing column errors from PostgREST
 function isMissingColumnError(error) {
   const msg = error?.message || error?.toString?.() || ''
-  return /column .* does not exist/i.test(msg) || /PGRST.*column/i.test(msg) || /schema cache/i.test(msg)
+  return /column .* does not exist/i.test(msg) || /PGRST.*column/i.test(msg) || /Could not find.*column.*in the schema cache/i.test(msg)
 }
 
 // --- Capability detection for job_parts per-line time windows -------------
@@ -776,7 +776,7 @@ export async function createDeal(formState) {
         if (partsErr) {
           // If error is due to missing scheduled_* columns, retry without them
           if (isMissingColumnError(partsErr)) {
-            console.warn('[dealService:create] Per-line time columns not available, retrying without them...', partsErr.message)
+            console.warn('[dealService:create] Per-line time columns not available, retrying without them')
             disableJobPartsTimeCapability()
             // Retry insert without scheduled_* fields
             const retryRows = toJobPartRows(job?.id, normalizedLineItems, { includeTimes: false })
@@ -952,7 +952,7 @@ export async function updateDeal(id, formState) {
       if (insErr) {
         // If error is due to missing scheduled_* columns, retry without them
         if (isMissingColumnError(insErr)) {
-          console.warn('[dealService:update] Per-line time columns not available, retrying without them...', insErr.message)
+          console.warn('[dealService:update] Per-line time columns not available, retrying without them')
           disableJobPartsTimeCapability()
           // Retry insert without scheduled_* fields
           const retryRows = toJobPartRows(id, normalizedLineItems, { includeTimes: false })
