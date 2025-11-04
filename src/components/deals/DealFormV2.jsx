@@ -263,7 +263,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         delivery_coordinator_id: customerData?.deliveryCoordinator || null,
         finance_manager_id: customerData?.financeManager || null,
         customer_needs_loaner: Boolean(customerData?.needsLoaner),
-        loaner_number: customerData?.needsLoaner ? customerData?.loanerNumber?.trim() || null : null,
+        // Send loanerForm when needsLoaner is true for proper persistence via loaner_assignments
+        loanerForm: customerData?.needsLoaner ? {
+          loaner_number: customerData?.loanerNumber?.trim() || '',
+          eta_return_date: null,
+          notes: null,
+        } : null,
         lineItems: lineItems.map((item) => ({
           product_id: item?.productId,
           quantity_used: 1,
