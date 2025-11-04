@@ -1251,9 +1251,19 @@ export async function updateDealStatus(id, job_status) {
 function mapDbDealToForm(dbDeal) {
   if (!dbDeal) return null
 
-  // Compose vehicle_description from vehicle fields if not explicitly provided
-  let vehicleDescription = dbDeal?.vehicle_description || ''
-  if (!vehicleDescription && dbDeal?.vehicle) {
+  // Derive vehicle_description from title (where it's stored) or vehicle fields
+  // Priority: title (if not generic) > vehicle fields composition > empty
+  let vehicleDescription = ''
+  
+  // First check if title contains a meaningful vehicle description (not generic)
+  const title = dbDeal?.title || ''
+  const isGenericTitle = /^(Deal\s+\d+|Untitled Deal)$/i.test(title.trim())
+  
+  if (title && !isGenericTitle) {
+    // Use title as vehicle description since that's where custom descriptions are stored
+    vehicleDescription = title
+  } else if (dbDeal?.vehicle) {
+    // Fallback: compose from vehicle fields if no custom description
     const parts = [dbDeal?.vehicle?.year, dbDeal?.vehicle?.make, dbDeal?.vehicle?.model].filter(
       Boolean
     )
