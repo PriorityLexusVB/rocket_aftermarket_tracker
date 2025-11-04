@@ -435,7 +435,9 @@ async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, or
     
     const { data: existing, error: lookupErr } = await query?.maybeSingle()
     
-    if (lookupErr && lookupErr.code !== 'PGRST116') {
+    // PGRST116 = "no rows returned" - expected when vehicle doesn't exist
+    const PGRST_NO_ROWS = 'PGRST116'
+    if (lookupErr && lookupErr.code !== PGRST_NO_ROWS) {
       // Log but don't fail if lookup fails (except for "no rows" which is expected)
       console.warn('[dealService:attachVehicle] Lookup failed:', lookupErr.message)
     }
@@ -839,7 +841,7 @@ export async function createDeal(formState) {
     if (earliestWindow) {
       payload.scheduled_start_time = earliestWindow.scheduled_start_time
       payload.scheduled_end_time = earliestWindow.scheduled_end_time
-      console.log('[dealService:create] Setting job-level times from earliest line item:', earliestWindow)
+      console.info('[dealService:create] Setting job-level times from earliest line item:', earliestWindow)
     }
   }
 
@@ -1012,7 +1014,7 @@ export async function updateDeal(id, formState) {
     if (earliestWindow) {
       payload.scheduled_start_time = earliestWindow.scheduled_start_time
       payload.scheduled_end_time = earliestWindow.scheduled_end_time
-      console.log('[dealService:update] Setting job-level times from earliest line item:', earliestWindow)
+      console.info('[dealService:update] Setting job-level times from earliest line item:', earliestWindow)
     }
   }
 
