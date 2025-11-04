@@ -29,10 +29,10 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
       const adapted = useV2 ? draftToCreatePayload(dealPayload) : dealPayload
       
       // Create the deal via dealService
-      await dealService.createDeal(adapted)
+      const savedDeal = await dealService.createDeal(adapted)
       
-      // Success - call callbacks
-      if (onSuccess) onSuccess()
+      // Success - call callbacks, passing back the saved deal for in-place update
+      if (onSuccess) onSuccess(savedDeal)
       handleClose()
     } catch (err) {
       setError(`Failed to create deal: ${err?.message}`)

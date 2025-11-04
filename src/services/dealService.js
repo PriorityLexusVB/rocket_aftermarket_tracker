@@ -519,6 +519,7 @@ export async function getAllDeals() {
 }
 
 // ✅ FIXED: Updated getDeal to remove SQL RPC dependency
+// ✅ UPDATED: Enhanced to include computed fields matching getAllDeals structure
 export async function getDeal(id) {
   try {
     // Centralized joined selector
@@ -542,6 +543,65 @@ export async function getDeal(id) {
     const transaction = transactionResult?.data
     const loaner = loanerResult?.data
 
+    // Calculate next promised date from job parts (same as getAllDeals)
+    const schedulingParts =
+      job?.job_parts?.filter((part) => part?.requires_scheduling && part?.promised_date) || []
+    const nextPromisedDate =
+      schedulingParts?.length > 0
+        ? schedulingParts
+            ?.sort((a, b) => {
+              const dateA = String(a.promised_date || '')
+              const dateB = String(b.promised_date || '')
+              const normA = dateA.includes('T') ? dateA : `${dateA}T00:00:00`
+              const normB = dateB.includes('T') ? dateB : `${dateB}T00:00:00`
+              return new Date(normA) - new Date(normB)
+            })
+            ?.map((p) => {
+              const d = String(p.promised_date || '')
+              return d.includes('T') ? d : `${d}T00:00:00`
+            })?.[0]
+        : null
+
+    // Compute age in days
+    const createdAt = job?.created_at ? new Date(job.created_at) : null
+    const now = new Date()
+    const ageDays = createdAt
+      ? Math.max(0, Math.floor((now - createdAt) / (1000 * 60 * 60 * 24)))
+      : null
+
+    // Normalize phone to E.164
+    const rawPhone = transaction?.customer_phone || ''
+    const digits = (rawPhone || '').replace(/\D/g, '')
+    const phoneLast4 = digits?.slice(-4) || ''
+    const phoneE164 =
+      digits?.length === 11 && digits.startsWith('1')
+        ? `+${digits}`
+        : digits?.length === 10
+          ? `+1${digits}`
+          : rawPhone || ''
+
+    // Appointment window derived from earliest scheduled line item
+    const lineItemsWithSchedule = (job?.job_parts || [])
+      .filter((part) => part?.scheduled_start_time && part?.scheduled_end_time)
+      .sort((a, b) => (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || ''))
+    
+    const apptStart = lineItemsWithSchedule?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
+    const apptEnd = lineItemsWithSchedule?.[0]?.scheduled_end_time || job?.scheduled_end_time || null
+
+    // Work tags
+    const workTags = (job?.job_parts || [])
+      .map((p) => p?.product?.category || p?.product?.name || '')
+      .map((label) => {
+        const l = (label || '').toLowerCase()
+        if (/ppf|paint protection/.test(l)) return 'PPF'
+        if (/tint|window/.test(l)) return 'Tint'
+        if (/ceramic/.test(l)) return 'Ceramic'
+        if (/detail|wash|interior|exterior/.test(l)) return 'Detail'
+        return null
+      })
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i)
+
     // For UI compatibility tests: present unit_price as string under nested job_parts
     const jobForUi = {
       ...job,
@@ -555,12 +615,28 @@ export async function getDeal(id) {
       ...jobForUi,
       customer_name: transaction?.customer_name || '',
       customer_phone: transaction?.customer_phone || '',
+      customer_phone_e164: phoneE164,
+      customer_phone_last4: phoneLast4,
       customer_email: transaction?.customer_email || '',
       total_amount: transaction?.total_amount || 0,
+      has_active_loaner: !!loaner?.id,
+      next_promised_iso: nextPromisedDate || null,
       loaner_number: loaner?.loaner_number || '',
       loaner_id: loaner?.id || null,
       loaner_eta_return_date: loaner?.eta_return_date || null,
+      loaner_eta_short: loaner?.eta_return_date
+        ? new Date(loaner?.eta_return_date)?.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          })
+        : null,
       loaner_notes: loaner?.notes || '',
+      age_days: ageDays,
+      appt_start: apptStart,
+      appt_end: apptEnd,
+      vendor_name: job?.vendor?.name || null,
+      work_tags: workTags,
+      stock_no: job?.vehicle?.stock_number,
     }
   } catch (error) {
     console.error('[dealService:get] Failed to get deal:', error)

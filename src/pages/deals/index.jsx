@@ -1855,7 +1855,15 @@ export default function DealsPage() {
         <NewDealModal
           isOpen={showNewDealModal}
           onClose={() => setShowNewDealModal(false)}
-          onSuccess={loadDeals}
+          onSuccess={(savedDeal) => {
+            if (savedDeal && savedDeal?.id) {
+              // In-place add: prepend the new deal to the list
+              setDeals((prev) => [savedDeal, ...prev])
+            } else {
+              // Fallback: refetch all
+              loadDeals()
+            }
+          }}
         />
 
         {/* Edit Deal Modal */}
@@ -1864,8 +1872,14 @@ export default function DealsPage() {
           dealId={editingDealId}
           deal={editingDeal}
           onClose={closeEditModal}
-          onSuccess={() => {
-            loadDeals()
+          onSuccess={(savedDeal) => {
+            if (savedDeal && savedDeal?.id) {
+              // In-place update: replace the deal in the list
+              setDeals((prev) => prev.map((d) => (d.id === savedDeal.id ? savedDeal : d)))
+            } else {
+              // Fallback: refetch all
+              loadDeals()
+            }
             closeEditModal()
           }}
         />
