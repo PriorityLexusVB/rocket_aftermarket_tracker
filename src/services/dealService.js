@@ -54,28 +54,66 @@ function generateTransactionNumber() {
   return `TXN-${ts}-${rand}`
 }
 
+// Helper to detect missing column errors from PostgREST
+function isMissingColumnError(error) {
+  const msg = error?.message || error?.toString?.() || ''
+  return /column .* does not exist/i.test(msg) || /PGRST.*column/i.test(msg)
+}
+
 // (moved below): mapDbDealToForm is implemented near the end and re-exported
 
-// Internal helper: load a fully-joined deal/job by id
+// Internal helper: load a fully-joined deal/job by id with fallback for missing columns
 async function selectJoinedDealById(id) {
-  const { data: job, error: jobError } = await supabase
-    ?.from('jobs')
-    ?.select(
-      `
-        id, job_number, title, description, job_status, priority, location,
-        vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
-        estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
-        service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
-        vehicle:vehicles(id, year, make, model, stock_number),
-        vendor:vendors(id, name),
-        job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand))
-      `
-    )
-    ?.eq('id', id)
-    ?.single()
+  // Try with per-line scheduled times first
+  try {
+    const { data: job, error: jobError } = await supabase
+      ?.from('jobs')
+      ?.select(
+        `
+          id, job_number, title, description, job_status, priority, location,
+          vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
+          estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
+          service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
+          vehicle:vehicles(id, year, make, model, stock_number),
+          vendor:vendors(id, name),
+          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand))
+        `
+      )
+      ?.eq('id', id)
+      ?.single()
 
-  if (jobError) throw new Error(`Failed to load deal: ${jobError.message}`)
-  return job
+    if (jobError) {
+      if (isMissingColumnError(jobError)) {
+        console.warn('[dealService:selectJoinedDealById] Per-line times not available, falling back...')
+        throw jobError // Let outer catch handle fallback
+      }
+      throw new Error(`Failed to load deal: ${jobError.message}`)
+    }
+    return job
+  } catch (e) {
+    if (isMissingColumnError(e)) {
+      // Fallback: query without per-line scheduled times
+      const { data: job, error: jobError } = await supabase
+        ?.from('jobs')
+        ?.select(
+          `
+            id, job_number, title, description, job_status, priority, location,
+            vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
+            estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
+            service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
+            vehicle:vehicles(id, year, make, model, stock_number),
+            vendor:vendors(id, name),
+            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
+          `
+        )
+        ?.eq('id', id)
+        ?.single()
+
+      if (jobError) throw new Error(`Failed to load deal: ${jobError.message}`)
+      return job
+    }
+    throw e
+  }
 }
 
 // Map UI form state into DB-friendly pieces: job payload, normalized lineItems, loaner form
@@ -292,23 +330,61 @@ async function upsertLoanerAssignment(jobId, loanerData) {
 }
 
 // ✅ FIXED: Updated getAllDeals to remove SQL RPC dependency and use direct queries
+// ✅ UPDATED: Added fallback for missing per-line time columns
 export async function getAllDeals() {
   try {
-    // Use direct Supabase queries instead of SQL RPC function
-    const { data: jobs, error: jobsError } = await supabase
-      ?.from('jobs')
-      ?.select(
+    let jobs = null
+    let jobsError = null
+
+    // Try with per-line scheduled times first
+    try {
+      const result = await supabase
+        ?.from('jobs')
+        ?.select(
+          `
+          id, created_at, job_status, service_type, color_code, title, job_number,
+          customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
+          scheduled_start_time, scheduled_end_time,
+          vehicle:vehicles(year, make, model, stock_number),
+          vendor:vendors(id, name),
+          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand))
         `
-        id, created_at, job_status, service_type, color_code, title, job_number,
-        customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
-        scheduled_start_time, scheduled_end_time,
-        vehicle:vehicles(year, make, model, stock_number),
-        vendor:vendors(id, name),
-        job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand))
-      `
-      )
-      ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
-      ?.order('created_at', { ascending: false })
+        )
+        ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
+        ?.order('created_at', { ascending: false })
+
+      jobs = result?.data
+      jobsError = result?.error
+
+      if (jobsError && isMissingColumnError(jobsError)) {
+        console.warn('[dealService:getAllDeals] Per-line times not available, falling back...')
+        // Will be handled by outer catch block
+        throw jobsError
+      }
+    } catch (e) {
+      if (isMissingColumnError(e)) {
+        // Fallback: query without per-line scheduled times
+        const result = await supabase
+          ?.from('jobs')
+          ?.select(
+            `
+            id, created_at, job_status, service_type, color_code, title, job_number,
+            customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
+            scheduled_start_time, scheduled_end_time,
+            vehicle:vehicles(year, make, model, stock_number),
+            vendor:vendors(id, name),
+            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
+          `
+          )
+          ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
+          ?.order('created_at', { ascending: false })
+
+        jobs = result?.data
+        jobsError = result?.error
+      } else {
+        throw e
+      }
+    }
 
     if (jobsError) throw jobsError
 
@@ -337,13 +413,24 @@ export async function getAllDeals() {
         const loaner = loaners?.find((l) => l?.job_id === job?.id)
 
         // Calculate next promised date from job parts
+        // Normalize date-only strings to local time (no trailing Z) for consistent display
         const schedulingParts =
           job?.job_parts?.filter((part) => part?.requires_scheduling && part?.promised_date) || []
         const nextPromisedDate =
           schedulingParts?.length > 0
-            ? schedulingParts?.sort(
-                (a, b) => new Date(a.promised_date) - new Date(b.promised_date)
-              )?.[0]?.promised_date
+            ? schedulingParts
+                ?.sort((a, b) => {
+                  // Normalize dates for comparison: date-only → local time
+                  const dateA = String(a.promised_date || '')
+                  const dateB = String(b.promised_date || '')
+                  const normA = dateA.includes('T') ? dateA : `${dateA}T00:00:00`
+                  const normB = dateB.includes('T') ? dateB : `${dateB}T00:00:00`
+                  return new Date(normA) - new Date(normB)
+                })
+                ?.map((p) => {
+                  const d = String(p.promised_date || '')
+                  return d.includes('T') ? d : `${d}T00:00:00`
+                })?.[0]
             : null
 
         // Compute helpful display fields
