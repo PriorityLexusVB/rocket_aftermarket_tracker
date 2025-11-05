@@ -64,6 +64,42 @@ function isMissingColumnError(error) {
   )
 }
 
+// Helper: Generic title detection pattern
+const GENERIC_TITLE_PATTERN = /^(Deal\s+[\w-]+|Untitled Deal)$/i
+
+// Helper: Derive vehicle description from title or vehicle fields
+function deriveVehicleDescription(title, vehicle) {
+  let vehicleDescription = ''
+  const titleStr = title || ''
+  const isGenericTitle = GENERIC_TITLE_PATTERN.test(titleStr.trim())
+  
+  if (titleStr && !isGenericTitle) {
+    vehicleDescription = titleStr
+  } else if (vehicle) {
+    const parts = [vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean)
+    if (parts.length > 0) {
+      vehicleDescription = parts.join(' ')
+    }
+  }
+  return vehicleDescription
+}
+
+// Helper: Aggregate vendor from line items
+function aggregateVendor(jobParts, jobLevelVendorName) {
+  const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
+  const lineVendors = offSiteLineItems.map((p) => p?.vendor?.name).filter(Boolean)
+  const uniqueVendors = [...new Set(lineVendors)]
+  
+  if (uniqueVendors.length === 1) {
+    return uniqueVendors[0]
+  } else if (uniqueVendors.length > 1) {
+    return 'Mixed'
+  } else {
+    // Fallback to job-level vendor
+    return jobLevelVendorName || null
+  }
+}
+
 // Helper: wrap common PostgREST permission errors with actionable guidance
 function wrapDbError(error, actionLabel = 'operation') {
   const raw = String(error?.message || error || '')
@@ -661,39 +697,10 @@ export async function getAllDeals() {
           .filter((v, i, a) => a.indexOf(v) === i)
 
         // Derive vehicle_description from title (where custom descriptions are stored)
-        // Priority: title (if not generic) > vehicle fields composition
-        let vehicleDescription = ''
-        const titleStr = job?.title || ''
-        const isGenericTitle = /^(Deal\s+[\w-]+|Untitled Deal)$/i.test(titleStr.trim())
-        
-        if (titleStr && !isGenericTitle) {
-          vehicleDescription = titleStr
-        } else if (job?.vehicle) {
-          const parts = [job?.vehicle?.year, job?.vehicle?.make, job?.vehicle?.model].filter(Boolean)
-          if (parts.length > 0) {
-            vehicleDescription = parts.join(' ')
-          }
-        }
+        const vehicleDescription = deriveVehicleDescription(job?.title, job?.vehicle)
 
         // Aggregate vendor from line items (per-line vendor migration from PR #70)
-        // If single vendor across all off-site line items -> display that vendor
-        // If multiple vendors -> display "Mixed"
-        // If no vendor assigned -> fallback to job-level vendor or "Unassigned"
-        const offSiteLineItems = (job?.job_parts || []).filter((p) => p?.is_off_site)
-        const lineVendors = offSiteLineItems
-          .map((p) => p?.vendor?.name)
-          .filter(Boolean)
-        const uniqueVendors = [...new Set(lineVendors)]
-        
-        let aggregatedVendor = null
-        if (uniqueVendors.length === 1) {
-          aggregatedVendor = uniqueVendors[0]
-        } else if (uniqueVendors.length > 1) {
-          aggregatedVendor = 'Mixed'
-        } else {
-          // Fallback to job-level vendor
-          aggregatedVendor = job?.vendor?.name || null
-        }
+        const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)
 
         // Extract staff names for display
         const salesConsultantName = job?.sales_consultant?.name || null
@@ -833,41 +840,16 @@ export async function getDeal(id) {
       .filter(Boolean)
       .filter((v, i, a) => a.indexOf(v) === i)
 
-    // Derive vehicle_description from title (same logic as getAllDeals)
-    let vehicleDescription = ''
-    const titleStr = job?.title || ''
-    const isGenericTitle = /^(Deal\s+[\w-]+|Untitled Deal)$/i.test(titleStr.trim())
-    
-    if (titleStr && !isGenericTitle) {
-      vehicleDescription = titleStr
-    } else if (job?.vehicle) {
-      const parts = [job?.vehicle?.year, job?.vehicle?.make, job?.vehicle?.model].filter(Boolean)
-      if (parts.length > 0) {
-        vehicleDescription = parts.join(' ')
-      }
-    }
+    // Derive vehicle_description (same logic as getAllDeals)
+    const vehicleDescription = deriveVehicleDescription(job?.title, job?.vehicle)
 
     // Extract staff names for display
     const salesConsultantName = job?.sales_consultant?.name || null
     const deliveryCoordinatorName = job?.delivery_coordinator?.name || null
     const financeManagerName = job?.finance_manager?.name || null
 
-    // Aggregate vendor from line items (same as getAllDeals)
-    const offSiteLineItems = (job?.job_parts || []).filter((p) => p?.is_off_site)
-    const lineVendors = offSiteLineItems
-      .map((p) => p?.vendor?.name)
-      .filter(Boolean)
-    const uniqueVendors = [...new Set(lineVendors)]
-    
-    let aggregatedVendor = null
-    if (uniqueVendors.length === 1) {
-      aggregatedVendor = uniqueVendors[0]
-    } else if (uniqueVendors.length > 1) {
-      aggregatedVendor = 'Mixed'
-    } else {
-      // Fallback to job-level vendor
-      aggregatedVendor = job?.vendor?.name || null
-    }
+    // Aggregate vendor (same as getAllDeals)
+    const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)
 
     // For UI compatibility tests: present unit_price as string under nested job_parts
     const jobForUi = {
@@ -1347,31 +1329,9 @@ export async function updateDealStatus(id, job_status) {
 function mapDbDealToForm(dbDeal) {
   if (!dbDeal) return null
 
-  // Derive vehicle_description from title (where it's stored) or vehicle fields
-  // Priority: dbDeal.vehicle_description (if already computed) > title (if not generic) > vehicle fields composition > empty
-  let vehicleDescription = ''
-  
-  // First check if vehicle_description is already computed (from getDeal/getAllDeals)
-  if (dbDeal?.vehicle_description) {
-    vehicleDescription = dbDeal.vehicle_description
-  } else {
-    // Otherwise derive from title or vehicle fields
-    const title = dbDeal?.title || ''
-    const isGenericTitle = /^(Deal\s+[\w-]+|Untitled Deal)$/i.test(title.trim())
-    
-    if (title && !isGenericTitle) {
-      // Use title as vehicle description since that's where custom descriptions are stored
-      vehicleDescription = title
-    } else if (dbDeal?.vehicle) {
-      // Fallback: compose from vehicle fields if no custom description
-      const parts = [dbDeal?.vehicle?.year, dbDeal?.vehicle?.make, dbDeal?.vehicle?.model].filter(
-        Boolean
-      )
-      if (parts.length > 0) {
-        vehicleDescription = parts.join(' ')
-      }
-    }
-  }
+  // Derive vehicle_description from title or vehicle fields
+  // Priority: dbDeal.vehicle_description (if already computed) > derive using helper
+  const vehicleDescription = dbDeal?.vehicle_description || deriveVehicleDescription(dbDeal?.title, dbDeal?.vehicle)
 
   return {
     id: dbDeal?.id,
