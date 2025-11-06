@@ -198,6 +198,79 @@ Monitor for:
 **Check**: Is input 10 or 11 digits?
 **Solution**: Adapter normalizes to E.164 (`+1XXXXXXXXXX` for US).
 
+## Per-Line Vendor Support
+
+### Overview
+As of migration `20251106000000_add_job_parts_vendor_id.sql`, the `job_parts` table supports per-line vendor assignment through a new `vendor_id` column. This allows each line item to specify its own vendor, independent of the job-level vendor or the product's default vendor.
+
+### Database Schema
+```sql
+ALTER TABLE public.job_parts
+ADD COLUMN vendor_id UUID REFERENCES public.vendors(id) ON DELETE SET NULL;
+```
+
+### Vendor Assignment Precedence
+1. **Per-line vendor** (`job_parts.vendor_id`) - highest priority
+2. **Product vendor** (`products.vendor_id`) - fallback when line vendor is null
+3. **Job vendor** (`jobs.vendor_id`) - legacy job-level assignment
+
+### Data Flow
+
+#### Line Item Creation
+Line items can now include `vendor_id`/`vendorId`:
+```javascript
+lineItems: [
+  {
+    product_id: '...',
+    vendor_id: '...', // Optional per-line vendor override
+    quantity_used: 1,
+    unit_price: 100.00
+  }
+]
+```
+
+#### Backfill Strategy
+Existing `job_parts` rows were backfilled during migration:
+```sql
+UPDATE public.job_parts jp
+SET vendor_id = p.vendor_id
+FROM public.products p
+WHERE jp.product_id = p.id
+  AND jp.vendor_id IS NULL;
+```
+
+### UI Implications
+- Line item rows can display vendor dropdown (optional)
+- When `vendor_id` is null, UI should show product vendor with "(derived)" indicator
+- Vendor aggregation logic in deals list now uses per-line vendors for off-site items
+
+### Adapter Changes
+**entityToDraft**: Maps `vendor_id` from `job_parts`:
+```javascript
+vendorId: part?.vendor_id || null
+```
+
+**draftToCreatePayload/draftToUpdatePayload**: Includes `vendor_id` in line items:
+```javascript
+vendor_id: item?.vendor_id ?? item?.vendorId ?? null
+```
+
+### RLS Policies
+New policies allow vendors to view/manage `job_parts` associated with their `vendor_id`:
+- `vendors_can_view_job_parts_via_per_line_vendor`
+- `vendors_can_manage_their_job_parts`
+- `vendors_can_update_their_job_parts`
+
+### Error Handling
+Missing relationship errors now provide specific guidance:
+```javascript
+if (isMissingRelationshipError(error)) {
+  throw new Error(
+    'Failed to load deals: Missing database relationship. Run migration 20251106000000_add_job_parts_vendor_id.sql...'
+  )
+}
+```
+
 ### Issue: Line items missing after save
 **Check**: Does each line item have a `product_id`?
 **Solution**: Adapter filters out items without product_id.

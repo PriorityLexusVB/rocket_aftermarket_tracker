@@ -40,13 +40,24 @@ async function insertLineItems(jobId, items = []) {
   const normalized = items?.map((it) => ({
     job_id: jobId,
     product_id: it?.product_id ?? it?.productId ?? null,
+    vendor_id: it?.vendor_id ?? it?.vendorId ?? null, // NEW: per-line vendor support
     quantity_used: it?.quantity_used ?? it?.quantity ?? 1,
     unit_price: it?.unit_price ?? it?.price ?? it?.unit_cost ?? null,
     // description intentionally omitted by default to avoid "does not exist"
   }))
 
   // Candidate shapes from richer -> minimal (we try until one works)
+  // This provides fallback for environments that may not have all columns yet
   const shapes = [
+    // Full shape with vendor_id (preferred)
+    (it) => ({
+      job_id: it?.job_id,
+      product_id: it?.product_id,
+      vendor_id: it?.vendor_id,
+      quantity_used: it?.quantity_used,
+      unit_price: it?.unit_price,
+    }),
+    // Fallback without vendor_id (for pre-migration environments)
     (it) => ({
       job_id: it?.job_id,
       product_id: it?.product_id,
