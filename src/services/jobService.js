@@ -47,7 +47,9 @@ async function insertLineItems(jobId, items = []) {
   }))
 
   // Candidate shapes from richer -> minimal (we try until one works)
+  // This provides fallback for environments that may not have all columns yet
   const shapes = [
+    // Full shape with vendor_id (preferred)
     (it) => ({
       job_id: it?.job_id,
       product_id: it?.product_id,
@@ -55,6 +57,7 @@ async function insertLineItems(jobId, items = []) {
       quantity_used: it?.quantity_used,
       unit_price: it?.unit_price,
     }),
+    // Fallback without vendor_id (for pre-migration environments)
     (it) => ({
       job_id: it?.job_id,
       product_id: it?.product_id,

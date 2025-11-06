@@ -45,7 +45,7 @@ BEGIN
   END IF;
 END$$;
 
--- Step 5: Allow vendors to manage their own job_parts (insert/update)
+-- Step 5: Allow vendors to insert their own job_parts
 DO $$
 BEGIN
   -- Check if policy already exists before creating
@@ -53,9 +53,9 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE schemaname='public' 
       AND tablename='job_parts' 
-      AND policyname='vendors_can_manage_their_job_parts'
+      AND policyname='vendors_can_insert_their_job_parts'
   ) THEN
-    CREATE POLICY "vendors_can_manage_their_job_parts"
+    CREATE POLICY "vendors_can_insert_their_job_parts"
     ON public.job_parts FOR INSERT TO authenticated
     WITH CHECK (
       vendor_id IS NOT NULL AND EXISTS (

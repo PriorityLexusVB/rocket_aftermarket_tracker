@@ -765,7 +765,7 @@ export async function getAllDeals() {
     // Provide specific guidance for missing relationship errors
     if (isMissingRelationshipError(error)) {
       throw new Error(
-        `Failed to load deals: Missing database relationship. Run migration 20251106000000_add_job_parts_vendor_id.sql to add per-line vendor support. Original error: ${error?.message}`
+        `Failed to load deals: Missing database relationship between job_parts and vendors. Please run the migration to add per-line vendor support (vendor_id column to job_parts table). Original error: ${error?.message}`
       )
     }
     throw new Error(`Failed to load deals: ${error?.message}`)

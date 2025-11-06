@@ -42,7 +42,7 @@ describe('dealService - relationship error handling', () => {
 
     // Verify error handling
     await expect(getAllDeals()).rejects.toThrow(/Missing database relationship/)
-    await expect(getAllDeals()).rejects.toThrow(/20251106000000_add_job_parts_vendor_id.sql/)
+    await expect(getAllDeals()).rejects.toThrow(/vendor_id column to job_parts/)
   })
 
   it('passes through other errors without modification', async () => {
