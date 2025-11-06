@@ -1477,17 +1477,24 @@ export default function DealsPage() {
                             day: 'numeric',
                           })}
                           {' • '}
-                          {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                          {'–'}
-                          {deal?.appt_end
-                            ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : ''}
+                          {(() => {
+                            const startTime = new Date(deal?.appt_start).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                            const endTime = deal?.appt_end
+                              ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : null
+                            
+                            // If start and end times are identical, only show once
+                            if (endTime && startTime !== endTime) {
+                              return `${startTime}–${endTime}`
+                            }
+                            return startTime
+                          })()}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-500">—</span>
@@ -1521,13 +1528,18 @@ export default function DealsPage() {
                       <span
                         className="text-sm text-slate-700 truncate inline-block max-w-full"
                         title={
+                          deal?.vehicle_description ||
                           `${deal?.vehicle ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()) : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
                           ''
                         }
                       >
-                        {deal?.vehicle
-                          ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim())
-                          : '—'}
+                        {deal?.vehicle_description ? (
+                          titleCase(deal.vehicle_description)
+                        ) : deal?.vehicle ? (
+                          titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim())
+                        ) : (
+                          '—'
+                        )}
                         {deal?.vehicle?.stock_number ? (
                           <span className="text-slate-400">
                             {' '}

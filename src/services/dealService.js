@@ -64,6 +64,42 @@ function isMissingColumnError(error) {
   )
 }
 
+// Helper: Generic title detection pattern
+const GENERIC_TITLE_PATTERN = /^(Deal\s+[\w-]+|Untitled Deal)$/i
+
+// Helper: Derive vehicle description from title or vehicle fields
+function deriveVehicleDescription(title, vehicle) {
+  let vehicleDescription = ''
+  const titleStr = title || ''
+  const isGenericTitle = GENERIC_TITLE_PATTERN.test(titleStr.trim())
+  
+  if (titleStr && !isGenericTitle) {
+    vehicleDescription = titleStr
+  } else if (vehicle) {
+    const parts = [vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean)
+    if (parts.length > 0) {
+      vehicleDescription = parts.join(' ')
+    }
+  }
+  return vehicleDescription
+}
+
+// Helper: Aggregate vendor from line items
+function aggregateVendor(jobParts, jobLevelVendorName) {
+  const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
+  const lineVendors = offSiteLineItems.map((p) => p?.vendor?.name).filter(Boolean)
+  const uniqueVendors = [...new Set(lineVendors)]
+  
+  if (uniqueVendors.length === 1) {
+    return uniqueVendors[0]
+  } else if (uniqueVendors.length > 1) {
+    return 'Mixed'
+  } else {
+    // Fallback to job-level vendor
+    return jobLevelVendorName || null
+  }
+}
+
 // Helper: wrap common PostgREST permission errors with actionable guidance
 function wrapDbError(error, actionLabel = 'operation') {
   const raw = String(error?.message || error || '')
@@ -118,7 +154,10 @@ async function selectJoinedDealById(id) {
           service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
           vehicle:vehicles(id, year, make, model, stock_number),
           vendor:vendors(id, name),
-          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand))
+          sales_consultant:user_profiles!assigned_to(id, name),
+          delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
+          finance_manager:user_profiles!finance_manager_id(id, name),
+          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, vendor_id, product:products(id, name, category, brand), vendor:vendors(id, name))
         `
       )
       ?.eq('id', id)
@@ -147,7 +186,10 @@ async function selectJoinedDealById(id) {
             service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
             vehicle:vehicles(id, year, make, model, stock_number),
             vendor:vendors(id, name),
-            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
+            sales_consultant:user_profiles!assigned_to(id, name),
+            delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
+            finance_manager:user_profiles!finance_manager_id(id, name),
+            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, vendor_id, product:products(id, name, category, brand), vendor:vendors(id, name))
           `
         )
         ?.eq('id', id)
@@ -516,7 +558,10 @@ export async function getAllDeals() {
           scheduled_start_time, scheduled_end_time,
           vehicle:vehicles(year, make, model, stock_number),
           vendor:vendors(id, name),
-          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand))
+          sales_consultant:user_profiles!assigned_to(id, name),
+          delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
+          finance_manager:user_profiles!finance_manager_id(id, name),
+          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand), vendor:vendors(id, name))
         `
         )
         ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
@@ -542,7 +587,10 @@ export async function getAllDeals() {
             scheduled_start_time, scheduled_end_time,
             vehicle:vehicles(year, make, model, stock_number),
             vendor:vendors(id, name),
-            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand))
+            sales_consultant:user_profiles!assigned_to(id, name),
+            delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
+            finance_manager:user_profiles!finance_manager_id(id, name),
+            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand), vendor:vendors(id, name))
           `
           )
           ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
@@ -648,6 +696,17 @@ export async function getAllDeals() {
           .filter(Boolean)
           .filter((v, i, a) => a.indexOf(v) === i)
 
+        // Derive vehicle_description from title (where custom descriptions are stored)
+        const vehicleDescription = deriveVehicleDescription(job?.title, job?.vehicle)
+
+        // Aggregate vendor from line items (per-line vendor migration from PR #70)
+        const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)
+
+        // Extract staff names for display
+        const salesConsultantName = job?.sales_consultant?.name || null
+        const deliveryCoordinatorName = job?.delivery_coordinator?.name || null
+        const financeManagerName = job?.finance_manager?.name || null
+
         return {
           ...job,
           customer_name: transaction?.customer_name || '',
@@ -670,7 +729,11 @@ export async function getAllDeals() {
           age_days: ageDays,
           appt_start: apptStart,
           appt_end: apptEnd,
-          vendor_name: job?.vendor?.name || null,
+          vendor_name: aggregatedVendor,
+          vehicle_description: vehicleDescription,
+          sales_consultant_name: salesConsultantName,
+          delivery_coordinator_name: deliveryCoordinatorName,
+          finance_manager_name: financeManagerName,
           work_tags: workTags,
           vehicle:
             job?.vehicle_id && job?.vehicle
@@ -777,6 +840,17 @@ export async function getDeal(id) {
       .filter(Boolean)
       .filter((v, i, a) => a.indexOf(v) === i)
 
+    // Derive vehicle_description (same logic as getAllDeals)
+    const vehicleDescription = deriveVehicleDescription(job?.title, job?.vehicle)
+
+    // Extract staff names for display
+    const salesConsultantName = job?.sales_consultant?.name || null
+    const deliveryCoordinatorName = job?.delivery_coordinator?.name || null
+    const financeManagerName = job?.finance_manager?.name || null
+
+    // Aggregate vendor (same as getAllDeals)
+    const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)
+
     // For UI compatibility tests: present unit_price as string under nested job_parts
     const jobForUi = {
       ...job,
@@ -809,7 +883,11 @@ export async function getDeal(id) {
       age_days: ageDays,
       appt_start: apptStart,
       appt_end: apptEnd,
-      vendor_name: job?.vendor?.name || null,
+      vendor_name: aggregatedVendor,
+      vehicle_description: vehicleDescription,
+      sales_consultant_name: salesConsultantName,
+      delivery_coordinator_name: deliveryCoordinatorName,
+      finance_manager_name: financeManagerName,
       work_tags: workTags,
       stock_no: job?.vehicle?.stock_number,
     }
@@ -1251,26 +1329,9 @@ export async function updateDealStatus(id, job_status) {
 function mapDbDealToForm(dbDeal) {
   if (!dbDeal) return null
 
-  // Derive vehicle_description from title (where it's stored) or vehicle fields
-  // Priority: title (if not generic) > vehicle fields composition > empty
-  let vehicleDescription = ''
-  
-  // First check if title contains a meaningful vehicle description (not generic)
-  const title = dbDeal?.title || ''
-  const isGenericTitle = /^(Deal\s+\d+|Untitled Deal)$/i.test(title.trim())
-  
-  if (title && !isGenericTitle) {
-    // Use title as vehicle description since that's where custom descriptions are stored
-    vehicleDescription = title
-  } else if (dbDeal?.vehicle) {
-    // Fallback: compose from vehicle fields if no custom description
-    const parts = [dbDeal?.vehicle?.year, dbDeal?.vehicle?.make, dbDeal?.vehicle?.model].filter(
-      Boolean
-    )
-    if (parts.length > 0) {
-      vehicleDescription = parts.join(' ')
-    }
-  }
+  // Derive vehicle_description from title or vehicle fields
+  // Priority: dbDeal.vehicle_description (if already computed) > derive using helper
+  const vehicleDescription = dbDeal?.vehicle_description || deriveVehicleDescription(dbDeal?.title, dbDeal?.vehicle)
 
   return {
     id: dbDeal?.id,
