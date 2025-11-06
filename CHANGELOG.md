@@ -1,5 +1,34 @@
 # Changelog - Calendar-First Aftermarket Tracker
 
+## [2025-11-06] Per-Line Vendor Support
+
+### Added
+- **Database Migration** (`20251106_add_job_parts_vendor_id.sql`):
+  - New column `job_parts.vendor_id` with FK to `vendors.id`
+  - Index `idx_job_parts_vendor_id` for query performance
+  - Backfill from `products.vendor_id` for existing records
+  - RLS policies for vendor-specific access to job_parts
+
+### Changed
+- **Service Layer Updates**:
+  - `dealService.js`: Queries include `vendor_id` and nested vendor relation; improved error handling for missing relationships
+  - `jobService.js`: Explicit field selection in `selectJobs` includes vendor_id
+  - `insertLineItems`: Supports per-line vendor_id persistence
+  
+- **Mappers & Adapters**:
+  - `dealMappers.js`: Maps vendorId with fallback to `product.vendor_id`
+  - `lineItemsUtils.js`: Includes vendor_id in normalized line items
+  - `adapters.ts`: Line item payloads include vendor_id
+
+- **Display Logic**:
+  - Vendor aggregation shows "Single vendor name", "Mixed", or "Unassigned"
+  - No truncation of vendor names (fixes "Unass…" bug)
+
+### Fixed
+- Resolved blocking error: "Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"
+- Per-line vendor override now properly persists and displays
+- Vendor display in deals table now accurately reflects line item assignments
+
 ## Route Consolidation Summary
 
 ### BEFORE: 14+ Scattered Routes

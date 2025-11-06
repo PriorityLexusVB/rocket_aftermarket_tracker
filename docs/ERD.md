@@ -192,6 +192,16 @@ erDiagram
 - **sms_opt_outs**: Customer preferences for SMS notifications
 - **Auto-triggers**: Job status changes automatically enqueue SMS notifications
 
+### Per-Line Vendor Support (Migration 20251106)
+- **job_parts.vendor_id**: Optional per-line vendor override
+- **Vendor Resolution**: When vendor_id is set on a job_part, it overrides the product's default vendor
+- **Fallback Behavior**: If vendor_id is null, the system uses products.vendor_id
+- **Display Logic**: 
+  - Single vendor name when all line items have the same vendor
+  - "Mixed" when multiple vendors are present
+  - "Unassigned" when no vendor is assigned
+- **RLS Policies**: Vendors can view and manage job_parts with their vendor_id
+
 ### Data Flow
 1. **Vehicle Entry**: Stock number creates unique vehicle record
 2. **Job Creation**: Work orders reference vehicles and can be assigned to vendors

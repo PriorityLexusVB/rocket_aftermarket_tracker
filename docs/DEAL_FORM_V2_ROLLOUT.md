@@ -373,6 +373,42 @@ When a deal is saved without a `vehicle_id` but with a `stock_number`, the servi
 - `src/services/dealService.js`: `attachOrCreateVehicleByStockNumber()` helper, called in createDeal/updateDeal
 - `tests/unit/dealService.vehicleAttachAndLoaner.test.js`: Vehicle attach tests
 
+## Per-Line Vendor Support (Migration 20251106)
+
+### Overview
+Each line item (job_part) can now have its own vendor assignment, independent of the product's default vendor or the job's overall vendor.
+
+### Database Schema
+- **Column Added**: `job_parts.vendor_id` (UUID, FK to vendors.id, nullable)
+- **Index Added**: `idx_job_parts_vendor_id` for query performance
+- **Backfill**: Existing rows populated from `products.vendor_id` where available
+
+### Vendor Resolution Priority
+1. **Per-line vendor**: If `job_parts.vendor_id` is set, use that vendor
+2. **Product default**: If `vendor_id` is null, fall back to `products.vendor_id`
+3. **Unassigned**: If neither is set, the line item has no vendor
+
+### Display Logic
+- **Single Vendor**: When all off-site line items share the same vendor, display that vendor's name
+- **Mixed**: When line items have different vendors, display "Mixed"
+- **Unassigned**: When no vendor is assigned to any line item, display "Unassigned"
+
+### Service Layer Updates
+- **dealService.js**: Queries include `vendor_id` and nested `vendor:vendors(id,name)` relation
+- **jobService.js**: `selectJobs` and `insertLineItems` support per-line vendor_id
+- **Mappers**: `dealMappers.js` maps vendorId with fallback to product.vendor_id
+- **Adapters**: `adapters.ts` includes vendor_id in line item payloads
+
+### RLS Policies
+New policies allow vendors to view and manage job_parts where `vendor_id` matches their profile:
+- `vendors_can_view_job_parts_via_per_line_vendor`
+- `vendors_can_manage_job_parts_via_per_line_vendor`
+
+### Migration
+- **File**: `supabase/migrations/20251106_add_job_parts_vendor_id.sql`
+- **Safety**: Uses conditional DDL to avoid conflicts if column exists
+- **Rollback**: Drop the column if needed (note: per-line vendor overrides will be lost)
+
 ## Support
 
 For questions or issues, contact the development team or refer to:

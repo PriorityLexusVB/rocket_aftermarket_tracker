@@ -12,7 +12,9 @@ export function formatWindow(start?: string | null, end?: string | null): string
   const fmt = (ts?: string | null) => {
     if (!ts) return ''
     try {
-      return new Date(ts).toLocaleTimeString('en-US', { 
+      const date = new Date(ts)
+      if (isNaN(date.getTime())) return ''
+      return date.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit' 
       })
@@ -44,7 +46,9 @@ export function formatWindow(start?: string | null, end?: string | null): string
 export function formatDate(dateStr?: string | null): string {
   if (!dateStr) return ''
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
+    const date = new Date(dateStr)
+    if (isNaN(date.getTime())) return ''
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric'
     })
