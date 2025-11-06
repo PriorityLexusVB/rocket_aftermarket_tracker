@@ -237,9 +237,10 @@ function mapFormToDb(formState = {}) {
   const orgId = formState?.org_id ?? formState?.orgId
   const payload = orgId ? { ...base, org_id: orgId } : base
   // Ensure title stays meaningful and mirrors description edits for UX consistency
-  // Priority: vehicle_description > description > job_number > default
+  // Priority: explicit title (if provided) > vehicle_description > description > job_number > default
   // Apply Title Case to vehicle_description when present
   {
+    const explicitTitle = (formState?.title || '').trim()
     const vehicleDesc = (
       formState?.vehicle_description ||
       formState?.vehicleDescription ||
@@ -247,9 +248,14 @@ function mapFormToDb(formState = {}) {
     ).trim()
     const desc = (formState?.description || '').trim()
 
-    if (vehicleDesc) {
+    // If title is explicitly provided in formState, use it directly (for edits)
+    if (explicitTitle && !GENERIC_TITLE_PATTERN.test(explicitTitle)) {
+      payload.title = explicitTitle
+    } else if (vehicleDesc) {
+      // Use vehicle_description with Title Case
       payload.title = titleCase(vehicleDesc)
     } else if (!payload?.title) {
+      // Fallback: derive from description, job_number, or default
       if (desc) {
         payload.title = desc
       } else if (payload?.job_number) payload.title = `Deal ${payload.job_number}`
