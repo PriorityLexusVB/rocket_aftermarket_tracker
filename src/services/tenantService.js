@@ -74,7 +74,7 @@ export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
   try {
     let q = supabase
       .from('sms_templates')
-      .select('id, name, body, is_active')
+      .select('id, name, message_template, is_active')
       .order('created_at', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     q = q.or(`org_id.eq.${orgId},org_id.is.null`)
