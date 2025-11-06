@@ -32,7 +32,7 @@ export function dealToFormState(deal) {
   const lineItems = (deal?.job_parts || [])?.map(p => ({
     id: p?.id ?? null,
     productId: p?.product_id ?? null,
-    vendorId: p?.vendor_id ?? null,
+    vendorId: p?.vendor_id ?? p?.product?.vendor_id ?? null, // Fallback to product.vendor_id
     unitPrice: num(p?.unit_price),
     notes: p?.notes ?? '',
     isOffSite: !!p?.is_off_site,                    // ✅ Fixed: use correct column name

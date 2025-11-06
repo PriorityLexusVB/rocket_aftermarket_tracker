@@ -93,16 +93,27 @@ function deriveVehicleDescription(title, vehicle) {
 // Helper: Aggregate vendor from line items
 function aggregateVendor(jobParts, jobLevelVendorName) {
   const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
-  const lineVendors = offSiteLineItems.map((p) => p?.vendor?.name).filter(Boolean)
+  
+  // Get effective vendor names: prefer line item vendor_id, fallback to product vendor_id
+  const lineVendors = offSiteLineItems
+    .map((p) => {
+      // Priority: p.vendor?.name (from vendor_id), then p.product?.vendor relationship name
+      return p?.vendor?.name || null
+    })
+    .filter(Boolean)
+  
   const uniqueVendors = [...new Set(lineVendors)]
   
   if (uniqueVendors.length === 1) {
     return uniqueVendors[0]
   } else if (uniqueVendors.length > 1) {
     return 'Mixed'
-  } else {
+  } else if (jobLevelVendorName) {
     // Fallback to job-level vendor
-    return jobLevelVendorName || null
+    return jobLevelVendorName
+  } else {
+    // No vendor assigned
+    return 'Unassigned'
   }
 }
 
@@ -176,6 +187,11 @@ async function selectJoinedDealById(id) {
         )
         throw jobError // Let outer catch handle fallback
       }
+      if (isMissingRelationshipError(jobError)) {
+        throw new Error(
+          'Failed to load deal: per-line vendor relationship missing. Apply migration 20251106_add_job_parts_vendor_id.sql or refresh schema cache.'
+        )
+      }
       throw new Error(`Failed to load deal: ${jobError.message}`)
     }
     return job
@@ -201,7 +217,14 @@ async function selectJoinedDealById(id) {
         ?.eq('id', id)
         ?.single()
 
-      if (jobError) throw new Error(`Failed to load deal: ${jobError.message}`)
+      if (jobError) {
+        if (isMissingRelationshipError(jobError)) {
+          throw new Error(
+            'Failed to load deal: per-line vendor relationship missing. Apply migration 20251106_add_job_parts_vendor_id.sql or refresh schema cache.'
+          )
+        }
+        throw new Error(`Failed to load deal: ${jobError.message}`)
+      }
       return job
     }
     throw e
@@ -573,7 +596,7 @@ export async function getAllDeals() {
           sales_consultant:user_profiles!assigned_to(id, name),
           delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
           finance_manager:user_profiles!finance_manager_id(id, name),
-          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand), vendor:vendors(id, name))
+          job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id), vendor:vendors(id, name))
         `
         )
         ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
@@ -602,7 +625,7 @@ export async function getAllDeals() {
             sales_consultant:user_profiles!assigned_to(id, name),
             delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
             finance_manager:user_profiles!finance_manager_id(id, name),
-            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand), vendor:vendors(id, name))
+            job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand, vendor_id), vendor:vendors(id, name))
           `
           )
           ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])

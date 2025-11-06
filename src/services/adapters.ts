@@ -21,6 +21,7 @@ export const entityToDraft = (e: any = {}) => ({
   } : null,
   lineItems: (e.job_parts ?? []).map((p: any) => ({
     product_id: p.product_id ?? '',
+    vendor_id: p.vendor_id ?? p.vendorId ?? null, // NEW: per-line vendor support
     unit_price: Number(p.unit_price ?? 0),
     quantity_used: Number(p.quantity_used ?? 1),
     promised_date: p.promised_date ?? '',
@@ -44,6 +45,7 @@ export const draftToCreatePayload = (d: any) => ({
   } : null,
   lineItems: Array.isArray(d.lineItems) ? d.lineItems.map((p: any) => ({
     product_id: p.product_id ?? '',
+    vendor_id: p.vendor_id ?? p.vendorId ?? null, // NEW: per-line vendor support
     unit_price: Number(p.unit_price ?? 0),
     quantity_used: Number(p.quantity_used ?? 1),
     promised_date: p.promised_date ?? '',

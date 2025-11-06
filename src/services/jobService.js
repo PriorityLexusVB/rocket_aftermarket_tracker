@@ -21,7 +21,7 @@ async function selectJobs(baseQuery) {
         assigned_to_profile:user_profiles!jobs_assigned_to_fkey(id,full_name,email,role),
         created_by_profile:user_profiles!jobs_created_by_fkey(id,full_name,email),
         delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey(id,full_name,email),
-        job_parts(*)
+        job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
       `)
     )
     return data ?? []
