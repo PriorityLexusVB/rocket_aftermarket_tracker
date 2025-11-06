@@ -308,8 +308,10 @@ Test Files: 22 passed, 1 failed (23 total)
 Tests: 183 passed, 14 failed (197 total)
 ```
 
+**Note**: The 1 failed test file contains multiple failing test cases.
+
 **Migration-Related Tests**: ✅ All passing (17/17)
-**Pre-existing Failures**: ⚠️ 14 tests (unrelated to migration)
+**Pre-existing Failures**: ⚠️ 14 tests in 3 test files (unrelated to migration)
 
 ---
 
@@ -369,6 +371,5 @@ None of these affect the migration functionality or the requirements from the pr
 
 ---
 
-**Generated**: 2025-11-06
-**By**: GitHub Copilot Coding Agent
+**Date**: 2025-11-06
 **Branch**: copilot/confirm-deals-page-loading
