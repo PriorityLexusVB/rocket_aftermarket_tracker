@@ -13,6 +13,7 @@ export function normalizeLineItem(it) {
   return {
     id: it?.id ?? undefined,              // keep if present
     product_id: it?.product_id ?? null,   // can be null
+    vendor_id: it?.vendor_id ?? it?.vendorId ?? null, // NEW: per-line vendor support
     part_name: (it?.part_name || it?.name || '')?.trim(),
     sku: (it?.sku || '')?.trim(),
     quantity_used: Number(it?.quantity_used ?? it?.quantity ?? 1) || 1,
