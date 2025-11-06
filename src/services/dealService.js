@@ -106,15 +106,12 @@ function aggregateVendor(jobParts, jobLevelVendorName) {
   
   if (uniqueVendors.length === 1) {
     return uniqueVendors[0]
-  } else if (uniqueVendors.length > 1) {
-    return 'Mixed'
-  } else if (jobLevelVendorName) {
-    // Fallback to job-level vendor
-    return jobLevelVendorName
-  } else {
-    // No vendor assigned
-    return 'Unassigned'
   }
+  if (uniqueVendors.length > 1) {
+    return 'Mixed'
+  }
+  // No line item vendors, fall back to job-level vendor or show unassigned
+  return jobLevelVendorName || 'Unassigned'
 }
 
 // Helper: wrap common PostgREST permission errors with actionable guidance
@@ -189,7 +186,7 @@ async function selectJoinedDealById(id) {
       }
       if (isMissingRelationshipError(jobError)) {
         throw new Error(
-          'Failed to load deal: per-line vendor relationship missing. Apply migration 20251106_add_job_parts_vendor_id.sql or refresh schema cache.'
+          'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
         )
       }
       throw new Error(`Failed to load deal: ${jobError.message}`)
@@ -220,7 +217,7 @@ async function selectJoinedDealById(id) {
       if (jobError) {
         if (isMissingRelationshipError(jobError)) {
           throw new Error(
-            'Failed to load deal: per-line vendor relationship missing. Apply migration 20251106_add_job_parts_vendor_id.sql or refresh schema cache.'
+            'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
           )
         }
         throw new Error(`Failed to load deal: ${jobError.message}`)

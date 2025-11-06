@@ -11,6 +11,7 @@ CREATE INDEX IF NOT EXISTS idx_job_parts_vendor_id ON public.job_parts(vendor_id
 
 -- Backfill vendor_id from products.vendor_id where job_parts.vendor_id is null
 -- This ensures existing data has a vendor reference
+-- NOTE: For large datasets, consider running this in batches or during off-peak hours
 UPDATE public.job_parts jp
 SET vendor_id = p.vendor_id
 FROM public.products p
