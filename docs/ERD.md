@@ -78,6 +78,7 @@ erDiagram
         uuid id PK
         uuid job_id FK
         uuid product_id FK
+        uuid vendor_id FK
         integer quantity
         numeric unit_cost
         numeric unit_price
@@ -158,6 +159,7 @@ erDiagram
     vendors ||--o{ user_profiles : "vendor_id"
     vendors ||--o{ jobs : "vendor_id"
     vendors ||--o{ products : "vendor_id"
+    vendors ||--o{ job_parts : "vendor_id"
     vendors ||--o{ vendor_hours : "vendor_id"
     
     vehicles ||--o{ jobs : "vehicle_id"
