@@ -1,8 +1,34 @@
 # Deploy Checklist: Job Parts Vendor Relationship Fix
 
+## Critical Rule for Relationship Migrations
+
+**⚠️ RELATIONSHIP MIGRATIONS MUST INCLUDE `NOTIFY pgrst, 'reload schema'`**
+
+Without this notification:
+- ✅ Migration applies successfully in database
+- ✅ FK constraint exists and works in SQL
+- ❌ REST API doesn't recognize relationship
+- ❌ Application queries fail with "relationship not found" error
+
+### Template for Relationship Migrations
+
+```sql
+-- Your FK constraint creation
+ALTER TABLE public.table_name
+ADD CONSTRAINT table_name_foreign_id_fkey
+FOREIGN KEY (foreign_id)
+REFERENCES public.foreign_table(id);
+
+-- CRITICAL: Reload PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
+```
+
+---
+
 ## Pre-Deploy Checklist
 
-- [ ] Review migration file: `supabase/migrations/20251107000000_fix_job_parts_vendor_fkey.sql`
+- [ ] Review migration file: `supabase/migrations/20251107093000_verify_job_parts_vendor_fk.sql`
+- [ ] Confirm migration includes `NOTIFY pgrst, 'reload schema';`
 - [ ] Review documentation: `docs/job_parts_vendor_relationship_fix.md`
 - [ ] Ensure backup of production database is available
 - [ ] Confirm which Supabase project is used by production (check VITE_SUPABASE_URL)
@@ -22,9 +48,11 @@ supabase db push
 
 Expected output should include:
 ```
-Applying migration 20251107000000_fix_job_parts_vendor_fkey.sql...
-✓ Applied migration 20251107000000_fix_job_parts_vendor_fkey.sql
+Applying migration 20251107093000_verify_job_parts_vendor_fk.sql...
+✓ Applied migration 20251107093000_verify_job_parts_vendor_fk.sql
 ```
+
+Note: This migration is idempotent and safe to run multiple times.
 
 ### 3. Wait for Schema Cache Reload
 The migration includes `NOTIFY pgrst, 'reload schema'` which triggers an automatic reload.
@@ -98,12 +126,47 @@ or empty array if no data exists:
 
 ## Post-Deploy Verification
 
+### Automated Verification (Recommended)
+```bash
+# Run the comprehensive verification script
+./scripts/verify-schema-cache.sh
+```
+
+This script checks:
+- [ ] Column vendor_id exists in job_parts
+- [ ] FK constraint job_parts_vendor_id_fkey exists
+- [ ] Index idx_job_parts_vendor_id exists
+- [ ] PostgREST schema cache reloaded
+- [ ] REST API relationship query returns 200 OK
+
+Exit code 0 = all checks passed, Exit code 1 = verification failed
+
+### Manual Verification
 - [ ] Deals page loads without "Missing database relationship" error
 - [ ] No 400 errors in browser console
 - [ ] Vendor column displays correctly in deals list
 - [ ] Can create new deals with line items
 - [ ] Can edit existing deals
 - [ ] Filtering/sorting works without errors
+
+### CI/CD Integration
+
+Add this pre-e2e step to your CI pipeline:
+
+```yaml
+# .github/workflows/ci.yml (example)
+- name: Verify Schema Cache
+  run: ./scripts/verify-schema-cache.sh
+  env:
+    VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+```
+
+Or run the unit test:
+
+```bash
+pnpm test tests/unit/db.vendor-relationship.spec.ts
+```
 
 ## Rollback Procedure (if needed)
 
