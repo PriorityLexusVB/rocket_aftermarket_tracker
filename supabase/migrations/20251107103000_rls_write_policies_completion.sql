@@ -25,7 +25,7 @@ BEGIN
   FROM pg_policies
   WHERE schemaname = 'public'
     AND tablename = 'loaner_assignments'
-    AND policyname LIKE '%can select%' OR policyname LIKE '%read%';
+    AND (policyname LIKE '%can select%' OR policyname LIKE '%read%');
 
   SELECT COUNT(*) INTO loaner_write_count
   FROM pg_policies

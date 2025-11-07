@@ -65,22 +65,33 @@ export default async function handler(req, res) {
       sample: relationshipTest?.[0] || null,
     })
 
-    // Test 3: Verify FK constraint exists in database
-    const { data: fkCheck, error: fkError } = await supabase.rpc('check_job_parts_vendor_fk', {})
-    
-    // Note: This RPC function may not exist, handle gracefully
-    if (!fkError && fkCheck) {
-      details.checks.push({
-        name: 'foreign_key_constraint',
-        status: 'ok',
-        exists: true,
-      })
-    } else if (fkError && !fkError.message.includes('function')) {
-      // Only log if it's not a "function doesn't exist" error
+    // Test 3: Verify FK constraint exists in database (optional check)
+    // Note: This RPC function check_job_parts_vendor_fk may not exist in all environments
+    try {
+      const { data: fkCheck, error: fkError } = await supabase.rpc('check_job_parts_vendor_fk', {})
+      
+      if (!fkError && fkCheck) {
+        details.checks.push({
+          name: 'foreign_key_constraint',
+          status: 'ok',
+          exists: true,
+        })
+      } else if (fkError) {
+        // Gracefully skip if function doesn't exist or other errors
+        const isFunctionMissing = /function.*does not exist/i.test(fkError.message) || 
+                                  /could not find function/i.test(fkError.message)
+        details.checks.push({
+          name: 'foreign_key_constraint',
+          status: 'skip',
+          reason: isFunctionMissing ? 'Helper function not available' : fkError.message,
+        })
+      }
+    } catch (rpcError) {
+      // Catch any unexpected errors from RPC call
       details.checks.push({
         name: 'foreign_key_constraint',
         status: 'skip',
-        reason: 'Helper function not available',
+        reason: 'RPC check failed: ' + (rpcError?.message || 'Unknown error'),
       })
     }
 
