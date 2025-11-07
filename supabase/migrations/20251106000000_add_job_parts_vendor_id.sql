@@ -89,3 +89,8 @@ BEGIN
     );
   END IF;
 END$$;
+
+-- Step 6: Notify PostgREST to reload schema cache
+-- This is critical for Supabase to recognize the new foreign key relationship
+-- Without this, queries using vendor:vendors(...) will fail with "relationship not found"
+NOTIFY pgrst, 'reload schema';

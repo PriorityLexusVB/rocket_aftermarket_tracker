@@ -1,9 +1,31 @@
 # Changelog - Calendar-First Aftermarket Tracker
 
+## [2025-11-07] Schema Cache Reload Fix
+
+### Fixed
+- **Critical Fix**: Added `NOTIFY pgrst, 'reload schema'` to migration `20251106000000_add_job_parts_vendor_id.sql`
+  - Without this notification, PostgREST/Supabase does not recognize the new `job_parts.vendor_id` foreign key relationship
+  - This was causing the production error: "Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"
+  - The migration was technically correct but incomplete - the schema cache was not being reloaded
+  
+### Added
+- **Documentation**: Added comprehensive "Schema Cache Reload" section to RUNBOOK.md
+  - Explains when and how to reload PostgREST schema cache
+  - Documents symptoms of stale cache and troubleshooting steps
+  - Provides SQL, CLI, and migration examples
+
+### Why This Matters
+PostgREST caches the database schema for performance. When migrations add or modify foreign key relationships, the cache must be explicitly reloaded for the REST API to recognize the new relationships. Without the reload:
+- Migration applies successfully in database
+- Foreign key constraint exists and works in SQL
+- But REST API queries using relationship syntax fail
+
+This is a common production issue that's often misdiagnosed as a migration failure when it's actually a cache staleness issue.
+
 ## [2025-11-06] Per-Line Vendor Support
 
 ### Added
-- **Database Migration** (`20251106_add_job_parts_vendor_id.sql`):
+- **Database Migration** (`20251106000000_add_job_parts_vendor_id.sql`):
   - New column `job_parts.vendor_id` with FK to `vendors.id`
   - Index `idx_job_parts_vendor_id` for query performance
   - Backfill from `products.vendor_id` for existing records
