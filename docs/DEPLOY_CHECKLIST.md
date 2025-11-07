@@ -27,12 +27,28 @@ NOTIFY pgrst, 'reload schema';
 
 ## Pre-Deploy Checklist
 
-- [ ] Review migration file: `supabase/migrations/20251107093000_verify_job_parts_vendor_fk.sql`
-- [ ] Confirm migration includes `NOTIFY pgrst, 'reload schema';`
-- [ ] Review documentation: `docs/job_parts_vendor_relationship_fix.md`
+### Migration Reviews
+- [ ] Review latest migration files:
+  - `supabase/migrations/20251107110500_add_manager_delete_policies_and_deals_health.sql` (Manager DELETE policies)
+  - `supabase/migrations/20251107103000_rls_write_policies_completion.sql` (RLS validation)
+  - `supabase/migrations/20251107093000_verify_job_parts_vendor_fk.sql` (Vendor FK + drift prevention)
+- [ ] Confirm all migrations include `NOTIFY pgrst, 'reload schema';` when adding/modifying:
+  - Foreign key constraints
+  - RLS policies
+  - Helper functions
+- [ ] Review RLS policy documentation: `docs/RLS_FIX_SUMMARY.md`
+
+### Pre-Deployment Validation
 - [ ] Ensure backup of production database is available
 - [ ] Confirm which Supabase project is used by production (check VITE_SUPABASE_URL)
-- [ ] Schedule deploy during low-traffic period (recommended but not required - migration is non-blocking)
+- [ ] Schedule deploy during low-traffic period (recommended but not required - migrations are non-blocking)
+- [ ] Verify test coverage (see Testing section below)
+
+### Testing & Verification Scripts
+- [ ] Run unit tests locally: `pnpm test`
+  - Verify `src/tests/unit/dealService.persistence.test.js` passes (27 tests)
+- [ ] Run E2E smoke tests (if auth env available): `pnpm run e2e e2e/nav-smoke.spec.ts`
+- [ ] Prepare to run health endpoint checks post-deployment
 
 ## Deploy Steps
 
@@ -87,7 +103,59 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
 
 Expected result: `job_parts_vendor_id_fkey | vendor_id | vendors`
 
-### 5. Test REST API Endpoint
+### 5. Verify Health Endpoints (NEW)
+
+After deployment, verify the health monitoring endpoints are working:
+
+#### A. Basic Health Check
+```bash
+curl -s "${VITE_SUPABASE_URL}/api/health" | jq .
+```
+
+**Expected Response**:
+```json
+{
+  "ok": true,
+  "db": true
+}
+```
+
+#### B. Deals Relationship Health Check
+```bash
+curl -s "${VITE_SUPABASE_URL}/api/health-deals-rel" | jq .
+```
+
+**Expected Response** (healthy):
+```json
+{
+  "ok": true,
+  "relationship": true,
+  "rowsChecked": 1,
+  "ms": 150
+}
+```
+
+**Warning Response** (schema cache issue):
+```json
+{
+  "ok": false,
+  "relationship": false,
+  "error": "Missing jobs → job_parts or job_parts → vendors relationship in schema cache",
+  "advice": "Run verify-schema-cache.sh then apply vendor_id FK migration or NOTIFY pgrst, 'reload schema'",
+  "ms": 100
+}
+```
+
+**Endpoints Implemented**:
+- `/api/health` - Basic Supabase connectivity
+- `/api/health-deals-rel` - Validates job_parts → vendors relationship
+
+**Files**:
+- `src/api/health.js`
+- `src/api/health-deals-rel.js`
+- `src/services/healthService.js`
+
+### 6. Test REST API Endpoint
 ```bash
 curl -X GET \
   "${VITE_SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,name)&limit=1" \
