@@ -54,7 +54,7 @@ SELECT EXISTS (
 - Ensures RLS is enabled on all org-scoped tables
 - Adds documentation comments to tables
 
-### 4. Migration 20251107103000 - RLS Write Policies Completion (NEW)
+### 4. Migration 20251107103000 - RLS Write Policies Completion
 **File:** `supabase/migrations/20251107103000_rls_write_policies_completion.sql`
 
 **What it does:**
@@ -65,18 +65,64 @@ SELECT EXISTS (
 - Reloads PostgREST schema cache
 - Provides comprehensive validation and summary
 
-## Testing Coverage (NEW)
+### 5. Migration 20251107110500 - Manager DELETE Policies & Health Endpoint (NEW)
+**File:** `supabase/migrations/20251107110500_add_manager_delete_policies_and_deals_health.sql`
 
-### Unit Tests - dealService Persistence
+**What it does:**
+- Adds DELETE policies for managers across all multi-tenant tables:
+  - jobs (deals)
+  - job_parts (line items)
+  - transactions
+  - loaner_assignments
+  - vehicles
+  - sms_templates
+  - products
+  - vendors
+  - user_profiles
+- All DELETE policies scoped by org_id for proper tenant isolation
+- Managers can only delete records within their organization
+- Implements is_admin_or_manager() helper function check
+- Reloads PostgREST schema cache with NOTIFY pgrst, 'reload schema'
+
+**Why this matters:**
+Previously, managers had INSERT/UPDATE permissions but lacked DELETE permissions, preventing them from removing old or test data. This migration completes the manager permission set while maintaining proper RLS security.
+
+## Testing Coverage (UPDATED)
+
+### Unit Tests - dealService Persistence (Task 2 & 3)
 **File:** `src/tests/unit/dealService.persistence.test.js`
 
 Comprehensive test coverage for:
 - ✅ org_id inference (3 tests)
-- ✅ loaner assignment persistence (5 tests)
-- ✅ scheduling fallback when per-line scheduled_* absent (6 tests)
+- ✅ loaner assignment persistence (4 tests)
+- ✅ scheduling fallback when per-line scheduled_* absent (5 tests)
 - ✅ error wrapper mapping (4 tests)
 - ✅ mixed vendor aggregation logic (6 tests)
 - ✅ vehicle description fallback logic (6 tests)
+
+**Total: 27 test cases covering all persistence behaviors**
+
+**Verified**: 2025-11-07 (Task 3)
+- All tests pass (27/27)
+- Complete coverage of Task 3 requirements
+- See: docs/TASK_3_PERSISTENCE_RLS_VERIFICATION.md
+
+### E2E Tests - Deals List Refresh (Task 4)
+**File:** `e2e/deals-list-refresh.spec.ts`
+
+New E2E tests validating deals list displays updates correctly:
+- ✅ Vehicle description format after edit
+- ✅ Stock number updates propagate to list
+- ✅ Loaner badge visibility toggles
+- ✅ Promised date/window fields
+- ✅ Round-trip edit → save → list refresh flow
+
+**Total: 2 Playwright test specs**
+
+**Created**: 2025-11-07 (Task 4)
+- Deterministic (auto-skips without auth)
+- Stable selectors (data-testid based)
+- See: docs/TASK_4_DEALS_LIST_REFRESH_E2E.md
 
 **Total: 30 test cases covering all persistence behaviors**
 

@@ -458,6 +458,14 @@ describe('dealService - Persistence Test Coverage', () => {
   })
 
   describe('vehicle description fallback logic', () => {
+    // NOTE: vehicle_description is NOT a database column in jobs table.
+    // It is computed on-the-fly by deriveVehicleDescription(title, vehicle) in getAllDeals/getDealById.
+    // The priority logic is:
+    // 1. Non-generic title → use title directly
+    // 2. Generic title + vehicle data → derive from year/make/model
+    // 3. Generic title + no vehicle → empty string
+    // These tests validate the derivation logic that runs in the read path.
+
     it('should use title when non-generic', () => {
       const title = '2023 Toyota Camry SE'
       const vehicle = {

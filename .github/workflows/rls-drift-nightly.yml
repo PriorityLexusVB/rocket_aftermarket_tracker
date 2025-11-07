@@ -1,0 +1,240 @@
+name: Nightly RLS Drift & Health Check
+
+# Run nightly to detect schema drift and validate health endpoints
+on:
+  schedule:
+    # Run at 3 AM UTC every day
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+permissions:
+  contents: read
+  issues: write # To create issues if drift detected
+
+jobs:
+  rls-drift-check:
+    name: RLS Schema Drift Detection
+    runs-on: ubuntu-latest
+    # Only run on main branch (skip forks)
+    if: github.repository == 'PriorityLexusVB/rocket_aftermarket_tracker'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm via corepack
+        shell: bash
+        run: |
+          corepack enable
+          PNPM_VER=$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")
+          echo "Using pnpm@${PNPM_VER} via corepack"
+          corepack prepare pnpm@"${PNPM_VER}" --activate
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Schema Drift Script
+        id: drift_check
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "Running schema cache verification..."
+          if bash scripts/verify-schema-cache.sh; then
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+            echo "✅ Schema cache verification passed"
+          else
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+            echo "❌ Schema cache verification failed"
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Check Health Endpoint
+        id: health_check
+        if: always()
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          echo "Checking /api/health endpoint..."
+          HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "${VITE_SUPABASE_URL}/api/health" || echo "000")
+          HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -n1)
+          BODY=$(echo "$HEALTH_RESPONSE" | head -n-1)
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "health_ok=true" >> $GITHUB_OUTPUT
+            echo "✅ Health endpoint responding"
+          else
+            echo "health_ok=false" >> $GITHUB_OUTPUT
+            echo "❌ Health endpoint failed (HTTP $HTTP_CODE)"
+          fi
+
+      - name: Check Deals Relationship Health Endpoint
+        id: deals_rel_check
+        if: always()
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          echo "Checking /api/health-deals-rel endpoint..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" "${VITE_SUPABASE_URL}/api/health-deals-rel" || echo "000")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n-1)
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" = "200" ]; then
+            # Check if relationship is OK in response
+            if echo "$BODY" | grep -q '"relationship":true'; then
+              echo "deals_rel_ok=true" >> $GITHUB_OUTPUT
+              echo "✅ Deals relationship health OK"
+            else
+              echo "deals_rel_ok=false" >> $GITHUB_OUTPUT
+              echo "⚠️ Deals relationship health warning"
+              echo "Response: $BODY"
+            fi
+          else
+            echo "deals_rel_ok=false" >> $GITHUB_OUTPUT
+            echo "❌ Deals relationship health failed (HTTP $HTTP_CODE)"
+          fi
+
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## Nightly RLS Drift & Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Schema Drift Check" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.drift_check.outputs.drift_detected }}" = "false" ]; then
+            echo "✅ **PASS** - No schema drift detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **FAIL** - Schema drift detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Action Required**: Run \`scripts/verify-schema-cache.sh\` locally to diagnose" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Health Endpoints" >> $GITHUB_STEP_SUMMARY
+          
+          echo "#### /api/health" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.health_check.outputs.health_ok }}" = "true" ]; then
+            echo "✅ **PASS** - Basic health check OK" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **FAIL** - Basic health check failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### /api/health-deals-rel" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.deals_rel_check.outputs.deals_rel_ok }}" = "true" ]; then
+            echo "✅ **PASS** - Deals relationship OK" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **FAIL** - Deals relationship check failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Actions" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ steps.drift_check.outputs.drift_detected }}" = "true" ] || \
+             [ "${{ steps.health_check.outputs.health_ok }}" = "false" ] || \
+             [ "${{ steps.deals_rel_check.outputs.deals_rel_ok }}" = "false" ]; then
+            echo "⚠️ **Issues Detected** - Review logs above for details" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Troubleshooting**:" >> $GITHUB_STEP_SUMMARY
+            echo "- Check [TROUBLESHOOTING_SCHEMA_CACHE.md](https://github.com/${{ github.repository }}/blob/main/docs/TROUBLESHOOTING_SCHEMA_CACHE.md)" >> $GITHUB_STEP_SUMMARY
+            echo "- Run \`bash scripts/verify-schema-cache.sh\` locally" >> $GITHUB_STEP_SUMMARY
+            echo "- Check [DEPLOY_CHECKLIST.md](https://github.com/${{ github.repository }}/blob/main/docs/DEPLOY_CHECKLIST.md)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ **All Checks Passed** - System healthy" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create Issue on Failure
+        if: failure() && steps.drift_check.outputs.drift_detected == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `🚨 Nightly Check: RLS Schema Drift Detected`;
+            const body = `## Schema Drift Detected
+            
+            The nightly RLS drift check has detected a potential schema cache issue.
+            
+            **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            **Date**: ${new Date().toUTCString()}
+            
+            ### Likely Causes
+            1. Recent migration added FK constraint without \`NOTIFY pgrst, 'reload schema'\`
+            2. PostgREST cache not reloaded after schema change
+            3. Column or relationship missing from database
+            
+            ### Troubleshooting Steps
+            1. Review workflow logs: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            2. Run locally: \`bash scripts/verify-schema-cache.sh\`
+            3. Check recent migrations in \`supabase/migrations/\`
+            4. See [TROUBLESHOOTING_SCHEMA_CACHE.md](https://github.com/${{ github.repository }}/blob/main/docs/TROUBLESHOOTING_SCHEMA_CACHE.md)
+            5. See [DEPLOY_CHECKLIST.md](https://github.com/${{ github.repository }}/blob/main/docs/DEPLOY_CHECKLIST.md)
+            
+            ### Resolution
+            If a migration is missing \`NOTIFY pgrst, 'reload schema'\`, add it and redeploy:
+            \`\`\`sql
+            -- At end of migration
+            NOTIFY pgrst, 'reload schema';
+            \`\`\`
+            
+            Or manually reload via Supabase SQL Editor:
+            \`\`\`sql
+            NOTIFY pgrst, 'reload schema';
+            \`\`\`
+            `;
+            
+            // Check if issue already exists (open issues with this title)
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'schema-drift,automated'
+            });
+            
+            const existingIssue = issues.data.find(issue => 
+              issue.title.includes('RLS Schema Drift Detected')
+            );
+            
+            if (existingIssue) {
+              // Add comment to existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## New Detection\n\n${body}`
+              });
+              console.log(`Updated existing issue: #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['schema-drift', 'automated', 'priority-high']
+              });
+              console.log(`Created issue: #${issue.data.number}`);
+            }
+
+      - name: Fail Workflow on Issues
+        if: |
+          steps.drift_check.outputs.drift_detected == 'true' ||
+          steps.health_check.outputs.health_ok == 'false' ||
+          steps.deals_rel_check.outputs.deals_rel_ok == 'false'
+        run: |
+          echo "❌ Nightly check failed - see summary for details"
+          exit 1
