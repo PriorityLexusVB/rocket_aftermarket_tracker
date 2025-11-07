@@ -197,6 +197,38 @@ supabase db reset
 supabase migration list
 ```
 
+### Schema Cache Reload (PostgREST/Supabase)
+
+When adding or modifying foreign key relationships, PostgREST's schema cache must be reloaded for the relationships to be queryable via the REST API.
+
+**Automatic reload in migrations**: Add this at the end of your migration:
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+
+**Manual reload via SQL**:
+```sql
+-- Trigger schema cache reload
+NOTIFY pgrst, 'reload schema';
+```
+
+**Manual reload via Supabase CLI**:
+```bash
+# Connect to your database and run:
+supabase db execute --sql "NOTIFY pgrst, 'reload schema';"
+```
+
+**Symptoms of stale schema cache**:
+- `Could not find a relationship between 'X' and 'Y' in the schema cache`
+- Queries with relationship syntax (e.g., `table:foreign_table(...)`) fail
+- Migration applied successfully but queries still fail
+
+**When to reload**:
+- After adding foreign key constraints
+- After modifying table relationships
+- After changing RLS policies that affect relationships
+- Immediately after running `supabase db push` in production
+
 ### Data Verification
 
 ```sql
