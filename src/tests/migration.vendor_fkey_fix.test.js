@@ -39,10 +39,9 @@ describe('Migration: 20251107000000_fix_job_parts_vendor_fkey.sql', () => {
     // This is the key fix - column and FK are added independently
     expect(migrationSQL).toContain('ADD COLUMN vendor_id UUID')
     // Check that the actual ADD COLUMN statement doesn't use inline REFERENCES
-    const addColumnMatch = migrationSQL.match(/ALTER TABLE.*ADD COLUMN vendor_id UUID[^;]*;/)
-    if (addColumnMatch) {
-      expect(addColumnMatch[0]).not.toContain('REFERENCES')
-    }
+    // Use more specific pattern to match ALTER TABLE...ADD COLUMN without REFERENCES
+    const addColumnMatch = migrationSQL.match(/ALTER TABLE[^;]*ADD COLUMN vendor_id UUID(?![^;]*REFERENCES)[^;]*;/)
+    expect(addColumnMatch).toBeTruthy()
     expect(migrationSQL).toContain('ADD CONSTRAINT job_parts_vendor_id_fkey')
   })
 

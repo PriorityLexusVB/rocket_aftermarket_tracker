@@ -49,6 +49,9 @@ CREATE INDEX IF NOT EXISTS idx_job_parts_vendor_id ON public.job_parts(vendor_id
 -- Step 4: Backfill vendor_id from products.vendor_id for existing records (idempotent)
 -- This ensures existing line items show vendor names (derived from product)
 -- Only update rows where vendor_id is NULL and product has a vendor
+-- Note: This query relies on existing FK index on jp.product_id (created with table)
+-- Performance: Typically fast due to FK index; if job_parts is very large (>100k rows),
+--              consider running during off-peak hours
 UPDATE public.job_parts jp
 SET vendor_id = p.vendor_id
 FROM public.products p
