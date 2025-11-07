@@ -31,7 +31,7 @@ describe('Database Vendor Relationship - REST API Integration', () => {
   // Integration mode requires real env vars (not localhost placeholders)
   const INTEGRATION_MODE = HAS_ENV_VARS && !IS_LOCALHOST
 
-  let supabase = null
+  let supabase: any = null
 
   beforeAll(async () => {
     if (INTEGRATION_MODE) {
