@@ -125,9 +125,74 @@ pnpm run build
 - [ ] Verify SMS templates dropdown loads without errors
 - [ ] Test multi-tenant data isolation with different organization users
 
+## RLS Policy Patterns (Updated 2025-11-06)
+
+### Standard Multi-Tenant Pattern
+
+All org-scoped tables follow this pattern:
+
+```sql
+-- SELECT: Users can view records from their org
+CREATE POLICY "org read table_name" ON public.table_name
+FOR SELECT TO authenticated
+USING (org_id = public.auth_user_org());
+
+-- INSERT: Users can create records in their org
+CREATE POLICY "org can insert table_name" ON public.table_name
+FOR INSERT TO authenticated
+WITH CHECK (org_id = public.auth_user_org() OR public.is_admin_or_manager());
+
+-- UPDATE: Users can update records in their org
+CREATE POLICY "org can update table_name" ON public.table_name
+FOR UPDATE TO authenticated
+USING (org_id = public.auth_user_org() OR public.is_admin_or_manager())
+WITH CHECK (org_id = public.auth_user_org() OR public.is_admin_or_manager());
+
+-- DELETE: Only admins/managers can delete
+CREATE POLICY "managers can delete table_name" ON public.table_name
+FOR DELETE TO authenticated
+USING (public.is_admin_or_manager());
+```
+
+### Helper Functions
+
+- **`auth_user_org()`**: Returns the org_id of the currently authenticated user from user_profiles
+- **`is_admin_or_manager()`**: Returns true if current user has admin or manager role
+- Both functions use SECURITY DEFINER and only reference public.user_profiles (NOT auth.users)
+
+### Tables with RLS Policies
+
+✅ Completed:
+- `jobs` - Core deal/job records
+- `job_parts` - Line items with vendor support
+- `transactions` - Financial records
+- `vehicles` - Vehicle inventory
+- `loaner_assignments` - Loaner vehicle tracking
+- `sms_templates` - SMS notification templates
+- `products` - Service/product catalog
+- `vendors` - External vendor directory
+- `user_profiles` - User accounts
+
+### Troubleshooting RLS Errors
+
+#### Error: "permission denied for table users"
+**Cause**: Policy references auth.users table directly
+**Solution**: Update policy to use public.user_profiles and helper functions
+**Migration**: 20251104221500_fix_is_admin_or_manager_auth_users_references.sql
+
+#### Error: "Could not find a relationship between X and Y"
+**Cause**: Missing foreign key column
+**Solution**: Apply schema migration to add the FK column
+**Example**: job_parts.vendor_id added in 20251106000000_add_job_parts_vendor_id.sql
+
+#### Error: "column table.org_id does not exist"
+**Cause**: Table missing org_id column required by RLS policy
+**Solution**: Apply 20251106120000_add_missing_org_id_columns.sql
+
 ## Notes
 
 - All changes are minimal and surgical as per workspace guidelines
 - Migrations use idempotent patterns (IF NOT EXISTS, IF EXISTS)
 - No changes to application logic beyond fixing the column name
 - Build passes with no errors
+- Step 8 create-edit roundtrip test passes after vehicle description fix
