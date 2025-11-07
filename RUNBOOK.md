@@ -249,6 +249,82 @@ WHERE tablename = 'vehicles'
 AND indexname LIKE '%stock%';
 ```
 
+### Verifying job_parts ↔ vendors Relationship
+
+After deploying migration `20251107000000_fix_job_parts_vendor_fkey.sql`, verify the relationship is working:
+
+**Quick verification script**:
+```bash
+./scripts/verify-schema-cache.sh
+```
+
+**Manual SQL verification**:
+```sql
+-- 1. Check column exists
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'job_parts' 
+  AND column_name = 'vendor_id';
+-- Expected: vendor_id | uuid
+
+-- 2. Check foreign key constraint exists
+SELECT
+    tc.constraint_name,
+    kcu.column_name,
+    ccu.table_name AS foreign_table_name
+FROM information_schema.table_constraints AS tc
+JOIN information_schema.key_column_usage AS kcu
+    ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage AS ccu
+    ON ccu.constraint_name = tc.constraint_name
+WHERE tc.constraint_type = 'FOREIGN KEY'
+    AND tc.table_name = 'job_parts'
+    AND kcu.column_name = 'vendor_id';
+-- Expected: job_parts_vendor_id_fkey | vendor_id | vendors
+
+-- 3. Check index exists
+SELECT indexname 
+FROM pg_indexes 
+WHERE tablename = 'job_parts' 
+  AND indexname = 'idx_job_parts_vendor_id';
+-- Expected: idx_job_parts_vendor_id
+
+-- 4. Reload schema cache
+NOTIFY pgrst, 'reload schema';
+```
+
+**API verification**:
+```bash
+# Test nested vendor relationship query
+curl -X GET \
+  "${VITE_SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,name)&limit=1" \
+  -H "apikey: ${VITE_SUPABASE_ANON_KEY}" \
+  -H "Authorization: Bearer ${VITE_SUPABASE_ANON_KEY}"
+```
+
+**Expected success response**:
+```json
+[{"id":"...","vendor_id":"...","vendor":{"id":"...","name":"..."}}]
+```
+or empty array `[]` if no data exists.
+
+**Error response (indicates FK missing)**:
+```json
+{"code":"...","message":"Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"}
+```
+
+**Rollback procedure** (if needed):
+```sql
+-- Remove FK constraint
+ALTER TABLE public.job_parts DROP CONSTRAINT IF EXISTS job_parts_vendor_id_fkey;
+
+-- Optionally remove column (destructive)
+ALTER TABLE public.job_parts DROP COLUMN IF EXISTS vendor_id;
+
+-- Reload schema cache
+NOTIFY pgrst, 'reload schema';
+```
+
 ## Monitoring & Maintenance
 
 ### Health Checks
