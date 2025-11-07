@@ -249,6 +249,47 @@ console.log('Error:', error);  // Should be null
 - **Column doesn't exist** → Migration not applied
 - **Permission denied** → RLS policy too restrictive
 
+## Health Check Verification (NEW)
+
+### Health Endpoint
+Use the runtime health check to verify schema relationships:
+
+```bash
+# Check vendor relationship status
+curl https://your-app.vercel.app/api/health/deals-rel
+
+# Expected response for healthy system:
+{
+  "vendorRelationship": "ok",
+  "timestamp": "2025-11-07T18:00:00.000Z",
+  "details": {
+    "checks": [
+      {"name": "supabase_connectivity", "status": "ok"},
+      {"name": "job_parts_vendor_relationship", "status": "ok", "sample": {...}}
+    ]
+  }
+}
+```
+
+### Automated Test Verification
+Run persistence tests to verify all behaviors:
+
+```bash
+# Run all tests
+pnpm test
+
+# Run specific persistence tests
+pnpm test src/tests/unit/dealService.persistence.test.js
+```
+
+Tests cover:
+- ✅ org_id inference (3 tests)
+- ✅ loaner assignment persistence (5 tests) 
+- ✅ scheduling fallback (6 tests)
+- ✅ error wrapper mapping (4 tests)
+- ✅ vendor aggregation logic (6 tests)
+- ✅ vehicle description fallback (6 tests)
+
 ## Production Checklist
 
 Before deploying to production:
@@ -261,6 +302,7 @@ Before deploying to production:
 - [ ] Rollback plan documented
 - [ ] Stakeholders notified of deployment window
 - [ ] Monitoring dashboard ready
+- [ ] **NEW:** Health endpoint returns "ok" for vendorRelationship
 
 During deployment:
 
@@ -270,6 +312,7 @@ During deployment:
 - [ ] Verify Deals page loads without errors
 - [ ] Check vendor data displays correctly
 - [ ] Monitor error logs for 15 minutes
+- [ ] **NEW:** Verify `/api/health/deals-rel` returns 200 OK
 
 After deployment:
 
@@ -277,6 +320,44 @@ After deployment:
 - [ ] Update CHANGELOG.md
 - [ ] Update deployment notes in issue/PR
 - [ ] Notify team of successful deployment
+- [ ] **NEW:** Run verify-schema-cache.sh to confirm all checks pass
+
+## RLS Policy Verification
+
+### Check Helper Functions
+Verify helper functions don't reference auth.users:
+
+```sql
+-- Check is_admin_or_manager() function source
+SELECT prosrc FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname = 'is_admin_or_manager';
+
+-- Should NOT contain 'auth.users'
+-- Should ONLY contain 'public.user_profiles'
+```
+
+### Verify Write Policies Exist
+```sql
+-- Check policy coverage for key tables
+SELECT 
+  schemaname, 
+  tablename, 
+  policyname,
+  cmd as policy_type
+FROM pg_policies 
+WHERE schemaname = 'public' 
+  AND tablename IN ('loaner_assignments', 'transactions', 'vehicles', 'sms_templates', 'products', 'vendors')
+ORDER BY tablename, cmd;
+```
+
+Expected results:
+- **loaner_assignments**: SELECT, INSERT, UPDATE, DELETE policies
+- **transactions**: SELECT, INSERT, UPDATE policies
+- **vehicles**: SELECT, INSERT, UPDATE policies
+- **sms_templates**: SELECT, INSERT, UPDATE, DELETE policies
+- **products**: SELECT, INSERT, UPDATE policies
+- **vendors**: SELECT, INSERT, UPDATE policies
 
 ## References
 

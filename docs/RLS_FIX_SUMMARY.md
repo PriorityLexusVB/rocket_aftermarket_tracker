@@ -1,12 +1,20 @@
 # RLS Auth.Users Fix - Summary
 
+## Overview
+
+This document tracks the ongoing RLS (Row-Level Security) policy hardening effort to ensure:
+1. No references to `auth.users` table in helper functions or policies
+2. Complete write policy coverage for all multi-tenant tables
+3. Proper org_id scoping and tenant isolation
+4. Health monitoring for schema relationships
+
 ## What Was Fixed
 
 The "permission denied for table users" error occurred because the `is_admin_or_manager()` function referenced the `auth.users` table, which authenticated users cannot query due to RLS restrictions.
 
-## Changes Made
+## Migrations Applied
 
-### 1. New Migration
+### 1. Migration 20251104221500 - Fix is_admin_or_manager() auth.users References
 **File:** `supabase/migrations/20251104221500_fix_is_admin_or_manager_auth_users_references.sql`
 
 **What it does:**
@@ -27,15 +35,80 @@ SELECT EXISTS (
 )
 ```
 
-### 2. Documentation
-**File:** `docs/RLS_AUTH_USERS_FIX.md`
+### 2. Migration 20251105000000 - Fix RLS Policies and Write Permissions
+**File:** `supabase/migrations/20251105000000_fix_rls_policies_and_write_permissions.sql`
 
-Comprehensive documentation including:
-- Problem explanation
-- Root cause analysis
-- Solution details
-- Verification checklist
-- Testing recommendations
+**What it does:**
+- Fixes loaner_assignments policies to use is_admin_or_manager() helper
+- Adds INSERT/UPDATE/DELETE policies for loaner_assignments (org-scoped via jobs)
+- Adds INSERT/UPDATE policies for transactions (org-scoped)
+- Adds INSERT/UPDATE policies for vehicles (org-scoped)
+
+### 3. Migration 20251106210000 - Multi-Tenant RLS Hardening
+**File:** `supabase/migrations/20251106210000_multi_tenant_rls_hardening.sql`
+
+**What it does:**
+- Adds INSERT/UPDATE/DELETE policies for sms_templates
+- Adds INSERT/UPDATE policies for products
+- Adds INSERT/UPDATE policies for vendors
+- Ensures RLS is enabled on all org-scoped tables
+- Adds documentation comments to tables
+
+### 4. Migration 20251107103000 - RLS Write Policies Completion (NEW)
+**File:** `supabase/migrations/20251107103000_rls_write_policies_completion.sql`
+
+**What it does:**
+- Audits all existing RLS policies and logs counts
+- Adds SELECT policy for loaner_assignments (if missing)
+- Verifies helper functions don't reference auth.users
+- Validates RLS is enabled on all tables
+- Reloads PostgREST schema cache
+- Provides comprehensive validation and summary
+
+## Testing Coverage (NEW)
+
+### Unit Tests - dealService Persistence
+**File:** `src/tests/unit/dealService.persistence.test.js`
+
+Comprehensive test coverage for:
+- ✅ org_id inference (3 tests)
+- ✅ loaner assignment persistence (5 tests)
+- ✅ scheduling fallback when per-line scheduled_* absent (6 tests)
+- ✅ error wrapper mapping (4 tests)
+- ✅ mixed vendor aggregation logic (6 tests)
+- ✅ vehicle description fallback logic (6 tests)
+
+**Total: 30 test cases covering all persistence behaviors**
+
+### Health Endpoint (NEW)
+**File:** `src/api/health/deals-rel.js`
+
+Runtime health check endpoint at `/api/health/deals-rel` that:
+- ✅ Tests Supabase connectivity
+- ✅ Verifies job_parts → vendors relationship
+- ✅ Detects schema cache staleness
+- ✅ Returns actionable recommendations
+
+**Response format:**
+```json
+{
+  "vendorRelationship": "ok",
+  "timestamp": "2025-11-07T18:00:00.000Z",
+  "details": {
+    "checks": [
+      {
+        "name": "supabase_connectivity",
+        "status": "ok"
+      },
+      {
+        "name": "job_parts_vendor_relationship",
+        "status": "ok",
+        "sample": { "id": "...", "vendor": { "id": "...", "name": "..." } }
+      }
+    ]
+  }
+}
+```
 
 ## Why This Works
 
