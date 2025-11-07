@@ -51,19 +51,7 @@ describe('Database Vendor Relationship - REST API Integration', () => {
       return
     }
 
-    // Query information_schema to check column exists
-    const { data, error } = await supabase.rpc('exec_sql', {
-      sql: `
-        SELECT column_name, data_type, is_nullable
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'job_parts'
-          AND column_name = 'vendor_id';
-      `
-    })
-
-    // Note: Since exec_sql RPC may not exist, we'll use a simpler approach
-    // Just try to query job_parts with vendor_id column
+    // Query job_parts to verify vendor_id column exists
     const { error: selectError } = await supabase
       .from('job_parts')
       .select('vendor_id')

@@ -27,7 +27,8 @@ VERIFICATION_FAILED=0
 echo -e "${BLUE}[Setup]${NC} Checking prerequisites..."
 if ! command -v supabase &> /dev/null; then
     echo -e "${RED}❌ Supabase CLI not found${NC}"
-    echo "Install with: npm install -g supabase"
+    echo "This project includes Supabase CLI as a dependency."
+    echo "Run: pnpm install"
     exit 2
 fi
 echo -e "${GREEN}✓${NC} Supabase CLI found"

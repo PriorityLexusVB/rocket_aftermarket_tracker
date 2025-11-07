@@ -39,6 +39,9 @@ BEGIN
       AND conrelid = 'public.job_parts'::regclass
   ) THEN
     -- Add the named FK constraint with proper CASCADE behavior
+    -- ON UPDATE CASCADE: If vendor ID changes, update job_parts references
+    -- ON DELETE SET NULL: If vendor is deleted, keep job_parts but clear vendor_id
+    --                     (vendor can still be derived from product.vendor_id as fallback)
     ALTER TABLE public.job_parts
     ADD CONSTRAINT job_parts_vendor_id_fkey
     FOREIGN KEY (vendor_id)
