@@ -1,5 +1,24 @@
 # Troubleshooting Schema Cache Issues
 
+## Quick Reference: Relationship Migrations Checklist
+
+**CRITICAL RULE**: Relationship migrations MUST include `NOTIFY pgrst, 'reload schema'`
+
+### Before Deploying Relationship Migrations
+- [ ] Migration includes FK constraint creation
+- [ ] Migration ends with `NOTIFY pgrst, 'reload schema';`
+- [ ] Run verification script: `./scripts/verify-schema-cache.sh`
+- [ ] Test REST probe: `/rest/v1/job_parts?select=id,vendor:vendors(id,name)&limit=1`
+
+### Verification Steps After Deployment
+1. Check FK exists in database schema
+2. Run `NOTIFY pgrst, 'reload schema';` (if not in migration)
+3. Wait 5-10 seconds for cache refresh
+4. Test REST API relationship query
+5. Verify application loads without "relationship not found" errors
+
+---
+
 ## The "Relationship Not Found" Error
 
 ### Symptom
@@ -234,6 +253,19 @@ else
 fi
 ```
 
+**Better Approach:** Use the provided verification script:
+```bash
+./scripts/verify-schema-cache.sh
+```
+
+This script is CI-ready and includes:
+- Column existence check
+- FK constraint verification
+- Index verification
+- Schema cache reload
+- REST API relationship probe
+- Proper exit codes for automation
+
 ## Historical Context
 
 This issue occurred because:
@@ -245,7 +277,35 @@ This issue occurred because:
 6. API queries failed even though database was correct
 
 **The Fix:**
-Added `NOTIFY pgrst, 'reload schema'` to the migration file.
+- Added `NOTIFY pgrst, 'reload schema'` to migration files
+- Created idempotent migration `20251107093000_verify_job_parts_vendor_fk.sql`
+- Enhanced verification script for automated drift detection
+- Added test `tests/unit/db.vendor-relationship.spec.ts` for CI validation
+
+## Automated Drift Detection
+
+Run these checks in CI/CD:
+
+### Pre-E2E Test Hook
+```bash
+# In CI pipeline, before running E2E tests
+./scripts/verify-schema-cache.sh
+if [ $? -ne 0 ]; then
+  echo "Schema drift detected! Relationship verification failed."
+  exit 1
+fi
+```
+
+### Unit Test
+```bash
+# Run the relationship verification test
+pnpm test tests/unit/db.vendor-relationship.spec.ts
+```
+
+This test checks:
+- REST API returns 200 OK for nested vendor query
+- No "Could not find a relationship" error in response
+- Response is valid JSON (array or object)
 
 ## References
 

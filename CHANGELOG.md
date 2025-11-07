@@ -1,5 +1,80 @@
 # Changelog - Calendar-First Aftermarket Tracker
 
+## [2025-11-07] Comprehensive Relationship Stabilization & Drift Prevention
+
+### Added
+- **New Migration** (`20251107093000_verify_job_parts_vendor_fk.sql`):
+  - Comprehensive idempotent migration that handles all edge cases
+  - Verifies column, FK constraint, and index existence using catalog checks
+  - Backfills vendor_id from products where needed
+  - Includes verification step that confirms relationship before NOTIFY
+  - Safe to run multiple times in any environment state
+  
+- **Enhanced Verification Script** (`scripts/verify-schema-cache.sh`):
+  - CI-ready with proper exit codes (0=success, 1=failed, 2=setup error)
+  - Checks column existence, FK constraint, and index
+  - Verifies constraint name matches expected `job_parts_vendor_id_fkey`
+  - Tests REST API relationship query with HTTP status code validation
+  - Detects specific "Could not find a relationship" error
+  - Color-coded output for easy visual scanning
+  
+- **REST API Integration Test** (`tests/unit/db.vendor-relationship.spec.ts`):
+  - Automated test for relationship verification
+  - Works in mock mode (no env vars) for structure validation
+  - Integration mode (with env vars) tests actual REST API
+  - Detects and reports schema cache staleness
+  - Includes documentation and examples in test output
+
+### Enhanced
+- **TROUBLESHOOTING_SCHEMA_CACHE.md**:
+  - Added "Quick Reference: Relationship Migrations Checklist" at top
+  - Documented automated drift detection approaches
+  - Added CI/CD integration examples
+  - Referenced new verification script and test
+  
+- **DEPLOY_CHECKLIST.md**:
+  - Added "Critical Rule for Relationship Migrations" section
+  - Template for relationship migrations with NOTIFY
+  - Updated to reference new migration `20251107093000`
+  - Added automated verification section
+  - CI/CD integration examples (GitHub Actions, unit test)
+
+### Fixed
+- **Drift Detection**: System now fails fast if:
+  - Column exists but FK constraint missing
+  - FK constraint exists but PostgREST cache not reloaded
+  - REST API returns relationship error despite DB being correct
+  
+- **Idempotency**: New migration safely handles these states:
+  - Fresh database (creates everything)
+  - Column exists but no FK (adds FK)
+  - FK exists but wrong name (logs warning)
+  - Everything already correct (reports success)
+
+### Why This Matters
+This comprehensive solution prevents production issues where:
+1. Migrations apply successfully in database
+2. FK relationships exist and work in SQL
+3. But REST API doesn't recognize them (stale cache)
+4. Application fails with "relationship not found" errors
+
+**Prevention Strategy:**
+- Idempotent migrations that verify their own success
+- Automated drift detection in CI/CD pipeline
+- Comprehensive verification script for manual and automated use
+- Unit tests that catch schema cache issues early
+
+**Acceptance Criteria Met:**
+✅ Migration runs successfully in any environment state  
+✅ FK constraint exists with correct name  
+✅ Index exists for query performance  
+✅ PostgREST schema cache reloaded  
+✅ REST API returns 200 OK for relationship queries  
+✅ No "Could not find a relationship" errors  
+✅ Verification script exits 0 on success, 1 on failure  
+✅ Unit test validates relationship via REST API  
+✅ Documentation updated with verification workflows  
+
 ## [2025-11-07] Schema Cache Reload Fix
 
 ### Fixed
