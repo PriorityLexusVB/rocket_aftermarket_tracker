@@ -1,6 +1,6 @@
 # Changelog - Calendar-First Aftermarket Tracker
 
-## [2025-11-07] RLS Hardening Remediation - Gap Closure
+## [2025-11-08] RLS Hardening Remediation - Gap Closure
 
 ### Added
 - **Test Coverage Documentation**:
