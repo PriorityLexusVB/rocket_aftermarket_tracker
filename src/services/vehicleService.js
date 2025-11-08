@@ -1,16 +1,18 @@
 import { supabase } from '@/lib/supabase'
+import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 import { safeSelect } from '../lib/supabase/safeSelect'
 
 export const vehicleService = {
   // Get all vehicles with optional filtering
   async getVehicles(filters = {}, orgId = null) {
     try {
+      const profileFrag = buildUserProfileSelectFragment()
       let query = supabase
         ?.from('vehicles')
         ?.select(
           `
           *,
-          created_by_profile:user_profiles!vehicles_created_by_fkey(full_name, email)
+          created_by_profile:user_profiles!vehicles_created_by_fkey${profileFrag}
         `
         )
         ?.order('created_at', { ascending: false })
@@ -36,8 +38,14 @@ export const vehicleService = {
       }
 
       const data = await safeSelect(query, 'vehicles:getVehicles')
+      const mapped = (data || []).map((v) => ({
+        ...v,
+        created_by_profile: v?.created_by_profile
+          ? { ...v.created_by_profile, display_name: resolveUserProfileName(v.created_by_profile) }
+          : null,
+      }))
 
-      return { data: data || [], error: null }
+      return { data: mapped, error: null }
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
         return {
@@ -55,12 +63,13 @@ export const vehicleService = {
   // Get single vehicle by ID
   async getVehicleById(id, orgId = null) {
     try {
+      const profileFrag2 = buildUserProfileSelectFragment()
       let q = supabase
         ?.from('vehicles')
         ?.select(
           `
           *,
-          created_by_profile:user_profiles!vehicles_created_by_fkey(full_name, email),
+          created_by_profile:user_profiles!vehicles_created_by_fkey${profileFrag2},
           jobs(
             id,
             job_number,
@@ -70,7 +79,7 @@ export const vehicleService = {
             estimated_cost,
             actual_cost,
             created_at,
-            assigned_to_profile:user_profiles!jobs_assigned_to_fkey(full_name)
+            assigned_to_profile:user_profiles!jobs_assigned_to_fkey${profileFrag2}
           )
         `
         )
@@ -78,6 +87,17 @@ export const vehicleService = {
         ?.single()
       if (orgId) q = q?.eq('org_id', orgId)
       const data = await safeSelect(q, 'vehicles:getVehicleById')
+      if (data?.created_by_profile) {
+        data.created_by_profile.display_name = resolveUserProfileName(data.created_by_profile)
+      }
+      if (Array.isArray(data?.jobs)) {
+        data.jobs = data.jobs.map((j) => {
+          if (j?.assigned_to_profile) {
+            j.assigned_to_profile.display_name = resolveUserProfileName(j.assigned_to_profile)
+          }
+          return j
+        })
+      }
 
       return { data, error: null }
     } catch (error) {
@@ -97,6 +117,7 @@ export const vehicleService = {
   // Create new vehicle
   async createVehicle(vehicleData) {
     try {
+      const profileFrag3 = buildUserProfileSelectFragment()
       const { data, error } = await supabase
         ?.from('vehicles')
         ?.insert([
@@ -108,7 +129,7 @@ export const vehicleService = {
         ?.select(
           `
           *,
-          created_by_profile:user_profiles!vehicles_created_by_fkey(full_name, email)
+          created_by_profile:user_profiles!vehicles_created_by_fkey${profileFrag3}
         `
         )
         ?.single()
@@ -117,6 +138,9 @@ export const vehicleService = {
         return { data: null, error: { message: error?.message } }
       }
 
+      if (data?.created_by_profile) {
+        data.created_by_profile.display_name = resolveUserProfileName(data.created_by_profile)
+      }
       return { data, error: null }
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
@@ -233,6 +257,7 @@ export const vehicleService = {
   // Update vehicle
   async updateVehicle(id, updates) {
     try {
+      const profileFrag4 = buildUserProfileSelectFragment()
       const { data, error } = await supabase
         ?.from('vehicles')
         ?.update({
@@ -243,7 +268,7 @@ export const vehicleService = {
         ?.select(
           `
           *,
-          created_by_profile:user_profiles!vehicles_created_by_fkey(full_name, email)
+          created_by_profile:user_profiles!vehicles_created_by_fkey${profileFrag4}
         `
         )
         ?.single()
@@ -252,6 +277,9 @@ export const vehicleService = {
         return { data: null, error: { message: error?.message } }
       }
 
+      if (data?.created_by_profile) {
+        data.created_by_profile.display_name = resolveUserProfileName(data.created_by_profile)
+      }
       return { data, error: null }
     } catch (error) {
       if (error?.message?.includes('Failed to fetch')) {
@@ -385,7 +413,6 @@ export const getVendorAccessibleVehicles = async (vendorId) => {
   }
 }
 function createVehicleWithProducts(...args) {
-  // eslint-disable-next-line no-console
   console.warn('Placeholder: createVehicleWithProducts is not implemented yet.', args)
   return null
 }

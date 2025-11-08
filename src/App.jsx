@@ -6,6 +6,7 @@ import {
 import Routes from './Routes'
 import { ToastProvider } from './components/ui/ToastProvider'
 import { prefetchDropdowns } from './services/dropdownService'
+import { preflightCapabilities } from './services/healthService'
 import useTenant from './hooks/useTenant'
 import { initDropdownCacheRealtime } from './services/realtimeService'
 
@@ -19,6 +20,9 @@ function App() {
 
     // Warm dropdown caches in the background (non-blocking)
     prefetchDropdowns()?.catch?.(() => {})
+
+    // Proactively align capability flags (vendor rel, profile columns) before first heavy queries
+    preflightCapabilities()?.catch?.(() => {})
 
     return () => {
       cleanup1?.()

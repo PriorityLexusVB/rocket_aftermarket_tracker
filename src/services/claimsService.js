@@ -1,10 +1,12 @@
 // Note: vehicles may not have org_id; tenant scoping flows via claims.org_id and joins.
 import { supabase } from '@/lib/supabase'
+import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 
 export const claimsService = {
   // Get all claims with vehicle and product details
   async getAllClaims(orgId = null) {
     try {
+      const profileFrag = buildUserProfileSelectFragment()
       let q = supabase
         ?.from('claims')
         ?.select(
@@ -12,14 +14,28 @@ export const claimsService = {
           *,
           vehicle:vehicles(make, model, year, vin, owner_name),
           product:products(name, brand, category),
-          submitted_by_profile:user_profiles!submitted_by(full_name, email),
-          assigned_to_profile:user_profiles!assigned_to(full_name, email)
+          submitted_by_profile:user_profiles!submitted_by${profileFrag},
+          assigned_to_profile:user_profiles!assigned_to${profileFrag}
         `
         )
         ?.order('created_at', { ascending: false })
       if (orgId) q = q?.eq('org_id', orgId)
       const { data } = await q.throwOnError()
-      return data || []
+      return (data || []).map((c) => ({
+        ...c,
+        submitted_by_profile: c?.submitted_by_profile
+          ? {
+              ...c.submitted_by_profile,
+              display_name: resolveUserProfileName(c.submitted_by_profile),
+            }
+          : null,
+        assigned_to_profile: c?.assigned_to_profile
+          ? {
+              ...c.assigned_to_profile,
+              display_name: resolveUserProfileName(c.assigned_to_profile),
+            }
+          : null,
+      }))
     } catch (error) {
       throw new Error(`Failed to fetch claims: ${error.message}`)
     }
@@ -107,16 +123,21 @@ export const claimsService = {
   // Update claim status and details
   async updateClaim(claimId, updates) {
     try {
+      const profileFrag2 = buildUserProfileSelectFragment()
       const { data, error } = await supabase?.from('claims')?.update(updates)?.eq('id', claimId)
         ?.select(`
           *,
           vehicle:vehicles(make, model, year),
           product:products(name, brand),
-          assigned_to_profile:user_profiles!assigned_to(full_name, email)
+          assigned_to_profile:user_profiles!assigned_to${profileFrag2}
         `)
 
       if (error) throw error
-      return data?.[0]
+      const row = data?.[0]
+      if (row?.assigned_to_profile) {
+        row.assigned_to_profile.display_name = resolveUserProfileName(row.assigned_to_profile)
+      }
+      return row
     } catch (error) {
       throw new Error(`Failed to update claim: ${error.message}`)
     }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 import { safeSelect } from '../lib/supabase/safeSelect'
 
 // Normalize customer-facing fields without changing component code.
@@ -25,12 +26,13 @@ export const kanbanService = {
    */
   async getAllJobsForKanban(filters = {}, orgId = null) {
     try {
+      const profileFrag = buildUserProfileSelectFragment()
       let query = supabase?.from('jobs')?.select(`
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name, email),
-          created_user:user_profiles!jobs_created_by_fkey(id, full_name),
+          assigned_user:user_profiles!jobs_assigned_to_fkey${profileFrag},
+          created_user:user_profiles!jobs_created_by_fkey${profileFrag},
           transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `)
       if (orgId) query = query?.eq('org_id', orgId)
@@ -69,7 +71,16 @@ export const kanbanService = {
         ?.order('created_at', { ascending: false })
 
       const data = await safeSelect(query, 'kanban:getAllJobsForKanban')
-      const normalized = (data || [])?.map(withCustomerFields)
+      const normalized = (data || [])?.map(withCustomerFields)?.map((row) => {
+        // Attach resolved display names for UI convenience
+        if (row?.assigned_user) {
+          row.assigned_user.display_name = resolveUserProfileName(row.assigned_user)
+        }
+        if (row?.created_user) {
+          row.created_user.display_name = resolveUserProfileName(row.created_user)
+        }
+        return row
+      })
       return { data: normalized, error: null }
     } catch (error) {
       console.error('Error in getAllJobsForKanban:', error)
@@ -126,6 +137,7 @@ export const kanbanService = {
         updateData.started_at = new Date()?.toISOString()
       }
 
+      const profileFrag = buildUserProfileSelectFragment()
       let updateQ = supabase
         ?.from('jobs')
         ?.update(updateData)
@@ -135,7 +147,7 @@ export const kanbanService = {
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          assigned_user:user_profiles!jobs_assigned_to_fkey${profileFrag},
           transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `
         )
@@ -143,6 +155,9 @@ export const kanbanService = {
       if (orgId) updateQ = updateQ?.eq('org_id', orgId)
       const data = await safeSelect(updateQ, 'kanban:update:apply')
       const mapped = withCustomerFields(data)
+      if (mapped?.assigned_user) {
+        mapped.assigned_user.display_name = resolveUserProfileName(mapped.assigned_user)
+      }
 
       // Log the activity
       try {
@@ -169,6 +184,7 @@ export const kanbanService = {
    */
   async getJobsByStatus(statuses, orgId = null) {
     try {
+      const profileFrag = buildUserProfileSelectFragment()
       let q = supabase
         ?.from('jobs')
         ?.select(
@@ -176,7 +192,7 @@ export const kanbanService = {
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          assigned_user:user_profiles!jobs_assigned_to_fkey${profileFrag},
           transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `
         )
@@ -185,7 +201,12 @@ export const kanbanService = {
         ?.order('created_at', { ascending: false })
       if (orgId) q = q?.eq('org_id', orgId)
       const data = await safeSelect(q, 'kanban:getJobsByStatus')
-      const normalized = (data || [])?.map(withCustomerFields)
+      const normalized = (data || [])?.map(withCustomerFields)?.map((row) => {
+        if (row?.assigned_user) {
+          row.assigned_user.display_name = resolveUserProfileName(row.assigned_user)
+        }
+        return row
+      })
 
       // Group jobs by status
       const groupedJobs = {}
@@ -352,11 +373,12 @@ export const kanbanService = {
    */
   async searchJobs(searchTerm, filters = {}, orgId = null) {
     try {
+      const profileFrag = buildUserProfileSelectFragment()
       let query = supabase?.from('jobs')?.select(`
           *,
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          assigned_user:user_profiles!jobs_assigned_to_fkey${profileFrag},
           transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `)
       if (orgId) query = query?.eq('org_id', orgId)
@@ -387,7 +409,12 @@ export const kanbanService = {
         query?.order('created_at', { ascending: false }),
         'kanban:search'
       )
-      const normalized = (data || [])?.map(withCustomerFields)
+      const normalized = (data || [])?.map(withCustomerFields)?.map((row) => {
+        if (row?.assigned_user) {
+          row.assigned_user.display_name = resolveUserProfileName(row.assigned_user)
+        }
+        return row
+      })
       return { data: normalized, error: null }
     } catch (error) {
       console.error('Error searching jobs:', error)

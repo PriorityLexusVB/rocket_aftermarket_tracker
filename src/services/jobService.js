@@ -1,5 +1,6 @@
 // src/services/jobService.js
 import { supabase } from '@/lib/supabase'
+import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 
 const nowIso = () => new Date()?.toISOString()
 
@@ -13,18 +14,32 @@ async function run(query) {
 async function selectJobs(baseQuery) {
   // Attempt expanded with safe wildcards for relations
   try {
+    const profileFrag = buildUserProfileSelectFragment()
     const data = await run(
       baseQuery?.select(`
         *,
         vendor:vendors(id,name,specialty,contact_person,phone,email),
         vehicle:vehicles(*),
-        assigned_to_profile:user_profiles!jobs_assigned_to_fkey(id,full_name,email,role),
-        created_by_profile:user_profiles!jobs_created_by_fkey(id,full_name,email),
-        delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey(id,full_name,email),
+        assigned_to_profile:user_profiles!jobs_assigned_to_fkey${profileFrag},
+        created_by_profile:user_profiles!jobs_created_by_fkey${profileFrag},
+        delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey${profileFrag},
         job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
       `)
     )
-    return data ?? []
+    const rows = data ?? []
+    // Attach display_name resolution for convenience
+    return rows.map((r) => {
+      if (r?.assigned_to_profile) {
+        r.assigned_to_profile.display_name = resolveUserProfileName(r.assigned_to_profile)
+      }
+      if (r?.created_by_profile) {
+        r.created_by_profile.display_name = resolveUserProfileName(r.created_by_profile)
+      }
+      if (r?.delivery_coordinator) {
+        r.delivery_coordinator.display_name = resolveUserProfileName(r.delivery_coordinator)
+      }
+      return r
+    })
   } catch (expandedErr) {
     console.warn('Expanded jobs select failed, falling back to "*":', expandedErr?.message)
     const basic = await run(baseQuery?.select('*'))

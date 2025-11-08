@@ -1,6 +1,7 @@
 // Photo Documentation Service - Handles photo uploads and documentation management
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '../lib/supabase/safeSelect'
+import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 
 export const photoDocumentationService = {
   // Upload photo with metadata
@@ -53,6 +54,7 @@ export const photoDocumentationService = {
   // Get all photos for a job
   async getJobPhotos(jobId, orgId = null) {
     try {
+      const profileFrag = buildUserProfileSelectFragment()
       let q = supabase
         ?.from('job_photos')
         ?.select(
@@ -69,18 +71,20 @@ export const photoDocumentationService = {
           stage,
           created_at,
           uploaded_by,
-          user_profiles:uploaded_by (
-            id,
-            full_name
-          )
+          user_profiles:uploaded_by${profileFrag}
         `
         )
         ?.eq('job_id', jobId)
         ?.order('created_at', { ascending: false })
       if (orgId) q = q?.eq('org_id', orgId)
       const data = await safeSelect(q, 'photoDocs:getJobPhotos')
-
-      return { success: true, data: data || [] }
+      const mapped = (data || []).map((p) => {
+        if (p?.user_profiles) {
+          p.user_profiles.display_name = resolveUserProfileName(p.user_profiles)
+        }
+        return p
+      })
+      return { success: true, data: mapped }
     } catch (error) {
       return { success: false, error: error?.message, data: [] }
     }
@@ -151,6 +155,7 @@ export const photoDocumentationService = {
   // Get documentation notes for a job
   async getDocumentationNotes(jobId, orgId = null) {
     try {
+      const profileFrag2 = buildUserProfileSelectFragment()
       let q = supabase
         ?.from('communications')
         ?.select(
@@ -162,10 +167,7 @@ export const photoDocumentationService = {
           subject,
           communication_type,
           sent_at,
-          user_profiles:sent_by (
-            id,
-            full_name
-          )
+          user_profiles:sent_by${profileFrag2}
         `
         )
         ?.eq('job_id', jobId)
@@ -173,8 +175,13 @@ export const photoDocumentationService = {
         ?.order('sent_at', { ascending: false })
       if (orgId) q = q?.eq('org_id', orgId)
       const data = await safeSelect(q, 'photoDocs:getDocumentationNotes')
-
-      return { success: true, data: data || [] }
+      const mapped = (data || []).map((n) => {
+        if (n?.user_profiles) {
+          n.user_profiles.display_name = resolveUserProfileName(n.user_profiles)
+        }
+        return n
+      })
+      return { success: true, data: mapped }
     } catch (error) {
       return { success: false, error: error?.message, data: [] }
     }
@@ -251,6 +258,7 @@ export const photoDocumentationService = {
   // Filter photos by stage or category
   async getFilteredJobPhotos(jobId, filters = {}, orgId = null) {
     try {
+      const profileFrag3 = buildUserProfileSelectFragment()
       let query = supabase
         ?.from('job_photos')
         ?.select(
@@ -264,10 +272,7 @@ export const photoDocumentationService = {
           description,
           stage,
           created_at,
-          user_profiles:uploaded_by (
-            id,
-            full_name
-          )
+          user_profiles:uploaded_by${profileFrag3}
         `
         )
         ?.eq('job_id', jobId)
@@ -292,7 +297,13 @@ export const photoDocumentationService = {
       query = query?.order('created_at', { ascending: false })
 
       const data = await safeSelect(query, 'photoDocs:getFilteredJobPhotos')
-      return { success: true, data: data || [] }
+      const mapped = (data || []).map((p) => {
+        if (p?.user_profiles) {
+          p.user_profiles.display_name = resolveUserProfileName(p.user_profiles)
+        }
+        return p
+      })
+      return { success: true, data: mapped }
     } catch (error) {
       return { success: false, error: error?.message, data: [] }
     }

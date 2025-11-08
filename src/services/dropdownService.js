@@ -1,5 +1,10 @@
 // src/services/dropdownService.js
 import { supabase } from '@/lib/supabase'
+import {
+  ensureUserProfileCapsLoaded,
+  getProfileCaps,
+  resolveUserProfileName,
+} from '@/utils/userProfileName'
 
 // Simple in-memory cache with TTL to speed dropdowns
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
@@ -96,11 +101,17 @@ export function peekStaff({ departments = [], roles = [], activeOnly = true } = 
 /**
  * Map any list to { id, value, label } options (keeps extra props if you spread them later).
  */
-function toOptions(list, labelKeyA = 'name', labelKeyB = 'full_name') {
+function toOptions(list) {
   return (list || []).map((r) => ({
     id: r.id,
     value: r.id,
-    label: r[labelKeyA] ?? r[labelKeyB] ?? String(r.id),
+    label:
+      resolveUserProfileName(r) ??
+      r.name ??
+      r.full_name ??
+      r.display_name ??
+      r.email ??
+      String(r.id),
   }))
 }
 
@@ -122,11 +133,26 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
   if (inflight) return inflight
 
   const promise = (async () => {
+    await ensureUserProfileCapsLoaded()
+    const caps = getProfileCaps()
+    const nameCol = caps.name
+      ? 'name'
+      : caps.full_name
+        ? 'full_name'
+        : caps.display_name
+          ? 'display_name'
+          : null
     // 1) exact filter by department/role
     let q = supabase
       .from('user_profiles')
-      .select('id, full_name, email, department, role, is_active, vendor_id', { count: 'exact' })
-      .order('full_name', { ascending: true })
+      .select(
+        ['id', nameCol, 'email', 'department', 'role', 'is_active', 'vendor_id']
+          .filter(Boolean)
+          .join(', '),
+        { count: 'exact' }
+      )
+    if (nameCol) q = q.order(nameCol, { ascending: true })
+    else q = q.order('email', { ascending: true })
 
     if (activeOnly) q = q.eq('is_active', true)
     if (departments.length) q = q.in('department', departments)
@@ -136,12 +162,12 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
     try {
       const { data: exact, count } = await q.throwOnError()
       if ((count ?? 0) > 0) {
-        const opts = toOptions(exact, 'full_name')
+        const opts = toOptions(exact)
         _setCache(key, opts)
         return opts
       }
       // if no exact results and no filters provided, just return whatever we have
-      if (!departments.length && !roles.length) return toOptions(exact || [], 'full_name')
+      if (!departments.length && !roles.length) return toOptions(exact || [])
     } catch (err) {
       // fallthrough to fuzzy attempt but log loudly
       console.error('getStaff exact query failed:', { err, departments, roles })
@@ -151,21 +177,36 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
     const fuzzTerms = [...departments, ...roles].map((s) => s.trim()).filter(Boolean)
     // Important: do not use ilike on enum columns (role). Some environments store role as an enum,
     // which doesn't support ILIKE. Restrict fuzzy matching to text columns only.
-    const ors = fuzzTerms.map((t) => `department.ilike.%${t}%,full_name.ilike.%${t}%`).join(',')
+    const ors = fuzzTerms
+      .map((t) =>
+        [
+          'department.ilike.%' + t + '%',
+          nameCol ? `${nameCol}.ilike.%${t}%` : null,
+          'email.ilike.%' + t + '%',
+        ]
+          .filter(Boolean)
+          .join(',')
+      )
+      .join(',')
 
     try {
       let q2 = supabase
         .from('user_profiles')
-        .select('id, full_name, email, department, role, is_active, vendor_id')
+        .select(
+          ['id', nameCol, 'email', 'department', 'role', 'is_active', 'vendor_id']
+            .filter(Boolean)
+            .join(', ')
+        )
         .eq('is_active', true)
         // Only apply OR when we have filters; otherwise skip fuzzy query
-        .or(ors || 'full_name.ilike.%placeholder%')
-        .order('full_name', { ascending: true })
+        .or(ors || (nameCol ? `${nameCol}.ilike.%placeholder%` : 'email.ilike.%placeholder%'))
+      if (nameCol) q2 = q2.order(nameCol, { ascending: true })
+      else q2 = q2.order('email', { ascending: true })
 
       if (orgId) q2 = q2.or(`org_id.eq.${orgId},org_id.is.null`)
 
       const { data: fuzzy } = await q2.throwOnError()
-      const opts = toOptions(fuzzy || [], 'full_name')
+      const opts = toOptions(fuzzy || [])
       _setCache(key, opts)
       return opts
     } catch (err) {
@@ -288,12 +329,23 @@ export async function globalSearch(term) {
   const q = `%${String(term).trim()}%`
   try {
     const orgId = await getScopedOrgId()
+    await ensureUserProfileCapsLoaded()
+    const caps = getProfileCaps()
+    const nameCol = caps.name
+      ? 'name'
+      : caps.full_name
+        ? 'full_name'
+        : caps.display_name
+          ? 'display_name'
+          : null
     const [uData, vData, pData] = await Promise.all([
       (async () => {
         let uq = supabase
           .from('user_profiles')
-          .select('id, full_name, email, department, role')
-          .or(`full_name.ilike.${q},email.ilike.${q}`)
+          .select(['id', nameCol, 'email', 'department', 'role'].filter(Boolean).join(', '))
+          .or(
+            [nameCol ? `${nameCol}.ilike.${q}` : null, `email.ilike.${q}`].filter(Boolean).join(',')
+          )
           .limit(20)
         if (orgId) uq = uq.or(`org_id.eq.${orgId},org_id.is.null`)
         return uq.throwOnError()
@@ -321,7 +373,7 @@ export async function globalSearch(term) {
     const users = (uData?.data || uData || []).map((u) => ({
       id: u.id,
       value: u.id,
-      label: u.full_name,
+      label: resolveUserProfileName(u) ?? u.email ?? String(u.id),
       email: u.email,
       department: u.department,
       role: u.role,

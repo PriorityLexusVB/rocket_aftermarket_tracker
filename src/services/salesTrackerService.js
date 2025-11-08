@@ -1,5 +1,10 @@
 // vehicles may not have org_id; tenant scoping flows via jobs/transactions policies
 import { supabase } from '@/lib/supabase'
+import {
+  ensureUserProfileCapsLoaded,
+  getProfileCaps,
+  resolveUserProfileName,
+} from '@/utils/userProfileName'
 import logger, { ACTION_TYPES, ENTITY_TYPES } from '../utils/logger'
 
 class SalesTrackerService {
@@ -84,10 +89,25 @@ class SalesTrackerService {
       // Get delivery coordinators
       let deliveryCoordinators = []
       try {
-        let cQuery = supabase?.from('user_profiles')?.select('id, full_name')?.eq('is_active', true)
+        await ensureUserProfileCapsLoaded()
+        const caps = getProfileCaps()
+        const nameCol = caps.name
+          ? 'name'
+          : caps.full_name
+            ? 'full_name'
+            : caps.display_name
+              ? 'display_name'
+              : 'email'
+        let cQuery = supabase
+          ?.from('user_profiles')
+          ?.select(['id', nameCol, 'email'].filter(Boolean).join(', '))
+          ?.eq('is_active', true)
         if (orgId) cQuery = cQuery?.eq('org_id', orgId)
         const { data: coordinatorData } = await cQuery.throwOnError()
-        deliveryCoordinators = coordinatorData || []
+        deliveryCoordinators = (coordinatorData || []).map((u) => ({
+          ...u,
+          display_name: resolveUserProfileName(u) ?? u[nameCol] ?? u.email ?? String(u.id),
+        }))
       } catch (coordError) {
         console.warn('Could not fetch delivery coordinators:', coordError)
       }
@@ -112,7 +132,7 @@ class SalesTrackerService {
             email: transaction?.customer_email || vehicle?.owner_email || 'customer@example.com',
             phone: transaction?.customer_phone || vehicle?.owner_phone || '555-0123',
           },
-          deliveryCoordinator: coordinator?.full_name || 'Sarah Johnson',
+          deliveryCoordinator: coordinator?.display_name || 'Sarah Johnson',
           status: transaction?.transaction_status || 'pending',
           services: {
             Interior: Math.random() > 0.5,
@@ -549,20 +569,22 @@ class SalesTrackerService {
   // Enhanced getStaffMembers with logging
   async getStaffMembers(orgId = null) {
     try {
+      await ensureUserProfileCapsLoaded()
+      const caps = getProfileCaps()
+      const nameCol = caps.name
+        ? 'name'
+        : caps.full_name
+          ? 'full_name'
+          : caps.display_name
+            ? 'display_name'
+            : 'email'
       let sQuery = supabase
         ?.from('user_profiles')
         ?.select(
-          `
-          id,
-          full_name,
-          email,
-          role,
-          department,
-          created_at
-        `
+          ['id', nameCol, 'email', 'role', 'department', 'created_at'].filter(Boolean).join(', ')
         )
         ?.eq('is_active', true)
-        ?.order('full_name', { ascending: true })
+        ?.order(nameCol, { ascending: true })
       if (orgId) sQuery = sQuery?.eq('org_id', orgId)
       const { data: staffMembers, error } = await sQuery
 
@@ -578,7 +600,7 @@ class SalesTrackerService {
 
       const transformedStaff = (staffMembers || [])?.map((member) => ({
         id: member?.id,
-        name: member?.full_name,
+        name: resolveUserProfileName(member) ?? member?.email ?? String(member?.id),
         email: member?.email,
         role: member?.role || 'Staff',
         department: member?.department || 'General',
