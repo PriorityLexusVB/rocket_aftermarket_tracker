@@ -4,6 +4,7 @@ import {
   ensureUserProfileCapsLoaded,
   getProfileCaps,
   resolveUserProfileName,
+  downgradeCapForErrorMessage,
 } from '@/utils/userProfileName'
 
 // Simple in-memory cache with TTL to speed dropdowns
@@ -14,7 +15,7 @@ const _pending = new Map()
 
 function _cacheKey(base, extras = {}) {
   const suffix = Object.entries(extras)
-    .filter(([_, v]) => v !== undefined && v !== null)
+    .filter(([, v]) => v !== undefined && v !== null)
     .map(([k, v]) => `${k}:${v}`)
     .join('|')
   return suffix ? `${base}?${suffix}` : base
@@ -56,12 +57,23 @@ async function getScopedOrgId() {
     try {
       const { data: auth } = await supabase?.auth?.getUser?.()
       const userId = auth?.user?.id
-      if (!userId) return null
-      const { data: prof } = await supabase
-        .from('user_profiles')
-        .select('org_id')
-        .eq('id', userId)
-        .single()
+      const email = auth?.user?.email
+      if (!userId && !email) return null
+      // Primary: match by id
+      let { data: prof } = userId
+        ? await supabase.from('user_profiles').select('org_id').eq('id', userId).single()
+        : { data: null, error: null }
+      // Fallback: match by email if id lookup failed or returned null
+      if ((!prof || !prof.org_id) && email) {
+        const { data: profByEmail } = await supabase
+          .from('user_profiles')
+          .select('org_id')
+          .eq('email', email)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle?.()
+        prof = profByEmail || prof
+      }
       _orgIdCache = prof?.org_id || null
       return _orgIdCache
     } catch (e) {
