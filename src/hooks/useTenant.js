@@ -28,10 +28,12 @@ function useTenant() {
 
   useEffect(() => {
     let didCancel = false
+    let retryAttempt = 0
+    const MAX_RETRIES = 1
 
     const load = async () => {
       // If there's no authenticated user, ensure we surface null and not-loading
-      if (!user?.id) {
+      if (!user?.id && !user?.email) {
         if (aliveRef.current) {
           setOrgId(null)
           setLoading(false)
@@ -44,8 +46,13 @@ function useTenant() {
       const CANDIDATES = ['org_id', 'organization_id', 'tenant_id']
       let resolvedOrg = null
       let nonFatal = false
+      let shouldRetry = false
+
+      // Try lookup by user.id first
       for (const col of CANDIDATES) {
         try {
+          if (!user?.id) break // Skip id-based lookup if no id
+
           const { data, error } = await supabase
             .from('user_profiles')
             .select(col)
@@ -65,12 +72,69 @@ function useTenant() {
               nonFatal = true
               break
             }
+            // Network error: consider retry
+            if (msg.includes('failed to fetch') || msg.includes('network')) {
+              shouldRetry = retryAttempt < MAX_RETRIES
+              if (shouldRetry) break
+            }
             // Other errors: log and continue fallback
             console.warn('useTenant: profile select warning:', error?.message || error)
           }
         } catch (e) {
+          const msg = String(e?.message || '').toLowerCase()
+          // Network/fetch errors: consider retry
+          if (msg.includes('failed to fetch') || msg.includes('network')) {
+            shouldRetry = retryAttempt < MAX_RETRIES
+            if (shouldRetry) break
+          }
           console.warn('useTenant: profile select attempt failed:', e?.message || e)
         }
+      }
+
+      // If id-based lookup didn't find org_id and we have email, try email fallback
+      if (resolvedOrg === null && !nonFatal && user?.email && !shouldRetry) {
+        for (const col of CANDIDATES) {
+          try {
+            const { data, error } = await supabase
+              .from('user_profiles')
+              .select(col)
+              .eq('email', user.email)
+              .order('updated_at', { ascending: false })
+              .limit(1)
+              .maybeSingle?.()
+
+            if (!error && data && Object.prototype.hasOwnProperty.call(data, col)) {
+              resolvedOrg = data[col] ?? null
+              if (resolvedOrg) {
+                console.log('[useTenant] Found org_id via email fallback')
+              }
+              break
+            }
+            if (error) {
+              const msg = String(error?.message || '').toLowerCase()
+              // If this column doesn't exist, try the next candidate
+              if (msg.includes('does not exist') || msg.includes('column')) continue
+              // Permission/RLS: treat as non-fatal (orgId=null); stop trying
+              if (msg.includes('permission') || msg.includes('rls')) {
+                nonFatal = true
+                break
+              }
+            }
+          } catch (e) {
+            console.warn('useTenant: email fallback attempt failed:', e?.message || e)
+          }
+        }
+      }
+
+      // Handle retry for transient network errors
+      if (shouldRetry && retryAttempt < MAX_RETRIES) {
+        retryAttempt++
+        console.log(`[useTenant] Retrying due to network error (attempt ${retryAttempt})`)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        if (!didCancel) {
+          load()
+        }
+        return
       }
 
       if (aliveRef.current && !didCancel) {
@@ -91,7 +155,7 @@ function useTenant() {
     return () => {
       didCancel = true
     }
-  }, [user?.id])
+  }, [user?.id, user?.email])
 
   return { orgId, loading, session: derivedSession }
 }

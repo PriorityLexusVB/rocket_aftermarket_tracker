@@ -41,12 +41,15 @@ if (isTest) {
   const supabaseAnonKey =
     import.meta?.env?.VITE_SUPABASE_ANON_KEY || process?.env?.VITE_SUPABASE_ANON_KEY
 
-  console.log('Supabase Environment Check:', {
-    url: supabaseUrl ? 'Present' : 'Missing',
-    anonKey: supabaseAnonKey ? 'Present' : 'Missing',
-    urlValid: supabaseUrl?.includes('supabase.co') || supabaseUrl?.includes('localhost'),
-    keyValid: supabaseAnonKey?.length > 50,
-  })
+  // Only log environment check in development mode
+  if (import.meta.env.DEV) {
+    console.log('Supabase Environment Check:', {
+      url: supabaseUrl ? 'Present' : 'Missing',
+      anonKey: supabaseAnonKey ? 'Present' : 'Missing',
+      urlValid: supabaseUrl?.includes('supabase.co') || supabaseUrl?.includes('localhost'),
+      keyValid: supabaseAnonKey?.length > 50,
+    })
+  }
   // Validate environment variables & build optional dev stub when missing
   const isProd = import.meta.env.PROD
   if (!supabaseUrl || !supabaseAnonKey) {
