@@ -135,7 +135,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
   const promise = (async () => {
     await ensureUserProfileCapsLoaded()
     const caps = getProfileCaps()
-    const nameCol = caps.name
+    let nameCol = caps.name
       ? 'name'
       : caps.full_name
         ? 'full_name'
@@ -171,6 +171,22 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
     } catch (err) {
       // fallthrough to fuzzy attempt but log loudly
       console.error('getStaff exact query failed:', { err, departments, roles })
+      // Downgrade capability flags if the error references missing columns so subsequent queries adapt
+      try {
+        downgradeCapForErrorMessage(err?.message || '')
+      } catch {}
+      // Recompute nameCol after potential capability downgrade
+      const caps2 = getProfileCaps()
+      const nameCol2 = caps2.name
+        ? 'name'
+        : caps2.full_name
+          ? 'full_name'
+          : caps2.display_name
+            ? 'display_name'
+            : null
+      if (nameCol2 && nameCol2 !== nameCol) {
+        nameCol = nameCol2
+      }
     }
 
     // 2) fuzzy fallback if exact returns zero

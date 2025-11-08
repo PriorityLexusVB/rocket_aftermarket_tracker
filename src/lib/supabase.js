@@ -36,8 +36,10 @@ if (isTest) {
 } else {
   // Production mode - original implementation
   // Environment variables with enhanced validation
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+  // Support both Vite import.meta.env and injected process.env (e.g., Playwright webServer env)
+  const supabaseUrl = import.meta?.env?.VITE_SUPABASE_URL || process?.env?.VITE_SUPABASE_URL
+  const supabaseAnonKey =
+    import.meta?.env?.VITE_SUPABASE_ANON_KEY || process?.env?.VITE_SUPABASE_ANON_KEY
 
   console.log('Supabase Environment Check:', {
     url: supabaseUrl ? 'Present' : 'Missing',
