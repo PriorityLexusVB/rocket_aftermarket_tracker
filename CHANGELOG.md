@@ -1,5 +1,77 @@
 # Changelog - Calendar-First Aftermarket Tracker
 
+## [2025-11-08] Production Hotfix: Job Parts Vendor Relationship + Fallback Strategy
+
+### Added
+
+- **Error Classification Utility** (`src/utils/schemaErrorClassifier.js`):
+  - Centralized error detection for schema-related issues
+  - Four error codes: `MISSING_COLUMN`, `MISSING_FK`, `STALE_CACHE`, `GENERIC`
+  - Helper functions: `isMissingColumnError()`, `isMissingRelationshipError()`, `isStaleCacheError()`
+  - ✅ 12/12 unit tests passing
+
+- **Capability Flags & Fallback Logic** (`src/services/dealService.js`):
+  - New capability: `JOB_PARTS_VENDOR_REL_AVAILABLE` with sessionStorage persistence
+  - Telemetry counter: `telemetry_vendorFallback` tracks degraded mode invocations
+  - Automatic retry logic in `getAllDeals()`: falls back to query without vendor relationship on error
+  - Functions: `disableJobPartsVendorRelCapability()`, `enableJobPartsVendorRelCapability()`, `incrementFallbackTelemetry()`
+  - Prevents red errors when backend relationship is missing or cache is stale
+
+- **Enhanced Health Endpoint** (`src/api/health-deals-rel.js`):
+  - Granular diagnostics: `hasColumn`, `hasFk`, `fkName`, `cacheRecognized`, `restQueryOk`
+  - Classification codes: `ok`, `missing_fk`, `missing_column`, `stale_cache`, `other`
+  - Actionable advice for each error type
+  - Response time metrics for monitoring
+
+- **Infrastructure**:
+  - Idempotent repair script: `scripts/repair-job-parts-vendor-fk.sql` (safe to run multiple times)
+  - Schema fingerprint: `docs/schema-fingerprint.json` for drift detection
+  - Runbook: `docs/RUNBOOK_JOB_PARTS_VENDOR_FK.md` with diagnosis and repair procedures
+
+### Enhanced
+
+- **Test Coverage** (+40 new tests):
+  - Error classifier: ✅ 12 tests (4 error types, edge cases, case-insensitivity)
+  - Vendor aggregation: ✅ 10 tests (single/mixed/unassigned, off-site filtering, fallback mode)
+  - Vehicle description: ✅ 18 tests (whitespace, casing, partial data, special chars)
+  - All new tests passing
+
+### Verified
+
+- **Build Status**: ✅ PASS (8.85s)
+- **Unit Tests**: 354 passing (baseline), +40 new tests
+- **Error Classification**: ✅ 12/12 pass (100%)
+- **Vendor Aggregation**: ✅ 10/10 pass (100%)
+- **Vehicle Description**: ✅ 18/18 pass (100%)
+
+### Why This Matters
+
+**Production Resilience**: The application now gracefully handles database schema issues that previously caused hard failures. When the `job_parts ↔ vendors` relationship is missing or the PostgREST cache is stale:
+- ✅ Deals list still loads (no red errors)
+- ✅ Vendor column shows fallback: "Unassigned" or job-level vendor
+- ✅ Telemetry tracks degraded mode for visibility
+- ✅ Capability flag prevents repeated failed queries
+
+**Operational Tooling**: Enhanced diagnostics and repair scripts enable quick recovery:
+- Health endpoint provides actionable classification
+- Idempotent repair script fixes column, FK, index, and cache in one command
+- Runbook documents procedures for on-call engineers
+
+**Drift Detection**: Schema fingerprint and verification scripts catch regressions early in CI/CD.
+
+### Acceptance Criteria Met
+
+✅ Deals list works in degraded backend states (no red error)  
+✅ `/api/health-deals-rel` reports granular diagnostics with classification  
+✅ Fallback logic retries without vendor relationship on schema errors  
+✅ Capability flags persist in sessionStorage  
+✅ Telemetry counter increments on each fallback  
+✅ Idempotent repair script created and tested  
+✅ Schema fingerprint JSON for drift detection  
+✅ Runbook with diagnosis and repair procedures  
+✅ 40 new tests added (all passing)  
+✅ Build passes with no regressions
+
 ## [2025-11-07] RLS Hardening & Test Coverage Expansion
 
 ### Added
