@@ -199,6 +199,11 @@ Optional secrets:
 - `DATABASE_URL` — Postgres connection string for the seed runner (`pnpm run db:seed-e2e`)
 - `E2E_EMAIL`, `E2E_PASSWORD` — only used if you prefer env-based login instead of the bundled `e2e/storageState.json`
 
+## Additional Docs
+
+- Profile name fallback capabilities and display name resolution: see `docs/PROFILE_NAME_FALLBACK.md`.
+- E2E degraded profile capability coverage: `e2e/profile-name-fallback.spec.ts` seeds capability flags to validate UI resilience without relying on live column presence.
+
 Notes:
 
 - Playwright uses `webServer` to start the app via `npm run start` on port 5173.

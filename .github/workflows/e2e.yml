@@ -63,6 +63,7 @@ jobs:
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: |
           pnpm exec playwright test \
+            e2e/profile-name-fallback.spec.ts \
             e2e/deal-form-dropdowns.spec.ts \
             e2e/deal-edit.spec.ts
 

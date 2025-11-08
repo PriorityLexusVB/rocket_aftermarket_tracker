@@ -1,17 +1,17 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
 
 // Detect vitest
-const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITEST;
+const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITEST
 
-let supabaseClient;
-let isSupabaseConfiguredFn;
-let testSupabaseConnectionFn;
-let isNetworkOnlineFn;
-let recoverSessionFn;
+let supabaseClient
+let isSupabaseConfiguredFn
+let testSupabaseConnectionFn
+let isNetworkOnlineFn
+let recoverSessionFn
 
 if (isTest) {
   // Minimal in-memory stub with method chaining for tests
-  const ok = (data = []) => ({ data, error: null });
+  const ok = (data = []) => ({ data, error: null })
 
   const chain = (rows = []) => ({
     select: () => ok(rows),
@@ -21,50 +21,95 @@ if (isTest) {
     eq: () => chain(rows),
     order: () => ok(rows),
     single: () => ok(rows[0] ?? null),
-  });
+  })
 
   supabaseClient = {
     from: () => chain([]),
     auth: { getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }) },
-  };
+  }
 
   // Export additional helpers for compatibility
-  isSupabaseConfiguredFn = () => true;
-  testSupabaseConnectionFn = async () => true;
-  isNetworkOnlineFn = () => true;
-  recoverSessionFn = () => null;
+  isSupabaseConfiguredFn = () => true
+  testSupabaseConnectionFn = async () => true
+  isNetworkOnlineFn = () => true
+  recoverSessionFn = () => null
 } else {
   // Production mode - original implementation
   // Environment variables with enhanced validation
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
   console.log('Supabase Environment Check:', {
     url: supabaseUrl ? 'Present' : 'Missing',
     anonKey: supabaseAnonKey ? 'Present' : 'Missing',
     urlValid: supabaseUrl?.includes('supabase.co') || supabaseUrl?.includes('localhost'),
-    keyValid: supabaseAnonKey?.length > 50
-  });
+    keyValid: supabaseAnonKey?.length > 50,
+  })
 
   // Validate environment variables
-  if (!supabaseUrl) {
-    console.error('❌ VITE_SUPABASE_URL is not defined. Please check your .env file.');
-    throw new Error('Missing VITE_SUPABASE_URL environment variable');
-  }
-
-  if (!supabaseAnonKey) {
-    console.error('❌ VITE_SUPABASE_ANON_KEY is not defined. Please check your .env file.');
-    throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+  const isProd = import.meta.env.PROD
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error(
+      '❌ Supabase env vars missing. Required: VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY'
+    )
+    } else {
+      // In development, degrade gracefully so the rest of the app (and hot reload) can still function.
+      console.warn('[supabase] Dev fallback activated – using in‑memory stub client. Update .env.local to enable real API.');
+      const ok = (data = []) => ({ data, error: null });
+      const chain = (rows = []) => ({
+        select: () => chain(rows),
+        insert: (payload) => ok(Array.isArray(payload) ? payload : [payload]),
+        update: () => chain(rows),
+        delete: () => chain(rows),
+        eq: () => chain(rows),
+        order: () => chain(rows),
+        limit: () => chain(rows),
+        single: () => ok(rows[0] ?? null)
+      });
+      supabaseClient = {
+        from: () => chain([]),
+        rpc: async () => ({ data: null, error: { message: 'Supabase not configured (dev stub)' } }),
+        channel: () => ({
+          on() { return this; },
+          subscribe: async () => ({ data: { subscription: { state: 'SUBSCRIBED' } } }),
+          unsubscribe() {}
+        }),
+        auth: {
+          getUser: async () => ({ data: { user: null }, error: { message: 'Supabase not configured (dev stub)' } }),
+          getSession: async () => ({ data: { session: null }, error: { message: 'Supabase not configured (dev stub)' } }),
+          onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+          signInWithPassword: async () => ({ data: null, error: { message: 'Supabase not configured (dev stub)' } }),
+          signOut: async () => ({ error: null })
+        }
+      };
+        auth: {
+          getUser: async () => ({
+            data: { user: null },
+            error: { message: 'Supabase not configured (dev stub)' },
+          }),
+          signInWithPassword: async () => ({
+            data: null,
+            error: { message: 'Supabase not configured (dev stub)' },
+          }),
+        },
+      }
+      // Export helpers for stub mode
+      isSupabaseConfiguredFn = () => false
+      testSupabaseConnectionFn = async () => false
+      isNetworkOnlineFn = () => navigator?.onLine ?? true
+      recoverSessionFn = () => null
+    }
   }
 
   // Ensure single instance to prevent multiple GoTrueClient warnings
-  let supabaseInstance = null;
+  let supabaseInstance = null
 
   const createSupabaseClient = () => {
     if (!supabaseInstance) {
       try {
         // Only surface a storage object when running in the browser to avoid SSR issues
-        const browserStorage = (typeof window !== 'undefined' && window?.localStorage) ? window.localStorage : undefined;
+        const browserStorage =
+          typeof window !== 'undefined' && window?.localStorage ? window.localStorage : undefined
 
         supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
           auth: {
@@ -76,126 +121,154 @@ if (isTest) {
             storage: browserStorage,
             storageKey: 'priority-automotive-auth',
             // Prefer the PKCE flow for modern browser-based auth
-            flowType: 'pkce'
+            flowType: 'pkce',
           },
           db: {
-            schema: 'public'
+            schema: 'public',
           },
           realtime: {
             params: {
-              eventsPerSecond: 10
-            }
-          }
+              eventsPerSecond: 10,
+            },
+          },
           // Intentionally do NOT set global.headers here — let the SDK manage required headers.
-        });
+        })
 
-        console.log('✅ Supabase client created successfully');
+        console.log('✅ Supabase client created successfully')
       } catch (error) {
-        console.error('❌ Failed to create Supabase client:', error);
-        throw error;
+        console.error('❌ Failed to create Supabase client:', error)
+        throw error
       }
     }
-    return supabaseInstance;
-  };
+    return supabaseInstance
+  }
 
-  supabaseClient = createSupabaseClient();
+  // Only create the real client if we passed validation
+  if (!supabaseClient) {
+    supabaseClient = createSupabaseClient()
+  }
 
   // Helper function to check if Supabase is properly configured
   isSupabaseConfiguredFn = () => {
-    return Boolean(supabaseUrl && supabaseAnonKey && supabaseClient);
-  };
+    return Boolean(supabaseUrl && supabaseAnonKey && supabaseClient)
+  }
 
   // Enhanced connection test with proper authentication check
   testSupabaseConnectionFn = async (retries = 2) => {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!supabaseClient) {
-          throw new Error('Supabase client is not configured');
+          throw new Error('Supabase client is not configured')
         }
 
         // Prefer an RPC that validates auth/role-specific reachability when available.
         // If the RPC doesn't exist or fails, fall back to a safe select that tolerates RLS/permission responses.
         try {
-          const { data: rpcData, error: rpcError } = await supabaseClient.rpc('check_auth_connection');
+          const { data: rpcData, error: rpcError } =
+            await supabaseClient.rpc('check_auth_connection')
           if (!rpcError) {
-            console.log(`✅ Supabase RPC check_auth_connection success (attempt ${attempt})`);
-            return true;
+            console.log(`✅ Supabase RPC check_auth_connection success (attempt ${attempt})`)
+            return true
           }
 
           // If rpc returns permission/RLS-related error, treat the endpoint as reachable
-          if (rpcError && (rpcError.code === 'PGRST116' || rpcError.message?.toLowerCase().includes('permission') || rpcError.message?.toLowerCase().includes('rls'))) {
-            console.log('⚠️ Supabase RPC returned RLS/permission info but endpoint is reachable:', rpcError.message);
-            return true;
+          if (
+            rpcError &&
+            (rpcError.code === 'PGRST116' ||
+              rpcError.message?.toLowerCase().includes('permission') ||
+              rpcError.message?.toLowerCase().includes('rls'))
+          ) {
+            console.log(
+              '⚠️ Supabase RPC returned RLS/permission info but endpoint is reachable:',
+              rpcError.message
+            )
+            return true
           }
 
           // Otherwise fall through to the fallback select below
-          console.warn('⚠️ Supabase RPC returned an unexpected error, falling back to safe select:', rpcError?.message);
+          console.warn(
+            '⚠️ Supabase RPC returned an unexpected error, falling back to safe select:',
+            rpcError?.message
+          )
         } catch (rpcException) {
           // If the RPC call throws unexpectedly, ignore and try the fallback select
-          console.warn('⚠️ Supabase RPC check failed (will try fallback select):', rpcException?.message);
+          console.warn(
+            '⚠️ Supabase RPC check failed (will try fallback select):',
+            rpcException?.message
+          )
         }
 
         // Fallback: safe, small select that works under RLS. Treat permission/RLS errors as "reachable".
-        const { data, error } = await supabaseClient.from('user_profiles').select('id').limit(1);
+        const { data, error } = await supabaseClient.from('user_profiles').select('id').limit(1)
 
         if (error) {
-          const msg = String(error?.message ?? '').toLowerCase();
+          const msg = String(error?.message ?? '').toLowerCase()
           // Accept a handful of errors as signs that the DB is reachable but protected by RLS/permissions.
-          if (['pgrst116', '42501'].includes(String(error?.code).toLowerCase()) || msg.includes('permission') || msg.includes('rls') || msg.includes('not found')) {
-            console.log('⚠️ Supabase select returned RLS/permission info but DB is reachable:', error.message);
-            return true;
+          if (
+            ['pgrst116', '42501'].includes(String(error?.code).toLowerCase()) ||
+            msg.includes('permission') ||
+            msg.includes('rls') ||
+            msg.includes('not found')
+          ) {
+            console.log(
+              '⚠️ Supabase select returned RLS/permission info but DB is reachable:',
+              error.message
+            )
+            return true
           }
-          throw error;
+          throw error
         }
 
-        console.log(`✅ Supabase connection test successful (attempt ${attempt})`);
-        return true;
+        console.log(`✅ Supabase connection test successful (attempt ${attempt})`)
+        return true
       } catch (error) {
-        console.warn(`⚠️ Supabase connection test failed (attempt ${attempt}/${retries}):`, error?.message);
+        console.warn(
+          `⚠️ Supabase connection test failed (attempt ${attempt}/${retries}):`,
+          error?.message
+        )
 
         if (attempt === retries) {
           console.error('❌ Supabase connection test failed after all attempts:', {
             message: error?.message,
             details: error?.details,
             hint: error?.hint,
-            code: error?.code
-          });
-          return false;
+            code: error?.code,
+          })
+          return false
         }
 
         // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
       }
     }
 
-    return false;
-  };
+    return false
+  }
 
   // Network status monitoring
-  let isOnline = navigator?.onLine ?? true;
+  let isOnline = navigator?.onLine ?? true
 
   window?.addEventListener?.('online', () => {
-    isOnline = true;
-    console.log('🌐 Network connection restored');
-  });
+    isOnline = true
+    console.log('🌐 Network connection restored')
+  })
 
   window?.addEventListener?.('offline', () => {
-    isOnline = false;
-    console.warn('📡 Network connection lost');
-  });
+    isOnline = false
+    console.warn('📡 Network connection lost')
+  })
 
-  isNetworkOnlineFn = () => isOnline;
+  isNetworkOnlineFn = () => isOnline
 
   recoverSessionFn = (...args) => {
-    // eslint-disable-next-line no-console
-    console.warn('Placeholder: recoverSession is not implemented yet.', args);
-    return null;
-  };
+    console.warn('Placeholder: recoverSession is not implemented yet.', args)
+    return null
+  }
 }
 
-export const supabase = supabaseClient;
-export const isSupabaseConfigured = isSupabaseConfiguredFn;
-export const testSupabaseConnection = testSupabaseConnectionFn;
-export const isNetworkOnline = isNetworkOnlineFn;
-export const recoverSession = recoverSessionFn;
-export default supabaseClient;
+export const supabase = supabaseClient
+export const isSupabaseConfigured = isSupabaseConfiguredFn
+export const testSupabaseConnection = testSupabaseConnectionFn
+export const isNetworkOnline = isNetworkOnlineFn
+export const recoverSession = recoverSessionFn
+export default supabaseClient
