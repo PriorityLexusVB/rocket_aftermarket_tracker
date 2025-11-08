@@ -430,7 +430,7 @@ From baseline verification:
   - Persistence & RLS: 27 tests (dealService.persistence.test.js)
   - E2E deals refresh: 2 tests (deals-list-refresh.spec.ts)
   - Schema verification: 54 tests (migrations + smsTemplates)
-- **Pass Rate**: 266/266 unit tests pass (pending full run)
+- **Pass Rate**: 304/318 tests passed (95.6% pass rate)
 - **Documentation**: 16 files total (14 new + 2 updated)
 - **Security**: All audits passed, RLS audit output captured with grep results
 
