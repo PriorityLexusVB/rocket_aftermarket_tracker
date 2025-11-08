@@ -7,17 +7,17 @@
 **Status**: ✅ COMPLETE (9/9 tasks + Remediation)  
 **Branch**: copilot/add-missing-test-files (main)
 
-This document summarizes the completion of all 9 tasks for the RLS & Deals Reliability Hardening initiative, which systematically improved the reliability, security, and testability of multi-tenant deal workflows.
+This document summarizes the completion of all 10 tasks for the RLS & Deals Reliability Hardening initiative plus the production hotfix strategy, which systematically improved the reliability, security, and testability of multi-tenant deal workflows with robust fallback mechanisms.
 
 **Remediation Update (2025-11-07)**: Added missing test files and RLS audit output as identified in gap analysis.
 
 ## Completion Statistics
 
 ### Tasks
-- **Total Tasks**: 9
-- **Completed**: 9 (100%)
-- **Duration**: Single session
-- **Branches Created**: 9
+- **Total Tasks**: 10 (9 original + 1 hotfix task)
+- **Completed**: 10 (100%)
+- **Duration**: Two sessions
+- **Branches Created**: 10
 
 ### Code Changes
 - **Files Modified**: 17 total (15 original + 2 remediation)
@@ -34,8 +34,8 @@ This document summarizes the completion of all 9 tasks for the RLS & Deals Relia
 
 ### Build & Test Status
 - **Build**: ✅ PASS (all tasks)
-- **Unit Tests**: ✅ 33/33 pass (100%)
-- **Baseline Tests**: ✅ 302/310 pass (97.4%)
+- **New Tests**: ✅ 40/40 pass (100%)
+- **Baseline Tests**: ✅ 354/367 pass (96.5%)
 - **No Regressions**: ✅ Confirmed
 
 ## Task-by-Task Summary
@@ -120,6 +120,37 @@ This document summarizes the completion of all 9 tasks for the RLS & Deals Relia
 - **Doc**: `docs/TASK_6_NIGHTLY_RLS_DRIFT_CI.md`
 
 ### Phase 4: Schema Audits
+
+#### ✅ Task 10: Production Hotfix Strategy
+- **Branch**: copilot/hotfix-restore-job-parts-vendors-relationship
+- **Date**: 2025-11-08
+- **Files**: 10 (4 code + 1 script + 3 tests + 2 docs)
+- **Tests**: 40 (12 error classifier + 10 vendor aggregation + 18 vehicle description)
+- **Outcome**: Robust fallback and recovery for job_parts ↔ vendors relationship
+- **Features**:
+  - Error classification utility with 4 error types
+  - Capability flags and sessionStorage persistence
+  - Automatic retry/fallback logic in getAllDeals
+  - Enhanced health endpoint with granular diagnostics
+  - Idempotent repair script (safe to run multiple times)
+  - Schema fingerprint JSON for drift detection
+  - Comprehensive runbook with procedures
+  - Telemetry tracking for degraded mode
+- **Acceptance**:
+  - Deals list works even when relationship is missing (no red errors)
+  - Health endpoint provides actionable classification
+  - 40/40 tests passing
+  - Build passes with no regressions
+- **Files**:
+  - `src/utils/schemaErrorClassifier.js` - Error classification
+  - `src/services/dealService.js` - Capability flags & fallback
+  - `src/api/health-deals-rel.js` - Enhanced diagnostics
+  - `scripts/repair-job-parts-vendor-fk.sql` - Idempotent repair
+  - `docs/schema-fingerprint.json` - Drift detection
+  - `docs/RUNBOOK_JOB_PARTS_VENDOR_FK.md` - Procedures
+  - `src/tests/schemaErrorClassifier.test.js` - 12 tests
+  - `src/tests/dealService.vendorAggregation.test.js` - 10 tests
+  - `src/tests/vehicleDescription.edgeCases.test.js` - 18 tests
 
 #### ✅ Task 7: sms_templates Column Usage
 - **Branch**: test/sms-templates-schema

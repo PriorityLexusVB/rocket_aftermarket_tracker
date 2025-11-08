@@ -1,0 +1,136 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-11-08",
+  "description": "Expected database schema fingerprint for drift detection",
+  "critical_objects": {
+    "tables": {
+      "job_parts": {
+        "columns": [
+          "id",
+          "job_id",
+          "product_id",
+          "vendor_id",
+          "quantity_used",
+          "unit_price",
+          "total_price",
+          "promised_date",
+          "requires_scheduling",
+          "no_schedule_reason",
+          "is_off_site",
+          "scheduled_start_time",
+          "scheduled_end_time",
+          "created_at",
+          "updated_at"
+        ],
+        "required_columns": [
+          "id",
+          "job_id",
+          "product_id",
+          "vendor_id"
+        ]
+      },
+      "vendors": {
+        "columns": [
+          "id",
+          "name",
+          "org_id",
+          "created_at",
+          "updated_at"
+        ],
+        "required_columns": [
+          "id",
+          "name"
+        ]
+      },
+      "jobs": {
+        "columns": [
+          "id",
+          "job_number",
+          "title",
+          "description",
+          "vehicle_id",
+          "vendor_id",
+          "job_status",
+          "priority",
+          "location",
+          "scheduled_start_time",
+          "scheduled_end_time",
+          "estimated_hours",
+          "estimated_cost",
+          "actual_cost",
+          "customer_needs_loaner",
+          "service_type",
+          "delivery_coordinator_id",
+          "finance_manager_id",
+          "assigned_to",
+          "org_id",
+          "created_at",
+          "updated_at"
+        ],
+        "required_columns": [
+          "id",
+          "job_number",
+          "title"
+        ]
+      }
+    },
+    "foreign_keys": {
+      "job_parts_vendor_id_fkey": {
+        "table": "job_parts",
+        "column": "vendor_id",
+        "references_table": "vendors",
+        "references_column": "id",
+        "on_update": "CASCADE",
+        "on_delete": "SET NULL"
+      },
+      "job_parts_job_id_fkey": {
+        "table": "job_parts",
+        "column": "job_id",
+        "references_table": "jobs",
+        "references_column": "id",
+        "on_update": "CASCADE",
+        "on_delete": "CASCADE"
+      },
+      "job_parts_product_id_fkey": {
+        "table": "job_parts",
+        "column": "product_id",
+        "references_table": "products",
+        "references_column": "id",
+        "on_update": "CASCADE",
+        "on_delete": "RESTRICT"
+      }
+    },
+    "indexes": {
+      "idx_job_parts_vendor_id": {
+        "table": "job_parts",
+        "columns": ["vendor_id"],
+        "unique": false
+      },
+      "idx_job_parts_job_id": {
+        "table": "job_parts",
+        "columns": ["job_id"],
+        "unique": false
+      },
+      "idx_job_parts_product_id": {
+        "table": "job_parts",
+        "columns": ["product_id"],
+        "unique": false
+      }
+    }
+  },
+  "rest_api_tests": {
+    "job_parts_vendor_relationship": {
+      "endpoint": "/rest/v1/job_parts",
+      "query": "select=id,vendor_id,vendor:vendors(id,name)&limit=1",
+      "expected_status": 200,
+      "expected_structure": "array",
+      "must_not_contain": "Could not find a relationship"
+    }
+  },
+  "notes": [
+    "This fingerprint captures the critical schema objects for the job_parts ↔ vendors relationship",
+    "CI/CD drift detection should validate: columns, foreign keys, indexes",
+    "REST API tests ensure PostgREST schema cache is synchronized",
+    "Update this file when intentional schema changes are made"
+  ]
+}
