@@ -162,80 +162,105 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
   const promise = (async () => {
     await ensureUserProfileCapsLoaded()
-    const caps = getProfileCaps()
-    let nameCol = caps.name
-      ? 'name'
-      : caps.full_name
-        ? 'full_name'
-        : caps.display_name
-          ? 'display_name'
-          : null
-    // 1) exact filter by department/role
-    let q = supabase
-      .from('user_profiles')
-      .select(
-        [
-          'id',
-          nameCol,
-          'email',
-          'department',
-          'role',
-          'is_active',
-          USER_PROFILES_VENDOR_ID_AVAILABLE ? 'vendor_id' : null,
-        ]
-          .filter(Boolean)
-          .join(', '),
-        { count: 'exact' }
-      )
-    if (nameCol) q = q.order(nameCol, { ascending: true })
-    else q = q.order('email', { ascending: true })
+    let attempt = 0
+    const MAX_ATTEMPTS = 3
 
-    if (activeOnly) q = q.eq('is_active', true)
-    if (departments.length) q = q.in('department', departments)
-    if (roles.length) q = q.in('role', roles)
-    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
-
-    try {
-      const { data: exact, count } = await q.throwOnError()
-      if ((count ?? 0) > 0) {
-        const opts = toOptions(exact)
-        _setCache(key, opts)
-        return opts
-      }
-      // if no exact results and no filters provided, just return whatever we have
-      if (!departments.length && !roles.length) return toOptions(exact || [])
-    } catch (err) {
-      // fallthrough to fuzzy attempt but log loudly
-      console.error('getStaff exact query failed:', { err, departments, roles })
-      // Downgrade capability flags if the error references missing columns so subsequent queries adapt
-      try {
-        downgradeCapForErrorMessage(err?.message || '')
-      } catch {}
-      // Detect vendor_id missing column (400 with PostgREST schema cache message)
-      const msg = String(err?.message || '').toLowerCase()
-      if (msg.includes('vendor_id') && msg.includes('user_profiles')) {
-        if (USER_PROFILES_VENDOR_ID_AVAILABLE) {
-          console.warn(
-            '[dropdownService:getStaff] vendor_id column missing on user_profiles; degrading capability'
-          )
-          disableUserProfilesVendorIdCapability()
-        }
-      }
-      // Recompute nameCol after potential capability downgrade
-      const caps2 = getProfileCaps()
-      const nameCol2 = caps2.name
+    while (attempt < MAX_ATTEMPTS) {
+      attempt++
+      const caps = getProfileCaps()
+      let nameCol = caps.name
         ? 'name'
-        : caps2.full_name
+        : caps.full_name
           ? 'full_name'
-          : caps2.display_name
+          : caps.display_name
             ? 'display_name'
             : null
-      if (nameCol2 && nameCol2 !== nameCol) {
-        nameCol = nameCol2
+
+      try {
+        // 1) exact filter by department/role
+        let q = supabase
+          .from('user_profiles')
+          .select(
+            [
+              'id',
+              nameCol,
+              'email',
+              'department',
+              'role',
+              'is_active',
+              USER_PROFILES_VENDOR_ID_AVAILABLE ? 'vendor_id' : null,
+            ]
+              .filter(Boolean)
+              .join(', '),
+            { count: 'exact' }
+          )
+        if (nameCol) q = q.order(nameCol, { ascending: true })
+        else q = q.order('email', { ascending: true })
+
+        if (activeOnly) q = q.eq('is_active', true)
+        if (departments.length) q = q.in('department', departments)
+        if (roles.length) q = q.in('role', roles)
+        if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+
+        const { data: exact, count } = await q.throwOnError()
+        if ((count ?? 0) > 0) {
+          const opts = toOptions(exact)
+          _setCache(key, opts)
+          return opts
+        }
+        // if no exact results and no filters provided, just return whatever we have
+        if (!departments.length && !roles.length) return toOptions(exact || [])
+
+        // Break out of retry loop if successful (no errors)
+        break
+      } catch (err) {
+        console.error(`getStaff exact query failed (attempt ${attempt}):`, {
+          err,
+          departments,
+          roles,
+        })
+        // Downgrade capability flags if the error references missing columns
+        const msg = String(err?.message || '').toLowerCase()
+        let degraded = false
+
+        // Detect and handle vendor_id missing column
+        if (msg.includes('vendor_id') && msg.includes('user_profiles')) {
+          if (USER_PROFILES_VENDOR_ID_AVAILABLE) {
+            console.warn(
+              '[dropdownService:getStaff] vendor_id column missing on user_profiles; degrading capability'
+            )
+            disableUserProfilesVendorIdCapability()
+            degraded = true
+          }
+        }
+
+        // Detect and handle name/full_name/display_name missing columns
+        if (msg.includes('user_profiles') && (msg.includes('name') || msg.includes('column'))) {
+          downgradeCapForErrorMessage(msg)
+          degraded = true
+        }
+
+        // If we degraded a capability, retry the exact query with updated caps
+        if (degraded && attempt < MAX_ATTEMPTS) {
+          console.log(`[dropdownService:getStaff] Retrying with degraded capabilities`)
+          continue
+        }
+
+        // Otherwise break and try fuzzy
+        break
       }
     }
 
-    // 2) fuzzy fallback if exact returns zero
+    // 2) fuzzy fallback if exact returns zero or had errors
+    const caps2 = getProfileCaps()
+    const nameCol2 = caps2.name
+      ? 'name'
+      : caps2.full_name
+        ? 'full_name'
+        : caps2.display_name
+          ? 'display_name'
+          : null
+
     const fuzzTerms = [...departments, ...roles].map((s) => s.trim()).filter(Boolean)
     // Important: do not use ilike on enum columns (role). Some environments store role as an enum,
     // which doesn't support ILIKE. Restrict fuzzy matching to text columns only.
@@ -243,7 +268,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
       .map((t) =>
         [
           'department.ilike.%' + t + '%',
-          nameCol ? `${nameCol}.ilike.%${t}%` : null,
+          nameCol2 ? `${nameCol2}.ilike.%${t}%` : null,
           'email.ilike.%' + t + '%',
         ]
           .filter(Boolean)
@@ -257,7 +282,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
         .select(
           [
             'id',
-            nameCol,
+            nameCol2,
             'email',
             'department',
             'role',
@@ -269,8 +294,8 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
         )
         .eq('is_active', true)
         // Only apply OR when we have filters; otherwise skip fuzzy query
-        .or(ors || (nameCol ? `${nameCol}.ilike.%placeholder%` : 'email.ilike.%placeholder%'))
-      if (nameCol) q2 = q2.order(nameCol, { ascending: true })
+        .or(ors || (nameCol2 ? `${nameCol2}.ilike.%placeholder%` : 'email.ilike.%placeholder%'))
+      if (nameCol2) q2 = q2.order(nameCol2, { ascending: true })
       else q2 = q2.order('email', { ascending: true })
 
       if (orgId) q2 = q2.or(`org_id.eq.${orgId},org_id.is.null`)
@@ -288,12 +313,10 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
             let qRetry = supabase
               .from('user_profiles')
               .select(
-                ['id', nameCol, 'email', 'department', 'role', 'is_active']
-                  .filter(Boolean)
-                  .join(', ')
+                ['id', nameCol2, 'email', 'department', 'role', 'is_active'].filter(Boolean).join(', ')
               )
               .eq('is_active', true)
-              .or(ors || (nameCol ? `${nameCol}.ilike.%placeholder%` : 'email.ilike.%placeholder%'))
+              .or(ors || (nameCol2 ? `${nameCol2}.ilike.%placeholder%` : 'email.ilike.%placeholder%'))
             if (orgId) qRetry = qRetry.or(`org_id.eq.${orgId},org_id.is.null`)
             const r = await qRetry
             const opts2 = toOptions(r?.data || [])

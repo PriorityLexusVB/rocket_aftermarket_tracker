@@ -312,6 +312,16 @@ async function selectJoinedDealById(id) {
       }
     }
     if (isMissingRelationshipError(jobError)) {
+      const msg = jobError?.message || ''
+      // Detect vendor relationship issues and degrade
+      if (/vendor/i.test(msg) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
+        console.warn(
+          '[dealService:selectJoinedDealById] Vendor relationship missing; degrading capability'
+        )
+        disableJobPartsVendorRelCapability()
+        continue // retry without vendor relationship
+      }
+      // For other relationship errors, throw with guidance
       throw new Error(
         'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
       )
