@@ -1,29 +1,29 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Select from '../../../components/ui/Select';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Select from '../../../components/ui/Select'
 
 const ExportPanel = ({ vehicleData, workItems, onExport }) => {
-  const [exportFormat, setExportFormat] = useState('pdf');
-  const [exportType, setExportType] = useState('summary');
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState('pdf')
+  const [exportType, setExportType] = useState('summary')
+  const [isExporting, setIsExporting] = useState(false)
 
   const formatOptions = [
     { value: 'pdf', label: 'PDF Document', description: 'Professional formatted report' },
     { value: 'xlsx', label: 'Excel Spreadsheet', description: 'Detailed data export' },
-    { value: 'csv', label: 'CSV File', description: 'Raw data for analysis' }
-  ];
+    { value: 'csv', label: 'CSV File', description: 'Raw data for analysis' },
+  ]
 
   const typeOptions = [
     { value: 'summary', label: 'Work Summary', description: 'Customer-facing summary' },
     { value: 'detailed', label: 'Detailed Report', description: 'Complete work breakdown' },
     { value: 'financial', label: 'Financial Report', description: 'Cost and profit analysis' },
-    { value: 'vendor', label: 'Vendor Report', description: 'Vendor-specific breakdown' }
-  ];
+    { value: 'vendor', label: 'Vendor Report', description: 'Vendor-specific breakdown' },
+  ]
 
   const handleExport = async () => {
-    setIsExporting(true);
-    
+    setIsExporting(true)
+
     try {
       const exportData = {
         vehicle: vehicleData,
@@ -31,40 +31,39 @@ const ExportPanel = ({ vehicleData, workItems, onExport }) => {
         format: exportFormat,
         type: exportType,
         generatedAt: new Date()?.toISOString(),
-        generatedBy: 'Current User' // This would come from auth context
-      };
+        generatedBy: 'Current User', // This would come from auth context
+      }
 
-      await onExport(exportData);
-      
+      await onExport(exportData)
+
       // Simulate export process
       setTimeout(() => {
-        setIsExporting(false);
-      }, 2000);
-      
+        setIsExporting(false)
+      }, 2000)
     } catch (error) {
-      console.error('Export failed:', error);
-      setIsExporting(false);
+      console.error('Export failed:', error)
+      setIsExporting(false)
     }
-  };
+  }
 
   const getPreviewData = () => {
-    const completedItems = workItems?.filter(item => item?.status === 'Complete');
-    const totalCost = workItems?.reduce((sum, item) => sum + (item?.estimatedCost || 0), 0);
-    const totalSale = workItems?.reduce((sum, item) => sum + (item?.salePrice || 0), 0);
-    const totalProfit = totalSale - totalCost;
+    const completedItems = workItems?.filter((item) => item?.status === 'Complete')
+    const totalCost = workItems?.reduce((sum, item) => sum + (item?.estimatedCost || 0), 0)
+    const totalSale = workItems?.reduce((sum, item) => sum + (item?.salePrice || 0), 0)
+    const totalProfit = totalSale - totalCost
 
     return {
       totalItems: workItems?.length,
       completedItems: completedItems?.length,
-      pendingItems: workItems?.filter(item => item?.status === 'Pending')?.length,
-      inProgressItems: workItems?.filter(item => item?.status === 'In Progress')?.length,
+      pendingItems: workItems?.filter((item) => item?.status === 'Pending')?.length,
+      inProgressItems: workItems?.filter((item) => item?.status === 'In Progress')?.length,
       totalCost,
       totalSale,
-      totalProfit
-    };
-  };
+      totalProfit,
+    }
+  }
 
-  const previewData = getPreviewData();
+  const previewData = getPreviewData()
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1">
@@ -118,15 +117,21 @@ const ExportPanel = ({ vehicleData, workItems, onExport }) => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Cost:</span>
-                <span className="text-foreground font-medium">${previewData?.totalCost?.toFixed(2)}</span>
+                <span className="text-foreground font-medium">
+                  ${previewData?.totalCost?.toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Sale:</span>
-                <span className="text-foreground font-medium">${previewData?.totalSale?.toFixed(2)}</span>
+                <span className="text-foreground font-medium">
+                  ${previewData?.totalSale?.toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Profit:</span>
-                <span className={`font-medium ${previewData?.totalProfit >= 0 ? 'text-success' : 'text-error'}`}>
+                <span
+                  className={`font-medium ${previewData?.totalProfit >= 0 ? 'text-success' : 'text-error'}`}
+                >
                   ${previewData?.totalProfit?.toFixed(2)}
                 </span>
               </div>
@@ -139,7 +144,7 @@ const ExportPanel = ({ vehicleData, workItems, onExport }) => {
           <div className="text-xs text-muted-foreground">
             Report will include vehicle details and {exportType} information
           </div>
-          
+
           <Button
             variant="default"
             size="sm"
@@ -160,9 +165,9 @@ const ExportPanel = ({ vehicleData, workItems, onExport }) => {
             variant="outline"
             size="xs"
             onClick={() => {
-              setExportFormat('pdf');
-              setExportType('summary');
-              handleExport();
+              setExportFormat('pdf')
+              setExportType('summary')
+              handleExport()
             }}
             iconName="FileText"
             iconPosition="left"
@@ -173,9 +178,9 @@ const ExportPanel = ({ vehicleData, workItems, onExport }) => {
             variant="outline"
             size="xs"
             onClick={() => {
-              setExportFormat('xlsx');
-              setExportType('financial');
-              handleExport();
+              setExportFormat('xlsx')
+              setExportType('financial')
+              handleExport()
             }}
             iconName="DollarSign"
             iconPosition="left"
@@ -185,7 +190,7 @@ const ExportPanel = ({ vehicleData, workItems, onExport }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ExportPanel;
+export default ExportPanel

@@ -26,6 +26,7 @@ The `is_admin_or_manager()` function was defined multiple times across migration
 ### Correct Implementation (already existing)
 
 **Migration: 20250107150001_fix_claims_rls_policies.sql**
+
 - Only used `public.user_profiles`
 - No `auth.users` references
 - However, this was later overridden by migration 20250110120000
@@ -62,11 +63,13 @@ $$;
 ## Verification
 
 ### Functions Checked
+
 - ✅ `is_admin_or_manager()` - Fixed in migration 20251104221500
 - ✅ `auth_user_org()` - Already correct, only uses `public.user_profiles`
 - ✅ `get_user_role()` - Already correct, only uses `public.user_profiles`
 
 ### Policies Checked
+
 - ✅ Claims policies (`staff_can_view_all_claims`, etc.) - Fixed in migration 20250107150001
 - ✅ Claim attachments policies - Fixed in migration 20250107150001
 - ✅ Storage policies - Fixed in migration 20250107150001

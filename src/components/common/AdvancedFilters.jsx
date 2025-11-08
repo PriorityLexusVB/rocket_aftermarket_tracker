@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import Icon from '../AppIcon';
-import Button from '../ui/Button';
-import Input from '../ui/Input';
-import Select from '../ui/Select';
-import { useFilterPresets } from '../../services/advancedFeaturesService';
+import React, { useState, useEffect } from 'react'
+import Icon from '../AppIcon'
+import Button from '../ui/Button'
+import Input from '../ui/Input'
+import Select from '../ui/Select'
+import { useFilterPresets } from '../../services/advancedFeaturesService'
 
 const AdvancedFilters = ({
   filters = {},
@@ -11,13 +11,13 @@ const AdvancedFilters = ({
   onClearFilters = () => {},
   pageType = 'default',
   filterConfig = {},
-  className = ''
+  className = '',
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [presetName, setPresetName] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
-  const { presets, savePreset, deletePreset } = useFilterPresets(pageType);
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [presetName, setPresetName] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
+  const { presets, savePreset, deletePreset } = useFilterPresets(pageType)
 
   // Filter configurations for different page types
   const defaultFilterConfigs = {
@@ -32,8 +32,8 @@ const AdvancedFilters = ({
           { value: 'cancelled', label: 'Cancelled' },
           { value: 'scheduled', label: 'Scheduled' },
           { value: 'quality_check', label: 'Quality Check' },
-          { value: 'delivered', label: 'Delivered' }
-        ]
+          { value: 'delivered', label: 'Delivered' },
+        ],
       },
       priority: {
         type: 'select',
@@ -42,17 +42,17 @@ const AdvancedFilters = ({
           { value: 'low', label: 'Low' },
           { value: 'medium', label: 'Medium' },
           { value: 'high', label: 'High' },
-          { value: 'urgent', label: 'Urgent' }
-        ]
+          { value: 'urgent', label: 'Urgent' },
+        ],
       },
       dateRange: {
         type: 'daterange',
-        label: 'Date Range'
+        label: 'Date Range',
       },
       overdue: {
         type: 'checkbox',
-        label: 'Show Only Overdue'
-      }
+        label: 'Show Only Overdue',
+      },
     },
     vehicles: {
       status: {
@@ -62,17 +62,17 @@ const AdvancedFilters = ({
           { value: 'active', label: 'Active' },
           { value: 'maintenance', label: 'Maintenance' },
           { value: 'retired', label: 'Retired' },
-          { value: 'sold', label: 'Sold' }
-        ]
+          { value: 'sold', label: 'Sold' },
+        ],
       },
       make: {
         type: 'text',
-        label: 'Make'
+        label: 'Make',
       },
       year: {
         type: 'numberrange',
-        label: 'Year Range'
-      }
+        label: 'Year Range',
+      },
     },
     vendors: {
       rating: {
@@ -80,16 +80,16 @@ const AdvancedFilters = ({
         label: 'Rating Range',
         min: 0,
         max: 5,
-        step: 0.1
+        step: 0.1,
       },
       specialty: {
         type: 'text',
-        label: 'Specialty'
+        label: 'Specialty',
       },
       active: {
         type: 'checkbox',
-        label: 'Active Only'
-      }
+        label: 'Active Only',
+      },
     },
     claims: {
       priority: {
@@ -99,8 +99,8 @@ const AdvancedFilters = ({
           { value: 'low', label: 'Low' },
           { value: 'medium', label: 'Medium' },
           { value: 'high', label: 'High' },
-          { value: 'urgent', label: 'Urgent' }
-        ]
+          { value: 'urgent', label: 'Urgent' },
+        ],
       },
       status: {
         type: 'multiselect',
@@ -109,12 +109,12 @@ const AdvancedFilters = ({
           { value: 'pending', label: 'Pending' },
           { value: 'approved', label: 'Approved' },
           { value: 'denied', label: 'Denied' },
-          { value: 'resolved', label: 'Resolved' }
-        ]
+          { value: 'resolved', label: 'Resolved' },
+        ],
       },
       vendor: {
         type: 'text',
-        label: 'Vendor'
+        label: 'Vendor',
       },
       product_category: {
         type: 'select',
@@ -125,50 +125,50 @@ const AdvancedFilters = ({
           { value: 'brakes', label: 'Brakes' },
           { value: 'suspension', label: 'Suspension' },
           { value: 'electrical', label: 'Electrical' },
-          { value: 'body', label: 'Body' }
-        ]
-      }
-    }
-  };
+          { value: 'body', label: 'Body' },
+        ],
+      },
+    },
+  }
 
-  const currentFilterConfig = { ...defaultFilterConfigs?.[pageType], ...filterConfig };
+  const currentFilterConfig = { ...defaultFilterConfigs?.[pageType], ...filterConfig }
 
   const handleFilterChange = (filterKey, value) => {
-    const newFilters = { ...filters, [filterKey]: value };
-    
+    const newFilters = { ...filters, [filterKey]: value }
+
     // Remove empty filters
     if (!value || (Array.isArray(value) && value?.length === 0)) {
-      delete newFilters?.[filterKey];
+      delete newFilters?.[filterKey]
     }
-    
-    onFiltersChange(newFilters);
-  };
+
+    onFiltersChange(newFilters)
+  }
 
   const handleClearAll = () => {
-    onClearFilters();
-    setIsExpanded(false);
-  };
+    onClearFilters()
+    setIsExpanded(false)
+  }
 
   const handleSavePreset = async () => {
-    if (!presetName?.trim()) return;
-    
+    if (!presetName?.trim()) return
+
     try {
-      await savePreset(presetName?.trim(), filters, isPublic);
-      setShowSaveDialog(false);
-      setPresetName('');
-      setIsPublic(false);
+      await savePreset(presetName?.trim(), filters, isPublic)
+      setShowSaveDialog(false)
+      setPresetName('')
+      setIsPublic(false)
     } catch (error) {
-      console.error('Failed to save filter preset:', error);
+      console.error('Failed to save filter preset:', error)
     }
-  };
+  }
 
   const handleLoadPreset = (preset) => {
-    onFiltersChange(preset?.filters);
-    setIsExpanded(true);
-  };
+    onFiltersChange(preset?.filters)
+    setIsExpanded(true)
+  }
 
   const renderFilterInput = (filterKey, config) => {
-    const value = filters?.[filterKey] || '';
+    const value = filters?.[filterKey] || ''
 
     switch (config?.type) {
       case 'text':
@@ -189,20 +189,17 @@ const AdvancedFilters = ({
             aria-describedby=""
             error=""
           />
-        );
+        )
 
       case 'select':
         return (
           <Select
             value={value}
             onChange={(selectedValue) => handleFilterChange(filterKey, selectedValue)}
-            options={[
-              { value: '', label: `All ${config?.label}` },
-              ...config?.options
-            ]}
+            options={[{ value: '', label: `All ${config?.label}` }, ...config?.options]}
             className="w-full"
           />
-        );
+        )
 
       case 'multiselect':
         return (
@@ -214,7 +211,7 @@ const AdvancedFilters = ({
             placeholder={`Select ${config?.label?.toLowerCase()}`}
             className="w-full"
           />
-        );
+        )
 
       case 'daterange':
         return (
@@ -252,7 +249,7 @@ const AdvancedFilters = ({
               error=""
             />
           </div>
-        );
+        )
 
       case 'numberrange':
         return (
@@ -296,7 +293,7 @@ const AdvancedFilters = ({
               error=""
             />
           </div>
-        );
+        )
 
       case 'checkbox':
         return (
@@ -309,16 +306,16 @@ const AdvancedFilters = ({
             />
             <span className="text-sm text-foreground">{config?.label}</span>
           </label>
-        );
+        )
 
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   // Safely get active filter count
-  const activeFilterCount = Object.keys(filters || {})?.length || 0;
-  const hasActiveFilters = activeFilterCount > 0;
+  const activeFilterCount = Object.keys(filters || {})?.length || 0
+  const hasActiveFilters = activeFilterCount > 0
 
   return (
     <div className={`bg-card border border-border rounded-lg p-4 space-y-4 ${className}`}>
@@ -338,7 +335,7 @@ const AdvancedFilters = ({
           >
             Advanced Filters
           </Button>
-          
+
           {hasActiveFilters && (
             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
               {activeFilterCount} active
@@ -362,7 +359,7 @@ const AdvancedFilters = ({
               >
                 Save Preset
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -396,14 +393,12 @@ const AdvancedFilters = ({
               aria-describedBy=""
             >
               <span>{preset?.name}</span>
-              {preset?.is_public && (
-                <Icon name="Globe" size={12} className="ml-1 opacity-60" />
-              )}
-              
+              {preset?.is_public && <Icon name="Globe" size={12} className="ml-1 opacity-60" />}
+
               <button
                 onClick={(e) => {
-                  e?.stopPropagation();
-                  deletePreset(preset?.id);
+                  e?.stopPropagation()
+                  deletePreset(preset?.id)
                 }}
                 className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center text-xs"
               >
@@ -419,9 +414,7 @@ const AdvancedFilters = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-border">
           {Object.entries(currentFilterConfig || {})?.map(([filterKey, config]) => (
             <div key={filterKey} className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                {config?.label}
-              </label>
+              <label className="text-sm font-medium text-foreground">{config?.label}</label>
               {renderFilterInput(filterKey, config)}
             </div>
           ))}
@@ -432,10 +425,8 @@ const AdvancedFilters = ({
       {showSaveDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-foreground mb-4">
-              Save Filter Preset
-            </h3>
-            
+            <h3 className="text-lg font-semibold text-foreground mb-4">Save Filter Preset</h3>
+
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">
@@ -458,7 +449,7 @@ const AdvancedFilters = ({
                   error=""
                 />
               </div>
-              
+
               <label className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -471,7 +462,7 @@ const AdvancedFilters = ({
                 </span>
               </label>
             </div>
-            
+
             <div className="flex justify-end space-x-2 mt-6">
               <Button
                 variant="outline"
@@ -483,7 +474,7 @@ const AdvancedFilters = ({
               >
                 Cancel
               </Button>
-              
+
               <Button
                 onClick={handleSavePreset}
                 disabled={!presetName?.trim()}
@@ -499,7 +490,7 @@ const AdvancedFilters = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default AdvancedFilters;
+export default AdvancedFilters

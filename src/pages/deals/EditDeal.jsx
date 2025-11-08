@@ -5,7 +5,6 @@ import DealForm from './DealForm'
 import * as dealService from '../../services/dealService'
 import { entityToDraft, draftToUpdatePayload } from '@/components/deals/formAdapters'
 
-
 export default function EditDeal() {
   const { id } = useParams()
   const navigate = useNavigate()

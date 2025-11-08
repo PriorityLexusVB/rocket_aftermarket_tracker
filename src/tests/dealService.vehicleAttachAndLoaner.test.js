@@ -23,7 +23,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.stockNumber).toBe('STK-EXISTING')
       expect(result.customerPhone).toBeTruthy()
       expect(result.customerName).toBe('Test Customer')
@@ -45,7 +45,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.stockNumber).toBe('STK-SNAKE-CASE')
     })
 
@@ -65,7 +65,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.stockNumber).toBe('')
     })
   })
@@ -93,7 +93,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.loanerForm).toBeDefined()
       expect(result.loanerForm.loaner_number).toBe('L-001')
       expect(result.loanerForm.eta_return_date).toBe('2025-11-10')
@@ -118,7 +118,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.loanerForm).toBeDefined()
       expect(result.loanerForm.loaner_number).toBe('L-LEGACY-002')
       expect(result.loanerForm.eta_return_date).toBe(null)
@@ -142,7 +142,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.loanerForm).toBe(null)
     })
 
@@ -169,7 +169,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.loanerForm).toBeDefined()
       expect(result.loanerForm.loaner_number).toBe('L-NEW')
       expect(result.loanerForm.notes).toBe('New format')
@@ -201,7 +201,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.stockNumber).toBe('STK-COMBO-999')
       expect(result.customerPhone).toBeTruthy()
       expect(result.loanerForm).toBeDefined()
@@ -228,7 +228,7 @@ describe('dealService - Vehicle Attach and Loaner Persistence', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.payload).toBeDefined()
       expect(result.payload.job_number).toBe('JOB-TEST-009')
       expect(result.payload.customer_needs_loaner).toBe(true)

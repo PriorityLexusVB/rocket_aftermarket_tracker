@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
 const ProductPerformanceTable = ({ data }) => {
-  const [sortField, setSortField] = useState('profit');
-  const [sortDirection, setSortDirection] = useState('desc');
+  const [sortField, setSortField] = useState('profit')
+  const [sortDirection, setSortDirection] = useState('desc')
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -12,54 +12,55 @@ const ProductPerformanceTable = ({ data }) => {
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    })?.format(value);
-  };
+    })?.format(value)
+  }
 
   const formatPercentage = (value) => {
-    return `${value > 0 ? '+' : ''}${value?.toFixed(1)}%`;
-  };
+    return `${value > 0 ? '+' : ''}${value?.toFixed(1)}%`
+  }
 
   const handleSort = (field) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
-      setSortField(field);
-      setSortDirection('desc');
+      setSortField(field)
+      setSortDirection('desc')
     }
-  };
+  }
 
   const sortedData = [...data]?.sort((a, b) => {
-    const aValue = a?.[sortField];
-    const bValue = b?.[sortField];
-    
+    const aValue = a?.[sortField]
+    const bValue = b?.[sortField]
+
     if (sortDirection === 'asc') {
-      return aValue > bValue ? 1 : -1;
+      return aValue > bValue ? 1 : -1
     }
-    return aValue < bValue ? 1 : -1;
-  });
+    return aValue < bValue ? 1 : -1
+  })
 
   const getPerformanceColor = (growth) => {
-    if (growth > 10) return 'text-success';
-    if (growth < -5) return 'text-error';
-    return 'text-muted-foreground';
-  };
+    if (growth > 10) return 'text-success'
+    if (growth < -5) return 'text-error'
+    return 'text-muted-foreground'
+  }
 
   const getPerformanceBadge = (growth) => {
-    if (growth > 10) return 'bg-success/10 text-success';
-    if (growth < -5) return 'bg-error/10 text-error';
-    return 'bg-muted text-muted-foreground';
-  };
+    if (growth > 10) return 'bg-success/10 text-success'
+    if (growth < -5) return 'bg-error/10 text-error'
+    return 'bg-muted text-muted-foreground'
+  }
 
   const SortIcon = ({ field }) => {
-    if (sortField !== field) return <Icon name="ArrowUpDown" size={14} className="text-muted-foreground" />;
+    if (sortField !== field)
+      return <Icon name="ArrowUpDown" size={14} className="text-muted-foreground" />
     return (
-      <Icon 
-        name={sortDirection === 'asc' ? "ArrowUp" : "ArrowDown"} 
-        size={14} 
-        className="text-primary" 
+      <Icon
+        name={sortDirection === 'asc' ? 'ArrowUp' : 'ArrowDown'}
+        size={14}
+        className="text-primary"
       />
-    );
-  };
+    )
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1">
@@ -76,7 +77,7 @@ const ProductPerformanceTable = ({ data }) => {
           <thead className="bg-muted/50">
             <tr>
               <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                <button 
+                <button
                   onClick={() => handleSort('name')}
                   className="flex items-center space-x-2 hover:text-foreground transition-colors"
                 >
@@ -85,7 +86,7 @@ const ProductPerformanceTable = ({ data }) => {
                 </button>
               </th>
               <th className="text-right p-4 text-sm font-medium text-muted-foreground">
-                <button 
+                <button
                   onClick={() => handleSort('profit')}
                   className="flex items-center space-x-2 hover:text-foreground transition-colors ml-auto"
                 >
@@ -94,7 +95,7 @@ const ProductPerformanceTable = ({ data }) => {
                 </button>
               </th>
               <th className="text-right p-4 text-sm font-medium text-muted-foreground">
-                <button 
+                <button
                   onClick={() => handleSort('volume')}
                   className="flex items-center space-x-2 hover:text-foreground transition-colors ml-auto"
                 >
@@ -103,7 +104,7 @@ const ProductPerformanceTable = ({ data }) => {
                 </button>
               </th>
               <th className="text-right p-4 text-sm font-medium text-muted-foreground">
-                <button 
+                <button
                   onClick={() => handleSort('margin')}
                   className="flex items-center space-x-2 hover:text-foreground transition-colors ml-auto"
                 >
@@ -112,7 +113,7 @@ const ProductPerformanceTable = ({ data }) => {
                 </button>
               </th>
               <th className="text-right p-4 text-sm font-medium text-muted-foreground">
-                <button 
+                <button
                   onClick={() => handleSort('growth')}
                   className="flex items-center space-x-2 hover:text-foreground transition-colors ml-auto"
                 >
@@ -125,7 +126,10 @@ const ProductPerformanceTable = ({ data }) => {
           </thead>
           <tbody>
             {sortedData?.map((product, index) => (
-              <tr key={product?.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+              <tr
+                key={product?.id}
+                className="border-b border-border hover:bg-muted/30 transition-colors"
+              >
                 <td className="p-4">
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-lg">
@@ -152,8 +156,14 @@ const ProductPerformanceTable = ({ data }) => {
                   </p>
                 </td>
                 <td className="p-4 text-center">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPerformanceBadge(product?.growth)}`}>
-                    {product?.growth > 10 ? 'Excellent' : product?.growth < -5 ? 'Declining' : 'Stable'}
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPerformanceBadge(product?.growth)}`}
+                  >
+                    {product?.growth > 10
+                      ? 'Excellent'
+                      : product?.growth < -5
+                        ? 'Declining'
+                        : 'Stable'}
                   </span>
                 </td>
               </tr>
@@ -162,7 +172,7 @@ const ProductPerformanceTable = ({ data }) => {
         </table>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ProductPerformanceTable;
+export default ProductPerformanceTable

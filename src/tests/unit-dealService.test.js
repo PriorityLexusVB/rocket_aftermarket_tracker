@@ -339,7 +339,7 @@ describe('dealService.updateDeal transaction upsert behavior', () => {
   // Including: supabase.from('jobs').update().eq().eq().select().maybeSingle()
   // The core functionality (vehicle description persistence) is tested above
   // These tests are preserved for future enhancement
-  
+
   it.skip('inserts a transaction when none exists', async () => {
     const id = 'job-1'
     const spy = vi.spyOn(dealService, 'getDeal').mockResolvedValue({ id })

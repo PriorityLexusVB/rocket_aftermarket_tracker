@@ -53,6 +53,7 @@ await dealService?.updateDeal(id, payload)
 ### Scenario: Creating a Deal with Phone Number
 
 **Input Form State:**
+
 ```javascript
 {
   job_number: 'JOB-001',
@@ -72,6 +73,7 @@ await dealService?.updateDeal(id, payload)
 ```
 
 **With VITE_DEAL_FORM_V2=true (V2 behavior):**
+
 ```javascript
 // Adapter normalizes the payload
 {
@@ -102,6 +104,7 @@ await dealService?.updateDeal(id, payload)
 ```
 
 **With VITE_DEAL_FORM_V2=false (Legacy behavior):**
+
 ```javascript
 // Form state passed directly (no transformation)
 {
@@ -160,11 +163,13 @@ $ pnpm dev
 ## Verification Commands
 
 ### Check Current Flag Value
+
 ```bash
 cat .env.development | grep VITE_DEAL_FORM_V2
 ```
 
 ### Run Tests
+
 ```bash
 # Run all tests (39 tests)
 pnpm test
@@ -175,6 +180,7 @@ pnpm test dealService.featureFlagToggle
 ```
 
 ### Build with Flag
+
 ```bash
 # Build will use flag value from .env files
 pnpm build
@@ -186,16 +192,20 @@ grep -r "draftToCreatePayload" dist/
 ## Safety Guarantees
 
 ### 1. No Database Changes
+
 ```javascript
 // Adapters are pure functions - no DB mutations
 export function draftToCreatePayload(draft = {}) {
   // Only transforms data structure
   // Never calls database or APIs
-  return { /* transformed data */ }
+  return {
+    /* transformed data */
+  }
 }
 ```
 
 ### 2. No Service Changes
+
 ```javascript
 // Services accept both formats
 await dealService.createDeal(payload)
@@ -203,6 +213,7 @@ await dealService.createDeal(payload)
 ```
 
 ### 3. Instant Rollback
+
 ```bash
 # Change flag
 VITE_DEAL_FORM_V2=false
@@ -216,6 +227,7 @@ pnpm dev
 ```
 
 ### 4. Data Integrity
+
 ```javascript
 // Original data never modified
 const original = { job_number: 'JOB-001' }
@@ -238,6 +250,7 @@ console.log(original) // Still { job_number: 'JOB-001' }
    - Documentation tests
 
 ### Run Tests
+
 ```bash
 $ pnpm test
 
@@ -253,33 +266,40 @@ Total: 39 tests passing
 ## Production Rollout Example
 
 ### Phase 1: Development (Current)
+
 ```bash
 # .env.development
 VITE_DEAL_FORM_V2=true
 ```
+
 - All developers use V2 locally
 - Tests verify both V2 and legacy behavior
 - Confidence in V2 implementation
 
 ### Phase 2: Staging
+
 ```bash
 # Vercel staging environment
 VITE_DEAL_FORM_V2=true
 ```
+
 - Stakeholders test with real data
 - Monitor for issues
 - Gather feedback
 
 ### Phase 3: Production (Gradual)
+
 ```bash
 # Vercel production environment
 VITE_DEAL_FORM_V2=true
 ```
+
 - Enable with monitoring
 - Ready to rollback if needed
 - Keep flag for 30+ days
 
 ### Phase 4: Cleanup (Future)
+
 ```bash
 # Remove flag entirely
 # Delete legacy code paths
@@ -289,6 +309,7 @@ VITE_DEAL_FORM_V2=true
 ## Troubleshooting
 
 ### Flag not taking effect?
+
 ```bash
 # 1. Check flag value
 cat .env.development | grep VITE_DEAL_FORM_V2
@@ -301,6 +322,7 @@ console.log(import.meta.env.VITE_DEAL_FORM_V2)
 ```
 
 ### Want to test both states?
+
 ```bash
 # Test V2
 VITE_DEAL_FORM_V2=true pnpm dev
@@ -310,6 +332,7 @@ VITE_DEAL_FORM_V2=false pnpm dev
 ```
 
 ### Need to rollback in production?
+
 ```bash
 # 1. Set flag in Vercel
 VITE_DEAL_FORM_V2=false

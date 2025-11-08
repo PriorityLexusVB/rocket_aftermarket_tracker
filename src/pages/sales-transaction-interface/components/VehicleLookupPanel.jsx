@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Input from '../../../components/ui/Input';
-import Button from '../../../components/ui/Button';
-import Select from '../../../components/ui/Select';
+import React, { useState, useEffect } from 'react'
+import Icon from '../../../components/AppIcon'
+import Input from '../../../components/ui/Input'
+import Button from '../../../components/ui/Button'
+import Select from '../../../components/ui/Select'
 
 const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
-  const [searchType, setSearchType] = useState('stock');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [makeFilter, setMakeFilter] = useState('');
-  const [modelFilter, setModelFilter] = useState('');
-  const [yearFilter, setYearFilter] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showAddVehicleForm, setShowAddVehicleForm] = useState(false);
+  const [searchType, setSearchType] = useState('stock')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [makeFilter, setMakeFilter] = useState('')
+  const [modelFilter, setModelFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showAddVehicleForm, setShowAddVehicleForm] = useState(false)
   const [newVehicleData, setNewVehicleData] = useState({
     stockNumber: '',
     vin: '',
@@ -24,8 +24,8 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
     mileage: '',
     ownerName: '',
     ownerPhone: '',
-    ownerEmail: ''
-  });
+    ownerEmail: '',
+  })
 
   // Mock vehicle data
   const mockVehicles = [
@@ -41,7 +41,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
       mileage: 15420,
       status: 'Available',
       ownerName: 'John Smith',
-      ownerPhone: '(555) 123-4567'
+      ownerPhone: '(555) 123-4567',
     },
     {
       id: 2,
@@ -55,7 +55,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
       mileage: 22100,
       status: 'Available',
       ownerName: 'Sarah Johnson',
-      ownerPhone: '(555) 987-6543'
+      ownerPhone: '(555) 987-6543',
     },
     {
       id: 3,
@@ -69,7 +69,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
       mileage: 8900,
       status: 'Available',
       ownerName: 'Michael Brown',
-      ownerPhone: '(555) 456-7890'
+      ownerPhone: '(555) 456-7890',
     },
     {
       id: 4,
@@ -83,70 +83,73 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
       mileage: 12500,
       status: 'Available',
       ownerName: 'Lisa Davis',
-      ownerPhone: '(555) 321-9876'
-    }
-  ];
+      ownerPhone: '(555) 321-9876',
+    },
+  ]
 
   const searchTypeOptions = [
     { value: 'stock', label: 'Stock Number' },
     { value: 'make_model', label: 'Make/Model' },
-    { value: 'vin', label: 'VIN Number' }
-  ];
+    { value: 'vin', label: 'VIN Number' },
+  ]
 
   const makeOptions = [
     { value: '', label: 'All Makes' },
     { value: 'Honda', label: 'Honda' },
     { value: 'Toyota', label: 'Toyota' },
     { value: 'Ford', label: 'Ford' },
-    { value: 'Volkswagen', label: 'Volkswagen' }
-  ];
+    { value: 'Volkswagen', label: 'Volkswagen' },
+  ]
 
   const yearOptions = [
     { value: '', label: 'All Years' },
     { value: '2024', label: '2024' },
     { value: '2023', label: '2023' },
     { value: '2022', label: '2022' },
-    { value: '2021', label: '2021' }
-  ];
+    { value: '2021', label: '2021' },
+  ]
 
   const handleSearch = () => {
-    setIsSearching(true);
-    
+    setIsSearching(true)
+
     setTimeout(() => {
-      let results = mockVehicles;
+      let results = mockVehicles
 
       if (searchType === 'stock' && searchQuery) {
-        results = mockVehicles?.filter(vehicle => 
+        results = mockVehicles?.filter((vehicle) =>
           vehicle?.stockNumber?.toLowerCase()?.includes(searchQuery?.toLowerCase())
-        );
+        )
       } else if (searchType === 'vin' && searchQuery) {
-        results = mockVehicles?.filter(vehicle => 
+        results = mockVehicles?.filter((vehicle) =>
           vehicle?.vin?.toLowerCase()?.includes(searchQuery?.toLowerCase())
-        );
+        )
       } else if (searchType === 'make_model') {
-        results = mockVehicles?.filter(vehicle => {
-          const makeMatch = !makeFilter || vehicle?.make === makeFilter;
-          const modelMatch = !modelFilter || vehicle?.model?.toLowerCase()?.includes(modelFilter?.toLowerCase());
-          const yearMatch = !yearFilter || vehicle?.year?.toString() === yearFilter;
-          return makeMatch && modelMatch && yearMatch;
-        });
+        results = mockVehicles?.filter((vehicle) => {
+          const makeMatch = !makeFilter || vehicle?.make === makeFilter
+          const modelMatch =
+            !modelFilter || vehicle?.model?.toLowerCase()?.includes(modelFilter?.toLowerCase())
+          const yearMatch = !yearFilter || vehicle?.year?.toString() === yearFilter
+          return makeMatch && modelMatch && yearMatch
+        })
       }
 
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 800);
-  };
+      setSearchResults(results)
+      setIsSearching(false)
+    }, 800)
+  }
 
   const handleVehicleSelect = (vehicle) => {
-    onVehicleSelect(vehicle);
-  };
+    onVehicleSelect(vehicle)
+  }
 
   const handleAddNewVehicle = () => {
     if (newVehicleData?.year && newVehicleData?.make && newVehicleData?.model) {
       const newVehicle = {
         id: `new_${Date.now()}`,
         vin: newVehicleData?.vin || `NEW${Date.now()}`,
-        stockNumber: newVehicleData?.stockNumber || `STK-${new Date()?.getFullYear()}-${String(Date.now())?.slice(-3)}`,
+        stockNumber:
+          newVehicleData?.stockNumber ||
+          `STK-${new Date()?.getFullYear()}-${String(Date.now())?.slice(-3)}`,
         year: parseInt(newVehicleData?.year),
         make: newVehicleData?.make,
         model: newVehicleData?.model,
@@ -157,11 +160,11 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
         ownerName: newVehicleData?.ownerName || '',
         ownerPhone: newVehicleData?.ownerPhone || '',
         ownerEmail: newVehicleData?.ownerEmail || '',
-        isNew: true
-      };
+        isNew: true,
+      }
 
-      onVehicleSelect(newVehicle);
-      
+      onVehicleSelect(newVehicle)
+
       // Reset form
       setNewVehicleData({
         stockNumber: '',
@@ -174,29 +177,29 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
         mileage: '',
         ownerName: '',
         ownerPhone: '',
-        ownerEmail: ''
-      });
-      setShowAddVehicleForm(false);
+        ownerEmail: '',
+      })
+      setShowAddVehicleForm(false)
     }
-  };
+  }
 
   const handleNewVehicleInputChange = (field, value) => {
-    setNewVehicleData(prev => ({ ...prev, [field]: value }));
-  };
+    setNewVehicleData((prev) => ({ ...prev, [field]: value }))
+  }
 
   const clearSearch = () => {
-    setSearchQuery('');
-    setMakeFilter('');
-    setModelFilter('');
-    setYearFilter('');
-    setSearchResults([]);
-  };
+    setSearchQuery('')
+    setMakeFilter('')
+    setModelFilter('')
+    setYearFilter('')
+    setSearchResults([])
+  }
 
   useEffect(() => {
     if (searchType === 'make_model') {
-      handleSearch();
+      handleSearch()
     }
-  }, [makeFilter, modelFilter, yearFilter]);
+  }, [makeFilter, modelFilter, yearFilter])
 
   return (
     <div className="bg-card border border-border rounded-lg p-6">
@@ -207,7 +210,9 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-foreground">Vehicle Selection</h3>
-            <p className="text-sm text-muted-foreground">Search existing vehicles or add new vehicle</p>
+            <p className="text-sm text-muted-foreground">
+              Search existing vehicles or add new vehicle
+            </p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -233,15 +238,11 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
         <div className="mb-6 p-6 bg-accent/5 border border-accent/20 rounded-lg">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-medium text-foreground">Add New Vehicle</h4>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowAddVehicleForm(false)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowAddVehicleForm(false)}>
               <Icon name="X" size={16} />
             </Button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <Input
               label="Stock Number"
@@ -336,10 +337,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
           </div>
 
           <div className="flex items-center justify-end space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => setShowAddVehicleForm(false)}
-            >
+            <Button variant="outline" onClick={() => setShowAddVehicleForm(false)}>
               Cancel
             </Button>
             <Button
@@ -445,13 +443,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
       {/* Clear Search */}
       {(searchQuery || makeFilter || modelFilter || yearFilter) && (
         <div className="mb-4">
-          <Button
-            variant="ghost"
-            onClick={clearSearch}
-            iconName="X"
-            iconPosition="left"
-            size="sm"
-          >
+          <Button variant="ghost" onClick={clearSearch} iconName="X" iconPosition="left" size="sm">
             Clear Search
           </Button>
         </div>
@@ -462,16 +454,19 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-foreground">Search Results</h4>
-            <span className="text-xs text-muted-foreground">{searchResults?.length} vehicles found</span>
+            <span className="text-xs text-muted-foreground">
+              {searchResults?.length} vehicles found
+            </span>
           </div>
-          
+
           <div className="max-h-64 overflow-y-auto space-y-2">
             {searchResults?.map((vehicle) => (
               <div
                 key={vehicle?.id}
                 className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-elevation-1 ${
                   selectedVehicle?.id === vehicle?.id
-                    ? 'border-primary bg-primary/5' :'border-border hover:border-primary/50'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
                 }`}
                 onClick={() => handleVehicleSelect(vehicle)}
               >
@@ -496,12 +491,14 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
                         <span className="font-medium">Color:</span> {vehicle?.color}
                       </div>
                       <div>
-                        <span className="font-medium">Miles:</span> {vehicle?.mileage?.toLocaleString()}
+                        <span className="font-medium">Miles:</span>{' '}
+                        {vehicle?.mileage?.toLocaleString()}
                       </div>
                     </div>
                     {vehicle?.ownerName && (
                       <div className="mt-2 text-sm text-muted-foreground">
-                        <span className="font-medium">Owner:</span> {vehicle?.ownerName} {vehicle?.ownerPhone}
+                        <span className="font-medium">Owner:</span> {vehicle?.ownerName}{' '}
+                        {vehicle?.ownerPhone}
                       </div>
                     )}
                   </div>
@@ -548,7 +545,9 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
             </div>
             <div>
               <span className="text-muted-foreground">Mileage:</span>
-              <p className="font-medium text-foreground">{selectedVehicle?.mileage?.toLocaleString()} mi</p>
+              <p className="font-medium text-foreground">
+                {selectedVehicle?.mileage?.toLocaleString()} mi
+              </p>
             </div>
           </div>
           {selectedVehicle?.ownerName && (
@@ -562,7 +561,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default VehicleLookupPanel;
+export default VehicleLookupPanel

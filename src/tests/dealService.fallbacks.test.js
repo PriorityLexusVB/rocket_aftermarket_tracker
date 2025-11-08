@@ -8,7 +8,7 @@ import { toJobPartRows, getCapabilities } from '@/services/dealService'
  * - vehicle attach by stock number
  * - org_id inference on update
  * - error wrap for "permission denied for table users"
- * 
+ *
  * Note: Full integration tests with mocked Supabase are complex due to chaining.
  * These tests focus on the logic that can be unit tested without full DB mocks.
  */

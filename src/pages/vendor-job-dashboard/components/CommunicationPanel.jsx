@@ -1,38 +1,43 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
 
 const CommunicationPanel = ({ messages, onSendMessage }) => {
-  const [newMessage, setNewMessage] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [newMessage, setNewMessage] = useState('')
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const handleSendMessage = (e) => {
-    e?.preventDefault();
+    e?.preventDefault()
     if (newMessage?.trim()) {
-      onSendMessage(newMessage?.trim());
-      setNewMessage('');
+      onSendMessage(newMessage?.trim())
+      setNewMessage('')
     }
-  };
+  }
 
   const getMessageStatusIcon = (status) => {
     switch (status) {
-      case 'sent': return <Icon name="Check" size={14} className="text-muted-foreground" />;
-      case 'delivered': return <Icon name="CheckCheck" size={14} className="text-primary" />;
-      case 'read': return <Icon name="CheckCheck" size={14} className="text-success" />;
-      case 'failed': return <Icon name="AlertCircle" size={14} className="text-error" />;
-      default: return <Icon name="Clock" size={14} className="text-muted-foreground" />;
+      case 'sent':
+        return <Icon name="Check" size={14} className="text-muted-foreground" />
+      case 'delivered':
+        return <Icon name="CheckCheck" size={14} className="text-primary" />
+      case 'read':
+        return <Icon name="CheckCheck" size={14} className="text-success" />
+      case 'failed':
+        return <Icon name="AlertCircle" size={14} className="text-error" />
+      default:
+        return <Icon name="Clock" size={14} className="text-muted-foreground" />
     }
-  };
+  }
 
   const formatTime = (timestamp) => {
     return new Date(timestamp)?.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+      minute: '2-digit',
+    })
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1">
@@ -46,17 +51,15 @@ const CommunicationPanel = ({ messages, onSendMessage }) => {
               {messages?.length} messages
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            <Icon name={isExpanded ? "ChevronUp" : "ChevronDown"} size={20} />
+          <Button variant="ghost" size="icon" onClick={() => setIsExpanded(!isExpanded)}>
+            <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={20} />
           </Button>
         </div>
       </div>
       {/* Message List */}
-      <div className={`transition-all duration-300 ${isExpanded ? 'max-h-96' : 'max-h-48'} overflow-y-auto`}>
+      <div
+        className={`transition-all duration-300 ${isExpanded ? 'max-h-96' : 'max-h-48'} overflow-y-auto`}
+      >
         {messages?.length > 0 ? (
           <div className="p-4 space-y-4">
             {messages?.map((message) => (
@@ -64,33 +67,42 @@ const CommunicationPanel = ({ messages, onSendMessage }) => {
                 key={message?.id}
                 className={`flex gap-3 ${message?.sender === 'You' ? 'flex-row-reverse' : 'flex-row'}`}
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  message?.sender === 'You' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                }`}>
-                  <Icon 
-                    name={message?.sender === 'You' ? 'User' : 'MessageCircle'} 
-                    size={16} 
-                  />
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    message?.sender === 'You' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                  }`}
+                >
+                  <Icon name={message?.sender === 'You' ? 'User' : 'MessageCircle'} size={16} />
                 </div>
-                
-                <div className={`flex-1 max-w-xs ${message?.sender === 'You' ? 'text-right' : 'text-left'}`}>
-                  <div className={`inline-block p-3 rounded-lg ${
-                    message?.sender === 'You' ?'bg-primary text-primary-foreground' :'bg-muted text-foreground'
-                  }`}>
+
+                <div
+                  className={`flex-1 max-w-xs ${message?.sender === 'You' ? 'text-right' : 'text-left'}`}
+                >
+                  <div
+                    className={`inline-block p-3 rounded-lg ${
+                      message?.sender === 'You'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-foreground'
+                    }`}
+                  >
                     <p className="text-sm">{message?.content}</p>
                   </div>
-                  
-                  <div className={`flex items-center gap-1 mt-1 text-xs text-muted-foreground ${
-                    message?.sender === 'You' ? 'justify-end' : 'justify-start'
-                  }`}>
+
+                  <div
+                    className={`flex items-center gap-1 mt-1 text-xs text-muted-foreground ${
+                      message?.sender === 'You' ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
                     <span>{formatTime(message?.timestamp)}</span>
                     {message?.sender === 'You' && getMessageStatusIcon(message?.status)}
                   </div>
-                  
+
                   {message?.jobReference && (
-                    <div className={`mt-1 text-xs ${
-                      message?.sender === 'You' ? 'text-right' : 'text-left'
-                    }`}>
+                    <div
+                      className={`mt-1 text-xs ${
+                        message?.sender === 'You' ? 'text-right' : 'text-left'
+                      }`}
+                    >
                       <span className="text-muted-foreground">
                         Re: Job #{message?.jobReference}
                       </span>
@@ -120,16 +132,11 @@ const CommunicationPanel = ({ messages, onSendMessage }) => {
               className="w-full"
             />
           </div>
-          <Button
-            type="submit"
-            disabled={!newMessage?.trim()}
-            iconName="Send"
-            iconPosition="left"
-          >
+          <Button type="submit" disabled={!newMessage?.trim()} iconName="Send" iconPosition="left">
             Send SMS
           </Button>
         </form>
-        
+
         <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Icon name="Smartphone" size={14} />
@@ -142,7 +149,7 @@ const CommunicationPanel = ({ messages, onSendMessage }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CommunicationPanel;
+export default CommunicationPanel

@@ -1018,7 +1018,9 @@ export default function DealsPage() {
                   <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
                     Revenue
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{money0.format(parseFloat(kpis?.revenue) || 0)}</p>
+                  <p className="text-slate-900 text-2xl font-bold">
+                    {money0.format(parseFloat(kpis?.revenue) || 0)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1033,7 +1035,9 @@ export default function DealsPage() {
                   <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
                     Profit
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{money0.format(parseFloat(kpis?.profit) || 0)}</p>
+                  <p className="text-slate-900 text-2xl font-bold">
+                    {money0.format(parseFloat(kpis?.profit) || 0)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1048,7 +1052,9 @@ export default function DealsPage() {
                   <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
                     Margin
                   </h3>
-                  <p className="text-slate-900 text-2xl font-bold">{pct1(parseFloat(kpis?.margin) / 100 || 0)}</p>
+                  <p className="text-slate-900 text-2xl font-bold">
+                    {pct1(parseFloat(kpis?.margin) / 100 || 0)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -1478,17 +1484,20 @@ export default function DealsPage() {
                           })}
                           {' • '}
                           {(() => {
-                            const startTime = new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
+                            const startTime = new Date(deal?.appt_start).toLocaleTimeString(
+                              'en-US',
+                              {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              }
+                            )
                             const endTime = deal?.appt_end
                               ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })
                               : null
-                            
+
                             // If start and end times are identical, only show once
                             if (endTime && startTime !== endTime) {
                               return `${startTime}–${endTime}`
@@ -1520,9 +1529,7 @@ export default function DealsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 w-[150px]">
-                      <span className="text-sm text-slate-700">
-                        {getDisplayPhone(deal)}
-                      </span>
+                      <span className="text-sm text-slate-700">{getDisplayPhone(deal)}</span>
                     </td>
                     <td className="px-4 py-3 max-w-[220px]">
                       <span
@@ -1533,13 +1540,13 @@ export default function DealsPage() {
                           ''
                         }
                       >
-                        {deal?.vehicle_description ? (
-                          titleCase(deal.vehicle_description)
-                        ) : deal?.vehicle ? (
-                          titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim())
-                        ) : (
-                          '—'
-                        )}
+                        {deal?.vehicle_description
+                          ? titleCase(deal.vehicle_description)
+                          : deal?.vehicle
+                            ? titleCase(
+                                `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                              )
+                            : '—'}
                         {deal?.vehicle?.stock_number ? (
                           <span className="text-slate-400">
                             {' '}
@@ -1643,7 +1650,10 @@ export default function DealsPage() {
 
         {/* ✅ UPDATED: Mobile Cards with enhanced styling and loaner support */}
         {(() => {
-          const IS_TEST = import.meta.env?.VITEST || import.meta.env?.MODE === 'test' || process.env.NODE_ENV === 'test'
+          const IS_TEST =
+            import.meta.env?.VITEST ||
+            import.meta.env?.MODE === 'test' ||
+            process.env.NODE_ENV === 'test'
           if (IS_TEST) return null // Avoid duplicate content in test DOM assertions
           return (
             <div className="md:hidden space-y-4">
@@ -1685,7 +1695,9 @@ export default function DealsPage() {
                             {deal?.customer_name ? titleCase(deal.customer_name) : '—'}
                           </div>
                           <div className="text-xs text-slate-500 truncate">
-                            {(deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile) ? (
+                            {deal?.customer_phone_e164 ||
+                            deal?.customer_phone ||
+                            deal?.customer_mobile ? (
                               <a
                                 href={`tel:${deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile}`}
                                 onClick={(e) => e?.stopPropagation?.()}
@@ -1709,7 +1721,9 @@ export default function DealsPage() {
                       {/* Line 2: Vehicle + Vendor */}
                       <div className="text-xs text-slate-600 truncate">
                         {(deal?.vehicle
-                          ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim())
+                          ? titleCase(
+                              `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                            )
                           : '') || '—'}
                         {deal?.vehicle?.stock_number ? (
                           <span className="text-slate-400">

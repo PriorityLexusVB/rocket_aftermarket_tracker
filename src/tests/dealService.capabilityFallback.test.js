@@ -77,22 +77,18 @@ describe('dealService - capability flag and retry logic', () => {
     mockSupabase.from.mockReturnValueOnce({ select: mockSelect })
     mockSupabase.from.mockReturnValueOnce({ select: mockFallbackSelect })
     mockSupabase.from.mockReturnValueOnce({
-      select: vi
-        .fn()
-        .mockReturnValue({
-          in: vi
-            .fn()
-            .mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }),
-        }),
+      select: vi.fn().mockReturnValue({
+        in: vi
+          .fn()
+          .mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+      }),
     })
     mockSupabase.from.mockReturnValueOnce({
-      select: vi
-        .fn()
-        .mockReturnValue({
-          in: vi
-            .fn()
-            .mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }),
-        }),
+      select: vi.fn().mockReturnValue({
+        in: vi
+          .fn()
+          .mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+      }),
     })
 
     try {

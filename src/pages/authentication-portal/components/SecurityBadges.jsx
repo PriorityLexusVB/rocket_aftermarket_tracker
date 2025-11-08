@@ -1,29 +1,29 @@
-import React from 'react';
-import Icon from '../../../components/AppIcon';
+import React from 'react'
+import Icon from '../../../components/AppIcon'
 
 const SecurityBadges = () => {
   const securityFeatures = [
     {
       icon: 'Shield',
       label: 'SSL Encrypted',
-      description: '256-bit encryption'
+      description: '256-bit encryption',
     },
     {
       icon: 'Lock',
       label: 'Secure Login',
-      description: 'Multi-factor ready'
+      description: 'Multi-factor ready',
     },
     {
       icon: 'Database',
       label: 'Data Protected',
-      description: 'Enterprise grade'
+      description: 'Enterprise grade',
     },
     {
       icon: 'CheckCircle',
       label: 'Verified System',
-      description: 'SOC 2 compliant'
-    }
-  ];
+      description: 'SOC 2 compliant',
+    },
+  ]
 
   return (
     <div className="mt-8">
@@ -37,12 +37,8 @@ const SecurityBadges = () => {
               <Icon name={feature?.icon} size={16} className="text-success" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">
-                {feature?.label}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {feature?.description}
-              </p>
+              <p className="text-sm font-medium text-foreground truncate">{feature?.label}</p>
+              <p className="text-xs text-muted-foreground truncate">{feature?.description}</p>
             </div>
           </div>
         ))}
@@ -55,7 +51,7 @@ const SecurityBadges = () => {
         <span>Last updated: {new Date()?.toLocaleTimeString()}</span>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SecurityBadges;
+export default SecurityBadges

@@ -3,14 +3,17 @@
 ## Status: ✅ COMPLETED (Verification Only)
 
 ## Branch
+
 `audit/rls-no-auth-users`
 
 ## Objective
+
 Audit migrations and policies for auth.users references and ensure all active RLS policies and helper functions use `public.user_profiles` instead.
 
 ## Investigation
 
 ### Grep Command
+
 ```bash
 grep -r "auth\.users" supabase/migrations/*.sql | grep -v "^--" | grep -v "COMMENT"
 ```
@@ -22,10 +25,12 @@ grep -r "auth\.users" supabase/migrations/*.sql | grep -v "^--" | grep -v "COMME
 #### 1. ✅ FIXED Helper Functions (Already Complete)
 
 ##### is_admin_or_manager()
+
 **Fixed in**: Migration 20251104221500  
 **Status**: ✅ NO auth.users references
 
 **Current Implementation**:
+
 ```sql
 CREATE OR REPLACE FUNCTION public.is_admin_or_manager()
 RETURNS BOOLEAN
@@ -48,10 +53,12 @@ $$;
 **Does NOT use**: `auth.users` ✅
 
 ##### auth_user_org()
+
 **Defined in**: Migration 20251022230000  
 **Status**: ✅ NO auth.users references
 
 **Current Implementation**:
+
 ```sql
 CREATE FUNCTION public.auth_user_org() RETURNS uuid
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $fn$
@@ -86,7 +93,9 @@ END IF;
 The remaining auth.users references fall into these categories:
 
 ##### A. Foreign Key Constraints (Legitimate)
+
 Example from 20250103210000:
+
 ```sql
 FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
@@ -95,7 +104,9 @@ FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 **Why Legitimate**: `user_profiles` table MUST reference `auth.users` for authentication linkage.
 
 ##### B. User Creation/Seeding (Legitimate)
+
 Examples from multiple migrations:
+
 ```sql
 INSERT INTO auth.users (
   id, email, encrypted_password, ...
@@ -105,6 +116,7 @@ INSERT INTO auth.users (
 **Why Legitimate**: Migrations need to create auth.users records for test users and staff.
 
 **Files with user creation**:
+
 - 20250103210000 (trigger for auto-creation)
 - 20250104220000 (Rob Brasco staff)
 - 20250106161000 (finance managers)
@@ -113,7 +125,9 @@ INSERT INTO auth.users (
 - 20251111070000 (fake user cleanup)
 
 ##### C. Migration Comments/Documentation (Safe)
+
 Example:
+
 ```sql
 -- Schema Analysis: Existing user_profiles table with foreign key constraint to auth.users
 -- Dependencies: user_profiles, auth.users tables, existing user_role enum
@@ -124,6 +138,7 @@ Example:
 ##### D. OLD/Superseded Function Definitions (Not Active)
 
 Example from 20250101000001 (OLD):
+
 ```sql
 SELECT 1 FROM auth.users au
 WHERE au.id = auth.uid() AND au.role IN ('admin', 'manager')
@@ -136,13 +151,16 @@ WHERE au.id = auth.uid() AND au.role IN ('admin', 'manager')
 ### Summary by Migration File
 
 #### Active Helper Functions (Current State)
+
 1. **20251104221500** - is_admin_or_manager() ✅ NO auth.users
 2. **20251022230000** - auth_user_org() ✅ NO auth.users
 
 #### Verification Migrations
+
 3. **20251107103000** - Verifies no auth.users in helpers ✅
 
 #### User Management (Legitimate)
+
 4. **20250103210000** - FK constraints, triggers, user sync
 5. **20250104220000** - Add Rob Brasco
 6. **20250106161000** - Add finance managers
@@ -152,6 +170,7 @@ WHERE au.id = auth.uid() AND au.role IN ('admin', 'manager')
 10. **20251111070000** - Remove fake test users
 
 #### OLD/Superseded (Not Active)
+
 11. **20250101000001** - OLD version of is_admin_or_manager (superseded by #1)
 12. **20250107150000** - OLD claims policies (fixed by 20250107150001)
 13. **20250110120000** - User profile auth_user_id backfill
@@ -173,17 +192,20 @@ WHERE au.id = auth.uid() AND au.role IN ('admin', 'manager')
 ## Findings
 
 ### ✅ All Active Functions Clean
+
 - **is_admin_or_manager()**: Uses `public.user_profiles` only
 - **auth_user_org()**: Uses `public.user_profiles` only
 - **Verification**: Migration 20251107103000 confirms no auth.users refs
 
 ### ✅ All auth.users References Are Legitimate
+
 1. **Foreign Keys**: Required for authentication linkage
 2. **User Creation**: Required for seeding/test users
 3. **Comments**: Documentation only
 4. **Superseded**: Old function versions (inactive)
 
 ### ✅ No Action Required
+
 The RLS audit migration (20251104221500) already eliminated auth.users references from active helper functions. Migration 20251107103000 verified this fix.
 
 ## Timeline
@@ -197,11 +219,13 @@ The RLS audit migration (20251104221500) already eliminated auth.users reference
 ## Related Migrations
 
 ### Fixes Applied
+
 - `20251104221500_fix_is_admin_or_manager_auth_users_references.sql`
 - `20251105000000_fix_rls_policies_and_write_permissions.sql`
 - `20251107103000_rls_write_policies_completion.sql`
 
 ### User Management (Legitimate)
+
 - `20250103210000_fix_user_profiles_auth_integration.sql`
 - `20250104220000_add_missing_rob_brasco_staff.sql`
 - `20250106161000_add_finance_managers.sql`
@@ -236,6 +260,7 @@ grep "auth.users" supabase/migrations/202511{04,07}*.sql
 **Task 8 Complete**: RLS audit confirms no auth.users leakage in active policies or helper functions.
 
 **Results**:
+
 1. ✅ is_admin_or_manager() uses user_profiles (fixed in 20251104221500)
 2. ✅ auth_user_org() uses user_profiles (correct since 20251022230000)
 3. ✅ All auth.users references are legitimate (FK constraints, user seeding)
@@ -243,12 +268,14 @@ grep "auth.users" supabase/migrations/202511{04,07}*.sql
 5. ✅ No new migration needed (already fixed)
 
 **Impact**:
+
 - ✅ Authenticated users can call helper functions without permission errors
 - ✅ RLS policies work correctly with multi-tenant scoping
 - ✅ No "permission denied for table users" errors
 - ✅ All tenant isolation maintained
 
 ---
+
 **Task Completed**: 2025-11-07  
 **Branch**: audit/rls-no-auth-users  
 **Author**: Coding Agent (Task 8 Audit)

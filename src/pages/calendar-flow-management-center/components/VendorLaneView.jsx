@@ -1,19 +1,13 @@
-import React from 'react';
-import { Building2, Clock, Car, Calendar, AlertTriangle } from 'lucide-react';
-import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time';
+import React from 'react'
+import { Building2, Clock, Car, Calendar, AlertTriangle } from 'lucide-react'
+import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 
-const VendorLaneView = ({ 
-  vendors, 
-  jobs, 
-  onJobClick, 
-  onDrop, 
-  draggedJob 
-}) => {
+const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   const renderEventChip = (job) => {
-    const isOnSite = !job?.vendor_id || job?.location === 'on_site';
-    const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500';
-    const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500';
-    const overdue = isOverdue(job?.promised_date);
+    const isOnSite = !job?.vendor_id || job?.location === 'on_site'
+    const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500'
+    const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500'
+    const overdue = isOverdue(job?.promised_date)
 
     return (
       <div
@@ -26,7 +20,7 @@ const VendorLaneView = ({
       >
         {/* Status stripe */}
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColor} rounded-l-lg`} />
-        
+
         {/* Main content */}
         <div className="ml-2">
           {/* Top line */}
@@ -44,7 +38,7 @@ const VendorLaneView = ({
               </div>
             )}
           </div>
-          
+
           {/* Second line */}
           <div className="text-xs opacity-90 flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -54,15 +48,16 @@ const VendorLaneView = ({
               </div>
               <div className="flex items-center">
                 <Calendar className="h-3 w-3 mr-1" />
-                Promise: {new Date(job?.promised_date)?.toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  month: 'short', 
-                  day: 'numeric' 
+                Promise:{' '}
+                {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
                 })}
               </div>
             </div>
           </div>
-          
+
           {/* Vendor line for off-site */}
           {!isOnSite && (
             <div className="text-xs opacity-90 mt-1 flex items-center">
@@ -73,26 +68,28 @@ const VendorLaneView = ({
 
           {/* Status badge */}
           <div className="flex justify-end mt-2">
-            <div className={`
+            <div
+              className={`
               px-2 py-1 rounded-full text-xs font-medium
               ${getStatusBadge(job?.job_status)?.bg || 'bg-gray-500'} 
               bg-opacity-20 border border-current
-            `}>
+            `}
+            >
               {getStatusBadge(job?.job_status)?.label || job?.job_status?.toUpperCase()}
             </div>
           </div>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   const getVendorCapacity = (vendorId) => {
-    const vendorJobs = jobs?.filter(job => job?.vendor_id === vendorId);
+    const vendorJobs = jobs?.filter((job) => job?.vendor_id === vendorId)
     return {
       scheduled: vendorJobs?.length || 0,
-      remaining: Math.max(0, 7 - (vendorJobs?.length || 0)) // Default capacity of 7
-    };
-  };
+      remaining: Math.max(0, 7 - (vendorJobs?.length || 0)), // Default capacity of 7
+    }
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -112,22 +109,22 @@ const VendorLaneView = ({
             </div>
             <div className="text-right">
               <div className="text-sm font-medium text-green-900">
-                {jobs?.filter(job => !job?.vendor_id || job?.location === 'on_site')?.length} jobs
+                {jobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site')?.length} jobs
               </div>
               <div className="text-xs text-green-600">currently scheduled</div>
             </div>
           </div>
         </div>
-        
-        <div 
+
+        <div
           className="p-4 min-h-[120px] grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"
           onDragOver={(e) => e?.preventDefault()}
           onDrop={() => onDrop?.(null, 'on_site')}
         >
           {jobs
-            ?.filter(job => !job?.vendor_id || job?.location === 'on_site')
+            ?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
             ?.map(renderEventChip)}
-          
+
           {/* Drop zone indicator */}
           {draggedJob && (
             <div className="border-2 border-dashed border-green-300 rounded-lg p-4 flex items-center justify-center text-green-600">
@@ -140,9 +137,9 @@ const VendorLaneView = ({
         </div>
       </div>
       {/* Vendor Lanes */}
-      {vendors?.map(vendor => {
-        const vendorJobs = jobs?.filter(job => job?.vendor_id === vendor?.id);
-        const capacity = getVendorCapacity(vendor?.id);
+      {vendors?.map((vendor) => {
+        const vendorJobs = jobs?.filter((job) => job?.vendor_id === vendor?.id)
+        const capacity = getVendorCapacity(vendor?.id)
 
         return (
           <div key={vendor?.id} className="bg-orange-50 rounded-lg border border-orange-200">
@@ -163,14 +160,18 @@ const VendorLaneView = ({
                     <div className="text-sm font-medium text-orange-900">
                       {capacity?.scheduled} / {capacity?.scheduled + capacity?.remaining}
                     </div>
-                    <div className={`
+                    <div
+                      className={`
                       px-2 py-1 rounded-full text-xs font-medium
-                      ${capacity?.remaining > 2 
-                        ? 'bg-green-100 text-green-700' 
-                        : capacity?.remaining > 0 
-                        ? 'bg-yellow-100 text-yellow-700' :'bg-red-100 text-red-700'
+                      ${
+                        capacity?.remaining > 2
+                          ? 'bg-green-100 text-green-700'
+                          : capacity?.remaining > 0
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-red-100 text-red-700'
                       }
-                    `}>
+                    `}
+                    >
                       {capacity?.remaining > 0 ? `${capacity?.remaining} slots` : 'Full'}
                     </div>
                   </div>
@@ -178,13 +179,13 @@ const VendorLaneView = ({
                 </div>
               </div>
             </div>
-            <div 
+            <div
               className="p-4 min-h-[120px] grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"
               onDragOver={(e) => e?.preventDefault()}
               onDrop={() => onDrop?.(vendor?.id, 'off_site')}
             >
               {vendorJobs?.map(renderEventChip)}
-              
+
               {/* Drop zone indicator */}
               {draggedJob && (
                 <div className="border-2 border-dashed border-orange-300 rounded-lg p-4 flex items-center justify-center text-orange-600">
@@ -196,10 +197,10 @@ const VendorLaneView = ({
               )}
             </div>
           </div>
-        );
+        )
       })}
     </div>
-  );
-};
+  )
+}
 
-export default VendorLaneView;
+export default VendorLaneView

@@ -4,7 +4,7 @@ import { join } from 'path'
 
 /**
  * Migration Integration Tests
- * 
+ *
  * These tests verify the vendor_id migration file is complete and correct.
  * They don't execute the migration, but validate the SQL structure.
  */
@@ -13,9 +13,9 @@ describe('Migration: 20251106000000_add_job_parts_vendor_id.sql', () => {
     process.cwd(),
     'supabase/migrations/20251106000000_add_job_parts_vendor_id.sql'
   )
-  
+
   let migrationSQL = ''
-  
+
   try {
     migrationSQL = readFileSync(migrationPath, 'utf8')
   } catch (err) {
@@ -59,7 +59,7 @@ describe('Migration: 20251106000000_add_job_parts_vendor_id.sql', () => {
     const policyMatches = migrationSQL.match(/CREATE POLICY/g)
     expect(policyMatches).toBeTruthy()
     expect(policyMatches.length).toBeGreaterThanOrEqual(3)
-    
+
     // Check specific policy names
     expect(migrationSQL).toContain('vendors_can_view_job_parts_via_per_line_vendor')
     expect(migrationSQL).toContain('vendors_can_insert_their_job_parts')
@@ -83,7 +83,7 @@ describe('Migration: 20251106000000_add_job_parts_vendor_id.sql', () => {
     const alterTableIndex = migrationSQL.indexOf('ALTER TABLE public.job_parts')
     const createIndexIndex = migrationSQL.indexOf('CREATE INDEX')
     const createPolicyIndex = migrationSQL.indexOf('CREATE POLICY')
-    
+
     // NOTIFY should come after all schema modifications
     expect(notifyIndex).toBeGreaterThan(alterTableIndex)
     expect(notifyIndex).toBeGreaterThan(createIndexIndex)
@@ -131,7 +131,7 @@ describe('Migration: 20251106000000_add_job_parts_vendor_id.sql', () => {
 
 /**
  * Migration Rollback Scenario
- * 
+ *
  * Documents what would be needed to rollback this migration
  */
 describe('Migration Rollback Documentation', () => {
@@ -154,7 +154,7 @@ describe('Migration Rollback Documentation', () => {
       -- Step 4: Reload schema cache
       NOTIFY pgrst, 'reload schema';
     `
-    
+
     expect(rollbackSQL).toContain('DROP POLICY')
     expect(rollbackSQL).toContain('DROP INDEX')
     expect(rollbackSQL).toContain('DROP COLUMN')

@@ -2,6 +2,8 @@
 
 This app uses Vite + React and Supabase. To run locally, configure your environment once and the error "Missing VITE_SUPABASE_URL environment variable" will go away for good.
 
+> Style note: Use "Supabase" (capital S) for the brand in prose/logs. Use lowercase identifiers like `supabase` only for variables, import names, and shell commands (e.g., `supabase db push`).
+
 ## 1) Environment variables (one-time)
 
 Create a file named `.env.local` at the repo root (same level as `package.json`). Copy from `.env.example` and fill in your Supabase values:

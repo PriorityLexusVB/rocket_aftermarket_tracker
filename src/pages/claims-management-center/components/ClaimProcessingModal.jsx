@@ -1,6 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, MessageSquare, User, AlertCircle, CheckCircle, Clock, XCircle, Calendar, Car, Package, FileText, Mail, Phone } from 'lucide-react';
-import { claimsService } from '../../../services/claimsService';
+import React, { useState, useEffect } from 'react'
+import {
+  X,
+  Save,
+  MessageSquare,
+  User,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Calendar,
+  Car,
+  Package,
+  FileText,
+  Mail,
+  Phone,
+} from 'lucide-react'
+import { claimsService } from '../../../services/claimsService'
 
 const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -8,100 +23,117 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
     priority: claim?.priority || 'medium',
     assigned_to: claim?.assigned_to || '',
     resolution_notes: claim?.resolution_notes || '',
-    claim_amount: claim?.claim_amount || ''
-  });
+    claim_amount: claim?.claim_amount || '',
+  })
 
-  const [attachments, setAttachments] = useState([]);
-  const [loadingAttachments, setLoadingAttachments] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const [attachments, setAttachments] = useState([])
+  const [loadingAttachments, setLoadingAttachments] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (claim?.id) {
-      loadAttachments();
+      loadAttachments()
     }
-  }, [claim?.id]);
+  }, [claim?.id])
 
   const loadAttachments = async () => {
     try {
-      setLoadingAttachments(true);
-      const attachmentsData = await claimsService?.getClaimAttachments(claim?.id);
-      setAttachments(attachmentsData || []);
+      setLoadingAttachments(true)
+      const attachmentsData = await claimsService?.getClaimAttachments(claim?.id)
+      setAttachments(attachmentsData || [])
     } catch (error) {
-      console.error('Error loading attachments:', error);
+      console.error('Error loading attachments:', error)
     } finally {
-      setLoadingAttachments(false);
+      setLoadingAttachments(false)
     }
-  };
+  }
 
   const handleInputChange = (e) => {
-    const { name, value } = e?.target;
-    setFormData(prev => ({
+    const { name, value } = e?.target
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }));
-  };
+      [name]: value,
+    }))
+  }
 
   const handleSave = async () => {
     try {
-      setSaving(true);
-      setError(null);
+      setSaving(true)
+      setError(null)
 
       const updates = {
         ...formData,
-        claim_amount: formData?.claim_amount ? parseFloat(formData?.claim_amount) : null
-      };
+        claim_amount: formData?.claim_amount ? parseFloat(formData?.claim_amount) : null,
+      }
 
-      await onUpdate(claim?.id, updates);
-      onClose();
+      await onUpdate(claim?.id, updates)
+      onClose()
     } catch (err) {
-      setError(err?.message);
+      setError(err?.message)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'submitted': return <Clock className="w-4 h-4 text-blue-500" />;
-      case 'under_review': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
-      case 'approved': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'denied': return <XCircle className="w-4 h-4 text-red-500" />;
-      case 'resolved': return <CheckCircle className="w-4 h-4 text-gray-500" />;
-      default: return <Clock className="w-4 h-4 text-gray-500" />;
+      case 'submitted':
+        return <Clock className="w-4 h-4 text-blue-500" />
+      case 'under_review':
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />
+      case 'approved':
+        return <CheckCircle className="w-4 h-4 text-green-500" />
+      case 'denied':
+        return <XCircle className="w-4 h-4 text-red-500" />
+      case 'resolved':
+        return <CheckCircle className="w-4 h-4 text-gray-500" />
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />
     }
-  };
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'submitted': return 'bg-blue-100 text-blue-800';
-      case 'under_review': return 'bg-yellow-100 text-yellow-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'denied': return 'bg-red-100 text-red-800';
-      case 'resolved': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'submitted':
+        return 'bg-blue-100 text-blue-800'
+      case 'under_review':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'approved':
+        return 'bg-green-100 text-green-800'
+      case 'denied':
+        return 'bg-red-100 text-red-800'
+      case 'resolved':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
-  };
+  }
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'urgent':
+        return 'bg-red-500'
+      case 'high':
+        return 'bg-orange-500'
+      case 'medium':
+        return 'bg-yellow-500'
+      case 'low':
+        return 'bg-green-500'
+      default:
+        return 'bg-gray-500'
     }
-  };
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString)?.toLocaleString();
-  };
+    if (!dateString) return 'N/A'
+    return new Date(dateString)?.toLocaleString()
+  }
 
   const formatCurrency = (amount) => {
-    if (!amount) return 'N/A';
-    return `$${parseFloat(amount)?.toFixed(2)}`;
-  };
+    if (!amount) return 'N/A'
+    return `$${parseFloat(amount)?.toFixed(2)}`
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -114,16 +146,15 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
               <h2 className="text-xl font-semibold text-gray-900">{claim?.claim_number}</h2>
               <div className="flex items-center gap-2 mt-1">
                 {getStatusIcon(claim?.status)}
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(claim?.status)}`}>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(claim?.status)}`}
+                >
                   {claim?.status?.replace('_', ' ')?.toUpperCase()}
                 </span>
               </div>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -148,7 +179,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                     <div className="flex items-center gap-2">
                       <p className="text-gray-600">{claim?.customer_email || 'N/A'}</p>
                       {claim?.customer_email && (
-                        <a 
+                        <a
                           href={`mailto:${claim?.customer_email}`}
                           className="text-blue-600 hover:text-blue-700"
                         >
@@ -162,7 +193,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                     <div className="flex items-center gap-2">
                       <p className="text-gray-600">{claim?.customer_phone || 'N/A'}</p>
                       {claim?.customer_phone && (
-                        <a 
+                        <a
                           href={`tel:${claim?.customer_phone}`}
                           className="text-blue-600 hover:text-blue-700"
                         >
@@ -183,8 +214,13 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                       Vehicle
                     </h3>
                     <div className="text-sm space-y-2">
-                      <p><span className="font-medium">Vehicle:</span> {claim?.vehicle?.year} {claim?.vehicle?.make} {claim?.vehicle?.model}</p>
-                      <p><span className="font-medium">Owner:</span> {claim?.vehicle?.owner_name}</p>
+                      <p>
+                        <span className="font-medium">Vehicle:</span> {claim?.vehicle?.year}{' '}
+                        {claim?.vehicle?.make} {claim?.vehicle?.model}
+                      </p>
+                      <p>
+                        <span className="font-medium">Owner:</span> {claim?.vehicle?.owner_name}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -196,9 +232,15 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                       Product
                     </h3>
                     <div className="text-sm space-y-2">
-                      <p><span className="font-medium">Product:</span> {claim?.product?.name}</p>
-                      <p><span className="font-medium">Brand:</span> {claim?.product?.brand}</p>
-                      <p><span className="font-medium">Category:</span> {claim?.product?.category}</p>
+                      <p>
+                        <span className="font-medium">Product:</span> {claim?.product?.name}
+                      </p>
+                      <p>
+                        <span className="font-medium">Brand:</span> {claim?.product?.brand}
+                      </p>
+                      <p>
+                        <span className="font-medium">Category:</span> {claim?.product?.category}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -211,7 +253,9 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                   Issue Description
                 </h3>
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-700 whitespace-pre-wrap">{claim?.issue_description || 'No description provided'}</p>
+                  <p className="text-gray-700 whitespace-pre-wrap">
+                    {claim?.issue_description || 'No description provided'}
+                  </p>
                 </div>
               </div>
 
@@ -220,7 +264,9 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                 <div>
                   <h3 className="font-medium text-gray-900 mb-3">Preferred Resolution</h3>
                   <div className="bg-blue-50 rounded-lg p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap">{claim?.preferred_resolution}</p>
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {claim?.preferred_resolution}
+                    </p>
                   </div>
                 </div>
               )}
@@ -304,7 +350,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
               {/* Processing Form */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h3 className="font-medium text-gray-900 mb-4">Processing Actions</h3>
-                
+
                 {error && (
                   <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -314,9 +360,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                     <select
                       name="status"
                       value={formData?.status}
@@ -332,9 +376,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Priority
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
                     <select
                       name="priority"
                       value={formData?.priority}
@@ -359,7 +401,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     >
                       <option value="">Unassigned</option>
-                      {staff?.map(member => (
+                      {staff?.map((member) => (
                         <option key={member?.id} value={member?.id}>
                           {member?.full_name} ({member?.role})
                         </option>
@@ -404,9 +446,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
 
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Last updated: {formatDate(claim?.updated_at)}
-          </div>
+          <div className="text-sm text-gray-600">Last updated: {formatDate(claim?.updated_at)}</div>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
@@ -435,7 +475,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ClaimProcessingModal;
+export default ClaimProcessingModal

@@ -1,10 +1,10 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 interface NotificationRecord {
   id: string
@@ -81,11 +81,11 @@ serve(async (req) => {
 
         // Send SMS via Twilio
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`
-        
+
         const twilioResponse = await fetch(twilioUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
+            Authorization: `Basic ${btoa(`${twilioAccountSid}:${twilioAuthToken}`)}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: new URLSearchParams({
@@ -104,7 +104,7 @@ serve(async (req) => {
             .update({
               sent_at: new Date().toISOString(),
               twilio_sid: twilioData.sid,
-              status: 'sent'
+              status: 'sent',
             })
             .eq('id', notification.id)
 
@@ -117,16 +117,15 @@ serve(async (req) => {
             phone: notification.phone_e164,
             status: 'sent',
             twilio_sid: twilioData.sid,
-            message_length: finalMessage.length
+            message_length: finalMessage.length,
           })
-
         } else {
           // Mark as failed in database
           const { error: updateError } = await supabaseClient
             .from('notification_outbox')
             .update({
               status: 'failed',
-              error_message: twilioData.message || 'Unknown Twilio error'
+              error_message: twilioData.message || 'Unknown Twilio error',
             })
             .eq('id', notification.id)
 
@@ -138,19 +137,18 @@ serve(async (req) => {
             id: notification.id,
             phone: notification.phone_e164,
             status: 'failed',
-            error: twilioData.message || 'Unknown error'
+            error: twilioData.message || 'Unknown error',
           })
         }
-
       } catch (notificationError) {
         console.error(`Error processing notification ${notification.id}:`, notificationError)
-        
+
         // Mark as failed
         await supabaseClient
           .from('notification_outbox')
           .update({
             status: 'failed',
-            error_message: notificationError.message
+            error_message: notificationError.message,
           })
           .eq('id', notification.id)
 
@@ -158,12 +156,12 @@ serve(async (req) => {
           id: notification.id,
           phone: notification.phone_e164,
           status: 'error',
-          error: notificationError.message
+          error: notificationError.message,
         })
       }
 
       // Add small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
 
     // Return results
@@ -172,26 +170,25 @@ serve(async (req) => {
         message: 'SMS processing completed',
         processed: processedResults.length,
         results: processedResults,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
+        status: 200,
       }
     )
-
   } catch (error) {
     console.error('Function error:', error)
-    
+
     return new Response(
       JSON.stringify({
         error: 'Internal server error',
         message: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 500,
       }
     )
   }

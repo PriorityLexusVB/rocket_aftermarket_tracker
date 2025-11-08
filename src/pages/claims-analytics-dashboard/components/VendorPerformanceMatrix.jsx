@@ -1,54 +1,60 @@
-import React, { useState, useMemo } from 'react';
-import { Star, Clock, DollarSign, Award } from 'lucide-react';
+import React, { useState, useMemo } from 'react'
+import { Star, Clock, DollarSign, Award } from 'lucide-react'
 
 const VendorPerformanceMatrix = ({ data = [], title }) => {
-  const [sortBy, setSortBy] = React.useState('efficiency_score');
-  const [sortOrder, setSortOrder] = React.useState('desc');
+  const [sortBy, setSortBy] = React.useState('efficiency_score')
+  const [sortOrder, setSortOrder] = React.useState('desc')
 
   const sortedData = React.useMemo(() => {
     return [...data]?.sort((a, b) => {
-      const aValue = parseFloat(a?.[sortBy]) || 0;
-      const bValue = parseFloat(b?.[sortBy]) || 0;
-      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
-    });
-  }, [data, sortBy, sortOrder]);
+      const aValue = parseFloat(a?.[sortBy]) || 0
+      const bValue = parseFloat(b?.[sortBy]) || 0
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue
+    })
+  }, [data, sortBy, sortOrder])
 
   const handleSort = (field) => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
-      setSortBy(field);
-      setSortOrder('desc');
+      setSortBy(field)
+      setSortOrder('desc')
     }
-  };
+  }
 
   const getPerformanceBadge = (score) => {
-    if (score >= 85) return { label: 'Excellent', color: 'bg-green-100 text-green-800' };
-    if (score >= 70) return { label: 'Good', color: 'bg-blue-100 text-blue-800' };
-    if (score >= 55) return { label: 'Average', color: 'bg-yellow-100 text-yellow-800' };
-    return { label: 'Needs Improvement', color: 'bg-red-100 text-red-800' };
-  };
+    if (score >= 85) return { label: 'Excellent', color: 'bg-green-100 text-green-800' }
+    if (score >= 70) return { label: 'Good', color: 'bg-blue-100 text-blue-800' }
+    if (score >= 55) return { label: 'Average', color: 'bg-yellow-100 text-yellow-800' }
+    return { label: 'Needs Improvement', color: 'bg-red-100 text-red-800' }
+  }
 
   const getRatingStars = (rating) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-    
+    const stars = []
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 !== 0
+
     for (let i = 0; i < fullStars; i++) {
-      stars?.push(<Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />);
+      stars?.push(<Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />)
     }
-    
+
     if (hasHalfStar) {
-      stars?.push(<Star key="half" className="h-4 w-4 text-yellow-400" style={{ clipPath: 'inset(0 50% 0 0)' }} />);
+      stars?.push(
+        <Star
+          key="half"
+          className="h-4 w-4 text-yellow-400"
+          style={{ clipPath: 'inset(0 50% 0 0)' }}
+        />
+      )
     }
-    
-    const emptyStars = 5 - Math.ceil(rating);
+
+    const emptyStars = 5 - Math.ceil(rating)
     for (let i = 0; i < emptyStars; i++) {
-      stars?.push(<Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />);
+      stars?.push(<Star key={`empty-${i}`} className="h-4 w-4 text-gray-300" />)
     }
-    
-    return stars;
-  };
+
+    return stars
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -67,7 +73,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Vendor</th>
-                  <th 
+                  <th
                     className="text-center py-3 px-4 font-medium text-gray-900 cursor-pointer hover:bg-gray-50"
                     onClick={() => handleSort('efficiency_score')}
                   >
@@ -78,7 +84,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="text-center py-3 px-4 font-medium text-gray-900 cursor-pointer hover:bg-gray-50"
                     onClick={() => handleSort('total_claims')}
                   >
@@ -89,7 +95,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="text-center py-3 px-4 font-medium text-gray-900 cursor-pointer hover:bg-gray-50"
                     onClick={() => handleSort('completion_rate')}
                   >
@@ -100,7 +106,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                       )}
                     </div>
                   </th>
-                  <th 
+                  <th
                     className="text-center py-3 px-4 font-medium text-gray-900 cursor-pointer hover:bg-gray-50"
                     onClick={() => handleSort('avg_resolution_time')}
                   >
@@ -117,7 +123,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sortedData?.map((vendor, index) => {
-                  const performance = getPerformanceBadge(parseFloat(vendor?.efficiency_score) || 0);
+                  const performance = getPerformanceBadge(parseFloat(vendor?.efficiency_score) || 0)
                   return (
                     <tr key={vendor?.vendor_id} className="hover:bg-gray-50">
                       <td className="py-4 px-4">
@@ -138,7 +144,9 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                           <span className="text-lg font-bold text-gray-900">
                             {vendor?.efficiency_score}
                           </span>
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${performance?.color}`}>
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${performance?.color}`}
+                          >
                             {performance?.label}
                           </span>
                         </div>
@@ -146,18 +154,18 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                       <td className="py-4 px-4 text-center">
                         <div className="text-sm">
                           <p className="font-medium text-gray-900">{vendor?.total_claims}</p>
-                          <p className="text-gray-600">
-                            {vendor?.completed_claims} completed
-                          </p>
+                          <p className="text-gray-600">{vendor?.completed_claims} completed</p>
                         </div>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <div className="text-sm">
                           <p className="font-medium text-gray-900">{vendor?.completion_rate}%</p>
                           <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${Math.min(100, parseFloat(vendor?.completion_rate) || 0)}%` }}
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min(100, parseFloat(vendor?.completion_rate) || 0)}%`,
+                              }}
                             ></div>
                           </div>
                         </div>
@@ -192,7 +200,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                         </span>
                       </td>
                     </tr>
-                  );
+                  )
                 })}
               </tbody>
             </table>
@@ -201,7 +209,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
           {/* Mobile Cards */}
           <div className="md:hidden space-y-4">
             {sortedData?.map((vendor, index) => {
-              const performance = getPerformanceBadge(parseFloat(vendor?.efficiency_score) || 0);
+              const performance = getPerformanceBadge(parseFloat(vendor?.efficiency_score) || 0)
               return (
                 <div key={vendor?.vendor_id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-3">
@@ -216,7 +224,9 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                       </div>
                       <p className="text-sm text-gray-600">{vendor?.specialty}</p>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${performance?.color}`}>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${performance?.color}`}
+                    >
                       {performance?.label}
                     </span>
                   </div>
@@ -235,7 +245,9 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                     </div>
                     <div>
                       <p className="text-gray-600">Avg Resolution</p>
-                      <p className="font-medium text-gray-900">{vendor?.avg_resolution_time} days</p>
+                      <p className="font-medium text-gray-900">
+                        {vendor?.avg_resolution_time} days
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
@@ -247,7 +259,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
                     </span>
                   </div>
                 </div>
-              );
+              )
             })}
           </div>
         </>
@@ -259,7 +271,7 @@ const VendorPerformanceMatrix = ({ data = [], title }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default VendorPerformanceMatrix;
+export default VendorPerformanceMatrix

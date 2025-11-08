@@ -392,7 +392,9 @@ function tableApi(table: string) {
                   const isOwner = user && targetAssignedTo && userId && targetAssignedTo === userId
                   allowed = !user || isManager || isOwner
                   if (!allowed)
-                    policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+                    policyError = {
+                      message: 'denied by RLS policy: staff can only edit assigned jobs',
+                    }
                 }
               } else if (table === 'job_parts') {
                 const role = currentUser?.role
@@ -422,7 +424,9 @@ function tableApi(table: string) {
                   const isOwner = user && targetAssignedTo && userId && targetAssignedTo === userId
                   allowed = !user || isManager || isOwner
                   if (!allowed)
-                    policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+                    policyError = {
+                      message: 'denied by RLS policy: staff can only edit assigned jobs',
+                    }
                 }
               } else if (table === 'job_parts') {
                 const role = currentUser?.role
@@ -452,7 +456,9 @@ function tableApi(table: string) {
                   const isOwner = user && targetAssignedTo && userId && targetAssignedTo === userId
                   allowed = !user || isManager || isOwner
                   if (!allowed)
-                    policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+                    policyError = {
+                      message: 'denied by RLS policy: staff can only edit assigned jobs',
+                    }
                 }
               } else if (table === 'job_parts') {
                 const role = currentUser?.role
@@ -489,7 +495,9 @@ function tableApi(table: string) {
                 // If no session, allow (tests not simulating auth)
                 allowed = !user || isManager || isOwner
                 if (!allowed)
-                  policyError = { message: 'denied by RLS policy: staff can only edit assigned jobs' }
+                  policyError = {
+                    message: 'denied by RLS policy: staff can only edit assigned jobs',
+                  }
               }
             } else if (table === 'job_parts') {
               // Only managers/admin can update job parts

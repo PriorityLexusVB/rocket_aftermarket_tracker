@@ -1,25 +1,31 @@
-import React from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
-const TransactionSummary = ({ 
-  customerData, 
-  selectedVehicle, 
-  selectedProducts, 
-  onSave, 
+const TransactionSummary = ({
+  customerData,
+  selectedVehicle,
+  selectedProducts,
+  onSave,
   isSaving,
-  canSave 
+  canSave,
 }) => {
   const calculateTotals = () => {
-    const totalCost = selectedProducts?.reduce((sum, service) => sum + (parseFloat(service?.cost) || 0), 0);
-    const totalPrice = selectedProducts?.reduce((sum, service) => sum + (parseFloat(service?.price) || 0), 0);
-    const totalProfit = totalPrice - totalCost;
-    const marginPercentage = totalPrice > 0 ? ((totalProfit / totalPrice) * 100)?.toFixed(1) : 0;
-    
-    return { totalCost, totalPrice, totalProfit, marginPercentage };
-  };
+    const totalCost = selectedProducts?.reduce(
+      (sum, service) => sum + (parseFloat(service?.cost) || 0),
+      0
+    )
+    const totalPrice = selectedProducts?.reduce(
+      (sum, service) => sum + (parseFloat(service?.price) || 0),
+      0
+    )
+    const totalProfit = totalPrice - totalCost
+    const marginPercentage = totalPrice > 0 ? ((totalProfit / totalPrice) * 100)?.toFixed(1) : 0
 
-  const { totalCost, totalPrice, totalProfit, marginPercentage } = calculateTotals();
+    return { totalCost, totalPrice, totalProfit, marginPercentage }
+  }
+
+  const { totalCost, totalPrice, totalProfit, marginPercentage } = calculateTotals()
 
   return (
     <div className="bg-card border border-border rounded-lg p-6">
@@ -39,8 +45,12 @@ const TransactionSummary = ({
         {customerData?.name ? (
           <div className="p-3 bg-muted/30 rounded-lg">
             <p className="font-medium text-foreground">{customerData?.name}</p>
-            {customerData?.email && <p className="text-sm text-muted-foreground">{customerData?.email}</p>}
-            {customerData?.phone && <p className="text-sm text-muted-foreground">{customerData?.phone}</p>}
+            {customerData?.email && (
+              <p className="text-sm text-muted-foreground">{customerData?.email}</p>
+            )}
+            {customerData?.phone && (
+              <p className="text-sm text-muted-foreground">{customerData?.phone}</p>
+            )}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">No customer selected</p>
@@ -79,11 +89,16 @@ const TransactionSummary = ({
               <div key={service?.id} className="p-3 bg-muted/30 rounded-lg text-sm">
                 <div className="flex items-center justify-between mb-1">
                   <p className="font-medium text-foreground">{service?.name}</p>
-                  <p className="font-medium text-foreground">${parseFloat(service?.price || 0)?.toFixed(2)}</p>
+                  <p className="font-medium text-foreground">
+                    ${parseFloat(service?.price || 0)?.toFixed(2)}
+                  </p>
                 </div>
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span>Cost: ${parseFloat(service?.cost || 0)?.toFixed(2)}</span>
-                  <span>Profit: ${(parseFloat(service?.price || 0) - parseFloat(service?.cost || 0))?.toFixed(2)}</span>
+                  <span>
+                    Profit: $
+                    {(parseFloat(service?.price || 0) - parseFloat(service?.cost || 0))?.toFixed(2)}
+                  </span>
                 </div>
                 {service?.vendorId && (
                   <p className="text-xs text-muted-foreground mt-1">Vendor assignment made</p>
@@ -132,7 +147,7 @@ const TransactionSummary = ({
         >
           {isSaving ? 'Saving Sale...' : 'Save Sale'}
         </Button>
-        
+
         <Button
           variant="outline"
           onClick={() => onSave?.({ printReceipt: true })}
@@ -163,7 +178,7 @@ const TransactionSummary = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default TransactionSummary;
+export default TransactionSummary

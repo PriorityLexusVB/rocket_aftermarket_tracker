@@ -1,82 +1,91 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
 
 const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole }) => {
-  const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [editingId, setEditingId] = useState(null)
+  const [editData, setEditData] = useState({})
+  const [selectedItems, setSelectedItems] = useState([])
 
   const statusOptions = [
     { value: 'Pending', label: 'Pending', description: 'Awaiting vendor assignment' },
     { value: 'In Progress', label: 'In Progress', description: 'Work in progress' },
     { value: 'Complete', label: 'Complete', description: 'Work completed' },
-    { value: 'On Hold', label: 'On Hold', description: 'Temporarily paused' }
-  ];
+    { value: 'On Hold', label: 'On Hold', description: 'Temporarily paused' },
+  ]
 
   const handleEdit = (item) => {
-    setEditingId(item?.id);
-    setEditData(item);
-  };
+    setEditingId(item?.id)
+    setEditData(item)
+  }
 
   const handleSave = () => {
-    onUpdateItem(editData);
-    setEditingId(null);
-    setEditData({});
-  };
+    onUpdateItem(editData)
+    setEditingId(null)
+    setEditData({})
+  }
 
   const handleCancel = () => {
-    setEditingId(null);
-    setEditData({});
-  };
+    setEditingId(null)
+    setEditData({})
+  }
 
   const handleChange = (field, value) => {
-    setEditData(prev => ({
+    setEditData((prev) => ({
       ...prev,
       [field]: value,
-      ...(field === 'salePrice' || field === 'estimatedCost' ? {
-        profit: (field === 'salePrice' ? parseFloat(value) || 0 : parseFloat(prev?.salePrice) || 0) - 
-                (field === 'estimatedCost' ? parseFloat(value) || 0 : parseFloat(prev?.estimatedCost) || 0)
-      } : {})
-    }));
-  };
+      ...(field === 'salePrice' || field === 'estimatedCost'
+        ? {
+            profit:
+              (field === 'salePrice' ? parseFloat(value) || 0 : parseFloat(prev?.salePrice) || 0) -
+              (field === 'estimatedCost'
+                ? parseFloat(value) || 0
+                : parseFloat(prev?.estimatedCost) || 0),
+          }
+        : {}),
+    }))
+  }
 
   const handleSelectItem = (itemId) => {
-    setSelectedItems(prev => 
-      prev?.includes(itemId) 
-        ? prev?.filter(id => id !== itemId)
-        : [...prev, itemId]
-    );
-  };
+    setSelectedItems((prev) =>
+      prev?.includes(itemId) ? prev?.filter((id) => id !== itemId) : [...prev, itemId]
+    )
+  }
 
   const handleBulkStatusUpdate = (status) => {
-    selectedItems?.forEach(itemId => {
-      const item = workItems?.find(w => w?.id === itemId);
+    selectedItems?.forEach((itemId) => {
+      const item = workItems?.find((w) => w?.id === itemId)
       if (item) {
-        onUpdateItem({ ...item, status });
+        onUpdateItem({ ...item, status })
       }
-    });
-    setSelectedItems([]);
-  };
+    })
+    setSelectedItems([])
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Complete': return 'text-success bg-success/10';
-      case 'In Progress': return 'text-warning bg-warning/10';
-      case 'On Hold': return 'text-error bg-error/10';
-      default: return 'text-muted-foreground bg-muted';
+      case 'Complete':
+        return 'text-success bg-success/10'
+      case 'In Progress':
+        return 'text-warning bg-warning/10'
+      case 'On Hold':
+        return 'text-error bg-error/10'
+      default:
+        return 'text-muted-foreground bg-muted'
     }
-  };
+  }
 
   const isOverdue = (item) => {
-    if (item?.status === 'Complete') return false;
-    const daysSinceAdded = Math.floor((new Date() - new Date(item.dateAdded)) / (1000 * 60 * 60 * 24));
-    return daysSinceAdded > 7;
-  };
+    if (item?.status === 'Complete') return false
+    const daysSinceAdded = Math.floor(
+      (new Date() - new Date(item.dateAdded)) / (1000 * 60 * 60 * 24)
+    )
+    return daysSinceAdded > 7
+  }
 
-  const canViewFinancials = userRole === 'manager';
+  const canViewFinancials = userRole === 'manager'
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1">
@@ -89,7 +98,8 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
             <div>
               <h2 className="text-lg font-semibold text-foreground">Aftermarket Work</h2>
               <p className="text-sm text-muted-foreground">
-                {workItems?.length} items • {workItems?.filter(w => w?.status === 'Complete')?.length} completed
+                {workItems?.length} items •{' '}
+                {workItems?.filter((w) => w?.status === 'Complete')?.length} completed
               </p>
             </div>
           </div>
@@ -118,7 +128,9 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
                 <input
                   type="checkbox"
                   checked={selectedItems?.length === workItems?.length}
-                  onChange={(e) => setSelectedItems(e?.target?.checked ? workItems?.map(w => w?.id) : [])}
+                  onChange={(e) =>
+                    setSelectedItems(e?.target?.checked ? workItems?.map((w) => w?.id) : [])
+                  }
                   className="rounded border-border"
                 />
               </th>
@@ -138,8 +150,8 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
           </thead>
           <tbody>
             {workItems?.map((item) => (
-              <tr 
-                key={item?.id} 
+              <tr
+                key={item?.id}
                 className={`border-b border-border hover:bg-muted/30 transition-colors ${
                   isOverdue(item) ? 'bg-error/5 border-error/20' : ''
                 }`}
@@ -152,7 +164,7 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
                     className="rounded border-border"
                   />
                 </td>
-                
+
                 <td className="p-4">
                   <div className="flex items-center space-x-2">
                     {isOverdue(item) && (
@@ -160,15 +172,17 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
                     )}
                     <div>
                       <div className="text-sm font-medium text-foreground">{item?.productType}</div>
-                      <div className="text-xs text-muted-foreground">{item?.productDescription}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {item?.productDescription}
+                      </div>
                     </div>
                   </div>
                 </td>
-                
+
                 <td className="p-4">
                   <div className="text-sm text-foreground">{item?.vendorName}</div>
                 </td>
-                
+
                 <td className="p-4">
                   {editingId === item?.id ? (
                     <Select
@@ -178,22 +192,24 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
                       className="w-32"
                     />
                   ) : (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item?.status)}`}>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item?.status)}`}
+                    >
                       {item?.status}
                     </span>
                   )}
                 </td>
-                
+
                 <td className="p-4">
                   <div className="text-sm text-muted-foreground">
                     {new Date(item.dateAdded)?.toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
-                      year: 'numeric'
+                      year: 'numeric',
                     })}
                   </div>
                 </td>
-                
+
                 {canViewFinancials && (
                   <>
                     <td className="p-4">
@@ -211,7 +227,7 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
                         </div>
                       )}
                     </td>
-                    
+
                     <td className="p-4">
                       {editingId === item?.id ? (
                         <Input
@@ -227,33 +243,25 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
                         </div>
                       )}
                     </td>
-                    
+
                     <td className="p-4">
-                      <div className={`text-sm font-medium ${
-                        (item?.profit || 0) >= 0 ? 'text-success' : 'text-error'
-                      }`}>
+                      <div
+                        className={`text-sm font-medium ${
+                          (item?.profit || 0) >= 0 ? 'text-success' : 'text-error'
+                        }`}
+                      >
                         ${(item?.profit || 0)?.toFixed(2)}
                       </div>
                     </td>
                   </>
                 )}
-                
+
                 <td className="p-4">
                   <div className="flex items-center space-x-2">
                     {editingId === item?.id ? (
                       <>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={handleSave}
-                          iconName="Check"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={handleCancel}
-                          iconName="X"
-                        />
+                        <Button variant="ghost" size="xs" onClick={handleSave} iconName="Check" />
+                        <Button variant="ghost" size="xs" onClick={handleCancel} iconName="X" />
                       </>
                     ) : (
                       <>
@@ -289,7 +297,7 @@ const AftermarketWorkTable = ({ workItems, onUpdateItem, onDeleteItem, userRole 
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default AftermarketWorkTable;
+export default AftermarketWorkTable

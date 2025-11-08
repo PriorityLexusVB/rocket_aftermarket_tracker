@@ -1,139 +1,139 @@
-import React, { useState, useRef } from 'react';
-import { Upload, X, Camera, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react'
+import { Upload, X, Camera, AlertCircle } from 'lucide-react'
 
 const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) => {
-  const [dragOver, setDragOver] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [uploading, setUploading] = useState(false)
   const [formData, setFormData] = useState({
     stage: 'during',
     category: 'progress',
-    description: ''
-  });
-  const [error, setError] = useState('');
-  const fileInputRef = useRef(null);
+    description: '',
+  })
+  const [error, setError] = useState('')
+  const fileInputRef = useRef(null)
 
   const resetForm = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
+    setSelectedFile(null)
+    setPreviewUrl(null)
     setFormData({
       stage: 'during',
       category: 'progress',
-      description: ''
-    });
-    setError('');
-    setUploading(false);
-  };
+      description: '',
+    })
+    setError('')
+    setUploading(false)
+  }
 
   const handleClose = () => {
     if (!uploading) {
-      resetForm();
-      onClose?.();
+      resetForm()
+      onClose?.()
     }
-  };
+  }
 
   const handleDragOver = (e) => {
-    e?.preventDefault();
-    setDragOver(true);
-  };
+    e?.preventDefault()
+    setDragOver(true)
+  }
 
   const handleDragLeave = (e) => {
-    e?.preventDefault();
-    setDragOver(false);
-  };
+    e?.preventDefault()
+    setDragOver(false)
+  }
 
   const handleDrop = (e) => {
-    e?.preventDefault();
-    setDragOver(false);
-    
-    const files = Array.from(e?.dataTransfer?.files);
-    const imageFile = files?.find(file => file?.type?.startsWith('image/'));
-    
+    e?.preventDefault()
+    setDragOver(false)
+
+    const files = Array.from(e?.dataTransfer?.files)
+    const imageFile = files?.find((file) => file?.type?.startsWith('image/'))
+
     if (imageFile) {
-      handleFileSelect(imageFile);
+      handleFileSelect(imageFile)
     } else {
-      setError('Please select a valid image file');
+      setError('Please select a valid image file')
     }
-  };
+  }
 
   const handleFileInputChange = (e) => {
-    const file = e?.target?.files?.[0];
+    const file = e?.target?.files?.[0]
     if (file) {
-      handleFileSelect(file);
+      handleFileSelect(file)
     }
-  };
+  }
 
   const handleFileSelect = (file) => {
     // Validate file type
     if (!file?.type?.startsWith('image/')) {
-      setError('Please select a valid image file');
-      return;
+      setError('Please select a valid image file')
+      return
     }
 
     // Validate file size (10MB limit)
     if (file?.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB');
-      return;
+      setError('File size must be less than 10MB')
+      return
     }
 
-    setSelectedFile(file);
-    setError('');
+    setSelectedFile(file)
+    setError('')
 
     // Create preview URL
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = (e) => {
-      setPreviewUrl(e?.target?.result);
-    };
-    reader?.readAsDataURL(file);
-  };
+      setPreviewUrl(e?.target?.result)
+    }
+    reader?.readAsDataURL(file)
+  }
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
-    
+    e?.preventDefault()
+
     if (!selectedFile) {
-      setError('Please select a photo to upload');
-      return;
+      setError('Please select a photo to upload')
+      return
     }
 
     if (!formData?.description?.trim()) {
-      setError('Please provide a description for the photo');
-      return;
+      setError('Please provide a description for the photo')
+      return
     }
 
-    setUploading(true);
-    setError('');
+    setUploading(true)
+    setError('')
 
     try {
       const uploadData = {
         file: selectedFile,
         stage: formData?.stage,
         category: formData?.category,
-        description: formData?.description?.trim()
-      };
+        description: formData?.description?.trim(),
+      }
 
-      const result = await onUpload?.(uploadData);
-      
+      const result = await onUpload?.(uploadData)
+
       if (result?.success) {
-        resetForm();
-        onClose?.();
+        resetForm()
+        onClose?.()
       } else {
-        setError(result?.error || 'Upload failed. Please try again.');
+        setError(result?.error || 'Upload failed. Please try again.')
       }
     } catch (error) {
-      setError('Upload failed. Please try again.');
+      setError('Upload failed. Please try again.')
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const formatFileSize = (bytes) => {
-    const kb = bytes / 1024;
-    const mb = kb / 1024;
-    return mb >= 1 ? `${mb?.toFixed(1)} MB` : `${kb?.toFixed(1)} KB`;
-  };
+    const kb = bytes / 1024
+    const mb = kb / 1024
+    return mb >= 1 ? `${mb?.toFixed(1)} MB` : `${kb?.toFixed(1)} KB`
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -163,10 +163,8 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
         <form onSubmit={handleSubmit} className="p-6">
           {/* File Upload Area */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Photo Upload
-            </label>
-            
+            <label className="block text-sm font-medium text-gray-700 mb-2">Photo Upload</label>
+
             {!selectedFile ? (
               <div
                 onDragOver={handleDragOver}
@@ -174,21 +172,14 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
                 onDrop={handleDrop}
                 onClick={() => fileInputRef?.current?.click()}
                 className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                  dragOver 
-                    ? 'border-blue-400 bg-blue-50' :'border-gray-300 hover:border-gray-400'
+                  dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
                 }`}
               >
                 <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-lg text-gray-600 mb-2">
-                  Drag and drop your photo here
-                </p>
-                <p className="text-sm text-gray-500 mb-4">
-                  or click to browse files
-                </p>
-                <p className="text-xs text-gray-400">
-                  Supports: JPG, PNG, WebP (Max: 10MB)
-                </p>
-                
+                <p className="text-lg text-gray-600 mb-2">Drag and drop your photo here</p>
+                <p className="text-sm text-gray-500 mb-4">or click to browse files</p>
+                <p className="text-xs text-gray-400">Supports: JPG, PNG, WebP (Max: 10MB)</p>
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -217,8 +208,8 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedFile(null);
-                        setPreviewUrl(null);
+                        setSelectedFile(null)
+                        setPreviewUrl(null)
                       }}
                       className="mt-2 text-sm text-red-600 hover:text-red-800"
                     >
@@ -233,9 +224,7 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
           {/* Photo Details */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Stage
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Stage</label>
               <select
                 value={formData?.stage}
                 onChange={(e) => setFormData({ ...formData, stage: e?.target?.value })}
@@ -250,9 +239,7 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
               <select
                 value={formData?.category}
                 onChange={(e) => setFormData({ ...formData, category: e?.target?.value })}
@@ -268,9 +255,7 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
 
           {/* Description */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
             <textarea
               value={formData?.description}
               onChange={(e) => setFormData({ ...formData, description: e?.target?.value })}
@@ -327,7 +312,7 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default PhotoUploadModal;
+export default PhotoUploadModal

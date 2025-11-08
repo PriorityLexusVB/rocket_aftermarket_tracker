@@ -1,9 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import AppLayout from '../../components/layouts/AppLayout';
-import { claimsService } from '../../services/claimsService';
-import { FileText, Upload, Search, CheckCircle, AlertCircle, Phone, Mail, User, Car, Package, X } from 'lucide-react';
-import Icon from '../../components/AppIcon';
-
+import React, { useState, useEffect } from 'react'
+import AppLayout from '../../components/layouts/AppLayout'
+import { claimsService } from '../../services/claimsService'
+import {
+  FileText,
+  Upload,
+  Search,
+  CheckCircle,
+  AlertCircle,
+  Phone,
+  Mail,
+  User,
+  Car,
+  Package,
+  X,
+} from 'lucide-react'
+import Icon from '../../components/AppIcon'
 
 const CustomerClaimsSubmissionPortal = () => {
   // Form state
@@ -16,76 +27,76 @@ const CustomerClaimsSubmissionPortal = () => {
     issue_description: '',
     preferred_resolution: '',
     claim_amount: '',
-    priority: 'medium'
-  });
+    priority: 'medium',
+  })
 
   // UI state
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedClaim, setSubmittedClaim] = useState(null);
+  const [currentStep, setCurrentStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [submitLoading, setSubmitLoading] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const [submittedClaim, setSubmittedClaim] = useState(null)
 
   // Data state
-  const [customerVehicles, setCustomerVehicles] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState('stock_number');
+  const [customerVehicles, setCustomerVehicles] = useState([])
+  const [products, setProducts] = useState([])
+  const [searchResults, setSearchResults] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchType, setSearchType] = useState('stock_number')
 
   // File upload state
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [uploadProgress, setUploadProgress] = useState({});
+  const [uploadedFiles, setUploadedFiles] = useState([])
+  const [uploadProgress, setUploadProgress] = useState({})
 
   // Load products on component mount
   useEffect(() => {
-    loadProducts();
-  }, []);
+    loadProducts()
+  }, [])
 
   // Load customer vehicles when email changes
   useEffect(() => {
     if (formData?.customer_email && formData?.customer_email?.includes('@')) {
-      loadCustomerVehicles(formData?.customer_email);
+      loadCustomerVehicles(formData?.customer_email)
     }
-  }, [formData?.customer_email]);
+  }, [formData?.customer_email])
 
   const loadProducts = async () => {
     try {
-      const productsData = await claimsService?.getProducts();
-      setProducts(productsData || []);
+      const productsData = await claimsService?.getProducts()
+      setProducts(productsData || [])
     } catch (error) {
-      console.error('Error loading products:', error);
+      console.error('Error loading products:', error)
     }
-  };
+  }
 
   const loadCustomerVehicles = async (email) => {
     try {
-      setLoading(true);
-      const vehicles = await claimsService?.getCustomerVehicles(email);
-      setCustomerVehicles(vehicles || []);
+      setLoading(true)
+      const vehicles = await claimsService?.getCustomerVehicles(email)
+      setCustomerVehicles(vehicles || [])
     } catch (error) {
-      console.error('Error loading customer vehicles:', error);
-      setCustomerVehicles([]);
+      console.error('Error loading customer vehicles:', error)
+      setCustomerVehicles([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleCustomerSearch = async () => {
     if (!searchTerm?.trim()) {
-      setErrors({ search: 'Please enter a search term' });
-      return;
+      setErrors({ search: 'Please enter a search term' })
+      return
     }
 
     try {
-      setLoading(true);
-      setErrors({});
-      
+      setLoading(true)
+      setErrors({})
+
       // For now, we'll simulate the search functionality
       // In a real implementation, you would call a search service
-      console.log(`Searching for ${searchType}:`, searchTerm);
-      
+      console.log(`Searching for ${searchType}:`, searchTerm)
+
       // Mock customer data based on search
       const mockCustomer = {
         customer_name: 'John Smith',
@@ -96,135 +107,136 @@ const CustomerClaimsSubmissionPortal = () => {
           make: 'Honda',
           model: 'Civic',
           year: 2018,
-          vin: '1HGBH41JXMN109186'
-        }
-      };
+          vin: '1HGBH41JXMN109186',
+        },
+      }
 
       // Auto-populate form with found customer data
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         customer_name: mockCustomer?.customer_name,
         customer_email: mockCustomer?.customer_email,
         customer_phone: mockCustomer?.customer_phone,
-        vehicle_id: mockCustomer?.vehicle?.id
-      }));
+        vehicle_id: mockCustomer?.vehicle?.id,
+      }))
 
-      setSearchResults([mockCustomer]);
-      
+      setSearchResults([mockCustomer])
     } catch (error) {
-      setErrors({ search: 'Error searching customer records' });
+      setErrors({ search: 'Error searching customer records' })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
-    }));
+      [field]: value,
+    }))
 
     // Clear error when user starts typing
     if (errors?.[field]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [field]: null
-      }));
+        [field]: null,
+      }))
     }
-  };
+  }
 
   const validateStep = (step) => {
-    const newErrors = {};
+    const newErrors = {}
 
     if (step === 1) {
-      if (!formData?.customer_name?.trim()) newErrors.customer_name = 'Customer name is required';
-      if (!formData?.customer_email?.trim()) newErrors.customer_email = 'Customer email is required';
-      if (!formData?.customer_phone?.trim()) newErrors.customer_phone = 'Customer phone is required';
+      if (!formData?.customer_name?.trim()) newErrors.customer_name = 'Customer name is required'
+      if (!formData?.customer_email?.trim()) newErrors.customer_email = 'Customer email is required'
+      if (!formData?.customer_phone?.trim()) newErrors.customer_phone = 'Customer phone is required'
     }
 
     if (step === 2) {
-      if (!formData?.vehicle_id) newErrors.vehicle_id = 'Please select a vehicle';
-      if (!formData?.product_id) newErrors.product_id = 'Please select a product/service';
+      if (!formData?.vehicle_id) newErrors.vehicle_id = 'Please select a vehicle'
+      if (!formData?.product_id) newErrors.product_id = 'Please select a product/service'
     }
 
     if (step === 3) {
-      if (!formData?.issue_description?.trim()) newErrors.issue_description = 'Issue description is required';
-      if (!formData?.preferred_resolution?.trim()) newErrors.preferred_resolution = 'Preferred resolution is required';
+      if (!formData?.issue_description?.trim())
+        newErrors.issue_description = 'Issue description is required'
+      if (!formData?.preferred_resolution?.trim())
+        newErrors.preferred_resolution = 'Preferred resolution is required'
     }
 
-    setErrors(newErrors);
-    return Object?.keys(newErrors)?.length === 0;
-  };
+    setErrors(newErrors)
+    return Object?.keys(newErrors)?.length === 0
+  }
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 4));
+      setCurrentStep((prev) => Math.min(prev + 1, 4))
     }
-  };
+  }
 
   const prevStep = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
-  };
+    setCurrentStep((prev) => Math.max(prev - 1, 1))
+  }
 
   const handleFileUpload = async (event) => {
-    const files = Array.from(event?.target?.files || []);
-    
+    const files = Array.from(event?.target?.files || [])
+
     for (const file of files) {
-      if (file?.size > 10 * 1024 * 1024) { // 10MB limit
-        setErrors(prev => ({
+      if (file?.size > 10 * 1024 * 1024) {
+        // 10MB limit
+        setErrors((prev) => ({
           ...prev,
-          files: 'File size must be less than 10MB'
-        }));
-        continue;
+          files: 'File size must be less than 10MB',
+        }))
+        continue
       }
 
       if (!file?.type?.startsWith('image/')) {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          files: 'Only image files are allowed'
-        }));
-        continue;
+          files: 'Only image files are allowed',
+        }))
+        continue
       }
 
-      const fileId = `${Date.now()}-${file?.name}`;
-      setUploadedFiles(prev => [...prev, {
-        id: fileId,
-        file,
-        name: file?.name,
-        size: file?.size,
-        type: file?.type,
-        preview: URL.createObjectURL(file),
-        description: ''
-      }]);
+      const fileId = `${Date.now()}-${file?.name}`
+      setUploadedFiles((prev) => [
+        ...prev,
+        {
+          id: fileId,
+          file,
+          name: file?.name,
+          size: file?.size,
+          type: file?.type,
+          preview: URL.createObjectURL(file),
+          description: '',
+        },
+      ])
     }
-  };
+  }
 
   const removeFile = (fileId) => {
-    setUploadedFiles(prev => {
-      const fileToRemove = prev?.find(f => f?.id === fileId);
+    setUploadedFiles((prev) => {
+      const fileToRemove = prev?.find((f) => f?.id === fileId)
       if (fileToRemove?.preview) {
-        URL.revokeObjectURL(fileToRemove?.preview);
+        URL.revokeObjectURL(fileToRemove?.preview)
       }
-      return prev?.filter(f => f?.id !== fileId);
-    });
-  };
+      return prev?.filter((f) => f?.id !== fileId)
+    })
+  }
 
   const updateFileDescription = (fileId, description) => {
-    setUploadedFiles(prev => 
-      prev?.map(file => 
-        file?.id === fileId 
-          ? { ...file, description }
-          : file
-      )
-    );
-  };
+    setUploadedFiles((prev) =>
+      prev?.map((file) => (file?.id === fileId ? { ...file, description } : file))
+    )
+  }
 
   const submitClaim = async () => {
-    if (!validateStep(3)) return;
+    if (!validateStep(3)) return
 
     try {
-      setSubmitLoading(true);
-      setErrors({});
+      setSubmitLoading(true)
+      setErrors({})
 
       // Create the claim
       const claimData = {
@@ -237,13 +249,13 @@ const CustomerClaimsSubmissionPortal = () => {
         preferred_resolution: formData?.preferred_resolution?.trim(),
         claim_amount: formData?.claim_amount ? parseFloat(formData?.claim_amount) : null,
         priority: formData?.priority || 'medium',
-        status: 'submitted'
-      };
+        status: 'submitted',
+      }
 
-      const newClaim = await claimsService?.createClaim(claimData);
+      const newClaim = await claimsService?.createClaim(claimData)
 
       if (!newClaim) {
-        throw new Error('Failed to create claim');
+        throw new Error('Failed to create claim')
       }
 
       // Upload files if any
@@ -253,26 +265,25 @@ const CustomerClaimsSubmissionPortal = () => {
             newClaim?.id,
             file?.file,
             file?.description || `Photo uploaded by ${formData?.customer_name}`
-          );
+          )
         } catch (fileError) {
-          console.error(`Error uploading file ${file?.name}:`, fileError);
+          console.error(`Error uploading file ${file?.name}:`, fileError)
           // Continue with other files even if one fails
         }
       }
 
-      setSubmittedClaim(newClaim);
-      setSubmitted(true);
-      setCurrentStep(4);
-
+      setSubmittedClaim(newClaim)
+      setSubmitted(true)
+      setCurrentStep(4)
     } catch (error) {
-      console.error('Error submitting claim:', error);
-      setErrors({ 
-        submit: error?.message || 'Failed to submit claim. Please try again.' 
-      });
+      console.error('Error submitting claim:', error)
+      setErrors({
+        submit: error?.message || 'Failed to submit claim. Please try again.',
+      })
     } finally {
-      setSubmitLoading(false);
+      setSubmitLoading(false)
     }
-  };
+  }
 
   const resetForm = () => {
     setFormData({
@@ -284,16 +295,16 @@ const CustomerClaimsSubmissionPortal = () => {
       issue_description: '',
       preferred_resolution: '',
       claim_amount: '',
-      priority: 'medium'
-    });
-    setCurrentStep(1);
-    setSubmitted(false);
-    setSubmittedClaim(null);
-    setUploadedFiles([]);
-    setErrors({});
-    setSearchResults([]);
-    setSearchTerm('');
-  };
+      priority: 'medium',
+    })
+    setCurrentStep(1)
+    setSubmitted(false)
+    setSubmittedClaim(null)
+    setUploadedFiles([])
+    setErrors({})
+    setSearchResults([])
+    setSearchTerm('')
+  }
 
   if (submitted && submittedClaim) {
     return (
@@ -304,11 +315,11 @@ const CustomerClaimsSubmissionPortal = () => {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              
+
               <h2 className="text-2xl font-bold text-gray-900 mb-4">
                 Claim Submitted Successfully!
               </h2>
-              
+
               <div className="bg-gray-50 rounded-lg p-6 mb-6">
                 <p className="text-lg font-semibold text-gray-900 mb-2">
                   Claim Number: {submittedClaim?.claim_number}
@@ -316,7 +327,7 @@ const CustomerClaimsSubmissionPortal = () => {
                 <p className="text-gray-600 mb-4">
                   Your claim has been submitted and is now under review.
                 </p>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-medium text-gray-700">Customer:</span>
@@ -324,17 +335,24 @@ const CustomerClaimsSubmissionPortal = () => {
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Priority:</span>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ml-2 ${
-                      submittedClaim?.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                      submittedClaim?.priority === 'high' ? 'bg-yellow-100 text-yellow-800' :
-                      submittedClaim?.priority === 'medium'? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {submittedClaim?.priority?.charAt(0)?.toUpperCase() + submittedClaim?.priority?.slice(1)}
+                    <span
+                      className={`inline-block px-2 py-1 rounded-full text-xs font-medium ml-2 ${
+                        submittedClaim?.priority === 'urgent'
+                          ? 'bg-red-100 text-red-800'
+                          : submittedClaim?.priority === 'high'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : submittedClaim?.priority === 'medium'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      {submittedClaim?.priority?.charAt(0)?.toUpperCase() +
+                        submittedClaim?.priority?.slice(1)}
                     </span>
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h3 className="font-semibold text-blue-900 mb-2">Next Steps:</h3>
                 <ul className="text-blue-800 text-sm space-y-1">
@@ -344,7 +362,7 @@ const CustomerClaimsSubmissionPortal = () => {
                   <li>• You will be notified of the claim decision via email</li>
                 </ul>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
                   onClick={resetForm}
@@ -363,7 +381,7 @@ const CustomerClaimsSubmissionPortal = () => {
           </div>
         </div>
       </AppLayout>
-    );
+    )
   }
 
   return (
@@ -379,7 +397,8 @@ const CustomerClaimsSubmissionPortal = () => {
               Customer Claims Submission Portal
             </h1>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Submit warranty and service claims with our easy-to-use portal. We'll guide you through each step to ensure your claim is processed quickly and accurately.
+              Submit warranty and service claims with our easy-to-use portal. We'll guide you
+              through each step to ensure your claim is processed quickly and accurately.
             </p>
           </div>
 
@@ -390,28 +409,33 @@ const CustomerClaimsSubmissionPortal = () => {
                 { step: 1, label: 'Customer Info', icon: User },
                 { step: 2, label: 'Vehicle & Product', icon: Car },
                 { step: 3, label: 'Claim Details', icon: FileText },
-                { step: 4, label: 'Review & Submit', icon: CheckCircle }
+                { step: 4, label: 'Review & Submit', icon: CheckCircle },
               ]?.map(({ step, label, icon: Icon }) => (
                 <div key={step} className="flex items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    currentStep >= step 
-                      ? 'bg-blue-600 text-white' :'bg-gray-200 text-gray-600'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      currentStep >= step ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                    }`}
+                  >
                     {currentStep > step ? (
                       <CheckCircle className="w-5 h-5" />
                     ) : (
                       <Icon className="w-5 h-5" />
                     )}
                   </div>
-                  <span className={`ml-2 text-sm font-medium ${
-                    currentStep >= step ? 'text-blue-600' : 'text-gray-500'
-                  }`}>
+                  <span
+                    className={`ml-2 text-sm font-medium ${
+                      currentStep >= step ? 'text-blue-600' : 'text-gray-500'
+                    }`}
+                  >
                     {label}
                   </span>
                   {step < 4 && (
-                    <div className={`w-12 h-0.5 ml-4 ${
-                      currentStep > step ? 'bg-blue-600' : 'bg-gray-200'
-                    }`} />
+                    <div
+                      className={`w-12 h-0.5 ml-4 ${
+                        currentStep > step ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    />
                   )}
                 </div>
               ))}
@@ -424,9 +448,7 @@ const CustomerClaimsSubmissionPortal = () => {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                    Customer Information
-                  </h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Customer Information</h2>
                   <p className="text-gray-600">
                     Let's start by finding your information in our system
                   </p>
@@ -438,7 +460,7 @@ const CustomerClaimsSubmissionPortal = () => {
                     <Search className="w-5 h-5 mr-2" />
                     Quick Customer Lookup
                   </h3>
-                  
+
                   <div className="flex flex-col sm:flex-row gap-4">
                     <select
                       value={searchType}
@@ -450,7 +472,7 @@ const CustomerClaimsSubmissionPortal = () => {
                       <option value="customer_name">Customer Name</option>
                       <option value="deal_number">Deal Number</option>
                     </select>
-                    
+
                     <input
                       type="text"
                       value={searchTerm}
@@ -459,7 +481,7 @@ const CustomerClaimsSubmissionPortal = () => {
                       className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       onKeyPress={(e) => e?.key === 'Enter' && handleCustomerSearch()}
                     />
-                    
+
                     <button
                       onClick={handleCustomerSearch}
                       disabled={loading}
@@ -468,10 +490,8 @@ const CustomerClaimsSubmissionPortal = () => {
                       {loading ? 'Searching...' : 'Search'}
                     </button>
                   </div>
-                  
-                  {errors?.search && (
-                    <p className="text-red-600 text-sm mt-2">{errors?.search}</p>
-                  )}
+
+                  {errors?.search && <p className="text-red-600 text-sm mt-2">{errors?.search}</p>}
                 </div>
 
                 {/* Manual Entry */}
@@ -562,7 +582,7 @@ const CustomerClaimsSubmissionPortal = () => {
                       }`}
                     >
                       <option value="">Select a vehicle</option>
-                      {customerVehicles?.map(vehicle => (
+                      {customerVehicles?.map((vehicle) => (
                         <option key={vehicle?.id} value={vehicle?.id}>
                           {vehicle?.year} {vehicle?.make} {vehicle?.model} - {vehicle?.vin}
                         </option>
@@ -591,7 +611,7 @@ const CustomerClaimsSubmissionPortal = () => {
                       }`}
                     >
                       <option value="">Select a product/service</option>
-                      {products?.map(product => (
+                      {products?.map((product) => (
                         <option key={product?.id} value={product?.id}>
                           {product?.name} - {product?.brand} ({product?.category})
                         </option>
@@ -608,7 +628,8 @@ const CustomerClaimsSubmissionPortal = () => {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                     <h3 className="font-semibold text-green-900 mb-2">Warranty Status</h3>
                     <p className="text-green-800 text-sm">
-                      ✅ Product is covered under warranty. Your claim will be processed accordingly.
+                      ✅ Product is covered under warranty. Your claim will be processed
+                      accordingly.
                     </p>
                   </div>
                 )}
@@ -619,9 +640,7 @@ const CustomerClaimsSubmissionPortal = () => {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div className="text-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                    Claim Details
-                  </h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Claim Details</h2>
                   <p className="text-gray-600">
                     Describe the issue and attach supporting documentation
                   </p>
@@ -731,17 +750,15 @@ const CustomerClaimsSubmissionPortal = () => {
                         </p>
                       </div>
                     </div>
-                    
-                    {errors?.files && (
-                      <p className="text-red-600 text-sm mt-1">{errors?.files}</p>
-                    )}
+
+                    {errors?.files && <p className="text-red-600 text-sm mt-1">{errors?.files}</p>}
                   </div>
 
                   {/* Uploaded Files Display */}
                   {uploadedFiles?.length > 0 && (
                     <div className="space-y-3">
                       <h4 className="font-medium text-gray-900">Uploaded Files:</h4>
-                      {uploadedFiles?.map(file => (
+                      {uploadedFiles?.map((file) => (
                         <div key={file?.id} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex items-start space-x-4">
                             <div className="flex-shrink-0">
@@ -788,7 +805,8 @@ const CustomerClaimsSubmissionPortal = () => {
                 disabled={currentStep === 1}
                 className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                   currentStep === 1
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
                 Previous
@@ -832,7 +850,7 @@ const CustomerClaimsSubmissionPortal = () => {
         </div>
       </div>
     </AppLayout>
-  );
-};
+  )
+}
 
-export default CustomerClaimsSubmissionPortal;
+export default CustomerClaimsSubmissionPortal

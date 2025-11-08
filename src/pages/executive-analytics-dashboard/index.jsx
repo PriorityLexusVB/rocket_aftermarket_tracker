@@ -1,28 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Header from '../../components/ui/Header';
-import Sidebar from '../../components/ui/Sidebar';
-import MetricsCard from './components/MetricsCard';
-import ProfitChart from './components/ProfitChart';
-import ProductPerformanceTable from './components/ProductPerformanceTable';
-import VendorPerformanceMatrix from './components/VendorPerformanceMatrix';
-import FilterControls from './components/FilterControls';
-import Icon from '../../components/AppIcon';
-import Button from '../../components/ui/Button';
-import OverdueJobsWidget from './components/OverdueJobsWidget';
-import OverdueAlertBar from '../../components/common/OverdueAlertBar';
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Header from '../../components/ui/Header'
+import Sidebar from '../../components/ui/Sidebar'
+import MetricsCard from './components/MetricsCard'
+import ProfitChart from './components/ProfitChart'
+import ProductPerformanceTable from './components/ProductPerformanceTable'
+import VendorPerformanceMatrix from './components/VendorPerformanceMatrix'
+import FilterControls from './components/FilterControls'
+import Icon from '../../components/AppIcon'
+import Button from '../../components/ui/Button'
+import OverdueJobsWidget from './components/OverdueJobsWidget'
+import OverdueAlertBar from '../../components/common/OverdueAlertBar'
 
 const ExecutiveAnalyticsDashboard = () => {
-  const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const navigate = useNavigate()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(new Date())
   const [filters, setFilters] = useState({
     dateRange: '30',
     department: 'all',
     productFilter: 'all',
-    vendorFilter: 'all'
-  });
+    vendorFilter: 'all',
+  })
 
   // Mock data for dashboard metrics
   const metricsData = [
@@ -33,7 +33,7 @@ const ExecutiveAnalyticsDashboard = () => {
       changeType: 'positive',
       icon: 'DollarSign',
       description: 'Last 30 days',
-      trend: { direction: 'up', value: '+$32,150' }
+      trend: { direction: 'up', value: '+$32,150' },
     },
     {
       title: 'Active Jobs',
@@ -42,7 +42,7 @@ const ExecutiveAnalyticsDashboard = () => {
       changeType: 'positive',
       icon: 'Briefcase',
       description: 'Currently in progress',
-      trend: { direction: 'up', value: '+11 jobs' }
+      trend: { direction: 'up', value: '+11 jobs' },
     },
     {
       title: 'Completion Rate',
@@ -51,7 +51,7 @@ const ExecutiveAnalyticsDashboard = () => {
       changeType: 'positive',
       icon: 'CheckCircle',
       description: 'On-time delivery',
-      trend: { direction: 'up', value: '+2.1%' }
+      trend: { direction: 'up', value: '+2.1%' },
     },
     {
       title: 'Avg Job Value',
@@ -60,9 +60,9 @@ const ExecutiveAnalyticsDashboard = () => {
       changeType: 'negative',
       icon: 'TrendingUp',
       description: 'Per completed job',
-      trend: { direction: 'down', value: '-$65' }
-    }
-  ];
+      trend: { direction: 'down', value: '-$65' },
+    },
+  ]
 
   // Mock data for profit chart
   const profitChartData = [
@@ -77,8 +77,8 @@ const ExecutiveAnalyticsDashboard = () => {
     { name: 'Sep', value: 378000 },
     { name: 'Oct', value: 395000 },
     { name: 'Nov', value: 412000 },
-    { name: 'Dec', value: 428000 }
-  ];
+    { name: 'Dec', value: 428000 },
+  ]
 
   // Mock data for product performance
   const productPerformanceData = [
@@ -90,7 +90,7 @@ const ExecutiveAnalyticsDashboard = () => {
       profit: 89750,
       volume: 234,
       margin: 38.5,
-      growth: 15.2
+      growth: 15.2,
     },
     {
       id: 2,
@@ -100,7 +100,7 @@ const ExecutiveAnalyticsDashboard = () => {
       profit: 67890,
       volume: 156,
       margin: 42.1,
-      growth: 8.7
+      growth: 8.7,
     },
     {
       id: 3,
@@ -110,7 +110,7 @@ const ExecutiveAnalyticsDashboard = () => {
       profit: 45620,
       volume: 189,
       margin: 28.3,
-      growth: -2.1
+      growth: -2.1,
     },
     {
       id: 4,
@@ -120,7 +120,7 @@ const ExecutiveAnalyticsDashboard = () => {
       profit: 38940,
       volume: 267,
       margin: 31.7,
-      growth: 12.4
+      growth: 12.4,
     },
     {
       id: 5,
@@ -130,9 +130,9 @@ const ExecutiveAnalyticsDashboard = () => {
       profit: 42350,
       volume: 78,
       margin: 45.8,
-      growth: 22.1
-    }
-  ];
+      growth: 22.1,
+    },
+  ]
 
   // Mock data for vendor performance
   const vendorPerformanceData = [
@@ -143,7 +143,7 @@ const ExecutiveAnalyticsDashboard = () => {
       completionRate: 96.8,
       activeJobs: 23,
       avgTurnaround: 3.2,
-      profitContribution: 125750
+      profitContribution: 125750,
     },
     {
       id: 2,
@@ -152,7 +152,7 @@ const ExecutiveAnalyticsDashboard = () => {
       completionRate: 94.2,
       activeJobs: 18,
       avgTurnaround: 4.1,
-      profitContribution: 89340
+      profitContribution: 89340,
     },
     {
       id: 3,
@@ -161,7 +161,7 @@ const ExecutiveAnalyticsDashboard = () => {
       completionRate: 91.5,
       activeJobs: 31,
       avgTurnaround: 2.8,
-      profitContribution: 67890
+      profitContribution: 67890,
     },
     {
       id: 4,
@@ -170,7 +170,7 @@ const ExecutiveAnalyticsDashboard = () => {
       completionRate: 88.7,
       activeJobs: 15,
       avgTurnaround: 5.3,
-      profitContribution: 45620
+      profitContribution: 45620,
     },
     {
       id: 5,
@@ -179,7 +179,7 @@ const ExecutiveAnalyticsDashboard = () => {
       completionRate: 92.3,
       activeJobs: 27,
       avgTurnaround: 4.7,
-      profitContribution: 78450
+      profitContribution: 78450,
     },
     {
       id: 6,
@@ -188,29 +188,29 @@ const ExecutiveAnalyticsDashboard = () => {
       completionRate: 89.4,
       activeJobs: 12,
       avgTurnaround: 6.2,
-      profitContribution: 52340
-    }
-  ];
+      profitContribution: 52340,
+    },
+  ]
 
   useEffect(() => {
     // Simulate loading
     const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+      setIsLoading(false)
+    }, 1000)
 
-    return () => clearTimeout(timer);
-  }, []);
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleFiltersChange = (newFilters) => {
-    setFilters(newFilters);
-    setIsLoading(true);
-    
+    setFilters(newFilters)
+    setIsLoading(true)
+
     // Simulate API call
     setTimeout(() => {
-      setIsLoading(false);
-      setLastUpdated(new Date());
-    }, 500);
-  };
+      setIsLoading(false)
+      setLastUpdated(new Date())
+    }, 500)
+  }
 
   const handleExport = () => {
     // Simulate export functionality
@@ -219,41 +219,45 @@ const ExecutiveAnalyticsDashboard = () => {
       products: productPerformanceData,
       vendors: vendorPerformanceData,
       filters: filters,
-      exportDate: new Date()?.toISOString()
-    };
-    
-    console.log('Exporting dashboard data:', exportData);
-    
+      exportDate: new Date()?.toISOString(),
+    }
+
+    console.log('Exporting dashboard data:', exportData)
+
     // Create and download CSV
-    const csvContent = `Dashboard Export - ${new Date()?.toLocaleDateString()}\n\nMetrics Summary:\nTotal Profit: $284,750\nActive Jobs: 147\nCompletion Rate: 94.2%\nAvg Job Value: $1,847\n\nFilters Applied:\nDate Range: ${filters?.dateRange} days\nDepartment: ${filters?.department}\nProduct: ${filters?.productFilter}\nVendor: ${filters?.vendorFilter}`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL?.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `dashboard-export-${new Date()?.toISOString()?.split('T')?.[0]}.csv`;
-    a?.click();
-    window.URL?.revokeObjectURL(url);
-  };
+    const csvContent = `Dashboard Export - ${new Date()?.toLocaleDateString()}\n\nMetrics Summary:\nTotal Profit: $284,750\nActive Jobs: 147\nCompletion Rate: 94.2%\nAvg Job Value: $1,847\n\nFilters Applied:\nDate Range: ${filters?.dateRange} days\nDepartment: ${filters?.department}\nProduct: ${filters?.productFilter}\nVendor: ${filters?.vendorFilter}`
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = window.URL?.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `dashboard-export-${new Date()?.toISOString()?.split('T')?.[0]}.csv`
+    a?.click()
+    window.URL?.revokeObjectURL(url)
+  }
 
   const handleRefresh = () => {
-    setIsLoading(true);
+    setIsLoading(true)
     setTimeout(() => {
-      setIsLoading(false);
-      setLastUpdated(new Date());
-    }, 800);
-  };
+      setIsLoading(false)
+      setLastUpdated(new Date())
+    }, 800)
+  }
 
   const handleQuickNavigation = (path) => {
-    navigate(path);
-  };
+    navigate(path)
+  }
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} setIsOpen={setIsSidebarOpen} />
-        
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          setIsOpen={setIsSidebarOpen}
+        />
+
         <main className="lg:ml-60 pt-16">
           <div className="flex items-center justify-center h-96">
             <div className="text-center">
@@ -263,13 +267,17 @@ const ExecutiveAnalyticsDashboard = () => {
           </div>
         </main>
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} setIsOpen={setIsSidebarOpen} />
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        setIsOpen={setIsSidebarOpen}
+      />
       <main className="lg:ml-60 pt-16">
         <div className="p-6 max-w-7xl mx-auto">
           {/* Overdue Alert Bar */}
@@ -279,12 +287,14 @@ const ExecutiveAnalyticsDashboard = () => {
           <div className="mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">Executive Analytics Dashboard</h1>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  Executive Analytics Dashboard
+                </h1>
                 <p className="text-muted-foreground">
                   Comprehensive aftermarket department performance and profitability insights
                 </p>
               </div>
-              
+
               <div className="flex items-center space-x-3 mt-4 sm:mt-0">
                 <Button
                   variant="outline"
@@ -297,7 +307,7 @@ const ExecutiveAnalyticsDashboard = () => {
                 >
                   Reports
                 </Button>
-                
+
                 <Button
                   variant="default"
                   size="sm"
@@ -338,7 +348,7 @@ const ExecutiveAnalyticsDashboard = () => {
                 height={300}
               />
             </div>
-            
+
             <OverdueJobsWidget />
           </div>
 
@@ -355,7 +365,7 @@ const ExecutiveAnalyticsDashboard = () => {
           {/* Quick Actions */}
           <div className="bg-card border border-border rounded-lg p-6 shadow-elevation-1">
             <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <button
                 onClick={() => handleQuickNavigation('/vehicle-management-hub')}
@@ -397,7 +407,7 @@ const ExecutiveAnalyticsDashboard = () => {
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default ExecutiveAnalyticsDashboard;
+export default ExecutiveAnalyticsDashboard

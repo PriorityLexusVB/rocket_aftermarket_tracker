@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-import { advancedFeaturesService } from '../../../services/advancedFeaturesService';
-import { useAuth } from '../../../contexts/AuthContext';
+import React, { useState, useEffect } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
+import { advancedFeaturesService } from '../../../services/advancedFeaturesService'
+import { useAuth } from '../../../contexts/AuthContext'
 
 const SmsTemplateManager = ({ className = '' }) => {
-  const [templates, setTemplates] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState(null);
-  const [error, setError] = useState('');
-  const { userProfile } = useAuth();
+  const [templates, setTemplates] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState(null)
+  const [error, setError] = useState('')
+  const { userProfile } = useAuth()
 
   const [formData, setFormData] = useState({
     name: '',
@@ -20,16 +20,16 @@ const SmsTemplateManager = ({ className = '' }) => {
     subject: '',
     message_template: '',
     variables: [],
-    is_active: true
-  });
+    is_active: true,
+  })
 
   const templateTypes = [
     { value: 'job_status', label: 'Job Status Update' },
     { value: 'overdue_alert', label: 'Overdue Alert' },
     { value: 'customer_notification', label: 'Customer Notification' },
     { value: 'vendor_assignment', label: 'Vendor Assignment' },
-    { value: 'completion_notice', label: 'Completion Notice' }
-  ];
+    { value: 'completion_notice', label: 'Completion Notice' },
+  ]
 
   const commonVariables = [
     '{{customer_name}}',
@@ -41,56 +41,53 @@ const SmsTemplateManager = ({ className = '' }) => {
     '{{total_cost}}',
     '{{vendor_name}}',
     '{{contact_phone}}',
-    '{{days_overdue}}'
-  ];
+    '{{days_overdue}}',
+  ]
 
   const loadTemplates = async () => {
     try {
-      setIsLoading(true);
-      let result = await advancedFeaturesService?.getSmsTemplates();
-      
+      setIsLoading(true)
+      let result = await advancedFeaturesService?.getSmsTemplates()
+
       if (result?.error) {
-        setError(result?.error?.message);
+        setError(result?.error?.message)
       } else {
-        setTemplates(result?.data);
-        setError('');
+        setTemplates(result?.data)
+        setError('')
       }
     } catch (err) {
-      setError('Failed to load SMS templates');
-      console.error('Error loading templates:', err);
+      setError('Failed to load SMS templates')
+      console.error('Error loading templates:', err)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    loadTemplates();
-  }, []);
+    loadTemplates()
+  }, [])
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
-    setError('');
+    e?.preventDefault()
+    setError('')
 
     try {
-      let result;
-      
+      let result
+
       if (editingTemplate) {
-        result = await advancedFeaturesService?.updateSmsTemplate(
-          editingTemplate?.id, 
-          formData
-        );
+        result = await advancedFeaturesService?.updateSmsTemplate(editingTemplate?.id, formData)
       } else {
-        result = await advancedFeaturesService?.createSmsTemplate(formData);
+        result = await advancedFeaturesService?.createSmsTemplate(formData)
       }
 
       if (result?.error) {
-        setError(result?.error?.message);
-        return;
+        setError(result?.error?.message)
+        return
       }
 
       // Reload templates
-      await loadTemplates();
-      
+      await loadTemplates()
+
       // Reset form
       setFormData({
         name: '',
@@ -98,84 +95,83 @@ const SmsTemplateManager = ({ className = '' }) => {
         subject: '',
         message_template: '',
         variables: [],
-        is_active: true
-      });
-      
-      setShowCreateModal(false);
-      setEditingTemplate(null);
-      
+        is_active: true,
+      })
+
+      setShowCreateModal(false)
+      setEditingTemplate(null)
     } catch (err) {
-      setError(err?.message || 'Failed to save template');
+      setError(err?.message || 'Failed to save template')
     }
-  };
+  }
 
   const handleEdit = (template) => {
-    setEditingTemplate(template);
+    setEditingTemplate(template)
     setFormData({
       name: template?.name || '',
       template_type: template?.template_type || 'job_status',
       subject: template?.subject || '',
       message_template: template?.message_template || '',
       variables: template?.variables || [],
-      is_active: template?.is_active !== false
-    });
-    setShowCreateModal(true);
-  };
+      is_active: template?.is_active !== false,
+    })
+    setShowCreateModal(true)
+  }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this template?')) {
-      return;
+      return
     }
 
     try {
-      let result = await advancedFeaturesService?.deleteSmsTemplate(id);
-      
+      let result = await advancedFeaturesService?.deleteSmsTemplate(id)
+
       if (result?.error) {
-        setError(result?.error?.message);
+        setError(result?.error?.message)
       } else {
-        await loadTemplates();
+        await loadTemplates()
       }
     } catch (err) {
-      setError('Failed to delete template');
+      setError('Failed to delete template')
     }
-  };
+  }
 
   const handleCancel = () => {
-    setShowCreateModal(false);
-    setEditingTemplate(null);
+    setShowCreateModal(false)
+    setEditingTemplate(null)
     setFormData({
       name: '',
       template_type: 'job_status',
       subject: '',
       message_template: '',
       variables: [],
-      is_active: true
-    });
-    setError('');
-  };
+      is_active: true,
+    })
+    setError('')
+  }
 
   const insertVariable = (variable) => {
-    const textarea = document.getElementById('message_template');
-    const cursorPos = textarea?.selectionStart || 0;
-    const textBefore = formData?.message_template?.substring(0, cursorPos);
-    const textAfter = formData?.message_template?.substring(cursorPos);
-    
+    const textarea = document.getElementById('message_template')
+    const cursorPos = textarea?.selectionStart || 0
+    const textBefore = formData?.message_template?.substring(0, cursorPos)
+    const textAfter = formData?.message_template?.substring(cursorPos)
+
     setFormData({
       ...formData,
-      message_template: textBefore + variable + textAfter
-    });
-    
+      message_template: textBefore + variable + textAfter,
+    })
+
     // Focus back to textarea
     setTimeout(() => {
-      textarea?.focus();
-      textarea?.setSelectionRange(cursorPos + variable?.length, cursorPos + variable?.length);
-    }, 0);
-  };
+      textarea?.focus()
+      textarea?.setSelectionRange(cursorPos + variable?.length, cursorPos + variable?.length)
+    }, 0)
+  }
 
   const getTypeLabel = (type) => {
-    const typeObj = templateTypes?.find(t => t?.value === type);
-    return typeObj?.label || type;
-  };
+    const typeObj = templateTypes?.find((t) => t?.value === type)
+    return typeObj?.label || type
+  }
 
   if (!userProfile || !['admin', 'manager']?.includes(userProfile?.role)) {
     return (
@@ -185,7 +181,7 @@ const SmsTemplateManager = ({ className = '' }) => {
           <p>Access restricted to administrators and managers only.</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -198,7 +194,7 @@ const SmsTemplateManager = ({ className = '' }) => {
             Manage automated SMS message templates with dynamic variables
           </p>
         </div>
-        
+
         <Button
           onClick={() => setShowCreateModal(true)}
           iconName="Plus"
@@ -258,28 +254,28 @@ const SmsTemplateManager = ({ className = '' }) => {
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <h4 className="font-medium text-foreground">{template?.name}</h4>
-                    
+
                     <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
                       {getTypeLabel(template?.template_type)}
                     </span>
-                    
+
                     {!template?.is_active && (
                       <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
                         Inactive
                       </span>
                     )}
                   </div>
-                  
+
                   {template?.subject && (
                     <div className="text-sm text-muted-foreground mb-2">
                       <strong>Subject:</strong> {template?.subject}
                     </div>
                   )}
-                  
+
                   <div className="text-sm text-foreground bg-muted/30 p-2 rounded">
                     {template?.message_template}
                   </div>
-                  
+
                   {template?.variables && template?.variables?.length > 0 && (
                     <div className="mt-2">
                       <div className="text-xs text-muted-foreground mb-1">Variables:</div>
@@ -296,7 +292,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex items-center space-x-2 ml-4">
                   <Button
                     onClick={() => handleEdit(template)}
@@ -306,10 +302,10 @@ const SmsTemplateManager = ({ className = '' }) => {
                     className="hover:bg-muted"
                     aria-label={`Edit ${template?.name} template`}
                   />
-                  
+
                   <Button
                     onClick={() => handleDelete(template?.id)}
-                    variant="ghost" 
+                    variant="ghost"
                     size="sm"
                     iconName="Trash"
                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -329,7 +325,7 @@ const SmsTemplateManager = ({ className = '' }) => {
             <h3 className="text-lg font-semibold text-foreground mb-4">
               {editingTemplate ? 'Edit Template' : 'Create SMS Template'}
             </h3>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -345,7 +341,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium text-foreground mb-2 block">
                     Template Type
@@ -358,7 +354,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Subject (Optional)
@@ -371,7 +367,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   className="w-full"
                 />
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Message Template
@@ -384,7 +380,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   className="w-full h-32 px-3 py-2 border border-border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                   required
                 />
-                
+
                 <div className="mt-2">
                   <div className="text-xs text-muted-foreground mb-2">
                     Click to insert common variables:
@@ -403,7 +399,7 @@ const SmsTemplateManager = ({ className = '' }) => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -413,19 +409,19 @@ const SmsTemplateManager = ({ className = '' }) => {
                 />
                 <span className="text-sm text-foreground">Template is active</span>
               </div>
-              
+
               <div className="flex justify-end space-x-2 pt-4 border-t border-border">
-                <Button 
-                  variant="outline" 
-                  type="button" 
+                <Button
+                  variant="outline"
+                  type="button"
                   onClick={handleCancel}
                   className="border-border hover:bg-muted"
                   aria-label="Cancel template creation"
                 >
                   Cancel
                 </Button>
-                
-                <Button 
+
+                <Button
                   type="submit"
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                   aria-label={editingTemplate ? 'Update SMS template' : 'Create SMS template'}
@@ -438,7 +434,7 @@ const SmsTemplateManager = ({ className = '' }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default SmsTemplateManager;
+export default SmsTemplateManager

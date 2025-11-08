@@ -1,214 +1,209 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react'
+import { Plus } from 'lucide-react'
 
-
-
-import SpreadsheetTable from './components/SpreadsheetTable';
-import SummaryCards from './components/SummaryCards';
-import NewSaleModal from './components/NewSaleModal';
-import salesTrackerService from '../../services/salesTrackerService';
-import { useLogger } from '../../hooks/useLogger';
-import { vendorService } from '../../services/vendorService';
+import SpreadsheetTable from './components/SpreadsheetTable'
+import SummaryCards from './components/SummaryCards'
+import NewSaleModal from './components/NewSaleModal'
+import salesTrackerService from '../../services/salesTrackerService'
+import { useLogger } from '../../hooks/useLogger'
+import { vendorService } from '../../services/vendorService'
 
 const SalesTracker = () => {
-  const [salesData, setSalesData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
+  const [salesData, setSalesData] = useState([])
+  const [filteredData, setFilteredData] = useState([])
   const [summaryStats, setSummaryStats] = useState({
     totalRevenue: 0,
     totalCost: 0,
     totalProfit: 0,
-    transactionCount: 0
-  });
-  const [loading, setLoading] = useState(true);
-  const [showNewSaleModal, setShowNewSaleModal] = useState(false);
-  const [staffMembers, setStaffMembers] = useState([]);
-  const [vendors, setVendors] = useState([]);
+    transactionCount: 0,
+  })
+  const [loading, setLoading] = useState(true)
+  const [showNewSaleModal, setShowNewSaleModal] = useState(false)
+  const [staffMembers, setStaffMembers] = useState([])
+  const [vendors, setVendors] = useState([])
   const [filters, setFilters] = useState({
     salesperson: '',
     dateFrom: '',
     dateTo: '',
-    search: ''
-  });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSale, setEditingSale] = useState(null);
+    search: '',
+  })
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingSale, setEditingSale] = useState(null)
 
-  const { logPageView, logSalesAction, logError, logUserInteraction } = useLogger();
+  const { logPageView, logSalesAction, logError, logUserInteraction } = useLogger()
 
   // Enhanced data loading with logging
   const loadSalesData = useCallback(async () => {
     try {
-      setLoading(true);
-      const startTime = Date.now(); // Add this line - declare startTime variable
-      
-      await logUserInteraction(
-        'sales-data-load',
-        'data_fetch_initiated',
-        { timestamp: new Date()?.toISOString() }
-      );
-      
-      const data = await salesTrackerService?.getAllSales();
-      setSalesData(data);
-      
+      setLoading(true)
+      const startTime = Date.now() // Add this line - declare startTime variable
+
+      await logUserInteraction('sales-data-load', 'data_fetch_initiated', {
+        timestamp: new Date()?.toISOString(),
+      })
+
+      const data = await salesTrackerService?.getAllSales()
+      setSalesData(data)
+
       await logSalesAction(
         'sales_data_loaded',
         'bulk',
         `Loaded ${data?.length || 0} sales records`,
         { recordCount: data?.length, loadTime: Date.now() - startTime }
-      );
-      
+      )
     } catch (error) {
-      await logError(error, { 
+      await logError(error, {
         action: 'load_sales_data',
-        component: 'SalesTracker'
-      });
-      
-      console.error('Error loading sales data:', error);
+        component: 'SalesTracker',
+      })
+
+      console.error('Error loading sales data:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [logUserInteraction, logSalesAction, logError]);
+  }, [logUserInteraction, logSalesAction, logError])
 
   // Enhanced new sale creation with logging
-  const handleCreateSale = useCallback(async (saleData) => {
-    try {
-      await logSalesAction(
-        'sale_creation_initiated',
-        'new',
-        `Creating new sale for ${saleData?.year} ${saleData?.make} ${saleData?.model}`,
-        { saleData }
-      );
+  const handleCreateSale = useCallback(
+    async (saleData) => {
+      try {
+        await logSalesAction(
+          'sale_creation_initiated',
+          'new',
+          `Creating new sale for ${saleData?.year} ${saleData?.make} ${saleData?.model}`,
+          { saleData }
+        )
 
-      const newSale = await salesTrackerService?.createSale(saleData);
-      setSalesData(prev => [newSale, ...prev]);
-      setIsModalOpen(false);
+        const newSale = await salesTrackerService?.createSale(saleData)
+        setSalesData((prev) => [newSale, ...prev])
+        setIsModalOpen(false)
 
-      await logSalesAction(
-        'sale_created',
-        newSale?.id,
-        `Successfully created sale for stock #${saleData?.stockNumber}`,
-        { 
-          newSale,
-          vehicleInfo: {
-            stockNumber: saleData?.stockNumber,
-            year: saleData?.year,
-            make: saleData?.make,
-            model: saleData?.model,
-            color: saleData?.color
+        await logSalesAction(
+          'sale_created',
+          newSale?.id,
+          `Successfully created sale for stock #${saleData?.stockNumber}`,
+          {
+            newSale,
+            vehicleInfo: {
+              stockNumber: saleData?.stockNumber,
+              year: saleData?.year,
+              make: saleData?.make,
+              model: saleData?.model,
+              color: saleData?.color,
+            },
           }
-        }
-      );
+        )
+      } catch (error) {
+        await logError(error, {
+          action: 'create_sale',
+          saleData: saleData,
+        })
 
-    } catch (error) {
-      await logError(error, {
-        action: 'create_sale',
-        saleData: saleData
-      });
-      
-      console.error('Error creating sale:', error);
-    }
-  }, [logSalesAction, logError]);
+        console.error('Error creating sale:', error)
+      }
+    },
+    [logSalesAction, logError]
+  )
 
   // Enhanced sale update with detailed logging
-  const handleUpdateSale = useCallback(async (saleId, updates) => {
-    try {
-      const existingSale = salesData?.find(s => s?.id === saleId);
-      
-      await logSalesAction(
-        'sale_update_initiated',
-        saleId,
-        `Updating sale for ${existingSale?.stockNumber || saleId}`,
-        { 
-          oldData: existingSale,
-          updates 
-        }
-      );
+  const handleUpdateSale = useCallback(
+    async (saleId, updates) => {
+      try {
+        const existingSale = salesData?.find((s) => s?.id === saleId)
 
-      const updatedSale = await salesTrackerService?.updateSale(saleId, updates);
-      
-      setSalesData(prev => 
-        prev?.map(s => s?.id === saleId ? updatedSale : s)
-      );
+        await logSalesAction(
+          'sale_update_initiated',
+          saleId,
+          `Updating sale for ${existingSale?.stockNumber || saleId}`,
+          {
+            oldData: existingSale,
+            updates,
+          }
+        )
 
-      await logSalesAction(
-        'sale_updated',
-        saleId,
-        `Successfully updated sale for stock #${existingSale?.stockNumber}`,
-        { 
-          oldData: existingSale,
-          newData: updatedSale,
-          changes: updates
-        }
-      );
+        const updatedSale = await salesTrackerService?.updateSale(saleId, updates)
 
-    } catch (error) {
-      await logError(error, {
-        action: 'update_sale',
-        saleId,
-        updates
-      });
-      
-      console.error('Error updating sale:', error);
-    }
-  }, [salesData, logSalesAction, logError]);
+        setSalesData((prev) => prev?.map((s) => (s?.id === saleId ? updatedSale : s)))
+
+        await logSalesAction(
+          'sale_updated',
+          saleId,
+          `Successfully updated sale for stock #${existingSale?.stockNumber}`,
+          {
+            oldData: existingSale,
+            newData: updatedSale,
+            changes: updates,
+          }
+        )
+      } catch (error) {
+        await logError(error, {
+          action: 'update_sale',
+          saleId,
+          updates,
+        })
+
+        console.error('Error updating sale:', error)
+      }
+    },
+    [salesData, logSalesAction, logError]
+  )
 
   // Enhanced sale deletion with logging
-  const handleDeleteSale = useCallback(async (saleId) => {
-    try {
-      const saleToDelete = salesData?.find(s => s?.id === saleId);
-      
-      await logSalesAction(
-        'sale_deletion_initiated',
-        saleId,
-        `Deleting sale for ${saleToDelete?.stockNumber || saleId}`,
-        { saleData: saleToDelete }
-      );
+  const handleDeleteSale = useCallback(
+    async (saleId) => {
+      try {
+        const saleToDelete = salesData?.find((s) => s?.id === saleId)
 
-      await salesTrackerService?.deleteSale(saleId);
-      setSalesData(prev => prev?.filter(s => s?.id !== saleId));
+        await logSalesAction(
+          'sale_deletion_initiated',
+          saleId,
+          `Deleting sale for ${saleToDelete?.stockNumber || saleId}`,
+          { saleData: saleToDelete }
+        )
 
-      await logSalesAction(
-        'sale_deleted',
-        saleId,
-        `Successfully deleted sale for stock #${saleToDelete?.stockNumber}`,
-        { deletedSale: saleToDelete }
-      );
+        await salesTrackerService?.deleteSale(saleId)
+        setSalesData((prev) => prev?.filter((s) => s?.id !== saleId))
 
-    } catch (error) {
-      await logError(error, {
-        action: 'delete_sale',
-        saleId
-      });
-      
-      console.error('Error deleting sale:', error);
-    }
-  }, [salesData, logSalesAction, logError]);
+        await logSalesAction(
+          'sale_deleted',
+          saleId,
+          `Successfully deleted sale for stock #${saleToDelete?.stockNumber}`,
+          { deletedSale: saleToDelete }
+        )
+      } catch (error) {
+        await logError(error, {
+          action: 'delete_sale',
+          saleId,
+        })
+
+        console.error('Error deleting sale:', error)
+      }
+    },
+    [salesData, logSalesAction, logError]
+  )
 
   // Enhanced modal handlers with logging
   const handleOpenModal = useCallback(async () => {
     try {
-      setIsModalOpen(true);
-      await logUserInteraction(
-        'new-sale-modal',
-        'modal_opened',
-        { timestamp: new Date()?.toISOString() }
-      );
+      setIsModalOpen(true)
+      await logUserInteraction('new-sale-modal', 'modal_opened', {
+        timestamp: new Date()?.toISOString(),
+      })
     } catch (error) {
-      await logError(error, { action: 'open_modal' });
+      await logError(error, { action: 'open_modal' })
     }
-  }, [logUserInteraction, logError]);
+  }, [logUserInteraction, logError])
 
   const handleCloseModal = useCallback(async () => {
     try {
-      setIsModalOpen(false);
-      await logUserInteraction(
-        'new-sale-modal',
-        'modal_closed',
-        { timestamp: new Date()?.toISOString() }
-      );
+      setIsModalOpen(false)
+      await logUserInteraction('new-sale-modal', 'modal_closed', {
+        timestamp: new Date()?.toISOString(),
+      })
     } catch (error) {
-      await logError(error, { action: 'close_modal' });
+      await logError(error, { action: 'close_modal' })
     }
-  }, [logUserInteraction, logError]);
+  }, [logUserInteraction, logError])
 
   // Log page load on mount
   useEffect(() => {
@@ -217,42 +212,42 @@ const SalesTracker = () => {
         await logPageView('sales-tracker', {
           userAgent: navigator?.userAgent,
           timestamp: new Date()?.toISOString(),
-          referrer: document?.referrer
-        });
+          referrer: document?.referrer,
+        })
       } catch (error) {
-        console.error('Failed to log page view:', error);
+        console.error('Failed to log page view:', error)
       }
-    };
+    }
 
-    logPageLoad();
-    loadSalesData();
-  }, [logPageView, loadSalesData]);
+    logPageLoad()
+    loadSalesData()
+  }, [logPageView, loadSalesData])
 
   // Load staff members and vendors
   useEffect(() => {
     const loadStaffMembers = async () => {
       try {
-        const staff = await salesTrackerService?.getStaffMembers() || [];
-        setStaffMembers(staff);
+        const staff = (await salesTrackerService?.getStaffMembers()) || []
+        setStaffMembers(staff)
       } catch (error) {
-        console.error('Error loading staff members:', error);
-        setStaffMembers([]);
+        console.error('Error loading staff members:', error)
+        setStaffMembers([])
       }
-    };
-    
+    }
+
     const loadVendors = async () => {
       try {
-        const vendorData = await vendorService?.getAllVendors() || [];
-        setVendors(vendorData);
+        const vendorData = (await vendorService?.getAllVendors()) || []
+        setVendors(vendorData)
       } catch (error) {
-        console.error('Error loading vendors:', error);
-        setVendors([]);
+        console.error('Error loading vendors:', error)
+        setVendors([])
       }
-    };
-    
-    loadStaffMembers();
-    loadVendors();
-  }, []);
+    }
+
+    loadStaffMembers()
+    loadVendors()
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -277,15 +272,14 @@ const SalesTracker = () => {
         </div>
 
         {/* Summary Cards with enhanced data */}
-        <SummaryCards 
+        <SummaryCards
           data={salesData}
           stats={summaryStats}
           onCardClick={async (cardType) => {
-            await logUserInteraction(
-              `summary-card-${cardType}`,
-              'card_clicked',
-              { cardType, dataLength: salesData?.length }
-            );
+            await logUserInteraction(`summary-card-${cardType}`, 'card_clicked', {
+              cardType,
+              dataLength: salesData?.length,
+            })
           }}
         />
 
@@ -298,8 +292,8 @@ const SalesTracker = () => {
           <SpreadsheetTable
             data={salesData}
             onEdit={(sale) => {
-              setEditingSale(sale);
-              setIsModalOpen(true);
+              setEditingSale(sale)
+              setIsModalOpen(true)
             }}
             onDelete={handleDeleteSale}
           />
@@ -310,9 +304,8 @@ const SalesTracker = () => {
           <NewSaleModal
             isOpen={isModalOpen}
             onClose={handleCloseModal}
-            onSubmit={editingSale ? 
-              (data) => handleUpdateSale(editingSale?.id, data) : 
-              handleCreateSale
+            onSubmit={
+              editingSale ? (data) => handleUpdateSale(editingSale?.id, data) : handleCreateSale
             }
             editData={editingSale}
             staffMembers={staffMembers}
@@ -321,7 +314,7 @@ const SalesTracker = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SalesTracker;
+export default SalesTracker

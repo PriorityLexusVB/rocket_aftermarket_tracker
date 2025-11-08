@@ -1,41 +1,41 @@
-import React from 'react';
-import { ShoppingCart, Package, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React from 'react'
+import { ShoppingCart, Package, TrendingUp, DollarSign, BarChart3 } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const DealAnalyticsWidget = ({ data }) => {
   // Process deal data for chart
   const processChartData = () => {
-    if (!data?.deals || data?.deals?.length === 0) return [];
-    
+    if (!data?.deals || data?.deals?.length === 0) return []
+
     // Group deals by products count ranges
     const ranges = {
       '1-2 Products': { range: '1-2 Products', count: 0, total_revenue: 0 },
       '3-5 Products': { range: '3-5 Products', count: 0, total_revenue: 0 },
       '6-10 Products': { range: '6-10 Products', count: 0, total_revenue: 0 },
-      '10+ Products': { range: '10+ Products', count: 0, total_revenue: 0 }
-    };
+      '10+ Products': { range: '10+ Products', count: 0, total_revenue: 0 },
+    }
 
-    data?.deals?.forEach(deal => {
-      const productCount = deal?.products_count || 0;
-      let rangeKey;
-      
-      if (productCount <= 2) rangeKey = '1-2 Products';
-      else if (productCount <= 5) rangeKey = '3-5 Products';
-      else if (productCount <= 10) rangeKey = '6-10 Products';
-      else rangeKey = '10+ Products';
+    data?.deals?.forEach((deal) => {
+      const productCount = deal?.products_count || 0
+      let rangeKey
 
-      ranges[rangeKey].count += 1;
-      ranges[rangeKey].total_revenue += deal?.products_revenue || 0;
-    });
+      if (productCount <= 2) rangeKey = '1-2 Products'
+      else if (productCount <= 5) rangeKey = '3-5 Products'
+      else if (productCount <= 10) rangeKey = '6-10 Products'
+      else rangeKey = '10+ Products'
 
-    return Object.values(ranges)?.filter(range => range?.count > 0);
-  };
+      ranges[rangeKey].count += 1
+      ranges[rangeKey].total_revenue += deal?.products_revenue || 0
+    })
 
-  const chartData = processChartData();
+    return Object.values(ranges)?.filter((range) => range?.count > 0)
+  }
+
+  const chartData = processChartData()
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {
-      const data = payload?.[0]?.payload;
+      const data = payload?.[0]?.payload
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-semibold">{label}</p>
@@ -43,10 +43,10 @@ const DealAnalyticsWidget = ({ data }) => {
           <p className="text-green-600">Revenue: ${data?.total_revenue?.toLocaleString()}</p>
           <p className="text-purple-600">Avg: ${(data?.total_revenue / data?.count)?.toFixed(0)}</p>
         </div>
-      );
+      )
     }
-    return null;
-  };
+    return null
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
@@ -125,7 +125,9 @@ const DealAnalyticsWidget = ({ data }) => {
       </div>
       {/* Deal Distribution Chart */}
       <div className="mb-6">
-        <h4 className="text-lg font-semibold text-gray-800 mb-4">Deal Distribution by Product Count</h4>
+        <h4 className="text-lg font-semibold text-gray-800 mb-4">
+          Deal Distribution by Product Count
+        </h4>
         {chartData?.length > 0 ? (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -152,9 +154,12 @@ const DealAnalyticsWidget = ({ data }) => {
         <div>
           <h4 className="text-lg font-semibold text-gray-800 mb-4">Recent High-Value Deals</h4>
           <div className="space-y-3 max-h-48 overflow-y-auto">
-            {data?.deals?.sort((a, b) => (b?.products_revenue || 0) - (a?.products_revenue || 0))?.slice(0, 5)?.map((deal, index) => (
-                <div 
-                  key={deal?.job_id} 
+            {data?.deals
+              ?.sort((a, b) => (b?.products_revenue || 0) - (a?.products_revenue || 0))
+              ?.slice(0, 5)
+              ?.map((deal, index) => (
+                <div
+                  key={deal?.job_id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <div>
@@ -174,8 +179,7 @@ const DealAnalyticsWidget = ({ data }) => {
                     </div>
                   </div>
                 </div>
-              ))
-            }
+              ))}
           </div>
         </div>
       )}
@@ -184,13 +188,11 @@ const DealAnalyticsWidget = ({ data }) => {
         <div className="text-center py-8">
           <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-500 mb-2">No Deal Data</h3>
-          <p className="text-gray-400">
-            No deal analytics data available to display
-          </p>
+          <p className="text-gray-400">No deal analytics data available to display</p>
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default DealAnalyticsWidget;
+export default DealAnalyticsWidget

@@ -1,7 +1,9 @@
 # Migration Verification: 20251106000000_add_job_parts_vendor_id.sql
 
 ## Date: 2025-11-06
+
 ## Branch: copilot/confirm-deals-page-loading
+
 ## Migration: Add per-line vendor support to job_parts (PR #84)
 
 ---
@@ -40,16 +42,18 @@ The migration `20251106000000_add_job_parts_vendor_id.sql` adds:
 **File**: `src/services/dealService.js`
 
 #### getAllDeals() - Line 576
+
 ```javascript
-job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, 
-  no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, 
+job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling,
+  no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time,
   product:products(id, name, category, brand), vendor:vendors(id, name))
 ```
 
 #### selectJoinedDealById() - Line 166
+
 ```javascript
-job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, 
-  no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, vendor_id, 
+job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling,
+  no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, vendor_id,
   product:products(id, name, category, brand), vendor:vendors(id, name))
 ```
 
@@ -66,18 +70,19 @@ function aggregateVendor(jobParts, jobLevelVendorName) {
   const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
   const lineVendors = offSiteLineItems.map((p) => p?.vendor?.name).filter(Boolean)
   const uniqueVendors = [...new Set(lineVendors)]
-  
+
   if (uniqueVendors.length === 1) {
-    return uniqueVendors[0]  // Single vendor
+    return uniqueVendors[0] // Single vendor
   } else if (uniqueVendors.length > 1) {
-    return 'Mixed'  // Multiple vendors
+    return 'Mixed' // Multiple vendors
   } else {
-    return jobLevelVendorName || null  // Fallback to job-level or null
+    return jobLevelVendorName || null // Fallback to job-level or null
   }
 }
 ```
 
 **Usage**:
+
 - Line 715 (getAllDeals): `const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)`
 - Line 870 (getDeal): `const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)`
 - Line 744 (getAllDeals return): `vendor_name: aggregatedVendor`
@@ -98,7 +103,7 @@ function deriveVehicleDescription(title, vehicle) {
   let vehicleDescription = ''
   const titleStr = title || ''
   const isGenericTitle = GENERIC_TITLE_PATTERN.test(titleStr.trim())
-  
+
   if (titleStr && !isGenericTitle) {
     vehicleDescription = titleStr
   } else if (vehicle) {
@@ -112,6 +117,7 @@ function deriveVehicleDescription(title, vehicle) {
 ```
 
 **Usage**:
+
 - Line 712 (getAllDeals): `const vehicleDescription = deriveVehicleDescription(job?.title, job?.vehicle)`
 - Line 862 (getDeal): `const vehicleDescription = deriveVehicleDescription(job?.title, job?.vehicle)`
 - Line 745 (getAllDeals return): `vehicle_description: vehicleDescription`
@@ -126,6 +132,7 @@ function deriveVehicleDescription(title, vehicle) {
 **File**: `src/services/dealService.js`
 
 #### getAllDeals() - Lines 628-632
+
 ```javascript
 supabase
   ?.from('loaner_assignments')
@@ -135,6 +142,7 @@ supabase
 ```
 
 #### getDeal() - Lines 790-794
+
 ```javascript
 supabase
   ?.from('loaner_assignments')
@@ -145,6 +153,7 @@ supabase
 ```
 
 **Return Fields** (Lines 730-740, 891-900):
+
 - `has_active_loaner: !!loaner?.id`
 - `loaner_id: loaner?.id || null`
 - `loaner_number: loaner?.loaner_number || null`
@@ -159,24 +168,26 @@ supabase
 **File**: `src/pages/deals/index.jsx` (Lines 1480-1497)
 
 ```javascript
-{(() => {
-  const startTime = new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  const endTime = deal?.appt_end
-    ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : null
-  
-  // If start and end times are identical, only show once
-  if (endTime && startTime !== endTime) {
-    return `${startTime}–${endTime}`
-  }
-  return startTime
-})()}
+{
+  ;(() => {
+    const startTime = new Date(deal?.appt_start).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    const endTime = deal?.appt_end
+      ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null
+
+    // If start and end times are identical, only show once
+    if (endTime && startTime !== endTime) {
+      return `${startTime}–${endTime}`
+    }
+    return startTime
+  })()
+}
 ```
 
 **Result**: ✅ No duplicate times when start == end
@@ -185,7 +196,8 @@ supabase
 
 ### 6. Edit Deal Dropdown Hydration ✅
 
-**Analysis**: 
+**Analysis**:
+
 - `getDeal()` returns all necessary fields including:
   - `vehicle_description` (line 905)
   - `sales_consultant_name` (line 906)
@@ -215,6 +227,7 @@ const totalDealValue =
 ```
 
 **Transaction Update** (Lines 1248-1270):
+
 - Updates `total_amount: totalDealValue` in transactions table
 - Recalculated on every `updateDeal()` call
 
@@ -229,17 +242,21 @@ const totalDealValue =
 **File**: `src/pages/deals/index.jsx`
 
 #### Vehicle Column (Lines 1536-1542)
+
 ```javascript
-{deal?.vehicle_description ? (
-  titleCase(deal.vehicle_description)
-) : deal?.vehicle ? (
-  titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim())
-) : (
-  '—'
-)}
+{
+  deal?.vehicle_description
+    ? titleCase(deal.vehicle_description)
+    : deal?.vehicle
+      ? titleCase(
+          `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+        )
+      : '—'
+}
 ```
 
 #### Vendor Column (Lines 1555-1560)
+
 ```javascript
 <span
   className="text-sm text-slate-700 truncate inline-block max-w-full"
@@ -250,6 +267,7 @@ const totalDealValue =
 ```
 
 #### Loaner Badge (Lines 1569-1570)
+
 ```javascript
 {deal?.loaner_number || deal?.has_active_loaner ? (
   <LoanerBadge deal={deal} />
@@ -323,6 +341,7 @@ $ pnpm build
 ```
 
 **Status**: ✅ Production build successful
+
 - No TypeScript errors
 - No ESLint errors
 - All dependencies resolved
@@ -359,6 +378,7 @@ All verification requirements are satisfied:
 ### Test Failures: ⚠️ PRE-EXISTING, NOT MIGRATION-RELATED
 
 The 14 failing tests are pre-existing issues unrelated to the migration:
+
 - Title persistence logic (step8)
 - Modal test infrastructure (step12)
 - UI test element selection (step23)

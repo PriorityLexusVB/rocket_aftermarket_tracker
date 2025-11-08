@@ -3,10 +3,13 @@
 ## Status: ✅ COMPLETED (No Additional Tests Needed)
 
 ## Branch
+
 `test/persistence-rls`
 
 ## Objective
+
 Expand unit test coverage for:
+
 1. org_id inference on update
 2. Loaner create/edit flows hitting loaner_assignments policies
 3. Scheduling fallback logic (when per-line times capability disabled)
@@ -16,14 +19,17 @@ Expand unit test coverage for:
 ## Findings
 
 ### Existing Test Coverage
+
 **File**: `src/tests/unit/dealService.persistence.test.js`
 
 All required test scenarios **already exist** with comprehensive coverage:
 
 #### 1. ✅ org_id Inference (3 tests)
+
 **Lines**: 15-83
 
 Tests:
+
 1. `should preserve org_id from form state when provided`
    - Verifies org_id passed from form is preserved in jobPayload
    - Confirms org_id included in result
@@ -39,9 +45,11 @@ Tests:
 **Status**: ✅ COMPLETE - All org_id inference scenarios covered
 
 #### 2. ✅ Loaner Assignment Persistence (4 tests)
+
 **Lines**: 85-201
 
 Tests:
+
 1. `should extract loanerForm for CREATE operation`
    - Tests new loaner creation with temporary number
    - Verifies all loaner fields extracted correctly
@@ -64,9 +72,11 @@ Tests:
 **Note**: RLS policies for loaner_assignments were added in migration 20251105000000
 
 #### 3. ✅ Scheduling Fallback Logic (5 tests)
+
 **Lines**: 203-299
 
 Tests:
+
 1. `should omit scheduled_start_time and scheduled_end_time when includeTimes is false`
    - Tests fallback mode when per-line time columns don't exist
    - Verifies times excluded from payload
@@ -91,9 +101,11 @@ Tests:
 **Note**: Matches getAllDeals() fallback behavior (lines 590-641 in dealService.js)
 
 #### 4. ✅ Error Wrapper Classification (4 tests)
+
 **Lines**: 300-345
 
 Tests:
+
 1. `should document permission denied error pattern for auth.users`
    - Documents "permission denied for table users" pattern
    - Links to RLS fix (migration 20251104221500)
@@ -118,9 +130,11 @@ Tests:
 **Note**: These are documentation tests that explain error patterns for developers
 
 #### 5. ✅ Vendor Aggregation States (6 tests)
+
 **Lines**: 346-459
 
 Tests:
+
 1. `should return vendor name when single vendor from line items`
    - Tests Single state
    - Verifies vendor name extracted from line items
@@ -149,11 +163,13 @@ Tests:
 **Note**: Matches aggregateVendor() function logic (lines 94-120 in dealService.js)
 
 #### 6. ✅ Vehicle Description Fallback (6 tests)
+
 **Lines**: 460-570
 
 See TASK_2_VEHICLE_DESCRIPTION_AUDIT.md for detailed coverage.
 
 Tests cover:
+
 - Non-generic title preservation
 - Generic title detection and fallback
 - Partial vehicle data handling
@@ -164,6 +180,7 @@ Tests cover:
 ## Test Execution Results
 
 ### All Tests Pass
+
 ```bash
 $ pnpm test src/tests/unit/dealService.persistence.test.js
 
@@ -178,17 +195,18 @@ Duration  1.11s
 
 ## Test Breakdown by Category
 
-| Category | Tests | Status | Lines |
-|----------|-------|--------|-------|
-| org_id Inference | 3 | ✅ PASS | 15-83 |
-| Loaner Assignment | 4 | ✅ PASS | 85-201 |
-| Scheduling Fallback | 5 | ✅ PASS | 203-299 |
-| Error Wrapper Mapping | 4 | ✅ PASS | 300-345 |
-| Vendor Aggregation | 6 | ✅ PASS | 346-459 |
-| Vehicle Description | 6 | ✅ PASS | 460-570 |
-| **TOTAL** | **27** | **✅** | **456 lines** |
+| Category              | Tests  | Status  | Lines         |
+| --------------------- | ------ | ------- | ------------- |
+| org_id Inference      | 3      | ✅ PASS | 15-83         |
+| Loaner Assignment     | 4      | ✅ PASS | 85-201        |
+| Scheduling Fallback   | 5      | ✅ PASS | 203-299       |
+| Error Wrapper Mapping | 4      | ✅ PASS | 300-345       |
+| Vendor Aggregation    | 6      | ✅ PASS | 346-459       |
+| Vehicle Description   | 6      | ✅ PASS | 460-570       |
+| **TOTAL**             | **27** | **✅**  | **456 lines** |
 
 Note: Original RLS_FIX_SUMMARY.md mentioned 30 tests. The difference (27 vs 30) may be due to:
+
 - Test refactoring/consolidation
 - Tests moved to other files
 - Or simply a documentation discrepancy
@@ -251,6 +269,7 @@ These tests validate persistence behaviors protected by RLS policies added in:
 **Task 3 Complete**: All required persistence and RLS test scenarios are already implemented and passing.
 
 The existing test suite (`dealService.persistence.test.js`) provides:
+
 1. ✅ Complete coverage of all Task 3 requirements
 2. ✅ 27 comprehensive test cases
 3. ✅ 100% pass rate
@@ -260,16 +279,20 @@ The existing test suite (`dealService.persistence.test.js`) provides:
 **No additional tests needed** - the test suite is complete and comprehensive.
 
 ## Files Modified
+
 No files modified for this task - all requirements already met.
 
 ## Files Reviewed
+
 1. `src/tests/unit/dealService.persistence.test.js` - Verified complete coverage
 2. `src/services/dealService.js` - Reviewed implementation details
 
 ## Files Touched
+
 Total: **0 files** (verification only, no changes needed)
 
 ## Related Documentation
+
 - `docs/TASK_2_VEHICLE_DESCRIPTION_AUDIT.md` - Task 2 completion
 - `docs/BASELINE_VERIFICATION.md` - Baseline state
 - `docs/RLS_FIX_SUMMARY.md` - RLS policies overview
@@ -277,6 +300,7 @@ Total: **0 files** (verification only, no changes needed)
 - `supabase/migrations/20251107103000_rls_write_policies_completion.sql` - Policy validation
 
 ---
+
 **Task Completed**: 2025-11-07  
 **Branch**: test/persistence-rls  
 **Author**: Coding Agent (Task 3 Verification)

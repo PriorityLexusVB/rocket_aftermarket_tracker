@@ -1,35 +1,35 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
 
 const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState(vehicle);
+  const [isEditing, setIsEditing] = useState(false)
+  const [editData, setEditData] = useState(vehicle)
 
   const handleEdit = () => {
-    setIsEditing(true);
-    setEditData(vehicle);
-  };
+    setIsEditing(true)
+    setEditData(vehicle)
+  }
 
   const handleSave = () => {
-    onUpdate(editData);
-    setIsEditing(false);
-  };
+    onUpdate(editData)
+    setIsEditing(false)
+  }
 
   const handleCancel = () => {
-    setEditData(vehicle);
-    setIsEditing(false);
-  };
+    setEditData(vehicle)
+    setIsEditing(false)
+  }
 
   const handleChange = (field, value) => {
-    setEditData(prev => ({
+    setEditData((prev) => ({
       ...prev,
-      [field]: value
-    }));
-  };
+      [field]: value,
+    }))
+  }
 
-  const canEdit = userRole === 'manager' || userRole === 'staff';
+  const canEdit = userRole === 'manager' || userRole === 'staff'
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1 h-full">
@@ -63,12 +63,10 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
           <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">
             Primary Information
           </h3>
-          
+
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                VIN Number
-              </label>
+              <label className="block text-sm font-medium text-foreground mb-2">VIN Number</label>
               {isEditing ? (
                 <Input
                   type="text"
@@ -86,9 +84,7 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Year
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">Year</label>
                 {isEditing ? (
                   <Input
                     type="number"
@@ -102,11 +98,9 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
                   </div>
                 )}
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Stock #
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">Stock #</label>
                 {isEditing ? (
                   <Input
                     type="text"
@@ -123,9 +117,7 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Make & Model
-              </label>
+              <label className="block text-sm font-medium text-foreground mb-2">Make & Model</label>
               {isEditing ? (
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -143,16 +135,16 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
                 </div>
               ) : (
                 <div className="p-3 bg-muted rounded-lg border border-border">
-                  <span className="text-sm text-foreground">{vehicle?.make} {vehicle?.model}</span>
+                  <span className="text-sm text-foreground">
+                    {vehicle?.make} {vehicle?.model}
+                  </span>
                 </div>
               )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Color
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">Color</label>
                 {isEditing ? (
                   <Input
                     type="text"
@@ -166,11 +158,9 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
                   </div>
                 )}
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Mileage
-                </label>
+                <label className="block text-sm font-medium text-foreground mb-2">Mileage</label>
                 {isEditing ? (
                   <Input
                     type="number"
@@ -180,7 +170,9 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
                   />
                 ) : (
                   <div className="p-3 bg-muted rounded-lg border border-border">
-                    <span className="text-sm text-foreground">{vehicle?.mileage?.toLocaleString()} miles</span>
+                    <span className="text-sm text-foreground">
+                      {vehicle?.mileage?.toLocaleString()} miles
+                    </span>
                   </div>
                 )}
               </div>
@@ -193,26 +185,30 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
           <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">
             Status Information
           </h3>
-          
+
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
                 Current Status
               </label>
               <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${
-                  vehicle?.status === 'Available' ? 'bg-success' :
-                  vehicle?.status === 'In Service' ? 'bg-warning' :
-                  vehicle?.status === 'Sold' ? 'bg-error' : 'bg-muted-foreground'
-                }`}></div>
+                <div
+                  className={`w-3 h-3 rounded-full ${
+                    vehicle?.status === 'Available'
+                      ? 'bg-success'
+                      : vehicle?.status === 'In Service'
+                        ? 'bg-warning'
+                        : vehicle?.status === 'Sold'
+                          ? 'bg-error'
+                          : 'bg-muted-foreground'
+                  }`}
+                ></div>
                 <span className="text-sm text-foreground">{vehicle?.status}</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Last Updated
-              </label>
+              <label className="block text-sm font-medium text-foreground mb-2">Last Updated</label>
               <div className="p-3 bg-muted rounded-lg border border-border">
                 <span className="text-sm text-muted-foreground">
                   {new Date(vehicle.lastUpdated)?.toLocaleDateString('en-US', {
@@ -220,7 +216,7 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
                     month: 'short',
                     day: 'numeric',
                     hour: '2-digit',
-                    minute: '2-digit'
+                    minute: '2-digit',
                   })}
                 </span>
               </div>
@@ -231,11 +227,7 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
         {/* Action Buttons */}
         {isEditing && (
           <div className="flex items-center justify-end space-x-3 pt-4 border-t border-border">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-            >
+            <Button variant="outline" size="sm" onClick={handleCancel}>
               Cancel
             </Button>
             <Button
@@ -251,7 +243,7 @@ const VehicleInfoPanel = ({ vehicle, onUpdate, userRole }) => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default VehicleInfoPanel;
+export default VehicleInfoPanel

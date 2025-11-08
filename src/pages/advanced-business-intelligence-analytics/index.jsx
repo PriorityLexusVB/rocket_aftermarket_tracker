@@ -1,19 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Package, DollarSign, Filter, Download, RefreshCw, ChevronDown, ShoppingCart, Activity } from 'lucide-react';
-import AppLayout from '../../components/layouts/AppLayout';
-import analyticsService from '../../services/analyticsService';
-import VehicleTypeChart from './components/VehicleTypeChart';
-import ProductPerformanceMatrix from './components/ProductPerformanceMatrix';
-import VendorPerformanceTable from './components/VendorPerformanceTable';
-import DealAnalyticsWidget from './components/DealAnalyticsWidget';
-import SalesTrendsChart from './components/SalesTrendsChart';
-import MetricCard from './components/MetricCard';
+import React, { useState, useEffect } from 'react'
+import {
+  Users,
+  Package,
+  DollarSign,
+  Filter,
+  Download,
+  RefreshCw,
+  ChevronDown,
+  ShoppingCart,
+  Activity,
+} from 'lucide-react'
+import AppLayout from '../../components/layouts/AppLayout'
+import analyticsService from '../../services/analyticsService'
+import VehicleTypeChart from './components/VehicleTypeChart'
+import ProductPerformanceMatrix from './components/ProductPerformanceMatrix'
+import VendorPerformanceTable from './components/VendorPerformanceTable'
+import DealAnalyticsWidget from './components/DealAnalyticsWidget'
+import SalesTrendsChart from './components/SalesTrendsChart'
+import MetricCard from './components/MetricCard'
 
 const AdvancedBusinessIntelligenceAnalytics = () => {
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(null)
+
   // Data states
   const [dashboardData, setDashboardData] = useState({
     vehicle_type_analysis: { new: [], used: [] },
@@ -21,60 +31,60 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
     vendor_performance: [],
     category_analysis: [],
     sales_trends: [],
-    summary_stats: {}
-  });
-  
+    summary_stats: {},
+  })
+
   // Filter states
-  const [timeframe, setTimeframe] = useState('6months');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [timeframe, setTimeframe] = useState('6months')
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [showFilters, setShowFilters] = useState(false)
 
   // Load dashboard data
   const loadDashboardData = async (isRefresh = false) => {
     try {
       if (isRefresh) {
-        setRefreshing(true);
+        setRefreshing(true)
       } else {
-        setLoading(true);
+        setLoading(true)
       }
-      setError(null);
+      setError(null)
 
-      const data = await analyticsService?.getDashboardSummary();
-      setDashboardData(data);
+      const data = await analyticsService?.getDashboardSummary()
+      setDashboardData(data)
     } catch (err) {
-      console.error('Error loading dashboard data:', err);
-      setError('Failed to load analytics data. Please try again.');
+      console.error('Error loading dashboard data:', err)
+      setError('Failed to load analytics data. Please try again.')
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false)
+      setRefreshing(false)
     }
-  };
+  }
 
   // Load sales trends with different timeframe
   const loadSalesTrends = async (newTimeframe) => {
     try {
-      const trends = await analyticsService?.getSalesTrends(newTimeframe);
-      setDashboardData(prev => ({
+      const trends = await analyticsService?.getSalesTrends(newTimeframe)
+      setDashboardData((prev) => ({
         ...prev,
-        sales_trends: trends
-      }));
-      setTimeframe(newTimeframe);
+        sales_trends: trends,
+      }))
+      setTimeframe(newTimeframe)
     } catch (err) {
-      console.error('Error loading sales trends:', err);
+      console.error('Error loading sales trends:', err)
     }
-  };
+  }
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    loadDashboardData()
+  }, [])
 
   const handleRefresh = () => {
-    loadDashboardData(true);
-  };
+    loadDashboardData(true)
+  }
 
   const handleTimeframeChange = (newTimeframe) => {
-    loadSalesTrends(newTimeframe);
-  };
+    loadSalesTrends(newTimeframe)
+  }
 
   const handleExportData = () => {
     try {
@@ -84,21 +94,21 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
         vehicle_type_analysis: dashboardData?.vehicle_type_analysis,
         products_per_deal_averages: dashboardData?.products_per_deal?.averages,
         vendor_performance: dashboardData?.vendor_performance,
-        category_analysis: dashboardData?.category_analysis
-      };
+        category_analysis: dashboardData?.category_analysis,
+      }
 
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `analytics-report-${new Date()?.toISOString()?.split('T')?.[0]}.json`;
-      document.body?.appendChild(a);
-      a?.click();
-      document.body?.removeChild(a);
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `analytics-report-${new Date()?.toISOString()?.split('T')?.[0]}.json`
+      document.body?.appendChild(a)
+      a?.click()
+      document.body?.removeChild(a)
     } catch (err) {
-      console.error('Error exporting data:', err);
+      console.error('Error exporting data:', err)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -110,7 +120,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
           </div>
         </div>
       </AppLayout>
-    );
+    )
   }
 
   return (
@@ -128,7 +138,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                   Comprehensive aftermarket performance insights and multi-dimensional analysis
                 </p>
               </div>
-              
+
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
@@ -136,9 +146,11 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                 >
                   <Filter className="w-4 h-4" />
                   <span>Filters</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+                  />
                 </button>
-                
+
                 <button
                   onClick={handleExportData}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
@@ -146,7 +158,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                   <Download className="w-4 h-4" />
                   <span>Export</span>
                 </button>
-                
+
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
@@ -177,7 +189,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                       <option value="1year">Last 1 Year</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Product Category
@@ -271,7 +283,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
           {/* Product Performance Matrix */}
           <div className="mb-8">
-            <ProductPerformanceMatrix 
+            <ProductPerformanceMatrix
               data={dashboardData?.category_analysis}
               selectedCategory={selectedCategory}
             />
@@ -279,10 +291,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
           {/* Sales Trends Chart */}
           <div className="mb-8">
-            <SalesTrendsChart 
-              data={dashboardData?.sales_trends}
-              timeframe={timeframe}
-            />
+            <SalesTrendsChart data={dashboardData?.sales_trends} timeframe={timeframe} />
           </div>
 
           {/* Vendor Performance Table */}
@@ -292,7 +301,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
         </div>
       </div>
     </AppLayout>
-  );
-};
+  )
+}
 
-export default AdvancedBusinessIntelligenceAnalytics;
+export default AdvancedBusinessIntelligenceAnalytics

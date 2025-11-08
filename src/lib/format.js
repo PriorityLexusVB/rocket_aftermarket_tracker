@@ -21,16 +21,16 @@ export const pct1 = (v) => `${(Number(v) * 100).toFixed(1)}%`
 export const titleCase = (s = '') => {
   if (!s) return ''
   const original = String(s).trim()
-  
+
   return original
     .split(/\s+/)
-    .map(word => {
+    .map((word) => {
       // Preserve acronyms (2+ uppercase letters, no lowercase)
       if (word.length >= 2 && word === word.toUpperCase()) {
         return word
       }
       // Apply title case to normal words
-      return word.toLowerCase().replace(/\b[\p{L}'']+/gu, w => w[0].toUpperCase() + w.slice(1))
+      return word.toLowerCase().replace(/\b[\p{L}'']+/gu, (w) => w[0].toUpperCase() + w.slice(1))
     })
     .join(' ')
 }

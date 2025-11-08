@@ -51,7 +51,7 @@ export const draftToCreatePayload = (d = {}) => ({
   description: d.description ?? '',
   customer_phone: normalizePhone(d.customer_phone ?? ''),
   customer_needs_loaner: !!d.customer_needs_loaner,
-  loanerForm: d.customer_needs_loaner ? d.loanerForm ?? null : null,
+  loanerForm: d.customer_needs_loaner ? (d.loanerForm ?? null) : null,
   lineItems: (d.lineItems ?? []).map((li) => ({
     product_id: li.product_id ?? '',
     unit_price: Number(li.unit_price ?? 0),

@@ -317,7 +317,8 @@ describe('dealService - Persistence Test Coverage', () => {
 
     it('should document missing relationship error pattern', () => {
       const errorPattern = /Could not find a relationship between .* in the schema cache/i
-      const sampleError = "Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"
+      const sampleError =
+        "Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"
 
       expect(errorPattern.test(sampleError)).toBe(true)
 
@@ -360,7 +361,9 @@ describe('dealService - Persistence Test Coverage', () => {
         },
       ]
 
-      const uniqueVendors = [...new Set(jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name))]
+      const uniqueVendors = [
+        ...new Set(jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name)),
+      ]
 
       expect(uniqueVendors).toHaveLength(1)
       expect(uniqueVendors[0]).toBe('ABC Auto Parts')
@@ -378,7 +381,9 @@ describe('dealService - Persistence Test Coverage', () => {
         },
       ]
 
-      const uniqueVendors = [...new Set(jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name))]
+      const uniqueVendors = [
+        ...new Set(jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name)),
+      ]
 
       expect(uniqueVendors).toHaveLength(2)
       expect(uniqueVendors).toContain('ABC Auto Parts')
@@ -398,7 +403,10 @@ describe('dealService - Persistence Test Coverage', () => {
       ]
       const jobLevelVendorName = 'Default Vendor'
 
-      const lineVendors = jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name).filter(Boolean)
+      const lineVendors = jobParts
+        .filter((p) => p.is_off_site)
+        .map((p) => p.vendor?.name)
+        .filter(Boolean)
 
       expect(lineVendors).toHaveLength(0)
 
@@ -416,7 +424,10 @@ describe('dealService - Persistence Test Coverage', () => {
       ]
       const jobLevelVendorName = null
 
-      const lineVendors = jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name).filter(Boolean)
+      const lineVendors = jobParts
+        .filter((p) => p.is_off_site)
+        .map((p) => p.vendor?.name)
+        .filter(Boolean)
 
       expect(lineVendors).toHaveLength(0)
 
@@ -437,7 +448,10 @@ describe('dealService - Persistence Test Coverage', () => {
         },
       ]
 
-      const lineVendors = jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name).filter(Boolean)
+      const lineVendors = jobParts
+        .filter((p) => p.is_off_site)
+        .map((p) => p.vendor?.name)
+        .filter(Boolean)
 
       expect(lineVendors).toHaveLength(1)
       expect(lineVendors[0]).toBe('ABC Auto Parts')
@@ -448,7 +462,10 @@ describe('dealService - Persistence Test Coverage', () => {
       const jobParts = []
       const jobLevelVendorName = 'Fallback Vendor'
 
-      const lineVendors = jobParts.filter((p) => p.is_off_site).map((p) => p.vendor?.name).filter(Boolean)
+      const lineVendors = jobParts
+        .filter((p) => p.is_off_site)
+        .map((p) => p.vendor?.name)
+        .filter(Boolean)
 
       expect(lineVendors).toHaveLength(0)
 
@@ -480,7 +497,9 @@ describe('dealService - Persistence Test Coverage', () => {
 
       expect(isGenericTitle).toBe(false)
 
-      const vehicleDescription = !isGenericTitle ? title : [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
+      const vehicleDescription = !isGenericTitle
+        ? title
+        : [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
 
       expect(vehicleDescription).toBe('2023 Toyota Camry SE')
     })
@@ -498,7 +517,9 @@ describe('dealService - Persistence Test Coverage', () => {
 
       expect(isGenericTitle).toBe(true)
 
-      const vehicleDescription = isGenericTitle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ') : title
+      const vehicleDescription = isGenericTitle
+        ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
+        : title
 
       expect(vehicleDescription).toBe('2024 Honda Accord')
     })
@@ -516,7 +537,9 @@ describe('dealService - Persistence Test Coverage', () => {
 
       expect(isGenericTitle).toBe(true)
 
-      const vehicleDescription = isGenericTitle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ') : title
+      const vehicleDescription = isGenericTitle
+        ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
+        : title
 
       expect(vehicleDescription).toBe('2025 Ford F-150')
     })
@@ -532,7 +555,9 @@ describe('dealService - Persistence Test Coverage', () => {
       const GENERIC_TITLE_PATTERN = /^(Deal\s+[\w-]+|Untitled Deal)$/i
       const isGenericTitle = GENERIC_TITLE_PATTERN.test(title.trim())
 
-      const vehicleDescription = isGenericTitle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ') : title
+      const vehicleDescription = isGenericTitle
+        ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
+        : title
 
       expect(vehicleDescription).toBe('Chevrolet Silverado')
     })
@@ -544,7 +569,12 @@ describe('dealService - Persistence Test Coverage', () => {
       const GENERIC_TITLE_PATTERN = /^(Deal\s+[\w-]+|Untitled Deal)$/i
       const isGenericTitle = GENERIC_TITLE_PATTERN.test(title.trim())
 
-      const vehicleDescription = isGenericTitle && vehicle ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ') : !isGenericTitle ? title : ''
+      const vehicleDescription =
+        isGenericTitle && vehicle
+          ? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')
+          : !isGenericTitle
+            ? title
+            : ''
 
       expect(vehicleDescription).toBe('')
     })

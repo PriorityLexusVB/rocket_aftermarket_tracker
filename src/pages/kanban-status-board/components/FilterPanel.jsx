@@ -1,5 +1,5 @@
-import React from 'react';
-import { Filter } from 'lucide-react';
+import React from 'react'
+import { Filter } from 'lucide-react'
 
 const FilterPanel = ({
   vendors = [],
@@ -9,58 +9,60 @@ const FilterPanel = ({
   onClearFilters,
   onSavePreset,
   onLoadPreset,
-  className = ""
+  className = '',
 }) => {
-  const priorities = ['low', 'medium', 'high', 'urgent'];
+  const priorities = ['low', 'medium', 'high', 'urgent']
   const dateRanges = [
     { value: 'all', label: 'All Time' },
     { value: 'today', label: 'Today' },
     { value: 'week', label: 'This Week' },
-    { value: 'month', label: 'This Month' }
-  ];
+    { value: 'month', label: 'This Month' },
+  ]
 
   const handleVendorChange = (vendorId, checked) => {
-    const newVendors = checked 
+    const newVendors = checked
       ? [...filters?.vendors, vendorId]
-      : filters?.vendors?.filter(id => id !== vendorId);
-    
+      : filters?.vendors?.filter((id) => id !== vendorId)
+
     onFiltersChange?.({
       ...filters,
-      vendors: newVendors
-    });
-  };
+      vendors: newVendors,
+    })
+  }
 
   const handlePriorityChange = (priority, checked) => {
-    const newPriorities = checked 
+    const newPriorities = checked
       ? [...filters?.priorities, priority]
-      : filters?.priorities?.filter(p => p !== priority);
-    
+      : filters?.priorities?.filter((p) => p !== priority)
+
     onFiltersChange?.({
       ...filters,
-      priorities: newPriorities
-    });
-  };
+      priorities: newPriorities,
+    })
+  }
 
   const handleDateRangeChange = (dateRange) => {
     onFiltersChange?.({
       ...filters,
-      dateRange
-    });
-  };
+      dateRange,
+    })
+  }
 
   const handleOverdueChange = (checked) => {
     onFiltersChange?.({
       ...filters,
-      overdue: checked
-    });
-  };
+      overdue: checked,
+    })
+  }
 
   const getActiveFiltersCount = () => {
-    return filters?.vendors?.length + 
-           filters?.priorities?.length + 
-           (filters?.overdue ? 1 : 0) +
-           (filters?.dateRange !== 'all' ? 1 : 0);
-  };
+    return (
+      filters?.vendors?.length +
+      filters?.priorities?.length +
+      (filters?.overdue ? 1 : 0) +
+      (filters?.dateRange !== 'all' ? 1 : 0)
+    )
+  }
 
   return (
     <div className={`bg-white border border-gray-200 rounded-lg shadow-sm p-4 ${className}`}>
@@ -100,14 +102,10 @@ const FilterPanel = ({
                   onChange={(e) => handleVendorChange(vendor?.id, e?.target?.checked)}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="ml-2 text-sm text-gray-600 truncate">
-                  {vendor?.name}
-                </span>
+                <span className="ml-2 text-sm text-gray-600 truncate">{vendor?.name}</span>
               </label>
             ))}
-            {vendors?.length === 0 && (
-              <p className="text-sm text-gray-400">No vendors available</p>
-            )}
+            {vendors?.length === 0 && <p className="text-sm text-gray-400">No vendors available</p>}
           </div>
         </div>
 
@@ -123,9 +121,7 @@ const FilterPanel = ({
                   onChange={(e) => handlePriorityChange(priority, e?.target?.checked)}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="ml-2 text-sm text-gray-600 capitalize">
-                  {priority}
-                </span>
+                <span className="ml-2 text-sm text-gray-600 capitalize">{priority}</span>
               </label>
             ))}
           </div>
@@ -145,9 +141,7 @@ const FilterPanel = ({
                   onChange={() => handleDateRangeChange(range?.value)}
                   className="border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="ml-2 text-sm text-gray-600">
-                  {range?.label}
-                </span>
+                <span className="ml-2 text-sm text-gray-600">{range?.label}</span>
               </label>
             ))}
           </div>
@@ -164,9 +158,7 @@ const FilterPanel = ({
                 onChange={(e) => handleOverdueChange(e?.target?.checked)}
                 className="rounded border-gray-300 text-red-600 focus:ring-red-500"
               />
-              <span className="ml-2 text-sm text-gray-600">
-                Overdue Jobs
-              </span>
+              <span className="ml-2 text-sm text-gray-600">Overdue Jobs</span>
             </label>
           </div>
         </div>
@@ -175,42 +167,46 @@ const FilterPanel = ({
       {/* Quick Actions */}
       <div className="mt-4 pt-4 border-t border-gray-100">
         <div className="flex items-center justify-between">
-          <div className="text-xs text-gray-500">
-            Quick filters for common views
-          </div>
-          
+          <div className="text-xs text-gray-500">Quick filters for common views</div>
+
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => onFiltersChange?.({
-                vendors: [],
-                priorities: ['urgent', 'high'],
-                overdue: false,
-                dateRange: 'week'
-              })}
+              onClick={() =>
+                onFiltersChange?.({
+                  vendors: [],
+                  priorities: ['urgent', 'high'],
+                  overdue: false,
+                  dateRange: 'week',
+                })
+              }
               className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded hover:bg-orange-200 transition-colors"
             >
               High Priority
             </button>
-            
+
             <button
-              onClick={() => onFiltersChange?.({
-                vendors: [],
-                priorities: [],
-                overdue: true,
-                dateRange: 'all'
-              })}
+              onClick={() =>
+                onFiltersChange?.({
+                  vendors: [],
+                  priorities: [],
+                  overdue: true,
+                  dateRange: 'all',
+                })
+              }
               className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200 transition-colors"
             >
               Overdue Only
             </button>
-            
+
             <button
-              onClick={() => onFiltersChange?.({
-                vendors: [],
-                priorities: [],
-                overdue: false,
-                dateRange: 'today'
-              })}
+              onClick={() =>
+                onFiltersChange?.({
+                  vendors: [],
+                  priorities: [],
+                  overdue: false,
+                  dateRange: 'today',
+                })
+              }
               className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
             >
               Today's Jobs
@@ -219,7 +215,7 @@ const FilterPanel = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FilterPanel;
+export default FilterPanel

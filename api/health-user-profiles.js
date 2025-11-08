@@ -27,14 +27,12 @@ export default async function handler(req, res) {
     const classification = ok ? 'ok' : 'missing_all'
     return res.status(200).json({ ok, classification, columns, ms: Date.now() - started })
   } catch (e) {
-    return res
-      .status(500)
-      .json({
-        ok: false,
-        classification: 'error',
-        columns,
-        error: e.message,
-        ms: Date.now() - started,
-      })
+    return res.status(500).json({
+      ok: false,
+      classification: 'error',
+      columns,
+      error: e.message,
+      ms: Date.now() - started,
+    })
   }
 }

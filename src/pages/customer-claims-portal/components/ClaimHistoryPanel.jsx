@@ -1,15 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect } from 'react'
 
 const ClaimHistoryPanel = () => {
   React.useEffect(() => {
     // eslint-disable-next-line no-console
-    console.warn('Placeholder: ClaimHistoryPanel is not implemented yet.');
-  }, []);
-  return (
-    <>
-  { /*ClaimHistoryPanel */} 
- </>
-  );
-};
+    console.warn('Placeholder: ClaimHistoryPanel is not implemented yet.')
+  }, [])
+  return <>{/*ClaimHistoryPanel */}</>
+}
 
-export default ClaimHistoryPanel;
+export default ClaimHistoryPanel

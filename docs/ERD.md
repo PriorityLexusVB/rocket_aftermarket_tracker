@@ -12,7 +12,7 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-    
+
     vendors {
         uuid id PK
         text name
@@ -25,7 +25,7 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-    
+
     vehicles {
         uuid id PK
         text stock_number UK
@@ -42,7 +42,7 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-    
+
     jobs {
         uuid id PK
         text job_number UK
@@ -62,7 +62,7 @@ erDiagram
         numeric estimated_cost
         numeric actual_cost
     }
-    
+
     products {
         uuid id PK
         text name
@@ -73,7 +73,7 @@ erDiagram
         uuid created_by FK
         timestamptz created_at
     }
-    
+
     job_parts {
         uuid id PK
         uuid job_id FK
@@ -84,7 +84,7 @@ erDiagram
         numeric unit_price
         timestamptz created_at
     }
-    
+
     transactions {
         uuid id PK
         text transaction_number UK
@@ -101,7 +101,7 @@ erDiagram
         timestamptz created_at
         timestamptz updated_at
     }
-    
+
     communications {
         uuid id PK
         uuid job_id FK
@@ -115,7 +115,7 @@ erDiagram
         uuid sent_by FK
         timestamptz sent_at
     }
-    
+
     notification_outbox {
         uuid id PK
         text phone_e164
@@ -128,7 +128,7 @@ erDiagram
         text error_message
         timestamptz created_at
     }
-    
+
     vendor_hours {
         uuid id PK
         uuid vendor_id FK
@@ -140,7 +140,7 @@ erDiagram
         boolean is_active
         timestamptz created_at
     }
-    
+
     sms_opt_outs {
         text phone_e164 PK
         timestamptz opted_out_at
@@ -155,54 +155,59 @@ erDiagram
     user_profiles ||--o{ products : "created_by"
     user_profiles ||--o{ transactions : "processed_by"
     user_profiles ||--o{ communications : "sent_by"
-    
+
     vendors ||--o{ user_profiles : "vendor_id"
     vendors ||--o{ jobs : "vendor_id"
     vendors ||--o{ products : "vendor_id"
     vendors ||--o{ job_parts : "vendor_id"
     vendors ||--o{ vendor_hours : "vendor_id"
-    
+
     vehicles ||--o{ jobs : "vehicle_id"
     vehicles ||--o{ transactions : "vehicle_id"
     vehicles ||--o{ communications : "vehicle_id"
-    
+
     jobs ||--o{ job_parts : "job_id"
     jobs ||--o{ transactions : "job_id"
     jobs ||--o{ communications : "job_id"
-    
+
     products ||--o{ job_parts : "product_id"
 ```
 
 ## Key Relationships
 
 ### Core Entities
+
 - **user_profiles**: Central user management with role-based access
 - **vendors**: External service providers with capacity management
 - **vehicles**: Customer vehicles with stock-first identification
 - **jobs**: Work orders/appointments linking vehicles, vendors, and staff
 
 ### Business Logic
+
 - **Stock-First Design**: vehicles.stock_number is primary lookup field
 - **Job Lifecycle**: pending → scheduled → in_progress → quality_check → completed
 - **Vendor Integration**: External vendors can be assigned jobs with time tracking
 - **Communication Trail**: All SMS and other communications are logged
 
 ### SMS System
+
 - **notification_outbox**: Queue for outbound SMS via Twilio edge functions
 - **sms_opt_outs**: Customer preferences for SMS notifications
 - **Auto-triggers**: Job status changes automatically enqueue SMS notifications
 
 ### Per-Line Vendor Support (Migration 20251106)
+
 - **job_parts.vendor_id**: Optional per-line vendor override
 - **Vendor Resolution**: When vendor_id is set on a job_part, it overrides the product's default vendor
 - **Fallback Behavior**: If vendor_id is null, the system uses products.vendor_id
-- **Display Logic**: 
+- **Display Logic**:
   - Single vendor name when all line items have the same vendor
   - "Mixed" when multiple vendors are present
   - "Unassigned" when no vendor is assigned
 - **RLS Policies**: Vendors can view and manage job_parts with their vendor_id
 
 ### Data Flow
+
 1. **Vehicle Entry**: Stock number creates unique vehicle record
 2. **Job Creation**: Work orders reference vehicles and can be assigned to vendors
 3. **Scheduling**: Jobs get time slots and vendor assignments

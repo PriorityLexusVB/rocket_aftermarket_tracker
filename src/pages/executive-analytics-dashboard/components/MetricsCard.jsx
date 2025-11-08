@@ -1,18 +1,18 @@
-import React from 'react';
-import Icon from '../../../components/AppIcon';
+import React from 'react'
+import Icon from '../../../components/AppIcon'
 
 const MetricsCard = ({ title, value, change, changeType, icon, trend, description }) => {
   const getChangeColor = () => {
-    if (changeType === 'positive') return 'text-success';
-    if (changeType === 'negative') return 'text-error';
-    return 'text-muted-foreground';
-  };
+    if (changeType === 'positive') return 'text-success'
+    if (changeType === 'negative') return 'text-error'
+    return 'text-muted-foreground'
+  }
 
   const getChangeIcon = () => {
-    if (changeType === 'positive') return 'TrendingUp';
-    if (changeType === 'negative') return 'TrendingDown';
-    return 'Minus';
-  };
+    if (changeType === 'positive') return 'TrendingUp'
+    if (changeType === 'negative') return 'TrendingDown'
+    return 'Minus'
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg p-6 shadow-elevation-1 hover:shadow-elevation-2 transition-all duration-200">
@@ -24,21 +24,17 @@ const MetricsCard = ({ title, value, change, changeType, icon, trend, descriptio
             </div>
             <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
           </div>
-          
+
           <div className="space-y-1">
             <p className="text-2xl font-bold text-foreground">{value}</p>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
         </div>
 
         {change && (
           <div className="flex items-center space-x-1 ml-4">
             <Icon name={getChangeIcon()} size={16} className={getChangeColor()} />
-            <span className={`text-sm font-medium ${getChangeColor()}`}>
-              {change}
-            </span>
+            <span className={`text-sm font-medium ${getChangeColor()}`}>{change}</span>
           </div>
         )}
       </div>
@@ -53,7 +49,7 @@ const MetricsCard = ({ title, value, change, changeType, icon, trend, descriptio
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default MetricsCard;
+export default MetricsCard

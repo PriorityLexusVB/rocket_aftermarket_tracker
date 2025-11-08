@@ -1,27 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-import Checkbox from '../../../components/ui/Checkbox';
+import React, { useState, useMemo } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
+import Checkbox from '../../../components/ui/Checkbox'
 
-const VendorListTable = ({ 
-  vendors, 
-  selectedVendor, 
-  onVendorSelect, 
-  onVendorUpdate, 
+const VendorListTable = ({
+  vendors,
+  selectedVendor,
+  onVendorSelect,
+  onVendorUpdate,
   onBulkAction,
-  userRole = 'staff'
+  userRole = 'staff',
 }) => {
-  const [editingVendor, setEditingVendor] = useState(null);
-  const [selectedVendors, setSelectedVendors] = useState([]);
-  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [editingVendor, setEditingVendor] = useState(null)
+  const [selectedVendors, setSelectedVendors] = useState([])
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' })
   const [filters, setFilters] = useState({
     search: '',
     specialty: '',
     status: '',
-    performanceThreshold: ''
-  });
+    performanceThreshold: '',
+  })
 
   const specialtyOptions = [
     { value: '', label: 'All Specialties' },
@@ -29,98 +29,105 @@ const VendorListTable = ({
     { value: 'protection', label: 'Paint Protection' },
     { value: 'wraps', label: 'Vehicle Wraps' },
     { value: 'windshield', label: 'Windshield Protection' },
-    { value: 'detailing', label: 'Detailing Services' }
-  ];
+    { value: 'detailing', label: 'Detailing Services' },
+  ]
 
   const statusOptions = [
     { value: '', label: 'All Status' },
     { value: 'available', label: 'Available' },
     { value: 'busy', label: 'Busy' },
-    { value: 'unavailable', label: 'Unavailable' }
-  ];
+    { value: 'unavailable', label: 'Unavailable' },
+  ]
 
   const performanceOptions = [
     { value: '', label: 'All Performance' },
     { value: '90', label: '90%+ Completion Rate' },
     { value: '80', label: '80%+ Completion Rate' },
-    { value: '70', label: '70%+ Completion Rate' }
-  ];
+    { value: '70', label: '70%+ Completion Rate' },
+  ]
 
   const filteredAndSortedVendors = useMemo(() => {
-    let filtered = vendors?.filter(vendor => {
-      const matchesSearch = vendor?.name?.toLowerCase()?.includes(filters?.search?.toLowerCase()) ||
-                           vendor?.contact?.email?.toLowerCase()?.includes(filters?.search?.toLowerCase());
-      const matchesSpecialty = !filters?.specialty || vendor?.specialties?.includes(filters?.specialty);
-      const matchesStatus = !filters?.status || vendor?.status === filters?.status;
-      const matchesPerformance = !filters?.performanceThreshold || 
-                                vendor?.completionRate >= parseInt(filters?.performanceThreshold);
-      
-      return matchesSearch && matchesSpecialty && matchesStatus && matchesPerformance;
-    });
+    let filtered = vendors?.filter((vendor) => {
+      const matchesSearch =
+        vendor?.name?.toLowerCase()?.includes(filters?.search?.toLowerCase()) ||
+        vendor?.contact?.email?.toLowerCase()?.includes(filters?.search?.toLowerCase())
+      const matchesSpecialty =
+        !filters?.specialty || vendor?.specialties?.includes(filters?.specialty)
+      const matchesStatus = !filters?.status || vendor?.status === filters?.status
+      const matchesPerformance =
+        !filters?.performanceThreshold ||
+        vendor?.completionRate >= parseInt(filters?.performanceThreshold)
+
+      return matchesSearch && matchesSpecialty && matchesStatus && matchesPerformance
+    })
 
     filtered?.sort((a, b) => {
-      const aValue = a?.[sortConfig?.key];
-      const bValue = b?.[sortConfig?.key];
-      
-      if (sortConfig?.direction === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      }
-      return aValue < bValue ? 1 : -1;
-    });
+      const aValue = a?.[sortConfig?.key]
+      const bValue = b?.[sortConfig?.key]
 
-    return filtered;
-  }, [vendors, filters, sortConfig]);
+      if (sortConfig?.direction === 'asc') {
+        return aValue > bValue ? 1 : -1
+      }
+      return aValue < bValue ? 1 : -1
+    })
+
+    return filtered
+  }, [vendors, filters, sortConfig])
 
   const handleSort = (key) => {
-    setSortConfig(prev => ({
+    setSortConfig((prev) => ({
       key,
-      direction: prev?.key === key && prev?.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
+      direction: prev?.key === key && prev?.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
 
   const handleEdit = (vendor) => {
-    setEditingVendor({ ...vendor });
-  };
+    setEditingVendor({ ...vendor })
+  }
 
   const handleSaveEdit = () => {
-    onVendorUpdate(editingVendor);
-    setEditingVendor(null);
-  };
+    onVendorUpdate(editingVendor)
+    setEditingVendor(null)
+  }
 
   const handleCancelEdit = () => {
-    setEditingVendor(null);
-  };
+    setEditingVendor(null)
+  }
 
   const handleSelectVendor = (vendorId, checked) => {
     if (checked) {
-      setSelectedVendors(prev => [...prev, vendorId]);
+      setSelectedVendors((prev) => [...prev, vendorId])
     } else {
-      setSelectedVendors(prev => prev?.filter(id => id !== vendorId));
+      setSelectedVendors((prev) => prev?.filter((id) => id !== vendorId))
     }
-  };
+  }
 
   const handleSelectAll = (checked) => {
     if (checked) {
-      setSelectedVendors(filteredAndSortedVendors?.map(v => v?.id));
+      setSelectedVendors(filteredAndSortedVendors?.map((v) => v?.id))
     } else {
-      setSelectedVendors([]);
+      setSelectedVendors([])
     }
-  };
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'available': return 'text-success bg-success/10';
-      case 'busy': return 'text-warning bg-warning/10';
-      case 'unavailable': return 'text-error bg-error/10';
-      default: return 'text-muted-foreground bg-muted';
+      case 'available':
+        return 'text-success bg-success/10'
+      case 'busy':
+        return 'text-warning bg-warning/10'
+      case 'unavailable':
+        return 'text-error bg-error/10'
+      default:
+        return 'text-muted-foreground bg-muted'
     }
-  };
+  }
 
   const getPerformanceColor = (rate) => {
-    if (rate >= 90) return 'text-success';
-    if (rate >= 80) return 'text-warning';
-    return 'text-error';
-  };
+    if (rate >= 90) return 'text-success'
+    if (rate >= 80) return 'text-warning'
+    return 'text-error'
+  }
 
   return (
     <div className="bg-card rounded-lg border border-border shadow-elevation-1">
@@ -133,7 +140,7 @@ const VendorListTable = ({
               {filteredAndSortedVendors?.length} vendors found
             </p>
           </div>
-          
+
           {userRole === 'manager' && (
             <div className="flex items-center space-x-2">
               <Button
@@ -162,28 +169,28 @@ const VendorListTable = ({
             type="search"
             placeholder="Search vendors..."
             value={filters?.search}
-            onChange={(e) => setFilters(prev => ({ ...prev, search: e?.target?.value }))}
+            onChange={(e) => setFilters((prev) => ({ ...prev, search: e?.target?.value }))}
           />
-          
+
           <Select
             placeholder="Filter by specialty"
             options={specialtyOptions}
             value={filters?.specialty}
-            onChange={(value) => setFilters(prev => ({ ...prev, specialty: value }))}
+            onChange={(value) => setFilters((prev) => ({ ...prev, specialty: value }))}
           />
-          
+
           <Select
             placeholder="Filter by status"
             options={statusOptions}
             value={filters?.status}
-            onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+            onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
           />
-          
+
           <Select
             placeholder="Performance threshold"
             options={performanceOptions}
             value={filters?.performanceThreshold}
-            onChange={(value) => setFilters(prev => ({ ...prev, performanceThreshold: value }))}
+            onChange={(value) => setFilters((prev) => ({ ...prev, performanceThreshold: value }))}
           />
         </div>
 
@@ -227,7 +234,10 @@ const VendorListTable = ({
                   name="selectAll"
                   label=""
                   description=""
-                  checked={selectedVendors?.length === filteredAndSortedVendors?.length && filteredAndSortedVendors?.length > 0}
+                  checked={
+                    selectedVendors?.length === filteredAndSortedVendors?.length &&
+                    filteredAndSortedVendors?.length > 0
+                  }
                   onChange={(e) => handleSelectAll(e?.target?.checked)}
                 />
               </th>
@@ -283,13 +293,15 @@ const VendorListTable = ({
                     onChange={(e) => handleSelectVendor(vendor?.id, e?.target?.checked)}
                   />
                 </td>
-                
+
                 <td className="p-4">
                   {editingVendor?.id === vendor?.id ? (
                     <Input
                       type="text"
                       value={editingVendor?.name}
-                      onChange={(e) => setEditingVendor(prev => ({ ...prev, name: e?.target?.value }))}
+                      onChange={(e) =>
+                        setEditingVendor((prev) => ({ ...prev, name: e?.target?.value }))
+                      }
                       className="w-full"
                       onClick={(e) => e?.stopPropagation()}
                     />
@@ -300,7 +312,7 @@ const VendorListTable = ({
                     </div>
                   )}
                 </td>
-                
+
                 <td className="p-4">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
@@ -313,7 +325,7 @@ const VendorListTable = ({
                     </div>
                   </div>
                 </td>
-                
+
                 <td className="p-4">
                   <div className="flex flex-wrap gap-1">
                     {vendor?.specialties?.slice(0, 2)?.map((specialty) => (
@@ -331,7 +343,7 @@ const VendorListTable = ({
                     )}
                   </div>
                 </td>
-                
+
                 <td className="p-4">
                   <div className="flex items-center space-x-2">
                     <span className="font-medium text-foreground">{vendor?.activeJobs}</span>
@@ -342,7 +354,7 @@ const VendorListTable = ({
                     )}
                   </div>
                 </td>
-                
+
                 <td className="p-4">
                   <div className="space-y-1">
                     <div className={`font-medium ${getPerformanceColor(vendor?.completionRate)}`}>
@@ -353,13 +365,15 @@ const VendorListTable = ({
                     </div>
                   </div>
                 </td>
-                
+
                 <td className="p-4">
-                  <span className={`px-2 py-1 text-xs rounded-full capitalize ${getStatusColor(vendor?.status)}`}>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full capitalize ${getStatusColor(vendor?.status)}`}
+                  >
                     {vendor?.status}
                   </span>
                 </td>
-                
+
                 <td className="p-4" onClick={(e) => e?.stopPropagation()}>
                   <div className="flex items-center space-x-1">
                     {editingVendor?.id === vendor?.id ? (
@@ -430,7 +444,7 @@ const VendorListTable = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default VendorListTable;
+export default VendorListTable

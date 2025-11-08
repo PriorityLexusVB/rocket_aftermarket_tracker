@@ -1,28 +1,34 @@
-import React from 'react';
-import { Clock, AlertCircle, CheckCircle, XCircle, DollarSign, TrendingUp } from 'lucide-react';
+import React from 'react'
+import { Clock, AlertCircle, CheckCircle, XCircle, DollarSign, TrendingUp } from 'lucide-react'
 
 const ClaimStatsWidget = ({ stats }) => {
-  if (!stats) return null;
+  if (!stats) return null
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'submitted': return <Clock className="w-5 h-5 text-blue-500" />;
-      case 'under_review': return <AlertCircle className="w-5 h-5 text-yellow-500" />;
-      case 'approved': return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'denied': return <XCircle className="w-5 h-5 text-red-500" />;
-      case 'resolved': return <CheckCircle className="w-5 h-5 text-gray-500" />;
-      default: return <Clock className="w-5 h-5 text-gray-500" />;
+      case 'submitted':
+        return <Clock className="w-5 h-5 text-blue-500" />
+      case 'under_review':
+        return <AlertCircle className="w-5 h-5 text-yellow-500" />
+      case 'approved':
+        return <CheckCircle className="w-5 h-5 text-green-500" />
+      case 'denied':
+        return <XCircle className="w-5 h-5 text-red-500" />
+      case 'resolved':
+        return <CheckCircle className="w-5 h-5 text-gray-500" />
+      default:
+        return <Clock className="w-5 h-5 text-gray-500" />
     }
-  };
+  }
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    })?.format(amount || 0);
-  };
+      maximumFractionDigits: 0,
+    })?.format(amount || 0)
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -38,9 +44,7 @@ const ClaimStatsWidget = ({ stats }) => {
           </div>
         </div>
         <div className="mt-4">
-          <span className="text-sm text-gray-600">
-            {stats?.recentClaims} new in last 30 days
-          </span>
+          <span className="text-sm text-gray-600">{stats?.recentClaims} new in last 30 days</span>
         </div>
       </div>
       {/* Total Amount */}
@@ -55,9 +59,7 @@ const ClaimStatsWidget = ({ stats }) => {
           </div>
         </div>
         <div className="mt-4">
-          <span className="text-sm text-gray-600">
-            Avg: {formatCurrency(stats?.avgAmount)}
-          </span>
+          <span className="text-sm text-gray-600">Avg: {formatCurrency(stats?.avgAmount)}</span>
         </div>
       </div>
       {/* Status Breakdown */}
@@ -103,17 +105,22 @@ const ClaimStatsWidget = ({ stats }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const getPriorityColor = (priority) => {
   switch (priority) {
-    case 'urgent': return 'bg-red-500';
-    case 'high': return 'bg-orange-500';
-    case 'medium': return 'bg-yellow-500';
-    case 'low': return 'bg-green-500';
-    default: return 'bg-gray-500';
+    case 'urgent':
+      return 'bg-red-500'
+    case 'high':
+      return 'bg-orange-500'
+    case 'medium':
+      return 'bg-yellow-500'
+    case 'low':
+      return 'bg-green-500'
+    default:
+      return 'bg-gray-500'
   }
-};
+}
 
-export default ClaimStatsWidget;
+export default ClaimStatsWidget

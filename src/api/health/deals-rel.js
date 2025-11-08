@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   try {
     // Test 1: Basic Supabase connectivity
     const { error: pingError } = await supabase.from('vendors').select('id').limit(1)
-    
+
     if (pingError) {
       details.checks.push({
         name: 'supabase_connectivity',
@@ -38,9 +38,8 @@ export default async function handler(req, res) {
       .limit(1)
 
     if (relError) {
-      const isRelationshipError = /Could not find a relationship between .* in the schema cache/i.test(
-        relError.message
-      )
+      const isRelationshipError =
+        /Could not find a relationship between .* in the schema cache/i.test(relError.message)
 
       details.checks.push({
         name: 'job_parts_vendor_relationship',
@@ -48,7 +47,7 @@ export default async function handler(req, res) {
         error: relError.message,
         isRelationshipError,
         recommendation: isRelationshipError
-          ? 'Run: NOTIFY pgrst, \'reload schema\'; or apply migration 20251107093000_verify_job_parts_vendor_fk.sql'
+          ? "Run: NOTIFY pgrst, 'reload schema'; or apply migration 20251107093000_verify_job_parts_vendor_fk.sql"
           : 'Check RLS policies and database permissions',
       })
 
@@ -69,7 +68,7 @@ export default async function handler(req, res) {
     // Note: This RPC function check_job_parts_vendor_fk may not exist in all environments
     try {
       const { data: fkCheck, error: fkError } = await supabase.rpc('check_job_parts_vendor_fk', {})
-      
+
       if (!fkError && fkCheck) {
         details.checks.push({
           name: 'foreign_key_constraint',
@@ -78,8 +77,9 @@ export default async function handler(req, res) {
         })
       } else if (fkError) {
         // Gracefully skip if function doesn't exist or other errors
-        const isFunctionMissing = /function.*does not exist/i.test(fkError.message) || 
-                                  /could not find function/i.test(fkError.message)
+        const isFunctionMissing =
+          /function.*does not exist/i.test(fkError.message) ||
+          /could not find function/i.test(fkError.message)
         details.checks.push({
           name: 'foreign_key_constraint',
           status: 'skip',

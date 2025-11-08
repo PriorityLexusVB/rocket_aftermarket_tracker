@@ -25,9 +25,7 @@ describe('schemaErrorClassifier', () => {
       const error1 = new Error(
         'Could not find a relationship between "job_parts" and "vendors" in the schema cache'
       )
-      const error2 = new Error(
-        'relationship between tables not found in schema cache'
-      )
+      const error2 = new Error('relationship between tables not found in schema cache')
 
       expect(classifySchemaError(error1)).toBe(SchemaErrorCode.MISSING_FK)
       expect(classifySchemaError(error2)).toBe(SchemaErrorCode.MISSING_FK)
@@ -85,9 +83,7 @@ describe('schemaErrorClassifier', () => {
 
     it('isStaleCacheError should work correctly', () => {
       const cacheError = new Error('schema cache issue detected')
-      const relationshipError = new Error(
-        'Could not find a relationship in the schema cache'
-      )
+      const relationshipError = new Error('Could not find a relationship in the schema cache')
       const otherError = new Error('Network timeout')
 
       expect(isStaleCacheError(cacheError)).toBe(true)
@@ -112,9 +108,7 @@ describe('schemaErrorClassifier', () => {
 
     it('should prioritize relationship errors over cache errors', () => {
       // When both patterns match, relationship error takes precedence
-      const error = new Error(
-        'Could not find a relationship in the schema cache'
-      )
+      const error = new Error('Could not find a relationship in the schema cache')
       expect(classifySchemaError(error)).toBe(SchemaErrorCode.MISSING_FK)
     })
   })

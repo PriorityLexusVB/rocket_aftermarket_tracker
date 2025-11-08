@@ -25,7 +25,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
       ]
 
       const rows = toJobPartRows('job-123', items, { includeTimes: true })
-      
+
       expect(rows).toHaveLength(1)
       expect(rows[0]).toHaveProperty('scheduled_start_time')
       expect(rows[0]).toHaveProperty('scheduled_end_time')
@@ -47,7 +47,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
       ]
 
       const rows = toJobPartRows('job-123', items, { includeTimes: false })
-      
+
       expect(rows).toHaveLength(1)
       expect(rows[0]).not.toHaveProperty('scheduled_start_time')
       expect(rows[0]).not.toHaveProperty('scheduled_end_time')
@@ -69,7 +69,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
 
       // Without explicit opts, should use module capability
       const rows = toJobPartRows('job-123', items)
-      
+
       expect(rows).toHaveLength(1)
       // Just verify it runs without error
       expect(rows[0].product_id).toBe('prod-1')
@@ -98,7 +98,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.loanerForm).toBeDefined()
       expect(result.loanerForm.loaner_number).toBe('L-001')
       expect(result.loanerForm.eta_return_date).toBe('2025-11-10')
@@ -121,7 +121,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.loanerForm).toBeDefined()
       expect(result.loanerForm.loaner_number).toBe('L-LEGACY')
       expect(result.loanerForm.eta_return_date).toBe(null)
@@ -144,7 +144,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.loanerForm).toBe(null)
     })
   })
@@ -166,7 +166,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.stockNumber).toBe('STK-123')
     })
 
@@ -186,7 +186,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
       }
 
       const result = mapFormToDb(formState)
-      
+
       expect(result.stockNumber).toBe('STK-456')
     })
   })
@@ -194,7 +194,7 @@ describe('dealService - Per-Line Time Columns Fallback', () => {
   describe('getCapabilities', () => {
     it('should return capabilities object with jobPartsHasTimes', () => {
       const caps = getCapabilities()
-      
+
       expect(caps).toBeDefined()
       expect(caps).toHaveProperty('jobPartsHasTimes')
       expect(typeof caps.jobPartsHasTimes).toBe('boolean')

@@ -1,22 +1,43 @@
-import React, { useState } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import React, { useState } from 'react'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
+const COLORS = [
+  '#3B82F6',
+  '#10B981',
+  '#F59E0B',
+  '#EF4444',
+  '#8B5CF6',
+  '#06B6D4',
+  '#84CC16',
+  '#F97316',
+]
 
 const ClaimsDistributionChart = ({ data = [], title }) => {
-  const [viewType, setViewType] = React.useState('pie');
+  const [viewType, setViewType] = React.useState('pie')
 
   const chartData = data?.map((item, index) => ({
     name: item?.category,
     value: item?.total_claims,
     cost: parseFloat(item?.total_cost) || 0,
     completion_rate: parseFloat(item?.completion_rate) || 0,
-    color: COLORS?.[index % COLORS?.length]
-  }));
+    color: COLORS?.[index % COLORS?.length],
+  }))
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {
-      const data = payload?.[0]?.payload;
+      const data = payload?.[0]?.payload
       return (
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-medium text-gray-900">{data?.name}</p>
@@ -24,10 +45,10 @@ const ClaimsDistributionChart = ({ data = [], title }) => {
           <p className="text-sm text-green-600">Cost: ${data?.cost?.toLocaleString()}</p>
           <p className="text-sm text-purple-600">Completion: {data?.completion_rate}%</p>
         </div>
-      );
+      )
     }
-    return null;
-  };
+    return null
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -37,7 +58,9 @@ const ClaimsDistributionChart = ({ data = [], title }) => {
           <button
             onClick={() => setViewType('pie')}
             className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-              viewType === 'pie' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600 hover:text-gray-900'
+              viewType === 'pie'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             Pie Chart
@@ -45,7 +68,9 @@ const ClaimsDistributionChart = ({ data = [], title }) => {
           <button
             onClick={() => setViewType('bar')}
             className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-              viewType === 'bar' ?'bg-white text-blue-600 shadow-sm' :'text-gray-600 hover:text-gray-900'
+              viewType === 'bar'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             Bar Chart
@@ -77,8 +102,8 @@ const ClaimsDistributionChart = ({ data = [], title }) => {
             ) : (
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis 
-                  dataKey="name" 
+                <XAxis
+                  dataKey="name"
                   angle={-45}
                   textAnchor="end"
                   height={100}
@@ -115,9 +140,7 @@ const ClaimsDistributionChart = ({ data = [], title }) => {
             <p className="text-sm text-gray-600">Total Claims</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-gray-900">
-              {chartData?.length}
-            </p>
+            <p className="text-2xl font-bold text-gray-900">{chartData?.length}</p>
             <p className="text-sm text-gray-600">Categories</p>
           </div>
           <div className="text-center">
@@ -128,16 +151,20 @@ const ClaimsDistributionChart = ({ data = [], title }) => {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-900">
-              {chartData?.length > 0 
-                ? (chartData?.reduce((sum, item) => sum + item?.completion_rate, 0) / chartData?.length)?.toFixed(1)
-                : 0}%
+              {chartData?.length > 0
+                ? (
+                    chartData?.reduce((sum, item) => sum + item?.completion_rate, 0) /
+                    chartData?.length
+                  )?.toFixed(1)
+                : 0}
+              %
             </p>
             <p className="text-sm text-gray-600">Avg Completion</p>
           </div>
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ClaimsDistributionChart;
+export default ClaimsDistributionChart

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
 const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('all')
 
   // Mock recent transactions data
   const mockTransactions = [
@@ -16,20 +16,20 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
         make: 'Honda',
         model: 'Civic',
         vin: '1HGBH41JXMN109186',
-        stockNumber: 'ST2024001'
+        stockNumber: 'ST2024001',
       },
       products: [
-        { name: 'ToughGuard Protection', price: 1299.99, cost: 650.00 },
-        { name: 'Window Tinting', price: 449.99, cost: 225.00 }
+        { name: 'ToughGuard Protection', price: 1299.99, cost: 650.0 },
+        { name: 'Window Tinting', price: 449.99, cost: 225.0 },
       ],
       totalSale: 1749.98,
-      totalCost: 875.00,
+      totalCost: 875.0,
       profit: 874.98,
       margin: 50.0,
       status: 'Pending',
       vendorsCount: 2,
       priority: 'normal',
-      createdBy: 'Sarah Johnson'
+      createdBy: 'Sarah Johnson',
     },
     {
       id: 'TXN-2024-002',
@@ -40,19 +40,17 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
         make: 'Toyota',
         model: 'Corolla',
         vin: '2T1BURHE0JC123456',
-        stockNumber: 'ST2024002'
+        stockNumber: 'ST2024002',
       },
-      products: [
-        { name: 'Evernew Coating', price: 899.99, cost: 450.00 }
-      ],
+      products: [{ name: 'Evernew Coating', price: 899.99, cost: 450.0 }],
       totalSale: 899.99,
-      totalCost: 450.00,
+      totalCost: 450.0,
       profit: 449.99,
       margin: 50.0,
       status: 'In Progress',
       vendorsCount: 1,
       priority: 'high',
-      createdBy: 'Mike Rodriguez'
+      createdBy: 'Mike Rodriguez',
     },
     {
       id: 'TXN-2024-003',
@@ -63,20 +61,20 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
         make: 'Ford',
         model: 'Mustang',
         vin: '1FA6P8TH5J5123456',
-        stockNumber: 'ST2024004'
+        stockNumber: 'ST2024004',
       },
       products: [
-        { name: 'Vehicle Wraps', price: 2499.99, cost: 1250.00 },
-        { name: 'Windshield Protection', price: 299.99, cost: 150.00 }
+        { name: 'Vehicle Wraps', price: 2499.99, cost: 1250.0 },
+        { name: 'Windshield Protection', price: 299.99, cost: 150.0 },
       ],
       totalSale: 2799.98,
-      totalCost: 1400.00,
+      totalCost: 1400.0,
       profit: 1399.98,
       margin: 50.0,
       status: 'Complete',
       vendorsCount: 2,
       priority: 'normal',
-      createdBy: 'Sarah Johnson'
+      createdBy: 'Sarah Johnson',
     },
     {
       id: 'TXN-2024-004',
@@ -87,19 +85,17 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
         make: 'Volkswagen',
         model: 'Jetta',
         vin: '3VW2B7AJ8KM123789',
-        stockNumber: 'ST2024003'
+        stockNumber: 'ST2024003',
       },
-      products: [
-        { name: 'Undercoating Protection', price: 599.99, cost: 300.00 }
-      ],
+      products: [{ name: 'Undercoating Protection', price: 599.99, cost: 300.0 }],
       totalSale: 599.99,
-      totalCost: 300.00,
+      totalCost: 300.0,
       profit: 299.99,
       margin: 50.0,
       status: 'Pending',
       vendorsCount: 1,
       priority: 'low',
-      createdBy: 'Alex Chen'
+      createdBy: 'Alex Chen',
     },
     {
       id: 'TXN-2024-005',
@@ -110,66 +106,92 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
         make: 'Honda',
         model: 'Civic',
         vin: '1HGBH41JXMN109187',
-        stockNumber: 'ST2024005'
+        stockNumber: 'ST2024005',
       },
       products: [
-        { name: 'ToughGuard Protection', price: 1299.99, cost: 650.00 },
-        { name: 'Evernew Coating', price: 899.99, cost: 450.00 }
+        { name: 'ToughGuard Protection', price: 1299.99, cost: 650.0 },
+        { name: 'Evernew Coating', price: 899.99, cost: 450.0 },
       ],
       totalSale: 2199.98,
-      totalCost: 1100.00,
+      totalCost: 1100.0,
       profit: 1099.98,
       margin: 50.0,
       status: 'In Progress',
       vendorsCount: 2,
       priority: 'urgent',
-      createdBy: 'Sarah Johnson'
-    }
-  ];
+      createdBy: 'Sarah Johnson',
+    },
+  ]
 
   const filterOptions = [
     { value: 'all', label: 'All Transactions', count: mockTransactions?.length },
-    { value: 'pending', label: 'Pending', count: mockTransactions?.filter(t => t?.status === 'Pending')?.length },
-    { value: 'in_progress', label: 'In Progress', count: mockTransactions?.filter(t => t?.status === 'In Progress')?.length },
-    { value: 'complete', label: 'Complete', count: mockTransactions?.filter(t => t?.status === 'Complete')?.length }
-  ];
+    {
+      value: 'pending',
+      label: 'Pending',
+      count: mockTransactions?.filter((t) => t?.status === 'Pending')?.length,
+    },
+    {
+      value: 'in_progress',
+      label: 'In Progress',
+      count: mockTransactions?.filter((t) => t?.status === 'In Progress')?.length,
+    },
+    {
+      value: 'complete',
+      label: 'Complete',
+      count: mockTransactions?.filter((t) => t?.status === 'Complete')?.length,
+    },
+  ]
 
-  const filteredTransactions = mockTransactions?.filter(transaction => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return transaction?.status === 'Pending';
-    if (filter === 'in_progress') return transaction?.status === 'In Progress';
-    if (filter === 'complete') return transaction?.status === 'Complete';
-    return true;
-  });
+  const filteredTransactions = mockTransactions?.filter((transaction) => {
+    if (filter === 'all') return true
+    if (filter === 'pending') return transaction?.status === 'Pending'
+    if (filter === 'in_progress') return transaction?.status === 'In Progress'
+    if (filter === 'complete') return transaction?.status === 'Complete'
+    return true
+  })
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Pending': return 'bg-warning/10 text-warning border-warning/20';
-      case 'In Progress': return 'bg-primary/10 text-primary border-primary/20';
-      case 'Complete': return 'bg-success/10 text-success border-success/20';
-      default: return 'bg-muted text-muted-foreground border-border';
+      case 'Pending':
+        return 'bg-warning/10 text-warning border-warning/20'
+      case 'In Progress':
+        return 'bg-primary/10 text-primary border-primary/20'
+      case 'Complete':
+        return 'bg-success/10 text-success border-success/20'
+      default:
+        return 'bg-muted text-muted-foreground border-border'
     }
-  };
+  }
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'low': return 'text-muted-foreground';
-      case 'normal': return 'text-foreground';
-      case 'high': return 'text-warning';
-      case 'urgent': return 'text-error';
-      default: return 'text-foreground';
+      case 'low':
+        return 'text-muted-foreground'
+      case 'normal':
+        return 'text-foreground'
+      case 'high':
+        return 'text-warning'
+      case 'urgent':
+        return 'text-error'
+      default:
+        return 'text-foreground'
     }
-  };
+  }
 
   const getPriorityIcon = (priority) => {
     switch (priority) {
-      case 'low': return 'ArrowDown';
-      case 'normal': return 'Minus';
-      case 'high': return 'ArrowUp';
-      case 'urgent': return 'AlertTriangle';
-      default: return 'Minus';
+      case 'low':
+        return 'ArrowDown'
+      case 'normal':
+        return 'Minus'
+      case 'high':
+        return 'ArrowUp'
+      case 'urgent':
+        return 'AlertTriangle'
+      default:
+        return 'Minus'
     }
-  };
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg p-6">
@@ -183,12 +205,7 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
             <p className="text-sm text-muted-foreground">View and manage recent sales entries</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          iconName="Download"
-          iconPosition="left"
-        >
+        <Button variant="outline" size="sm" iconName="Download" iconPosition="left">
           Export
         </Button>
       </div>
@@ -228,17 +245,21 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
                 <div className="flex items-center space-x-3">
                   <div className="flex items-center space-x-2">
                     <h4 className="font-medium text-foreground">{transaction?.id}</h4>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(transaction?.status)}`}>
+                    <div
+                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(transaction?.status)}`}
+                    >
                       {transaction?.status}
                     </div>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <Icon 
-                      name={getPriorityIcon(transaction?.priority)} 
-                      size={14} 
-                      className={getPriorityColor(transaction?.priority)} 
+                    <Icon
+                      name={getPriorityIcon(transaction?.priority)}
+                      size={14}
+                      className={getPriorityColor(transaction?.priority)}
                     />
-                    <span className={`text-xs capitalize ${getPriorityColor(transaction?.priority)}`}>
+                    <span
+                      className={`text-xs capitalize ${getPriorityColor(transaction?.priority)}`}
+                    >
                       {transaction?.priority}
                     </span>
                   </div>
@@ -278,10 +299,12 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
                     <span className="text-sm font-medium text-foreground">Vehicle</span>
                   </div>
                   <p className="text-sm text-foreground">
-                    {transaction?.vehicle?.year} {transaction?.vehicle?.make} {transaction?.vehicle?.model}
+                    {transaction?.vehicle?.year} {transaction?.vehicle?.make}{' '}
+                    {transaction?.vehicle?.model}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    VIN: {transaction?.vehicle?.vin?.slice(-6)} • Stock: {transaction?.vehicle?.stockNumber}
+                    VIN: {transaction?.vehicle?.vin?.slice(-6)} • Stock:{' '}
+                    {transaction?.vehicle?.stockNumber}
                   </p>
                 </div>
 
@@ -292,11 +315,13 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
                     <span className="text-sm font-medium text-foreground">Products</span>
                   </div>
                   <p className="text-sm text-foreground">
-                    {transaction?.products?.length} item{transaction?.products?.length !== 1 ? 's' : ''}
+                    {transaction?.products?.length} item
+                    {transaction?.products?.length !== 1 ? 's' : ''}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {transaction?.products?.[0]?.name}
-                    {transaction?.products?.length > 1 && ` +${transaction?.products?.length - 1} more`}
+                    {transaction?.products?.length > 1 &&
+                      ` +${transaction?.products?.length - 1} more`}
                   </p>
                 </div>
 
@@ -308,15 +333,21 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
                   </div>
                   <div className="flex items-center space-x-4">
                     <div>
-                      <p className="text-sm font-medium text-foreground">${transaction?.totalSale?.toFixed(2)}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        ${transaction?.totalSale?.toFixed(2)}
+                      </p>
                       <p className="text-xs text-muted-foreground">Sale</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-success">${transaction?.profit?.toFixed(2)}</p>
+                      <p className="text-sm font-medium text-success">
+                        ${transaction?.profit?.toFixed(2)}
+                      </p>
                       <p className="text-xs text-muted-foreground">Profit</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-accent">{transaction?.margin?.toFixed(1)}%</p>
+                      <p className="text-sm font-medium text-accent">
+                        {transaction?.margin?.toFixed(1)}%
+                      </p>
                       <p className="text-xs text-muted-foreground">Margin</p>
                     </div>
                   </div>
@@ -327,7 +358,9 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
                 <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                   <div className="flex items-center space-x-1">
                     <Icon name="Users" size={12} />
-                    <span>{transaction?.vendorsCount} vendor{transaction?.vendorsCount !== 1 ? 's' : ''}</span>
+                    <span>
+                      {transaction?.vendorsCount} vendor{transaction?.vendorsCount !== 1 ? 's' : ''}
+                    </span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Icon name="User" size={12} />
@@ -374,7 +407,11 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
             </div>
             <div>
               <p className="text-lg font-semibold text-accent">
-                {(filteredTransactions?.reduce((sum, t) => sum + t?.margin, 0) / filteredTransactions?.length)?.toFixed(1)}%
+                {(
+                  filteredTransactions?.reduce((sum, t) => sum + t?.margin, 0) /
+                  filteredTransactions?.length
+                )?.toFixed(1)}
+                %
               </p>
               <p className="text-sm text-muted-foreground">Avg Margin</p>
             </div>
@@ -382,7 +419,7 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default RecentTransactions;
+export default RecentTransactions

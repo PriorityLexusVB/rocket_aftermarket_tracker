@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Select from '../../../components/ui/Select';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Select from '../../../components/ui/Select'
 
-const BulkActionsBar = ({ 
-  selectedCount, 
-  onBulkStatusUpdate, 
-  onBulkExport, 
+const BulkActionsBar = ({
+  selectedCount,
+  onBulkStatusUpdate,
+  onBulkExport,
   onBulkDelete,
-  onClearSelection 
+  onClearSelection,
 }) => {
-  const [bulkAction, setBulkAction] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [bulkAction, setBulkAction] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const bulkActionOptions = [
     { value: '', label: 'Choose action...' },
@@ -19,61 +19,62 @@ const BulkActionsBar = ({
     { value: 'export-selected', label: 'Export Selected' },
     { value: 'assign-vendor', label: 'Assign Vendor' },
     { value: 'mark-priority', label: 'Mark Priority' },
-    { value: 'delete', label: 'Delete Selected' }
-  ];
+    { value: 'delete', label: 'Delete Selected' },
+  ]
 
   const statusOptions = [
     { value: 'available', label: 'Available' },
     { value: 'in-work', label: 'In Work' },
     { value: 'completed', label: 'Completed' },
-    { value: 'sold', label: 'Sold' }
-  ];
+    { value: 'sold', label: 'Sold' },
+  ]
 
   const handleBulkAction = async (action) => {
-    setIsProcessing(true);
-    
+    setIsProcessing(true)
+
     try {
       switch (action) {
         case 'update-status':
           // This would open a modal or dropdown for status selection
-          console.log('Update status for selected vehicles');
-          break;
+          console.log('Update status for selected vehicles')
+          break
         case 'export-selected':
-          await onBulkExport();
-          break;
+          await onBulkExport()
+          break
         case 'assign-vendor':
-          console.log('Assign vendor to selected vehicles');
-          break;
-        case 'mark-priority': console.log('Mark selected vehicles as priority');
-          break;
+          console.log('Assign vendor to selected vehicles')
+          break
+        case 'mark-priority':
+          console.log('Mark selected vehicles as priority')
+          break
         case 'delete':
           if (window.confirm(`Are you sure you want to delete ${selectedCount} vehicles?`)) {
-            await onBulkDelete();
+            await onBulkDelete()
           }
-          break;
+          break
         default:
-          break;
+          break
       }
     } catch (error) {
-      console.error('Bulk action failed:', error);
+      console.error('Bulk action failed:', error)
     } finally {
-      setIsProcessing(false);
-      setBulkAction('');
+      setIsProcessing(false)
+      setBulkAction('')
     }
-  };
+  }
 
   const handleStatusUpdate = async (status) => {
-    setIsProcessing(true);
+    setIsProcessing(true)
     try {
-      await onBulkStatusUpdate(status);
+      await onBulkStatusUpdate(status)
     } catch (error) {
-      console.error('Status update failed:', error);
+      console.error('Status update failed:', error)
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(false)
     }
-  };
+  }
 
-  if (selectedCount === 0) return null;
+  if (selectedCount === 0) return null
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40">
@@ -134,7 +135,7 @@ const BulkActionsBar = ({
                 { value: 'mark-priority', label: 'Mark as Priority' },
                 { value: 'duplicate', label: 'Duplicate Vehicles' },
                 { value: 'archive', label: 'Archive Selected' },
-                { value: 'delete', label: 'Delete Selected' }
+                { value: 'delete', label: 'Delete Selected' },
               ]}
               value=""
               onChange={handleBulkAction}
@@ -167,7 +168,7 @@ const BulkActionsBar = ({
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default BulkActionsBar;
+export default BulkActionsBar

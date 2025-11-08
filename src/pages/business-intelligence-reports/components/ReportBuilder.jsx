@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
 
 const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
   const [filters, setFilters] = useState({
@@ -14,19 +13,19 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
     products: [],
     profitThreshold: '',
     status: [],
-    reportType: 'sales_summary'
-  });
+    reportType: 'sales_summary',
+  })
 
-  const [savedFilters, setSavedFilters] = useState([]);
-  const [filterName, setFilterName] = useState('');
-  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [savedFilters, setSavedFilters] = useState([])
+  const [filterName, setFilterName] = useState('')
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
 
   useEffect(() => {
-    const saved = localStorage.getItem('saved-report-filters');
+    const saved = localStorage.getItem('saved-report-filters')
     if (saved) {
-      setSavedFilters(JSON.parse(saved));
+      setSavedFilters(JSON.parse(saved))
     }
-  }, []);
+  }, [])
 
   const dateRangeOptions = [
     { value: 'today', label: 'Today' },
@@ -37,8 +36,8 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
     { value: 'thisMonth', label: 'This Month' },
     { value: 'lastMonth', label: 'Last Month' },
     { value: 'thisYear', label: 'This Year' },
-    { value: 'custom', label: 'Custom Range' }
-  ];
+    { value: 'custom', label: 'Custom Range' },
+  ]
 
   const vendorOptions = [
     { value: 'toughguard_pro', label: 'ToughGuard Pro Services' },
@@ -46,8 +45,8 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
     { value: 'crystal_clear', label: 'Crystal Clear Windshield' },
     { value: 'premium_tint', label: 'Premium Tint Masters' },
     { value: 'wrap_masters', label: 'Wrap Masters Studio' },
-    { value: 'auto_shield', label: 'Auto Shield Protection' }
-  ];
+    { value: 'auto_shield', label: 'Auto Shield Protection' },
+  ]
 
   const productOptions = [
     { value: 'toughguard', label: 'ToughGuard Protection' },
@@ -55,57 +54,57 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
     { value: 'windshield', label: 'Windshield Protection' },
     { value: 'tint', label: 'Window Tinting' },
     { value: 'wraps', label: 'Vehicle Wraps' },
-    { value: 'ceramic', label: 'Ceramic Coating' }
-  ];
+    { value: 'ceramic', label: 'Ceramic Coating' },
+  ]
 
   const statusOptions = [
     { value: 'pending', label: 'Pending' },
     { value: 'in_progress', label: 'In Progress' },
     { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' }
-  ];
+    { value: 'cancelled', label: 'Cancelled' },
+  ]
 
   const reportTypeOptions = [
     { value: 'sales_summary', label: 'Sales Summary Report' },
     { value: 'vendor_performance', label: 'Vendor Performance Analysis' },
     { value: 'product_profitability', label: 'Product Profitability Rankings' },
     { value: 'operational_efficiency', label: 'Operational Efficiency Metrics' },
-    { value: 'financial_overview', label: 'Financial Overview Report' }
-  ];
+    { value: 'financial_overview', label: 'Financial Overview Report' },
+  ]
 
   const handleFilterChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
-  };
+    const newFilters = { ...filters, [key]: value }
+    setFilters(newFilters)
+    onFilterChange(newFilters)
+  }
 
   const handleSaveFilter = () => {
-    if (!filterName?.trim()) return;
-    
+    if (!filterName?.trim()) return
+
     const newSavedFilter = {
       id: Date.now(),
       name: filterName,
       filters: { ...filters },
-      createdAt: new Date()?.toISOString()
-    };
-    
-    const updatedSaved = [...savedFilters, newSavedFilter];
-    setSavedFilters(updatedSaved);
-    localStorage.setItem('saved-report-filters', JSON.stringify(updatedSaved));
-    setFilterName('');
-    setShowSaveDialog(false);
-  };
+      createdAt: new Date()?.toISOString(),
+    }
+
+    const updatedSaved = [...savedFilters, newSavedFilter]
+    setSavedFilters(updatedSaved)
+    localStorage.setItem('saved-report-filters', JSON.stringify(updatedSaved))
+    setFilterName('')
+    setShowSaveDialog(false)
+  }
 
   const handleLoadFilter = (savedFilter) => {
-    setFilters(savedFilter?.filters);
-    onFilterChange(savedFilter?.filters);
-  };
+    setFilters(savedFilter?.filters)
+    onFilterChange(savedFilter?.filters)
+  }
 
   const handleDeleteSavedFilter = (filterId) => {
-    const updatedSaved = savedFilters?.filter(f => f?.id !== filterId);
-    setSavedFilters(updatedSaved);
-    localStorage.setItem('saved-report-filters', JSON.stringify(updatedSaved));
-  };
+    const updatedSaved = savedFilters?.filter((f) => f?.id !== filterId)
+    setSavedFilters(updatedSaved)
+    localStorage.setItem('saved-report-filters', JSON.stringify(updatedSaved))
+  }
 
   const resetFilters = () => {
     const defaultFilters = {
@@ -116,11 +115,11 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
       products: [],
       profitThreshold: '',
       status: [],
-      reportType: 'sales_summary'
-    };
-    setFilters(defaultFilters);
-    onFilterChange(defaultFilters);
-  };
+      reportType: 'sales_summary',
+    }
+    setFilters(defaultFilters)
+    onFilterChange(defaultFilters)
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1 h-full flex flex-col">
@@ -165,7 +164,7 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
             value={filters?.dateRange}
             onChange={(value) => handleFilterChange('dateRange', value)}
           />
-          
+
           {filters?.dateRange === 'custom' && (
             <div className="grid grid-cols-2 gap-4 mt-4">
               <Input
@@ -240,9 +239,7 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
         {/* Saved Filters */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <label className="text-sm font-medium text-foreground">
-              Saved Filter Templates
-            </label>
+            <label className="text-sm font-medium text-foreground">Saved Filter Templates</label>
             <Button
               variant="ghost"
               size="sm"
@@ -272,11 +269,7 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
                 >
                   Save
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSaveDialog(false)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setShowSaveDialog(false)}>
                   Cancel
                 </Button>
               </div>
@@ -285,9 +278,7 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
 
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {savedFilters?.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic">
-                No saved filter templates
-              </p>
+              <p className="text-sm text-muted-foreground italic">No saved filter templates</p>
             ) : (
               savedFilters?.map((savedFilter) => (
                 <div
@@ -359,7 +350,7 @@ const ReportBuilder = ({ onFilterChange, onExport, isExporting }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ReportBuilder;
+export default ReportBuilder

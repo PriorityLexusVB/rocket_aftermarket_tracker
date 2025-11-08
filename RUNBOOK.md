@@ -202,28 +202,33 @@ supabase migration list
 When adding or modifying foreign key relationships, PostgREST's schema cache must be reloaded for the relationships to be queryable via the REST API.
 
 **Automatic reload in migrations**: Add this at the end of your migration:
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```
 
 **Manual reload via SQL**:
+
 ```sql
 -- Trigger schema cache reload
 NOTIFY pgrst, 'reload schema';
 ```
 
 **Manual reload via Supabase CLI**:
+
 ```bash
 # Connect to your database and run:
 supabase db execute --sql "NOTIFY pgrst, 'reload schema';"
 ```
 
 **Symptoms of stale schema cache**:
+
 - `Could not find a relationship between 'X' and 'Y' in the schema cache`
 - Queries with relationship syntax (e.g., `table:foreign_table(...)`) fail
 - Migration applied successfully but queries still fail
 
 **When to reload**:
+
 - After adding foreign key constraints
 - After modifying table relationships
 - After changing RLS policies that affect relationships
@@ -254,16 +259,18 @@ AND indexname LIKE '%stock%';
 After deploying migration `20251107000000_fix_job_parts_vendor_fkey.sql`, verify the relationship is working:
 
 **Quick verification script**:
+
 ```bash
 ./scripts/verify-schema-cache.sh
 ```
 
 **Manual SQL verification**:
+
 ```sql
 -- 1. Check column exists
-SELECT column_name, data_type 
-FROM information_schema.columns 
-WHERE table_name = 'job_parts' 
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'job_parts'
   AND column_name = 'vendor_id';
 -- Expected: vendor_id | uuid
 
@@ -283,9 +290,9 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
 -- Expected: job_parts_vendor_id_fkey | vendor_id | vendors
 
 -- 3. Check index exists
-SELECT indexname 
-FROM pg_indexes 
-WHERE tablename = 'job_parts' 
+SELECT indexname
+FROM pg_indexes
+WHERE tablename = 'job_parts'
   AND indexname = 'idx_job_parts_vendor_id';
 -- Expected: idx_job_parts_vendor_id
 
@@ -294,6 +301,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 **API verification**:
+
 ```bash
 # Test nested vendor relationship query
 curl -X GET \
@@ -303,17 +311,24 @@ curl -X GET \
 ```
 
 **Expected success response**:
+
 ```json
-[{"id":"...","vendor_id":"...","vendor":{"id":"...","name":"..."}}]
+[{ "id": "...", "vendor_id": "...", "vendor": { "id": "...", "name": "..." } }]
 ```
+
 or empty array `[]` if no data exists.
 
 **Error response (indicates FK missing)**:
+
 ```json
-{"code":"...","message":"Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"}
+{
+  "code": "...",
+  "message": "Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"
+}
 ```
 
 **Rollback procedure** (if needed):
+
 ```sql
 -- Remove FK constraint
 ALTER TABLE public.job_parts DROP CONSTRAINT IF EXISTS job_parts_vendor_id_fkey;

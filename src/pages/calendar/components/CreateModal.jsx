@@ -1,54 +1,58 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, Calendar, User, MapPin, AlertTriangle, Plus, Trash2, Car, UserPlus } from 'lucide-react';
-import { format } from 'date-fns';
-import { supabase } from '../../../lib/supabase';
-import { toUTC } from '../../../lib/time';
-import Checkbox from '../../../components/ui/Checkbox';
+import React, { useState, useEffect, useRef } from 'react'
+import {
+  X,
+  Search,
+  Calendar,
+  User,
+  MapPin,
+  AlertTriangle,
+  Plus,
+  Trash2,
+  Car,
+  UserPlus,
+} from 'lucide-react'
+import { format } from 'date-fns'
+import { supabase } from '../../../lib/supabase'
+import { toUTC } from '../../../lib/time'
+import Checkbox from '../../../components/ui/Checkbox'
 
-const CreateModal = ({ 
-  initialData, 
-  onClose, 
-  onSuccess, 
-  vendors, 
-  onStockSearch, 
-  onSMSEnqueue 
-}) => {
+const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, onSMSEnqueue }) => {
   // Omnibox search state
-  const [omniboxQuery, setOmniboxQuery] = useState('');
-  const [dealSuggestions, setDealSuggestions] = useState([]);
-  const [showDealSuggestions, setShowDealSuggestions] = useState(false);
-  const [selectedDeal, setSelectedDeal] = useState(null);
-  const omniboxInputRef = useRef(null);
+  const [omniboxQuery, setOmniboxQuery] = useState('')
+  const [dealSuggestions, setDealSuggestions] = useState([])
+  const [showDealSuggestions, setShowDealSuggestions] = useState(false)
+  const [selectedDeal, setSelectedDeal] = useState(null)
+  const omniboxInputRef = useRef(null)
 
   // Customer Section
   const [customerData, setCustomerData] = useState({
     name: '',
     phone: '',
-    email: ''
-  });
+    email: '',
+  })
 
-  // Vehicle Section  
+  // Vehicle Section
   const [vehicleData, setVehicleData] = useState({
     stock_number: '', // FIRST field
     year: '',
     make: '',
     model: '',
     new_used: 'used', // New/Used toggle
-    customer_needs_loaner: false // Loaner checkbox with visible checkmark
-  });
+    customer_needs_loaner: false, // Loaner checkbox with visible checkmark
+  })
 
   // Staff Assignment
   const [staffData, setStaffData] = useState({
     sales_person: '',
     delivery_coordinator: '',
-    finance_manager: ''
-  });
+    finance_manager: '',
+  })
 
   // Date Section
   const [dateData, setDateData] = useState({
-    todays_date: format(new Date(), "yyyy-MM-dd"),
-    promised_date: ''
-  });
+    todays_date: format(new Date(), 'yyyy-MM-dd'),
+    promised_date: '',
+  })
 
   // Line Items Section
   const [lineItems, setLineItems] = useState([
@@ -61,80 +65,81 @@ const CreateModal = ({
       profit: 0,
       off_site_work: false,
       vendor_id: '',
-      promised_date: ''
-    }
-  ]);
+      promised_date: '',
+    },
+  ])
 
   // Notes
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState('')
 
   // Other states
-  const [vehicleSuggestions, setVehicleSuggestions] = useState([]);
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [products, setProducts] = useState([]);
+  const [vehicleSuggestions, setVehicleSuggestions] = useState([])
+  const [selectedVehicle, setSelectedVehicle] = useState(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [products, setProducts] = useState([])
   const [staffMembers, setStaffMembers] = useState({
     sales_people: [],
     delivery_coordinators: [],
     finance_managers: [],
-    managers: []
-  });
-  
-  const stockInputRef = useRef(null);
+    managers: [],
+  })
+
+  const stockInputRef = useRef(null)
 
   // Enhanced Line Item Form State - Add Deal Number
   const [dealForm, setDealForm] = useState({
     dealNumber: '', // NEW: Deal # field (not required)
-    stockNumber: '', 
+    stockNumber: '',
     vehicleId: '',
     // ... keep existing vehicle fields ...
     vehicleYear: '',
     vehicleMake: '',
     vehicleModel: '',
     new_used: 'used',
-    customer_needs_loaner: false
-  });
+    customer_needs_loaner: false,
+  })
 
   // Load initial data
   useEffect(() => {
-    loadProducts();
-    loadStaffMembers();
-    
+    loadProducts()
+    loadStaffMembers()
+
     if (initialData?.startTime && initialData?.endTime) {
-      setDateData(prev => ({
+      setDateData((prev) => ({
         ...prev,
-        promised_date: format(new Date(initialData.startTime), "yyyy-MM-dd")
-      }));
+        promised_date: format(new Date(initialData.startTime), 'yyyy-MM-dd'),
+      }))
     }
-    
+
     // Focus on omnibox search field first
     if (omniboxInputRef?.current) {
-      omniboxInputRef?.current?.focus();
+      omniboxInputRef?.current?.focus()
     }
-  }, [initialData]);
+  }, [initialData])
 
   // Omnibox search for existing deals
   const handleOmniboxSearch = async (query) => {
     if (!query?.trim() || query?.length < 2) {
-      setDealSuggestions([]);
-      setShowDealSuggestions(false);
-      return;
+      setDealSuggestions([])
+      setShowDealSuggestions(false)
+      return
     }
 
     try {
       // Normalize phone number for search (digits only)
-      const phoneQuery = query?.replace(/\D/g, '');
-      
+      const phoneQuery = query?.replace(/\D/g, '')
+
       // Search across vehicles and transactions for existing deals
       // Priority: Stock Number (exact) > Customer Phone (normalized) > Customer Name (partial)
-      let dealResults = [];
+      let dealResults = []
 
       // 1. Search by stock number (exact match first, then partial)
       const { data: stockMatches } = await supabase
         ?.from('vehicles')
-        ?.select(`
+        ?.select(
+          `
           *,
           transactions!inner(
             id,
@@ -153,19 +158,21 @@ const CreateModal = ({
             vendor_id,
             customer_needs_loaner
           )
-        `)
+        `
+        )
         ?.or(`stock_number.eq.${query},stock_number.ilike.%${query}%`)
-        ?.limit(10);
+        ?.limit(10)
 
       if (stockMatches?.length > 0) {
-        dealResults = [...dealResults, ...stockMatches];
+        dealResults = [...dealResults, ...stockMatches]
       }
 
       // 2. Search by customer phone (normalized digits only)
       if (phoneQuery?.length >= 4) {
         const { data: phoneMatches } = await supabase
           ?.from('vehicles')
-          ?.select(`
+          ?.select(
+            `
             *,
             transactions!inner(
               id,
@@ -184,19 +191,21 @@ const CreateModal = ({
               vendor_id,
               customer_needs_loaner
             )
-          `)
+          `
+          )
           ?.or(`owner_phone.like.%${phoneQuery}%,transactions.customer_phone.like.%${phoneQuery}%`)
-          ?.limit(10);
+          ?.limit(10)
 
         if (phoneMatches?.length > 0) {
-          dealResults = [...dealResults, ...phoneMatches];
+          dealResults = [...dealResults, ...phoneMatches]
         }
       }
 
       // 3. Search by customer name (case-insensitive, partial)
       const { data: nameMatches } = await supabase
         ?.from('vehicles')
-        ?.select(`
+        ?.select(
+          `
           *,
           transactions!inner(
             id,
@@ -215,46 +224,48 @@ const CreateModal = ({
             vendor_id,
             customer_needs_loaner
           )
-        `)
+        `
+        )
         ?.or(`owner_name.ilike.%${query}%,transactions.customer_name.ilike.%${query}%`)
-        ?.limit(10);
+        ?.limit(10)
 
       if (nameMatches?.length > 0) {
-        dealResults = [...dealResults, ...nameMatches];
+        dealResults = [...dealResults, ...nameMatches]
       }
 
       // Remove duplicates and format results
-      const uniqueDeals = dealResults?.filter((deal, index, self) => 
-        index === self?.findIndex(d => d?.id === deal?.id)
-      );
+      const uniqueDeals = dealResults?.filter(
+        (deal, index, self) => index === self?.findIndex((d) => d?.id === deal?.id)
+      )
 
-      setDealSuggestions(uniqueDeals || []);
-      setShowDealSuggestions(true);
-
+      setDealSuggestions(uniqueDeals || [])
+      setShowDealSuggestions(true)
     } catch (error) {
-      console.error('Deal search error:', error);
-      setError('Failed to search existing deals');
+      console.error('Deal search error:', error)
+      setError('Failed to search existing deals')
     }
-  };
+  }
 
   // Debounced omnibox search
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      handleOmniboxSearch(omniboxQuery);
-    }, 300);
+      handleOmniboxSearch(omniboxQuery)
+    }, 300)
 
-    return () => clearTimeout(debounceTimer);
-  }, [omniboxQuery]);
+    return () => clearTimeout(debounceTimer)
+  }, [omniboxQuery])
 
   // Handle deal selection from omnibox
   const handleDealSelect = async (deal) => {
-    setSelectedDeal(deal);
-    setOmniboxQuery(`${deal?.stock_number || 'N/A'} • ${deal?.transactions?.[0]?.customer_name || deal?.owner_name} • ${deal?.year} ${deal?.make} ${deal?.model}`);
-    setShowDealSuggestions(false);
+    setSelectedDeal(deal)
+    setOmniboxQuery(
+      `${deal?.stock_number || 'N/A'} • ${deal?.transactions?.[0]?.customer_name || deal?.owner_name} • ${deal?.year} ${deal?.make} ${deal?.model}`
+    )
+    setShowDealSuggestions(false)
 
     // Pre-populate all known data from the selected deal
-    const transaction = deal?.transactions?.[0];
-    const job = deal?.jobs?.[0];
+    const transaction = deal?.transactions?.[0]
+    const job = deal?.jobs?.[0]
 
     // Vehicle data
     setVehicleData({
@@ -263,35 +274,37 @@ const CreateModal = ({
       make: deal?.make || '',
       model: deal?.model || '',
       new_used: 'used', // Default, could be enhanced
-      customer_needs_loaner: job?.customer_needs_loaner || false
-    });
+      customer_needs_loaner: job?.customer_needs_loaner || false,
+    })
 
     // Customer data (prioritize transaction data over vehicle data)
     setCustomerData({
       name: transaction?.customer_name || deal?.owner_name || '',
       phone: transaction?.customer_phone || deal?.owner_phone || '',
-      email: transaction?.customer_email || deal?.owner_email || ''
-    });
+      email: transaction?.customer_email || deal?.owner_email || '',
+    })
 
     // Staff assignments from existing job
     if (job) {
       setStaffData({
         sales_person: job?.assigned_to || '',
         delivery_coordinator: job?.delivery_coordinator_id || '',
-        finance_manager: '' // Would need to be stored in job if available
-      });
+        finance_manager: '', // Would need to be stored in job if available
+      })
 
       // If job has vendor assigned, pre-fill vendor for new line item
       if (job?.vendor_id) {
-        setLineItems(prev => prev?.map((item, index) => 
-          index === 0 ? { ...item, vendor_id: job?.vendor_id, off_site_work: true } : item
-        ));
+        setLineItems((prev) =>
+          prev?.map((item, index) =>
+            index === 0 ? { ...item, vendor_id: job?.vendor_id, off_site_work: true } : item
+          )
+        )
       }
     }
 
     // Set selected vehicle for form processing
-    setSelectedVehicle(deal);
-  };
+    setSelectedVehicle(deal)
+  }
 
   // Load products for dropdown
   const loadProducts = async () => {
@@ -300,14 +313,14 @@ const CreateModal = ({
         ?.from('products')
         ?.select('*')
         ?.eq('is_active', true)
-        ?.order('name');
+        ?.order('name')
 
-      if (error) throw error;
-      setProducts(data || []);
+      if (error) throw error
+      setProducts(data || [])
     } catch (error) {
-      console.error('Error loading products:', error);
+      console.error('Error loading products:', error)
     }
-  };
+  }
 
   // Load staff members by department
   const loadStaffMembers = async () => {
@@ -316,28 +329,28 @@ const CreateModal = ({
         ?.from('user_profiles')
         ?.select('*')
         ?.eq('is_active', true)
-        ?.order('full_name');
+        ?.order('full_name')
 
-      if (error) throw error;
-      
-      const staff = data || [];
+      if (error) throw error
+
+      const staff = data || []
       setStaffMembers({
-        sales_people: staff?.filter(s => s?.department === 'Sales'),
-        delivery_coordinators: staff?.filter(s => s?.department === 'Delivery Coordinator'),
-        finance_managers: staff?.filter(s => s?.department === 'Finance Manager'),
-        managers: staff?.filter(s => s?.department === 'General Manager')
-      });
+        sales_people: staff?.filter((s) => s?.department === 'Sales'),
+        delivery_coordinators: staff?.filter((s) => s?.department === 'Delivery Coordinator'),
+        finance_managers: staff?.filter((s) => s?.department === 'Finance Manager'),
+        managers: staff?.filter((s) => s?.department === 'General Manager'),
+      })
     } catch (error) {
-      console.error('Error loading staff:', error);
+      console.error('Error loading staff:', error)
     }
-  };
+  }
 
   // Stock-first vehicle search with exact match priority (fallback if omnibox not used)
   const handleStockSearch = async (query) => {
     if (!query?.trim() || query?.length < 2) {
-      setVehicleSuggestions([]);
-      setShowSuggestions(false);
-      return;
+      setVehicleSuggestions([])
+      setShowSuggestions(false)
+      return
     }
 
     try {
@@ -346,12 +359,12 @@ const CreateModal = ({
         ?.from('vehicles')
         ?.select('*')
         ?.ilike('stock_number', query)
-        ?.limit(1);
+        ?.limit(1)
 
       if (exactMatch && exactMatch?.length > 0) {
-        const vehicle = exactMatch?.[0];
-        handleVehicleSelect(vehicle);
-        return;
+        const vehicle = exactMatch?.[0]
+        handleVehicleSelect(vehicle)
+        return
       }
 
       // Fallback to partial search (stock-first ordering)
@@ -360,52 +373,52 @@ const CreateModal = ({
         ?.select('*')
         ?.or(`stock_number.ilike.%${query}%,vin.ilike.%${query}%,owner_name.ilike.%${query}%`)
         ?.order('stock_number')
-        ?.limit(20);
+        ?.limit(20)
 
-      setVehicleSuggestions(partialMatches || []);
-      setShowSuggestions(true);
+      setVehicleSuggestions(partialMatches || [])
+      setShowSuggestions(true)
     } catch (error) {
-      console.error('Vehicle search error:', error);
-      setError('Failed to search vehicles');
+      console.error('Vehicle search error:', error)
+      setError('Failed to search vehicles')
     }
-  };
+  }
 
   // Debounced stock search
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      handleStockSearch(vehicleData?.stock_number);
-    }, 300);
+      handleStockSearch(vehicleData?.stock_number)
+    }, 300)
 
-    return () => clearTimeout(debounceTimer);
-  }, [vehicleData?.stock_number]);
+    return () => clearTimeout(debounceTimer)
+  }, [vehicleData?.stock_number])
 
   // Handle vehicle selection
   const handleVehicleSelect = (vehicle) => {
-    setSelectedVehicle(vehicle);
-    setVehicleData(prev => ({
+    setSelectedVehicle(vehicle)
+    setVehicleData((prev) => ({
       ...prev,
       stock_number: vehicle?.stock_number || '',
       year: vehicle?.year || '',
       make: vehicle?.make || '',
-      model: vehicle?.model || ''
-    }));
-    
+      model: vehicle?.model || '',
+    }))
+
     // Auto-fill customer data
     setCustomerData({
       name: vehicle?.owner_name || '',
       phone: vehicle?.owner_phone || '',
-      email: vehicle?.owner_email || ''
-    });
-    
-    setShowSuggestions(false);
-  };
+      email: vehicle?.owner_email || '',
+    })
+
+    setShowSuggestions(false)
+  }
 
   // Calculate profit for line item
   const calculateProfit = (soldPrice, cost) => {
-    const sold = parseFloat(soldPrice) || 0;
-    const costValue = parseFloat(cost) || 0;
-    return sold - costValue;
-  };
+    const sold = parseFloat(soldPrice) || 0
+    const costValue = parseFloat(cost) || 0
+    return sold - costValue
+  }
 
   // Add new line item
   const addLineItem = () => {
@@ -418,128 +431,138 @@ const CreateModal = ({
       profit: 0,
       off_site_work: false,
       vendor_id: '',
-      promised_date: ''
-    };
-    setLineItems([...lineItems, newItem]);
-  };
+      promised_date: '',
+    }
+    setLineItems([...lineItems, newItem])
+  }
 
   // Remove line item
   const removeLineItem = (index) => {
     if (lineItems?.length > 1) {
-      setLineItems(lineItems?.filter((_, i) => i !== index));
+      setLineItems(lineItems?.filter((_, i) => i !== index))
     }
-  };
+  }
 
   // Update line item
   const updateLineItem = (index, field, value) => {
     const updated = lineItems?.map((item, i) => {
       if (i === index) {
-        const newItem = { ...item, [field]: value };
-        
+        const newItem = { ...item, [field]: value }
+
         // Recalculate profit when sold price or cost changes
         if (field === 'sold_price' || field === 'cost') {
           newItem.profit = calculateProfit(
             field === 'sold_price' ? value : item?.sold_price,
             field === 'cost' ? value : item?.cost
-          );
-        }
-        
-        // Clear vendor when off-site is unchecked
-        if (field === 'off_site_work' && !value) {
-          newItem.vendor_id = '';
+          )
         }
 
-        return newItem;
+        // Clear vendor when off-site is unchecked
+        if (field === 'off_site_work' && !value) {
+          newItem.vendor_id = ''
+        }
+
+        return newItem
       }
-      return item;
-    });
-    setLineItems(updated);
-  };
+      return item
+    })
+    setLineItems(updated)
+  }
 
   // Form validation
   const validateForm = () => {
     // Required fields validation
     if (!vehicleData?.stock_number) {
-      throw new Error('Stock Number is required');
+      throw new Error('Stock Number is required')
     }
-    
+
     if (!customerData?.name) {
-      throw new Error('Customer Name is required');
+      throw new Error('Customer Name is required')
     }
-    
+
     if (!vehicleData?.year || !vehicleData?.make || !vehicleData?.model) {
-      throw new Error('Year, Make, and Model are required');
+      throw new Error('Year, Make, and Model are required')
     }
-    
+
     if (!dateData?.promised_date) {
-      throw new Error('Promised Date is required');
+      throw new Error('Promised Date is required')
     }
 
     if (!lineItems || lineItems?.length === 0) {
-      throw new Error('At least one line item is required');
+      throw new Error('At least one line item is required')
     }
     // Validate per-line rules
     for (let i = 0; i < lineItems?.length; i++) {
-      const item = lineItems?.[i];
-      if (!item?.product_name) throw new Error(`Line item ${i+1}: Product Name is required`);
-      if (!item?.sold_price)   throw new Error(`Line item ${i+1}: Sold Price is required`);
-      if (!item?.cost)         throw new Error(`Line item ${i+1}: Cost is required`);
+      const item = lineItems?.[i]
+      if (!item?.product_name) throw new Error(`Line item ${i + 1}: Product Name is required`)
+      if (!item?.sold_price) throw new Error(`Line item ${i + 1}: Sold Price is required`)
+      if (!item?.cost) throw new Error(`Line item ${i + 1}: Cost is required`)
       if (item?.off_site_work && !item?.vendor_id) {
-        throw new Error(`Line item ${i+1}: Vendor is required for Off-Site work`);
+        throw new Error(`Line item ${i + 1}: Vendor is required for Off-Site work`)
       }
     }
 
-    return true;
-  };
+    return true
+  }
 
   // Form submission
   const handleSubmit = async (e) => {
-    e?.preventDefault();
-    setLoading(true);
-    setError('');
+    e?.preventDefault()
+    setLoading(true)
+    setError('')
 
     try {
-      validateForm();
+      validateForm()
 
       // Create or get vehicle record
-      let vehicleId = selectedVehicle?.id;
+      let vehicleId = selectedVehicle?.id
       if (!vehicleId) {
         // Create new vehicle record
         const { data: newVehicle, error: vehicleError } = await supabase
           ?.from('vehicles')
-          ?.insert([{
-            stock_number: vehicleData?.stock_number,
-            year: parseInt(vehicleData?.year),
-            make: vehicleData?.make,
-            model: vehicleData?.model,
-            owner_name: customerData?.name,
-            owner_phone: customerData?.phone || null,
-            owner_email: customerData?.email || null,
-            vehicle_status: 'active'
-          }])
+          ?.insert([
+            {
+              stock_number: vehicleData?.stock_number,
+              year: parseInt(vehicleData?.year),
+              make: vehicleData?.make,
+              model: vehicleData?.model,
+              owner_name: customerData?.name,
+              owner_phone: customerData?.phone || null,
+              owner_email: customerData?.email || null,
+              vehicle_status: 'active',
+            },
+          ])
           ?.select()
-          ?.single();
+          ?.single()
 
-        if (vehicleError) throw vehicleError;
-        vehicleId = newVehicle?.id;
+        if (vehicleError) throw vehicleError
+        vehicleId = newVehicle?.id
       }
 
       // Create jobs for each line item
       const jobPromises = lineItems?.map(async (item, index) => {
         // Create separate job for off-site work
-        const isOffSite = item?.off_site_work;
-        
+        const isOffSite = item?.off_site_work
+
         // Default schedule window when no explicit slot chosen
-        const defaultStartISO = toUTC(new Date(`${(item?.promised_date || dateData?.promised_date)}T09:00:00`));
-        const defaultEndISO   = toUTC(new Date(`${(item?.promised_date || dateData?.promised_date)}T09:30:00`));
+        const defaultStartISO = toUTC(
+          new Date(`${item?.promised_date || dateData?.promised_date}T09:00:00`)
+        )
+        const defaultEndISO = toUTC(
+          new Date(`${item?.promised_date || dateData?.promised_date}T09:30:00`)
+        )
 
         const jobData = {
           title: `${vehicleData?.stock_number}: ${item?.product_name}`,
           description: `${vehicleData?.new_used === 'new' ? 'New' : 'Used'} ${vehicleData?.year} ${vehicleData?.make} ${vehicleData?.model}`,
           vehicle_id: vehicleId,
           vendor_id: isOffSite ? item?.vendor_id : null,
-          scheduled_start_time: initialData?.startTime ? toUTC(new Date(initialData?.startTime)) : defaultStartISO,
-          scheduled_end_time:   initialData?.endTime   ? toUTC(new Date(initialData?.endTime))   : defaultEndISO,
+          scheduled_start_time: initialData?.startTime
+            ? toUTC(new Date(initialData?.startTime))
+            : defaultStartISO,
+          scheduled_end_time: initialData?.endTime
+            ? toUTC(new Date(initialData?.endTime))
+            : defaultEndISO,
           promised_date: item?.promised_date || dateData?.promised_date,
           job_status: 'pending',
           service_type: isOffSite ? 'off_site' : 'in_house',
@@ -549,50 +572,50 @@ const CreateModal = ({
           delivery_coordinator_id: staffData?.delivery_coordinator || null,
           estimated_cost: parseFloat(item?.cost),
           color_code: isOffSite ? '#f97316' : '#22c55e', // Orange for off-site, green for on-site
-          calendar_notes: notes
-        };
+          calendar_notes: notes,
+        }
 
         const { data: job, error: jobError } = await supabase
           ?.from('jobs')
           ?.insert([jobData])
           ?.select()
-          ?.single();
+          ?.single()
 
-        if (jobError) throw jobError;
+        if (jobError) throw jobError
 
         // Create job_parts entry for line item
-        const { error: partsError } = await supabase
-          ?.from('job_parts')
-          ?.insert([{
+        const { error: partsError } = await supabase?.from('job_parts')?.insert([
+          {
             job_id: job?.id,
             product_id: item?.product_id || null,
             unit_price: parseFloat(item?.sold_price),
-            quantity_used: 1
-          }]);
+            quantity_used: 1,
+          },
+        ])
 
-        if (partsError) throw partsError;
+        if (partsError) throw partsError
 
-        return job;
-      });
+        return job
+      })
 
-      const jobs = await Promise.all(jobPromises);
+      const jobs = await Promise.all(jobPromises)
 
       // Enqueue SMS notifications
       for (const job of jobs) {
         if (job?.vendor_id) {
-          await onSMSEnqueue(job?.id, 'NEW');
+          await onSMSEnqueue(job?.id, 'NEW')
         }
-        await onSMSEnqueue(job?.id, 'BOOKED');
+        await onSMSEnqueue(job?.id, 'BOOKED')
       }
 
-      onSuccess();
+      onSuccess()
     } catch (error) {
-      console.error('Create deal error:', error);
-      setError(error?.message);
+      console.error('Create deal error:', error)
+      setError(error?.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -606,10 +629,7 @@ const CreateModal = ({
                 Search existing deals or create new - all data auto-filled upon selection
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 p-2"
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -625,19 +645,21 @@ const CreateModal = ({
 
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
           {/* FIXED: Robust scrolling container with proper flex layout and overflow handling */}
-          <div className="flex-1 overflow-y-auto overscroll-contain" style={{ 
-            minHeight: '400px', 
-            maxHeight: 'calc(95vh - 180px)' 
-          }}>
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain"
+            style={{
+              minHeight: '400px',
+              maxHeight: 'calc(95vh - 180px)',
+            }}
+          >
             <div className="p-6 space-y-8" style={{ minHeight: 'max-content' }}>
-              
               {/* Deal Number Section */}
               <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg border-2 border-purple-200">
                 <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                   <Calendar className="w-5 h-5 mr-2 text-purple-600" />
                   Deal Information
                 </h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -646,7 +668,9 @@ const CreateModal = ({
                     <input
                       type="text"
                       value={dealForm?.dealNumber}
-                      onChange={(e) => setDealForm(prev => ({ ...prev, dealNumber: e?.target?.value }))}
+                      onChange={(e) =>
+                        setDealForm((prev) => ({ ...prev, dealNumber: e?.target?.value }))
+                      }
                       className="w-full px-3 py-3 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-lg"
                       placeholder="Enter deal number..."
                     />
@@ -657,7 +681,9 @@ const CreateModal = ({
                   <div className="flex items-end">
                     <div className="p-3 bg-purple-100 rounded-lg border border-purple-200">
                       <p className="text-xs text-purple-700 font-medium">🔧 Scrolling FIXED</p>
-                      <p className="text-xs text-purple-600">Robust overflow handling with max-height calc</p>
+                      <p className="text-xs text-purple-600">
+                        Robust overflow handling with max-height calc
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -669,7 +695,7 @@ const CreateModal = ({
                   <Search className="w-5 h-5 mr-2 text-orange-600" />
                   Search Existing Deals
                 </h4>
-                
+
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Search by Stock Number, Customer Phone, Customer Name, or Deal #
@@ -681,9 +707,9 @@ const CreateModal = ({
                       type="text"
                       value={omniboxQuery}
                       onChange={(e) => {
-                        setOmniboxQuery(e?.target?.value);
+                        setOmniboxQuery(e?.target?.value)
                         if (!e?.target?.value) {
-                          setSelectedDeal(null);
+                          setSelectedDeal(null)
                         }
                       }}
                       className="pl-10 w-full px-3 py-3 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
@@ -696,16 +722,22 @@ const CreateModal = ({
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
                       <div className="p-2 bg-gray-50 border-b border-gray-200">
                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                          ✅ Existing Deals Found ({dealSuggestions?.length}) - Pre-Population Confirmed ✓
+                          ✅ Existing Deals Found ({dealSuggestions?.length}) - Pre-Population
+                          Confirmed ✓
                         </div>
                       </div>
                       {dealSuggestions?.map((deal) => {
-                        const transaction = deal?.transactions?.[0];
-                        const job = deal?.jobs?.[0];
-                        const customerName = transaction?.customer_name || deal?.owner_name || 'N/A';
-                        const phone = transaction?.customer_phone || deal?.owner_phone || 'N/A';
-                        const dealNumber = transaction?.deal_number || job?.deal_number || transaction?.transaction_number || job?.job_number || '';
-                        
+                        const transaction = deal?.transactions?.[0]
+                        const job = deal?.jobs?.[0]
+                        const customerName = transaction?.customer_name || deal?.owner_name || 'N/A'
+                        const phone = transaction?.customer_phone || deal?.owner_phone || 'N/A'
+                        const dealNumber =
+                          transaction?.deal_number ||
+                          job?.deal_number ||
+                          transaction?.transaction_number ||
+                          job?.job_number ||
+                          ''
+
                         return (
                           <button
                             key={deal?.id}
@@ -714,28 +746,36 @@ const CreateModal = ({
                             className="w-full text-left p-4 hover:bg-orange-50 border-b border-gray-100 last:border-b-0 transition-colors"
                           >
                             <div className="font-medium text-orange-700 text-sm">
-                              {deal?.stock_number || 'N/A'} • {customerName} • {phone} • {deal?.year} {deal?.make} {deal?.model}
+                              {deal?.stock_number || 'N/A'} • {customerName} • {phone} •{' '}
+                              {deal?.year} {deal?.make} {deal?.model}
                               {dealNumber && (
-                                <span className="ml-2 text-purple-600 font-semibold">• Deal #{dealNumber}</span>
+                                <span className="ml-2 text-purple-600 font-semibold">
+                                  • Deal #{dealNumber}
+                                </span>
                               )}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                              {deal?.jobs?.length > 0 && (
-                                <span>Jobs: {deal?.jobs?.length} | </span>
-                              )}
-                              Last Activity: {transaction?.created_at ? format(new Date(transaction?.created_at), 'MMM dd, yyyy') : 'N/A'}
-                              <span className="ml-2 text-green-600 font-medium">✓ Will auto-fill all fields</span>
+                              {deal?.jobs?.length > 0 && <span>Jobs: {deal?.jobs?.length} | </span>}
+                              Last Activity:{' '}
+                              {transaction?.created_at
+                                ? format(new Date(transaction?.created_at), 'MMM dd, yyyy')
+                                : 'N/A'}
+                              <span className="ml-2 text-green-600 font-medium">
+                                ✓ Will auto-fill all fields
+                              </span>
                             </div>
                           </button>
-                        );
+                        )
                       })}
                     </div>
                   )}
 
                   <p className="text-xs text-gray-500 mt-2">
-                    <strong>✅ Search Priority:</strong> Deal # (exact) → Stock Number (exact → partial) → Customer Phone → Customer Name
+                    <strong>✅ Search Priority:</strong> Deal # (exact) → Stock Number (exact →
+                    partial) → Customer Phone → Customer Name
                     <br />
-                    <strong className="text-green-600">✅ Confirmed:</strong> Selecting a result pre-populates ALL fields except line items
+                    <strong className="text-green-600">✅ Confirmed:</strong> Selecting a result
+                    pre-populates ALL fields except line items
                   </p>
                 </div>
               </div>
@@ -746,7 +786,7 @@ const CreateModal = ({
                   <Car className="w-5 h-5 mr-2" />
                   Vehicle Section
                 </h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* FIRST FIELD - Stock Number - Made Smaller (1/3 width) */}
                   <div className="relative">
@@ -760,9 +800,9 @@ const CreateModal = ({
                         type="text"
                         value={vehicleData?.stock_number}
                         onChange={(e) => {
-                          setVehicleData(prev => ({ ...prev, stock_number: e?.target?.value }));
+                          setVehicleData((prev) => ({ ...prev, stock_number: e?.target?.value }))
                           if (!e?.target?.value) {
-                            setSelectedVehicle(null);
+                            setSelectedVehicle(null)
                           }
                         }}
                         className="pl-10 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -807,7 +847,9 @@ const CreateModal = ({
                       min="1900"
                       max="2030"
                       value={vehicleData?.year}
-                      onChange={(e) => setVehicleData(prev => ({ ...prev, year: e?.target?.value }))}
+                      onChange={(e) =>
+                        setVehicleData((prev) => ({ ...prev, year: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       required
                     />
@@ -820,7 +862,9 @@ const CreateModal = ({
                     <input
                       type="text"
                       value={vehicleData?.make}
-                      onChange={(e) => setVehicleData(prev => ({ ...prev, make: e?.target?.value }))}
+                      onChange={(e) =>
+                        setVehicleData((prev) => ({ ...prev, make: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       required
                     />
@@ -833,7 +877,9 @@ const CreateModal = ({
                     <input
                       type="text"
                       value={vehicleData?.model}
-                      onChange={(e) => setVehicleData(prev => ({ ...prev, model: e?.target?.value }))}
+                      onChange={(e) =>
+                        setVehicleData((prev) => ({ ...prev, model: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       required
                     />
@@ -845,18 +891,22 @@ const CreateModal = ({
                     <div className="flex bg-gray-100 rounded-lg p-1">
                       <button
                         type="button"
-                        onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'new' }))}
+                        onClick={() => setVehicleData((prev) => ({ ...prev, new_used: 'new' }))}
                         className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                          vehicleData?.new_used === 'new' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+                          vehicleData?.new_used === 'new'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600'
                         }`}
                       >
                         New
                       </button>
                       <button
                         type="button"
-                        onClick={() => setVehicleData(prev => ({ ...prev, new_used: 'used' }))}
+                        onClick={() => setVehicleData((prev) => ({ ...prev, new_used: 'used' }))}
                         className={`flex-1 py-2 px-4 rounded-md font-medium transition-all ${
-                          vehicleData?.new_used === 'used' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600'
+                          vehicleData?.new_used === 'used'
+                            ? 'bg-white text-blue-600 shadow-sm'
+                            : 'text-gray-600'
                         }`}
                       >
                         Used
@@ -874,10 +924,12 @@ const CreateModal = ({
                       name="customer_needs_loaner"
                       description="Check if customer requires a loaner vehicle during service"
                       checked={vehicleData?.customer_needs_loaner}
-                      onChange={(checked) => setVehicleData(prev => ({ 
-                        ...prev, 
-                        customer_needs_loaner: checked 
-                      }))}
+                      onChange={(checked) =>
+                        setVehicleData((prev) => ({
+                          ...prev,
+                          customer_needs_loaner: checked,
+                        }))
+                      }
                       label="Customer Needs Loaner Vehicle"
                       className="text-sm"
                     />
@@ -891,7 +943,7 @@ const CreateModal = ({
                   <UserPlus className="w-5 h-5 mr-2" />
                   Customer Section
                 </h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -900,7 +952,9 @@ const CreateModal = ({
                     <input
                       type="text"
                       value={customerData?.name}
-                      onChange={(e) => setCustomerData(prev => ({ ...prev, name: e?.target?.value }))}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, name: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                       required
                     />
@@ -913,7 +967,9 @@ const CreateModal = ({
                     <input
                       type="tel"
                       value={customerData?.phone}
-                      onChange={(e) => setCustomerData(prev => ({ ...prev, phone: e?.target?.value }))}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, phone: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     />
                   </div>
@@ -925,7 +981,9 @@ const CreateModal = ({
                     <input
                       type="email"
                       value={customerData?.email}
-                      onChange={(e) => setCustomerData(prev => ({ ...prev, email: e?.target?.value }))}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, email: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     />
                   </div>
@@ -938,7 +996,7 @@ const CreateModal = ({
                   <User className="w-5 h-5 mr-2" />
                   Staff Assignment
                 </h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -946,7 +1004,9 @@ const CreateModal = ({
                     </label>
                     <select
                       value={staffData?.sales_person}
-                      onChange={(e) => setStaffData(prev => ({ ...prev, sales_person: e?.target?.value }))}
+                      onChange={(e) =>
+                        setStaffData((prev) => ({ ...prev, sales_person: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     >
                       <option value="">Select Sales Person</option>
@@ -956,7 +1016,9 @@ const CreateModal = ({
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">General Sales Manager does not appear here</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      General Sales Manager does not appear here
+                    </p>
                   </div>
 
                   <div>
@@ -965,7 +1027,12 @@ const CreateModal = ({
                     </label>
                     <select
                       value={staffData?.delivery_coordinator}
-                      onChange={(e) => setStaffData(prev => ({ ...prev, delivery_coordinator: e?.target?.value }))}
+                      onChange={(e) =>
+                        setStaffData((prev) => ({
+                          ...prev,
+                          delivery_coordinator: e?.target?.value,
+                        }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     >
                       <option value="">Select Delivery Coordinator</option>
@@ -983,7 +1050,9 @@ const CreateModal = ({
                     </label>
                     <select
                       value={staffData?.finance_manager}
-                      onChange={(e) => setStaffData(prev => ({ ...prev, finance_manager: e?.target?.value }))}
+                      onChange={(e) =>
+                        setStaffData((prev) => ({ ...prev, finance_manager: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                     >
                       <option value="">Select Finance Manager</option>
@@ -1003,7 +1072,7 @@ const CreateModal = ({
                   <Calendar className="w-5 h-5 mr-2" />
                   Date Section
                 </h4>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1012,7 +1081,9 @@ const CreateModal = ({
                     <input
                       type="date"
                       value={dateData?.todays_date}
-                      onChange={(e) => setDateData(prev => ({ ...prev, todays_date: e?.target?.value }))}
+                      onChange={(e) =>
+                        setDateData((prev) => ({ ...prev, todays_date: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
                     />
                   </div>
@@ -1024,7 +1095,9 @@ const CreateModal = ({
                     <input
                       type="date"
                       value={dateData?.promised_date}
-                      onChange={(e) => setDateData(prev => ({ ...prev, promised_date: e?.target?.value }))}
+                      onChange={(e) =>
+                        setDateData((prev) => ({ ...prev, promised_date: e?.target?.value }))
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
                       required
                     />
@@ -1048,9 +1121,12 @@ const CreateModal = ({
                     <span>Add Another Line Item</span>
                   </button>
                 </h4>
-                
+
                 {lineItems?.map((item, index) => (
-                  <div key={item?.id} className="bg-white p-4 rounded-lg border-2 border-indigo-200 mb-4">
+                  <div
+                    key={item?.id}
+                    className="bg-white p-4 rounded-lg border-2 border-indigo-200 mb-4"
+                  >
                     <div className="flex items-center justify-between mb-4">
                       <h5 className="font-medium text-gray-900">Line Item #{index + 1}</h5>
                       {lineItems?.length > 1 && (
@@ -1063,7 +1139,7 @@ const CreateModal = ({
                         </button>
                       )}
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {/* Product Name Dropdown - Remove "Add New" option */}
                       <div>
@@ -1073,11 +1149,13 @@ const CreateModal = ({
                         <select
                           value={item?.product_id}
                           onChange={(e) => {
-                            const selectedProduct = products?.find(p => p?.id === e?.target?.value);
-                            updateLineItem(index, 'product_id', e?.target?.value);
-                            updateLineItem(index, 'product_name', selectedProduct?.name || '');
-                            updateLineItem(index, 'cost', selectedProduct?.cost || '');
-                            updateLineItem(index, 'sold_price', selectedProduct?.unit_price || '');
+                            const selectedProduct = products?.find(
+                              (p) => p?.id === e?.target?.value
+                            )
+                            updateLineItem(index, 'product_id', e?.target?.value)
+                            updateLineItem(index, 'product_name', selectedProduct?.name || '')
+                            updateLineItem(index, 'cost', selectedProduct?.cost || '')
+                            updateLineItem(index, 'sold_price', selectedProduct?.unit_price || '')
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                           required
@@ -1205,8 +1283,10 @@ const CreateModal = ({
           <div className="p-6 border-t-2 border-gray-200 bg-gray-50 flex-shrink-0 shadow-inner">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-500">
-                <span className="text-red-500">*</span> Required fields | 
-                <span className="text-green-600 font-medium">🔧 Scrolling Permanently Fixed 🔧 Deal # Added & Searchable</span>
+                <span className="text-red-500">*</span> Required fields |
+                <span className="text-green-600 font-medium">
+                  🔧 Scrolling Permanently Fixed 🔧 Deal # Added & Searchable
+                </span>
               </div>
               <div className="flex space-x-3">
                 <button
@@ -1221,7 +1301,9 @@ const CreateModal = ({
                   disabled={loading}
                   className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors font-medium"
                 >
-                  {loading && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white"></div>}
+                  {loading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white"></div>
+                  )}
                   <span>{loading ? 'Saving Deal...' : '🔧 Save Deal'}</span>
                 </button>
               </div>
@@ -1230,7 +1312,7 @@ const CreateModal = ({
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CreateModal;
+export default CreateModal

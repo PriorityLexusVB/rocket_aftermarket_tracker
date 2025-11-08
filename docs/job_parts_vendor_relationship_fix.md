@@ -3,9 +3,10 @@
 ## Problem Statement
 
 Production Deals page showed a blocking error:
+
 ```
-Failed to load deals: Missing database relationship between job_parts and vendors. 
-Please run the migration to add per-line vendor support (vendor_id column to job_parts table). 
+Failed to load deals: Missing database relationship between job_parts and vendors.
+Please run the migration to add per-line vendor support (vendor_id column to job_parts table).
 Original error: Could not find a relationship between 'job_parts' and 'vendors' in the schema cache
 ```
 
@@ -25,6 +26,7 @@ ADD COLUMN IF NOT EXISTS vendor_id UUID REFERENCES public.vendors(id) ON DELETE 
 **The Issue**: When `IF NOT EXISTS` skips column creation (because the column already exists from a prior migration attempt or manual addition), the `REFERENCES` clause is **never executed**, leaving no foreign key constraint.
 
 PostgREST requires a **named foreign key constraint** in the database catalog to recognize relationships for nested selects like `vendor:vendors(...)`. Without this constraint:
+
 - The column may exist
 - The index may exist
 - But PostgREST cannot recognize the relationship
@@ -42,6 +44,7 @@ PostgREST requires a **named foreign key constraint** in the database catalog to
 ### Migration: `20251107000000_fix_job_parts_vendor_fkey.sql`
 
 **Key Improvements**:
+
 1. **Separates column creation from FK constraint** - ensures FK is added even if column exists
 2. **Uses catalog checks** - queries `pg_constraint` to detect existing FK before attempting to create
 3. **Fully idempotent** - safe to run multiple times
@@ -96,14 +99,16 @@ NOTIFY pgrst, 'reload schema';
 ## Verification
 
 ### Quick Check
+
 ```bash
 ./scripts/verify-schema-cache.sh
 ```
 
 ### Manual SQL Verification
+
 ```sql
 -- 1. Check column exists
-SELECT column_name, data_type FROM information_schema.columns 
+SELECT column_name, data_type FROM information_schema.columns
 WHERE table_name = 'job_parts' AND column_name = 'vendor_id';
 
 -- 2. Check FK constraint exists (MOST IMPORTANT)
@@ -111,13 +116,13 @@ SELECT tc.constraint_name, kcu.column_name, ccu.table_name AS foreign_table_name
 FROM information_schema.table_constraints AS tc
 JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
 JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
-WHERE tc.constraint_type = 'FOREIGN KEY' 
-  AND tc.table_name = 'job_parts' 
+WHERE tc.constraint_type = 'FOREIGN KEY'
+  AND tc.table_name = 'job_parts'
   AND kcu.column_name = 'vendor_id';
 -- Expected: job_parts_vendor_id_fkey | vendor_id | vendors
 
 -- 3. Check index exists
-SELECT indexname FROM pg_indexes 
+SELECT indexname FROM pg_indexes
 WHERE tablename = 'job_parts' AND indexname = 'idx_job_parts_vendor_id';
 
 -- 4. Reload schema cache
@@ -125,6 +130,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 ### REST API Verification
+
 ```bash
 curl -X GET \
   "${VITE_SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,name)&limit=1" \
@@ -145,6 +151,7 @@ curl -X GET \
 ## Service Code Impact
 
 No changes required to `dealService.js`:
+
 - ✅ Already uses `vendor:vendors(id,name)` syntax in queries (lines 174, 211, 602, 631)
 - ✅ Already handles relationship errors with actionable messages
 - ✅ Already tolerates NULL `vendor_id` values
@@ -153,6 +160,7 @@ No changes required to `dealService.js`:
 ## RLS/Security
 
 No changes required:
+
 - ✅ Existing policies in migration `20251106000000` remain valid
 - ✅ SELECT policies allow authenticated users to read nested vendor data
 - ✅ Vendor-specific policies allow vendors to access their own job_parts
@@ -160,13 +168,15 @@ No changes required:
 ## Deploy Procedure
 
 1. **Apply migration**:
+
    ```bash
    supabase db push
    ```
 
 2. **Verify FK exists** (critical):
+
    ```sql
-   SELECT constraint_name FROM pg_constraint 
+   SELECT constraint_name FROM pg_constraint
    WHERE conname = 'job_parts_vendor_id_fkey';
    ```
 
@@ -174,10 +184,10 @@ No changes required:
    ```sql
    NOTIFY pgrst, 'reload schema';
    ```
-   
 4. **Wait 5 seconds** for cache to refresh
 
 5. **Test API endpoint**:
+
    ```bash
    curl "${VITE_SUPABASE_URL}/rest/v1/job_parts?select=id,vendor:vendors(name)&limit=1" \
      -H "apikey: ${VITE_SUPABASE_ANON_KEY}"
@@ -188,6 +198,7 @@ No changes required:
 ## Rollback
 
 If needed:
+
 ```sql
 -- Remove FK constraint (non-destructive)
 ALTER TABLE public.job_parts DROP CONSTRAINT IF EXISTS job_parts_vendor_id_fkey;
@@ -204,6 +215,7 @@ NOTIFY pgrst, 'reload schema';
 **Lesson learned**: Never use inline `REFERENCES` with `ADD COLUMN IF NOT EXISTS`.
 
 **Best practice**:
+
 ```sql
 -- Step 1: Add column (may be skipped if exists)
 ALTER TABLE table_name ADD COLUMN IF NOT EXISTS col_name UUID;
@@ -214,7 +226,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'constraint_name'
   ) THEN
-    ALTER TABLE table_name ADD CONSTRAINT constraint_name 
+    ALTER TABLE table_name ADD CONSTRAINT constraint_name
     FOREIGN KEY (col_name) REFERENCES other_table(id);
   END IF;
 END$$;
@@ -228,9 +240,9 @@ NOTIFY pgrst, 'reload schema';
 - Migration: `supabase/migrations/20251107000000_fix_job_parts_vendor_fkey.sql`
 - Verification: `scripts/verify-schema-cache.sh`
 - Service: `src/services/dealService.js`
-- Tests: 
+- Tests:
   - `src/tests/dealService.relationshipError.test.js`
   - `src/tests/dealService.perLineVendor.test.js`
-- Docs: 
+- Docs:
   - `RUNBOOK.md` (updated with verification section)
   - `docs/job_parts_vendor_relationship_fix.md` (this file)

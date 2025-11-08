@@ -22,7 +22,7 @@ export function normalizeLineItems(draft = {}) {
         unitPrice,
         quantity,
       }
-      
+
       // Preserve scheduling fields with proper naming
       if (it.requires_scheduling !== undefined || it.requiresScheduling !== undefined) {
         result.requiresScheduling = it.requiresScheduling ?? it.requires_scheduling ?? true
@@ -33,7 +33,7 @@ export function normalizeLineItems(draft = {}) {
       if (it.promised_date !== undefined) {
         result.promisedDate = it.promised_date
       }
-      
+
       // Remove redundant fields for clean output
       delete result.unit_price
       delete result.qty
@@ -42,7 +42,7 @@ export function normalizeLineItems(draft = {}) {
       delete result.requires_scheduling
       delete result.is_off_site
       delete result.promised_date
-      
+
       return result
     })
     .filter(
@@ -74,7 +74,7 @@ export function entityToDraft(entity = {}) {
     customer_mobile: entity.customer_mobile ?? entity.customer_phone ?? '',
     customer_needs_loaner: !!entity.customer_needs_loaner,
   }
-  
+
   // Handle loanerForm: null if toggle is off, object if on
   if (entity.customer_needs_loaner) {
     draft.loanerForm = entity.loanerForm || {
@@ -89,7 +89,7 @@ export function entityToDraft(entity = {}) {
       notes: '',
     }
   }
-  
+
   // Handle lineItems from job_parts
   draft.lineItems = (entity.job_parts ?? []).map((p) => ({
     product_id: p.product_id ?? '',
@@ -100,17 +100,17 @@ export function entityToDraft(entity = {}) {
     is_off_site: p.is_off_site ?? false,
     service_location: p.service_location ?? (p.is_off_site ? 'offsite' : 'onsite'),
   }))
-  
+
   // Keep backward compatible items field
   draft.items = normalizeLineItems(draft)
-  
+
   return draft
 }
 
 export function draftToCreatePayload(draft = {}) {
   // Strip loaner fields first if toggle is off
   const stripped = stripLoanerWhenOff(draft)
-  
+
   const payload = {
     ...stripped,
     job_number: stripped.job_number ?? '',
@@ -121,23 +121,23 @@ export function draftToCreatePayload(draft = {}) {
     delivery_coordinator_id: stripped.delivery_coordinator_id ?? '',
     customer_needs_loaner: !!stripped.customer_needs_loaner,
   }
-  
+
   // Normalize phone if customer_mobile is present
   if (stripped.customer_mobile) {
     payload.customer_phone = normalizePhone(stripped.customer_mobile)
   }
-  
+
   // Handle loanerForm: null if toggle is off, object if on
   if (stripped.customer_needs_loaner && stripped.loanerForm) {
     payload.loanerForm = { ...stripped.loanerForm }
   } else {
     payload.loanerForm = null
   }
-  
+
   // Normalize lineItems
   payload.lineItems = normalizeLineItems(stripped)
   payload.items = payload.lineItems
-  
+
   return payload
 }
 
@@ -153,7 +153,7 @@ export function draftToUpdatePayload(original = {}, draft = {}) {
     id = original?.id
     actualDraft = draft
   }
-  
+
   const payload = draftToCreatePayload(actualDraft)
   if (id && !payload.id) payload.id = id
   if (actualDraft.id) payload.id = actualDraft.id

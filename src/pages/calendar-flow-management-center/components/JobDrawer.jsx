@@ -1,17 +1,34 @@
-import React, { useState } from 'react';
-import { X, Car, Calendar, Clock, User, Phone, MapPin, Building2, Package, MessageSquare, Camera, Copy, Play, CheckCircle, XCircle, RotateCcw, AlertTriangle } from 'lucide-react';
-import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time';
-import Icon from '../../../components/AppIcon';
-
+import React, { useState } from 'react'
+import {
+  X,
+  Car,
+  Calendar,
+  Clock,
+  User,
+  Phone,
+  MapPin,
+  Building2,
+  Package,
+  MessageSquare,
+  Camera,
+  Copy,
+  Play,
+  CheckCircle,
+  XCircle,
+  RotateCcw,
+  AlertTriangle,
+} from 'lucide-react'
+import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
+import Icon from '../../../components/AppIcon'
 
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
-  const [activeTab, setActiveTab] = useState('details');
-  const [notes, setNotes] = useState('');
+  const [activeTab, setActiveTab] = useState('details')
+  const [notes, setNotes] = useState('')
 
-  if (!isOpen || !job) return null;
+  if (!isOpen || !job) return null
 
-  const statusBadge = getStatusBadge(job?.job_status);
-  const overdue = isOverdue(job?.promised_date);
+  const statusBadge = getStatusBadge(job?.job_status)
+  const overdue = isOverdue(job?.promised_date)
 
   const quickActions = [
     {
@@ -19,21 +36,21 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
       label: 'Start',
       icon: Play,
       color: 'bg-green-600 hover:bg-green-700 text-white',
-      action: () => onStatusUpdate?.(job?.id, 'in_progress')
+      action: () => onStatusUpdate?.(job?.id, 'in_progress'),
     },
     {
       id: 'complete',
       label: 'Complete',
       icon: CheckCircle,
       color: 'bg-blue-600 hover:bg-blue-700 text-white',
-      action: () => onStatusUpdate?.(job?.id, 'completed')
+      action: () => onStatusUpdate?.(job?.id, 'completed'),
     },
     {
       id: 'no_show',
       label: 'No-Show',
       icon: XCircle,
       color: 'bg-gray-600 hover:bg-gray-700 text-white',
-      action: () => onStatusUpdate?.(job?.id, 'no_show')
+      action: () => onStatusUpdate?.(job?.id, 'no_show'),
     },
     {
       id: 'reschedule',
@@ -42,17 +59,17 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
       color: 'bg-orange-600 hover:bg-orange-700 text-white',
       action: () => {
         // Open reschedule modal
-        console.log('Open reschedule modal');
-      }
-    }
-  ];
+        console.log('Open reschedule modal')
+      },
+    },
+  ]
 
   const tabs = [
     { id: 'details', label: 'Details', icon: Package },
     { id: 'customer', label: 'Customer', icon: User },
     { id: 'timeline', label: 'Timeline/Notes', icon: MessageSquare },
-    { id: 'photos', label: 'Photos', icon: Camera }
-  ];
+    { id: 'photos', label: 'Photos', icon: Camera },
+  ]
 
   const renderDetailsTab = () => (
     <div className="space-y-6">
@@ -76,12 +93,18 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               Priority
             </label>
             <div className="mt-1">
-              <span className={`
+              <span
+                className={`
                 inline-flex px-2 py-1 text-xs font-medium rounded-full
-                ${job?.priority === 'high' ? 'bg-red-100 text-red-800' :
-                  job?.priority === 'medium'? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                ${
+                  job?.priority === 'high'
+                    ? 'bg-red-100 text-red-800'
+                    : job?.priority === 'medium'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-green-100 text-green-800'
                 }
-              `}>
+              `}
+              >
                 {job?.priority?.toUpperCase()}
               </span>
             </div>
@@ -143,7 +166,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               </>
             )}
           </div>
-          
+
           {job?.scheduled_start_time && (
             <div className="flex items-center">
               <Clock className="h-4 w-4 text-gray-400 mr-2" />
@@ -152,20 +175,18 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               </span>
             </div>
           )}
-          
+
           <div className={`flex items-center ${overdue ? 'text-red-600' : ''}`}>
             <Calendar className="h-4 w-4 mr-2" />
             <span className="text-sm">
               Promise Date: {new Date(job?.promised_date)?.toLocaleDateString()}
             </span>
-            {overdue && (
-              <AlertTriangle className="h-4 w-4 ml-2 text-red-500" />
-            )}
+            {overdue && <AlertTriangle className="h-4 w-4 ml-2 text-red-500" />}
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 
   const renderCustomerTab = () => (
     <div className="space-y-4">
@@ -190,7 +211,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
             </div>
             <span className="text-sm text-gray-600">Available in vehicle record</span>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Phone className="h-4 w-4 text-gray-400 mr-2" />
@@ -201,7 +222,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
         </div>
       </div>
     </div>
-  );
+  )
 
   const renderTimelineTab = () => (
     <div className="space-y-4">
@@ -214,7 +235,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               {new Date(job?.created_at)?.toLocaleString()}
             </div>
           </div>
-          
+
           {job?.updated_at && job?.updated_at !== job?.created_at && (
             <div className="border-l-4 border-yellow-400 pl-4 py-2">
               <div className="text-sm font-medium text-gray-900">Last Updated</div>
@@ -239,7 +260,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
         </button>
       </div>
     </div>
-  );
+  )
 
   const renderPhotosTab = () => (
     <div className="space-y-4">
@@ -251,50 +272,49 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
         </button>
       </div>
     </div>
-  );
+  )
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
       <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
-      
+
       <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200 bg-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className={`w-3 h-3 rounded-full mr-3 ${
-                  job?.vendor_id ? 'bg-orange-500' : 'bg-green-500'
-                }`}></div>
+                <div
+                  className={`w-3 h-3 rounded-full mr-3 ${
+                    job?.vendor_id ? 'bg-orange-500' : 'bg-green-500'
+                  }`}
+                ></div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    {job?.job_number}
-                  </h2>
+                  <h2 className="text-xl font-semibold text-gray-900">{job?.job_number}</h2>
                   <div className="text-sm text-gray-600 flex items-center mt-1">
                     {job?.vehicle_info}
-                    <span className={`
+                    <span
+                      className={`
                       ml-3 px-2 py-1 rounded-full text-xs font-medium
                       ${statusBadge?.bg || 'bg-gray-100'} 
                       ${statusBadge?.textColor || 'text-gray-800'}
-                    `}>
+                    `}
+                    >
                       {statusBadge?.label || job?.job_status?.toUpperCase()}
                     </span>
                   </div>
                 </div>
               </div>
-              
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
+
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
                 <X className="h-5 w-5 text-gray-400" />
               </button>
             </div>
 
             {/* Quick Actions */}
             <div className="flex items-center space-x-2 mt-4">
-              {quickActions?.map(action => {
-                const Icon = action?.icon;
+              {quickActions?.map((action) => {
+                const Icon = action?.icon
                 return (
                   <button
                     key={action?.id}
@@ -307,7 +327,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                     <Icon className="h-4 w-4 mr-2" />
                     {action?.label}
                   </button>
-                );
+                )
               })}
             </div>
           </div>
@@ -330,10 +350,11 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               </div>
               <div className="flex items-center">
                 <Calendar className="h-4 w-4 mr-1" />
-                Promise: {new Date(job?.promised_date)?.toLocaleDateString('en-US', { 
-                  weekday: 'short', 
-                  month: 'short', 
-                  day: 'numeric' 
+                Promise:{' '}
+                {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
                 })}
               </div>
             </div>
@@ -342,23 +363,25 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
           {/* Tabs */}
           <div className="px-6 py-0 bg-white border-b border-gray-200">
             <div className="flex space-x-8">
-              {tabs?.map(tab => {
-                const Icon = tab?.icon;
+              {tabs?.map((tab) => {
+                const Icon = tab?.icon
                 return (
                   <button
                     key={tab?.id}
                     onClick={() => setActiveTab(tab?.id)}
                     className={`
                       flex items-center py-3 border-b-2 text-sm font-medium
-                      ${activeTab === tab?.id 
-                        ? 'border-blue-500 text-blue-600' :'border-transparent text-gray-500 hover:text-gray-700'
+                      ${
+                        activeTab === tab?.id
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
                       }
                     `}
                   >
                     <Icon className="h-4 w-4 mr-2" />
                     {tab?.label}
                   </button>
-                );
+                )
               })}
             </div>
           </div>
@@ -373,7 +396,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default JobDrawer;
+export default JobDrawer

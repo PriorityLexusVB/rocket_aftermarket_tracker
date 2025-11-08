@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, User, Wrench, AlertTriangle, Clock, MapPin, Save, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import {
+  X,
+  Calendar,
+  User,
+  Wrench,
+  AlertTriangle,
+  Clock,
+  MapPin,
+  Save,
+  ArrowRight,
+} from 'lucide-react'
 
-const StatusUpdateModal = ({
-  job,
-  onClose,
-  onStatusUpdate
-}) => {
-  const [selectedStatus, setSelectedStatus] = useState(job?.job_status);
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+const StatusUpdateModal = ({ job, onClose, onStatusUpdate }) => {
+  const [selectedStatus, setSelectedStatus] = useState(job?.job_status)
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const statusOptions = [
     { value: 'pending', label: 'Not Started', color: 'gray' },
@@ -17,79 +23,79 @@ const StatusUpdateModal = ({
     { value: 'in_progress', label: 'In Progress', color: 'yellow' },
     { value: 'quality_check', label: 'Quality Check', color: 'purple' },
     { value: 'completed', label: 'Completed', color: 'green' },
-    { value: 'delivered', label: 'Delivered', color: 'green' }
-  ];
+    { value: 'delivered', label: 'Delivered', color: 'green' },
+  ]
 
   const getStatusColor = (status) => {
     const colors = {
-      'pending': 'bg-gray-100 text-gray-800 border-gray-300',
-      'scheduled': 'bg-blue-100 text-blue-800 border-blue-300',
-      'in_progress': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      'quality_check': 'bg-purple-100 text-purple-800 border-purple-300',
-      'completed': 'bg-green-100 text-green-800 border-green-300',
-      'delivered': 'bg-green-100 text-green-800 border-green-300'
-    };
-    return colors?.[status] || colors?.pending;
-  };
+      pending: 'bg-gray-100 text-gray-800 border-gray-300',
+      scheduled: 'bg-blue-100 text-blue-800 border-blue-300',
+      in_progress: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      quality_check: 'bg-purple-100 text-purple-800 border-purple-300',
+      completed: 'bg-green-100 text-green-800 border-green-300',
+      delivered: 'bg-green-100 text-green-800 border-green-300',
+    }
+    return colors?.[status] || colors?.pending
+  }
 
   const getPriorityColor = (priority) => {
     const colors = {
-      'low': 'bg-green-100 text-green-800',
-      'medium': 'bg-yellow-100 text-yellow-800',
-      'high': 'bg-orange-100 text-orange-800',
-      'urgent': 'bg-red-100 text-red-800'
-    };
-    return colors?.[priority] || colors?.medium;
-  };
+      low: 'bg-green-100 text-green-800',
+      medium: 'bg-yellow-100 text-yellow-800',
+      high: 'bg-orange-100 text-orange-800',
+      urgent: 'bg-red-100 text-red-800',
+    }
+    return colors?.[priority] || colors?.medium
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Not set';
+    if (!dateString) return 'Not set'
     return new Date(dateString)?.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
-      minute: '2-digit'
-    });
-  };
+      minute: '2-digit',
+    })
+  }
 
   const isOverdue = (job) => {
     if (!job?.due_date || ['completed', 'delivered']?.includes(job?.job_status)) {
-      return false;
+      return false
     }
-    return new Date(job.due_date) < new Date();
-  };
+    return new Date(job.due_date) < new Date()
+  }
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
-    setLoading(true);
-    setError('');
+    e?.preventDefault()
+    setLoading(true)
+    setError('')
 
     try {
-      const success = await onStatusUpdate?.(job?.id, selectedStatus);
-      
+      const success = await onStatusUpdate?.(job?.id, selectedStatus)
+
       if (success) {
-        onClose?.();
+        onClose?.()
       } else {
-        setError('Failed to update job status. Please try again.');
+        setError('Failed to update job status. Please try again.')
       }
     } catch (err) {
-      setError(`Error updating status: ${err?.message}`);
+      setError(`Error updating status: ${err?.message}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleOverlayClick = (e) => {
     if (e?.target === e?.currentTarget) {
-      onClose?.();
+      onClose?.()
     }
-  };
+  }
 
-  if (!job) return null;
+  if (!job) return null
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
       onClick={handleOverlayClick}
     >
@@ -102,11 +108,8 @@ const StatusUpdateModal = ({
               Job #{job?.job_number} • {job?.title}
             </p>
           </div>
-          
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
@@ -116,10 +119,12 @@ const StatusUpdateModal = ({
           {/* Current Status & Priority */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(job?.job_status)}`}>
-                {statusOptions?.find(s => s?.value === job?.job_status)?.label || job?.job_status}
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(job?.job_status)}`}
+              >
+                {statusOptions?.find((s) => s?.value === job?.job_status)?.label || job?.job_status}
               </span>
-              
+
               {isOverdue(job) && (
                 <div className="flex items-center space-x-1 bg-red-100 text-red-700 px-2 py-1 rounded-full">
                   <AlertTriangle className="h-3 w-3" />
@@ -128,7 +133,9 @@ const StatusUpdateModal = ({
               )}
             </div>
 
-            <div className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(job?.priority)}`}>
+            <div
+              className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(job?.priority)}`}
+            >
               {job?.priority?.charAt(0)?.toUpperCase() + job?.priority?.slice(1)} Priority
             </div>
           </div>
@@ -223,9 +230,7 @@ const StatusUpdateModal = ({
           {job?.description && (
             <div className="space-y-2">
               <h4 className="font-medium text-gray-900">Description</h4>
-              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                {job?.description}
-              </p>
+              <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{job?.description}</p>
             </div>
           )}
         </div>
@@ -234,17 +239,17 @@ const StatusUpdateModal = ({
         <form onSubmit={handleSubmit} className="p-6 border-t border-gray-200">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Update Status
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
               <div className="grid grid-cols-2 gap-3">
                 {statusOptions?.map((status) => (
                   <label
                     key={status?.value}
                     className={`
                       flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all
-                      ${selectedStatus === status?.value 
-                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' :'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      ${
+                        selectedStatus === status?.value
+                          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }
                     `}
                   >
@@ -259,7 +264,7 @@ const StatusUpdateModal = ({
                       />
                       <span className="text-sm font-medium">{status?.label}</span>
                     </div>
-                    
+
                     {selectedStatus === status?.value && (
                       <ArrowRight className="h-4 w-4 text-blue-600" />
                     )}
@@ -297,7 +302,7 @@ const StatusUpdateModal = ({
               >
                 Cancel
               </button>
-              
+
               <button
                 type="submit"
                 disabled={loading || selectedStatus === job?.job_status}
@@ -314,7 +319,7 @@ const StatusUpdateModal = ({
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default StatusUpdateModal;
+export default StatusUpdateModal

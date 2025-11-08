@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  X, 
-  Download, 
-  Copy, 
-  FileText, 
+import React, { useState, useMemo } from 'react'
+import {
+  X,
+  Download,
+  Copy,
+  FileText,
   Calendar,
   Clock,
   Car,
@@ -12,135 +12,138 @@ import {
   Play,
   CheckCircle,
   XCircle,
-  RotateCcw
-} from 'lucide-react';
-import { formatTime, getStatusBadge } from '../../../lib/time';
+  RotateCcw,
+} from 'lucide-react'
+import { formatTime, getStatusBadge } from '../../../lib/time'
 
 const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
-  const [selectedJobs, setSelectedJobs] = useState(new Set());
+  const [selectedJobs, setSelectedJobs] = useState(new Set())
 
   // Helper function to group jobs by vendor
   const groupByVendor = (jobList) => {
     return jobList?.reduce((acc, job) => {
-      const vendorName = job?.vendor_name || 'Unassigned';
+      const vendorName = job?.vendor_name || 'Unassigned'
       if (!acc?.[vendorName]) {
-        acc[vendorName] = [];
+        acc[vendorName] = []
       }
-      acc?.[vendorName]?.push(job);
-      return acc;
-    }, {});
-  };
+      acc?.[vendorName]?.push(job)
+      return acc
+    }, {})
+  }
 
   // Helper function to group jobs by day
   const groupJobsByDay = (jobList) => {
-    const today = new Date();
-    today?.setHours(0, 0, 0, 0);
-    
-    const todayJobs = jobList?.filter(job => {
-      const jobDate = new Date(job?.scheduled_start_time);
-      return jobDate?.toDateString() === today?.toDateString();
-    });
+    const today = new Date()
+    today?.setHours(0, 0, 0, 0)
+
+    const todayJobs = jobList?.filter((job) => {
+      const jobDate = new Date(job?.scheduled_start_time)
+      return jobDate?.toDateString() === today?.toDateString()
+    })
 
     return {
-      'Today': {
-        onSite: todayJobs?.filter(job => !job?.vendor_id),
-        vendors: groupByVendor(todayJobs?.filter(job => job?.vendor_id))
-      }
-    };
-  };
+      Today: {
+        onSite: todayJobs?.filter((job) => !job?.vendor_id),
+        vendors: groupByVendor(todayJobs?.filter((job) => job?.vendor_id)),
+      },
+    }
+  }
 
   // Helper function to group jobs by week
   const groupJobsByWeek = (jobList) => {
-    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const result = {};
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const result = {}
 
-    weekDays?.forEach(day => {
-      const dayJobs = jobList?.filter(job => {
-        const jobDate = new Date(job?.scheduled_start_time);
-        const dayOfWeek = jobDate?.getDay();
-        const dayIndex = weekDays?.indexOf(day);
-        return dayOfWeek === (dayIndex + 1) % 7; // Adjust for Monday start
-      });
+    weekDays?.forEach((day) => {
+      const dayJobs = jobList?.filter((job) => {
+        const jobDate = new Date(job?.scheduled_start_time)
+        const dayOfWeek = jobDate?.getDay()
+        const dayIndex = weekDays?.indexOf(day)
+        return dayOfWeek === (dayIndex + 1) % 7 // Adjust for Monday start
+      })
 
       if (dayJobs?.length > 0) {
         result[day] = {
-          onSite: dayJobs?.filter(job => !job?.vendor_id),
-          vendors: groupByVendor(dayJobs?.filter(job => job?.vendor_id))
-        };
+          onSite: dayJobs?.filter((job) => !job?.vendor_id),
+          vendors: groupByVendor(dayJobs?.filter((job) => job?.vendor_id)),
+        }
       }
-    });
+    })
 
-    return result;
-  };
+    return result
+  }
 
   // Helper function to group jobs by month
   const groupJobsByMonth = (jobList) => {
-    const weeks = {};
-    jobList?.forEach(job => {
-      const jobDate = new Date(job?.scheduled_start_time);
-      const weekNumber = Math.ceil(jobDate?.getDate() / 7);
-      const weekKey = `Week ${weekNumber}`;
-      
+    const weeks = {}
+    jobList?.forEach((job) => {
+      const jobDate = new Date(job?.scheduled_start_time)
+      const weekNumber = Math.ceil(jobDate?.getDate() / 7)
+      const weekKey = `Week ${weekNumber}`
+
       if (!weeks?.[weekKey]) {
         weeks[weekKey] = {
           onSite: [],
-          vendors: {}
-        };
+          vendors: {},
+        }
       }
-      
+
       if (job?.vendor_id) {
         if (!weeks?.[weekKey]?.vendors?.[job?.vendor_name]) {
-          weeks[weekKey].vendors[job?.vendor_name] = [];
+          weeks[weekKey].vendors[job?.vendor_name] = []
         }
-        weeks?.[weekKey]?.vendors?.[job?.vendor_name]?.push(job);
+        weeks?.[weekKey]?.vendors?.[job?.vendor_name]?.push(job)
       } else {
-        weeks?.[weekKey]?.onSite?.push(job);
+        weeks?.[weekKey]?.onSite?.push(job)
       }
-    });
+    })
 
-    return weeks;
-  };
+    return weeks
+  }
 
   const groupedJobs = useMemo(() => {
-    if (!jobs?.length) return {};
+    if (!jobs?.length) return {}
 
     switch (type) {
       case 'daily':
-        return groupJobsByDay(jobs);
+        return groupJobsByDay(jobs)
       case 'weekly':
-        return groupJobsByWeek(jobs);
+        return groupJobsByWeek(jobs)
       case 'monthly':
-        return groupJobsByMonth(jobs);
+        return groupJobsByMonth(jobs)
       default:
-        return groupJobsByDay(jobs);
+        return groupJobsByDay(jobs)
     }
-  }, [jobs, type]);
+  }, [jobs, type])
 
   const handleJobAction = (jobId, action) => {
-    console.log(`${action} job ${jobId}`);
+    console.log(`${action} job ${jobId}`)
     // Implement job actions
-  };
+  }
 
   const handleSelectJob = (jobId) => {
-    const newSelected = new Set(selectedJobs);
+    const newSelected = new Set(selectedJobs)
     if (newSelected?.has(jobId)) {
-      newSelected?.delete(jobId);
+      newSelected?.delete(jobId)
     } else {
-      newSelected?.add(jobId);
+      newSelected?.add(jobId)
     }
-    setSelectedJobs(newSelected);
-  };
+    setSelectedJobs(newSelected)
+  }
 
   const handleExport = (format) => {
-    console.log(`Export ${format} for selected jobs:`, Array.from(selectedJobs));
+    console.log(`Export ${format} for selected jobs:`, Array.from(selectedJobs))
     // Implement export functionality
-  };
+  }
 
   const renderJobRow = (job) => {
-    const statusBadge = getStatusBadge(job?.job_status);
-    
+    const statusBadge = getStatusBadge(job?.job_status)
+
     return (
-      <div key={job?.id} className="flex items-center py-3 border-b border-gray-100 last:border-b-0">
+      <div
+        key={job?.id}
+        className="flex items-center py-3 border-b border-gray-100 last:border-b-0"
+      >
         {/* Checkbox */}
         <input
           type="checkbox"
@@ -153,10 +156,9 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           {/* Time */}
           <div className="flex items-center text-gray-900">
             <Clock className="h-3 w-3 mr-1 text-gray-400" />
-            {job?.scheduled_start_time 
+            {job?.scheduled_start_time
               ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
-              : 'Unscheduled'
-            }
+              : 'Unscheduled'}
           </div>
 
           {/* Stock & Product */}
@@ -168,9 +170,9 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           {/* Promise Date */}
           <div className="flex items-center text-gray-600">
             <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-            {new Date(job?.promised_date)?.toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
+            {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
             })}
           </div>
 
@@ -190,11 +192,13 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           </div>
 
           {/* Status */}
-          <div className={`
+          <div
+            className={`
             inline-flex px-2 py-1 rounded-full text-xs font-medium
             ${statusBadge?.bg || 'bg-gray-100'} 
             ${statusBadge?.textColor || 'text-gray-800'}
-          `}>
+          `}
+          >
             {statusBadge?.label || job?.job_status?.toUpperCase()}
           </div>
 
@@ -231,8 +235,8 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           </div>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   const renderJobGroup = (groupName, groupData) => {
     return (
@@ -248,13 +252,9 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
             <div className="flex items-center mb-3">
               <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
               <h4 className="font-medium text-green-900">On-Site (PLV)</h4>
-              <span className="ml-2 text-sm text-gray-600">
-                ({groupData?.onSite?.length} jobs)
-              </span>
+              <span className="ml-2 text-sm text-gray-600">({groupData?.onSite?.length} jobs)</span>
             </div>
-            <div className="bg-green-50 rounded-lg p-4">
-              {groupData?.onSite?.map(renderJobRow)}
-            </div>
+            <div className="bg-green-50 rounded-lg p-4">{groupData?.onSite?.map(renderJobRow)}</div>
           </div>
         )}
 
@@ -264,20 +264,16 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
             <div className="flex items-center mb-3">
               <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
               <h4 className="font-medium text-orange-900">{vendorName}</h4>
-              <span className="ml-2 text-sm text-gray-600">
-                ({vendorJobs?.length} jobs)
-              </span>
+              <span className="ml-2 text-sm text-gray-600">({vendorJobs?.length} jobs)</span>
             </div>
-            <div className="bg-orange-50 rounded-lg p-4">
-              {vendorJobs?.map(renderJobRow)}
-            </div>
+            <div className="bg-orange-50 rounded-lg p-4">{vendorJobs?.map(renderJobRow)}</div>
           </div>
         ))}
       </div>
-    );
-  };
+    )
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -294,11 +290,8 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
                   <p className="text-sm text-gray-600">Export and manage scheduled jobs</p>
                 </div>
               </div>
-              
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
+
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
                 <X className="h-5 w-5 text-gray-400" />
               </button>
             </div>
@@ -329,9 +322,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
 
               {/* Export Actions */}
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">
-                  {selectedJobs?.size} selected
-                </span>
+                <span className="text-sm text-gray-600">{selectedJobs?.size} selected</span>
                 <button
                   onClick={() => handleExport('copy')}
                   className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -360,7 +351,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-6">
             {Object.keys(groupedJobs)?.length > 0 ? (
-              Object.entries(groupedJobs)?.map(([groupName, groupData]) => 
+              Object.entries(groupedJobs)?.map(([groupName, groupData]) =>
                 renderJobGroup(groupName, groupData)
               )
             ) : (
@@ -374,7 +365,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default RoundUpModal;
+export default RoundUpModal

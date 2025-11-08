@@ -1,45 +1,53 @@
-import React, { useState } from 'react';
-import { Calendar, AlertTriangle, CheckCircle, Clock, Plus, Filter, ChevronDown, ChevronRight, Activity } from 'lucide-react';
+import React, { useState } from 'react'
+import {
+  Calendar,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Plus,
+  Filter,
+  ChevronDown,
+  ChevronRight,
+  Activity,
+} from 'lucide-react'
 
-
-
-const VendorSidebar = ({ 
-  vendors = [], 
-  selectedVendors = [], 
+const VendorSidebar = ({
+  vendors = [],
+  selectedVendors = [],
   onVendorToggle,
   overviewStats = {},
   conflicts = [],
-  onQuickAdd
+  onQuickAdd,
 }) => {
   const [expandedSections, setExpandedSections] = useState({
     overview: true,
     vendors: true,
     conflicts: true,
-    upcoming: true
-  });
+    upcoming: true,
+  })
 
   const toggleSection = (section) => {
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev?.[section]
-    }));
-  };
+      [section]: !prev?.[section],
+    }))
+  }
 
   const handleVendorToggle = (vendorId) => {
     const newSelection = selectedVendors?.includes(vendorId)
-      ? selectedVendors?.filter(id => id !== vendorId)
-      : [...selectedVendors, vendorId];
-    
-    onVendorToggle?.(newSelection);
-  };
+      ? selectedVendors?.filter((id) => id !== vendorId)
+      : [...selectedVendors, vendorId]
+
+    onVendorToggle?.(newSelection)
+  }
 
   const clearAllFilters = () => {
-    onVendorToggle?.([]);
-  };
+    onVendorToggle?.([])
+  }
 
   const selectAllVendors = () => {
-    onVendorToggle?.(vendors?.map(v => v?.id));
-  };
+    onVendorToggle?.(vendors?.map((v) => v?.id))
+  }
 
   // Section component
   const SidebarSection = ({ title, icon: IconComponent, expanded, onToggle, children, badge }) => (
@@ -52,10 +60,12 @@ const VendorSidebar = ({
           <IconComponent className="h-4 w-4 text-gray-600" />
           <span className="font-medium text-gray-900">{title}</span>
           {badge !== undefined && (
-            <span className={`
+            <span
+              className={`
               px-2 py-1 text-xs rounded-full font-medium
               ${badge > 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'}
-            `}>
+            `}
+            >
               {badge}
             </span>
           )}
@@ -66,14 +76,10 @@ const VendorSidebar = ({
           <ChevronRight className="h-4 w-4 text-gray-400" />
         )}
       </button>
-      
-      {expanded && (
-        <div className="px-4 pb-4">
-          {children}
-        </div>
-      )}
+
+      {expanded && <div className="px-4 pb-4">{children}</div>}
     </div>
-  );
+  )
 
   return (
     <div className="w-1/4 bg-white border-r border-gray-200 flex flex-col h-full">
@@ -106,21 +112,21 @@ const VendorSidebar = ({
               </div>
               <div className="text-xs text-blue-700">Total Jobs</div>
             </div>
-            
+
             <div className="bg-green-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-green-600">
                 {overviewStats?.scheduledToday || 0}
               </div>
               <div className="text-xs text-green-700">Today</div>
             </div>
-            
+
             <div className="bg-red-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-red-600">
                 {overviewStats?.overdueJobs || 0}
               </div>
               <div className="text-xs text-red-700">Overdue</div>
             </div>
-            
+
             <div className="bg-purple-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold text-purple-600">
                 {overviewStats?.availableVendors || 0}
@@ -157,7 +163,7 @@ const VendorSidebar = ({
 
             {/* Vendor list */}
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {vendors?.map(vendor => (
+              {vendors?.map((vendor) => (
                 <label
                   key={vendor?.id}
                   className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
@@ -169,9 +175,7 @@ const VendorSidebar = ({
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-900 truncate">
-                      {vendor?.name}
-                    </div>
+                    <div className="text-sm font-medium text-gray-900 truncate">{vendor?.name}</div>
                     <div className="text-xs text-gray-500">
                       {vendor?.specialty || 'General Services'}
                     </div>
@@ -181,9 +185,7 @@ const VendorSidebar = ({
               ))}
 
               {vendors?.length === 0 && (
-                <div className="text-center text-gray-500 text-sm py-4">
-                  No vendors available
-                </div>
+                <div className="text-center text-gray-500 text-sm py-4">No vendors available</div>
               )}
             </div>
           </div>
@@ -205,10 +207,7 @@ const VendorSidebar = ({
               </div>
             ) : (
               conflicts?.map((conflict, index) => (
-                <div 
-                  key={index}
-                  className="bg-red-50 border border-red-200 rounded-lg p-3"
-                >
+                <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-3">
                   <div className="flex items-start space-x-2">
                     <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5" />
                     <div className="flex-1 min-w-0">
@@ -219,18 +218,17 @@ const VendorSidebar = ({
                         {conflict?.job1?.title} conflicts with {conflict?.job2?.title}
                       </div>
                       <div className="text-xs text-red-500 mt-1">
-                        {conflict?.job1?.scheduled_start_time && 
-                         new Date(conflict.job1.scheduled_start_time)?.toLocaleTimeString([], {
-                           hour: '2-digit',
-                           minute: '2-digit'
-                         })
-                        } - 
-                        {conflict?.job1?.scheduled_end_time && 
-                         new Date(conflict.job1.scheduled_end_time)?.toLocaleTimeString([], {
-                           hour: '2-digit', 
-                           minute: '2-digit'
-                         })
-                        }
+                        {conflict?.job1?.scheduled_start_time &&
+                          new Date(conflict.job1.scheduled_start_time)?.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}{' '}
+                        -
+                        {conflict?.job1?.scheduled_end_time &&
+                          new Date(conflict.job1.scheduled_end_time)?.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                       </div>
                     </div>
                   </div>
@@ -267,7 +265,7 @@ const VendorSidebar = ({
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default VendorSidebar;
+export default VendorSidebar

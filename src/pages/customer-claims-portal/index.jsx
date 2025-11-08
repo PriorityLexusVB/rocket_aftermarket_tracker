@@ -1,106 +1,138 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, AlertCircle, CheckCircle, Clock, XCircle, Plus, Search, Filter, Phone, Mail, Calendar, DollarSign } from 'lucide-react';
-import { claimsService } from '../../services/claimsService';
-import ClaimSubmissionForm from './components/ClaimSubmissionForm';
+import React, { useState, useEffect } from 'react'
+import {
+  Upload,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Plus,
+  Search,
+  Filter,
+  Phone,
+  Mail,
+  Calendar,
+  DollarSign,
+} from 'lucide-react'
+import { claimsService } from '../../services/claimsService'
+import ClaimSubmissionForm from './components/ClaimSubmissionForm'
 
-import ClaimDetailsModal from './components/ClaimDetailsModal';
+import ClaimDetailsModal from './components/ClaimDetailsModal'
 
 const CustomerClaimsPortal = () => {
-  const [claims, setClaims] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showNewClaimForm, setShowNewClaimForm] = useState(false);
-  const [selectedClaim, setSelectedClaim] = useState(null);
-  const [customerEmail, setCustomerEmail] = useState('john.smith@email.com'); // Demo customer
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [claims, setClaims] = useState([])
+  const [vehicles, setVehicles] = useState([])
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showNewClaimForm, setShowNewClaimForm] = useState(false)
+  const [selectedClaim, setSelectedClaim] = useState(null)
+  const [customerEmail, setCustomerEmail] = useState('john.smith@email.com') // Demo customer
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
-    loadCustomerData();
-  }, [customerEmail]);
+    loadCustomerData()
+  }, [customerEmail])
 
   const loadCustomerData = async () => {
     try {
-      setLoading(true);
-      setError(null);
+      setLoading(true)
+      setError(null)
 
       const [claimsData, vehiclesData, productsData] = await Promise.all([
         claimsService?.getCustomerClaims(customerEmail),
         claimsService?.getCustomerVehicles(customerEmail),
-        claimsService?.getProducts()
-      ]);
+        claimsService?.getProducts(),
+      ])
 
-      setClaims(claimsData || []);
-      setVehicles(vehiclesData || []);
-      setProducts(productsData || []);
+      setClaims(claimsData || [])
+      setVehicles(vehiclesData || [])
+      setProducts(productsData || [])
     } catch (err) {
-      setError(err?.message);
+      setError(err?.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSubmitClaim = async (claimData) => {
     try {
       const newClaim = await claimsService?.createClaim({
         ...claimData,
-        customer_email: customerEmail
-      });
+        customer_email: customerEmail,
+      })
 
-      setClaims(prev => [newClaim, ...prev]);
-      setShowNewClaimForm(false);
-      
+      setClaims((prev) => [newClaim, ...prev])
+      setShowNewClaimForm(false)
+
       // Show success message
-      alert('Claim submitted successfully! You will receive email updates on the progress.');
+      alert('Claim submitted successfully! You will receive email updates on the progress.')
     } catch (err) {
-      setError(`Failed to submit claim: ${err?.message}`);
+      setError(`Failed to submit claim: ${err?.message}`)
     }
-  };
+  }
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'submitted': return <Clock className="w-4 h-4 text-blue-500" />;
-      case 'under_review': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
-      case 'approved': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'denied': return <XCircle className="w-4 h-4 text-red-500" />;
-      case 'resolved': return <CheckCircle className="w-4 h-4 text-gray-500" />;
-      default: return <Clock className="w-4 h-4 text-gray-500" />;
+      case 'submitted':
+        return <Clock className="w-4 h-4 text-blue-500" />
+      case 'under_review':
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />
+      case 'approved':
+        return <CheckCircle className="w-4 h-4 text-green-500" />
+      case 'denied':
+        return <XCircle className="w-4 h-4 text-red-500" />
+      case 'resolved':
+        return <CheckCircle className="w-4 h-4 text-gray-500" />
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />
     }
-  };
+  }
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'submitted': return 'bg-blue-100 text-blue-800';
-      case 'under_review': return 'bg-yellow-100 text-yellow-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'denied': return 'bg-red-100 text-red-800';
-      case 'resolved': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'submitted':
+        return 'bg-blue-100 text-blue-800'
+      case 'under_review':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'approved':
+        return 'bg-green-100 text-green-800'
+      case 'denied':
+        return 'bg-red-100 text-red-800'
+      case 'resolved':
+        return 'bg-gray-100 text-gray-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
-  };
+  }
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'urgent':
+        return 'bg-red-500'
+      case 'high':
+        return 'bg-orange-500'
+      case 'medium':
+        return 'bg-yellow-500'
+      case 'low':
+        return 'bg-green-500'
+      default:
+        return 'bg-gray-500'
     }
-  };
+  }
 
-  const filteredClaims = claims?.filter(claim => {
-    const matchesSearch = searchTerm === '' || 
-      claim?.claim_number?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-      claim?.issue_description?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-      claim?.product?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || claim?.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  }) || [];
+  const filteredClaims =
+    claims?.filter((claim) => {
+      const matchesSearch =
+        searchTerm === '' ||
+        claim?.claim_number?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+        claim?.issue_description?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+        claim?.product?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase())
+
+      const matchesStatus = statusFilter === 'all' || claim?.status === statusFilter
+
+      return matchesSearch && matchesStatus
+    }) || []
 
   if (loading) {
     return (
@@ -110,7 +142,7 @@ const CustomerClaimsPortal = () => {
           <p className="mt-4 text-gray-600">Loading your claims...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -121,7 +153,9 @@ const CustomerClaimsPortal = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Customer Claims Portal</h1>
-              <p className="text-gray-600 mt-2">File and track warranty claims for your aftermarket products</p>
+              <p className="text-gray-600 mt-2">
+                File and track warranty claims for your aftermarket products
+              </p>
             </div>
             <button
               onClick={() => setShowNewClaimForm(true)}
@@ -138,7 +172,7 @@ const CustomerClaimsPortal = () => {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
             <p className="text-red-700">{error}</p>
-            <button 
+            <button
               onClick={() => setError(null)}
               className="ml-auto text-red-500 hover:text-red-700"
             >
@@ -156,7 +190,7 @@ const CustomerClaimsPortal = () => {
                 <h2 className="text-xl font-semibold text-gray-900">Your Claims</h2>
                 <span className="text-sm text-gray-500">{filteredClaims?.length || 0} claims</span>
               </div>
-              
+
               {/* Search and Filter */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
@@ -203,7 +237,7 @@ const CustomerClaimsPortal = () => {
                 </div>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {filteredClaims?.map(claim => (
+                  {filteredClaims?.map((claim) => (
                     <div
                       key={claim?.id}
                       onClick={() => setSelectedClaim(claim)}
@@ -211,12 +245,16 @@ const CustomerClaimsPortal = () => {
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-3 h-3 rounded-full ${getPriorityColor(claim?.priority)}`} />
+                          <div
+                            className={`w-3 h-3 rounded-full ${getPriorityColor(claim?.priority)}`}
+                          />
                           <span className="font-medium text-gray-900">{claim?.claim_number}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           {getStatusIcon(claim?.status)}
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(claim?.status)}`}>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(claim?.status)}`}
+                          >
                             {claim?.status?.replace('_', ' ')?.toUpperCase()}
                           </span>
                         </div>
@@ -227,15 +265,13 @@ const CustomerClaimsPortal = () => {
                           <span className="font-medium text-sm text-gray-900">
                             {claim?.product?.name || 'Unknown Product'}
                           </span>
-                          <span className="text-xs text-gray-500">
-                            {claim?.product?.brand}
-                          </span>
+                          <span className="text-xs text-gray-500">{claim?.product?.brand}</span>
                         </div>
-                        
+
                         <p className="text-sm text-gray-600 line-clamp-2">
                           {claim?.issue_description}
                         </p>
-                        
+
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
@@ -243,8 +279,8 @@ const CustomerClaimsPortal = () => {
                           </div>
                           {claim?.claim_amount && (
                             <div className="flex items-center gap-1">
-                              <DollarSign className="w-3 h-3" />
-                              ${parseFloat(claim?.claim_amount)?.toFixed(2)}
+                              <DollarSign className="w-3 h-3" />$
+                              {parseFloat(claim?.claim_amount)?.toFixed(2)}
                             </div>
                           )}
                         </div>
@@ -268,7 +304,7 @@ const CustomerClaimsPortal = () => {
             ) : (
               <div className="p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Actions</h2>
-                
+
                 <div className="space-y-4">
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h3 className="font-medium text-gray-900 mb-2">Need Help?</h3>
@@ -298,7 +334,9 @@ const CustomerClaimsPortal = () => {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-2">
                         <Clock className="w-3 h-3 text-blue-500" />
-                        <span className="text-gray-600">Submitted - Initial review in progress</span>
+                        <span className="text-gray-600">
+                          Submitted - Initial review in progress
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <AlertCircle className="w-3 h-3 text-yellow-500" />
@@ -334,13 +372,10 @@ const CustomerClaimsPortal = () => {
       </div>
       {/* Claim Details Modal */}
       {selectedClaim && (
-        <ClaimDetailsModal
-          claim={selectedClaim}
-          onClose={() => setSelectedClaim(null)}
-        />
+        <ClaimDetailsModal claim={selectedClaim} onClose={() => setSelectedClaim(null)} />
       )}
     </div>
-  );
-};
+  )
+}
 
-export default CustomerClaimsPortal;
+export default CustomerClaimsPortal

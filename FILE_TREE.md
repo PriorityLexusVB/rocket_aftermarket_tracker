@@ -251,6 +251,7 @@ rocket-aftermarket-tracker/
 ## Key Features
 
 ### 🏗️ **Architecture**
+
 - **Frontend**: React 18 with functional components and hooks
 - **Backend**: Supabase (PostgreSQL + Auth + Real-time + Storage)
 - **Styling**: Tailwind CSS with custom design system
@@ -258,6 +259,7 @@ rocket-aftermarket-tracker/
 - **Build Tool**: Vite for fast development and production builds
 
 ### 💼 **Core Business Modules**
+
 - **Deal Management**: Complete sales lifecycle tracking
 - **Calendar & Scheduling**: Advanced appointment management
 - **Claims Processing**: Insurance and warranty claim handling
@@ -266,12 +268,14 @@ rocket-aftermarket-tracker/
 - **Authentication**: Role-based access control
 
 ### 🎨 **UI/UX Features**
+
 - **Responsive Design**: Mobile-first approach with desktop optimization
 - **Component Library**: Comprehensive reusable UI components
 - **Theme System**: Consistent design language and styling
 - **Accessibility**: ARIA labels and keyboard navigation support
 
 ### 🔧 **Technical Features**
+
 - **Real-time Updates**: Live data synchronization via Supabase
 - **Offline Support**: Progressive Web App capabilities
 - **Error Handling**: Comprehensive error boundaries and logging

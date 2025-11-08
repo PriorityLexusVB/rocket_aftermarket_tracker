@@ -1,23 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useLogger } from '../../../hooks/useLogger';
-import UIButton from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-import Search from '../../../components/ui/Search';
-import { vendorService } from '../../../services/vendorService';
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../../../contexts/AuthContext'
+import { useLogger } from '../../../hooks/useLogger'
+import UIButton from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
+import Search from '../../../components/ui/Search'
+import { vendorService } from '../../../services/vendorService'
 
 const VendorManagement = () => {
-  const { userProfile } = useAuth();
-  const logger = useLogger();
-  const [vendors, setVendors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedVendor, setSelectedVendor] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState('add'); // 'add' or 'edit'
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterSpecialty, setFilterSpecialty] = useState('');
+  const { userProfile } = useAuth()
+  const logger = useLogger()
+  const [vendors, setVendors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedVendor, setSelectedVendor] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [formMode, setFormMode] = useState('add') // 'add' or 'edit'
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterSpecialty, setFilterSpecialty] = useState('')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -29,8 +29,8 @@ const VendorManagement = () => {
     specialty: '',
     rating: '',
     notes: '',
-    is_active: true
-  });
+    is_active: true,
+  })
 
   const specialties = [
     'Engine Components',
@@ -42,100 +42,94 @@ const VendorManagement = () => {
     'Transmission',
     'Accessories',
     'Tires & Wheels',
-    'Performance Parts'
-  ];
+    'Performance Parts',
+  ]
 
   useEffect(() => {
-    loadVendors();
-  }, []);
+    loadVendors()
+  }, [])
 
   const loadVendors = async () => {
     try {
-      setLoading(true);
-      const vendorData = await vendorService?.getAllVendors();
-      setVendors(vendorData);
-      
+      setLoading(true)
+      const vendorData = await vendorService?.getAllVendors()
+      setVendors(vendorData)
+
       await logger?.logInfo(
         'vendors_loaded',
         'VENDOR',
         'list',
         `Loaded ${vendorData?.length} vendors for management`,
         { vendorCount: vendorData?.length }
-      );
+      )
     } catch (error) {
-      console.error('Error loading vendors:', error);
-      await logger?.logError(
-        error,
-        { 
-          action: 'vendor_load_error',
-          context: 'vendor-management' 
-        }
-      );
+      console.error('Error loading vendors:', error)
+      await logger?.logError(error, {
+        action: 'vendor_load_error',
+        context: 'vendor-management',
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleFormSubmit = async (e) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    
+    e?.preventDefault()
+    e?.stopPropagation()
+
     try {
-      setLoading(true);
-      
+      setLoading(true)
+
       if (formMode === 'add') {
-        const newVendor = await vendorService?.createVendor(formData);
-        setVendors(prev => [newVendor, ...prev]);
-        
+        const newVendor = await vendorService?.createVendor(formData)
+        setVendors((prev) => [newVendor, ...prev])
+
         await logger?.logSuccess(
           'vendor_added',
           'VENDOR',
           newVendor?.id,
           `New vendor added: ${newVendor?.name}`,
           { vendorData: newVendor }
-        );
-        
+        )
+
         // Show success feedback
-        alert('Vendor added successfully!');
+        alert('Vendor added successfully!')
       } else {
-        const updatedVendor = await vendorService?.updateVendor(selectedVendor?.id, formData);
-        setVendors(prev => prev?.map(v => v?.id === updatedVendor?.id ? updatedVendor : v));
-        
+        const updatedVendor = await vendorService?.updateVendor(selectedVendor?.id, formData)
+        setVendors((prev) => prev?.map((v) => (v?.id === updatedVendor?.id ? updatedVendor : v)))
+
         await logger?.logSuccess(
           'vendor_updated',
           'VENDOR',
           updatedVendor?.id,
           `Vendor updated: ${updatedVendor?.name}`,
           { vendorData: updatedVendor }
-        );
-        
+        )
+
         // Show success feedback
-        alert('Vendor updated successfully!');
+        alert('Vendor updated successfully!')
       }
-      
-      resetForm();
+
+      resetForm()
     } catch (error) {
-      console.error('Error saving vendor:', error);
-      alert(`Error ${formMode === 'add' ? 'adding' : 'updating'} vendor: ${error?.message}`);
-      
-      await logger?.logError(
-        error,
-        { 
-          action: `vendor_${formMode}_error`,
-          entityId: formMode === 'edit' ? selectedVendor?.id : 'new',
-          formData 
-        }
-      );
+      console.error('Error saving vendor:', error)
+      alert(`Error ${formMode === 'add' ? 'adding' : 'updating'} vendor: ${error?.message}`)
+
+      await logger?.logError(error, {
+        action: `vendor_${formMode}_error`,
+        entityId: formMode === 'edit' ? selectedVendor?.id : 'new',
+        formData,
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleEditVendor = (vendor) => {
-    console.log('Edit button clicked for vendor:', vendor?.name);
-    
+    console.log('Edit button clicked for vendor:', vendor?.name)
+
     try {
-      setSelectedVendor(vendor);
+      setSelectedVendor(vendor)
       setFormData({
         name: vendor?.name || '',
         contact_person: vendor?.contact_person || '',
@@ -145,57 +139,54 @@ const VendorManagement = () => {
         specialty: vendor?.specialty || '',
         rating: vendor?.rating || '',
         notes: vendor?.notes || '',
-        is_active: vendor?.is_active !== undefined ? vendor?.is_active : true
-      });
-      setFormMode('edit');
-      setShowForm(true);
+        is_active: vendor?.is_active !== undefined ? vendor?.is_active : true,
+      })
+      setFormMode('edit')
+      setShowForm(true)
     } catch (error) {
-      console.error('Error in handleEditVendor:', error);
-      alert('Error opening vendor for editing');
+      console.error('Error in handleEditVendor:', error)
+      alert('Error opening vendor for editing')
     }
-  };
+  }
 
   const handleDeleteVendor = async (vendorId) => {
-    console.log('Delete button clicked for vendor ID:', vendorId);
-    
-    if (!window.confirm('Are you sure you want to delete this vendor?')) return;
-    
+    console.log('Delete button clicked for vendor ID:', vendorId)
+
+    if (!window.confirm('Are you sure you want to delete this vendor?')) return
+
     try {
-      setLoading(true);
-      await vendorService?.deleteVendor(vendorId);
-      setVendors(prev => prev?.filter(v => v?.id !== vendorId));
-      
-      alert('Vendor deleted successfully!');
-      
+      setLoading(true)
+      await vendorService?.deleteVendor(vendorId)
+      setVendors((prev) => prev?.filter((v) => v?.id !== vendorId))
+
+      alert('Vendor deleted successfully!')
+
       await logger?.logSuccess(
         'vendor_deleted',
         'VENDOR',
         vendorId,
         `Vendor deleted successfully`,
         { vendorId }
-      );
+      )
     } catch (error) {
-      console.error('Error deleting vendor:', error);
-      alert(`Error deleting vendor: ${error?.message}`);
-      
-      await logger?.logError(
-        error,
-        { 
-          action: 'vendor_delete_error',
-          entityId: vendorId 
-        }
-      );
+      console.error('Error deleting vendor:', error)
+      alert(`Error deleting vendor: ${error?.message}`)
+
+      await logger?.logError(error, {
+        action: 'vendor_delete_error',
+        entityId: vendorId,
+      })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleAddNewVendor = () => {
-    console.log('Add New Vendor button clicked');
-    
+    console.log('Add New Vendor button clicked')
+
     try {
-      setFormMode('add');
-      setSelectedVendor(null);
+      setFormMode('add')
+      setSelectedVendor(null)
       setFormData({
         name: '',
         contact_person: '',
@@ -205,26 +196,28 @@ const VendorManagement = () => {
         specialty: '',
         rating: '',
         notes: '',
-        is_active: true
-      });
-      setShowForm(true);
+        is_active: true,
+      })
+      setShowForm(true)
     } catch (error) {
-      console.error('Error in handleAddNewVendor:', error);
-      alert('Error opening add vendor form');
+      console.error('Error in handleAddNewVendor:', error)
+      alert('Error opening add vendor form')
     }
-  };
+  }
 
   const handleBulkToggleActive = async (active) => {
-    const selectedVendors = vendors?.filter(v => v?.selected);
-    if (selectedVendors?.length === 0) return;
+    const selectedVendors = vendors?.filter((v) => v?.selected)
+    if (selectedVendors?.length === 0) return
 
     try {
-      const vendorIds = selectedVendors?.map(v => v?.id);
-      await vendorService?.bulkUpdateVendors(vendorIds, { is_active: active });
-      
-      setVendors(prev => prev?.map(v => 
-        vendorIds?.includes(v?.id) ? { ...v, is_active: active, selected: false } : v
-      ));
+      const vendorIds = selectedVendors?.map((v) => v?.id)
+      await vendorService?.bulkUpdateVendors(vendorIds, { is_active: active })
+
+      setVendors((prev) =>
+        prev?.map((v) =>
+          vendorIds?.includes(v?.id) ? { ...v, is_active: active, selected: false } : v
+        )
+      )
 
       await logger?.logSuccess(
         'vendor_bulk_updated',
@@ -232,18 +225,15 @@ const VendorManagement = () => {
         'bulk',
         `Bulk ${active ? 'activated' : 'deactivated'} ${selectedVendors?.length} vendors`,
         { vendorIds, active }
-      );
+      )
     } catch (error) {
-      console.error('Error bulk updating vendors:', error);
-      await logger?.logError(
-        error,
-        { 
-          action: 'vendor_bulk_update_error',
-          context: { active, selectedCount: selectedVendors?.length }
-        }
-      );
+      console.error('Error bulk updating vendors:', error)
+      await logger?.logError(error, {
+        action: 'vendor_bulk_update_error',
+        context: { active, selectedCount: selectedVendors?.length },
+      })
     }
-  };
+  }
 
   const resetForm = () => {
     setFormData({
@@ -255,35 +245,37 @@ const VendorManagement = () => {
       specialty: '',
       rating: '',
       notes: '',
-      is_active: true
-    });
-    setSelectedVendor(null);
-    setShowForm(false);
-    setFormMode('add');
-  };
+      is_active: true,
+    })
+    setSelectedVendor(null)
+    setShowForm(false)
+    setFormMode('add')
+  }
 
   const toggleVendorSelection = (vendorId) => {
-    setVendors(prev => prev?.map(v => 
-      v?.id === vendorId ? { ...v, selected: !v?.selected } : v
-    ));
-  };
+    setVendors((prev) =>
+      prev?.map((v) => (v?.id === vendorId ? { ...v, selected: !v?.selected } : v))
+    )
+  }
 
-  const filteredVendors = vendors?.filter(vendor => {
-    const matchesSearch = !searchQuery || 
+  const filteredVendors = vendors?.filter((vendor) => {
+    const matchesSearch =
+      !searchQuery ||
       vendor?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
       vendor?.specialty?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
       vendor?.contact_person?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
       vendor?.email?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
-      vendor?.phone?.toLowerCase()?.includes(searchQuery?.toLowerCase());
-    
-    const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'active' && vendor?.is_active) ||
-      (filterStatus === 'inactive' && !vendor?.is_active);
-    
-    return matchesSearch && matchesStatus;
-  });
+      vendor?.phone?.toLowerCase()?.includes(searchQuery?.toLowerCase())
 
-  const selectedCount = vendors?.filter(v => v?.selected)?.length || 0;
+    const matchesStatus =
+      filterStatus === 'all' ||
+      (filterStatus === 'active' && vendor?.is_active) ||
+      (filterStatus === 'inactive' && !vendor?.is_active)
+
+    return matchesSearch && matchesStatus
+  })
+
+  const selectedCount = vendors?.filter((v) => v?.selected)?.length || 0
 
   if (loading) {
     return (
@@ -291,7 +283,7 @@ const VendorManagement = () => {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         <p className="mt-2 text-gray-600">Loading vendors...</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -311,7 +303,7 @@ const VendorManagement = () => {
                 className="pl-10 w-full"
               />
             </div>
-            
+
             <Select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e?.target?.value)}
@@ -321,15 +313,17 @@ const VendorManagement = () => {
               <option value="active">Active Only</option>
               <option value="inactive">Inactive Only</option>
             </Select>
-            
+
             <Select
               value={filterSpecialty}
               onChange={(e) => setFilterSpecialty(e?.target?.value)}
               className="w-48"
             >
               <option value="">All Specialties</option>
-              {specialties?.map(specialty => (
-                <option key={specialty} value={specialty}>{specialty}</option>
+              {specialties?.map((specialty) => (
+                <option key={specialty} value={specialty}>
+                  {specialty}
+                </option>
               ))}
             </Select>
           </div>
@@ -376,8 +370,8 @@ const VendorManagement = () => {
                     <input
                       type="checkbox"
                       onChange={(e) => {
-                        const checked = e?.target?.checked;
-                        setVendors(prev => prev?.map(v => ({ ...v, selected: checked })));
+                        const checked = e?.target?.checked
+                        setVendors((prev) => prev?.map((v) => ({ ...v, selected: checked })))
                       }}
                       className="rounded"
                     />
@@ -431,19 +425,22 @@ const VendorManagement = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        vendor?.is_active 
-                          ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          vendor?.is_active
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
                         {vendor?.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <UIButton
                         onClick={(e) => {
-                          e?.preventDefault();
-                          e?.stopPropagation();
-                          handleEditVendor(vendor);
+                          e?.preventDefault()
+                          e?.stopPropagation()
+                          handleEditVendor(vendor)
                         }}
                         className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1"
                         disabled={loading}
@@ -453,9 +450,9 @@ const VendorManagement = () => {
                       </UIButton>
                       <UIButton
                         onClick={(e) => {
-                          e?.preventDefault();
-                          e?.stopPropagation();
-                          handleDeleteVendor(vendor?.id);
+                          e?.preventDefault()
+                          e?.stopPropagation()
+                          handleDeleteVendor(vendor?.id)
                         }}
                         className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1"
                         disabled={loading}
@@ -500,7 +497,7 @@ const VendorManagement = () => {
                 </label>
                 <Input
                   value={formData?.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e?.target?.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e?.target?.value }))}
                   required
                   placeholder="Enter vendor name"
                 />
@@ -512,41 +509,37 @@ const VendorManagement = () => {
                 </label>
                 <Input
                   value={formData?.contact_person}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contact_person: e?.target?.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, contact_person: e?.target?.value }))
+                  }
                   placeholder="Enter contact person name"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <Input
                   type="email"
                   value={formData?.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e?.target?.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e?.target?.value }))}
                   placeholder="Enter email address"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <Input
                   value={formData?.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e?.target?.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, phone: e?.target?.value }))}
                   placeholder="Enter phone number"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                 <textarea
                   value={formData?.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e?.target?.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, address: e?.target?.value }))}
                   placeholder="Enter address"
                   rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -554,42 +547,40 @@ const VendorManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Specialty
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
                 <Select
                   value={formData?.specialty}
-                  onChange={(e) => setFormData(prev => ({ ...prev, specialty: e?.target?.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, specialty: e?.target?.value }))
+                  }
                 >
                   <option value="">Select specialty</option>
-                  {specialties?.map(specialty => (
-                    <option key={specialty} value={specialty}>{specialty}</option>
+                  {specialties?.map((specialty) => (
+                    <option key={specialty} value={specialty}>
+                      {specialty}
+                    </option>
                   ))}
                 </Select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rating (1-5)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
                 <Input
                   type="number"
                   min="1"
                   max="5"
                   step="0.1"
                   value={formData?.rating}
-                  onChange={(e) => setFormData(prev => ({ ...prev, rating: e?.target?.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, rating: e?.target?.value }))}
                   placeholder="Enter rating"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
                   value={formData?.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e?.target?.value }))}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e?.target?.value }))}
                   placeholder="Enter notes"
                   rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -600,12 +591,12 @@ const VendorManagement = () => {
                 <input
                   type="checkbox"
                   checked={formData?.is_active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e?.target?.checked }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, is_active: e?.target?.checked }))
+                  }
                   className="rounded"
                 />
-                <label className="ml-2 text-sm text-gray-700">
-                  Active Vendor
-                </label>
+                <label className="ml-2 text-sm text-gray-700">Active Vendor</label>
               </div>
 
               <div className="flex space-x-3 pt-4">
@@ -614,14 +605,14 @@ const VendorManagement = () => {
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   disabled={loading}
                 >
-                  {loading ? 'Saving...' : (formMode === 'add' ? 'Add Vendor' : 'Update Vendor')}
+                  {loading ? 'Saving...' : formMode === 'add' ? 'Add Vendor' : 'Update Vendor'}
                 </UIButton>
                 <UIButton
                   type="button"
                   onClick={(e) => {
-                    e?.preventDefault();
-                    e?.stopPropagation();
-                    resetForm();
+                    e?.preventDefault()
+                    e?.stopPropagation()
+                    resetForm()
                   }}
                   className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
                   disabled={loading}
@@ -639,7 +630,7 @@ const VendorManagement = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default VendorManagement;
+export default VendorManagement

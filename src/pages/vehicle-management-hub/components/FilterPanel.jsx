@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
 
-const FilterPanel = ({ 
-  filters, 
-  onFilterChange, 
-  onClearFilters, 
+const FilterPanel = ({
+  filters,
+  onFilterChange,
+  onClearFilters,
   savedPresets = [],
   onSavePreset,
-  onLoadPreset 
+  onLoadPreset,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [presetName, setPresetName] = useState('');
-  const [showPresetInput, setShowPresetInput] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [presetName, setPresetName] = useState('')
+  const [showPresetInput, setShowPresetInput] = useState(false)
 
   const makeOptions = [
     { value: '', label: 'All Makes' },
@@ -27,38 +27,38 @@ const FilterPanel = ({
     { value: 'kia', label: 'Kia' },
     { value: 'volkswagen', label: 'Volkswagen' },
     { value: 'bmw', label: 'BMW' },
-    { value: 'mercedes', label: 'Mercedes-Benz' }
-  ];
+    { value: 'mercedes', label: 'Mercedes-Benz' },
+  ]
 
   const statusOptions = [
     { value: '', label: 'All Statuses' },
     { value: 'available', label: 'Available' },
     { value: 'in-work', label: 'In Work' },
     { value: 'completed', label: 'Completed' },
-    { value: 'sold', label: 'Sold' }
-  ];
+    { value: 'sold', label: 'Sold' },
+  ]
 
   const yearOptions = [
     { value: '', label: 'All Years' },
     ...Array.from({ length: 15 }, (_, i) => {
-      const year = new Date()?.getFullYear() - i;
-      return { value: year?.toString(), label: year?.toString() };
-    })
-  ];
+      const year = new Date()?.getFullYear() - i
+      return { value: year?.toString(), label: year?.toString() }
+    }),
+  ]
 
   const handleFilterChange = (key, value) => {
-    onFilterChange({ ...filters, [key]: value });
-  };
+    onFilterChange({ ...filters, [key]: value })
+  }
 
   const handleSavePreset = () => {
     if (presetName?.trim()) {
-      onSavePreset(presetName?.trim(), filters);
-      setPresetName('');
-      setShowPresetInput(false);
+      onSavePreset(presetName?.trim(), filters)
+      setPresetName('')
+      setShowPresetInput(false)
     }
-  };
+  }
 
-  const hasActiveFilters = Object.values(filters)?.some(value => value && value !== '');
+  const hasActiveFilters = Object.values(filters)?.some((value) => value && value !== '')
 
   return (
     <div className="bg-card rounded-lg border border-border shadow-elevation-1 mb-6">
@@ -73,7 +73,7 @@ const FilterPanel = ({
               </span>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {hasActiveFilters && (
               <Button
@@ -90,12 +90,12 @@ const FilterPanel = ({
                 Clear All
               </Button>
             )}
-            
+
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
-              iconName={isExpanded ? "ChevronUp" : "ChevronDown"}
+              iconName={isExpanded ? 'ChevronUp' : 'ChevronDown'}
               iconPosition="right"
               className="text-muted-foreground hover:text-foreground"
               ariaLabel={isExpanded ? 'Collapse filters' : 'Expand filters'}
@@ -126,21 +126,21 @@ const FilterPanel = ({
             style={{}}
             error=""
           />
-          
+
           <Select
             placeholder="Select Make"
             options={makeOptions}
             value={filters?.make || ''}
             onChange={(value) => handleFilterChange('make', value)}
           />
-          
+
           <Select
             placeholder="Select Status"
             options={statusOptions}
             value={filters?.status || ''}
             onChange={(value) => handleFilterChange('status', value)}
           />
-          
+
           <Select
             placeholder="Select Year"
             options={yearOptions}
@@ -170,7 +170,7 @@ const FilterPanel = ({
               style={{}}
               error=""
             />
-            
+
             <Input
               id="date-to-input"
               type="date"
@@ -186,7 +186,7 @@ const FilterPanel = ({
               style={{}}
               error=""
             />
-            
+
             <Input
               id="min-profit-input"
               type="number"
@@ -212,12 +212,12 @@ const FilterPanel = ({
               options={[
                 { value: '', label: 'Any' },
                 { value: 'yes', label: 'Yes' },
-                { value: 'no', label: 'No' }
+                { value: 'no', label: 'No' },
               ]}
               value={filters?.hasAftermarket || ''}
               onChange={(value) => handleFilterChange('hasAftermarket', value)}
             />
-            
+
             <Input
               id="model-input"
               type="text"
@@ -233,7 +233,7 @@ const FilterPanel = ({
               style={{}}
               error=""
             />
-            
+
             <Select
               label="Sort By"
               placeholder="Default"
@@ -243,7 +243,7 @@ const FilterPanel = ({
                 { value: 'year-asc', label: 'Year (Oldest)' },
                 { value: 'profit-desc', label: 'Profit (Highest)' },
                 { value: 'profit-asc', label: 'Profit (Lowest)' },
-                { value: 'make-asc', label: 'Make (A-Z)' }
+                { value: 'make-asc', label: 'Make (A-Z)' },
               ]}
               value={filters?.sortBy || ''}
               onChange={(value) => handleFilterChange('sortBy', value)}
@@ -303,8 +303,8 @@ const FilterPanel = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setShowPresetInput(false);
-                    setPresetName('');
+                    setShowPresetInput(false)
+                    setPresetName('')
                   }}
                   className=""
                   ariaLabel="Cancel saving preset"
@@ -338,7 +338,7 @@ const FilterPanel = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default FilterPanel;
+export default FilterPanel

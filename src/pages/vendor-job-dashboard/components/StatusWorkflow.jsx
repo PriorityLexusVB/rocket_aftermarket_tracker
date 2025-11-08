@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
 const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
-  const [draggedJob, setDraggedJob] = useState(null);
-  const [dragOverColumn, setDragOverColumn] = useState(null);
+  const [draggedJob, setDraggedJob] = useState(null)
+  const [dragOverColumn, setDragOverColumn] = useState(null)
 
   const statusColumns = [
     {
@@ -12,73 +12,81 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
       title: 'Pending',
       icon: 'Clock',
       color: 'warning',
-      description: 'Awaiting start'
+      description: 'Awaiting start',
     },
     {
       id: 'In Progress',
       title: 'In Progress',
       icon: 'Play',
       color: 'primary',
-      description: 'Currently working'
+      description: 'Currently working',
     },
     {
       id: 'Complete',
       title: 'Complete',
       icon: 'CheckCircle',
       color: 'success',
-      description: 'Finished jobs'
-    }
-  ];
+      description: 'Finished jobs',
+    },
+  ]
 
   const getJobsByStatus = (status) => {
-    return jobs?.filter(job => job?.status === status);
-  };
+    return jobs?.filter((job) => job?.status === status)
+  }
 
   const handleDragStart = (e, job) => {
-    setDraggedJob(job);
-    e.dataTransfer.effectAllowed = 'move';
-  };
+    setDraggedJob(job)
+    e.dataTransfer.effectAllowed = 'move'
+  }
 
   const handleDragOver = (e, columnId) => {
-    e?.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragOverColumn(columnId);
-  };
+    e?.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverColumn(columnId)
+  }
 
   const handleDragLeave = () => {
-    setDragOverColumn(null);
-  };
+    setDragOverColumn(null)
+  }
 
   const handleDrop = (e, newStatus) => {
-    e?.preventDefault();
+    e?.preventDefault()
     if (draggedJob && draggedJob?.status !== newStatus) {
-      onStatusUpdate(draggedJob?.id, newStatus);
+      onStatusUpdate(draggedJob?.id, newStatus)
     }
-    setDraggedJob(null);
-    setDragOverColumn(null);
-  };
+    setDraggedJob(null)
+    setDragOverColumn(null)
+  }
 
   const getColumnColor = (color) => {
     switch (color) {
-      case 'warning': return 'border-warning bg-warning/5';
-      case 'primary': return 'border-primary bg-primary/5';
-      case 'success': return 'border-success bg-success/5';
-      default: return 'border-border bg-muted/5';
+      case 'warning':
+        return 'border-warning bg-warning/5'
+      case 'primary':
+        return 'border-primary bg-primary/5'
+      case 'success':
+        return 'border-success bg-success/5'
+      default:
+        return 'border-border bg-muted/5'
     }
-  };
+  }
 
   const getJobPriorityColor = (priority) => {
     switch (priority) {
-      case 'High': return 'border-l-error';
-      case 'Medium': return 'border-l-warning';
-      case 'Low': return 'border-l-success';
-      default: return 'border-l-muted';
+      case 'High':
+        return 'border-l-error'
+      case 'Medium':
+        return 'border-l-warning'
+      case 'Low':
+        return 'border-l-success'
+      default:
+        return 'border-l-muted'
     }
-  };
+  }
 
   const isOverdue = (dueDate, status) => {
-    return new Date(dueDate) < new Date() && status !== 'Complete';
-  };
+    return new Date(dueDate) < new Date() && status !== 'Complete'
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg p-6 shadow-elevation-1">
@@ -93,9 +101,9 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {statusColumns?.map((column) => {
-          const columnJobs = getJobsByStatus(column?.id);
-          const isDragOver = dragOverColumn === column?.id;
-          
+          const columnJobs = getJobsByStatus(column?.id)
+          const isDragOver = dragOverColumn === column?.id
+
           return (
             <div
               key={column?.id}
@@ -109,20 +117,14 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
               {/* Column Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Icon 
-                    name={column?.icon} 
-                    size={20} 
-                    className={`text-${column?.color}`} 
-                  />
+                  <Icon name={column?.icon} size={20} className={`text-${column?.color}`} />
                   <h4 className="font-medium text-foreground">{column?.title}</h4>
                   <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-full">
                     {columnJobs?.length}
                   </span>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground mb-4">
-                {column?.description}
-              </div>
+              <div className="text-xs text-muted-foreground mb-4">{column?.description}</div>
               {/* Jobs */}
               <div className="space-y-3 min-h-[200px]">
                 {columnJobs?.map((job) => (
@@ -142,10 +144,15 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
                         {isOverdue(job?.dueDate, job?.status) && (
                           <Icon name="AlertTriangle" size={14} className="text-error" />
                         )}
-                        <span className={`text-xs font-medium ${
-                          job?.priority === 'High' ? 'text-error' :
-                          job?.priority === 'Medium' ? 'text-warning' : 'text-success'
-                        }`}>
+                        <span
+                          className={`text-xs font-medium ${
+                            job?.priority === 'High'
+                              ? 'text-error'
+                              : job?.priority === 'Medium'
+                                ? 'text-warning'
+                                : 'text-success'
+                          }`}
+                        >
                           {job?.priority}
                         </span>
                       </div>
@@ -154,10 +161,8 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
                     <div className="text-sm text-foreground mb-1">
                       {job?.vehicle?.year} {job?.vehicle?.make} {job?.vehicle?.model}
                     </div>
-                    
-                    <div className="text-xs text-muted-foreground mb-2">
-                      {job?.product}
-                    </div>
+
+                    <div className="text-xs text-muted-foreground mb-2">{job?.product}</div>
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>Due: {job?.dueDate}</span>
@@ -185,10 +190,7 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
                       >
                         <Icon name="Check" size={12} />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                      >
+                      <Button variant="ghost" size="xs">
                         <Icon name="MessageSquare" size={12} />
                       </Button>
                     </div>
@@ -198,12 +200,14 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
                 {columnJobs?.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <Icon name={column?.icon} size={32} className="text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">No {column?.title?.toLowerCase()} jobs</p>
+                    <p className="text-sm text-muted-foreground">
+                      No {column?.title?.toLowerCase()} jobs
+                    </p>
                   </div>
                 )}
               </div>
             </div>
-          );
+          )
         })}
       </div>
       {/* Workflow Tips */}
@@ -222,7 +226,7 @@ const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default StatusWorkflow;
+export default StatusWorkflow

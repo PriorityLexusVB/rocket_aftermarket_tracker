@@ -154,12 +154,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
     const { container } = render(
       <BrowserRouter>
-        <DealForm
-          mode="edit"
-          initial={initialData}
-          onSave={mockOnSave}
-          onCancel={mockOnCancel}
-        />
+        <DealForm mode="edit" initial={initialData} onSave={mockOnSave} onCancel={mockOnCancel} />
       </BrowserRouter>
     )
 
@@ -179,7 +174,9 @@ describe('DealForm V2 - Loaner Toggle', () => {
     expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
     expect(container.querySelector('[data-testid="loaner-number-input"]').value).toBe('L-9999')
     expect(container.querySelector('[data-testid="loaner-eta-input"]').value).toBe('2025-11-20')
-    expect(container.querySelector('[data-testid="loaner-notes-input"]').value).toBe('Existing loaner')
+    expect(container.querySelector('[data-testid="loaner-notes-input"]').value).toBe(
+      'Existing loaner'
+    )
 
     // Toggle loaner checkbox OFF
     fireEvent.click(loanerCheckbox)
@@ -199,10 +196,10 @@ describe('DealForm V2 - Loaner Toggle', () => {
     })
 
     const savedPayload = mockOnSave.mock.calls[0][0]
-    
+
     // V2 behavior: customer_needs_loaner should be false
     expect(savedPayload.customer_needs_loaner).toBe(false)
-    
+
     // Loaner form should either be null or have empty fields
     if (savedPayload.loanerForm) {
       expect(savedPayload.loanerForm.loaner_number).toBe('')
@@ -230,10 +227,10 @@ describe('DealForm V2 - Loaner Toggle', () => {
     )
 
     const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
-    
+
     // Toggle ON
     fireEvent.click(loanerCheckbox)
-    
+
     await waitFor(() => {
       expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
     })
@@ -245,14 +242,14 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
     // Toggle OFF
     fireEvent.click(loanerCheckbox)
-    
+
     await waitFor(() => {
       expect(container.querySelector('[data-testid="loaner-section"]')).toBeNull()
     })
 
     // Toggle back ON
     fireEvent.click(loanerCheckbox)
-    
+
     await waitFor(() => {
       expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
     })

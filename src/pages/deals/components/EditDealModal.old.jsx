@@ -849,10 +849,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
                       <label className="block text-sm font-medium text-gray-700">
                         Delivery Coordinator
                       </label>
-                      <a
-                        href="/admin"
-                        className="text-xs text-blue-600 hover:underline"
-                      >
+                      <a href="/admin" className="text-xs text-blue-600 hover:underline">
                         Open Admin
                       </a>
                     </div>

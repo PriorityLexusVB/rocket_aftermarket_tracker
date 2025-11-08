@@ -1,39 +1,42 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import { useOverdueJobs } from '../../../services/advancedFeaturesService';
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import { useOverdueJobs } from '../../../services/advancedFeaturesService'
 
 const OverdueJobsWidget = ({ className = '' }) => {
-  const navigate = useNavigate();
-  const { overdueJobs, loading } = useOverdueJobs();
+  const navigate = useNavigate()
+  const { overdueJobs, loading } = useOverdueJobs()
 
   const getSeverityStats = () => {
-    if (!overdueJobs?.length) return { critical: 0, high: 0, medium: 0, low: 0 };
+    if (!overdueJobs?.length) return { critical: 0, high: 0, medium: 0, low: 0 }
 
-    return overdueJobs?.reduce((acc, job) => {
-      acc[job?.severity_level] = (acc?.[job?.severity_level] || 0) + 1;
-      return acc;
-    }, { critical: 0, high: 0, medium: 0, low: 0 });
-  };
+    return overdueJobs?.reduce(
+      (acc, job) => {
+        acc[job?.severity_level] = (acc?.[job?.severity_level] || 0) + 1
+        return acc
+      },
+      { critical: 0, high: 0, medium: 0, low: 0 }
+    )
+  }
 
-  const severityStats = getSeverityStats();
-  const totalOverdue = overdueJobs?.length || 0;
+  const severityStats = getSeverityStats()
+  const totalOverdue = overdueJobs?.length || 0
 
   const getSeverityColor = (severity) => {
     switch (severity) {
       case 'critical':
-        return 'text-red-600 bg-red-100';
+        return 'text-red-600 bg-red-100'
       case 'high':
-        return 'text-orange-600 bg-orange-100';
+        return 'text-orange-600 bg-orange-100'
       case 'medium':
-        return 'text-yellow-600 bg-yellow-100';
+        return 'text-yellow-600 bg-yellow-100'
       case 'low':
-        return 'text-blue-600 bg-blue-100';
+        return 'text-blue-600 bg-blue-100'
       default:
-        return 'text-gray-600 bg-gray-100';
+        return 'text-gray-600 bg-gray-100'
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -47,7 +50,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -58,7 +61,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
           <Icon name="AlertTriangle" size={20} className="text-orange-500" />
           <h3 className="text-lg font-semibold text-foreground">Overdue Jobs</h3>
         </div>
-        
+
         {totalOverdue > 0 && (
           <Button
             variant="ghost"
@@ -73,7 +76,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
           </Button>
         )}
       </div>
-      
+
       {totalOverdue === 0 ? (
         <div className="text-center py-8">
           <Icon name="CheckCircle" size={48} className="mx-auto text-green-500 mb-4" />
@@ -84,9 +87,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
         <div className="space-y-4">
           {/* Total Count */}
           <div className="text-center">
-            <div className="text-3xl font-bold text-red-600 mb-1">
-              {totalOverdue}
-            </div>
+            <div className="text-3xl font-bold text-red-600 mb-1">{totalOverdue}</div>
             <div className="text-sm text-muted-foreground">
               Job{totalOverdue !== 1 ? 's' : ''} Overdue
             </div>
@@ -95,8 +96,8 @@ const OverdueJobsWidget = ({ className = '' }) => {
           {/* Severity Breakdown */}
           <div className="grid grid-cols-2 gap-3">
             {Object.entries(severityStats)?.map(([severity, count]) => {
-              if (count === 0) return null;
-              
+              if (count === 0) return null
+
               return (
                 <div
                   key={severity}
@@ -107,7 +108,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
                     <span className="text-lg font-bold">{count}</span>
                   </div>
                 </div>
-              );
+              )
             })}
           </div>
 
@@ -124,12 +125,18 @@ const OverdueJobsWidget = ({ className = '' }) => {
                     className="flex items-center justify-between p-2 bg-muted/50 rounded border"
                   >
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        job?.severity_level === 'critical' ? 'bg-red-500' :
-                        job?.severity_level === 'high' ? 'bg-orange-500' :
-                        job?.severity_level === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'
-                      }`} />
-                      
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          job?.severity_level === 'critical'
+                            ? 'bg-red-500'
+                            : job?.severity_level === 'high'
+                              ? 'bg-orange-500'
+                              : job?.severity_level === 'medium'
+                                ? 'bg-yellow-500'
+                                : 'bg-blue-500'
+                        }`}
+                      />
+
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium text-foreground truncate">
                           {job?.job_number}
@@ -139,14 +146,10 @@ const OverdueJobsWidget = ({ className = '' }) => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-medium text-red-600">
-                        {job?.days_overdue}d
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        overdue
-                      </div>
+                      <div className="text-sm font-medium text-red-600">{job?.days_overdue}d</div>
+                      <div className="text-xs text-muted-foreground">overdue</div>
                     </div>
                   </div>
                 ))}
@@ -164,7 +167,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
             >
               Manage Overdue
             </Button>
-            
+
             <Button
               variant="default"
               size="sm"
@@ -178,7 +181,7 @@ const OverdueJobsWidget = ({ className = '' }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default OverdueJobsWidget;
+export default OverdueJobsWidget

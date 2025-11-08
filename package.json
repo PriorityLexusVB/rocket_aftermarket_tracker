@@ -111,6 +111,8 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.9.1",
     "@types/testing-library__jest-dom": "^5.14.9",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
+    "@typescript-eslint/parser": "^8.46.3",
     "@vitejs/plugin-react": "4.3.4",
     "autoprefixer": "10.4.2",
     "eslint": "^9.13.0",

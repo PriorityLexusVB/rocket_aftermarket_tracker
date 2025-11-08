@@ -1,6 +1,6 @@
 /**
  * Step 18: Test IDs - Add data-testid attributes for stable element selection
- * 
+ *
  * PASS criteria:
  * - All interactive elements have consistent data-testid attributes
  * - Test IDs follow naming conventions for automated testing
@@ -9,18 +9,18 @@
  * - Modal dialogs, dropdowns, and dynamic content have test IDs
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
-import { AuthContext } from '../contexts/AuthContext';
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import '@testing-library/jest-dom'
+import React from 'react'
+import { BrowserRouter } from 'react-router-dom'
+import { AuthContext } from '../contexts/AuthContext'
 
 // Import components to test
-import DealsPage from '../pages/deals/index';
-import KpiRow from '../components/common/KpiRow';
-import ExportButton from '../components/common/ExportButton';
-import Button from '../components/ui/Button';
+import DealsPage from '../pages/deals/index'
+import KpiRow from '../components/common/KpiRow'
+import ExportButton from '../components/common/ExportButton'
+import Button from '../components/ui/Button'
 
 // Mock services and dependencies
 vi?.mock('../services/dealService', () => ({
@@ -34,7 +34,7 @@ vi?.mock('../services/dealService', () => ({
         year: 2023,
         make: 'Toyota',
         model: 'Camry',
-        stock_number: 'STK001'
+        stock_number: 'STK001',
       },
       delivery_coordinator_name: 'John Smith',
       sales_consultant_name: 'Jane Doe',
@@ -43,80 +43,76 @@ vi?.mock('../services/dealService', () => ({
           id: 'part-1',
           is_off_site: false,
           requires_scheduling: true,
-          promised_date: '2025-10-20'
-        }
+          promised_date: '2025-10-20',
+        },
       ],
       total_amount: '1500.00',
-      profit_amount: '300.00'
-    }
-  ])
-}));
+      profit_amount: '300.00',
+    },
+  ]),
+}))
 
 vi?.mock('../services/advancedFeaturesService', () => ({
   advancedFeaturesService: {
     exportData: vi?.fn()?.mockResolvedValue({
-      data: [{ id: 1, name: 'Test Export' }]
+      data: [{ id: 1, name: 'Test Export' }],
     }),
-    exportToCSV: vi?.fn()?.mockResolvedValue({ success: true })
-  }
-}));
+    exportToCSV: vi?.fn()?.mockResolvedValue({ success: true }),
+  },
+}))
 
 vi?.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({
     user: { id: 'user-1', email: 'test@test.com' },
-    userProfile: { role: 'admin', full_name: 'Test User' }
+    userProfile: { role: 'admin', full_name: 'Test User' },
   }),
-  AuthContext: React.createContext()
-}));
+  AuthContext: React.createContext(),
+}))
 
 const renderWithRouter = (component) => {
-  return render(
-    <BrowserRouter>
-      {component}
-    </BrowserRouter>
-  );
-};
+  return render(<BrowserRouter>{component}</BrowserRouter>)
+}
 
 describe('Step 18: Test IDs Verification - UI Element Identification', () => {
   beforeEach(() => {
-    vi?.clearAllMocks();
-  });
+    vi?.clearAllMocks()
+  })
 
   describe('Core Page Element Test IDs', () => {
     it('should verify deals page has required test IDs for key elements', async () => {
-      renderWithRouter(<DealsPage />);
-      
+      renderWithRouter(<DealsPage />)
+
       await waitFor(() => {
-        expect(screen?.getByText('Deal Tracker'))?.toBeInTheDocument();
-      });
+        expect(screen?.getByText('Deal Tracker'))?.toBeInTheDocument()
+      })
 
       // Verify main page structure test IDs would be present
       const expectedTestIds = [
         'deals-page-header',
-        'deals-page-title', 
+        'deals-page-title',
         'deals-new-deal-button',
         'deals-kpi-section',
         'deals-table-container',
         'deals-table',
         'deals-table-header',
-        'deals-table-body'
-      ];
+        'deals-table-body',
+      ]
 
-      expectedTestIds?.forEach(testId => {
+      expectedTestIds?.forEach((testId) => {
         // Check that these test IDs would be queryable (simulated validation)
-        expect(testId)?.toMatch(/^[a-z0-9-]+$/); // Valid test ID format
-        expect(testId)?.toContain('deals'); // Page-specific prefix
-      });
+        expect(testId)?.toMatch(/^[a-z0-9-]+$/) // Valid test ID format
+        expect(testId)?.toContain('deals') // Page-specific prefix
+      })
 
-      console.log('✅ Deals page test ID structure validated');
-    });
+      console.log('✅ Deals page test ID structure validated')
+    })
 
     it('should verify table row and cell test IDs follow consistent patterns', async () => {
-      renderWithRouter(<DealsPage />);
-      
+      renderWithRouter(<DealsPage />)
+
       await waitFor(() => {
-        expect(screen?.getByText('JOB-001'))?.toBeInTheDocument();
-      });
+        expect(screen?.getByText('JOB-001'))?.toBeInTheDocument()
+      })
 
       // Verify table row test IDs would follow pattern: deals-row-{dealId}
       const expectedRowTestIds = [
@@ -128,22 +124,22 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'deals-cell-service-test-deal-1',
         'deals-cell-status-test-deal-1',
         'deals-cell-scheduling-test-deal-1',
-        'deals-cell-actions-test-deal-1'
-      ];
+        'deals-cell-actions-test-deal-1',
+      ]
 
-      expectedRowTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^deals-(row|cell)-[a-z0-9-]+$/);
-      });
+      expectedRowTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^deals-(row|cell)-[a-z0-9-]+$/)
+      })
 
-      console.log('✅ Table row and cell test ID patterns validated');
-    });
+      console.log('✅ Table row and cell test ID patterns validated')
+    })
 
     it('should verify interactive elements have action-specific test IDs', async () => {
-      renderWithRouter(<DealsPage />);
-      
+      renderWithRouter(<DealsPage />)
+
       await waitFor(() => {
-        expect(screen?.getByText('Edit'))?.toBeInTheDocument();
-      });
+        expect(screen?.getByText('Edit'))?.toBeInTheDocument()
+      })
 
       // Verify button test IDs would follow pattern: {page}-{action}-{context}
       const expectedButtonTestIds = [
@@ -152,29 +148,29 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'deals-button-edit-test-deal-1',
         'deals-status-pill-new',
         'deals-service-location-tag',
-        'deals-scheduling-status'
-      ];
+        'deals-scheduling-status',
+      ]
 
-      expectedButtonTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^[a-z0-9-]+$/);
-        expect(testId?.split('-'))?.toHaveLength?.greaterThan(2); // Multi-part naming
-      });
+      expectedButtonTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^[a-z0-9-]+$/)
+        expect(testId?.split('-'))?.toHaveLength?.greaterThan(2) // Multi-part naming
+      })
 
-      console.log('✅ Interactive element test ID patterns validated');
-    });
-  });
+      console.log('✅ Interactive element test ID patterns validated')
+    })
+  })
 
   describe('KPI Row Component Test IDs', () => {
     it('should verify KPI components have individual test identifiers', () => {
       const kpiProps = {
         active: 5,
         revenue: '15000.00',
-        profit: '3000.00', 
+        profit: '3000.00',
         margin: '20.0',
-        pending: 2
-      };
+        pending: 2,
+      }
 
-      render(<KpiRow {...kpiProps} />);
+      render(<KpiRow {...kpiProps} />)
 
       // Verify KPI test IDs would follow pattern: kpi-{metric}
       const expectedKpiTestIds = [
@@ -187,15 +183,15 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'kpi-revenue-value',
         'kpi-profit-value',
         'kpi-margin-value',
-        'kpi-pending-value'
-      ];
+        'kpi-pending-value',
+      ]
 
-      expectedKpiTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^kpi-[a-z-]+(-value)?$/);
-      });
+      expectedKpiTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^kpi-[a-z-]+(-value)?$/)
+      })
 
-      console.log('✅ KPI component test ID structure validated');
-    });
+      console.log('✅ KPI component test ID structure validated')
+    })
 
     it('should verify KPI error states have distinguishable test IDs', () => {
       const errorKpiProps = {
@@ -203,10 +199,10 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         revenue: undefined,
         profit: 'NaN',
         margin: '',
-        pending: Infinity
-      };
+        pending: Infinity,
+      }
 
-      render(<KpiRow {...errorKpiProps} />);
+      render(<KpiRow {...errorKpiProps} />)
 
       // Verify error state test IDs
       const expectedErrorTestIds = [
@@ -214,16 +210,16 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'kpi-revenue-fallback',
         'kpi-profit-invalid',
         'kpi-margin-empty',
-        'kpi-pending-overflow'
-      ];
+        'kpi-pending-overflow',
+      ]
 
-      expectedErrorTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^kpi-[a-z-]+-[a-z]+$/);
-      });
+      expectedErrorTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^kpi-[a-z-]+-[a-z]+$/)
+      })
 
-      console.log('✅ KPI error state test IDs validated');
-    });
-  });
+      console.log('✅ KPI error state test IDs validated')
+    })
+  })
 
   describe('Export Button Component Test IDs', () => {
     it('should verify export button and dropdown options have proper test IDs', () => {
@@ -231,10 +227,10 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         exportType: 'jobs',
         onExportStart: vi?.fn(),
         onExportComplete: vi?.fn(),
-        onExportError: vi?.fn()
-      };
+        onExportError: vi?.fn(),
+      }
 
-      render(<ExportButton {...exportProps} />);
+      render(<ExportButton {...exportProps} />)
 
       // Verify export button test IDs
       const expectedExportTestIds = [
@@ -251,16 +247,16 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'export-button-confirm',
         'export-loading-spinner',
         'export-warning-no-filters',
-        'export-info-selected-count'
-      ];
+        'export-info-selected-count',
+      ]
 
-      expectedExportTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^export-[a-z-]+$/);
-        expect(testId)?.toContain('export'); // Component prefix
-      });
+      expectedExportTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^export-[a-z-]+$/)
+        expect(testId)?.toContain('export') // Component prefix
+      })
 
-      console.log('✅ Export button test ID structure validated');
-    });
+      console.log('✅ Export button test ID structure validated')
+    })
 
     it('should verify export states have distinct test identifiers', () => {
       // Test different export states
@@ -268,17 +264,17 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         { state: 'idle', testId: 'export-button-idle' },
         { state: 'loading', testId: 'export-button-loading' },
         { state: 'success', testId: 'export-button-success' },
-        { state: 'error', testId: 'export-button-error' }
-      ];
+        { state: 'error', testId: 'export-button-error' },
+      ]
 
       exportStates?.forEach(({ state, testId }) => {
-        expect(testId)?.toMatch(/^export-button-[a-z]+$/);
-        expect(testId)?.toContain(state);
-      });
+        expect(testId)?.toMatch(/^export-button-[a-z]+$/)
+        expect(testId)?.toContain(state)
+      })
 
-      console.log('✅ Export state test IDs validated');
-    });
-  });
+      console.log('✅ Export state test IDs validated')
+    })
+  })
 
   describe('UI Button Component Test IDs', () => {
     it('should verify base Button component supports test ID attributes', () => {
@@ -286,44 +282,44 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         { variant: 'default', testId: 'button-primary' },
         { variant: 'outline', testId: 'button-secondary' },
         { variant: 'ghost', testId: 'button-ghost' },
-        { variant: 'destructive', testId: 'button-danger' }
-      ];
+        { variant: 'destructive', testId: 'button-danger' },
+      ]
 
       buttonVariants?.forEach(({ variant, testId }) => {
         render(
-          <Button 
-            variant={variant} 
-            data-testid={testId} 
-            className="" 
+          <Button
+            variant={variant}
+            data-testid={testId}
+            className=""
             onClick={() => {}}
             aria-label="Test Button"
           >
             Test Button
           </Button>
-        );
+        )
 
-        expect(testId)?.toMatch(/^button-[a-z]+$/);
-        expect(testId)?.toContain('button'); // Component type prefix
-      });
+        expect(testId)?.toMatch(/^button-[a-z]+$/)
+        expect(testId)?.toContain('button') // Component type prefix
+      })
 
-      console.log('✅ Button component test ID support validated');
-    });
+      console.log('✅ Button component test ID support validated')
+    })
 
     it('should verify button states have appropriate test identifiers', () => {
       const buttonStates = [
         { disabled: false, testId: 'button-enabled' },
         { disabled: true, testId: 'button-disabled' },
         { loading: true, testId: 'button-loading' },
-        { type: 'submit', testId: 'button-submit' }
-      ];
+        { type: 'submit', testId: 'button-submit' },
+      ]
 
       buttonStates?.forEach(({ disabled, loading, type, testId }) => {
-        expect(testId)?.toMatch(/^button-[a-z]+$/);
-      });
+        expect(testId)?.toMatch(/^button-[a-z]+$/)
+      })
 
-      console.log('✅ Button state test IDs validated');
-    });
-  });
+      console.log('✅ Button state test IDs validated')
+    })
+  })
 
   describe('Test ID Naming Convention Validation', () => {
     it('should validate test ID naming follows consistent patterns', () => {
@@ -337,24 +333,35 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'dropdown-option-selected',
         'table-cell-job-number',
         'status-pill-in-progress',
-        'navigation-menu-item'
-      ];
+        'navigation-menu-item',
+      ]
 
-      validTestIds?.forEach(testId => {
+      validTestIds?.forEach((testId) => {
         // Test ID should be lowercase with hyphens
-        expect(testId)?.toMatch(/^[a-z0-9-]+$/);
-        
-        // Should have multiple parts separated by hyphens
-        const parts = testId?.split('-');
-        expect(parts)?.toHaveLength?.greaterThan(1);
-        
-        // First part should indicate component/page type
-        const firstPart = parts?.[0];
-        expect(['deals', 'kpi', 'export', 'button', 'modal', 'form', 'dropdown', 'table', 'status', 'navigation'])?.toContain(firstPart);
-      });
+        expect(testId)?.toMatch(/^[a-z0-9-]+$/)
 
-      console.log('✅ Test ID naming conventions validated');
-    });
+        // Should have multiple parts separated by hyphens
+        const parts = testId?.split('-')
+        expect(parts)?.toHaveLength?.greaterThan(1)
+
+        // First part should indicate component/page type
+        const firstPart = parts?.[0]
+        expect([
+          'deals',
+          'kpi',
+          'export',
+          'button',
+          'modal',
+          'form',
+          'dropdown',
+          'table',
+          'status',
+          'navigation',
+        ])?.toContain(firstPart)
+      })
+
+      console.log('✅ Test ID naming conventions validated')
+    })
 
     it('should validate test IDs avoid problematic patterns', () => {
       const problematicTestIds = [
@@ -365,16 +372,16 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'deals--page', // double separator
         'deals page header', // spaces not allowed
         '123-deals-page', // starting with number
-        'deals-page-Header' // mixed case
-      ];
+        'deals-page-Header', // mixed case
+      ]
 
-      problematicTestIds?.forEach(testId => {
+      problematicTestIds?.forEach((testId) => {
         // These should NOT match our pattern
-        expect(testId)?.not?.toMatch(/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/);
-      });
+        expect(testId)?.not?.toMatch(/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/)
+      })
 
-      console.log('✅ Problematic test ID patterns identified and avoided');
-    });
+      console.log('✅ Problematic test ID patterns identified and avoided')
+    })
 
     it('should verify hierarchical test ID structure for nested components', () => {
       const hierarchicalTestIds = [
@@ -385,22 +392,22 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'kpi-section-metric-revenue-value',
         'modal-dialog-footer-button-cancel',
         'form-section-customer-field-email',
-        'navigation-sidebar-menu-item-deals'
-      ];
+        'navigation-sidebar-menu-item-deals',
+      ]
 
-      hierarchicalTestIds?.forEach(testId => {
-        const parts = testId?.split('-');
-        
+      hierarchicalTestIds?.forEach((testId) => {
+        const parts = testId?.split('-')
+
         // Should have at least 3 parts for hierarchical structure
-        expect(parts)?.toHaveLength?.greaterThan(2);
-        
-        // Should follow pattern: section-component-element or similar
-        expect(testId)?.toMatch(/^[a-z]+(-[a-z0-9]+)+$/);
-      });
+        expect(parts)?.toHaveLength?.greaterThan(2)
 
-      console.log('✅ Hierarchical test ID structure validated');
-    });
-  });
+        // Should follow pattern: section-component-element or similar
+        expect(testId)?.toMatch(/^[a-z]+(-[a-z0-9]+)+$/)
+      })
+
+      console.log('✅ Hierarchical test ID structure validated')
+    })
+  })
 
   describe('Dynamic Content Test ID Management', () => {
     it('should verify dynamic content maintains stable test identifiers', () => {
@@ -410,20 +417,20 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         { pattern: 'status-pill-{status}', example: 'status-pill-in-progress' },
         { pattern: 'vehicle-info-{vehicleId}', example: 'vehicle-info-xyz789' },
         { pattern: 'staff-name-{staffId}', example: 'staff-name-staff456' },
-        { pattern: 'export-selected-count-{count}', example: 'export-selected-count-5' }
-      ];
+        { pattern: 'export-selected-count-{count}', example: 'export-selected-count-5' },
+      ]
 
       dynamicContentPatterns?.forEach(({ pattern, example }) => {
         // Verify the example follows the pattern structure
-        expect(example)?.toMatch(/^[a-z]+-[a-z0-9]+-[a-z0-9]+$/);
-        
-        // Verify pattern contains placeholder for dynamic content
-        expect(pattern)?.toContain('{');
-        expect(pattern)?.toContain('}');
-      });
+        expect(example)?.toMatch(/^[a-z]+-[a-z0-9]+-[a-z0-9]+$/)
 
-      console.log('✅ Dynamic content test ID patterns validated');
-    });
+        // Verify pattern contains placeholder for dynamic content
+        expect(pattern)?.toContain('{')
+        expect(pattern)?.toContain('}')
+      })
+
+      console.log('✅ Dynamic content test ID patterns validated')
+    })
 
     it('should verify conditional elements have appropriate fallback test IDs', () => {
       const conditionalTestIds = [
@@ -433,17 +440,17 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         { condition: 'loading', testId: 'deals-table-loading-state' },
         { condition: 'error', testId: 'deals-table-error-state' },
         { condition: 'selected-items', testId: 'export-scope-selected-available' },
-        { condition: 'no-selection', testId: 'export-scope-selected-disabled' }
-      ];
+        { condition: 'no-selection', testId: 'export-scope-selected-disabled' },
+      ]
 
       conditionalTestIds?.forEach(({ condition, testId }) => {
-        expect(testId)?.toMatch(/^[a-z]+-[a-z-]+-[a-z]+$/);
-        expect(testId)?.toContain(condition?.replace('-', '')); // Condition reflected in ID
-      });
+        expect(testId)?.toMatch(/^[a-z]+-[a-z-]+-[a-z]+$/)
+        expect(testId)?.toContain(condition?.replace('-', '')) // Condition reflected in ID
+      })
 
-      console.log('✅ Conditional element test IDs validated');
-    });
-  });
+      console.log('✅ Conditional element test IDs validated')
+    })
+  })
 
   describe('Form and Input Element Test IDs', () => {
     it('should verify form elements follow input-specific test ID patterns', () => {
@@ -457,16 +464,16 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'form-checkbox-customer-needs-loaner',
         'form-radio-service-type-onsite',
         'form-radio-service-type-offsite',
-        'form-date-picker-promised-date'
-      ];
+        'form-date-picker-promised-date',
+      ]
 
-      formElementTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^form-(field|select|textarea|checkbox|radio|date-picker)-[a-z-]+$/);
-        expect(testId)?.toContain('form'); // Form element prefix
-      });
+      formElementTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^form-(field|select|textarea|checkbox|radio|date-picker)-[a-z-]+$/)
+        expect(testId)?.toContain('form') // Form element prefix
+      })
 
-      console.log('✅ Form element test ID patterns validated');
-    });
+      console.log('✅ Form element test ID patterns validated')
+    })
 
     it('should verify validation states have distinct test identifiers', () => {
       const validationStateTestIds = [
@@ -475,16 +482,16 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'form-field-customer-name-pending',
         'form-error-message-customer-name',
         'form-success-message-customer-name',
-        'form-help-text-customer-name'
-      ];
+        'form-help-text-customer-name',
+      ]
 
-      validationStateTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^form-[a-z-]+-[a-z-]+-(valid|invalid|pending|message|text)$/);
-      });
+      validationStateTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^form-[a-z-]+-[a-z-]+-(valid|invalid|pending|message|text)$/)
+      })
 
-      console.log('✅ Form validation state test IDs validated');
-    });
-  });
+      console.log('✅ Form validation state test IDs validated')
+    })
+  })
 
   describe('Modal and Overlay Test IDs', () => {
     it('should verify modal components have structured test identifiers', () => {
@@ -497,16 +504,16 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'modal-dialog-body',
         'modal-dialog-footer',
         'modal-dialog-cancel-button',
-        'modal-dialog-confirm-button'
-      ];
+        'modal-dialog-confirm-button',
+      ]
 
-      modalTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^modal-[a-z-]+$/);
-        expect(testId)?.toContain('modal'); // Modal component prefix
-      });
+      modalTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^modal-[a-z-]+$/)
+        expect(testId)?.toContain('modal') // Modal component prefix
+      })
 
-      console.log('✅ Modal component test ID structure validated');
-    });
+      console.log('✅ Modal component test ID structure validated')
+    })
 
     it('should verify specific modal types have unique identifiers', () => {
       const specificModalTestIds = [
@@ -515,33 +522,45 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         'modal-confirmation-delete-deal',
         'modal-export-options-dialog',
         'modal-vehicle-selection-dialog',
-        'modal-line-item-configuration'
-      ];
+        'modal-line-item-configuration',
+      ]
 
-      specificModalTestIds?.forEach(testId => {
-        expect(testId)?.toMatch(/^modal-[a-z-]+-dialog$/);
-      });
+      specificModalTestIds?.forEach((testId) => {
+        expect(testId)?.toMatch(/^modal-[a-z-]+-dialog$/)
+      })
 
-      console.log('✅ Specific modal type test IDs validated');
-    });
-  });
-});
+      console.log('✅ Specific modal type test IDs validated')
+    })
+  })
+})
 
 // Step 18 Test IDs Summary
-console.log('=== STEP 18 VERIFICATION RESULTS ===');
-console.log('[#] Step 18: Test IDs implementation verification — PASS');
-console.log('Evidence: All UI components verified to support stable data-testid attributes for automated testing');
-console.log('');
-console.log('Test ID Implementation Categories Validated:');
-console.log('• Page Elements: ✅ Main page components have hierarchical test ID structure');
-console.log('• Interactive Elements: ✅ Buttons, links, and controls have action-specific test IDs');
-console.log('• Table Components: ✅ Rows and cells follow consistent {page}-{element}-{id} pattern');  
-console.log('• Form Elements: ✅ Inputs, selects, and validation states have form-specific prefixes');
-console.log('• Modal Dialogs: ✅ Overlay and dialog parts have modal-{component} structure');
-console.log('• Dynamic Content: ✅ List items and conditional elements maintain stable identifiers');
-console.log('• State Management: ✅ Loading, error, and success states have distinguishable test IDs');
-console.log('• Naming Conventions: ✅ kebab-case, hierarchical structure, component prefixes enforced');
-console.log('');
-console.log('🎯 Test Automation Ready: All critical UI elements identifiable via data-testid attributes');
-console.log('🔍 Stable Selectors: Test IDs remain consistent across application state changes');
-console.log('📋 Systematic Coverage: Page, component, and element-level test ID organization validated');
+console.log('=== STEP 18 VERIFICATION RESULTS ===')
+console.log('[#] Step 18: Test IDs implementation verification — PASS')
+console.log(
+  'Evidence: All UI components verified to support stable data-testid attributes for automated testing'
+)
+console.log('')
+console.log('Test ID Implementation Categories Validated:')
+console.log('• Page Elements: ✅ Main page components have hierarchical test ID structure')
+console.log('• Interactive Elements: ✅ Buttons, links, and controls have action-specific test IDs')
+console.log('• Table Components: ✅ Rows and cells follow consistent {page}-{element}-{id} pattern')
+console.log(
+  '• Form Elements: ✅ Inputs, selects, and validation states have form-specific prefixes'
+)
+console.log('• Modal Dialogs: ✅ Overlay and dialog parts have modal-{component} structure')
+console.log('• Dynamic Content: ✅ List items and conditional elements maintain stable identifiers')
+console.log(
+  '• State Management: ✅ Loading, error, and success states have distinguishable test IDs'
+)
+console.log(
+  '• Naming Conventions: ✅ kebab-case, hierarchical structure, component prefixes enforced'
+)
+console.log('')
+console.log(
+  '🎯 Test Automation Ready: All critical UI elements identifiable via data-testid attributes'
+)
+console.log('🔍 Stable Selectors: Test IDs remain consistent across application state changes')
+console.log(
+  '📋 Systematic Coverage: Page, component, and element-level test ID organization validated'
+)

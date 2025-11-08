@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { claimsService } from '../../services/claimsService';
-import { FileText, CheckCircle, AlertCircle, User, Phone, Calendar, Package, MessageSquare, Upload, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react'
+import { claimsService } from '../../services/claimsService'
+import {
+  FileText,
+  CheckCircle,
+  AlertCircle,
+  User,
+  Phone,
+  Calendar,
+  Package,
+  MessageSquare,
+  Upload,
+  X,
+} from 'lucide-react'
 
 const GuestClaimsSubmissionForm = () => {
   // Form state
@@ -18,167 +29,174 @@ const GuestClaimsSubmissionForm = () => {
     issue_description: '',
     preferred_resolution: '',
     comments: '',
-    priority: 'medium'
-  });
+    priority: 'medium',
+  })
 
   // UI state
-  const [loading, setLoading] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-  const [submittedClaim, setSubmittedClaim] = useState(null);
+  const [loading, setLoading] = useState(false)
+  const [submitLoading, setSubmitLoading] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [submitted, setSubmitted] = useState(false)
+  const [submittedClaim, setSubmittedClaim] = useState(null)
 
   // Data state
-  const [products, setProducts] = useState([]);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [products, setProducts] = useState([])
+  const [uploadedFiles, setUploadedFiles] = useState([])
 
   // Load products on component mount
   useEffect(() => {
-    loadProducts();
-  }, []);
+    loadProducts()
+  }, [])
 
   const loadProducts = async () => {
     try {
-      setLoading(true);
-      const productsData = await claimsService?.getProducts();
-      setProducts(productsData || []);
+      setLoading(true)
+      const productsData = await claimsService?.getProducts()
+      setProducts(productsData || [])
     } catch (error) {
-      console.error('Error loading products:', error);
-      setErrors({ products: 'Failed to load product options' });
+      console.error('Error loading products:', error)
+      setErrors({ products: 'Failed to load product options' })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
-    }));
+      [field]: value,
+    }))
 
     // Clear error when user starts typing
     if (errors?.[field]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [field]: null
-      }));
+        [field]: null,
+      }))
     }
 
     // Clear other_product_description when switching away from "other"
     if (field === 'product_selection' && value !== 'other') {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        other_product_description: ''
-      }));
+        other_product_description: '',
+      }))
     }
-  };
+  }
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors = {}
 
     // Required fields
-    if (!formData?.customer_name?.trim()) newErrors.customer_name = 'Customer name is required';
-    if (!formData?.customer_email?.trim()) newErrors.customer_email = 'Email is required';
-    if (!formData?.customer_phone?.trim()) newErrors.customer_phone = 'Phone number is required';
-    if (!formData?.vehicle_year?.trim()) newErrors.vehicle_year = 'Vehicle year is required';
-    if (!formData?.vehicle_make?.trim()) newErrors.vehicle_make = 'Vehicle make is required';
-    if (!formData?.vehicle_model?.trim()) newErrors.vehicle_model = 'Vehicle model is required';
-    if (!formData?.vehicle_vin?.trim()) newErrors.vehicle_vin = 'VIN is required';
-    if (!formData?.product_selection?.trim()) newErrors.product_selection = 'Product selection is required';
-    if (!formData?.issue_description?.trim()) newErrors.issue_description = 'Issue description is required';
-    if (!formData?.preferred_resolution?.trim()) newErrors.preferred_resolution = 'Preferred resolution is required';
+    if (!formData?.customer_name?.trim()) newErrors.customer_name = 'Customer name is required'
+    if (!formData?.customer_email?.trim()) newErrors.customer_email = 'Email is required'
+    if (!formData?.customer_phone?.trim()) newErrors.customer_phone = 'Phone number is required'
+    if (!formData?.vehicle_year?.trim()) newErrors.vehicle_year = 'Vehicle year is required'
+    if (!formData?.vehicle_make?.trim()) newErrors.vehicle_make = 'Vehicle make is required'
+    if (!formData?.vehicle_model?.trim()) newErrors.vehicle_model = 'Vehicle model is required'
+    if (!formData?.vehicle_vin?.trim()) newErrors.vehicle_vin = 'VIN is required'
+    if (!formData?.product_selection?.trim())
+      newErrors.product_selection = 'Product selection is required'
+    if (!formData?.issue_description?.trim())
+      newErrors.issue_description = 'Issue description is required'
+    if (!formData?.preferred_resolution?.trim())
+      newErrors.preferred_resolution = 'Preferred resolution is required'
 
     // Validate other product description if "other" is selected
     if (formData?.product_selection === 'other' && !formData?.other_product_description?.trim()) {
-      newErrors.other_product_description = 'Please describe the other product';
+      newErrors.other_product_description = 'Please describe the other product'
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (formData?.customer_email && !emailRegex?.test(formData?.customer_email)) {
-      newErrors.customer_email = 'Please enter a valid email address';
+      newErrors.customer_email = 'Please enter a valid email address'
     }
 
     // Validate VIN length (basic validation)
     if (formData?.vehicle_vin && formData?.vehicle_vin?.length !== 17) {
-      newErrors.vehicle_vin = 'VIN must be exactly 17 characters';
+      newErrors.vehicle_vin = 'VIN must be exactly 17 characters'
     }
 
     // Validate vehicle year
-    const currentYear = new Date()?.getFullYear();
-    const year = parseInt(formData?.vehicle_year);
+    const currentYear = new Date()?.getFullYear()
+    const year = parseInt(formData?.vehicle_year)
     if (formData?.vehicle_year && (isNaN(year) || year < 1900 || year > currentYear + 1)) {
-      newErrors.vehicle_year = `Year must be between 1900 and ${currentYear + 1}`;
+      newErrors.vehicle_year = `Year must be between 1900 and ${currentYear + 1}`
     }
 
-    setErrors(newErrors);
-    return Object?.keys(newErrors)?.length === 0;
-  };
+    setErrors(newErrors)
+    return Object?.keys(newErrors)?.length === 0
+  }
 
   const handleFileUpload = async (event) => {
-    const files = Array.from(event?.target?.files || []);
-    
+    const files = Array.from(event?.target?.files || [])
+
     for (const file of files) {
-      if (file?.size > 10 * 1024 * 1024) { // 10MB limit
-        setErrors(prev => ({
+      if (file?.size > 10 * 1024 * 1024) {
+        // 10MB limit
+        setErrors((prev) => ({
           ...prev,
-          files: 'File size must be less than 10MB'
-        }));
-        continue;
+          files: 'File size must be less than 10MB',
+        }))
+        continue
       }
 
       if (!file?.type?.startsWith('image/')) {
-        setErrors(prev => ({
+        setErrors((prev) => ({
           ...prev,
-          files: 'Only image files are allowed'
-        }));
-        continue;
+          files: 'Only image files are allowed',
+        }))
+        continue
       }
 
-      const fileId = `${Date.now()}-${file?.name}`;
-      setUploadedFiles(prev => [...prev, {
-        id: fileId,
-        file,
-        name: file?.name,
-        size: file?.size,
-        type: file?.type,
-        preview: URL.createObjectURL(file)
-      }]);
+      const fileId = `${Date.now()}-${file?.name}`
+      setUploadedFiles((prev) => [
+        ...prev,
+        {
+          id: fileId,
+          file,
+          name: file?.name,
+          size: file?.size,
+          type: file?.type,
+          preview: URL.createObjectURL(file),
+        },
+      ])
     }
 
     // Clear file input
     if (event?.target) {
-      event.target.value = '';
+      event.target.value = ''
     }
-  };
+  }
 
   const removeFile = (fileId) => {
-    setUploadedFiles(prev => {
-      const fileToRemove = prev?.find(f => f?.id === fileId);
+    setUploadedFiles((prev) => {
+      const fileToRemove = prev?.find((f) => f?.id === fileId)
       if (fileToRemove?.preview) {
-        URL.revokeObjectURL(fileToRemove?.preview);
+        URL.revokeObjectURL(fileToRemove?.preview)
       }
-      return prev?.filter(f => f?.id !== fileId);
-    });
-  };
+      return prev?.filter((f) => f?.id !== fileId)
+    })
+  }
 
   const submitClaim = async () => {
     if (!validateForm()) {
       // Scroll to first error
-      const firstErrorField = document?.querySelector('.border-red-300');
+      const firstErrorField = document?.querySelector('.border-red-300')
       if (firstErrorField) {
-        firstErrorField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstErrorField?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
-      return;
+      return
     }
 
     try {
-      setSubmitLoading(true);
-      setErrors({});
+      setSubmitLoading(true)
+      setErrors({})
 
       // First, check if we need to create a vehicle record
-      let vehicleId = null;
-      
+      let vehicleId = null
+
       // Create a temporary vehicle record for the claim
       const tempVehicle = {
         make: formData?.vehicle_make?.trim(),
@@ -188,13 +206,13 @@ const GuestClaimsSubmissionForm = () => {
         owner_name: formData?.customer_name?.trim(),
         owner_email: formData?.customer_email?.trim(),
         owner_phone: formData?.customer_phone?.trim(),
-        vehicle_status: 'active'
-      };
+        vehicle_status: 'active',
+      }
 
       // Get product ID if a specific product was selected
-      let productId = null;
+      let productId = null
       if (formData?.product_selection && formData?.product_selection !== 'other') {
-        productId = formData?.product_selection;
+        productId = formData?.product_selection
       }
 
       // Create the claim data
@@ -203,19 +221,22 @@ const GuestClaimsSubmissionForm = () => {
         customer_email: formData?.customer_email?.trim(),
         customer_phone: formData?.customer_phone?.trim(),
         product_id: productId,
-        issue_description: formData?.issue_description?.trim() + 
-          (formData?.product_selection === 'other' ? `\n\nProduct: ${formData?.other_product_description?.trim()}` : '') +
+        issue_description:
+          formData?.issue_description?.trim() +
+          (formData?.product_selection === 'other'
+            ? `\n\nProduct: ${formData?.other_product_description?.trim()}`
+            : '') +
           (formData?.purchase_date ? `\n\nPurchase Date: ${formData?.purchase_date}` : '') +
           (formData?.comments ? `\n\nAdditional Comments: ${formData?.comments?.trim()}` : ''),
         preferred_resolution: formData?.preferred_resolution?.trim(),
         priority: formData?.priority || 'medium',
-        status: 'submitted'
-      };
+        status: 'submitted',
+      }
 
-      const newClaim = await claimsService?.createClaim(claimData);
+      const newClaim = await claimsService?.createClaim(claimData)
 
       if (!newClaim) {
-        throw new Error('Failed to submit claim');
+        throw new Error('Failed to submit claim')
       }
 
       // Upload files if any
@@ -225,31 +246,30 @@ const GuestClaimsSubmissionForm = () => {
             newClaim?.id,
             file?.file,
             `Photo uploaded with guest claim by ${formData?.customer_name}`
-          );
+          )
         } catch (fileError) {
-          console.error(`Error uploading file ${file?.name}:`, fileError);
+          console.error(`Error uploading file ${file?.name}:`, fileError)
           // Continue with other files even if one fails
         }
       }
 
-      setSubmittedClaim(newClaim);
-      setSubmitted(true);
+      setSubmittedClaim(newClaim)
+      setSubmitted(true)
 
       // Scroll to top to show success message
-      window?.scrollTo({ top: 0, behavior: 'smooth' });
-
+      window?.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
-      console.error('Error submitting claim:', error);
-      setErrors({ 
-        submit: error?.message || 'Failed to submit claim. Please try again.' 
-      });
-      
+      console.error('Error submitting claim:', error)
+      setErrors({
+        submit: error?.message || 'Failed to submit claim. Please try again.',
+      })
+
       // Scroll to error
-      window?.scrollTo({ top: 0, behavior: 'smooth' });
+      window?.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
-      setSubmitLoading(false);
+      setSubmitLoading(false)
     }
-  };
+  }
 
   const resetForm = () => {
     setFormData({
@@ -266,13 +286,13 @@ const GuestClaimsSubmissionForm = () => {
       issue_description: '',
       preferred_resolution: '',
       comments: '',
-      priority: 'medium'
-    });
-    setSubmitted(false);
-    setSubmittedClaim(null);
-    setUploadedFiles([]);
-    setErrors({});
-  };
+      priority: 'medium',
+    })
+    setSubmitted(false)
+    setSubmittedClaim(null)
+    setUploadedFiles([])
+    setErrors({})
+  }
 
   // Success page
   if (submitted && submittedClaim) {
@@ -283,19 +303,18 @@ const GuestClaimsSubmissionForm = () => {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Claim Submitted Successfully!
-            </h1>
-            
+
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Claim Submitted Successfully!</h1>
+
             <div className="bg-gray-50 rounded-lg p-6 mb-6">
               <p className="text-lg font-semibold text-gray-900 mb-2">
                 Claim Number: {submittedClaim?.claim_number}
               </p>
               <p className="text-gray-600 mb-4">
-                Thank you for submitting your warranty claim. We have received your request and it is now under review.
+                Thank you for submitting your warranty claim. We have received your request and it
+                is now under review.
               </p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="font-medium text-gray-700">Customer:</span>
@@ -309,7 +328,7 @@ const GuestClaimsSubmissionForm = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
               <h3 className="font-semibold text-blue-900 mb-2">What happens next:</h3>
               <ul className="text-blue-800 text-sm space-y-1">
@@ -320,7 +339,7 @@ const GuestClaimsSubmissionForm = () => {
                 <li>• Keep your claim number for future reference</li>
               </ul>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={resetForm}
@@ -338,7 +357,7 @@ const GuestClaimsSubmissionForm = () => {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -349,11 +368,10 @@ const GuestClaimsSubmissionForm = () => {
           <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <FileText className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Guest Claims Submission Form
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Guest Claims Submission Form</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Submit your warranty or service claim quickly and easily. Please fill out all required fields to ensure prompt processing of your request.
+            Submit your warranty or service claim quickly and easily. Please fill out all required
+            fields to ensure prompt processing of your request.
           </p>
         </div>
 
@@ -376,7 +394,7 @@ const GuestClaimsSubmissionForm = () => {
                 <User className="w-5 h-5 mr-2" />
                 Customer Information
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -440,12 +458,10 @@ const GuestClaimsSubmissionForm = () => {
                 <Calendar className="w-5 h-5 mr-2" />
                 Vehicle Information
               </h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Year *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Year *</label>
                   <input
                     type="number"
                     value={formData?.vehicle_year}
@@ -463,9 +479,7 @@ const GuestClaimsSubmissionForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Make *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Make *</label>
                   <input
                     type="text"
                     value={formData?.vehicle_make}
@@ -481,9 +495,7 @@ const GuestClaimsSubmissionForm = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Model *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Model *</label>
                   <input
                     type="text"
                     value={formData?.vehicle_model}
@@ -505,7 +517,9 @@ const GuestClaimsSubmissionForm = () => {
                   <input
                     type="text"
                     value={formData?.vehicle_vin}
-                    onChange={(e) => handleInputChange('vehicle_vin', e?.target?.value?.toUpperCase())}
+                    onChange={(e) =>
+                      handleInputChange('vehicle_vin', e?.target?.value?.toUpperCase())
+                    }
                     className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors?.vehicle_vin ? 'border-red-300' : 'border-gray-300'
                     }`}
@@ -528,7 +542,7 @@ const GuestClaimsSubmissionForm = () => {
                 <Package className="w-5 h-5 mr-2" />
                 Product Information
               </h2>
-              
+
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -542,7 +556,7 @@ const GuestClaimsSubmissionForm = () => {
                     }`}
                   >
                     <option value="">Select a product/service</option>
-                    {products?.map(product => (
+                    {products?.map((product) => (
                       <option key={product?.id} value={product?.id}>
                         {product?.name} - {product?.brand} ({product?.category})
                       </option>
@@ -562,7 +576,9 @@ const GuestClaimsSubmissionForm = () => {
                     </label>
                     <textarea
                       value={formData?.other_product_description}
-                      onChange={(e) => handleInputChange('other_product_description', e?.target?.value)}
+                      onChange={(e) =>
+                        handleInputChange('other_product_description', e?.target?.value)
+                      }
                       rows={3}
                       className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors?.other_product_description ? 'border-red-300' : 'border-gray-300'
@@ -570,7 +586,9 @@ const GuestClaimsSubmissionForm = () => {
                       placeholder="Please provide details about the product or service..."
                     />
                     {errors?.other_product_description && (
-                      <p className="text-red-600 text-sm mt-1">{errors?.other_product_description}</p>
+                      <p className="text-red-600 text-sm mt-1">
+                        {errors?.other_product_description}
+                      </p>
                     )}
                   </div>
                 )}
@@ -585,9 +603,7 @@ const GuestClaimsSubmissionForm = () => {
                     onChange={(e) => handleInputChange('purchase_date', e?.target?.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                  <p className="text-gray-500 text-sm mt-1">
-                    Helps us determine warranty coverage
-                  </p>
+                  <p className="text-gray-500 text-sm mt-1">Helps us determine warranty coverage</p>
                 </div>
               </div>
             </div>
@@ -598,7 +614,7 @@ const GuestClaimsSubmissionForm = () => {
                 <MessageSquare className="w-5 h-5 mr-2" />
                 Claim Details
               </h2>
-              
+
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -660,7 +676,7 @@ const GuestClaimsSubmissionForm = () => {
                 <Upload className="w-5 h-5 mr-2" />
                 Supporting Documentation (Optional)
               </h2>
-              
+
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
                 <div className="flex flex-col items-center">
                   <Upload className="w-8 h-8 text-gray-400 mb-2" />
@@ -686,16 +702,14 @@ const GuestClaimsSubmissionForm = () => {
                   </p>
                 </div>
               </div>
-              
-              {errors?.files && (
-                <p className="text-red-600 text-sm mt-2">{errors?.files}</p>
-              )}
+
+              {errors?.files && <p className="text-red-600 text-sm mt-2">{errors?.files}</p>}
 
               {/* Uploaded Files Display */}
               {uploadedFiles?.length > 0 && (
                 <div className="mt-4 space-y-3">
                   <h4 className="font-medium text-gray-900">Uploaded Files:</h4>
-                  {uploadedFiles?.map(file => (
+                  {uploadedFiles?.map((file) => (
                     <div key={file?.id} className="border border-gray-200 rounded-lg p-3">
                       <div className="flex items-center space-x-3">
                         {file?.preview && (
@@ -746,7 +760,7 @@ const GuestClaimsSubmissionForm = () => {
                     </>
                   )}
                 </button>
-                
+
                 <button
                   onClick={resetForm}
                   type="button"
@@ -756,7 +770,7 @@ const GuestClaimsSubmissionForm = () => {
                   Reset Form
                 </button>
               </div>
-              
+
               <p className="text-center text-sm text-gray-500 mt-4">
                 By submitting this form, you agree to our warranty terms and conditions.
               </p>
@@ -765,7 +779,7 @@ const GuestClaimsSubmissionForm = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default GuestClaimsSubmissionForm;
+export default GuestClaimsSubmissionForm

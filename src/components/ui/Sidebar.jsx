@@ -1,71 +1,73 @@
-import React, { useState } from 'react';
-import { Calendar, BarChart3, Clock, Settings, X, ChevronRight, Package } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react'
+import { Calendar, BarChart3, Clock, Settings, X, ChevronRight, Package } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const navigationItems = [
-    { 
-      icon: Package, 
-      label: 'Deals Dashboard', 
+    {
+      icon: Package,
+      label: 'Deals Dashboard',
       path: '/deals',
-      description: 'Sales & Transaction Management'
+      description: 'Sales & Transaction Management',
     },
-    { 
-      icon: Calendar, 
-      label: 'Calendar', 
+    {
+      icon: Calendar,
+      label: 'Calendar',
       path: '/calendar',
-      description: 'Appointment Scheduling'
+      description: 'Appointment Scheduling',
     },
-    { 
-      icon: Clock, 
-      label: 'Active Appointments', 
+    {
+      icon: Clock,
+      label: 'Active Appointments',
       path: '/currently-active-appointments',
-      description: 'Real-time Workflow Management'
+      description: 'Real-time Workflow Management',
     },
-    { 
-      icon: BarChart3, 
-      label: 'Analytics Dashboard', 
+    {
+      icon: BarChart3,
+      label: 'Analytics Dashboard',
       path: '/advanced-business-intelligence-analytics',
-      description: 'Performance & Business Intelligence'
+      description: 'Performance & Business Intelligence',
     },
-    { 
-      icon: Settings, 
-      label: 'Admin Center', 
+    {
+      icon: Settings,
+      label: 'Admin Center',
       path: '/admin',
-      description: 'System Configuration'
-    }
-  ];
+      description: 'System Configuration',
+    },
+  ]
 
   const isActivePath = (path) => {
     if (path === '/deals') {
-      return location?.pathname === '/' || location?.pathname === '/deals';
+      return location?.pathname === '/' || location?.pathname === '/deals'
     }
-    return location?.pathname === path;
-  };
+    return location?.pathname === path
+  }
 
   const handleNavigation = (path) => {
-    navigate(path);
-    setIsOpen(false);
-  };
+    navigate(path)
+    setIsOpen(false)
+  }
 
   return (
     <>
       {/* Mobile Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
       {/* Sidebar */}
-      <div className={`
+      <div
+        className={`
         fixed lg:static inset-y-0 left-0 z-50 w-80 bg-white/95 backdrop-blur-xl border-r border-gray-200/50 
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+      `}
+      >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-8 border-b border-gray-200/50">
@@ -89,30 +91,35 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <nav className="flex-1 p-6">
             <div className="space-y-2">
               {navigationItems?.map((item) => {
-                const isActive = isActivePath(item?.path);
+                const isActive = isActivePath(item?.path)
                 return (
                   <button
                     key={item?.path}
                     onClick={() => handleNavigation(item?.path)}
                     className={`
                       w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-200 group
-                      ${isActive 
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25' 
-                        : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
+                      ${
+                        isActive
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
+                          : 'text-gray-700 hover:bg-gray-100/80 hover:text-gray-900'
                       }
                     `}
                   >
                     <div className="flex items-center space-x-4">
-                      <div className={`
+                      <div
+                        className={`
                         w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200
-                        ${isActive 
-                          ? 'bg-white/20' :'bg-gray-100 group-hover:bg-gray-200'
-                        }
-                      `}>
-                        <item.icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-600 group-hover:text-gray-700'}`} />
+                        ${isActive ? 'bg-white/20' : 'bg-gray-100 group-hover:bg-gray-200'}
+                      `}
+                      >
+                        <item.icon
+                          className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-600 group-hover:text-gray-700'}`}
+                        />
                       </div>
                       <div className="text-left">
-                        <div className={`font-semibold ${isActive ? 'text-white' : 'text-gray-900'}`}>
+                        <div
+                          className={`font-semibold ${isActive ? 'text-white' : 'text-gray-900'}`}
+                        >
                           {item?.label}
                         </div>
                         <div className={`text-sm ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
@@ -120,12 +127,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className={`
+                    <ChevronRight
+                      className={`
                       w-4 h-4 transition-all duration-200
                       ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'}
-                    `} />
+                    `}
+                    />
                   </button>
-                );
+                )
               })}
             </div>
           </nav>
@@ -147,7 +156,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         </div>
       </div>
     </>
-  );
-};
+  )
+}
 
-export default Sidebar;
+export default Sidebar

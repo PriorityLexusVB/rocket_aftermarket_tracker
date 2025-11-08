@@ -1,42 +1,44 @@
-import React, { useMemo } from 'react';
-import Icon from '../../../components/AppIcon';
+import React, { useMemo } from 'react'
+import Icon from '../../../components/AppIcon'
 
 export default function LineItemServiceConfig({
   item,
   index,
   vendors = [],
   errors = {},
-  updateLineItem
+  updateLineItem,
 }) {
   const vendorOptions = useMemo(
-    () => vendors?.map(v => ({ value: v?.id, label: v?.name })),
+    () => vendors?.map((v) => ({ value: v?.id, label: v?.name })),
     [vendors]
-  );
+  )
 
   const expanded =
     item?.__ui_schedule_open ??
-    Boolean(item?.promised_date || item?.vendor_id || item?.service_type === 'vendor');
+    Boolean(item?.promised_date || item?.vendor_id || item?.service_type === 'vendor')
 
-  const dateValue = item?.promised_date ? String(item?.promised_date)?.slice(0, 10) : '';
+  const dateValue = item?.promised_date ? String(item?.promised_date)?.slice(0, 10) : ''
 
   const toggleExpanded = () => {
-    updateLineItem(index, '__ui_schedule_open', !expanded);
-  };
+    updateLineItem(index, '__ui_schedule_open', !expanded)
+  }
 
   const handleServiceTypeChange = (e) => {
-    const val = e?.target?.value; // 'in_house' | 'vendor'
-    updateLineItem(index, 'service_type', val);
+    const val = e?.target?.value // 'in_house' | 'vendor'
+    updateLineItem(index, 'service_type', val)
     if (val !== 'vendor' && item?.vendor_id) {
-      updateLineItem(index, 'vendor_id', null);
+      updateLineItem(index, 'vendor_id', null)
     }
-  };
+  }
 
   return (
     <>
       {/* Purple header strip */}
       <div
         className={`rounded-xl border-2 ${
-          expanded ? 'border-purple-400 bg-purple-50' : 'border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50'
+          expanded
+            ? 'border-purple-400 bg-purple-50'
+            : 'border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50'
         }`}
       >
         <button
@@ -96,12 +98,16 @@ export default function LineItemServiceConfig({
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
                   >
                     <option value="">Select vendor…</option>
-                    {vendorOptions?.map(v => (
-                      <option key={v?.value} value={v?.value}>{v?.label}</option>
+                    {vendorOptions?.map((v) => (
+                      <option key={v?.value} value={v?.value}>
+                        {v?.label}
+                      </option>
                     ))}
                   </select>
                   {errors?.[`lineItem_${index}_vendor`] && (
-                    <p className="text-red-600 text-sm mt-1">{errors?.[`lineItem_${index}_vendor`]}</p>
+                    <p className="text-red-600 text-sm mt-1">
+                      {errors?.[`lineItem_${index}_vendor`]}
+                    </p>
                   )}
                 </div>
               )}
@@ -130,11 +136,9 @@ export default function LineItemServiceConfig({
             onChange={(e) => updateLineItem(index, 'customer_needs_loaner', e?.target?.checked)}
             className="w-5 h-5 text-blue-600 bg-white border-2 border-gray-400 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
           />
-          <span className="text-base font-semibold text-gray-800">
-            Customer needs loaner
-          </span>
+          <span className="text-base font-semibold text-gray-800">Customer needs loaner</span>
         </label>
       </div>
     </>
-  );
+  )
 }

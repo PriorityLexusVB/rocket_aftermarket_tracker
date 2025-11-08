@@ -1,55 +1,67 @@
-import React, { useState } from 'react';
-import { X, Calendar, Clock, MapPin, User, Phone, Copy, Download, MessageSquare, Camera, FileText, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react'
+import {
+  X,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Phone,
+  Copy,
+  Download,
+  MessageSquare,
+  Camera,
+  FileText,
+  CheckCircle,
+} from 'lucide-react'
 
-import { estLabel } from '../../../lib/time';
-import Icon from '../../../components/AppIcon';
-
+import { estLabel } from '../../../lib/time'
+import Icon from '../../../components/AppIcon'
 
 const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }) => {
-  const [activeTab, setActiveTab] = useState('details');
-  const [copied, setCopied] = useState(false);
-  
+  const [activeTab, setActiveTab] = useState('details')
+  const [copied, setCopied] = useState(false)
+
   // Extract stock number from title or vehicle info
   const getStockNumber = () => {
     if (appointment?.vehicle_info?.includes('Stock:')) {
-      return appointment?.vehicle_info?.split('Stock:')?.[1]?.split('•')?.[0]?.trim();
+      return appointment?.vehicle_info?.split('Stock:')?.[1]?.split('•')?.[0]?.trim()
     }
-    return appointment?.job_number?.split('-')?.pop() || 'N/A';
-  };
+    return appointment?.job_number?.split('-')?.pop() || 'N/A'
+  }
 
-  const stockNumber = getStockNumber();
+  const stockNumber = getStockNumber()
 
   // Copy stock number to clipboard
   const handleCopyStock = async () => {
     try {
-      await navigator.clipboard?.writeText(stockNumber);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard?.writeText(stockNumber)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error('Failed to copy:', err)
     }
-  };
+  }
 
   // Build vehicle display string (Y/M/M/Color + VIN last4)
   const getVehicleDisplay = () => {
-    const info = appointment?.vehicle_info || '';
+    const info = appointment?.vehicle_info || ''
     if (info?.includes('•')) {
-      const parts = info?.split('•');
-      const ymm = parts?.[0]?.trim();
-      const color = parts?.[1]?.trim();
-      return { ymm, color };
+      const parts = info?.split('•')
+      const ymm = parts?.[0]?.trim()
+      const color = parts?.[1]?.trim()
+      return { ymm, color }
     }
-    return { ymm: info, color: null };
-  };
+    return { ymm: info, color: null }
+  }
 
-  const { ymm, color } = getVehicleDisplay();
+  const { ymm, color } = getVehicleDisplay()
 
   const tabs = [
     { id: 'details', label: 'Details', icon: FileText },
     { id: 'timeline', label: 'Timeline/Notes', icon: MessageSquare },
     { id: 'photos', label: 'Photos', icon: Camera },
-    { id: 'sms', label: 'SMS', icon: Phone }
-  ];
+    { id: 'sms', label: 'SMS', icon: Phone },
+  ]
 
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl border-l border-gray-200 z-50 flex flex-col">
@@ -59,9 +71,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
           <div className="flex-1">
             {/* BIG STOCK NUMBER */}
             <div className="flex items-center space-x-3 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900 tracking-wide">
-                {stockNumber}
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900 tracking-wide">{stockNumber}</h2>
               <button
                 onClick={handleCopyStock}
                 className="p-2 text-gray-500 hover:text-blue-600 hover:bg-white rounded-full transition-all"
@@ -73,11 +83,13 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                   <Copy className="w-5 h-5" />
                 )}
               </button>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(appointment?.job_status)}`}>
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(appointment?.job_status)}`}
+              >
                 {appointment?.job_status?.replace('_', ' ')}
               </span>
             </div>
-            
+
             {/* Subline: Y/M/M/Color + VIN last4 */}
             <div className="text-sm text-gray-600 mb-1">
               {ymm}
@@ -88,10 +100,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-1"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -100,20 +109,21 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
       <div className="border-b border-gray-200">
         <nav className="flex">
           {tabs?.map((tab) => {
-            const Icon = tab?.icon;
+            const Icon = tab?.icon
             return (
               <button
                 key={tab?.id}
                 onClick={() => setActiveTab(tab?.id)}
                 className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab?.id
-                    ? 'border-blue-500 text-blue-600 bg-blue-50' :'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab?.label}</span>
               </button>
-            );
+            )
           })}
         </nav>
       </div>
@@ -129,7 +139,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                 </p>
               )}
             </div>
-            
+
             {/* Time & Schedule */}
             <div className="space-y-3">
               <div className="flex items-center space-x-3 text-sm">
@@ -142,7 +152,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3 text-sm">
                 <Clock className="w-4 h-4 text-gray-400" />
                 <div>
@@ -150,7 +160,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                   <div className="text-gray-600">{appointment?.estimated_hours}h estimated</div>
                 </div>
               </div>
-              
+
               {appointment?.location && (
                 <div className="flex items-center space-x-3 text-sm">
                   <MapPin className="w-4 h-4 text-gray-400" />
@@ -160,7 +170,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                   </div>
                 </div>
               )}
-              
+
               <div className="flex items-center space-x-3 text-sm">
                 <User className="w-4 h-4 text-gray-400" />
                 <div>
@@ -169,22 +179,26 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                 </div>
               </div>
             </div>
-            
+
             {/* Priority & Tags */}
             <div className="flex items-center space-x-4 pt-4 border-t border-gray-200">
-              <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                appointment?.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                appointment?.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                appointment?.priority === 'low'? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-800'
-              }`}>
+              <div
+                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  appointment?.priority === 'urgent'
+                    ? 'bg-red-100 text-red-800'
+                    : appointment?.priority === 'high'
+                      ? 'bg-orange-100 text-orange-800'
+                      : appointment?.priority === 'low'
+                        ? 'bg-gray-100 text-gray-600'
+                        : 'bg-blue-100 text-blue-800'
+                }`}
+              >
                 {appointment?.priority?.toUpperCase()} PRIORITY
               </div>
-              
-              <div className="text-xs text-gray-500">
-                Job #{appointment?.job_number}
-              </div>
+
+              <div className="text-xs text-gray-500">Job #{appointment?.job_number}</div>
             </div>
-            
+
             {/* Calendar Notes */}
             {appointment?.calendar_notes && (
               <div className="pt-4 border-t border-gray-200">
@@ -194,7 +208,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                 </p>
               </div>
             )}
-            
+
             {/* Copy .ics Button */}
             <div className="pt-4 border-t border-gray-200">
               <button
@@ -204,13 +218,11 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                 <Download className="w-4 h-4" />
                 <span>Copy .ics Calendar File</span>
               </button>
-              <p className="text-xs text-gray-500 mt-1 text-center">
-                UTC times with EST labels
-              </p>
+              <p className="text-xs text-gray-500 mt-1 text-center">UTC times with EST labels</p>
             </div>
           </div>
         )}
-        
+
         {activeTab === 'timeline' && (
           <div className="p-4">
             <div className="space-y-4">
@@ -222,7 +234,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
             </div>
           </div>
         )}
-        
+
         {activeTab === 'photos' && (
           <div className="p-4">
             <div className="text-center py-8 text-gray-500">
@@ -232,7 +244,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
             </div>
           </div>
         )}
-        
+
         {activeTab === 'sms' && (
           <div className="p-4">
             <div className="space-y-4">
@@ -240,20 +252,26 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
                 <h5 className="font-medium text-blue-900 mb-2">SMS Templates</h5>
                 <div className="space-y-2 text-sm">
                   <div className="bg-white p-2 rounded border">
-                    <strong>Vendor NEW:</strong><br/>
+                    <strong>Vendor NEW:</strong>
+                    <br />
                     <span className="font-mono text-xs">
-                      {stockNumber}: {appointment?.title} {ymm} {estLabel(appointment?.scheduled_start_time, 'MMM d @ h:mm a')} ET. Reply YES/NO.
+                      {stockNumber}: {appointment?.title} {ymm}{' '}
+                      {estLabel(appointment?.scheduled_start_time, 'MMM d @ h:mm a')} ET. Reply
+                      YES/NO.
                     </span>
                   </div>
                   <div className="bg-white p-2 rounded border">
-                    <strong>Customer BOOKED:</strong><br/>
+                    <strong>Customer BOOKED:</strong>
+                    <br />
                     <span className="font-mono text-xs">
-                      {stockNumber} set for {appointment?.title} {estLabel(appointment?.scheduled_start_time, 'MMM d @ h:mm a')} ET at Priority Lexus VB. Reply C/R.
+                      {stockNumber} set for {appointment?.title}{' '}
+                      {estLabel(appointment?.scheduled_start_time, 'MMM d @ h:mm a')} ET at Priority
+                      Lexus VB. Reply C/R.
                     </span>
                   </div>
                 </div>
               </div>
-              
+
               <div className="text-center py-4 text-gray-500">
                 <Phone className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">SMS History</p>
@@ -264,7 +282,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AppointmentDrawer;
+export default AppointmentDrawer

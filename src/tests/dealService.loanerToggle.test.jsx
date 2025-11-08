@@ -11,12 +11,8 @@ vi.mock('../services/dropdownService', () => ({
   getProducts: vi.fn(() =>
     Promise.resolve([{ id: 'p1', value: 'p1', label: 'Product 1', unit_price: 100 }])
   ),
-  getSalesConsultants: vi.fn(() =>
-    Promise.resolve([{ id: 'u1', value: 'u1', label: 'Sales 1' }])
-  ),
-  getFinanceManagers: vi.fn(() =>
-    Promise.resolve([{ id: 'u2', value: 'u2', label: 'Finance 1' }])
-  ),
+  getSalesConsultants: vi.fn(() => Promise.resolve([{ id: 'u1', value: 'u1', label: 'Sales 1' }])),
+  getFinanceManagers: vi.fn(() => Promise.resolve([{ id: 'u2', value: 'u2', label: 'Finance 1' }])),
   getDeliveryCoordinators: vi.fn(() =>
     Promise.resolve([{ id: 'u3', value: 'u3', label: 'Delivery 1' }])
   ),
@@ -208,7 +204,9 @@ describe('DealForm Loaner Toggle', () => {
     expect(unitPriceInput).toBeDefined()
 
     // Check for scheduling controls
-    const requiresSchedulingCheckbox = dealForm?.querySelector('[data-testid="requires-scheduling-0"]')
+    const requiresSchedulingCheckbox = dealForm?.querySelector(
+      '[data-testid="requires-scheduling-0"]'
+    )
     expect(requiresSchedulingCheckbox).toBeDefined()
   })
 
@@ -251,7 +249,9 @@ describe('DealForm Loaner Toggle', () => {
     const productSelect = dealForm?.querySelector('[data-testid="product-select-0"]')
     const unitPriceInput = dealForm?.querySelector('[data-testid="unit-price-input-0"]')
     const promisedDateInput = dealForm?.querySelector('[data-testid="promised-date-0"]')
-    const requiresSchedulingCheckbox = dealForm?.querySelector('[data-testid="requires-scheduling-0"]')
+    const requiresSchedulingCheckbox = dealForm?.querySelector(
+      '[data-testid="requires-scheduling-0"]'
+    )
 
     expect(productSelect).toBeDefined()
     expect(unitPriceInput).toBeDefined()

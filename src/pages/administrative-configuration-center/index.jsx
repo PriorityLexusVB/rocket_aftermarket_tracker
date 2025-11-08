@@ -1,30 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useLogger } from '../../hooks/useLogger';
-import Header from '../../components/ui/Header';
-import Sidebar from '../../components/ui/Sidebar';
-import VendorManagement from './components/VendorManagement';
-import ProductCatalog from './components/ProductCatalog';
-import ServiceCategories from './components/ServiceCategories';
-import UserManagement from './components/UserManagement';
-import SmsTemplateManager from './components/SmsTemplateManager';
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../../contexts/AuthContext'
+import { useLogger } from '../../hooks/useLogger'
+import Header from '../../components/ui/Header'
+import Sidebar from '../../components/ui/Sidebar'
+import VendorManagement from './components/VendorManagement'
+import ProductCatalog from './components/ProductCatalog'
+import ServiceCategories from './components/ServiceCategories'
+import UserManagement from './components/UserManagement'
+import SmsTemplateManager from './components/SmsTemplateManager'
 
 const TABS = [
   { id: 'vendors', label: 'Vendor Management', icon: '👥' },
   { id: 'products', label: 'Product Catalog', icon: '📦' },
   { id: 'services', label: 'Service Categories', icon: '🔧' },
-  { id: 'users', label: 'User Management', icon: '👤' }
-];
+  { id: 'users', label: 'User Management', icon: '👤' },
+]
 
 const AdministrativeConfigurationCenter = () => {
-  const { userProfile, isManager } = useAuth();
-  const { logInfo, logError, logWarning } = useLogger();
-  const [activeTab, setActiveTab] = useState('vendors');
-  const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [totalUsers, setTotalUsers] = useState(0);
-  const [totalProducts, setTotalProducts] = useState(0);
-  const [totalVendors, setTotalVendors] = useState(0);
+  const { userProfile, isManager } = useAuth()
+  const { logInfo, logError, logWarning } = useLogger()
+  const [activeTab, setActiveTab] = useState('vendors')
+  const [loading, setLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [totalUsers, setTotalUsers] = useState(0)
+  const [totalProducts, setTotalProducts] = useState(0)
+  const [totalVendors, setTotalVendors] = useState(0)
 
   useEffect(() => {
     const initializeConfigCenter = async () => {
@@ -37,9 +37,9 @@ const AdministrativeConfigurationCenter = () => {
           {
             userId: userProfile?.id,
             userRole: userProfile?.role,
-            accessTime: new Date()?.toISOString()
+            accessTime: new Date()?.toISOString(),
           }
-        );
+        )
 
         // Check permissions
         if (!isManager) {
@@ -51,56 +51,50 @@ const AdministrativeConfigurationCenter = () => {
             {
               userId: userProfile?.id,
               userRole: userProfile?.role,
-              requiredRole: 'manager'
+              requiredRole: 'manager',
             }
-          );
+          )
         }
 
-        setLoading(false);
+        setLoading(false)
       } catch (error) {
-        console.error('Error initializing config center:', error);
+        console.error('Error initializing config center:', error)
         await logError(error, {
           context: 'admin-config-initialization',
-          userId: userProfile?.id
-        });
-        setLoading(false);
+          userId: userProfile?.id,
+        })
+        setLoading(false)
       }
-    };
+    }
 
-    initializeConfigCenter();
-  }, [userProfile, isManager, logInfo, logWarning, logError]);
+    initializeConfigCenter()
+  }, [userProfile, isManager, logInfo, logWarning, logError])
 
   const handleTabChange = async (tabId) => {
     try {
-      await logInfo(
-        'tab_changed',
-        'USER',
-        userProfile?.id,
-        `Tab changed to ${tabId}`,
-        {
-          fromTab: activeTab,
-          toTab: tabId,
-          timestamp: new Date()?.toISOString()
-        }
-      );
+      await logInfo('tab_changed', 'USER', userProfile?.id, `Tab changed to ${tabId}`, {
+        fromTab: activeTab,
+        toTab: tabId,
+        timestamp: new Date()?.toISOString(),
+      })
 
-      setActiveTab(tabId);
+      setActiveTab(tabId)
     } catch (error) {
-      console.error('Error changing tab:', error);
+      console.error('Error changing tab:', error)
       await logError(error, {
         context: 'tab-change',
-        userId: userProfile?.id
-      });
+        userId: userProfile?.id,
+      })
     }
-  };
+  }
 
   const handleMenuToggle = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+    setSidebarOpen(!sidebarOpen)
+  }
 
   const handleSidebarClose = () => {
-    setSidebarOpen(false);
-  };
+    setSidebarOpen(false)
+  }
 
   if (loading) {
     return (
@@ -110,7 +104,7 @@ const AdministrativeConfigurationCenter = () => {
           <p className="mt-4 text-gray-600">Loading Administrative Configuration Center...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!isManager) {
@@ -124,19 +118,25 @@ const AdministrativeConfigurationCenter = () => {
           </p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="min-h-screen bg-background">
       <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} isMenuOpen={sidebarOpen} />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} setIsOpen={setSidebarOpen} />
-      
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        setIsOpen={setSidebarOpen}
+      />
+
       <main className="lg:ml-60 pt-16">
         <div className="p-6 max-w-7xl mx-auto">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-foreground mb-2">Administrative Configuration Center</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              Administrative Configuration Center
+            </h1>
             <p className="text-muted-foreground">
               Manage system settings, templates, users, and organizational data
             </p>
@@ -159,26 +159,20 @@ const AdministrativeConfigurationCenter = () => {
           {/* System Information */}
           <div className="bg-card border border-border rounded-lg p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">System Information</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">
-                  {totalUsers}
-                </div>
+                <div className="text-2xl font-bold text-primary mb-1">{totalUsers}</div>
                 <div className="text-sm text-muted-foreground">Total Users</div>
               </div>
-              
+
               <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">
-                  {totalProducts}
-                </div>
+                <div className="text-2xl font-bold text-primary mb-1">{totalProducts}</div>
                 <div className="text-sm text-muted-foreground">Active Products</div>
               </div>
-              
+
               <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">
-                  {totalVendors}
-                </div>
+                <div className="text-2xl font-bold text-primary mb-1">{totalVendors}</div>
                 <div className="text-sm text-muted-foreground">Active Vendors</div>
               </div>
             </div>
@@ -186,7 +180,7 @@ const AdministrativeConfigurationCenter = () => {
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default AdministrativeConfigurationCenter;
+export default AdministrativeConfigurationCenter

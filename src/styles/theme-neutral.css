@@ -1,40 +1,41 @@
 /* ✅ ENFORCED: Light-only theme per user requirements - no dark UI anywhere */
 :root {
-  --bg-app: #F8FAFC;        /* slate-50 */
-  --bg-card: #FFFFFF;
-  --border: #E5E7EB;
-  --text: #0F172A;          /* slate-900 */
-  --text-muted: #475569;    /* slate-600 */
-  --primary: #2563EB;       /* blue-600 */
-  --primary-hover: #1D4ED8; /* blue-700 */
-  
+  --bg-app: #f8fafc; /* slate-50 */
+  --bg-card: #ffffff;
+  --border: #e5e7eb;
+  --text: #0f172a; /* slate-900 */
+  --text-muted: #475569; /* slate-600 */
+  --primary: #2563eb; /* blue-600 */
+  --primary-hover: #1d4ed8; /* blue-700 */
+
   /* Form elements */
-  --input-bg: #FFFFFF;
-  --input-border: #D1D5DB;
-  --input-focus: #2563EB;
-  
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --input-focus: #2563eb;
+
   /* Status colors */
-  --status-draft: #6B7280;
-  --status-pending: #2563EB;
-  --status-active: #F59E0B;
-  --status-completed: #10B981;
-  --status-cancelled: #EF4444;
-  
+  --status-draft: #6b7280;
+  --status-pending: #2563eb;
+  --status-active: #f59e0b;
+  --status-completed: #10b981;
+  --status-cancelled: #ef4444;
+
   /* Service location exact colors per requirements */
-  --service-onsite: #22c55e;   /* exact green On-Site */
-  --service-offsite: #f97316;  /* exact orange Off-Site */
+  --service-onsite: #22c55e; /* exact green On-Site */
+  --service-offsite: #f97316; /* exact orange Off-Site */
 }
 
-html, body {
+html,
+body {
   background: var(--bg-app);
   color: var(--text);
 }
 
 /* ✅ HARD KILL: Disable any dark mode completely per requirements */
-[data-theme="dark"], 
+[data-theme='dark'],
 .dark,
-html[data-theme="dark"],
-body[data-theme="dark"] {
+html[data-theme='dark'],
+body[data-theme='dark'] {
   all: unset !important;
   background: var(--bg-app) !important;
   color: var(--text) !important;
@@ -43,7 +44,7 @@ body[data-theme="dark"] {
 /* Remove any dark mode toggles or switches */
 .theme-toggle,
 .dark-mode-switch,
-[data-testid="theme-toggle"] {
+[data-testid='theme-toggle'] {
   display: none !important;
 }
 
@@ -73,13 +74,17 @@ body[data-theme="dark"] {
 }
 
 /* Form elements light theme */
-input, select, textarea {
+input,
+select,
+textarea {
   background-color: var(--input-bg) !important;
   color: var(--text) !important;
   border-color: var(--input-border) !important;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-color: var(--input-focus) !important;
   box-shadow: 0 0 0 1px var(--input-focus) !important;
 }
@@ -95,68 +100,75 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Card components light theme */
-.card, .bg-white {
+.card,
+.bg-white {
   background-color: var(--bg-card) !important;
   color: var(--text) !important;
 }
 
 /* Status pills proper colors */
 .status-draft {
-  background-color: #F3F4F6 !important;
+  background-color: #f3f4f6 !important;
   color: #374151 !important;
 }
 
 .status-pending {
-  background-color: #DBEAFE !important;
-  color: #1D4ED8 !important;
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
 }
 
 .status-active {
-  background-color: #FEF3C7 !important;
-  color: #92400E !important;
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
 }
 
 .status-completed {
-  background-color: #D1FAE5 !important;
-  color: #065F46 !important;
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
 }
 
 .status-cancelled {
-  background-color: #FEE2E2 !important;
-  color: #991B1B !important;
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
 }
 
 /* Ensure navigation and headers are light */
-nav, header, .navbar, .header {
+nav,
+header,
+.navbar,
+.header {
   background-color: var(--bg-card) !important;
   color: var(--text) !important;
   border-bottom: 1px solid var(--border) !important;
 }
 
 /* Table styling light theme */
-table, .table {
+table,
+.table {
   background-color: var(--bg-card) !important;
   color: var(--text) !important;
 }
 
-thead, .table-header {
-  background-color: #F9FAFB !important;
+thead,
+.table-header {
+  background-color: #f9fafb !important;
   color: var(--text-muted) !important;
 }
 
 tbody tr:hover {
-  background-color: #F9FAFB !important;
+  background-color: #f9fafb !important;
 }
 
 /* Dropdown and select styling */
-.dropdown, .select-dropdown {
+.dropdown,
+.select-dropdown {
   background-color: var(--bg-card) !important;
   color: var(--text) !important;
   border: 1px solid var(--border) !important;
 }
 
 .dropdown-option:hover {
-  background-color: #F3F4F6 !important;
+  background-color: #f3f4f6 !important;
 }
 
 /* Mobile responsive adjustments */
@@ -164,7 +176,7 @@ tbody tr:hover {
   body {
     background-color: var(--bg-app) !important;
   }
-  
+
   .mobile-card {
     background-color: var(--bg-card) !important;
     color: var(--text) !important;
@@ -172,7 +184,8 @@ tbody tr:hover {
 }
 
 /* Authentication pages light theme */
-.auth-container, .login-form {
+.auth-container,
+.login-form {
   background-color: var(--bg-card) !important;
   color: var(--text) !important;
 }

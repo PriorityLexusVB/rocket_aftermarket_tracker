@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Select from '../../../components/ui/Select';
-import Button from '../../../components/ui/Button';
+import React, { useState, useEffect } from 'react'
+import Icon from '../../../components/AppIcon'
+import Select from '../../../components/ui/Select'
+import Button from '../../../components/ui/Button'
 
-
-const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAssign, onNotificationToggle }) => {
-  const [bulkVendor, setBulkVendor] = useState('');
-  const [estimatedCompletion, setEstimatedCompletion] = useState('');
+const VendorAssignmentPanel = ({
+  selectedProducts,
+  vendorAssignments,
+  onVendorAssign,
+  onNotificationToggle,
+}) => {
+  const [bulkVendor, setBulkVendor] = useState('')
+  const [estimatedCompletion, setEstimatedCompletion] = useState('')
 
   // Mock vendor data
   const mockVendors = [
@@ -21,7 +25,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
       phone: '+1 (555) 123-4567',
       email: 'contact@premiumautodetailing.com',
       currentWorkload: 3,
-      maxCapacity: 8
+      maxCapacity: 8,
     },
     {
       id: 'vendor_002',
@@ -34,7 +38,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
       phone: '+1 (555) 234-5678',
       email: 'info@crystalcleartinting.com',
       currentWorkload: 2,
-      maxCapacity: 5
+      maxCapacity: 5,
     },
     {
       id: 'vendor_003',
@@ -47,7 +51,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
       phone: '+1 (555) 345-6789',
       email: 'studio@wrapmasters.com',
       currentWorkload: 4,
-      maxCapacity: 4
+      maxCapacity: 4,
     },
     {
       id: 'vendor_004',
@@ -60,7 +64,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
       phone: '+1 (555) 456-7890',
       email: 'service@guardiancoatings.com',
       currentWorkload: 1,
-      maxCapacity: 6
+      maxCapacity: 6,
     },
     {
       id: 'vendor_005',
@@ -73,105 +77,107 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
       phone: '+1 (555) 567-8901',
       email: 'contact@eliteautoservices.com',
       currentWorkload: 2,
-      maxCapacity: 10
-    }
-  ];
+      maxCapacity: 10,
+    },
+  ]
 
   const getRecommendedVendors = (product) => {
-    return mockVendors?.filter(vendor => 
-        product?.vendorSpecialties?.some(specialty => 
-          vendor?.specialties?.includes(specialty)
-        )
-      )?.sort((a, b) => {
+    return mockVendors
+      ?.filter((vendor) =>
+        product?.vendorSpecialties?.some((specialty) => vendor?.specialties?.includes(specialty))
+      )
+      ?.sort((a, b) => {
         // Sort by availability, then rating, then workload
-        if (a?.status === 'Available' && b?.status !== 'Available') return -1;
-        if (a?.status !== 'Available' && b?.status === 'Available') return 1;
-        if (b?.rating !== a?.rating) return b?.rating - a?.rating;
-        return a?.currentWorkload - b?.currentWorkload;
-      });
-  };
+        if (a?.status === 'Available' && b?.status !== 'Available') return -1
+        if (a?.status !== 'Available' && b?.status === 'Available') return 1
+        if (b?.rating !== a?.rating) return b?.rating - a?.rating
+        return a?.currentWorkload - b?.currentWorkload
+      })
+  }
 
   const getVendorOptions = (product) => {
-    const recommended = getRecommendedVendors(product);
-    const others = mockVendors?.filter(vendor => !recommended?.includes(vendor));
-    
+    const recommended = getRecommendedVendors(product)
+    const others = mockVendors?.filter((vendor) => !recommended?.includes(vendor))
+
     const options = [
       { value: '', label: 'Select Vendor' },
-      ...recommended?.map(vendor => ({
+      ...recommended?.map((vendor) => ({
         value: vendor?.id,
         label: `${vendor?.name} (${vendor?.rating}⭐) - ${vendor?.status}`,
-        description: `${vendor?.specialties?.join(', ')} • ${vendor?.currentWorkload}/${vendor?.maxCapacity} jobs`
+        description: `${vendor?.specialties?.join(', ')} • ${vendor?.currentWorkload}/${vendor?.maxCapacity} jobs`,
       })),
-      ...(others?.length > 0 ? [{ value: 'divider', label: '--- Other Vendors ---', disabled: true }] : []),
-      ...others?.map(vendor => ({
+      ...(others?.length > 0
+        ? [{ value: 'divider', label: '--- Other Vendors ---', disabled: true }]
+        : []),
+      ...others?.map((vendor) => ({
         value: vendor?.id,
         label: `${vendor?.name} (${vendor?.rating}⭐) - ${vendor?.status}`,
-        description: `${vendor?.specialties?.join(', ')} • ${vendor?.currentWorkload}/${vendor?.maxCapacity} jobs`
-      }))
-    ];
-    
-    return options;
-  };
+        description: `${vendor?.specialties?.join(', ')} • ${vendor?.currentWorkload}/${vendor?.maxCapacity} jobs`,
+      })),
+    ]
+
+    return options
+  }
 
   const handleVendorSelect = (productId, vendorId) => {
-    const vendor = mockVendors?.find(v => v?.id === vendorId);
-    onVendorAssign(productId, vendor);
-  };
+    const vendor = mockVendors?.find((v) => v?.id === vendorId)
+    onVendorAssign(productId, vendor)
+  }
 
   const handleBulkAssign = () => {
     if (bulkVendor) {
-      const vendor = mockVendors?.find(v => v?.id === bulkVendor);
-      selectedProducts?.forEach(product => {
+      const vendor = mockVendors?.find((v) => v?.id === bulkVendor)
+      selectedProducts?.forEach((product) => {
         if (!vendorAssignments?.[product?.id]) {
-          onVendorAssign(product?.id, vendor);
+          onVendorAssign(product?.id, vendor)
         }
-      });
-      setBulkVendor('');
+      })
+      setBulkVendor('')
     }
-  };
+  }
 
   const calculateEstimatedCompletion = () => {
-    const now = new Date();
+    const now = new Date()
     const totalHours = selectedProducts?.reduce((total, product) => {
-      const vendor = vendorAssignments?.[product?.id];
+      const vendor = vendorAssignments?.[product?.id]
       if (vendor) {
-        const avgHours = parseFloat(vendor?.averageTime?.split(' ')?.[0]);
-        return total + avgHours;
+        const avgHours = parseFloat(vendor?.averageTime?.split(' ')?.[0])
+        return total + avgHours
       }
-      return total;
-    }, 0);
-    
-    const completionDate = new Date(now.getTime() + totalHours * 60 * 60 * 1000);
+      return total
+    }, 0)
+
+    const completionDate = new Date(now.getTime() + totalHours * 60 * 60 * 1000)
     return completionDate?.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+      minute: '2-digit',
+    })
+  }
 
   const getWorkloadColor = (current, max) => {
-    const percentage = (current / max) * 100;
-    if (percentage >= 90) return 'text-error';
-    if (percentage >= 70) return 'text-warning';
-    return 'text-success';
-  };
+    const percentage = (current / max) * 100
+    if (percentage >= 90) return 'text-error'
+    if (percentage >= 70) return 'text-warning'
+    return 'text-success'
+  }
 
   const bulkVendorOptions = [
     { value: '', label: 'Select vendor for all products' },
-    ...mockVendors?.map(vendor => ({
+    ...mockVendors?.map((vendor) => ({
       value: vendor?.id,
       label: `${vendor?.name} (${vendor?.rating}⭐) - ${vendor?.status}`,
-      description: `${vendor?.currentWorkload}/${vendor?.maxCapacity} current jobs`
-    }))
-  ];
+      description: `${vendor?.currentWorkload}/${vendor?.maxCapacity} current jobs`,
+    })),
+  ]
 
   useEffect(() => {
     if (Object.keys(vendorAssignments)?.length > 0) {
-      setEstimatedCompletion(calculateEstimatedCompletion());
+      setEstimatedCompletion(calculateEstimatedCompletion())
     }
-  }, [vendorAssignments, selectedProducts]);
+  }, [vendorAssignments, selectedProducts])
 
   if (selectedProducts?.length === 0) {
     return (
@@ -190,7 +196,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
           <p className="text-muted-foreground">No products selected for vendor assignment</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -238,9 +244,9 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
       {/* Individual Product Assignments */}
       <div className="space-y-4">
         {selectedProducts?.map((product) => {
-          const assignedVendor = vendorAssignments?.[product?.id];
-          const vendorOptions = getVendorOptions(product);
-          
+          const assignedVendor = vendorAssignments?.[product?.id]
+          const vendorOptions = getVendorOptions(product)
+
           return (
             <div key={product?.id} className="p-4 border border-border rounded-lg">
               <div className="flex items-center justify-between mb-4">
@@ -268,7 +274,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
                   onChange={(vendorId) => handleVendorSelect(product?.id, vendorId)}
                   searchable
                 />
-                
+
                 {assignedVendor && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3 text-sm">
@@ -282,20 +288,24 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
                       </div>
                       <div>
                         <span className="text-muted-foreground">Status:</span>
-                        <p className={`font-medium ${
-                          assignedVendor?.status === 'Available' ? 'text-success' : 'text-warning'
-                        }`}>
+                        <p
+                          className={`font-medium ${
+                            assignedVendor?.status === 'Available' ? 'text-success' : 'text-warning'
+                          }`}
+                        >
                           {assignedVendor?.status}
                         </p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Workload:</span>
-                        <p className={`font-medium ${getWorkloadColor(assignedVendor?.currentWorkload, assignedVendor?.maxCapacity)}`}>
+                        <p
+                          className={`font-medium ${getWorkloadColor(assignedVendor?.currentWorkload, assignedVendor?.maxCapacity)}`}
+                        >
                           {assignedVendor?.currentWorkload}/{assignedVendor?.maxCapacity}
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2 pt-2 border-t border-border">
                       <Icon name="Phone" size={14} className="text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">{assignedVendor?.phone}</span>
@@ -317,37 +327,41 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
                 <div className="mt-4 pt-4 border-t border-border">
                   <h5 className="text-sm font-medium text-foreground mb-2">Recommended Vendors</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {getRecommendedVendors(product)?.slice(0, 4)?.map((vendor) => (
-                      <div
-                        key={vendor?.id}
-                        className="p-2 border border-border rounded cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => handleVendorSelect(product?.id, vendor?.id)}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{vendor?.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {vendor?.rating}⭐ • {vendor?.completedJobs} jobs
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className={`text-xs font-medium ${
-                              vendor?.status === 'Available' ? 'text-success' : 'text-warning'
-                            }`}>
-                              {vendor?.status}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {vendor?.currentWorkload}/{vendor?.maxCapacity}
-                            </p>
+                    {getRecommendedVendors(product)
+                      ?.slice(0, 4)
+                      ?.map((vendor) => (
+                        <div
+                          key={vendor?.id}
+                          className="p-2 border border-border rounded cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => handleVendorSelect(product?.id, vendor?.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{vendor?.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {vendor?.rating}⭐ • {vendor?.completedJobs} jobs
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p
+                                className={`text-xs font-medium ${
+                                  vendor?.status === 'Available' ? 'text-success' : 'text-warning'
+                                }`}
+                              >
+                                {vendor?.status}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {vendor?.currentWorkload}/{vendor?.maxCapacity}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               )}
             </div>
-          );
+          )
         })}
       </div>
       {/* Assignment Summary */}
@@ -367,7 +381,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
             <div>
               <span className="text-muted-foreground">Vendors Involved:</span>
               <p className="font-medium text-foreground">
-                {new Set(Object.values(vendorAssignments).map(v => v.id))?.size}
+                {new Set(Object.values(vendorAssignments).map((v) => v.id))?.size}
               </p>
             </div>
             <div>
@@ -378,7 +392,7 @@ const VendorAssignmentPanel = ({ selectedProducts, vendorAssignments, onVendorAs
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default VendorAssignmentPanel;
+export default VendorAssignmentPanel

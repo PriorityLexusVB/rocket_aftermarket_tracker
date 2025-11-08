@@ -13,8 +13,9 @@
   ],
   "runArgs": [
     "--init",
-    // allow tools inside the container (e.g., supabase CLI) to talk to host Docker
-    "-v", "/var/run/docker.sock:/var/run/docker.sock"
+    // Allow tools inside the container (e.g., Supabase CLI) to talk to host Docker
+    "-v",
+    "/var/run/docker.sock:/var/run/docker.sock"
   ],
   "customizations": {
     "vscode": {

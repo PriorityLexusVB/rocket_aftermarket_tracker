@@ -1,41 +1,55 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
 const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [filter, setFilter] = useState('all')
 
   const getActionIcon = (action) => {
     switch (action?.type) {
-      case 'created': return 'Plus';
-      case 'updated': return 'Edit';
-      case 'status_changed': return 'RefreshCw';
-      case 'price_updated': return 'DollarSign';
-      case 'deleted': return 'Trash2';
-      case 'exported': return 'Download';
-      default: return 'Activity';
+      case 'created':
+        return 'Plus'
+      case 'updated':
+        return 'Edit'
+      case 'status_changed':
+        return 'RefreshCw'
+      case 'price_updated':
+        return 'DollarSign'
+      case 'deleted':
+        return 'Trash2'
+      case 'exported':
+        return 'Download'
+      default:
+        return 'Activity'
     }
-  };
+  }
 
   const getActionColor = (action) => {
     switch (action?.type) {
-      case 'created': return 'text-success';
-      case 'updated': return 'text-primary';
-      case 'status_changed': return 'text-warning';
-      case 'price_updated': return 'text-accent';
-      case 'deleted': return 'text-error';
-      case 'exported': return 'text-muted-foreground';
-      default: return 'text-foreground';
+      case 'created':
+        return 'text-success'
+      case 'updated':
+        return 'text-primary'
+      case 'status_changed':
+        return 'text-warning'
+      case 'price_updated':
+        return 'text-accent'
+      case 'deleted':
+        return 'text-error'
+      case 'exported':
+        return 'text-muted-foreground'
+      default:
+        return 'text-foreground'
     }
-  };
+  }
 
-  const filteredHistory = actionHistory?.filter(action => {
-    if (filter === 'all') return true;
-    return action?.type === filter;
-  });
+  const filteredHistory = actionHistory?.filter((action) => {
+    if (filter === 'all') return true
+    return action?.type === filter
+  })
 
-  const displayedHistory = isExpanded ? filteredHistory : filteredHistory?.slice(0, 5);
+  const displayedHistory = isExpanded ? filteredHistory : filteredHistory?.slice(0, 5)
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1">
@@ -47,9 +61,7 @@ const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">Action History</h3>
-              <p className="text-xs text-muted-foreground">
-                {actionHistory?.length} total actions
-              </p>
+              <p className="text-xs text-muted-foreground">{actionHistory?.length} total actions</p>
             </div>
           </div>
 
@@ -70,7 +82,7 @@ const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
               variant="ghost"
               size="xs"
               onClick={() => setIsExpanded(!isExpanded)}
-              iconName={isExpanded ? "ChevronUp" : "ChevronDown"}
+              iconName={isExpanded ? 'ChevronUp' : 'ChevronDown'}
             />
           </div>
         </div>
@@ -80,10 +92,12 @@ const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
           <div className="p-4 space-y-3">
             {displayedHistory?.map((action, index) => (
               <div key={action?.id} className="flex items-start space-x-3">
-                <div className={`flex items-center justify-center w-6 h-6 rounded-full bg-muted ${getActionColor(action)}`}>
+                <div
+                  className={`flex items-center justify-center w-6 h-6 rounded-full bg-muted ${getActionColor(action)}`}
+                >
                   <Icon name={getActionIcon(action)} size={12} />
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-foreground">
@@ -94,17 +108,15 @@ const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
                       })}
                     </span>
                   </div>
-                  
+
                   {action?.details && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {action?.details}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{action?.details}</p>
                   )}
-                  
+
                   {action?.changes && (
                     <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
                       {Object.entries(action?.changes)?.map(([field, change]) => (
@@ -142,7 +154,7 @@ const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ActionHistoryPanel;
+export default ActionHistoryPanel

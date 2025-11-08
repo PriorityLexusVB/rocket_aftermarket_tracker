@@ -3,6 +3,7 @@
 ## Executive Summary
 
 **Problem:** Production error preventing Deals page from loading:
+
 > "Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"
 
 **Root Cause:** Migration file was missing PostgREST schema cache reload notification
@@ -42,17 +43,20 @@
 ### Why This Happens
 
 PostgREST caches the database schema in memory for performance. The cache includes:
+
 - Table structures
 - Foreign key relationships
 - Column types
 - RLS policies
 
 When a migration changes relationships, the cache becomes stale. PostgREST will:
+
 - Continue serving requests with old schema
 - Reject queries using new relationships
 - Show "relationship not found" errors
 
 The cache only updates when:
+
 1. PostgREST service restarts, OR
 2. It receives a `NOTIFY pgrst, 'reload schema'` message
 
@@ -67,6 +71,7 @@ Our migration did #1 (schema changes) but not #2 (cache reload notification).
 **File:** `supabase/migrations/20251106000000_add_job_parts_vendor_id.sql`
 
 **Change:** Added at end of file:
+
 ```sql
 -- Step 6: Notify PostgREST to reload schema cache
 -- This is critical for Supabase to recognize the new foreign key relationship
@@ -75,6 +80,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 **Why This Works:**
+
 - PostgreSQL's NOTIFY command sends message to listening processes
 - PostgREST listens on 'pgrst' channel
 - Message 'reload schema' triggers immediate cache refresh
@@ -83,14 +89,18 @@ NOTIFY pgrst, 'reload schema';
 ### Supporting Documentation
 
 #### 1. RUNBOOK.md
+
 Added "Schema Cache Reload" section:
+
 - When cache reload is needed
 - How to reload manually
 - Symptoms of stale cache
 - Troubleshooting steps
 
 #### 2. DEPLOYMENT_GUIDE.md (NEW)
+
 Comprehensive deployment guide covering:
+
 - Standard deployment order
 - Schema verification queries
 - Common migration scenarios
@@ -99,7 +109,9 @@ Comprehensive deployment guide covering:
 - CI/CD integration examples
 
 #### 3. TROUBLESHOOTING_SCHEMA_CACHE.md (NEW)
+
 Step-by-step troubleshooting guide:
+
 - Quick diagnosis checklist
 - Database structure verification
 - Cache reload procedures
@@ -108,7 +120,9 @@ Step-by-step troubleshooting guide:
 - Prevention strategies
 
 #### 4. CHANGELOG.md
+
 Documented the fix with:
+
 - What changed and why
 - Why this matters
 - Common misdiagnosis explanation
@@ -116,7 +130,9 @@ Documented the fix with:
 ### Testing
 
 #### New Test Suite: migration.vendor_relationship.test.js
+
 21 comprehensive tests validating:
+
 - ✅ Migration file exists and readable
 - ✅ Adds vendor_id column with correct type (UUID)
 - ✅ Uses IF NOT EXISTS for idempotency
@@ -129,6 +145,7 @@ Documented the fix with:
 - ✅ Production readiness checks
 
 #### Existing Tests Verified
+
 - `dealService.relationshipError.test.js`: 3/3 passing
 - `dealService.perLineVendor.test.js`: 5/5 passing
 - Full test suite: 31/33 passing (2 pre-existing failures)
@@ -160,6 +177,7 @@ Documented the fix with:
 ```
 
 Without cache reload:
+
 ```
 [Migration] → [Database] → [Schema changes exist]
                               ↓
@@ -169,6 +187,7 @@ Without cache reload:
 ```
 
 With cache reload:
+
 ```
 [Migration] → [Database] → [Schema changes exist]
                               ↓
@@ -182,27 +201,24 @@ With cache reload:
 ### Query Syntax Examples
 
 **Before Migration:**
+
 ```javascript
 // This query would work
-const { data } = await supabase
-  .from('job_parts')
-  .select('id, product_id, unit_price')
+const { data } = await supabase.from('job_parts').select('id, product_id, unit_price')
 ```
 
 **After Migration (without cache reload):**
+
 ```javascript
 // This query would FAIL with "relationship not found"
-const { data } = await supabase
-  .from('job_parts')
-  .select('id, product_id, vendor:vendors(id, name)')
+const { data } = await supabase.from('job_parts').select('id, product_id, vendor:vendors(id, name)')
 ```
 
 **After Migration (with cache reload):**
+
 ```javascript
 // This query now WORKS
-const { data } = await supabase
-  .from('job_parts')
-  .select('id, product_id, vendor:vendors(id, name)')
+const { data } = await supabase.from('job_parts').select('id, product_id, vendor:vendors(id, name)')
 
 // Returns:
 // [
@@ -222,6 +238,7 @@ const { data } = await supabase
 ## Production Deployment Plan
 
 ### Pre-Deployment
+
 - [x] All tests passing
 - [x] Build successful
 - [x] Code review completed
@@ -231,36 +248,41 @@ const { data } = await supabase
 ### Deployment Steps
 
 1. **Apply Migration**
+
    ```bash
    supabase db push
    ```
+
    - Migration includes NOTIFY, so cache reloads automatically
    - If migration already applied without NOTIFY, run manually:
+
    ```bash
    supabase db execute --sql "NOTIFY pgrst, 'reload schema';"
    ```
 
 2. **Verify Schema Changes**
+
    ```sql
    -- Check column exists
-   SELECT column_name, data_type 
-   FROM information_schema.columns 
+   SELECT column_name, data_type
+   FROM information_schema.columns
    WHERE table_name = 'job_parts' AND column_name = 'vendor_id';
-   
+
    -- Check FK exists
-   SELECT constraint_name 
-   FROM information_schema.table_constraints 
+   SELECT constraint_name
+   FROM information_schema.table_constraints
    WHERE table_name = 'job_parts' AND constraint_type = 'FOREIGN KEY';
    ```
 
 3. **Test Relationship Query**
+
    ```javascript
    const { data, error } = await supabase
      .from('job_parts')
      .select('id, vendor:vendors(name)')
-     .limit(1);
-   
-   console.log('Error:', error); // Should be null
+     .limit(1)
+
+   console.log('Error:', error) // Should be null
    ```
 
 4. **Verify Application**
@@ -300,6 +322,7 @@ NOTIFY pgrst, 'reload schema';
 ### Risk Level: **Low**
 
 **Why Low Risk:**
+
 - Migration is idempotent (safe to run multiple times)
 - Uses IF NOT EXISTS clauses
 - ON DELETE SET NULL prevents data loss
@@ -307,6 +330,7 @@ NOTIFY pgrst, 'reload schema';
 - Thoroughly tested
 
 **Potential Issues:**
+
 - None anticipated
 - If cache issues persist, restart PostgREST (rare)
 
@@ -319,11 +343,13 @@ NOTIFY pgrst, 'reload schema';
 ### User Impact: **Highly Positive**
 
 **Before Fix:**
+
 - Deals page shows error banner
 - Cannot load deals
 - Feature unusable
 
 **After Fix:**
+
 - Deals page loads correctly
 - Per-line vendor support works
 - Full feature functionality restored
@@ -335,6 +361,7 @@ NOTIFY pgrst, 'reload schema';
 ### For Future Migrations
 
 **Always include in relationship migrations:**
+
 ```sql
 -- 1. Schema changes
 ALTER TABLE ...;
@@ -353,6 +380,7 @@ NOTIFY pgrst, 'reload schema';
 ### For CI/CD Pipelines
 
 Add post-migration verification:
+
 ```yaml
 - name: Apply migrations
   run: supabase db push
@@ -367,6 +395,7 @@ Add post-migration verification:
 ### For Documentation
 
 Schema cache issues are:
+
 - Common in production
 - Often misdiagnosed
 - Easy to fix once understood

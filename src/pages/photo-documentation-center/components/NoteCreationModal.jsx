@@ -1,69 +1,69 @@
-import React, { useState } from 'react';
-import { FileText, X, Save, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react'
+import { FileText, X, Save, AlertCircle } from 'lucide-react'
 
 const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) => {
   const [formData, setFormData] = useState({
     category: 'Progress Updates',
-    message: ''
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+    message: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   const resetForm = () => {
     setFormData({
       category: 'Progress Updates',
-      message: ''
-    });
-    setError('');
-    setSaving(false);
-  };
+      message: '',
+    })
+    setError('')
+    setSaving(false)
+  }
 
   const handleClose = () => {
     if (!saving) {
-      resetForm();
-      onClose?.();
+      resetForm()
+      onClose?.()
     }
-  };
+  }
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
-    
+    e?.preventDefault()
+
     if (!formData?.message?.trim()) {
-      setError('Please enter a note message');
-      return;
+      setError('Please enter a note message')
+      return
     }
 
-    setSaving(true);
-    setError('');
+    setSaving(true)
+    setError('')
 
     try {
       const result = await onSave?.({
         category: formData?.category,
-        message: formData?.message?.trim()
-      });
-      
+        message: formData?.message?.trim(),
+      })
+
       if (result?.success) {
-        resetForm();
-        onClose?.();
+        resetForm()
+        onClose?.()
       } else {
-        setError(result?.error || 'Failed to save note. Please try again.');
+        setError(result?.error || 'Failed to save note. Please try again.')
       }
     } catch (error) {
-      setError('Failed to save note. Please try again.');
+      setError('Failed to save note. Please try again.')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const noteCategories = [
     'Progress Updates',
-    'Quality Issues', 
+    'Quality Issues',
     'Customer Communications',
     'Safety Notes',
     'Parts Information',
     'Vendor Communications',
-    'General Notes'
-  ];
+    'General Notes',
+  ]
 
   const getCategoryDescription = (category) => {
     const descriptions = {
@@ -73,16 +73,21 @@ const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) =>
       'Safety Notes': 'Document safety concerns or procedures',
       'Parts Information': 'Note parts used, issues, or requirements',
       'Vendor Communications': 'Record vendor interactions',
-      'General Notes': 'Any other documentation or observations'
-    };
-    return descriptions?.[category] || '';
-  };
+      'General Notes': 'Any other documentation or observations',
+    }
+    return descriptions?.[category] || ''
+  }
 
   const getWordCount = (text) => {
-    return text?.trim()?.split(/\s+/)?.filter(word => word)?.length || 0;
-  };
+    return (
+      text
+        ?.trim()
+        ?.split(/\s+/)
+        ?.filter((word) => word)?.length || 0
+    )
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -112,9 +117,7 @@ const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) =>
         <form onSubmit={handleSubmit} className="p-6">
           {/* Category Selection */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Note Category
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Note Category</label>
             <select
               value={formData?.category}
               onChange={(e) => setFormData({ ...formData, category: e?.target?.value })}
@@ -134,9 +137,7 @@ const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) =>
 
           {/* Note Message */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Note Content *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Note Content *</label>
             <textarea
               value={formData?.message}
               onChange={(e) => setFormData({ ...formData, message: e?.target?.value })}
@@ -208,7 +209,7 @@ const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) =>
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default NoteCreationModal;
+export default NoteCreationModal

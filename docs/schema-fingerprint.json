@@ -22,25 +22,11 @@
           "created_at",
           "updated_at"
         ],
-        "required_columns": [
-          "id",
-          "job_id",
-          "product_id",
-          "vendor_id"
-        ]
+        "required_columns": ["id", "job_id", "product_id", "vendor_id"]
       },
       "vendors": {
-        "columns": [
-          "id",
-          "name",
-          "org_id",
-          "created_at",
-          "updated_at"
-        ],
-        "required_columns": [
-          "id",
-          "name"
-        ]
+        "columns": ["id", "name", "org_id", "created_at", "updated_at"],
+        "required_columns": ["id", "name"]
       },
       "jobs": {
         "columns": [
@@ -67,11 +53,7 @@
           "created_at",
           "updated_at"
         ],
-        "required_columns": [
-          "id",
-          "job_number",
-          "title"
-        ]
+        "required_columns": ["id", "job_number", "title"]
       }
     },
     "foreign_keys": {

@@ -69,11 +69,10 @@
 ## SMS Templates Column Fix
 
 ### Before Fix:
+
 ```javascript
 // tenantService.js
-supabase
-  .from('sms_templates')
-  .select('id, name, body, is_active')  // ❌ Column 'body' doesn't exist
+supabase.from('sms_templates').select('id, name, body, is_active') // ❌ Column 'body' doesn't exist
 ```
 
 ```sql
@@ -87,16 +86,16 @@ CREATE TABLE sms_templates (
 ```
 
 ### After Fix:
+
 ```javascript
 // tenantService.js
-supabase
-  .from('sms_templates')
-  .select('id, name, message_template, is_active')  // ✅ Correct column name
+supabase.from('sms_templates').select('id, name, message_template, is_active') // ✅ Correct column name
 ```
 
 ## Multi-Tenant Support (org_id columns)
 
 ### Tables that needed org_id added:
+
 - ✅ vendors
 - ✅ products
 - ✅ sms_templates
@@ -104,6 +103,7 @@ supabase
 - ✅ vehicles
 
 ### Result:
+
 Each organization can now have isolated data:
 
 ```

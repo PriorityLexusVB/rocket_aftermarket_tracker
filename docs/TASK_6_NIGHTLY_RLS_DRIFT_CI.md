@@ -3,10 +3,13 @@
 ## Status: ✅ COMPLETED
 
 ## Branch
+
 `ci/nightly-rls-drift`
 
 ## Objective
+
 Create a GitHub Actions workflow that runs nightly to:
+
 1. Execute schema drift script (`verify-schema-cache.sh`)
 2. Curl health endpoints (`/api/health` and `/api/health-deals-rel`)
 3. Fail on relationship errors or drift detection
@@ -16,9 +19,11 @@ Create a GitHub Actions workflow that runs nightly to:
 ## Implementation
 
 ### Workflow File
+
 **File**: `.github/workflows/rls-drift-nightly.yml`
 
 ### Schedule
+
 - **Cron**: `0 3 * * *` (3 AM UTC daily)
 - **Manual Trigger**: `workflow_dispatch` enabled
 - **Repository**: Only runs on `PriorityLexusVB/rocket_aftermarket_tracker` (skips forks)
@@ -26,6 +31,7 @@ Create a GitHub Actions workflow that runs nightly to:
 ### Jobs
 
 #### Job: `rls-drift-check`
+
 **Runner**: `ubuntu-latest`
 
 **Steps**:
@@ -83,11 +89,13 @@ Create a GitHub Actions workflow that runs nightly to:
 ### Required Secrets
 
 #### SUPABASE_URL
+
 - Production Supabase project URL
 - Example: `https://your-project.supabase.co`
 - Used by: verify-schema-cache.sh, health endpoints
 
 #### SUPABASE_ANON_KEY
+
 - Production Supabase anon/public API key
 - Used by: verify-schema-cache.sh (REST API calls)
 
@@ -95,13 +103,14 @@ Create a GitHub Actions workflow that runs nightly to:
 
 ```yaml
 permissions:
-  contents: read    # Read repository code
-  issues: write     # Create/comment on issues
+  contents: read # Read repository code
+  issues: write # Create/comment on issues
 ```
 
 ### Features
 
 #### 1. Automated Drift Detection
+
 - Runs `verify-schema-cache.sh` with production credentials
 - Checks:
   - ✅ Column existence (vendor_id in job_parts)
@@ -111,6 +120,7 @@ permissions:
   - ✅ Schema cache staleness
 
 #### 2. Health Endpoint Monitoring
+
 - **Basic Health** (`/api/health`):
   - Validates Supabase connectivity
   - Expected: HTTP 200, `{ ok: true, db: true }`
@@ -121,12 +131,14 @@ permissions:
   - Detects schema cache drift
 
 #### 3. Actionable Reporting
+
 - **Workflow Summary**: Markdown table with pass/fail status
 - **GitHub Issues**: Auto-created on drift detection
 - **Troubleshooting Links**: Direct links to documentation
 - **Workflow Run Link**: Included in issue body
 
 #### 4. Issue Management
+
 - Checks for existing open issues with `schema-drift` label
 - Avoids duplicate issues (adds comment instead)
 - Labels: `schema-drift`, `automated`, `priority-high`
@@ -139,54 +151,68 @@ permissions:
 ### Output Examples
 
 #### Workflow Summary (Success)
+
 ```markdown
 ## Nightly RLS Drift & Health Check Results
 
 **Date**: 2025-11-08 03:00:00 UTC
 
 ### Schema Drift Check
+
 ✅ **PASS** - No schema drift detected
 
 ### Health Endpoints
+
 #### /api/health
+
 ✅ **PASS** - Basic health check OK
 
 #### /api/health-deals-rel
+
 ✅ **PASS** - Deals relationship OK
 
 ### Actions
+
 ✅ **All Checks Passed** - System healthy
 ```
 
 #### Workflow Summary (Failure)
+
 ```markdown
 ## Nightly RLS Drift & Health Check Results
 
 **Date**: 2025-11-08 03:00:00 UTC
 
 ### Schema Drift Check
+
 ❌ **FAIL** - Schema drift detected
 
 **Action Required**: Run `scripts/verify-schema-cache.sh` locally to diagnose
 
 ### Health Endpoints
+
 #### /api/health
+
 ✅ **PASS** - Basic health check OK
 
 #### /api/health-deals-rel
+
 ❌ **FAIL** - Deals relationship check failed
 
 ### Actions
+
 ⚠️ **Issues Detected** - Review logs above for details
 
 **Troubleshooting**:
+
 - Check [TROUBLESHOOTING_SCHEMA_CACHE.md](...)
 - Run `bash scripts/verify-schema-cache.sh` locally
 - Check [DEPLOY_CHECKLIST.md](...)
 ```
 
 #### GitHub Issue (Auto-Created)
-```markdown
+
+````markdown
 Title: 🚨 Nightly Check: RLS Schema Drift Detected
 Labels: schema-drift, automated, priority-high
 
@@ -198,11 +224,13 @@ The nightly RLS drift check has detected a potential schema cache issue.
 **Date**: Fri, 08 Nov 2025 03:00:00 GMT
 
 ### Likely Causes
+
 1. Recent migration added FK constraint without `NOTIFY pgrst, 'reload schema'`
 2. PostgREST cache not reloaded after schema change
 3. Column or relationship missing from database
 
 ### Troubleshooting Steps
+
 1. Review workflow logs: [link]
 2. Run locally: `bash scripts/verify-schema-cache.sh`
 3. Check recent migrations in `supabase/migrations/`
@@ -210,17 +238,22 @@ The nightly RLS drift check has detected a potential schema cache issue.
 5. See [DEPLOY_CHECKLIST.md](...)
 
 ### Resolution
+
 If a migration is missing `NOTIFY pgrst, 'reload schema'`, add it and redeploy:
+
 ```sql
 -- At end of migration
 NOTIFY pgrst, 'reload schema';
 ```
+````
 
 Or manually reload via Supabase SQL Editor:
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```
-```
+
+````
 
 ### CI/CD Integration
 
@@ -254,21 +287,24 @@ bash scripts/verify-schema-cache.sh
 # Test health endpoints
 curl -s "${VITE_SUPABASE_URL}/api/health" | jq .
 curl -s "${VITE_SUPABASE_URL}/api/health-deals-rel" | jq .
-```
+````
 
 ### Error Handling
 
 #### Script Failures
+
 - `continue-on-error: true` on drift check
 - Allows health checks to run even if drift detected
 - Final step fails if any check failed
 
 #### Network Failures
+
 - Curl uses `|| echo "000"` fallback
 - HTTP code 000 indicates network/curl failure
 - Logged and reported as failure
 
 #### Missing Secrets
+
 - Workflow fails gracefully
 - Error message indicates missing secret
 - Does not expose secret values
@@ -276,11 +312,13 @@ curl -s "${VITE_SUPABASE_URL}/api/health-deals-rel" | jq .
 ### Monitoring
 
 #### Success Indicators
+
 - ✅ Green check mark in Actions tab
 - ✅ All checks passed in summary
 - ✅ No issues created
 
 #### Failure Indicators
+
 - ❌ Red X in Actions tab
 - ❌ Failed checks in summary
 - ❌ GitHub issue created
@@ -289,14 +327,18 @@ curl -s "${VITE_SUPABASE_URL}/api/health-deals-rel" | jq .
 ### Maintenance
 
 #### Updating Schedule
+
 Edit cron expression in workflow file:
+
 ```yaml
 schedule:
-  - cron: '0 3 * * *'  # Change time here
+  - cron: '0 3 * * *' # Change time here
 ```
 
 #### Adding Checks
+
 Add new step after step 7:
+
 ```yaml
 - name: Check New Endpoint
   id: new_check
@@ -309,7 +351,9 @@ Add new step after step 7:
 Update summary generation and final step condition.
 
 #### Customizing Issues
+
 Edit issue template in step 9:
+
 - Modify title
 - Update body content
 - Change labels
@@ -349,6 +393,7 @@ Edit issue template in step 9:
 ## Conclusion
 
 **Task 6 Complete**: Nightly CI workflow implemented for:
+
 1. ✅ Schema drift detection via verify-schema-cache.sh
 2. ✅ Health endpoint monitoring (2 endpoints)
 3. ✅ Actionable failure reporting
@@ -356,12 +401,14 @@ Edit issue template in step 9:
 5. ✅ Comprehensive workflow summary
 
 The workflow provides:
+
 - **Proactive Monitoring**: Daily checks catch issues early
 - **Automated Response**: Issues created automatically
 - **Clear Guidance**: Troubleshooting steps included
 - **Low Maintenance**: Runs unattended, self-documenting
 
 ---
+
 **Task Completed**: 2025-11-07  
 **Branch**: ci/nightly-rls-drift  
 **Author**: Coding Agent (Task 6 Implementation)

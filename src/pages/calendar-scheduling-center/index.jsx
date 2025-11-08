@@ -1,79 +1,81 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import React, { useState, useEffect, useMemo } from 'react'
+import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+import { supabase } from '../../lib/supabase'
 
 const CalendarSchedulingCenter = () => {
   // State management
-  const { user } = useAuth();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewType, setViewType] = useState('week'); // 'day', 'week', 'month'
-  const [jobs, setJobs] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [selectedVendors, setSelectedVendors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [debugInfo, setDebugInfo] = useState('');
+  const { user } = useAuth()
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [viewType, setViewType] = useState('week') // 'day', 'week', 'month'
+  const [jobs, setJobs] = useState([])
+  const [vendors, setVendors] = useState([])
+  const [selectedVendors, setSelectedVendors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [debugInfo, setDebugInfo] = useState('')
 
   // Date range calculation based on view type
   const dateRange = useMemo(() => {
-    const start = new Date(currentDate);
-    const end = new Date(currentDate);
+    const start = new Date(currentDate)
+    const end = new Date(currentDate)
 
     switch (viewType) {
       case 'day':
-        start?.setHours(0, 0, 0, 0);
-        end?.setHours(23, 59, 59, 999);
-        break;
+        start?.setHours(0, 0, 0, 0)
+        end?.setHours(23, 59, 59, 999)
+        break
       case 'week':
-        const dayOfWeek = start?.getDay();
-        start?.setDate(start?.getDate() - dayOfWeek);
-        start?.setHours(0, 0, 0, 0);
-        end?.setDate(start?.getDate() + 6);
-        end?.setHours(23, 59, 59, 999);
-        break;
+        const dayOfWeek = start?.getDay()
+        start?.setDate(start?.getDate() - dayOfWeek)
+        start?.setHours(0, 0, 0, 0)
+        end?.setDate(start?.getDate() + 6)
+        end?.setHours(23, 59, 59, 999)
+        break
       case 'month':
-        start?.setDate(1);
-        start?.setHours(0, 0, 0, 0);
-        end?.setMonth(end?.getMonth() + 1);
-        end?.setDate(0);
-        end?.setHours(23, 59, 59, 999);
-        break;
+        start?.setDate(1)
+        start?.setHours(0, 0, 0, 0)
+        end?.setMonth(end?.getMonth() + 1)
+        end?.setDate(0)
+        end?.setHours(23, 59, 59, 999)
+        break
     }
 
-    return { start, end };
-  }, [currentDate, viewType]);
+    return { start, end }
+  }, [currentDate, viewType])
 
   // Simplified data loading with better error handling
   const loadCalendarData = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
+      setLoading(true)
+      setError(null)
+
       console.log('Loading calendar data...', {
         start: dateRange?.start?.toISOString(),
-        end: dateRange?.end?.toISOString()
-      });
-      
+        end: dateRange?.end?.toISOString(),
+      })
+
       // Try RPC function first
-      let jobsResult;
+      let jobsResult
       try {
         const { data, error } = await supabase?.rpc('get_jobs_by_date_range', {
           start_date: dateRange?.start?.toISOString(),
           end_date: dateRange?.end?.toISOString(),
           vendor_filter: selectedVendors?.length > 0 ? selectedVendors?.[0] : null,
-          status_filter: null
-        });
-        
-        if (error) throw error;
-        jobsResult = data || [];
-        setDebugInfo(`RPC function returned ${jobsResult?.length} jobs`);
-        
+          status_filter: null,
+        })
+
+        if (error) throw error
+        jobsResult = data || []
+        setDebugInfo(`RPC function returned ${jobsResult?.length} jobs`)
       } catch (rpcError) {
-        console.warn('RPC failed, using direct query:', rpcError);
-        
+        console.warn('RPC failed, using direct query:', rpcError)
+
         // Fallback to direct database query with proper joins
-        const { data, error } = await supabase?.from('jobs')?.select(`
+        const { data, error } = await supabase
+          ?.from('jobs')
+          ?.select(
+            `
             id,
             title,
             description,
@@ -90,152 +92,167 @@ const CalendarSchedulingCenter = () => {
             calendar_notes,
             vendors:vendor_id(id, name, specialty),
             vehicles:vehicle_id(id, make, model, year, owner_name, stock_number)
-          `)?.not('scheduled_start_time', 'is', null)?.gte('scheduled_start_time', dateRange?.start?.toISOString())?.lte('scheduled_start_time', dateRange?.end?.toISOString())?.order('scheduled_start_time', { ascending: true });
-          
-        if (error) throw error;
-        
+          `
+          )
+          ?.not('scheduled_start_time', 'is', null)
+          ?.gte('scheduled_start_time', dateRange?.start?.toISOString())
+          ?.lte('scheduled_start_time', dateRange?.end?.toISOString())
+          ?.order('scheduled_start_time', { ascending: true })
+
+        if (error) throw error
+
         // Transform the data to match expected structure
-        jobsResult = (data || [])?.map(job => ({
+        jobsResult = (data || [])?.map((job) => ({
           ...job,
           vendor_name: job?.vendors?.name || 'Unassigned',
-          vehicle_info: job?.vehicles 
+          vehicle_info: job?.vehicles
             ? `${job?.vehicles?.year} ${job?.vehicles?.make} ${job?.vehicles?.model}`?.trim()
-            : 'No Vehicle'
-        }));
-        
-        setDebugInfo(`Direct query returned ${jobsResult?.length} jobs`);
+            : 'No Vehicle',
+        }))
+
+        setDebugInfo(`Direct query returned ${jobsResult?.length} jobs`)
       }
 
-      setJobs(jobsResult);
-      console.log('Jobs loaded successfully:', jobsResult);
-
+      setJobs(jobsResult)
+      console.log('Jobs loaded successfully:', jobsResult)
     } catch (error) {
-      console.error('Error loading calendar data:', error);
-      setError(`Failed to load calendar data: ${error?.message}`);
-      setDebugInfo(`Error: ${error?.message}`);
-      setJobs([]);
+      console.error('Error loading calendar data:', error)
+      setError(`Failed to load calendar data: ${error?.message}`)
+      setDebugInfo(`Error: ${error?.message}`)
+      setJobs([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadVendors = async () => {
     try {
-      const { data, error } = await supabase?.from('vendors')?.select('id, name, is_active, specialty')?.eq('is_active', true)?.order('name');
+      const { data, error } = await supabase
+        ?.from('vendors')
+        ?.select('id, name, is_active, specialty')
+        ?.eq('is_active', true)
+        ?.order('name')
 
-      if (error) throw error;
-      setVendors(data || []);
-      console.log('Vendors loaded:', data?.length || 0);
-      
+      if (error) throw error
+      setVendors(data || [])
+      console.log('Vendors loaded:', data?.length || 0)
     } catch (error) {
-      console.error('Error loading vendors:', error);
-      setVendors([]);
+      console.error('Error loading vendors:', error)
+      setVendors([])
     }
-  };
+  }
 
   // Load data on component mount and date range changes
   useEffect(() => {
-    loadCalendarData();
-    loadVendors();
-  }, [dateRange, selectedVendors]);
+    loadCalendarData()
+    loadVendors()
+  }, [dateRange, selectedVendors])
 
   // Navigation handlers
   const navigateDate = (direction) => {
-    const newDate = new Date(currentDate);
-    
+    const newDate = new Date(currentDate)
+
     switch (viewType) {
       case 'day':
-        newDate?.setDate(newDate?.getDate() + direction);
-        break;
+        newDate?.setDate(newDate?.getDate() + direction)
+        break
       case 'week':
-        newDate?.setDate(newDate?.getDate() + (direction * 7));
-        break;
+        newDate?.setDate(newDate?.getDate() + direction * 7)
+        break
       case 'month':
-        newDate?.setMonth(newDate?.getMonth() + direction);
-        break;
+        newDate?.setMonth(newDate?.getMonth() + direction)
+        break
     }
-    
-    setCurrentDate(newDate);
-  };
+
+    setCurrentDate(newDate)
+  }
 
   const goToToday = () => {
-    setCurrentDate(new Date());
-  };
+    setCurrentDate(new Date())
+  }
 
   const refreshData = () => {
-    setError(null);
-    loadCalendarData();
-    loadVendors();
-  };
+    setError(null)
+    loadCalendarData()
+    loadVendors()
+  }
 
   // Format date for display
   const formatDisplayDate = () => {
     if (viewType === 'week') {
-      const weekStart = new Date(dateRange.start);
-      const weekEnd = new Date(dateRange.end);
-      return `${weekStart?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      const weekStart = new Date(dateRange.start)
+      const weekEnd = new Date(dateRange.end)
+      return `${weekStart?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
     }
-    
-    const options = { 
-      year: 'numeric', 
+
+    const options = {
+      year: 'numeric',
       month: 'long',
-      ...(viewType === 'day' && { day: 'numeric' })
-    };
-    
-    return currentDate?.toLocaleDateString('en-US', options);
-  };
+      ...(viewType === 'day' && { day: 'numeric' }),
+    }
+
+    return currentDate?.toLocaleDateString('en-US', options)
+  }
 
   // Simple calendar grid component
   const CalendarGrid = ({ jobs, viewType }) => {
     if (viewType === 'week') {
       // Create week view
-      const weekDays = [];
-      const startDate = new Date(dateRange.start);
-      
+      const weekDays = []
+      const startDate = new Date(dateRange.start)
+
       for (let i = 0; i < 7; i++) {
-        const dayDate = new Date(startDate);
-        dayDate?.setDate(startDate?.getDate() + i);
-        
-        const dayJobs = jobs?.filter(job => {
-          const jobDate = new Date(job.scheduled_start_time);
-          return jobDate?.toDateString() === dayDate?.toDateString();
-        });
-        
+        const dayDate = new Date(startDate)
+        dayDate?.setDate(startDate?.getDate() + i)
+
+        const dayJobs = jobs?.filter((job) => {
+          const jobDate = new Date(job.scheduled_start_time)
+          return jobDate?.toDateString() === dayDate?.toDateString()
+        })
+
         weekDays?.push({
           date: dayDate,
-          jobs: dayJobs
-        });
+          jobs: dayJobs,
+        })
       }
-      
+
       return (
         <div className="grid grid-cols-7 gap-1 h-full">
           {/* Day headers */}
           {weekDays?.map((day) => (
-            <div key={day?.date?.toISOString()} className="bg-gray-50 p-2 border-b font-semibold text-center">
+            <div
+              key={day?.date?.toISOString()}
+              className="bg-gray-50 p-2 border-b font-semibold text-center"
+            >
               <div className="text-sm text-gray-600">
                 {day?.date?.toLocaleDateString('en-US', { weekday: 'short' })}
               </div>
-              <div className="text-lg">
-                {day?.date?.getDate()}
-              </div>
+              <div className="text-lg">{day?.date?.getDate()}</div>
             </div>
           ))}
           {/* Day content */}
           {weekDays?.map((day) => (
-            <div key={`content-${day?.date?.toISOString()}`} className="bg-white p-2 border-r border-gray-200 min-h-96 overflow-y-auto">
+            <div
+              key={`content-${day?.date?.toISOString()}`}
+              className="bg-white p-2 border-r border-gray-200 min-h-96 overflow-y-auto"
+            >
               {day?.jobs?.map((job) => (
                 <div
                   key={job?.id}
                   className="mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow"
                   style={{ backgroundColor: job?.color_code || '#3b82f6', color: 'white' }}
-                  onClick={() => alert(`Job: ${job?.title}\nVendor: ${job?.vendor_name}\nTime: ${new Date(job.scheduled_start_time)?.toLocaleTimeString()}`)}
+                  onClick={() =>
+                    alert(
+                      `Job: ${job?.title}\nVendor: ${job?.vendor_name}\nTime: ${new Date(job.scheduled_start_time)?.toLocaleTimeString()}`
+                    )
+                  }
                 >
                   <div className="font-medium truncate">{job?.title}</div>
                   <div className="text-xs opacity-90">{job?.vendor_name}</div>
                   <div className="text-xs opacity-80">
-                    {new Date(job.scheduled_start_time)?.toLocaleTimeString('en-US', { 
-                      hour: 'numeric', 
-                      minute: '2-digit' 
+                    {new Date(job.scheduled_start_time)?.toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
                     })}
                   </div>
                 </div>
@@ -243,23 +260,25 @@ const CalendarSchedulingCenter = () => {
             </div>
           ))}
         </div>
-      );
+      )
     }
-    
+
     // Simple list view for day/month
     return (
       <div className="p-4">
         {jobs?.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            No jobs scheduled for this period
-          </div>
+          <div className="text-center text-gray-500 py-8">No jobs scheduled for this period</div>
         ) : (
           <div className="space-y-4">
             {jobs?.map((job) => (
               <div
                 key={job?.id}
                 className="bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => alert(`Job Details:\n${job?.title}\nVendor: ${job?.vendor_name}\nVehicle: ${job?.vehicle_info}\nTime: ${new Date(job.scheduled_start_time)?.toLocaleString()}`)}
+                onClick={() =>
+                  alert(
+                    `Job Details:\n${job?.title}\nVendor: ${job?.vendor_name}\nVehicle: ${job?.vehicle_info}\nTime: ${new Date(job.scheduled_start_time)?.toLocaleString()}`
+                  )
+                }
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -271,7 +290,7 @@ const CalendarSchedulingCenter = () => {
                       {new Date(job.scheduled_start_time)?.toLocaleString()}
                     </p>
                   </div>
-                  <div 
+                  <div
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: job?.color_code || '#3b82f6' }}
                   ></div>
@@ -281,8 +300,8 @@ const CalendarSchedulingCenter = () => {
           </div>
         )}
       </div>
-    );
-  };
+    )
+  }
 
   // Error state
   if (error) {
@@ -292,14 +311,16 @@ const CalendarSchedulingCenter = () => {
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Calendar Loading Error</h3>
           <p className="text-gray-600 mb-4">{error}</p>
-          
+
           <div className="bg-gray-100 p-3 rounded-lg text-left text-xs mb-4">
-            <p><strong>Debug Info:</strong></p>
+            <p>
+              <strong>Debug Info:</strong>
+            </p>
             <p>{debugInfo}</p>
             <p>Jobs Count: {jobs?.length}</p>
             <p>Vendors Count: {vendors?.length}</p>
           </div>
-          
+
           <div className="space-y-2">
             <button
               onClick={refreshData}
@@ -310,9 +331,9 @@ const CalendarSchedulingCenter = () => {
             </button>
             <button
               onClick={() => {
-                setCurrentDate(new Date());
-                setError(null);
-                refreshData();
+                setCurrentDate(new Date())
+                setError(null)
+                refreshData()
               }}
               className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
@@ -321,7 +342,7 @@ const CalendarSchedulingCenter = () => {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   // Loading state
@@ -334,7 +355,7 @@ const CalendarSchedulingCenter = () => {
           <p className="text-xs text-gray-500 mt-2">{debugInfo}</p>
         </div>
       </div>
-    );
+    )
   }
 
   // Main calendar view
@@ -348,7 +369,7 @@ const CalendarSchedulingCenter = () => {
               <Calendar className="h-6 w-6 text-blue-600" />
               <h1 className="text-2xl font-bold text-gray-900">Calendar Scheduling Center</h1>
             </div>
-            
+
             {/* Date Navigation */}
             <div className="flex items-center space-x-2">
               <button
@@ -412,11 +433,9 @@ const CalendarSchedulingCenter = () => {
             <span>Vendors: {vendors?.length}</span>
             <span>Period: {formatDisplayDate()}</span>
           </div>
-          
+
           {debugInfo && (
-            <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
-              {debugInfo}
-            </div>
+            <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">{debugInfo}</div>
           )}
         </div>
       </div>
@@ -424,7 +443,7 @@ const CalendarSchedulingCenter = () => {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
           <h3 className="font-semibold text-gray-900 mb-4">Vendors</h3>
-          
+
           <div className="space-y-2">
             <label className="flex items-center">
               <input
@@ -435,7 +454,7 @@ const CalendarSchedulingCenter = () => {
               />
               <span className="ml-2 text-sm">All Vendors ({vendors?.length})</span>
             </label>
-            
+
             {vendors?.map((vendor) => (
               <label key={vendor?.id} className="flex items-center">
                 <input
@@ -443,9 +462,9 @@ const CalendarSchedulingCenter = () => {
                   checked={selectedVendors?.includes(vendor?.id)}
                   onChange={(e) => {
                     if (e?.target?.checked) {
-                      setSelectedVendors([vendor?.id]);
+                      setSelectedVendors([vendor?.id])
                     } else {
-                      setSelectedVendors([]);
+                      setSelectedVendors([])
                     }
                   }}
                   className="rounded border-gray-300"
@@ -459,19 +478,24 @@ const CalendarSchedulingCenter = () => {
               </label>
             ))}
           </div>
-          
+
           <div className="mt-6 pt-4 border-t">
             <h4 className="font-medium text-gray-900 mb-2">Quick Stats</h4>
             <div className="space-y-1 text-sm text-gray-600">
               <div>Total Jobs: {jobs?.length}</div>
-              <div>This Week: {jobs?.filter(job => {
-                const jobDate = new Date(job.scheduled_start_time);
-                const now = new Date();
-                const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-                const endOfWeek = new Date(startOfWeek);
-                endOfWeek?.setDate(startOfWeek?.getDate() + 6);
-                return jobDate >= startOfWeek && jobDate <= endOfWeek;
-              })?.length}</div>
+              <div>
+                This Week:{' '}
+                {
+                  jobs?.filter((job) => {
+                    const jobDate = new Date(job.scheduled_start_time)
+                    const now = new Date()
+                    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()))
+                    const endOfWeek = new Date(startOfWeek)
+                    endOfWeek?.setDate(startOfWeek?.getDate() + 6)
+                    return jobDate >= startOfWeek && jobDate <= endOfWeek
+                  })?.length
+                }
+              </div>
             </div>
           </div>
         </div>
@@ -482,7 +506,7 @@ const CalendarSchedulingCenter = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default CalendarSchedulingCenter;
+export default CalendarSchedulingCenter

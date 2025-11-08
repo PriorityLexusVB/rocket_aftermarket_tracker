@@ -1,47 +1,47 @@
-import React, { useState, useRef, useEffect } from 'react';
-import QRCode from 'qrcode';
-import { QrCode, Download, Copy, Share, CheckCircle, AlertCircle } from 'lucide-react';
-import Button from '../ui/Button';
+import React, { useState, useRef, useEffect } from 'react'
+import QRCode from 'qrcode'
+import { QrCode, Download, Copy, Share, CheckCircle, AlertCircle } from 'lucide-react'
+import Button from '../ui/Button'
 
-const QRCodeGenerator = ({ 
-  url, 
-  title = "QR Code", 
-  description = "Scan this QR code to access the form",
+const QRCodeGenerator = ({
+  url,
+  title = 'QR Code',
+  description = 'Scan this QR code to access the form',
   size = 200,
-  showControls = true 
+  showControls = true,
 }) => {
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [customSize, setCustomSize] = useState(size);
-  const [customUrl, setCustomUrl] = useState(url || '');
-  const canvasRef = useRef(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const [customSize, setCustomSize] = useState(size)
+  const [customUrl, setCustomUrl] = useState(url || '')
+  const canvasRef = useRef(null)
 
   // Generate QR code whenever URL or size changes
   useEffect(() => {
     if (customUrl?.trim()) {
-      generateQRCode(customUrl, customSize);
+      generateQRCode(customUrl, customSize)
     }
-  }, [customUrl, customSize]);
+  }, [customUrl, customSize])
 
   const generateQRCode = async (targetUrl, qrSize = 200) => {
     try {
-      setLoading(true);
-      setError(null);
+      setLoading(true)
+      setError(null)
 
       if (!targetUrl?.trim()) {
-        throw new Error('URL is required to generate QR code');
+        throw new Error('URL is required to generate QR code')
       }
 
       // Validate URL format
-      let finalUrl = targetUrl?.trim();
+      let finalUrl = targetUrl?.trim()
       if (!finalUrl?.startsWith('http://') && !finalUrl?.startsWith('https://')) {
         // If it's a relative path, make it absolute
         if (finalUrl?.startsWith('/')) {
-          finalUrl = `${window?.location?.origin}${finalUrl}`;
+          finalUrl = `${window?.location?.origin}${finalUrl}`
         } else {
-          finalUrl = `https://${finalUrl}`;
+          finalUrl = `https://${finalUrl}`
         }
       }
 
@@ -51,99 +51,97 @@ const QRCodeGenerator = ({
         height: qrSize,
         margin: 2,
         color: {
-          dark: '#000000',  // Dark color
+          dark: '#000000', // Dark color
           light: '#FFFFFF', // Light color
         },
-        errorCorrectionLevel: 'M'
-      });
+        errorCorrectionLevel: 'M',
+      })
 
-      setQrCodeDataUrl(qrDataUrl);
+      setQrCodeDataUrl(qrDataUrl)
     } catch (error) {
-      console.error('Error generating QR code:', error);
-      setError(error?.message || 'Failed to generate QR code');
+      console.error('Error generating QR code:', error)
+      setError(error?.message || 'Failed to generate QR code')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const downloadQRCode = () => {
-    if (!qrCodeDataUrl) return;
+    if (!qrCodeDataUrl) return
 
     try {
-      const link = document?.createElement('a');
-      link.download = `${title?.replace(/[^a-zA-Z0-9]/g, '_')}_QRCode.png`;
-      link.href = qrCodeDataUrl;
-      document?.body?.appendChild(link);
-      link?.click();
-      document?.body?.removeChild(link);
+      const link = document?.createElement('a')
+      link.download = `${title?.replace(/[^a-zA-Z0-9]/g, '_')}_QRCode.png`
+      link.href = qrCodeDataUrl
+      document?.body?.appendChild(link)
+      link?.click()
+      document?.body?.removeChild(link)
     } catch (error) {
-      console.error('Error downloading QR code:', error);
-      setError('Failed to download QR code');
+      console.error('Error downloading QR code:', error)
+      setError('Failed to download QR code')
     }
-  };
+  }
 
   const copyToClipboard = async () => {
     try {
       if (navigator?.clipboard && qrCodeDataUrl) {
         // Try to copy the image
-        const response = await fetch(qrCodeDataUrl);
-        const blob = await response?.blob();
-        await navigator?.clipboard?.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        const response = await fetch(qrCodeDataUrl)
+        const blob = await response?.blob()
+        await navigator?.clipboard?.write([new ClipboardItem({ 'image/png': blob })])
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
       } else {
         // Fallback: copy the URL
-        await navigator?.clipboard?.writeText(customUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        await navigator?.clipboard?.writeText(customUrl)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
       }
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
+      console.error('Error copying to clipboard:', error)
       // Fallback: copy URL as text
       try {
-        await navigator?.clipboard?.writeText(customUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        await navigator?.clipboard?.writeText(customUrl)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
       } catch (fallbackError) {
-        setError('Failed to copy to clipboard');
+        setError('Failed to copy to clipboard')
       }
     }
-  };
+  }
 
   const shareQRCode = async () => {
     try {
       if (navigator?.share && qrCodeDataUrl) {
         // Convert data URL to blob for sharing
-        const response = await fetch(qrCodeDataUrl);
-        const blob = await response?.blob();
-        const file = new File([blob], `${title}_QRCode.png`, { type: 'image/png' });
+        const response = await fetch(qrCodeDataUrl)
+        const blob = await response?.blob()
+        const file = new File([blob], `${title}_QRCode.png`, { type: 'image/png' })
 
         await navigator?.share({
           title: title,
           text: description,
           url: customUrl,
-          files: [file]
-        });
+          files: [file],
+        })
       } else {
         // Fallback: copy URL to clipboard
-        await copyToClipboard();
+        await copyToClipboard()
       }
     } catch (error) {
-      console.error('Error sharing QR code:', error);
+      console.error('Error sharing QR code:', error)
       if (error?.name !== 'AbortError') {
-        setError('Failed to share QR code');
+        setError('Failed to share QR code')
       }
     }
-  };
+  }
 
   const resetToDefault = () => {
-    setCustomUrl(url || '');
-    setCustomSize(size);
-    setError(null);
-    setCopied(false);
-  };
+    setCustomUrl(url || '')
+    setCustomSize(size)
+    setError(null)
+    setCopied(false)
+  }
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -153,9 +151,7 @@ const QRCodeGenerator = ({
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
       </div>
 
-      {description && (
-        <p className="text-gray-600 text-sm mb-6">{description}</p>
-      )}
+      {description && <p className="text-gray-600 text-sm mb-6">{description}</p>}
 
       {/* Error Display */}
       {error && (
@@ -209,7 +205,7 @@ const QRCodeGenerator = ({
             >
               {loading ? 'Generating...' : 'Generate QR Code'}
             </Button>
-            
+
             <Button
               onClick={resetToDefault}
               variant="secondary"
@@ -234,8 +230,8 @@ const QRCodeGenerator = ({
 
         {qrCodeDataUrl && !loading && (
           <div className="bg-white border-2 border-gray-200 rounded-lg p-4 shadow-sm">
-            <img 
-              src={qrCodeDataUrl} 
+            <img
+              src={qrCodeDataUrl}
               alt={`QR Code for ${title}`}
               className="block"
               style={{ width: customSize, height: customSize }}
@@ -310,7 +306,7 @@ const QRCodeGenerator = ({
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default QRCodeGenerator;
+export default QRCodeGenerator

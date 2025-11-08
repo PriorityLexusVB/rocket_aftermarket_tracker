@@ -1,143 +1,153 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Header from '../../components/ui/Header';
-import Sidebar from '../../components/ui/Sidebar';
-import Icon from '../../components/AppIcon';
-import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import VehicleLookupPanel from './components/VehicleLookupPanel';
-import ProductSelectionGrid from './components/ProductSelectionGrid';
-import TransactionSummary from './components/TransactionSummary';
-import { jobService } from '../../services/jobService';
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Header from '../../components/ui/Header'
+import Sidebar from '../../components/ui/Sidebar'
+import Icon from '../../components/AppIcon'
+import Button from '../../components/ui/Button'
+import Input from '../../components/ui/Input'
+import VehicleLookupPanel from './components/VehicleLookupPanel'
+import ProductSelectionGrid from './components/ProductSelectionGrid'
+import TransactionSummary from './components/TransactionSummary'
+import { jobService } from '../../services/jobService'
 
 const SalesTransactionInterface = () => {
-  const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [dealNumber, setDealNumber] = useState('');
+  const navigate = useNavigate()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [dealNumber, setDealNumber] = useState('')
 
   // Customer & Form state
   const [customerData, setCustomerData] = useState({
     name: '',
     email: '',
-    phone: ''
-  });
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [selectedServices, setSelectedServices] = useState([]);
-  const [notes, setNotes] = useState('');
+    phone: '',
+  })
+  const [selectedVehicle, setSelectedVehicle] = useState(null)
+  const [selectedServices, setSelectedServices] = useState([])
+  const [notes, setNotes] = useState('')
 
   // Generate deal number on load
   useEffect(() => {
     const generateDealNumber = () => {
-      const today = new Date();
-      const year = today?.getFullYear();
-      const timestamp = Date.now()?.toString()?.slice(-6);
-      return `DEAL-${year}-${timestamp}`;
-    };
-    
-    setDealNumber(generateDealNumber());
-    document.title = 'Add New Sale - Rocket Aftermarket Tracker';
-  }, []);
+      const today = new Date()
+      const year = today?.getFullYear()
+      const timestamp = Date.now()?.toString()?.slice(-6)
+      return `DEAL-${year}-${timestamp}`
+    }
+
+    setDealNumber(generateDealNumber())
+    document.title = 'Add New Sale - Rocket Aftermarket Tracker'
+  }, [])
 
   const handleCustomerChange = (field, value) => {
-    setCustomerData(prev => ({ ...prev, [field]: value }));
-  };
+    setCustomerData((prev) => ({ ...prev, [field]: value }))
+  }
 
   const handleVehicleSelect = (vehicle) => {
-    setSelectedVehicle(vehicle);
-  };
+    setSelectedVehicle(vehicle)
+  }
 
   const handleServiceToggle = (serviceId, isSelected, serviceData = null) => {
     if (isSelected && serviceData) {
-      setSelectedServices(prev => [...prev, serviceData]);
+      setSelectedServices((prev) => [...prev, serviceData])
     } else {
-      setSelectedServices(prev => prev?.filter(s => s?.id !== serviceId));
+      setSelectedServices((prev) => prev?.filter((s) => s?.id !== serviceId))
     }
-  };
+  }
 
   const handleServiceUpdate = (serviceId, field, value) => {
-    setSelectedServices(prev =>
-      prev?.map(service =>
-        service?.id === serviceId
-          ? { ...service, [field]: value }
-          : service
-      )
-    );
-  };
+    setSelectedServices((prev) =>
+      prev?.map((service) => (service?.id === serviceId ? { ...service, [field]: value } : service))
+    )
+  }
 
   const calculateTotals = () => {
-    const totalCost = selectedServices?.reduce((sum, service) => sum + (parseFloat(service?.cost || 0) * (service?.quantity || 1)), 0);
-    const totalPrice = selectedServices?.reduce((sum, service) => sum + (parseFloat(service?.price || 0) * (service?.quantity || 1)), 0);
-    const totalProfit = totalPrice - totalCost;
-    
-    return { totalCost, totalPrice, totalProfit };
-  };
+    const totalCost = selectedServices?.reduce(
+      (sum, service) => sum + parseFloat(service?.cost || 0) * (service?.quantity || 1),
+      0
+    )
+    const totalPrice = selectedServices?.reduce(
+      (sum, service) => sum + parseFloat(service?.price || 0) * (service?.quantity || 1),
+      0
+    )
+    const totalProfit = totalPrice - totalCost
+
+    return { totalCost, totalPrice, totalProfit }
+  }
 
   const handleSaveTransaction = async (additionalData) => {
-    setIsSaving(true);
-    
+    setIsSaving(true)
+
     try {
-      const { totalCost, totalPrice, totalProfit } = calculateTotals();
-      
+      const { totalCost, totalPrice, totalProfit } = calculateTotals()
+
       // Find off-site services that require scheduling
-      const offSiteServices = selectedServices?.filter(s => s?.isOffsite && s?.requiresSchedule);
-      const hasScheduledServices = offSiteServices?.length > 0;
-      
+      const offSiteServices = selectedServices?.filter((s) => s?.isOffsite && s?.requiresSchedule)
+      const hasScheduledServices = offSiteServices?.length > 0
+
       // Get the first scheduled service for main scheduling data
-      const primaryScheduledService = offSiteServices?.[0];
-      
+      const primaryScheduledService = offSiteServices?.[0]
+
       // Build comprehensive deal data for Supabase
       const dealData = {
         // Basic deal information
-        title: `${selectedVehicle?.year || ''} ${selectedVehicle?.make || ''} ${selectedVehicle?.model || ''}`?.trim() || 'New Deal',
+        title:
+          `${selectedVehicle?.year || ''} ${selectedVehicle?.make || ''} ${selectedVehicle?.model || ''}`?.trim() ||
+          'New Deal',
         description: `Deal for ${customerData?.name} - ${selectedServices?.length} services`,
-        
+
         // Vehicle and customer
         vehicle_id: selectedVehicle?.id,
-        
+
         // Vendor and service type (use first vendor if multiple off-site services)
         vendor_id: primaryScheduledService?.vendorId || null,
         service_type: primaryScheduledService?.vendorId ? 'vendor' : 'in_house',
-        
+
         // Location based on service type
-        location: primaryScheduledService?.vendorId 
-          ? `${primaryScheduledService?.vendorName || 'Vendor'} - Off-Site` 
+        location: primaryScheduledService?.vendorId
+          ? `${primaryScheduledService?.vendorName || 'Vendor'} - Off-Site`
           : 'In-House Service Bay',
-        
+
         // Scheduling information
-        promised_date: primaryScheduledService?.startDate ? new Date(primaryScheduledService.startDate)?.toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)?.toISOString(),
-        scheduled_start_time: primaryScheduledService?.startDate ? new Date(primaryScheduledService.startDate)?.toISOString() : null,
-        scheduled_end_time: primaryScheduledService?.endDate ? new Date(primaryScheduledService.endDate)?.toISOString() : null,
-        
+        promised_date: primaryScheduledService?.startDate
+          ? new Date(primaryScheduledService.startDate)?.toISOString()
+          : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)?.toISOString(),
+        scheduled_start_time: primaryScheduledService?.startDate
+          ? new Date(primaryScheduledService.startDate)?.toISOString()
+          : null,
+        scheduled_end_time: primaryScheduledService?.endDate
+          ? new Date(primaryScheduledService.endDate)?.toISOString()
+          : null,
+
         // Financial data
         estimated_cost: totalPrice,
-        
+
         // Additional options
-        customer_needs_loaner: selectedServices?.some(s => s?.requiresLoaner) || false,
-        
+        customer_needs_loaner: selectedServices?.some((s) => s?.requiresLoaner) || false,
+
         // Priority and status
         priority: hasScheduledServices ? 'high' : 'medium',
         job_status: hasScheduledServices ? 'scheduled' : 'pending',
-        
+
         // Calendar integration
-        calendar_notes: `Customer: ${customerData?.name}\nServices: ${selectedServices?.map(s => s?.name)?.join(', ')}\n${notes ? `Notes: ${notes}` : ''}`,
+        calendar_notes: `Customer: ${customerData?.name}\nServices: ${selectedServices?.map((s) => s?.name)?.join(', ')}\n${notes ? `Notes: ${notes}` : ''}`,
         color_code: primaryScheduledService?.vendorId ? '#f97316' : '#22c55e',
-        
+
         // Line items for job_parts table
-        lineItems: selectedServices?.map(service => ({
+        lineItems: selectedServices?.map((service) => ({
           product_id: service?.id,
           quantity: service?.quantity || 1,
-          unit_price: parseFloat(service?.price || 0)
+          unit_price: parseFloat(service?.price || 0),
         })),
-        
-        ...additionalData
-      };
 
-      console.log('Creating deal with data:', dealData);
-      
+        ...additionalData,
+      }
+
+      console.log('Creating deal with data:', dealData)
+
       // Create deal with line items using jobService
-      const result = await jobService?.createDealWithLineItems(dealData);
-      
+      const result = await jobService?.createDealWithLineItems(dealData)
+
       if (result) {
         // Show success message
         const successMessage = `Deal saved successfully!
@@ -146,50 +156,56 @@ Customer: ${customerData?.name}
 Vehicle: ${selectedVehicle?.year} ${selectedVehicle?.make} ${selectedVehicle?.model}
 Services: ${selectedServices?.length} items
 Total: $${totalPrice?.toFixed(2)}
-Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${primaryScheduledService?.startDate}` : ''}`;
-        
-        alert(successMessage);
-        
+Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${primaryScheduledService?.startDate}` : ''}`
+
+        alert(successMessage)
+
         // Reset form
-        handleResetForm();
-        
+        handleResetForm()
+
         // Optional: navigate to deals list
         // navigate('/deals');
       }
     } catch (error) {
-      console.error('Error saving deal:', error);
-      alert(`Error saving deal: ${error?.message || 'Please try again.'}`);
+      console.error('Error saving deal:', error)
+      alert(`Error saving deal: ${error?.message || 'Please try again.'}`)
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   const handleResetForm = () => {
-    setCustomerData({ name: '', email: '', phone: '' });
-    setSelectedVehicle(null);
-    setSelectedServices([]);
-    setNotes('');
-    
-    // Generate new deal number
-    const today = new Date();
-    const year = today?.getFullYear();
-    const timestamp = Date.now()?.toString()?.slice(-6);
-    setDealNumber(`DEAL-${year}-${timestamp}`);
-  };
+    setCustomerData({ name: '', email: '', phone: '' })
+    setSelectedVehicle(null)
+    setSelectedServices([])
+    setNotes('')
 
-  const canSave = customerData?.name && selectedVehicle && selectedServices?.length > 0;
-  const todayFormatted = new Date()?.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+    // Generate new deal number
+    const today = new Date()
+    const year = today?.getFullYear()
+    const timestamp = Date.now()?.toString()?.slice(-6)
+    setDealNumber(`DEAL-${year}-${timestamp}`)
+  }
+
+  const canSave = customerData?.name && selectedVehicle && selectedServices?.length > 0
+  const todayFormatted = new Date()?.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 
   return (
     <div className="min-h-screen bg-background">
       <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
-      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <main className={`transition-all duration-300 pt-16 ${isSidebarOpen ? 'lg:ml-60' : 'lg:ml-16'}`}>
+      <Sidebar
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      <main
+        className={`transition-all duration-300 pt-16 ${isSidebarOpen ? 'lg:ml-60' : 'lg:ml-16'}`}
+      >
         <div className="p-6">
           {/* Enhanced Page Header with Date and Deal Number */}
           <div className="mb-8">
@@ -246,9 +262,11 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  canSave ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
-                }`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    canSave ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
                   {canSave ? 'Ready to Save' : 'Incomplete'}
                 </span>
               </div>
@@ -256,18 +274,24 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
 
             {/* Progress Indicator */}
             <div className="flex items-center space-x-4 text-sm">
-              <div className={`flex items-center space-x-2 ${customerData?.name ? 'text-success' : 'text-muted-foreground'}`}>
-                <Icon name={customerData?.name ? "CheckCircle" : "User"} size={16} />
+              <div
+                className={`flex items-center space-x-2 ${customerData?.name ? 'text-success' : 'text-muted-foreground'}`}
+              >
+                <Icon name={customerData?.name ? 'CheckCircle' : 'User'} size={16} />
                 <span>Customer</span>
               </div>
               <Icon name="ChevronRight" size={14} className="text-muted-foreground" />
-              <div className={`flex items-center space-x-2 ${selectedVehicle ? 'text-success' : 'text-muted-foreground'}`}>
-                <Icon name={selectedVehicle ? "CheckCircle" : "Car"} size={16} />
+              <div
+                className={`flex items-center space-x-2 ${selectedVehicle ? 'text-success' : 'text-muted-foreground'}`}
+              >
+                <Icon name={selectedVehicle ? 'CheckCircle' : 'Car'} size={16} />
                 <span>Vehicle</span>
               </div>
               <Icon name="ChevronRight" size={14} className="text-muted-foreground" />
-              <div className={`flex items-center space-x-2 ${selectedServices?.length > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                <Icon name={selectedServices?.length > 0 ? "CheckCircle" : "Wrench"} size={16} />
+              <div
+                className={`flex items-center space-x-2 ${selectedServices?.length > 0 ? 'text-success' : 'text-muted-foreground'}`}
+              >
+                <Icon name={selectedServices?.length > 0 ? 'CheckCircle' : 'Wrench'} size={16} />
                 <span>Services ({selectedServices?.length})</span>
               </div>
             </div>
@@ -281,10 +305,12 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Customer Information</h3>
-                <p className="text-sm text-muted-foreground">Enter customer details for this sale</p>
+                <p className="text-sm text-muted-foreground">
+                  Enter customer details for this sale
+                </p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
                 id="customer-name"
@@ -357,10 +383,12 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Additional Notes</h3>
-                    <p className="text-sm text-muted-foreground">Any special instructions or comments</p>
+                    <p className="text-sm text-muted-foreground">
+                      Any special instructions or comments
+                    </p>
                   </div>
                 </div>
-                
+
                 <textarea
                   className="w-full h-24 px-3 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                   placeholder="Enter any special instructions, customer requests, or additional notes for this sale..."
@@ -445,7 +473,7 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default SalesTransactionInterface;
+export default SalesTransactionInterface

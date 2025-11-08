@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     # Only run on main branch (skip forks)
     if: github.repository == 'PriorityLexusVB/rocket_aftermarket_tracker'
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,10 +67,10 @@ jobs:
           HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "${VITE_SUPABASE_URL}/api/health" || echo "000")
           HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -n1)
           BODY=$(echo "$HEALTH_RESPONSE" | head -n-1)
-          
+
           echo "HTTP Status: $HTTP_CODE"
           echo "Response: $BODY"
-          
+
           if [ "$HTTP_CODE" = "200" ]; then
             echo "health_ok=true" >> $GITHUB_OUTPUT
             echo "✅ Health endpoint responding"
@@ -89,10 +89,10 @@ jobs:
           RESPONSE=$(curl -s -w "\n%{http_code}" "${VITE_SUPABASE_URL}/api/health-deals-rel" || echo "000")
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
-          
+
           echo "HTTP Status: $HTTP_CODE"
           echo "Response: $BODY"
-          
+
           if [ "$HTTP_CODE" = "200" ]; then
             # Check if relationship is OK in response
             if echo "$BODY" | grep -q '"relationship":true'; then
@@ -115,7 +115,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "### Schema Drift Check" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.drift_check.outputs.drift_detected }}" = "false" ]; then
             echo "✅ **PASS** - No schema drift detected" >> $GITHUB_STEP_SUMMARY
@@ -124,17 +124,17 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Action Required**: Run \`scripts/verify-schema-cache.sh\` locally to diagnose" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Health Endpoints" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "#### /api/health" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.health_check.outputs.health_ok }}" = "true" ]; then
             echo "✅ **PASS** - Basic health check OK" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **FAIL** - Basic health check failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### /api/health-deals-rel" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.deals_rel_check.outputs.deals_rel_ok }}" = "true" ]; then
@@ -142,10 +142,10 @@ jobs:
           else
             echo "❌ **FAIL** - Deals relationship check failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Actions" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ steps.drift_check.outputs.drift_detected }}" = "true" ] || \
              [ "${{ steps.health_check.outputs.health_ok }}" = "false" ] || \
              [ "${{ steps.deals_rel_check.outputs.deals_rel_ok }}" = "false" ]; then
@@ -166,37 +166,37 @@ jobs:
           script: |
             const title = `🚨 Nightly Check: RLS Schema Drift Detected`;
             const body = `## Schema Drift Detected
-            
+
             The nightly RLS drift check has detected a potential schema cache issue.
-            
+
             **Workflow Run**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             **Date**: ${new Date().toUTCString()}
-            
+
             ### Likely Causes
             1. Recent migration added FK constraint without \`NOTIFY pgrst, 'reload schema'\`
             2. PostgREST cache not reloaded after schema change
             3. Column or relationship missing from database
-            
+
             ### Troubleshooting Steps
             1. Review workflow logs: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
             2. Run locally: \`bash scripts/verify-schema-cache.sh\`
             3. Check recent migrations in \`supabase/migrations/\`
             4. See [TROUBLESHOOTING_SCHEMA_CACHE.md](https://github.com/${{ github.repository }}/blob/main/docs/TROUBLESHOOTING_SCHEMA_CACHE.md)
             5. See [DEPLOY_CHECKLIST.md](https://github.com/${{ github.repository }}/blob/main/docs/DEPLOY_CHECKLIST.md)
-            
+
             ### Resolution
             If a migration is missing \`NOTIFY pgrst, 'reload schema'\`, add it and redeploy:
             \`\`\`sql
             -- At end of migration
             NOTIFY pgrst, 'reload schema';
             \`\`\`
-            
+
             Or manually reload via Supabase SQL Editor:
             \`\`\`sql
             NOTIFY pgrst, 'reload schema';
             \`\`\`
             `;
-            
+
             // Check if issue already exists (open issues with this title)
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -204,11 +204,11 @@ jobs:
               state: 'open',
               labels: 'schema-drift,automated'
             });
-            
+
             const existingIssue = issues.data.find(issue => 
               issue.title.includes('RLS Schema Drift Detected')
             );
-            
+
             if (existingIssue) {
               // Add comment to existing issue
               await github.rest.issues.createComment({

@@ -1,5 +1,5 @@
-import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react'
+import { supabase } from '../lib/supabase'
 
 export const AuthContext = createContext()
 
@@ -14,37 +14,49 @@ export const AuthProvider = ({ children }) => {
       if (!userId) return
       setProfileLoading(true)
       try {
-        const { data, error } = await supabase?.from('user_profiles')?.select('*')?.eq('id', userId)?.single()
+        const { data, error } = await supabase
+          ?.from('user_profiles')
+          ?.select('*')
+          ?.eq('id', userId)
+          ?.single()
         if (!error && data) {
           setUserProfile(data)
           localStorage.setItem('userRole', data?.role)
         } else {
           // Create basic profile for auth.users with admin role by default
-          const { data: { user } } = await supabase?.auth?.getUser()
+          const {
+            data: { user },
+          } = await supabase?.auth?.getUser()
           if (user) {
             const basicProfile = {
               id: user?.id,
               email: user?.email,
               full_name: user?.email?.split('@')?.[0] || 'User',
               role: 'admin', // Updated to default to admin role
-              is_active: true
+              is_active: true,
             }
-            
-            const { data: newProfile } = await supabase?.from('user_profiles')?.insert(basicProfile)?.select()?.single()
-            
+
+            const { data: newProfile } = await supabase
+              ?.from('user_profiles')
+              ?.insert(basicProfile)
+              ?.select()
+              ?.single()
+
             if (newProfile) {
               setUserProfile(newProfile)
-              localStorage.setItem('userRole', newProfile?.role);
+              localStorage.setItem('userRole', newProfile?.role)
             }
           }
         }
       } catch (error) {
         // Show user-friendly error but don't block loading
-        const errorMessage = error?.message || 'Authentication service error';
+        const errorMessage = error?.message || 'Authentication service error'
         if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
-          console.warn('Cannot connect to authentication service. Your Supabase project may be paused or inactive.');
+          console.warn(
+            'Cannot connect to authentication service. Your Supabase project may be paused or inactive.'
+          )
         } else {
-          console.error('Error loading user profile:', error);
+          console.error('Error loading user profile:', error)
         }
       } finally {
         setProfileLoading(false)
@@ -53,12 +65,14 @@ export const AuthProvider = ({ children }) => {
     clear() {
       setUserProfile(null)
       localStorage.removeItem('userRole')
-    }
+    },
   }
 
   const checkUser = useCallback(async () => {
     try {
-      const { data: { session } } = await supabase?.auth?.getSession()
+      const {
+        data: { session },
+      } = await supabase?.auth?.getSession()
       if (session?.user) {
         setUser(session?.user)
         await profileOperations?.load(session?.user?.id)
@@ -67,11 +81,13 @@ export const AuthProvider = ({ children }) => {
         profileOperations?.clear()
       }
     } catch (error) {
-      const errorMessage = error?.message || 'Session check failed';
+      const errorMessage = error?.message || 'Session check failed'
       if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
-        console.warn('Cannot connect to authentication service. Please check your network connection.');
+        console.warn(
+          'Cannot connect to authentication service. Please check your network connection.'
+        )
       } else {
-        console.error("Error checking user session:", error);
+        console.error('Error checking user session:', error)
       }
       setUser(null)
       profileOperations?.clear()
@@ -96,7 +112,7 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       authListener?.subscription?.unsubscribe()
-    };
+    }
   }, [checkUser])
 
   const signIn = async (email, password) => {
@@ -105,11 +121,15 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error
       return { success: true, data }
     } catch (error) {
-      const errorMessage = error?.message || 'Login failed';
+      const errorMessage = error?.message || 'Login failed'
       if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
-        return { success: false, error: 'Cannot connect to authentication service. Please check your network connection and try again.' };
+        return {
+          success: false,
+          error:
+            'Cannot connect to authentication service. Please check your network connection and try again.',
+        }
       }
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage }
     }
   }
 
@@ -123,13 +143,13 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{ user, userProfile, loading, profileLoading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider')
   }
-  return context;
-};
+  return context
+}

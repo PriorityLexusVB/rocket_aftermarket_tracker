@@ -1,21 +1,37 @@
-import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
-import { TrendingUp } from 'lucide-react';
+import React from 'react'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  AreaChart,
+  Area,
+} from 'recharts'
+import { TrendingUp } from 'lucide-react'
 
 const SalesTrendsChart = ({ data, timeframe }) => {
   const getTimeframeLabel = () => {
     switch (timeframe) {
-      case '1month': return 'Last 1 Month';
-      case '3months': return 'Last 3 Months';
-      case '6months': return 'Last 6 Months';
-      case '1year': return 'Last 1 Year';
-      default: return 'Last 6 Months';
+      case '1month':
+        return 'Last 1 Month'
+      case '3months':
+        return 'Last 3 Months'
+      case '6months':
+        return 'Last 6 Months'
+      case '1year':
+        return 'Last 1 Year'
+      default:
+        return 'Last 6 Months'
     }
-  };
+  }
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {
-      const data = payload?.[0]?.payload;
+      const data = payload?.[0]?.payload
       return (
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
           <p className="font-semibold text-gray-900 mb-2">{data?.month_name}</p>
@@ -25,10 +41,10 @@ const SalesTrendsChart = ({ data, timeframe }) => {
             <p className="text-purple-600">Products: {data?.products_sold}</p>
           </div>
         </div>
-      );
+      )
     }
-    return null;
-  };
+    return null
+  }
 
   const CategoryTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {
@@ -41,66 +57,90 @@ const SalesTrendsChart = ({ data, timeframe }) => {
             </p>
           ))}
         </div>
-      );
+      )
     }
-    return null;
-  };
+    return null
+  }
 
   // Calculate trend indicators
   const calculateTrend = () => {
-    if (!data || data?.length < 2) return { revenue: 0, quantity: 0 };
-    
-    const latest = data?.[data?.length - 1];
-    const previous = data?.[data?.length - 2];
-    
-    const revenueTrend = latest?.total_revenue > previous?.total_revenue ? 
-      ((latest?.total_revenue - previous?.total_revenue) / previous?.total_revenue * 100)?.toFixed(1) : 
-      -((previous?.total_revenue - latest?.total_revenue) / previous?.total_revenue * 100)?.toFixed(1);
-    
-    const quantityTrend = latest?.total_quantity > previous?.total_quantity ?
-      ((latest?.total_quantity - previous?.total_quantity) / previous?.total_quantity * 100)?.toFixed(1) :
-      -((previous?.total_quantity - latest?.total_quantity) / previous?.total_quantity * 100)?.toFixed(1);
+    if (!data || data?.length < 2) return { revenue: 0, quantity: 0 }
 
-    return { 
-      revenue: parseFloat(revenueTrend), 
-      quantity: parseFloat(quantityTrend) 
-    };
-  };
+    const latest = data?.[data?.length - 1]
+    const previous = data?.[data?.length - 2]
 
-  const trends = calculateTrend();
+    const revenueTrend =
+      latest?.total_revenue > previous?.total_revenue
+        ? (
+            ((latest?.total_revenue - previous?.total_revenue) / previous?.total_revenue) *
+            100
+          )?.toFixed(1)
+        : -(
+            ((previous?.total_revenue - latest?.total_revenue) / previous?.total_revenue) *
+            100
+          )?.toFixed(1)
+
+    const quantityTrend =
+      latest?.total_quantity > previous?.total_quantity
+        ? (
+            ((latest?.total_quantity - previous?.total_quantity) / previous?.total_quantity) *
+            100
+          )?.toFixed(1)
+        : -(
+            ((previous?.total_quantity - latest?.total_quantity) / previous?.total_quantity) *
+            100
+          )?.toFixed(1)
+
+    return {
+      revenue: parseFloat(revenueTrend),
+      quantity: parseFloat(quantityTrend),
+    }
+  }
+
+  const trends = calculateTrend()
 
   // Prepare category data for stacked area chart
   const prepareCategoryData = () => {
-    if (!data || data?.length === 0) return [];
-    
+    if (!data || data?.length === 0) return []
+
     // Get all unique categories
-    const allCategories = new Set();
-    data?.forEach(month => {
-      month?.categories?.forEach(cat => allCategories?.add(cat?.name));
-    });
+    const allCategories = new Set()
+    data?.forEach((month) => {
+      month?.categories?.forEach((cat) => allCategories?.add(cat?.name))
+    })
 
     // Create colors for categories
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
-    const categoryColors = {};
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316']
+    const categoryColors = {}
     Array.from(allCategories)?.forEach((cat, index) => {
-      categoryColors[cat] = colors?.[index % colors?.length];
-    });
+      categoryColors[cat] = colors?.[index % colors?.length]
+    })
 
     // Transform data for stacked chart
-    return data?.map(month => {
-      const result = { month_name: month?.month_name };
-      month?.categories?.forEach(cat => {
-        result[cat.name] = parseFloat(cat?.value);
-      });
-      return result;
-    });
-  };
+    return data?.map((month) => {
+      const result = { month_name: month?.month_name }
+      month?.categories?.forEach((cat) => {
+        result[cat.name] = parseFloat(cat?.value)
+      })
+      return result
+    })
+  }
 
-  const categoryData = prepareCategoryData();
-  const allCategories = categoryData?.length > 0 ? 
-    Object.keys(categoryData?.[0])?.filter(key => key !== 'month_name') : [];
+  const categoryData = prepareCategoryData()
+  const allCategories =
+    categoryData?.length > 0
+      ? Object.keys(categoryData?.[0])?.filter((key) => key !== 'month_name')
+      : []
 
-  const categoryColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
+  const categoryColors = [
+    '#3b82f6',
+    '#10b981',
+    '#f59e0b',
+    '#ef4444',
+    '#8b5cf6',
+    '#06b6d4',
+    '#f97316',
+  ]
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
@@ -114,18 +154,24 @@ const SalesTrendsChart = ({ data, timeframe }) => {
             Time-series visualization with seasonal trends • {getTimeframeLabel()}
           </p>
         </div>
-        
+
         {data && data?.length > 1 && (
           <div className="flex items-center space-x-4">
             <div className="text-center">
-              <div className={`text-lg font-bold ${trends?.revenue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {trends?.revenue >= 0 ? '+' : ''}{trends?.revenue}%
+              <div
+                className={`text-lg font-bold ${trends?.revenue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {trends?.revenue >= 0 ? '+' : ''}
+                {trends?.revenue}%
               </div>
               <div className="text-sm text-gray-600">Revenue Trend</div>
             </div>
             <div className="text-center">
-              <div className={`text-lg font-bold ${trends?.quantity >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {trends?.quantity >= 0 ? '+' : ''}{trends?.quantity}%
+              <div
+                className={`text-lg font-bold ${trends?.quantity >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {trends?.quantity >= 0 ? '+' : ''}
+                {trends?.quantity}%
               </div>
               <div className="text-sm text-gray-600">Quantity Trend</div>
             </div>
@@ -140,8 +186,8 @@ const SalesTrendsChart = ({ data, timeframe }) => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="month_name" 
+                <XAxis
+                  dataKey="month_name"
                   tick={{ fontSize: 12 }}
                   angle={-45}
                   textAnchor="end"
@@ -151,20 +197,20 @@ const SalesTrendsChart = ({ data, timeframe }) => {
                 <YAxis yAxisId="right" orientation="right" />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Line 
+                <Line
                   yAxisId="left"
-                  type="monotone" 
-                  dataKey="total_revenue" 
-                  stroke="#10b981" 
+                  type="monotone"
+                  dataKey="total_revenue"
+                  stroke="#10b981"
                   strokeWidth={3}
                   dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
                   name="Revenue ($)"
                 />
-                <Line 
+                <Line
                   yAxisId="right"
-                  type="monotone" 
-                  dataKey="total_quantity" 
-                  stroke="#3b82f6" 
+                  type="monotone"
+                  dataKey="total_quantity"
+                  stroke="#3b82f6"
                   strokeWidth={3}
                   dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
                   name="Quantity Sold"
@@ -189,7 +235,7 @@ const SalesTrendsChart = ({ data, timeframe }) => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={categoryData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
+                <XAxis
                   dataKey="month_name"
                   tick={{ fontSize: 12 }}
                   angle={-45}
@@ -220,26 +266,33 @@ const SalesTrendsChart = ({ data, timeframe }) => {
         <div className="mt-6 pt-6 border-t border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">
-                {data?.length}
-              </div>
+              <div className="text-2xl font-bold text-indigo-600">{data?.length}</div>
               <div className="text-sm text-gray-600">Months Analyzed</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                ${data?.reduce((sum, month) => sum + parseFloat(month?.total_revenue || 0), 0)?.toLocaleString()}
+                $
+                {data
+                  ?.reduce((sum, month) => sum + parseFloat(month?.total_revenue || 0), 0)
+                  ?.toLocaleString()}
               </div>
               <div className="text-sm text-gray-600">Total Revenue</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {data?.reduce((sum, month) => sum + (month?.total_quantity || 0), 0)?.toLocaleString()}
+                {data
+                  ?.reduce((sum, month) => sum + (month?.total_quantity || 0), 0)
+                  ?.toLocaleString()}
               </div>
               <div className="text-sm text-gray-600">Total Quantity</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                ${(data?.reduce((sum, month) => sum + parseFloat(month?.total_revenue || 0), 0) / data?.length)?.toLocaleString()}
+                $
+                {(
+                  data?.reduce((sum, month) => sum + parseFloat(month?.total_revenue || 0), 0) /
+                  data?.length
+                )?.toLocaleString()}
               </div>
               <div className="text-sm text-gray-600">Avg Monthly Revenue</div>
             </div>
@@ -247,7 +300,7 @@ const SalesTrendsChart = ({ data, timeframe }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default SalesTrendsChart;
+export default SalesTrendsChart

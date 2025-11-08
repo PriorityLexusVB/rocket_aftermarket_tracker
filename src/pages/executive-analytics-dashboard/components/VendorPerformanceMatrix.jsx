@@ -1,35 +1,38 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
 const VendorPerformanceMatrix = ({ data }) => {
-  const [selectedMetric, setSelectedMetric] = useState('efficiency');
+  const [selectedMetric, setSelectedMetric] = useState('efficiency')
 
   const getPerformanceScore = (vendor) => {
-    const completionWeight = 0.4;
-    const turnaroundWeight = 0.3;
-    const profitWeight = 0.3;
+    const completionWeight = 0.4
+    const turnaroundWeight = 0.3
+    const profitWeight = 0.3
 
-    const completionScore = vendor?.completionRate / 100;
-    const turnaroundScore = Math.max(0, (14 - vendor?.avgTurnaround) / 14); // 14 days max
-    const profitScore = Math.min(1, vendor?.profitContribution / 50000); // $50k max
+    const completionScore = vendor?.completionRate / 100
+    const turnaroundScore = Math.max(0, (14 - vendor?.avgTurnaround) / 14) // 14 days max
+    const profitScore = Math.min(1, vendor?.profitContribution / 50000) // $50k max
 
-    return (completionScore * completionWeight + 
-            turnaroundScore * turnaroundWeight + 
-            profitScore * profitWeight) * 100;
-  };
+    return (
+      (completionScore * completionWeight +
+        turnaroundScore * turnaroundWeight +
+        profitScore * profitWeight) *
+      100
+    )
+  }
 
   const getScoreColor = (score) => {
-    if (score >= 80) return 'text-success';
-    if (score >= 60) return 'text-warning';
-    return 'text-error';
-  };
+    if (score >= 80) return 'text-success'
+    if (score >= 60) return 'text-warning'
+    return 'text-error'
+  }
 
   const getScoreBadge = (score) => {
-    if (score >= 80) return 'bg-success/10 text-success border-success/20';
-    if (score >= 60) return 'bg-warning/10 text-warning border-warning/20';
-    return 'bg-error/10 text-error border-error/20';
-  };
+    if (score >= 80) return 'bg-success/10 text-success border-success/20'
+    if (score >= 60) return 'bg-warning/10 text-warning border-warning/20'
+    return 'bg-error/10 text-error border-error/20'
+  }
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-US', {
@@ -37,15 +40,15 @@ const VendorPerformanceMatrix = ({ data }) => {
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    })?.format(value);
-  };
+    })?.format(value)
+  }
 
   const metrics = [
     { id: 'efficiency', label: 'Overall Efficiency', icon: 'Zap' },
     { id: 'completion', label: 'Completion Rate', icon: 'CheckCircle' },
     { id: 'turnaround', label: 'Turnaround Time', icon: 'Clock' },
-    { id: 'profit', label: 'Profit Contribution', icon: 'DollarSign' }
-  ];
+    { id: 'profit', label: 'Profit Contribution', icon: 'DollarSign' },
+  ]
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1">
@@ -61,7 +64,7 @@ const VendorPerformanceMatrix = ({ data }) => {
           {metrics?.map((metric) => (
             <Button
               key={metric?.id}
-              variant={selectedMetric === metric?.id ? "default" : "outline"}
+              variant={selectedMetric === metric?.id ? 'default' : 'outline'}
               size="sm"
               onClick={() => setSelectedMetric(metric?.id)}
               iconName={metric?.icon}
@@ -75,10 +78,13 @@ const VendorPerformanceMatrix = ({ data }) => {
       <div className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {data?.map((vendor) => {
-            const score = getPerformanceScore(vendor);
-            
+            const score = getPerformanceScore(vendor)
+
             return (
-              <div key={vendor?.id} className="border border-border rounded-lg p-4 hover:shadow-elevation-1 transition-all duration-200">
+              <div
+                key={vendor?.id}
+                className="border border-border rounded-lg p-4 hover:shadow-elevation-1 transition-all duration-200"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center justify-center w-10 h-10 bg-muted rounded-lg">
@@ -89,8 +95,10 @@ const VendorPerformanceMatrix = ({ data }) => {
                       <p className="text-sm text-muted-foreground">{vendor?.specialty}</p>
                     </div>
                   </div>
-                  
-                  <div className={`px-2 py-1 rounded-full border text-xs font-medium ${getScoreBadge(score)}`}>
+
+                  <div
+                    className={`px-2 py-1 rounded-full border text-xs font-medium ${getScoreBadge(score)}`}
+                  >
                     {score?.toFixed(0)}%
                   </div>
                 </div>
@@ -143,7 +151,7 @@ const VendorPerformanceMatrix = ({ data }) => {
                     </span>
                   </div>
                   <div className="mt-2 w-full bg-muted rounded-full h-2">
-                    <div 
+                    <div
                       className={`h-2 rounded-full transition-all duration-300 ${
                         score >= 80 ? 'bg-success' : score >= 60 ? 'bg-warning' : 'bg-error'
                       }`}
@@ -152,12 +160,12 @@ const VendorPerformanceMatrix = ({ data }) => {
                   </div>
                 </div>
               </div>
-            );
+            )
           })}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default VendorPerformanceMatrix;
+export default VendorPerformanceMatrix

@@ -1,26 +1,26 @@
-import React from 'react';
-import Icon from '../../../components/AppIcon';
+import React from 'react'
+import Icon from '../../../components/AppIcon'
 
 const SystemInfo = () => {
-  const currentYear = new Date()?.getFullYear();
-  
+  const currentYear = new Date()?.getFullYear()
+
   const systemStats = [
     {
       label: 'Uptime',
       value: '99.9%',
-      icon: 'Activity'
+      icon: 'Activity',
     },
     {
       label: 'Response Time',
       value: '<200ms',
-      icon: 'Zap'
+      icon: 'Zap',
     },
     {
       label: 'Active Users',
       value: '24/7',
-      icon: 'Users'
-    }
-  ];
+      icon: 'Users',
+    },
+  ]
 
   return (
     <div className="mt-8 space-y-6">
@@ -43,15 +43,13 @@ const SystemInfo = () => {
             <Icon name="HelpCircle" size={16} className="text-accent" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-medium text-foreground mb-1">
-              Need Help?
-            </h4>
+            <h4 className="text-sm font-medium text-foreground mb-1">Need Help?</h4>
             <p className="text-xs text-muted-foreground mb-2">
               Contact your system administrator or support team for assistance with login issues.
             </p>
             <div className="flex items-center space-x-4 text-xs">
-              <a 
-                href="mailto:ashley.terminello@priorityautomotive.com" 
+              <a
+                href="mailto:ashley.terminello@priorityautomotive.com"
                 className="text-primary hover:text-primary/80 transition-colors"
               >
                 ashley.terminello@priorityautomotive.com
@@ -68,15 +66,19 @@ const SystemInfo = () => {
           © {currentYear} Rocket Aftermarket Tracker. All rights reserved.
         </p>
         <div className="flex items-center justify-center space-x-4 mt-2 text-xs text-muted-foreground">
-          <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
+          <a href="#" className="hover:text-foreground transition-colors">
+            Privacy Policy
+          </a>
           <span>•</span>
-          <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
+          <a href="#" className="hover:text-foreground transition-colors">
+            Terms of Service
+          </a>
           <span>•</span>
           <span>v2.1.0</span>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SystemInfo;
+export default SystemInfo

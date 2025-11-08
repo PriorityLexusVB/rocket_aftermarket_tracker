@@ -1,11 +1,14 @@
-import React from 'react';
-import { Filter, Building2, Star } from 'lucide-react';
+import React from 'react'
+import { Filter, Building2, Star } from 'lucide-react'
 
-const FilterControls = ({ 
-  statusFilter, setStatusFilter,
-  vendorFilter, setVendorFilter,
-  priorityFilter, setPriorityFilter,
-  vendors
+const FilterControls = ({
+  statusFilter,
+  setStatusFilter,
+  vendorFilter,
+  setVendorFilter,
+  priorityFilter,
+  setPriorityFilter,
+  vendors,
 }) => {
   return (
     <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl border border-gray-200/50 p-6 mb-6">
@@ -78,7 +81,7 @@ const FilterControls = ({
         {(statusFilter !== 'all' || vendorFilter !== 'all' || priorityFilter !== 'all') && (
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Active filters:</span>
-            
+
             {statusFilter !== 'all' && (
               <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                 <span>Status: {statusFilter?.replace('_', ' ')}</span>
@@ -90,10 +93,10 @@ const FilterControls = ({
                 </button>
               </div>
             )}
-            
+
             {vendorFilter !== 'all' && (
               <div className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                <span>Vendor: {vendors?.find(v => v?.id === vendorFilter)?.name}</span>
+                <span>Vendor: {vendors?.find((v) => v?.id === vendorFilter)?.name}</span>
                 <button
                   onClick={() => setVendorFilter('all')}
                   className="ml-2 text-green-600 hover:text-green-800"
@@ -102,7 +105,7 @@ const FilterControls = ({
                 </button>
               </div>
             )}
-            
+
             {priorityFilter !== 'all' && (
               <div className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
                 <span>Priority: {priorityFilter}</span>
@@ -114,12 +117,12 @@ const FilterControls = ({
                 </button>
               </div>
             )}
-            
+
             <button
               onClick={() => {
-                setStatusFilter('all');
-                setVendorFilter('all');
-                setPriorityFilter('all');
+                setStatusFilter('all')
+                setVendorFilter('all')
+                setPriorityFilter('all')
               }}
               className="text-sm text-gray-600 hover:text-gray-800 font-medium"
             >
@@ -129,7 +132,7 @@ const FilterControls = ({
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FilterControls;
+export default FilterControls

@@ -1,4 +1,4 @@
-// Node-based seed runner for E2E data without relying on supabase CLI `db query`.
+// Node-based seed runner for E2E data without relying on Supabase CLI `db query`.
 // Requires a Postgres connection string in one of:
 //   - DATABASE_URL
 //   - SUPABASE_DB_URL (fallback)

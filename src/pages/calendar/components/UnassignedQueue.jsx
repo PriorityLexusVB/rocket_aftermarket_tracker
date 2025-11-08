@@ -1,22 +1,24 @@
-import React, { useState } from 'react';
-import { Clock, User, Phone, Calendar, Search } from 'lucide-react';
+import React, { useState } from 'react'
+import { Clock, User, Phone, Calendar, Search } from 'lucide-react'
 
 const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Filter jobs based on search query including phone numbers
-  const filteredJobs = jobs?.filter(job => {
-    if (!searchQuery) return true;
-    const query = searchQuery?.toLowerCase();
-    return job?.title?.toLowerCase()?.includes(query) ||
-           job?.description?.toLowerCase()?.includes(query) ||
-           job?.vehicle?.owner_name?.toLowerCase()?.includes(query) ||
-           job?.vehicle?.owner_phone?.toLowerCase()?.includes(query) ||
-           job?.vehicle?.owner_email?.toLowerCase()?.includes(query) ||
-           job?.vehicle?.make?.toLowerCase()?.includes(query) ||
-           job?.vehicle?.model?.toLowerCase()?.includes(query) ||
-           job?.vehicle?.vin?.toLowerCase()?.includes(query);
-  });
+  const filteredJobs = jobs?.filter((job) => {
+    if (!searchQuery) return true
+    const query = searchQuery?.toLowerCase()
+    return (
+      job?.title?.toLowerCase()?.includes(query) ||
+      job?.description?.toLowerCase()?.includes(query) ||
+      job?.vehicle?.owner_name?.toLowerCase()?.includes(query) ||
+      job?.vehicle?.owner_phone?.toLowerCase()?.includes(query) ||
+      job?.vehicle?.owner_email?.toLowerCase()?.includes(query) ||
+      job?.vehicle?.make?.toLowerCase()?.includes(query) ||
+      job?.vehicle?.model?.toLowerCase()?.includes(query) ||
+      job?.vehicle?.vin?.toLowerCase()?.includes(query)
+    )
+  })
 
   return (
     <div className="bg-card border border-border rounded-lg h-full">
@@ -40,25 +42,27 @@ const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
       {/* Job List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {filteredJobs?.map((job) => (
-          <div 
+          <div
             key={job?.id}
             className="bg-background border border-border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
           >
             <div className="flex items-start justify-between mb-2">
               <div className="flex-1">
-                <h4 className="font-medium text-foreground text-sm mb-1">
-                  {job?.title}
-                </h4>
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {job?.description}
-                </p>
+                <h4 className="font-medium text-foreground text-sm mb-1">{job?.title}</h4>
+                <p className="text-xs text-muted-foreground line-clamp-2">{job?.description}</p>
               </div>
               <div className="flex items-center space-x-1 ml-2">
-                <span className={`w-2 h-2 rounded-full ${
-                  job?.priority === 'urgent' ? 'bg-red-500' :
-                  job?.priority === 'high' ? 'bg-orange-500' :
-                  job?.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
-                }`} />
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    job?.priority === 'urgent'
+                      ? 'bg-red-500'
+                      : job?.priority === 'high'
+                        ? 'bg-orange-500'
+                        : job?.priority === 'medium'
+                          ? 'bg-yellow-500'
+                          : 'bg-green-500'
+                  }`}
+                />
               </div>
             </div>
 
@@ -127,7 +131,7 @@ const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default UnassignedQueue;
+export default UnassignedQueue

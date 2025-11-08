@@ -244,11 +244,13 @@ User → Browser → Supabase API → PostgREST
 ```
 
 **Why cache?**
+
 - ⚡ Performance: Avoid introspecting database on every request
 - 🎯 Predictability: API doesn't change unexpectedly during operations
 - 🔐 Security: RLS policy checks are pre-computed
 
 **When it updates:**
+
 - 🔄 On PostgREST service restart
 - 📢 When receiving `NOTIFY pgrst, 'reload schema'`
 - ❌ NOT automatically when schema changes
@@ -260,6 +262,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 **What it does:**
+
 1. PostgreSQL sends message on 'pgrst' channel
 2. PostgREST listens on this channel
 3. PostgREST receives 'reload schema' message
@@ -267,6 +270,7 @@ NOTIFY pgrst, 'reload schema';
 5. New schema becomes available immediately
 
 **Think of it as:**
+
 - 📞 Calling PostgREST: "Hey, the schema changed, please refresh!"
 - 🔄 Without it: PostgREST has no idea schema changed
 
@@ -318,6 +322,7 @@ curl "API/test/relationships" || exit 1
 ### ❌ "This only affects new tables"
 
 **Reality:** Affects ANY schema change that adds/modifies relationships, including:
+
 - New foreign keys
 - Modified RLS policies
 - New columns with foreign keys
@@ -334,6 +339,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 But the impact is significant:
+
 - ✅ Fixes production error
 - ✅ Enables per-line vendor feature
 - ✅ Establishes pattern for future migrations

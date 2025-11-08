@@ -12,11 +12,13 @@
 ## Symptoms
 
 ### End User Impact
+
 - Deals list page shows error message or fails to load
 - Error in console: "Could not find a relationship between 'job_parts' and 'vendors'"
 - Red error banner in UI
 
 ### Technical Indicators
+
 - Health endpoint `/api/health-deals-rel` returns `ok: false`
 - Classification shows `missing_fk`, `missing_column`, or `stale_cache`
 - PostgREST logs show relationship errors
@@ -33,6 +35,7 @@ curl ${SUPABASE_URL}/api/health-deals-rel \
 ```
 
 **Expected Output (Healthy)**:
+
 ```json
 {
   "ok": true,
@@ -47,6 +50,7 @@ curl ${SUPABASE_URL}/api/health-deals-rel \
 ```
 
 **Problem Output**:
+
 ```json
 {
   "ok": false,
@@ -69,6 +73,7 @@ cd /path/to/project
 ```
 
 This will check:
+
 - ✅ Column `vendor_id` exists in `job_parts`
 - ✅ Foreign key constraint exists
 - ✅ Index exists
@@ -88,6 +93,7 @@ supabase db execute --file scripts/repair-job-parts-vendor-fk.sql
 ```
 
 **What it does**:
+
 1. Checks if `vendor_id` column exists, adds if missing
 2. Checks if FK constraint exists, adds if missing
 3. Checks if index exists, creates if missing
@@ -123,10 +129,11 @@ This applies all pending migrations including the vendor relationship fix.
 After running repair, verify in this order:
 
 ### 1. Database Schema
+
 ```sql
 -- Check column
-SELECT column_name, data_type 
-FROM information_schema.columns 
+SELECT column_name, data_type
+FROM information_schema.columns
 WHERE table_name = 'job_parts' AND column_name = 'vendor_id';
 
 -- Check FK
@@ -135,13 +142,14 @@ FROM information_schema.key_column_usage
 WHERE table_name = 'job_parts' AND column_name = 'vendor_id';
 
 -- Check index
-SELECT indexname FROM pg_indexes 
+SELECT indexname FROM pg_indexes
 WHERE tablename = 'job_parts' AND indexname = 'idx_job_parts_vendor_id';
 ```
 
 **Expected**: All queries return rows
 
 ### 2. REST API
+
 ```bash
 curl "${SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,name)&limit=1" \
   -H "apikey: ${SUPABASE_ANON_KEY}" \
@@ -151,6 +159,7 @@ curl "${SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,na
 **Expected**: 200 OK with JSON array (may be empty)
 
 ### 3. Health Endpoint
+
 ```bash
 curl ${SUPABASE_URL}/api/health-deals-rel \
   -H "apikey: ${SUPABASE_ANON_KEY}"
@@ -159,6 +168,7 @@ curl ${SUPABASE_URL}/api/health-deals-rel \
 **Expected**: `"ok": true, "classification": "ok"`
 
 ### 4. Application
+
 - Navigate to deals list page
 - Verify no red errors
 - Verify vendor column populates
@@ -170,6 +180,7 @@ curl ${SUPABASE_URL}/api/health-deals-rel \
 ### Issue: Repair script fails with "permission denied"
 
 **Solution**: Check database role permissions
+
 ```sql
 -- Grant necessary permissions
 GRANT ALL ON TABLE job_parts TO authenticated;
@@ -181,6 +192,7 @@ GRANT ALL ON TABLE vendors TO authenticated;
 **Symptoms**: DB checks pass but REST API still fails
 
 **Solution**: Restart PostgREST service
+
 ```bash
 # Via Supabase dashboard:
 # Settings > Database > Restart Database
@@ -193,6 +205,7 @@ Wait 30-60 seconds for service to restart.
 **Symptoms**: Script completes but `vendor_id` still NULL
 
 **Solution**: Check if products have `vendor_id`
+
 ```sql
 SELECT COUNT(*) FROM products WHERE vendor_id IS NOT NULL;
 ```
@@ -206,11 +219,13 @@ If count is 0, products need vendor assignment first.
 This change is non-destructive. To revert:
 
 ### Remove FK (not recommended, breaks app)
+
 ```sql
 ALTER TABLE job_parts DROP CONSTRAINT IF EXISTS job_parts_vendor_id_fkey;
 ```
 
 ### Remove column (not recommended, data loss)
+
 ```sql
 ALTER TABLE job_parts DROP COLUMN IF EXISTS vendor_id;
 ```
@@ -224,6 +239,7 @@ ALTER TABLE job_parts DROP COLUMN IF EXISTS vendor_id;
 ### In CI/CD Pipeline
 
 Add schema verification step:
+
 ```yaml
 - name: Verify Schema
   run: |
@@ -237,6 +253,7 @@ Add schema verification step:
 ### Regular Health Checks
 
 Set up monitoring alert:
+
 ```bash
 # Cron job to check health every 5 minutes
 */5 * * * * curl -sf ${SUPABASE_URL}/api/health-deals-rel || echo "Health check failed"
@@ -245,6 +262,7 @@ Set up monitoring alert:
 ### Deployment Checklist
 
 Before deploying code changes:
+
 1. ✅ Run `supabase db push` to apply migrations
 2. ✅ Run `verify-schema-cache.sh` to confirm
 3. ✅ Check health endpoint returns `ok: true`
@@ -265,11 +283,13 @@ Before deploying code changes:
 ## Contact
 
 For urgent issues:
+
 - Check application logs for fallback mode indicators
 - Review sessionStorage `cap_jobPartsVendorRel` flag (should be `'true'`)
 - Check telemetry counter `telemetry_vendorFallback` (should be 0 in healthy state)
 
 **Degraded Mode**: If relationship is broken, app falls back gracefully:
+
 - Vendor column shows "Unassigned" or job-level vendor
 - No red errors shown to end users
 - sessionStorage flag `cap_jobPartsVendorRel='false'` indicates degraded mode

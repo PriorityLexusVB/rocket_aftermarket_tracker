@@ -1,58 +1,57 @@
-import React, { useState } from 'react';
-import { Image as ImageIcon, Search, Calendar, Eye, Download, User, Clock } from 'lucide-react';
-import Icon from '../../../components/AppIcon';
-
+import React, { useState } from 'react'
+import { Image as ImageIcon, Search, Calendar, Eye, Download, User, Clock } from 'lucide-react'
+import Icon from '../../../components/AppIcon'
 
 const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange }) => {
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [selectedPhoto, setSelectedPhoto] = useState(null)
+  const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
 
   const handleFilterChange = (key, value) => {
     onFiltersChange?.({
       ...filters,
-      [key]: value
-    });
-  };
+      [key]: value,
+    })
+  }
 
   const formatFileSize = (bytes) => {
-    if (!bytes) return 'Unknown';
-    const kb = bytes / 1024;
-    const mb = kb / 1024;
-    return mb >= 1 ? `${mb?.toFixed(1)} MB` : `${kb?.toFixed(1)} KB`;
-  };
+    if (!bytes) return 'Unknown'
+    const kb = bytes / 1024
+    const mb = kb / 1024
+    return mb >= 1 ? `${mb?.toFixed(1)} MB` : `${kb?.toFixed(1)} KB`
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return 'Unknown'
     return new Date(dateString)?.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+      minute: '2-digit',
+    })
+  }
 
   const getStageColor = (stage) => {
     const colors = {
-      'before': 'bg-yellow-100 text-yellow-800',
-      'during': 'bg-blue-100 text-blue-800', 
-      'after': 'bg-green-100 text-green-800',
-      'quality_check': 'bg-purple-100 text-purple-800',
-      'progress': 'bg-gray-100 text-gray-800'
-    };
-    return colors?.[stage] || colors?.progress;
-  };
+      before: 'bg-yellow-100 text-yellow-800',
+      during: 'bg-blue-100 text-blue-800',
+      after: 'bg-green-100 text-green-800',
+      quality_check: 'bg-purple-100 text-purple-800',
+      progress: 'bg-gray-100 text-gray-800',
+    }
+    return colors?.[stage] || colors?.progress
+  }
 
   const getCategoryIcon = (category) => {
     const icons = {
-      'progress': Clock,
-      'quality': Eye,
-      'before': Calendar,
-      'after': Calendar,
-      'documentation': ImageIcon
-    };
-    const Icon = icons?.[category] || ImageIcon;
-    return <Icon className="h-4 w-4" />;
-  };
+      progress: Clock,
+      quality: Eye,
+      before: Calendar,
+      after: Calendar,
+      documentation: ImageIcon,
+    }
+    const Icon = icons?.[category] || ImageIcon
+    return <Icon className="h-4 w-4" />
+  }
 
   if (loading) {
     return (
@@ -62,7 +61,7 @@ const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange
           <p className="mt-2 text-gray-600">Loading photos...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -133,9 +132,7 @@ const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange
             </div>
           </div>
         ) : (
-          <div className={
-            viewMode === 'grid' ?'grid grid-cols-2 gap-4' :'space-y-4'
-          }>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-2 gap-4' : 'space-y-4'}>
             {photos?.map((photo) => (
               <div
                 key={photo?.id}
@@ -145,19 +142,21 @@ const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange
                 onClick={() => setSelectedPhoto(photo)}
               >
                 {/* Photo Thumbnail */}
-                <div className={`relative ${viewMode === 'list' ? 'w-24 h-24 flex-shrink-0' : 'aspect-square'}`}>
+                <div
+                  className={`relative ${viewMode === 'list' ? 'w-24 h-24 flex-shrink-0' : 'aspect-square'}`}
+                >
                   {photo?.signedUrl ? (
                     <img
                       src={photo?.signedUrl}
                       alt={photo?.description || photo?.file_name}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'flex';
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
                       }}
                     />
                   ) : null}
-                  
+
                   {/* Fallback when image fails to load */}
                   <div className="hidden absolute inset-0 bg-gray-100 items-center justify-center">
                     <ImageIcon className="h-8 w-8 text-gray-400" />
@@ -165,7 +164,9 @@ const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange
 
                   {/* Stage Badge */}
                   <div className="absolute top-2 left-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStageColor(photo?.stage)}`}>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${getStageColor(photo?.stage)}`}
+                    >
                       {photo?.stage?.replace('_', ' ') || 'Progress'}
                     </span>
                   </div>
@@ -246,7 +247,9 @@ const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange
               <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">Stage:</span>
-                  <span className="ml-2 font-medium">{selectedPhoto?.stage?.replace('_', ' ')}</span>
+                  <span className="ml-2 font-medium">
+                    {selectedPhoto?.stage?.replace('_', ' ')}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">Category:</span>
@@ -254,7 +257,9 @@ const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange
                 </div>
                 <div>
                   <span className="text-gray-500">Size:</span>
-                  <span className="ml-2 font-medium">{formatFileSize(selectedPhoto?.file_size)}</span>
+                  <span className="ml-2 font-medium">
+                    {formatFileSize(selectedPhoto?.file_size)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">Uploaded:</span>
@@ -266,7 +271,7 @@ const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default PhotoGalleryPanel;
+export default PhotoGalleryPanel

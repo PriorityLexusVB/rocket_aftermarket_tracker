@@ -18,7 +18,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
       try {
         setLoading(true)
         setError('')
-        
+
         // Use preloaded deal if available
         if (initialDeal && initialDeal?.id) {
           const formDeal = mapDbDealToForm(initialDeal)
@@ -99,12 +99,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
             </div>
           ) : dealData ? (
             <div className="p-6">
-              <DealFormV2
-                mode="edit"
-                job={dealData}
-                onSave={handleSave}
-                onCancel={handleClose}
-              />
+              <DealFormV2 mode="edit" job={dealData} onSave={handleSave} onCancel={handleClose} />
             </div>
           ) : null}
         </div>

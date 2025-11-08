@@ -1,5 +1,5 @@
-import React from 'react';
-import Icon from '../../../components/AppIcon';
+import React from 'react'
+import Icon from '../../../components/AppIcon'
 
 const QuickStats = ({ stats }) => {
   const statCards = [
@@ -10,7 +10,7 @@ const QuickStats = ({ stats }) => {
       icon: 'Briefcase',
       color: 'primary',
       change: stats?.totalJobsChange,
-      changeType: stats?.totalJobsChange >= 0 ? 'positive' : 'negative'
+      changeType: stats?.totalJobsChange >= 0 ? 'positive' : 'negative',
     },
     {
       id: 'pending',
@@ -19,7 +19,7 @@ const QuickStats = ({ stats }) => {
       icon: 'Clock',
       color: 'warning',
       change: stats?.pendingJobsChange,
-      changeType: stats?.pendingJobsChange >= 0 ? 'negative' : 'positive'
+      changeType: stats?.pendingJobsChange >= 0 ? 'negative' : 'positive',
     },
     {
       id: 'inProgress',
@@ -28,7 +28,7 @@ const QuickStats = ({ stats }) => {
       icon: 'Play',
       color: 'primary',
       change: stats?.inProgressJobsChange,
-      changeType: stats?.inProgressJobsChange >= 0 ? 'positive' : 'negative'
+      changeType: stats?.inProgressJobsChange >= 0 ? 'positive' : 'negative',
     },
     {
       id: 'completed',
@@ -37,7 +37,7 @@ const QuickStats = ({ stats }) => {
       icon: 'CheckCircle',
       color: 'success',
       change: stats?.completedJobsChange,
-      changeType: stats?.completedJobsChange >= 0 ? 'positive' : 'negative'
+      changeType: stats?.completedJobsChange >= 0 ? 'positive' : 'negative',
     },
     {
       id: 'overdue',
@@ -46,7 +46,7 @@ const QuickStats = ({ stats }) => {
       icon: 'AlertTriangle',
       color: 'error',
       change: stats?.overdueJobsChange,
-      changeType: stats?.overdueJobsChange >= 0 ? 'negative' : 'positive'
+      changeType: stats?.overdueJobsChange >= 0 ? 'negative' : 'positive',
     },
     {
       id: 'avgTime',
@@ -55,39 +55,51 @@ const QuickStats = ({ stats }) => {
       icon: 'Timer',
       color: 'secondary',
       change: stats?.avgCompletionTimeChange,
-      changeType: stats?.avgCompletionTimeChange <= 0 ? 'positive' : 'negative'
-    }
-  ];
+      changeType: stats?.avgCompletionTimeChange <= 0 ? 'positive' : 'negative',
+    },
+  ]
 
   const getIconColor = (color) => {
     switch (color) {
-      case 'primary': return 'text-primary';
-      case 'warning': return 'text-warning';
-      case 'success': return 'text-success';
-      case 'error': return 'text-error';
-      case 'secondary': return 'text-secondary';
-      default: return 'text-muted-foreground';
+      case 'primary':
+        return 'text-primary'
+      case 'warning':
+        return 'text-warning'
+      case 'success':
+        return 'text-success'
+      case 'error':
+        return 'text-error'
+      case 'secondary':
+        return 'text-secondary'
+      default:
+        return 'text-muted-foreground'
     }
-  };
+  }
 
   const getBackgroundColor = (color) => {
     switch (color) {
-      case 'primary': return 'bg-primary/10';
-      case 'warning': return 'bg-warning/10';
-      case 'success': return 'bg-success/10';
-      case 'error': return 'bg-error/10';
-      case 'secondary': return 'bg-secondary/10';
-      default: return 'bg-muted/10';
+      case 'primary':
+        return 'bg-primary/10'
+      case 'warning':
+        return 'bg-warning/10'
+      case 'success':
+        return 'bg-success/10'
+      case 'error':
+        return 'bg-error/10'
+      case 'secondary':
+        return 'bg-secondary/10'
+      default:
+        return 'bg-muted/10'
     }
-  };
+  }
 
   const getChangeColor = (changeType) => {
-    return changeType === 'positive' ? 'text-success' : 'text-error';
-  };
+    return changeType === 'positive' ? 'text-success' : 'text-error'
+  }
 
   const getChangeIcon = (changeType) => {
-    return changeType === 'positive' ? 'TrendingUp' : 'TrendingDown';
-  };
+    return changeType === 'positive' ? 'TrendingUp' : 'TrendingDown'
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -97,44 +109,31 @@ const QuickStats = ({ stats }) => {
           className="bg-card border border-border rounded-lg p-4 shadow-elevation-1 hover:shadow-elevation-2 transition-shadow duration-200"
         >
           <div className="flex items-center justify-between mb-3">
-            <div className={`w-10 h-10 rounded-lg ${getBackgroundColor(stat?.color)} flex items-center justify-center`}>
-              <Icon 
-                name={stat?.icon} 
-                size={20} 
-                className={getIconColor(stat?.color)} 
-              />
+            <div
+              className={`w-10 h-10 rounded-lg ${getBackgroundColor(stat?.color)} flex items-center justify-center`}
+            >
+              <Icon name={stat?.icon} size={20} className={getIconColor(stat?.color)} />
             </div>
             {stat?.change !== undefined && (
               <div className={`flex items-center gap-1 ${getChangeColor(stat?.changeType)}`}>
-                <Icon 
-                  name={getChangeIcon(stat?.changeType)} 
-                  size={14} 
-                />
-                <span className="text-xs font-medium">
-                  {Math.abs(stat?.change)}
-                </span>
+                <Icon name={getChangeIcon(stat?.changeType)} size={14} />
+                <span className="text-xs font-medium">{Math.abs(stat?.change)}</span>
               </div>
             )}
           </div>
 
           <div className="space-y-1">
-            <div className="text-2xl font-bold text-foreground">
-              {stat?.value}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {stat?.title}
-            </div>
+            <div className="text-2xl font-bold text-foreground">{stat?.value}</div>
+            <div className="text-sm text-muted-foreground">{stat?.title}</div>
           </div>
 
           {stat?.change !== undefined && (
-            <div className="mt-2 text-xs text-muted-foreground">
-              vs last period
-            </div>
+            <div className="mt-2 text-xs text-muted-foreground">vs last period</div>
           )}
         </div>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default QuickStats;
+export default QuickStats

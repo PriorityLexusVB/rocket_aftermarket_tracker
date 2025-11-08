@@ -1,11 +1,11 @@
-import React from 'react';
-import { Car, Clock, Calendar, AlertTriangle, Package } from 'lucide-react';
-import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time';
+import React from 'react'
+import { Car, Clock, Calendar, AlertTriangle, Package } from 'lucide-react'
+import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 
 const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
   const renderUnassignedJob = (job) => {
-    const overdue = isOverdue(job?.promised_date);
-    const statusBadge = getStatusBadge(job?.job_status);
+    const overdue = isOverdue(job?.promised_date)
+    const statusBadge = getStatusBadge(job?.job_status)
 
     return (
       <div
@@ -19,18 +19,16 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center">
             <Car className="h-4 w-4 text-gray-600 mr-2" />
-            <span className="font-medium text-gray-900">
-              {job?.job_number?.split('-')?.pop()}
-            </span>
-            {overdue && (
-              <AlertTriangle className="h-4 w-4 text-red-500 ml-2" />
-            )}
+            <span className="font-medium text-gray-900">{job?.job_number?.split('-')?.pop()}</span>
+            {overdue && <AlertTriangle className="h-4 w-4 text-red-500 ml-2" />}
           </div>
-          <div className={`
+          <div
+            className={`
             px-2 py-1 rounded-full text-xs font-medium
             ${statusBadge?.bg || 'bg-gray-100'} 
             ${statusBadge?.textColor || 'text-gray-800'}
-          `}>
+          `}
+          >
             {statusBadge?.label || job?.job_status?.toUpperCase()}
           </div>
         </div>
@@ -42,9 +40,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
         </div>
 
         {/* Vehicle Info */}
-        <div className="text-xs text-gray-600 mb-2">
-          {job?.vehicle_info}
-        </div>
+        <div className="text-xs text-gray-600 mb-2">{job?.vehicle_info}</div>
 
         {/* Time and Promise Info */}
         <div className="space-y-1">
@@ -54,13 +50,16 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
               {formatTime(job?.scheduled_start_time)}–{formatTime(job?.scheduled_end_time)}
             </div>
           )}
-          
-          <div className={`flex items-center text-xs ${overdue ? 'text-red-600' : 'text-gray-600'}`}>
+
+          <div
+            className={`flex items-center text-xs ${overdue ? 'text-red-600' : 'text-gray-600'}`}
+          >
             <Calendar className="h-3 w-3 mr-1" />
-            Promise: {new Date(job?.promised_date)?.toLocaleDateString('en-US', { 
-              weekday: 'short', 
-              month: 'short', 
-              day: 'numeric' 
+            Promise:{' '}
+            {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
             })}
             {overdue && (
               <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
@@ -85,8 +84,8 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
           </div>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   return (
     <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
@@ -98,9 +97,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
             {jobs?.length || 0}
           </div>
         </div>
-        <p className="text-xs text-gray-600 mt-1">
-          Drag jobs onto calendar to schedule
-        </p>
+        <p className="text-xs text-gray-600 mt-1">Drag jobs onto calendar to schedule</p>
       </div>
 
       {/* Job List */}
@@ -110,16 +107,12 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
           </div>
         ) : jobs?.length > 0 ? (
-          <div className="space-y-3">
-            {jobs?.map(renderUnassignedJob)}
-          </div>
+          <div className="space-y-3">{jobs?.map(renderUnassignedJob)}</div>
         ) : (
           <div className="text-center py-8">
             <Car className="h-8 w-8 text-gray-400 mx-auto mb-3" />
             <div className="text-sm text-gray-600">No unassigned jobs</div>
-            <div className="text-xs text-gray-500 mt-1">
-              All jobs are scheduled
-            </div>
+            <div className="text-xs text-gray-500 mt-1">All jobs are scheduled</div>
           </div>
         )}
       </div>
@@ -138,7 +131,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default UnassignedQueue;
+export default UnassignedQueue

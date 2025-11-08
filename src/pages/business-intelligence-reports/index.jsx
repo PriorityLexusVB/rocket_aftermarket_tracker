@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Header from '../../components/ui/Header';
-import Sidebar from '../../components/ui/Sidebar';
-import Icon from '../../components/AppIcon';
-import Button from '../../components/ui/Button';
-import ReportBuilder from './components/ReportBuilder';
-import ReportPreview from './components/ReportPreview';
-import QuickActions from './components/QuickActions';
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Header from '../../components/ui/Header'
+import Sidebar from '../../components/ui/Sidebar'
+import Icon from '../../components/AppIcon'
+import Button from '../../components/ui/Button'
+import ReportBuilder from './components/ReportBuilder'
+import ReportPreview from './components/ReportPreview'
+import QuickActions from './components/QuickActions'
 
 const BusinessIntelligenceReports = () => {
-  const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const navigate = useNavigate()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [currentFilters, setCurrentFilters] = useState({
     dateRange: 'last30days',
     startDate: '',
@@ -19,11 +19,11 @@ const BusinessIntelligenceReports = () => {
     products: [],
     profitThreshold: '',
     status: [],
-    reportType: 'sales_summary'
-  });
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
-  const [activeView, setActiveView] = useState('builder'); // 'builder', 'preview', 'quick'
+    reportType: 'sales_summary',
+  })
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
+  const [activeView, setActiveView] = useState('builder') // 'builder', 'preview', 'quick'
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -31,71 +31,74 @@ const BusinessIntelligenceReports = () => {
       if (e?.ctrlKey || e?.metaKey) {
         switch (e?.key) {
           case 'd':
-            e?.preventDefault();
-            handleQuickReport({
-              dateRange: 'today',
-              reportType: 'sales_summary'
-            }, 'Daily Sales Report');
-            break;
+            e?.preventDefault()
+            handleQuickReport(
+              {
+                dateRange: 'today',
+                reportType: 'sales_summary',
+              },
+              'Daily Sales Report'
+            )
+            break
           case 'e':
-            e?.preventDefault();
+            e?.preventDefault()
             if (!isExporting) {
-              handleExport('csv');
+              handleExport('csv')
             }
-            break;
+            break
           case 'r':
-            e?.preventDefault();
-            handleResetFilters();
-            break;
+            e?.preventDefault()
+            handleResetFilters()
+            break
           case 'f':
-            e?.preventDefault();
+            e?.preventDefault()
             // Focus search would be implemented here
-            break;
+            break
         }
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isExporting]);
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isExporting])
 
   const handleFilterChange = (newFilters) => {
-    setCurrentFilters(newFilters);
-    setActiveView('preview');
-  };
+    setCurrentFilters(newFilters)
+    setActiveView('preview')
+  }
 
   const handleExport = async (format) => {
-    setIsExporting(true);
-    setExportProgress(0);
+    setIsExporting(true)
+    setExportProgress(0)
 
     // Simulate export progress
     const progressInterval = setInterval(() => {
-      setExportProgress(prev => {
+      setExportProgress((prev) => {
         if (prev >= 100) {
-          clearInterval(progressInterval);
-          setIsExporting(false);
-          
+          clearInterval(progressInterval)
+          setIsExporting(false)
+
           // Simulate download
-          const fileName = `${currentFilters?.reportType}_${new Date()?.toISOString()?.split('T')?.[0]}.${format}`;
-          console.log(`Downloading ${fileName}`);
-          
+          const fileName = `${currentFilters?.reportType}_${new Date()?.toISOString()?.split('T')?.[0]}.${format}`
+          console.log(`Downloading ${fileName}`)
+
           // Show success notification (in real app, this would be a toast)
           setTimeout(() => {
-            alert(`Report exported successfully as ${format?.toUpperCase()}`);
-          }, 500);
-          
-          return 100;
+            alert(`Report exported successfully as ${format?.toUpperCase()}`)
+          }, 500)
+
+          return 100
         }
-        return prev + Math.random() * 15;
-      });
-    }, 200);
-  };
+        return prev + Math.random() * 15
+      })
+    }, 200)
+  }
 
   const handleQuickReport = (filters, reportName) => {
-    setCurrentFilters({ ...currentFilters, ...filters });
-    setActiveView('preview');
-    console.log(`Generating quick report: ${reportName}`);
-  };
+    setCurrentFilters({ ...currentFilters, ...filters })
+    setActiveView('preview')
+    console.log(`Generating quick report: ${reportName}`)
+  }
 
   const handleResetFilters = () => {
     const defaultFilters = {
@@ -106,18 +109,18 @@ const BusinessIntelligenceReports = () => {
       products: [],
       profitThreshold: '',
       status: [],
-      reportType: 'sales_summary'
-    };
-    setCurrentFilters(defaultFilters);
-  };
+      reportType: 'sales_summary',
+    }
+    setCurrentFilters(defaultFilters)
+  }
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+    setIsSidebarOpen(!isSidebarOpen)
+  }
 
   const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+    setIsSidebarOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,7 +132,9 @@ const BusinessIntelligenceReports = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-foreground">Business Intelligence Reports</h1>
+                <h1 className="text-3xl font-bold text-foreground">
+                  Business Intelligence Reports
+                </h1>
                 <p className="text-muted-foreground mt-2">
                   Generate comprehensive reports and export data for analysis and compliance
                 </p>
@@ -190,14 +195,13 @@ const BusinessIntelligenceReports = () => {
 
           {/* Main Content */}
           {activeView === 'quick' ? (
-            <QuickActions 
-              onQuickReport={handleQuickReport}
-              isExporting={isExporting}
-            />
+            <QuickActions onQuickReport={handleQuickReport} isExporting={isExporting} />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-[calc(100vh-280px)]">
               {/* Report Builder Panel */}
-              <div className={`lg:col-span-2 ${activeView === 'builder' ? 'block' : 'hidden lg:block'}`}>
+              <div
+                className={`lg:col-span-2 ${activeView === 'builder' ? 'block' : 'hidden lg:block'}`}
+              >
                 <ReportBuilder
                   onFilterChange={handleFilterChange}
                   onExport={handleExport}
@@ -206,7 +210,9 @@ const BusinessIntelligenceReports = () => {
               </div>
 
               {/* Report Preview Panel */}
-              <div className={`lg:col-span-3 ${activeView === 'preview' ? 'block' : 'hidden lg:block'}`}>
+              <div
+                className={`lg:col-span-3 ${activeView === 'preview' ? 'block' : 'hidden lg:block'}`}
+              >
                 <ReportPreview
                   filters={currentFilters}
                   isExporting={isExporting}
@@ -241,7 +247,7 @@ const BusinessIntelligenceReports = () => {
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default BusinessIntelligenceReports;
+export default BusinessIntelligenceReports

@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import { X, User, Save } from 'lucide-react';
+import React, { useState } from 'react'
+import { X, User, Save } from 'lucide-react'
 
 const ClaimAssignmentModal = ({ claim, staff, onClose, onUpdate }) => {
-  const [selectedAssignee, setSelectedAssignee] = useState(claim?.assigned_to || '');
-  const [saving, setSaving] = useState(false);
+  const [selectedAssignee, setSelectedAssignee] = useState(claim?.assigned_to || '')
+  const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     try {
-      setSaving(true);
-      await onUpdate(claim?.id, { assigned_to: selectedAssignee || null });
-      onClose();
+      setSaving(true)
+      await onUpdate(claim?.id, { assigned_to: selectedAssignee || null })
+      onClose()
     } catch (error) {
-      console.error('Error assigning claim:', error);
+      console.error('Error assigning claim:', error)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -26,10 +26,7 @@ const ClaimAssignmentModal = ({ claim, staff, onClose, onUpdate }) => {
             <User className="w-5 h-5 text-gray-600" />
             <h2 className="text-lg font-semibold text-gray-900">Assign Claim</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -55,9 +52,10 @@ const ClaimAssignmentModal = ({ claim, staff, onClose, onUpdate }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Unassigned</option>
-              {staff?.map(member => (
+              {staff?.map((member) => (
                 <option key={member?.id} value={member?.id}>
-                  {member?.full_name} - {member?.role?.charAt(0)?.toUpperCase() + member?.role?.slice(1)}
+                  {member?.full_name} -{' '}
+                  {member?.role?.charAt(0)?.toUpperCase() + member?.role?.slice(1)}
                 </option>
               ))}
             </select>
@@ -68,7 +66,7 @@ const ClaimAssignmentModal = ({ claim, staff, onClose, onUpdate }) => {
               <p className="text-sm text-blue-700">
                 This claim will be assigned to{' '}
                 <span className="font-medium">
-                  {staff?.find(s => s?.id === selectedAssignee)?.full_name}
+                  {staff?.find((s) => s?.id === selectedAssignee)?.full_name}
                 </span>
               </p>
             </div>
@@ -103,7 +101,7 @@ const ClaimAssignmentModal = ({ claim, staff, onClose, onUpdate }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ClaimAssignmentModal;
+export default ClaimAssignmentModal

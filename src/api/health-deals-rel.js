@@ -19,10 +19,7 @@ async function checkColumnExists() {
     // If RPC doesn't exist, fall back to a query that would fail on missing column
     if (error?.code === '42883') {
       // Function doesn't exist, try direct query
-      const { error: queryError } = await supabase
-        .from('job_parts')
-        .select('vendor_id')
-        .limit(0)
+      const { error: queryError } = await supabase.from('job_parts').select('vendor_id').limit(0)
       return !queryError
     }
     return !!data
@@ -37,10 +34,7 @@ async function checkColumnExists() {
 async function checkFkExists() {
   try {
     // Query the foreign key - if it exists, this should work
-    const { data, error } = await supabase
-      .from('job_parts')
-      .select('vendor_id')
-      .limit(0)
+    const { data, error } = await supabase.from('job_parts').select('vendor_id').limit(0)
     return !error
   } catch {
     return null // Unknown

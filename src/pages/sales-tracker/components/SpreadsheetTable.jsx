@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { DollarSign, Truck, Clock, CheckCircle2, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react'
+import { DollarSign, Truck, Clock, CheckCircle2, AlertCircle, Edit, Trash2 } from 'lucide-react'
 
-
-import { useLogger } from '../../../hooks/useLogger';
+import { useLogger } from '../../../hooks/useLogger'
 
 // Service Configuration - Easy to modify and expand
 const SERVICE_CATEGORIES = {
@@ -10,11 +9,21 @@ const SERVICE_CATEGORIES = {
     name: 'Protection',
     color: 'blue',
     services: [
-      { key: 'ppf', name: 'PPF', fullName: 'Paint Protection Film', keywords: ['ppf', 'protection film', 'clear bra'] },
-      { key: 'ceramic', name: 'CER', fullName: 'Ceramic Coating', keywords: ['ceramic', 'coating'] },
+      {
+        key: 'ppf',
+        name: 'PPF',
+        fullName: 'Paint Protection Film',
+        keywords: ['ppf', 'protection film', 'clear bra'],
+      },
+      {
+        key: 'ceramic',
+        name: 'CER',
+        fullName: 'Ceramic Coating',
+        keywords: ['ceramic', 'coating'],
+      },
       { key: 'tint', name: 'TINT', fullName: 'Window Tinting', keywords: ['tint', 'window'] },
-      { key: 'rg', name: 'RG', fullName: 'Rain Guards', keywords: ['rg', 'rain guard'] }
-    ]
+      { key: 'rg', name: 'RG', fullName: 'Rain Guards', keywords: ['rg', 'rain guard'] },
+    ],
   },
   aesthetic: {
     name: 'Aesthetic',
@@ -22,248 +31,278 @@ const SERVICE_CATEGORIES = {
     services: [
       { key: 'wrap', name: 'WRAP', fullName: 'Vehicle Wrap', keywords: ['wrap', 'vinyl'] },
       { key: 'exterior', name: 'EXT', fullName: 'Exterior Work', keywords: ['exterior', 'paint'] },
-      { key: 'interior', name: 'INT', fullName: 'Interior Work', keywords: ['interior', 'seats', 'carpet'] }
-    ]
+      {
+        key: 'interior',
+        name: 'INT',
+        fullName: 'Interior Work',
+        keywords: ['interior', 'seats', 'carpet'],
+      },
+    ],
   },
   maintenance: {
     name: 'Maintenance',
     color: 'green',
     services: [
-      { key: 'detailing', name: 'DTL', fullName: 'Detailing', keywords: ['detail', 'wash', 'clean'] },
+      {
+        key: 'detailing',
+        name: 'DTL',
+        fullName: 'Detailing',
+        keywords: ['detail', 'wash', 'clean'],
+      },
       { key: 'repair', name: 'RPR', fullName: 'Repair', keywords: ['repair', 'fix', 'damage'] },
-      { key: 'windshield', name: 'WIND', fullName: 'Windshield Work', keywords: ['windshield', 'glass'] }
-    ]
-  }
-};
+      {
+        key: 'windshield',
+        name: 'WIND',
+        fullName: 'Windshield Work',
+        keywords: ['windshield', 'glass'],
+      },
+    ],
+  },
+}
 
 const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
-  const [editingCell, setEditingCell] = useState(null);
-  const [tempValue, setTempValue] = useState('');
-  const [viewMode, setViewMode] = useState('checkboxes');
-  const [collapsedCategories, setCollapsedCategories] = useState(new Set());
+  const [editingCell, setEditingCell] = useState(null)
+  const [tempValue, setTempValue] = useState('')
+  const [viewMode, setViewMode] = useState('checkboxes')
+  const [collapsedCategories, setCollapsedCategories] = useState(new Set())
   const [filters, setFilters] = useState({
     status: '',
     coordinator: '',
-    search: ''
-  });
+    search: '',
+  })
 
-  const { logUserInteraction, logSalesAction, logError } = useLogger();
+  const { logUserInteraction, logSalesAction, logError } = useLogger()
 
   // Add missing handleFilterChange function
-  const handleFilterChange = useCallback(async (filterType, value) => {
-    try {
-      setFilters(prev => ({ ...prev, [filterType]: value }));
-      
-      await logUserInteraction(
-        'sales-tracker-filter',
-        'filter_changed',
-        { filterType, value, timestamp: new Date()?.toISOString() }
-      );
-    } catch (error) {
-      await logError(error, { action: 'filter_change', filterType, value });
-    }
-  }, [logUserInteraction, logError]);
+  const handleFilterChange = useCallback(
+    async (filterType, value) => {
+      try {
+        setFilters((prev) => ({ ...prev, [filterType]: value }))
+
+        await logUserInteraction('sales-tracker-filter', 'filter_changed', {
+          filterType,
+          value,
+          timestamp: new Date()?.toISOString(),
+        })
+      } catch (error) {
+        await logError(error, { action: 'filter_change', filterType, value })
+      }
+    },
+    [logUserInteraction, logError]
+  )
 
   // Filter data based on current filters
-  const filteredData = data?.filter(sale => {
-    if (!sale) return false;
-    
-    const matchesStatus = !filters?.status || sale?.status === filters?.status;
-    const matchesCoordinator = !filters?.coordinator || 
-      sale?.deliveryCoordinator?.toLowerCase()?.includes(filters?.coordinator?.toLowerCase());
-    const matchesSearch = !filters?.search || 
+  const filteredData = data?.filter((sale) => {
+    if (!sale) return false
+
+    const matchesStatus = !filters?.status || sale?.status === filters?.status
+    const matchesCoordinator =
+      !filters?.coordinator ||
+      sale?.deliveryCoordinator?.toLowerCase()?.includes(filters?.coordinator?.toLowerCase())
+    const matchesSearch =
+      !filters?.search ||
       sale?.stockNumber?.toLowerCase()?.includes(filters?.search?.toLowerCase()) ||
       sale?.customer?.name?.toLowerCase()?.includes(filters?.search?.toLowerCase()) ||
-      (sale?.year && sale?.make && sale?.model && 
-       (sale?.year + ' ' + sale?.make + ' ' + sale?.model)?.toLowerCase()?.includes(filters?.search?.toLowerCase()));
-    
-    return matchesStatus && matchesCoordinator && matchesSearch;
-  });
+      (sale?.year &&
+        sale?.make &&
+        sale?.model &&
+        (sale?.year + ' ' + sale?.make + ' ' + sale?.model)
+          ?.toLowerCase()
+          ?.includes(filters?.search?.toLowerCase()))
+
+    return matchesStatus && matchesCoordinator && matchesSearch
+  })
 
   // Enhanced edit with logging
-  const handleEdit = useCallback(async (sale) => {
-    try {
-      await logSalesAction(
-        'sale_edit_initiated',
-        sale?.id,
-        `Edit initiated for sale ${sale?.stockNumber || 'Unknown'}`,
-        { saleData: sale }
-      );
-      onEdit?.(sale);
-    } catch (error) {
-      await logError(error, { action: 'handle_edit', saleId: sale?.id });
-    }
-  }, [onEdit, logSalesAction, logError]);
+  const handleEdit = useCallback(
+    async (sale) => {
+      try {
+        await logSalesAction(
+          'sale_edit_initiated',
+          sale?.id,
+          `Edit initiated for sale ${sale?.stockNumber || 'Unknown'}`,
+          { saleData: sale }
+        )
+        onEdit?.(sale)
+      } catch (error) {
+        await logError(error, { action: 'handle_edit', saleId: sale?.id })
+      }
+    },
+    [onEdit, logSalesAction, logError]
+  )
 
   // Enhanced delete with logging
-  const handleDelete = useCallback(async (saleId) => {
-    try {
-      const sale = data?.find(s => s?.id === saleId);
-      
-      await logSalesAction(
-        'sale_delete_initiated',
-        saleId,
-        `Delete initiated for sale ${sale?.stockNumber || saleId}`,
-        { saleData: sale }
-      );
-      
-      onDelete?.(saleId);
-    } catch (error) {
-      await logError(error, { action: 'handle_delete', saleId });
-    }
-  }, [data, onDelete, logSalesAction, logError]);
+  const handleDelete = useCallback(
+    async (saleId) => {
+      try {
+        const sale = data?.find((s) => s?.id === saleId)
+
+        await logSalesAction(
+          'sale_delete_initiated',
+          saleId,
+          `Delete initiated for sale ${sale?.stockNumber || saleId}`,
+          { saleData: sale }
+        )
+
+        onDelete?.(saleId)
+      } catch (error) {
+        await logError(error, { action: 'handle_delete', saleId })
+      }
+    },
+    [data, onDelete, logSalesAction, logError]
+  )
 
   // Enhanced service toggle with detailed logging
-  const handleServiceToggle = useCallback(async (saleId, service, isEnabled) => {
-    try {
-      const sale = filteredData?.find(s => s?.id === saleId);
-      const serviceAction = isEnabled ? 'service_enabled' : 'service_disabled';
-      
-      await logSalesAction(
-        serviceAction,
-        saleId,
-        `${service} ${isEnabled ? 'enabled' : 'disabled'} for ${sale?.stockNumber || saleId}`,
-        {
+  const handleServiceToggle = useCallback(
+    async (saleId, service, isEnabled) => {
+      try {
+        const sale = filteredData?.find((s) => s?.id === saleId)
+        const serviceAction = isEnabled ? 'service_enabled' : 'service_disabled'
+
+        await logSalesAction(
+          serviceAction,
+          saleId,
+          `${service} ${isEnabled ? 'enabled' : 'disabled'} for ${sale?.stockNumber || saleId}`,
+          {
+            service,
+            isEnabled,
+            saleData: {
+              stockNumber: sale?.stockNumber,
+              customerName: sale?.customer?.name,
+              vehicleInfo: `${sale?.year} ${sale?.make} ${sale?.model}`,
+            },
+          }
+        )
+
+        // Call parent update function if it exists
+        onEdit?.({ ...sale, services: { ...sale?.services, [service]: isEnabled } })
+      } catch (error) {
+        await logError(error, {
+          action: 'service_toggle',
+          saleId,
           service,
           isEnabled,
-          saleData: {
-            stockNumber: sale?.stockNumber,
-            customerName: sale?.customer?.name,
-            vehicleInfo: `${sale?.year} ${sale?.make} ${sale?.model}`
-          }
-        }
-      );
-
-      // Call parent update function if it exists
-      onEdit?.({ ...sale, services: { ...sale?.services, [service]: isEnabled } });
-
-    } catch (error) {
-      await logError(error, { 
-        action: 'service_toggle', 
-        saleId, 
-        service, 
-        isEnabled 
-      });
-    }
-  }, [filteredData, onEdit, logSalesAction, logError]);
+        })
+      }
+    },
+    [filteredData, onEdit, logSalesAction, logError]
+  )
 
   // Log component mount and data changes
   useEffect(() => {
     const logDataLoad = async () => {
       try {
-        await logUserInteraction(
-          'sales-tracker-table',
-          'data_loaded',
-          { 
-            recordCount: data?.length,
-            hasData: Boolean(data?.length)
-          }
-        );
+        await logUserInteraction('sales-tracker-table', 'data_loaded', {
+          recordCount: data?.length,
+          hasData: Boolean(data?.length),
+        })
       } catch (error) {
-        console.error('Failed to log data load:', error);
+        console.error('Failed to log data load:', error)
       }
-    };
+    }
 
     if (data?.length !== undefined) {
-      logDataLoad();
+      logDataLoad()
     }
-  }, [data?.length, logUserInteraction]);
+  }, [data?.length, logUserInteraction])
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    })?.format(amount || 0);
-  };
+      maximumFractionDigits: 0,
+    })?.format(amount || 0)
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
+    if (!dateString) return '-'
     return new Date(dateString)?.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
-    });
-  };
+      year: 'numeric',
+    })
+  }
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      pending: { 
-        text: 'Pending', 
+      pending: {
+        text: 'Pending',
         className: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-        icon: Clock 
+        icon: Clock,
       },
-      in_progress: { 
-        text: 'In Progress', 
+      in_progress: {
+        text: 'In Progress',
         className: 'bg-blue-100 text-blue-800 border border-blue-200',
-        icon: Truck 
+        icon: Truck,
       },
-      completed: { 
-        text: 'Completed', 
+      completed: {
+        text: 'Completed',
         className: 'bg-green-100 text-green-800 border border-green-200',
-        icon: CheckCircle2 
+        icon: CheckCircle2,
       },
-      cancelled: { 
-        text: 'Cancelled', 
+      cancelled: {
+        text: 'Cancelled',
         className: 'bg-red-100 text-red-800 border border-red-200',
-        icon: AlertCircle 
-      }
-    };
+        icon: AlertCircle,
+      },
+    }
 
-    const config = statusConfig?.[status] || statusConfig?.pending;
-    const IconComponent = config?.icon;
+    const config = statusConfig?.[status] || statusConfig?.pending
+    const IconComponent = config?.icon
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config?.className}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config?.className}`}
+      >
         <IconComponent className="h-3 w-3 mr-1" />
         {config?.text}
       </span>
-    );
-  };
+    )
+  }
 
   const renderServicesBadges = (services) => {
     if (!services || Object.keys(services)?.length === 0) {
-      return <span className="text-gray-500 text-sm">No services</span>;
+      return <span className="text-gray-500 text-sm">No services</span>
     }
 
-    const activeServices = Object.entries(services)?.filter(([_, enabled]) => enabled);
-    
+    const activeServices = Object.entries(services)?.filter(([_, enabled]) => enabled)
+
     if (activeServices?.length === 0) {
-      return <span className="text-gray-500 text-sm">No services</span>;
+      return <span className="text-gray-500 text-sm">No services</span>
     }
 
     return (
       <div className="flex flex-wrap gap-1">
         {activeServices?.slice(0, 3)?.map(([serviceKey]) => {
           // Find the service configuration
-          let serviceConfig = null;
-          let categoryColor = 'gray';
-          
-          Object.values(SERVICE_CATEGORIES)?.forEach(category => {
-            const found = category?.services?.find(s => s?.key === serviceKey);
-            if (found) {
-              serviceConfig = found;
-              categoryColor = category?.color;
-            }
-          });
+          let serviceConfig = null
+          let categoryColor = 'gray'
 
-          const serviceName = serviceConfig?.name || serviceKey?.toUpperCase();
+          Object.values(SERVICE_CATEGORIES)?.forEach((category) => {
+            const found = category?.services?.find((s) => s?.key === serviceKey)
+            if (found) {
+              serviceConfig = found
+              categoryColor = category?.color
+            }
+          })
+
+          const serviceName = serviceConfig?.name || serviceKey?.toUpperCase()
           const colorClasses = {
             blue: 'bg-blue-100 text-blue-800 border-blue-200',
             purple: 'bg-purple-100 text-purple-800 border-purple-200',
             green: 'bg-green-100 text-green-800 border-green-200',
-            gray: 'bg-gray-100 text-gray-800 border-gray-200'
-          };
+            gray: 'bg-gray-100 text-gray-800 border-gray-200',
+          }
 
           return (
-            <span 
+            <span
               key={serviceKey}
               className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${colorClasses?.[categoryColor] || colorClasses?.gray}`}
             >
               {serviceName}
             </span>
-          );
+          )
         })}
         {activeServices?.length > 3 && (
           <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
@@ -271,8 +310,8 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
           </span>
         )}
       </div>
-    );
-  };
+    )
+  }
 
   if (!data || data?.length === 0) {
     return (
@@ -281,7 +320,7 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Sales Data</h3>
         <p className="text-gray-600">Start by adding your first sale entry.</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -291,8 +330,8 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
         <div className="flex flex-wrap gap-4 items-center">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select 
-              value={filters?.status} 
+            <select
+              value={filters?.status}
               onChange={(e) => handleFilterChange('status', e?.target?.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             >
@@ -306,8 +345,8 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Coordinator</label>
-            <select 
-              value={filters?.coordinator} 
+            <select
+              value={filters?.coordinator}
               onChange={(e) => handleFilterChange('coordinator', e?.target?.value)}
               className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             >
@@ -396,14 +435,11 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div>
                       <div className="font-medium">
-                        {sale?.year && sale?.make && sale?.model 
+                        {sale?.year && sale?.make && sale?.model
                           ? `${sale?.year} ${sale?.make} ${sale?.model}`
-                          : 'Vehicle Info N/A'
-                        }
+                          : 'Vehicle Info N/A'}
                       </div>
-                      {sale?.color && (
-                        <div className="text-gray-500 text-xs">{sale?.color}</div>
-                      )}
+                      {sale?.color && <div className="text-gray-500 text-xs">{sale?.color}</div>}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -416,9 +452,7 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
                     {formatCurrency(sale?.total)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="text-sm">
-                      {sale?.deliveryCoordinator || 'Unassigned'}
-                    </div>
+                    <div className="text-sm">{sale?.deliveryCoordinator || 'Unassigned'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(sale?.created_at)}
@@ -450,7 +484,7 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
             <div className="text-center py-8 text-gray-500">
               <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p>No sales records found matching your filters.</p>
-              <button 
+              <button
                 onClick={() => setFilters({ status: '', coordinator: '', search: '' })}
                 className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
               >
@@ -461,7 +495,7 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SpreadsheetTable;
+export default SpreadsheetTable

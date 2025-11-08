@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState, useEffect } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
 const ReportPreview = ({ filters, isExporting, exportProgress }) => {
-  const [previewData, setPreviewData] = useState([]);
-  const [recordCount, setRecordCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [previewData, setPreviewData] = useState([])
+  const [recordCount, setRecordCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
 
   // Mock data based on report type
   const generateMockData = (reportType) => {
@@ -18,8 +18,8 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           vendor: 'ToughGuard Pro Services',
           salePrice: 1299.99,
           cost: 899.99,
-          profit: 400.00,
-          status: 'Completed'
+          profit: 400.0,
+          status: 'Completed',
         },
         {
           date: '2024-09-19',
@@ -28,8 +28,8 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           vendor: 'Evernew Solutions LLC',
           salePrice: 899.99,
           cost: 599.99,
-          profit: 300.00,
-          status: 'In Progress'
+          profit: 300.0,
+          status: 'In Progress',
         },
         {
           date: '2024-09-18',
@@ -38,9 +38,9 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           vendor: 'Premium Tint Masters',
           salePrice: 549.99,
           cost: 349.99,
-          profit: 200.00,
-          status: 'Completed'
-        }
+          profit: 200.0,
+          status: 'Completed',
+        },
       ],
       vendor_performance: [
         {
@@ -50,7 +50,7 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           avgCompletionTime: '3.2 days',
           totalRevenue: 58499.55,
           avgRating: 4.8,
-          overdueJobs: 1
+          overdueJobs: 1,
         },
         {
           vendor: 'Evernew Solutions LLC',
@@ -59,7 +59,7 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           avgCompletionTime: '2.8 days',
           totalRevenue: 34199.62,
           avgRating: 4.6,
-          overdueJobs: 2
+          overdueJobs: 2,
         },
         {
           vendor: 'Premium Tint Masters',
@@ -68,8 +68,8 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           avgCompletionTime: '1.5 days',
           totalRevenue: 28599.48,
           avgRating: 4.9,
-          overdueJobs: 0
-        }
+          overdueJobs: 0,
+        },
       ],
       product_profitability: [
         {
@@ -79,7 +79,7 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           totalCost: 60269.31,
           totalProfit: 26830.02,
           avgProfitMargin: '30.8%',
-          topVendor: 'ToughGuard Pro Services'
+          topVendor: 'ToughGuard Pro Services',
         },
         {
           product: 'Ceramic Coating',
@@ -88,7 +88,7 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           totalCost: 25789.71,
           totalProfit: 12909.86,
           avgProfitMargin: '33.4%',
-          topVendor: 'Evernew Solutions LLC'
+          topVendor: 'Evernew Solutions LLC',
         },
         {
           product: 'Window Tinting',
@@ -97,33 +97,58 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
           totalCost: 31166.49,
           totalProfit: 17782.62,
           avgProfitMargin: '36.3%',
-          topVendor: 'Premium Tint Masters'
-        }
-      ]
-    };
+          topVendor: 'Premium Tint Masters',
+        },
+      ],
+    }
 
-    return baseData?.[reportType] || baseData?.sales_summary;
-  };
+    return baseData?.[reportType] || baseData?.sales_summary
+  }
 
   useEffect(() => {
-    setIsLoading(true);
+    setIsLoading(true)
     // Simulate API call delay
     setTimeout(() => {
-      const mockData = generateMockData(filters?.reportType);
-      setPreviewData(mockData);
-      setRecordCount(mockData?.length * 15); // Simulate larger dataset
-      setIsLoading(false);
-    }, 500);
-  }, [filters]);
+      const mockData = generateMockData(filters?.reportType)
+      setPreviewData(mockData)
+      setRecordCount(mockData?.length * 15) // Simulate larger dataset
+      setIsLoading(false)
+    }, 500)
+  }, [filters])
 
   const getColumnHeaders = () => {
     const headers = {
-      sales_summary: ['Date', 'Vehicle', 'Product', 'Vendor', 'Sale Price', 'Cost', 'Profit', 'Status'],
-      vendor_performance: ['Vendor', 'Total Jobs', 'Completed', 'Avg Time', 'Revenue', 'Rating', 'Overdue'],
-      product_profitability: ['Product', 'Sales', 'Revenue', 'Cost', 'Profit', 'Margin', 'Top Vendor']
-    };
-    return headers?.[filters?.reportType] || headers?.sales_summary;
-  };
+      sales_summary: [
+        'Date',
+        'Vehicle',
+        'Product',
+        'Vendor',
+        'Sale Price',
+        'Cost',
+        'Profit',
+        'Status',
+      ],
+      vendor_performance: [
+        'Vendor',
+        'Total Jobs',
+        'Completed',
+        'Avg Time',
+        'Revenue',
+        'Rating',
+        'Overdue',
+      ],
+      product_profitability: [
+        'Product',
+        'Sales',
+        'Revenue',
+        'Cost',
+        'Profit',
+        'Margin',
+        'Top Vendor',
+      ],
+    }
+    return headers?.[filters?.reportType] || headers?.sales_summary
+  }
 
   const renderTableRow = (item, index) => {
     switch (filters?.reportType) {
@@ -134,7 +159,9 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.totalJobs}</td>
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.completedJobs}</td>
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.avgCompletionTime}</td>
-            <td className="px-4 py-3 text-sm font-medium text-success">${item?.totalRevenue?.toLocaleString()}</td>
+            <td className="px-4 py-3 text-sm font-medium text-success">
+              ${item?.totalRevenue?.toLocaleString()}
+            </td>
             <td className="px-4 py-3 text-sm text-muted-foreground">
               <div className="flex items-center">
                 <Icon name="Star" size={14} className="text-warning mr-1" />
@@ -149,41 +176,54 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
               )}
             </td>
           </tr>
-        );
+        )
       case 'product_profitability':
         return (
           <tr key={index} className="border-b border-border hover:bg-muted/50">
             <td className="px-4 py-3 text-sm font-medium text-foreground">{item?.product}</td>
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.totalSales}</td>
-            <td className="px-4 py-3 text-sm font-medium text-success">${item?.totalRevenue?.toLocaleString()}</td>
-            <td className="px-4 py-3 text-sm text-muted-foreground">${item?.totalCost?.toLocaleString()}</td>
-            <td className="px-4 py-3 text-sm font-medium text-success">${item?.totalProfit?.toLocaleString()}</td>
+            <td className="px-4 py-3 text-sm font-medium text-success">
+              ${item?.totalRevenue?.toLocaleString()}
+            </td>
+            <td className="px-4 py-3 text-sm text-muted-foreground">
+              ${item?.totalCost?.toLocaleString()}
+            </td>
+            <td className="px-4 py-3 text-sm font-medium text-success">
+              ${item?.totalProfit?.toLocaleString()}
+            </td>
             <td className="px-4 py-3 text-sm font-medium text-accent">{item?.avgProfitMargin}</td>
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.topVendor}</td>
           </tr>
-        );
+        )
       default: // sales_summary
         return (
           <tr key={index} className="border-b border-border hover:bg-muted/50">
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.date}</td>
-            <td className="px-4 py-3 text-sm font-medium text-foreground max-w-xs truncate">{item?.vehicle}</td>
+            <td className="px-4 py-3 text-sm font-medium text-foreground max-w-xs truncate">
+              {item?.vehicle}
+            </td>
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.product}</td>
             <td className="px-4 py-3 text-sm text-muted-foreground">{item?.vendor}</td>
             <td className="px-4 py-3 text-sm font-medium text-success">${item?.salePrice}</td>
             <td className="px-4 py-3 text-sm text-muted-foreground">${item?.cost}</td>
             <td className="px-4 py-3 text-sm font-medium text-success">${item?.profit}</td>
             <td className="px-4 py-3 text-sm">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                item?.status === 'Completed' ? 'bg-success/10 text-success' :
-                item?.status === 'In Progress'? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'
-              }`}>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  item?.status === 'Completed'
+                    ? 'bg-success/10 text-success'
+                    : item?.status === 'In Progress'
+                      ? 'bg-warning/10 text-warning'
+                      : 'bg-muted text-muted-foreground'
+                }`}
+              >
                 {item?.status}
               </span>
             </td>
           </tr>
-        );
+        )
     }
-  };
+  }
 
   return (
     <div className="bg-card border border-border rounded-lg shadow-elevation-1 h-full flex flex-col">
@@ -219,7 +259,7 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
                 <span className="text-sm text-muted-foreground">{exportProgress}%</span>
               </div>
               <div className="w-full bg-border rounded-full h-2">
-                <div 
+                <div
                   className="bg-primary h-2 rounded-full transition-all duration-300"
                   style={{ width: `${exportProgress}%` }}
                 />
@@ -256,7 +296,10 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
               <thead className="bg-muted sticky top-0">
                 <tr>
                   {getColumnHeaders()?.map((header, index) => (
-                    <th key={index} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th
+                      key={index}
+                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    >
                       {header}
                     </th>
                   ))}
@@ -266,7 +309,7 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
                 {previewData?.map((item, index) => renderTableRow(item, index))}
               </tbody>
             </table>
-            
+
             {/* Preview Footer */}
             <div className="p-4 bg-muted border-t border-border">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -278,7 +321,7 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ReportPreview;
+export default ReportPreview

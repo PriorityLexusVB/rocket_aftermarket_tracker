@@ -4,7 +4,7 @@ import { join } from 'path'
 
 /**
  * Migration Integration Tests for FK Constraint Fix
- * 
+ *
  * These tests verify the fix migration that separates column creation
  * from FK constraint addition, solving the production error where
  * the relationship was not recognized by PostgREST.
@@ -14,9 +14,9 @@ describe('Migration: 20251107000000_fix_job_parts_vendor_fkey.sql', () => {
     process.cwd(),
     'supabase/migrations/20251107000000_fix_job_parts_vendor_fkey.sql'
   )
-  
+
   let migrationSQL = ''
-  
+
   try {
     migrationSQL = readFileSync(migrationPath, 'utf8')
   } catch (err) {
@@ -40,7 +40,9 @@ describe('Migration: 20251107000000_fix_job_parts_vendor_fkey.sql', () => {
     expect(migrationSQL).toContain('ADD COLUMN vendor_id UUID')
     // Check that the actual ADD COLUMN statement doesn't use inline REFERENCES
     // Use more specific pattern to match ALTER TABLE...ADD COLUMN without REFERENCES
-    const addColumnMatch = migrationSQL.match(/ALTER TABLE[^;]*ADD COLUMN vendor_id UUID(?![^;]*REFERENCES)[^;]*;/)
+    const addColumnMatch = migrationSQL.match(
+      /ALTER TABLE[^;]*ADD COLUMN vendor_id UUID(?![^;]*REFERENCES)[^;]*;/
+    )
     expect(addColumnMatch).toBeTruthy()
     expect(migrationSQL).toContain('ADD CONSTRAINT job_parts_vendor_id_fkey')
   })
@@ -98,7 +100,7 @@ describe('Migration: 20251107000000_fix_job_parts_vendor_fkey.sql', () => {
     const addConstraintIndex = migrationSQL.indexOf('ADD CONSTRAINT')
     const createIndexIndex = migrationSQL.indexOf('CREATE INDEX')
     const updateIndex = migrationSQL.indexOf('UPDATE public.job_parts')
-    
+
     // NOTIFY should come after all schema modifications
     expect(notifyIndex).toBeGreaterThan(alterTableIndex)
     expect(notifyIndex).toBeGreaterThan(addConstraintIndex)
@@ -167,7 +169,7 @@ describe('Migration Verification Documentation', () => {
       SELECT indexname FROM pg_indexes 
       WHERE tablename = 'job_parts' AND indexname = 'idx_job_parts_vendor_id';
     `
-    
+
     expect(verificationSQL).toContain('information_schema.columns')
     expect(verificationSQL).toContain('information_schema.table_constraints')
     expect(verificationSQL).toContain('pg_indexes')
@@ -179,7 +181,7 @@ describe('Migration Verification Documentation', () => {
         "\${VITE_SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,name)&limit=1" \
         -H "apikey: \${VITE_SUPABASE_ANON_KEY}"
     `
-    
+
     expect(apiVerification).toContain('vendor:vendors')
     expect(apiVerification).toContain('job_parts')
   })
@@ -202,7 +204,7 @@ describe('Migration Rollback Documentation', () => {
       -- Reload schema cache
       NOTIFY pgrst, 'reload schema';
     `
-    
+
     expect(rollbackSQL).toContain('DROP CONSTRAINT')
     expect(rollbackSQL).toContain('job_parts_vendor_id_fkey')
     expect(rollbackSQL).toContain("NOTIFY pgrst, 'reload schema'")
@@ -217,9 +219,9 @@ describe('Migration Production Readiness', () => {
     process.cwd(),
     'supabase/migrations/20251107000000_fix_job_parts_vendor_fkey.sql'
   )
-  
+
   let migrationSQL = ''
-  
+
   try {
     migrationSQL = readFileSync(migrationPath, 'utf8')
   } catch (err) {

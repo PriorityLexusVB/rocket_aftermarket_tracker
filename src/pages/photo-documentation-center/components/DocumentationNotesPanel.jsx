@@ -1,66 +1,65 @@
-import React, { useState } from 'react';
-import { FileText, Search, Clock, User, MessageSquare } from 'lucide-react';
-import Icon from '../../../components/AppIcon';
-
+import React, { useState } from 'react'
+import { FileText, Search, Clock, User, MessageSquare } from 'lucide-react'
+import Icon from '../../../components/AppIcon'
 
 const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersChange }) => {
-  const [selectedNote, setSelectedNote] = useState(null);
-  const [expandedNotes, setExpandedNotes] = useState(new Set());
+  const [selectedNote, setSelectedNote] = useState(null)
+  const [expandedNotes, setExpandedNotes] = useState(new Set())
 
   const handleFilterChange = (key, value) => {
     onFiltersChange?.({
       ...filters,
-      [key]: value
-    });
-  };
+      [key]: value,
+    })
+  }
 
   const toggleNoteExpansion = (noteId) => {
-    const newExpanded = new Set(expandedNotes);
+    const newExpanded = new Set(expandedNotes)
     if (newExpanded?.has(noteId)) {
-      newExpanded?.delete(noteId);
+      newExpanded?.delete(noteId)
     } else {
-      newExpanded?.add(noteId);
+      newExpanded?.add(noteId)
     }
-    setExpandedNotes(newExpanded);
-  };
+    setExpandedNotes(newExpanded)
+  }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Unknown';
+    if (!dateString) return 'Unknown'
     return new Date(dateString)?.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+      minute: '2-digit',
+    })
+  }
 
   const getCategoryColor = (category) => {
     const colors = {
       'Progress Updates': 'bg-blue-100 text-blue-800 border-blue-200',
       'Quality Issues': 'bg-red-100 text-red-800 border-red-200',
       'Customer Communications': 'bg-green-100 text-green-800 border-green-200',
-      'photo_documentation': 'bg-purple-100 text-purple-800 border-purple-200',
-      'note': 'bg-gray-100 text-gray-800 border-gray-200'
-    };
-    return colors?.[category] || colors?.note;
-  };
+      photo_documentation: 'bg-purple-100 text-purple-800 border-purple-200',
+      note: 'bg-gray-100 text-gray-800 border-gray-200',
+    }
+    return colors?.[category] || colors?.note
+  }
 
   const getCategoryIcon = (category) => {
     const icons = {
       'Progress Updates': Clock,
       'Quality Issues': MessageSquare,
       'Customer Communications': User,
-      'photo_documentation': FileText,
-      'note': FileText
-    };
-    const Icon = icons?.[category] || FileText;
-    return <Icon className="h-4 w-4" />;
-  };
+      photo_documentation: FileText,
+      note: FileText,
+    }
+    const Icon = icons?.[category] || FileText
+    return <Icon className="h-4 w-4" />
+  }
 
   const truncateText = (text, maxLength = 150) => {
-    if (!text) return '';
-    return text?.length > maxLength ? `${text?.substring(0, maxLength)}...` : text;
-  };
+    if (!text) return ''
+    return text?.length > maxLength ? `${text?.substring(0, maxLength)}...` : text
+  }
 
   if (loading) {
     return (
@@ -70,7 +69,7 @@ const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersC
           <p className="mt-2 text-gray-600">Loading notes...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -107,9 +106,9 @@ const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersC
         ) : (
           <div className="space-y-4">
             {notes?.map((note) => {
-              const isExpanded = expandedNotes?.has(note?.id);
-              const needsExpansion = note?.message?.length > 150;
-              const category = note?.subject || note?.communication_type || 'note';
+              const isExpanded = expandedNotes?.has(note?.id)
+              const needsExpansion = note?.message?.length > 150
+              const category = note?.subject || note?.communication_type || 'note'
 
               return (
                 <div
@@ -119,10 +118,10 @@ const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersC
                   {/* Note Header */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-2">
-                      <div className="flex-shrink-0">
-                        {getCategoryIcon(category)}
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded border ${getCategoryColor(category)}`}>
+                      <div className="flex-shrink-0">{getCategoryIcon(category)}</div>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded border ${getCategoryColor(category)}`}
+                      >
                         {category === 'photo_documentation' ? 'Photo Documentation' : category}
                       </span>
                     </div>
@@ -161,7 +160,7 @@ const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersC
                     </div>
                   </div>
                 </div>
-              );
+              )
             })}
           </div>
         )}
@@ -189,7 +188,7 @@ const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersC
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default DocumentationNotesPanel;
+export default DocumentationNotesPanel

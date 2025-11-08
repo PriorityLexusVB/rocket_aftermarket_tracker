@@ -1,6 +1,6 @@
 /**
  * Test: Vehicle Description and Vendor Aggregation
- * 
+ *
  * Verifies:
  * 1. Vehicle description is derived from title (custom description) or vehicle fields
  * 2. Vendor aggregation works correctly for per-line vendors

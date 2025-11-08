@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useLogger } from '../../../hooks/useLogger';
-import UIButton from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-import { productService } from '../../../services/productService';
-import { vendorService } from '../../../services/vendorService';
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '../../../contexts/AuthContext'
+import { useLogger } from '../../../hooks/useLogger'
+import UIButton from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
+import { productService } from '../../../services/productService'
+import { vendorService } from '../../../services/vendorService'
 
 const ProductCatalog = () => {
-  const { userProfile } = useAuth();
-  const logger = useLogger();
-  const [products, setProducts] = useState([]);
-  const [vendors, setVendors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState('add');
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterVendor, setFilterVendor] = useState('');
+  const { userProfile } = useAuth()
+  const logger = useLogger()
+  const [products, setProducts] = useState([])
+  const [vendors, setVendors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [formMode, setFormMode] = useState('add')
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterVendor, setFilterVendor] = useState('')
 
   // Form state - removed part_number
   const [formData, setFormData] = useState({
@@ -31,8 +31,8 @@ const ProductCatalog = () => {
     quantity_in_stock: '',
     minimum_stock_level: '',
     vendor_id: '',
-    is_active: true
-  });
+    is_active: true,
+  })
 
   const categories = [
     'Braking System',
@@ -44,88 +44,88 @@ const ProductCatalog = () => {
     'Transmission',
     'Accessories',
     'Performance Parts',
-    'Maintenance Items'
-  ];
+    'Maintenance Items',
+  ]
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData()
+  }, [])
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      setLoading(true)
       const [productData, vendorData] = await Promise.all([
         productService?.getAllProducts(),
-        vendorService?.getAllVendors()
-      ]);
-      
-      setProducts(productData);
-      setVendors(vendorData?.filter(v => v?.is_active));
-      
+        vendorService?.getAllVendors(),
+      ])
+
+      setProducts(productData)
+      setVendors(vendorData?.filter((v) => v?.is_active))
+
       await logger?.logInfo(
         'products_loaded',
         'PRODUCT',
         'list',
         `Loaded ${productData?.length} products for catalog management`,
         { productCount: productData?.length }
-      );
+      )
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading data:', error)
       await logger?.logError(
         'product_load_error',
         'SYSTEM',
         'product-catalog',
         `Failed to load products: ${error?.message}`,
         { error: error?.message }
-      );
+      )
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleFormSubmit = async (e) => {
-    e?.preventDefault();
-    
+    e?.preventDefault()
+
     try {
       if (formMode === 'add') {
-        const newProduct = await productService?.createProduct(formData);
-        setProducts(prev => [newProduct, ...prev]);
-        
+        const newProduct = await productService?.createProduct(formData)
+        setProducts((prev) => [newProduct, ...prev])
+
         await logger?.logSuccess(
           'product_added',
           'PRODUCT',
           newProduct?.id,
           `New product added: ${newProduct?.name}`,
           { productData: newProduct }
-        );
+        )
       } else {
-        const updatedProduct = await productService?.updateProduct(selectedProduct?.id, formData);
-        setProducts(prev => prev?.map(p => p?.id === updatedProduct?.id ? updatedProduct : p));
-        
+        const updatedProduct = await productService?.updateProduct(selectedProduct?.id, formData)
+        setProducts((prev) => prev?.map((p) => (p?.id === updatedProduct?.id ? updatedProduct : p)))
+
         await logger?.logSuccess(
           'product_updated',
           'PRODUCT',
           updatedProduct?.id,
           `Product updated: ${updatedProduct?.name}`,
           { productData: updatedProduct }
-        );
+        )
       }
-      
-      resetForm();
+
+      resetForm()
     } catch (error) {
-      console.error('Error saving product:', error);
+      console.error('Error saving product:', error)
       await logger?.logError(
         'product_save_error',
         'PRODUCT',
         formMode === 'edit' ? selectedProduct?.id : 'new',
         `Failed to ${formMode} product: ${error?.message}`,
         { error: error?.message, formData }
-      );
+      )
     }
-  };
+  }
 
   const handleEditProduct = (product) => {
-    setSelectedProduct(product);
+    setSelectedProduct(product)
     setFormData({
       name: product?.name || '',
       brand: product?.brand || '',
@@ -136,37 +136,37 @@ const ProductCatalog = () => {
       quantity_in_stock: product?.quantity_in_stock || '',
       minimum_stock_level: product?.minimum_stock_level || '',
       vendor_id: product?.vendor_id || '',
-      is_active: product?.is_active !== undefined ? product?.is_active : true
-    });
-    setFormMode('edit');
-    setShowForm(true);
-  };
+      is_active: product?.is_active !== undefined ? product?.is_active : true,
+    })
+    setFormMode('edit')
+    setShowForm(true)
+  }
 
   const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
-    
+    if (!window.confirm('Are you sure you want to delete this product?')) return
+
     try {
-      await productService?.deleteProduct(productId);
-      setProducts(prev => prev?.filter(p => p?.id !== productId));
-      
+      await productService?.deleteProduct(productId)
+      setProducts((prev) => prev?.filter((p) => p?.id !== productId))
+
       await logger?.logSuccess(
         'product_deleted',
         'PRODUCT',
         productId,
         `Product deleted successfully`,
         { productId }
-      );
+      )
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error('Error deleting product:', error)
       await logger?.logError(
         'product_delete_error',
         'PRODUCT',
         productId,
         `Failed to delete product: ${error?.message}`,
         { error: error?.message, productId }
-      );
+      )
     }
-  };
+  }
 
   const resetForm = () => {
     setFormData({
@@ -179,23 +179,24 @@ const ProductCatalog = () => {
       quantity_in_stock: '',
       minimum_stock_level: '',
       vendor_id: '',
-      is_active: true
-    });
-    setSelectedProduct(null);
-    setShowForm(false);
-    setFormMode('add');
-  };
+      is_active: true,
+    })
+    setSelectedProduct(null)
+    setShowForm(false)
+    setFormMode('add')
+  }
 
-  const filteredProducts = products?.filter(product => {
-    const matchesSearch = product?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-                         product?.op_code?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
-                         product?.brand?.toLowerCase()?.includes(searchTerm?.toLowerCase());
-    
-    const matchesCategory = filterCategory === '' || product?.category === filterCategory;
-    const matchesVendor = filterVendor === '' || product?.vendor_id === filterVendor;
-    
-    return matchesSearch && matchesCategory && matchesVendor;
-  });
+  const filteredProducts = products?.filter((product) => {
+    const matchesSearch =
+      product?.name?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+      product?.op_code?.toLowerCase()?.includes(searchTerm?.toLowerCase()) ||
+      product?.brand?.toLowerCase()?.includes(searchTerm?.toLowerCase())
+
+    const matchesCategory = filterCategory === '' || product?.category === filterCategory
+    const matchesVendor = filterVendor === '' || product?.vendor_id === filterVendor
+
+    return matchesSearch && matchesCategory && matchesVendor
+  })
 
   if (loading) {
     return (
@@ -203,7 +204,7 @@ const ProductCatalog = () => {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         <p className="mt-2 text-gray-600">Loading product catalog...</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -217,15 +218,17 @@ const ProductCatalog = () => {
             onChange={(e) => setSearchTerm(e?.target?.value)}
             className="w-64"
           />
-          
+
           <Select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e?.target?.value)}
             className="w-48"
           >
             <option value="">All Categories</option>
-            {categories?.map(category => (
-              <option key={category} value={category}>{category}</option>
+            {categories?.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
             ))}
           </Select>
 
@@ -235,16 +238,18 @@ const ProductCatalog = () => {
             className="w-48"
           >
             <option value="">All Vendors</option>
-            {vendors?.map(vendor => (
-              <option key={vendor?.id} value={vendor?.id}>{vendor?.name}</option>
+            {vendors?.map((vendor) => (
+              <option key={vendor?.id} value={vendor?.id}>
+                {vendor?.name}
+              </option>
             ))}
           </Select>
         </div>
 
         <UIButton
           onClick={() => {
-            setFormMode('add');
-            setShowForm(true);
+            setFormMode('add')
+            setShowForm(true)
           }}
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2"
           disabled={loading}
@@ -257,7 +262,10 @@ const ProductCatalog = () => {
       {/* Product Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
         {filteredProducts?.map((product) => (
-          <div key={product?.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div
+            key={product?.id}
+            className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+          >
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <h3 className="font-medium text-gray-900 truncate">{product?.name}</h3>
@@ -269,12 +277,14 @@ const ProductCatalog = () => {
                 )}
               </div>
               <div className="flex items-center space-x-1">
-                <span className={`w-2 h-2 rounded-full ${
-                  product?.stock_status === 'low' ? 'bg-red-500' : 'bg-green-500'
-                }`}></span>
-                <span className={`text-xs ${
-                  product?.is_active ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    product?.stock_status === 'low' ? 'bg-red-500' : 'bg-green-500'
+                  }`}
+                ></span>
+                <span
+                  className={`text-xs ${product?.is_active ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {product?.is_active ? 'Active' : 'Inactive'}
                 </span>
               </div>
@@ -285,16 +295,18 @@ const ProductCatalog = () => {
                 <span className="text-gray-600">Price:</span>
                 <span className="font-medium">${product?.unit_price}</span>
               </div>
-              
+
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Stock:</span>
-                <span className={`font-medium ${
-                  product?.stock_status === 'low' ? 'text-red-600' : 'text-gray-900'
-                }`}>
+                <span
+                  className={`font-medium ${
+                    product?.stock_status === 'low' ? 'text-red-600' : 'text-gray-900'
+                  }`}
+                >
                   {product?.quantity_in_stock}
                 </span>
               </div>
-              
+
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Vendor:</span>
                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
@@ -312,9 +324,9 @@ const ProductCatalog = () => {
             <div className="flex space-x-2">
               <UIButton
                 onClick={(e) => {
-                  e?.preventDefault();
-                  e?.stopPropagation();
-                  handleEditProduct(product);
+                  e?.preventDefault()
+                  e?.stopPropagation()
+                  handleEditProduct(product)
                 }}
                 className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1"
                 disabled={loading}
@@ -324,9 +336,9 @@ const ProductCatalog = () => {
               </UIButton>
               <UIButton
                 onClick={(e) => {
-                  e?.preventDefault();
-                  e?.stopPropagation();
-                  handleDeleteProduct(product?.id);
+                  e?.preventDefault()
+                  e?.stopPropagation()
+                  handleDeleteProduct(product?.id)
                 }}
                 className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1"
                 disabled={loading}
@@ -371,45 +383,45 @@ const ProductCatalog = () => {
                   </label>
                   <Input
                     value={formData?.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e?.target?.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e?.target?.value }))}
                     required
                     placeholder="Enter product name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Brand
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
                   <Input
                     value={formData?.brand}
-                    onChange={(e) => setFormData(prev => ({ ...prev, brand: e?.target?.value }))}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, brand: e?.target?.value }))}
                     placeholder="Enter brand name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <Select
                     value={formData?.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e?.target?.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, category: e?.target?.value }))
+                    }
                   >
                     <option value="">Select category</option>
-                    {categories?.map(category => (
-                      <option key={category} value={category}>{category}</option>
+                    {categories?.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
                     ))}
                   </Select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Op Code
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Op Code</label>
                   <Input
                     value={formData?.op_code}
-                    onChange={(e) => setFormData(prev => ({ ...prev, op_code: e?.target?.value?.toUpperCase() }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, op_code: e?.target?.value?.toUpperCase() }))
+                    }
                     placeholder="Enter operation code (e.g., TG)"
                     style={{ textTransform: 'uppercase' }}
                     helperText="Short abbreviation for display on tracker and calendar"
@@ -425,24 +437,28 @@ const ProductCatalog = () => {
                     step="0.01"
                     min="0"
                     value={formData?.unit_price}
-                    onChange={(e) => setFormData(prev => ({ ...prev, unit_price: e?.target?.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, unit_price: e?.target?.value }))
+                    }
                     required
                     placeholder="Enter price"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vendor *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vendor *</label>
                   <Select
                     value={formData?.vendor_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, vendor_id: e?.target?.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, vendor_id: e?.target?.value }))
+                    }
                     required
                   >
                     <option value="">Select vendor</option>
-                    {vendors?.map(vendor => (
-                      <option key={vendor?.id} value={vendor?.id}>{vendor?.name}</option>
+                    {vendors?.map((vendor) => (
+                      <option key={vendor?.id} value={vendor?.id}>
+                        {vendor?.name}
+                      </option>
                     ))}
                   </Select>
                 </div>
@@ -455,7 +471,9 @@ const ProductCatalog = () => {
                     type="number"
                     min="0"
                     value={formData?.quantity_in_stock}
-                    onChange={(e) => setFormData(prev => ({ ...prev, quantity_in_stock: e?.target?.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, quantity_in_stock: e?.target?.value }))
+                    }
                     placeholder="Enter quantity"
                   />
                 </div>
@@ -468,19 +486,21 @@ const ProductCatalog = () => {
                     type="number"
                     min="0"
                     value={formData?.minimum_stock_level}
-                    onChange={(e) => setFormData(prev => ({ ...prev, minimum_stock_level: e?.target?.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, minimum_stock_level: e?.target?.value }))
+                    }
                     placeholder="Enter minimum level"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
                   value={formData?.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e?.target?.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e?.target?.value }))
+                  }
                   placeholder="Enter product description"
                   rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -491,12 +511,12 @@ const ProductCatalog = () => {
                 <input
                   type="checkbox"
                   checked={formData?.is_active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_active: e?.target?.checked }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, is_active: e?.target?.checked }))
+                  }
                   className="rounded"
                 />
-                <label className="ml-2 text-sm text-gray-700">
-                  Active Product
-                </label>
+                <label className="ml-2 text-sm text-gray-700">Active Product</label>
               </div>
 
               <div className="flex space-x-3 pt-4">
@@ -505,14 +525,14 @@ const ProductCatalog = () => {
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   disabled={loading}
                 >
-                  {loading ? 'Saving...' : (formMode === 'add' ? 'Add Product' : 'Update Product')}
+                  {loading ? 'Saving...' : formMode === 'add' ? 'Add Product' : 'Update Product'}
                 </UIButton>
                 <UIButton
                   type="button"
                   onClick={(e) => {
-                    e?.preventDefault();
-                    e?.stopPropagation();
-                    resetForm();
+                    e?.preventDefault()
+                    e?.stopPropagation()
+                    resetForm()
                   }}
                   className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
                   disabled={loading}
@@ -525,7 +545,7 @@ const ProductCatalog = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ProductCatalog;
+export default ProductCatalog

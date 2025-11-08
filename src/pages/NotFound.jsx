@@ -1,10 +1,10 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { Home, FileText, Lock, ArrowLeft } from 'lucide-react';
+import React from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { Home, FileText, Lock, ArrowLeft } from 'lucide-react'
 
 const NotFound = () => {
-  const { user } = useAuth();
+  const { user } = useAuth()
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center px-4">
@@ -19,9 +19,9 @@ const NotFound = () => {
         {/* Friendly Message - No 404 mention */}
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Let's get you back on track</h1>
         <p className="text-gray-600 mb-8">
-          {user ? 
-            "It looks like you're trying to access a page that isn't available. Let's get you to where you need to go." : "Welcome! Please sign in to access your account and manage your business operations."
-          }
+          {user
+            ? "It looks like you're trying to access a page that isn't available. Let's get you to where you need to go."
+            : 'Welcome! Please sign in to access your account and manage your business operations.'}
         </p>
 
         {/* Navigation Options */}
@@ -76,15 +76,14 @@ const NotFound = () => {
             <span className="font-semibold">Need Help?</span>
           </div>
           <p className="text-sm text-blue-600">
-            {user ? 
-              'Contact your system administrator if you need access to specific features or pages.' :
-              'Sign in to access internal systems and manage your business operations securely.'
-            }
+            {user
+              ? 'Contact your system administrator if you need access to specific features or pages.'
+              : 'Sign in to access internal systems and manage your business operations securely.'}
           </p>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default NotFound;
+export default NotFound

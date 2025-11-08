@@ -7,6 +7,7 @@ When deploying database migrations that modify table relationships (foreign keys
 ### Problem: Schema Cache Staleness
 
 **Symptoms:**
+
 - Migration applies successfully
 - Foreign key exists in database
 - SQL queries work fine
@@ -19,6 +20,7 @@ PostgREST caches the database schema in memory for performance. After a migratio
 ### Solution: Schema Cache Reload
 
 #### Automatic (Recommended)
+
 Include the reload notification at the end of your migration file:
 
 ```sql
@@ -31,16 +33,19 @@ This ensures the schema cache is reloaded immediately when the migration is appl
 #### Manual (If migration already applied without reload)
 
 **Option 1: Via Supabase CLI**
+
 ```bash
 supabase db execute --sql "NOTIFY pgrst, 'reload schema';"
 ```
 
 **Option 2: Via SQL Client**
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```
 
 **Option 3: Via Supabase Dashboard**
+
 1. Go to SQL Editor
 2. Execute: `NOTIFY pgrst, 'reload schema';`
 3. Verify by testing the query that was failing
@@ -48,6 +53,7 @@ NOTIFY pgrst, 'reload schema';
 ## Standard Deployment Order
 
 ### 1. Pre-Deployment Checks
+
 ```bash
 # Verify all tests pass
 pnpm test
@@ -62,11 +68,13 @@ supabase migration list
 ### 2. Apply Database Migrations
 
 **Local/Staging:**
+
 ```bash
 supabase db push
 ```
 
 **Production:**
+
 ```bash
 # Link to production project first (one-time)
 supabase link --project-ref <your-project-ref>
@@ -81,9 +89,10 @@ supabase db execute --sql "NOTIFY pgrst, 'reload schema';"
 ### 3. Verify Schema Changes
 
 **Check foreign keys exist:**
+
 ```sql
 SELECT
-    tc.table_name, 
+    tc.table_name,
     kcu.column_name,
     ccu.table_name AS foreign_table_name,
     ccu.column_name AS foreign_column_name
@@ -97,9 +106,10 @@ WHERE tc.constraint_type = 'FOREIGN KEY'
 ```
 
 **Test relationship query:**
+
 ```sql
 -- This should work after migration and cache reload
-SELECT 
+SELECT
     jp.id,
     jp.vendor_id,
     v.name as vendor_name
@@ -109,6 +119,7 @@ LIMIT 1;
 ```
 
 ### 4. Deploy Application Code
+
 ```bash
 # Vercel auto-deploys from main branch
 git push origin main
@@ -120,12 +131,14 @@ vercel --prod
 ### 5. Post-Deployment Verification
 
 **Test the Deals page:**
+
 - Navigate to Deals page
 - Verify no error banner about missing relationships
 - Check that vendor column displays correctly
 - Create a new deal and verify vendor data saves
 
 **Monitor logs:**
+
 ```bash
 # Check for PostgREST errors
 supabase logs --type postgrest
@@ -195,6 +208,7 @@ NOTIFY pgrst, 'reload schema';
 ## Rollback Procedures
 
 ### If migration fails:
+
 ```bash
 # Check what migrations are applied
 supabase migration list
@@ -223,28 +237,32 @@ supabase migration new rollback_description
 ## Testing Schema Changes Locally
 
 ### Setup local Supabase:
+
 ```bash
 supabase start
 ```
 
 ### Apply migration:
+
 ```bash
 supabase db reset  # Fresh start with all migrations
 ```
 
 ### Test the relationship:
+
 ```javascript
 // In your app or via Supabase Studio
 const { data, error } = await supabase
   .from('job_parts')
   .select('id, vendor_id, vendor:vendors(id, name)')
-  .limit(1);
+  .limit(1)
 
-console.log('Data:', data);
-console.log('Error:', error);  // Should be null
+console.log('Data:', data)
+console.log('Error:', error) // Should be null
 ```
 
 ### Common test failures:
+
 - **Missing relationship error** → Schema cache not reloaded
 - **Column doesn't exist** → Migration not applied
 - **Permission denied** → RLS policy too restrictive
@@ -252,6 +270,7 @@ console.log('Error:', error);  // Should be null
 ## Health Check Verification (NEW)
 
 ### Health Endpoint
+
 Use the runtime health check to verify schema relationships:
 
 ```bash
@@ -272,6 +291,7 @@ curl https://your-app.vercel.app/api/health/deals-rel
 ```
 
 ### Automated Test Verification
+
 Run persistence tests to verify all behaviors:
 
 ```bash
@@ -283,8 +303,9 @@ pnpm test src/tests/unit/dealService.persistence.test.js
 ```
 
 Tests cover:
+
 - ✅ org_id inference (3 tests)
-- ✅ loaner assignment persistence (5 tests) 
+- ✅ loaner assignment persistence (5 tests)
 - ✅ scheduling fallback (6 tests)
 - ✅ error wrapper mapping (4 tests)
 - ✅ vendor aggregation logic (6 tests)
@@ -325,6 +346,7 @@ After deployment:
 ## RLS Policy Verification
 
 ### Check Helper Functions
+
 Verify helper functions don't reference auth.users:
 
 ```sql
@@ -338,20 +360,22 @@ WHERE n.nspname = 'public' AND p.proname = 'is_admin_or_manager';
 ```
 
 ### Verify Write Policies Exist
+
 ```sql
 -- Check policy coverage for key tables
-SELECT 
-  schemaname, 
-  tablename, 
+SELECT
+  schemaname,
+  tablename,
   policyname,
   cmd as policy_type
-FROM pg_policies 
-WHERE schemaname = 'public' 
+FROM pg_policies
+WHERE schemaname = 'public'
   AND tablename IN ('loaner_assignments', 'transactions', 'vehicles', 'sms_templates', 'products', 'vendors')
 ORDER BY tablename, cmd;
 ```
 
 Expected results:
+
 - **loaner_assignments**: SELECT, INSERT, UPDATE, DELETE policies
 - **transactions**: SELECT, INSERT, UPDATE policies
 - **vehicles**: SELECT, INSERT, UPDATE policies

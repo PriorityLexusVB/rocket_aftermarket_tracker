@@ -11,7 +11,9 @@ This audit verifies that all Row-Level Security (RLS) policies use `public.user_
 ## Audit Method
 
 ### 1. SQL Audit Script
+
 The audit script `scripts/sql/audit_security_surface.sql` checks:
+
 - View security settings (security_invoker, security_barrier)
 - SECURITY DEFINER functions
 - RLS status across all public tables
@@ -20,7 +22,9 @@ The audit script `scripts/sql/audit_security_surface.sql` checks:
 - Missing timestamp triggers
 
 ### 2. Codebase Grep Audit
+
 Comprehensive search for `auth.users` references across:
+
 - Migration files
 - Helper functions
 - RLS policies
@@ -38,27 +42,32 @@ Comprehensive search for `auth.users` references across:
 All 89 `auth.users` references have been categorized:
 
 **Category 1: Foreign Keys (Legitimate)** - 12 references
+
 - user_profiles.id → auth.users.id FK definitions
 - These are required for referential integrity
 - Status: ✅ SAFE
 
 **Category 2: Seeding/Test Data (Legitimate)** - 8 references
+
 - INSERT statements for test users
 - Data seeding operations
 - Status: ✅ SAFE
 
 **Category 3: Comments/Documentation (Legitimate)** - 15 references
+
 - Migration comments explaining changes
 - Documentation of relationships
 - Status: ✅ SAFE
 
 **Category 4: Historical/Fixed Code (Legitimate)** - 54 references
+
 - Old function definitions that were later fixed
 - Migration history showing evolution
 - Superseded by later migrations
 - Status: ✅ SAFE (inactive)
 
 **Category 5: Active Helper Functions (CRITICAL)** - 0 references
+
 - ✅ is_admin_or_manager() - FIXED in migration 20251104221500
 - ✅ auth_user_org() - VERIFIED CORRECT in migration 20251022230000
 - Status: ✅ CLEAN
@@ -66,9 +75,11 @@ All 89 `auth.users` references have been categorized:
 ### Key Helper Functions Verification
 
 #### `is_admin_or_manager()`
+
 **Location**: Fixed in `20251104221500_fix_is_admin_or_manager_auth_users.sql`
 
 **Current Implementation**:
+
 ```sql
 CREATE OR REPLACE FUNCTION public.is_admin_or_manager()
 RETURNS BOOLEAN
@@ -88,9 +99,11 @@ $$;
 **Status**: ✅ Uses `public.user_profiles` correctly
 
 #### `auth_user_org()`
+
 **Location**: Verified in `20251022230000_rls_audit_refinements.sql`
 
 **Current Implementation**:
+
 ```sql
 CREATE OR REPLACE FUNCTION public.auth_user_org()
 RETURNS TEXT
@@ -111,6 +124,7 @@ $$;
 **Tables with RLS**: All multi-tenant tables have RLS enabled
 
 **Policy Pattern**:
+
 ```sql
 -- Example from jobs table
 CREATE POLICY "Users can view own org's jobs"
@@ -120,6 +134,7 @@ CREATE POLICY "Users can view own org's jobs"
 ```
 
 **Verification**: All policies use `auth_user_org()` or direct `user_profiles` lookups
+
 - ✅ No direct `auth.users` references in active policies
 - ✅ All tenant scoping via `org_id = auth_user_org()`
 
@@ -138,6 +153,7 @@ grep -rn "auth\.users" supabase/migrations/*.sql | grep -i "policy" | grep -v "^
 ## Coverage by Table
 
 ### Multi-Tenant Tables (RLS Required)
+
 All these tables have proper RLS policies using `auth_user_org()`:
 
 1. ✅ **jobs** - 4 policies (SELECT, INSERT, UPDATE, DELETE)
@@ -156,13 +172,15 @@ All these tables have proper RLS policies using `auth_user_org()`:
 **Total Policies**: 47 policies across 12 tables
 
 ### Manager DELETE Policies
+
 **Migration**: 20251107110500_add_manager_delete_policies_and_deals_health.sql
 
 All DELETE policies use:
+
 ```sql
 DELETE TO authenticated
 USING (
-  org_id = auth_user_org() 
+  org_id = auth_user_org()
   AND is_admin_or_manager()
 )
 ```
@@ -172,16 +190,19 @@ USING (
 ## Security Verification
 
 ### No Direct auth.users Access
+
 - ✅ No active RLS policies reference auth.users
 - ✅ All helper functions use public.user_profiles
 - ✅ Proper tenant isolation via org_id
 
 ### Helper Function Security
+
 - ✅ Both helper functions are SECURITY INVOKER (not DEFINER)
 - ✅ Both functions are STABLE (appropriate for RLS)
 - ✅ Both functions use auth.uid() to get current user
 
 ### Migration History
+
 - ✅ is_admin_or_manager() fixed in 20251104221500
 - ✅ auth_user_org() verified correct in 20251022230000
 - ✅ All subsequent migrations use fixed versions
@@ -189,38 +210,48 @@ USING (
 ## Test Coverage
 
 ### Unit Tests
+
 **File**: `src/tests/unit/dealService.persistence.test.js`
+
 - 27 tests covering persistence behaviors
 - Includes org_id inference tests (3 tests)
 - Status: ✅ 27/27 passing
 
 **File**: `src/tests/unit/smsTemplates.schema.test.js`
+
 - 6 tests covering schema correctness
 - Status: ✅ 6/6 passing
 
 ### E2E Tests
+
 **File**: `e2e/deals-list-refresh.spec.ts`
+
 - 2 tests covering deal list refresh after edit
 - Status: ✅ Created (auth-gated)
 
 ### RLS Multi-User Tests
+
 **File**: `src/tests/step20-rls-multi-user-concurrency.test.js`
+
 - Tests tenant isolation
 - Status: Present (needs auth credentials to run)
 
 ## Recommendations
 
 ### Immediate (Done)
+
 - ✅ Document audit results
 - ✅ Verify helper functions
 - ✅ Confirm policy patterns
 
 ### Short Term (1-2 weeks)
+
 - [ ] Run E2E tests with credentials to verify tenant isolation
 - [ ] Add automated audit to CI/CD pipeline
 - [ ] Create nightly drift detection job
 
 ### Medium Term (1-3 months)
+
 - [ ] Add policy unit tests (mock auth.uid())
 - [ ] Performance test RLS overhead
 - [ ] Document policy patterns for new tables
@@ -230,6 +261,7 @@ USING (
 **AUDIT RESULT: ✅ PASSED**
 
 All 89 `auth.users` references have been categorized and verified:
+
 - **0 active policy references** to auth.users
 - **2 helper functions** both use public.user_profiles correctly
 - **47 RLS policies** all use proper org_id scoping
@@ -242,7 +274,8 @@ The multi-tenant security model is correctly implemented with no auth.users leak
 **Audit Date**: 2025-11-07  
 **Audited By**: Automated RLS Audit Process  
 **Next Audit**: Scheduled nightly via CI/CD workflow  
-**Related Docs**: 
+**Related Docs**:
+
 - `docs/TASK_8_RLS_AUDIT_NO_AUTH_USERS.md`
 - `docs/FINAL_HARDENING_SUMMARY.md`
 - `scripts/sql/audit_security_surface.sql`

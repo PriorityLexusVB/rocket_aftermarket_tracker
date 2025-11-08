@@ -7,13 +7,11 @@ describe('Vendor aggregation edge cases', () => {
     // Helper to simulate aggregateVendor behavior
     function aggregateVendor(jobParts, jobLevelVendorName) {
       const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
-      
-      const lineVendors = offSiteLineItems
-        .map((p) => p?.vendor?.name || null)
-        .filter(Boolean)
-      
+
+      const lineVendors = offSiteLineItems.map((p) => p?.vendor?.name || null).filter(Boolean)
+
       const uniqueVendors = [...new Set(lineVendors)]
-      
+
       if (uniqueVendors.length === 1) {
         return uniqueVendors[0]
       }
@@ -92,29 +90,27 @@ describe('Vendor aggregation edge cases', () => {
     it('should still provide stable vendor label in fallback mode', () => {
       // When cap_vendorRel=false, vendor relationship isn't available
       // But we should still have stable fallback labels
-      
+
       // Simulate what happens when vendor relationship is missing:
       // - job_parts don't have vendor: {...} nested object
       // - Must fall back to job-level vendor or "Unassigned"
-      
+
       const jobParts = [
         { is_off_site: true, vendor_id: 'uuid-1', vendor: null }, // No nested vendor
         { is_off_site: true, vendor_id: 'uuid-2', vendor: null },
       ]
-      
+
       // Helper function should handle gracefully
       function aggregateVendor(jobParts, jobLevelVendorName) {
         const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
-        const lineVendors = offSiteLineItems
-          .map((p) => p?.vendor?.name || null)
-          .filter(Boolean)
+        const lineVendors = offSiteLineItems.map((p) => p?.vendor?.name || null).filter(Boolean)
         const uniqueVendors = [...new Set(lineVendors)]
-        
+
         if (uniqueVendors.length === 1) return uniqueVendors[0]
         if (uniqueVendors.length > 1) return 'Mixed'
         return jobLevelVendorName || 'Unassigned'
       }
-      
+
       // When vendor is null (relationship unavailable), should fall back to job-level
       expect(aggregateVendor(jobParts, 'Job Vendor')).toBe('Job Vendor')
       expect(aggregateVendor(jobParts, null)).toBe('Unassigned')
@@ -127,11 +123,9 @@ describe('Vendor aggregation edge cases', () => {
       // In a real implementation, you might want to normalize vendor names
       function aggregateVendor(jobParts, jobLevelVendorName) {
         const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
-        const lineVendors = offSiteLineItems
-          .map((p) => p?.vendor?.name || null)
-          .filter(Boolean)
+        const lineVendors = offSiteLineItems.map((p) => p?.vendor?.name || null).filter(Boolean)
         const uniqueVendors = [...new Set(lineVendors)]
-        
+
         if (uniqueVendors.length === 1) return uniqueVendors[0]
         if (uniqueVendors.length > 1) return 'Mixed'
         return jobLevelVendorName || 'Unassigned'
@@ -141,7 +135,7 @@ describe('Vendor aggregation edge cases', () => {
         { is_off_site: true, vendor: { name: 'Vendor A' } },
         { is_off_site: true, vendor: { name: 'Vendor A ' } }, // trailing space
       ]
-      
+
       // Current implementation treats these as different (which may be desired for data quality)
       // If you want to normalize, you'd need to add .trim() to the aggregation logic
       expect(aggregateVendor(jobParts, null)).toBe('Mixed')

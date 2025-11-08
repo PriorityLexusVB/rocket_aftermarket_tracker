@@ -1,14 +1,17 @@
 # RLS Policy Audit & Health Endpoint Implementation - Summary
 
 ## Overview
+
 This PR completes the remaining objectives from the RLS audit scope by adding comprehensive policy validation, persistence test coverage, and runtime health monitoring.
 
 ## What Was Done
 
 ### 1. RLS Policy Audit Migration (20251107103000)
+
 **File:** `supabase/migrations/20251107103000_rls_write_policies_completion.sql`
 
 **Features:**
+
 - ✅ Audits all existing RLS policies and logs counts for verification
 - ✅ Adds missing SELECT policy for loaner_assignments
 - ✅ Validates helper functions (is_admin_or_manager, auth_user_org) don't reference auth.users
@@ -17,15 +20,18 @@ This PR completes the remaining objectives from the RLS audit scope by adding co
 - ✅ Reloads PostgREST schema cache
 
 **What it validates:**
+
 - Helper functions don't contain auth.users references
 - Write policies exist for: loaner_assignments, transactions, vehicles, sms_templates, products, vendors
 - RLS is enabled on all 8 key tables
 - Policy counts meet minimum thresholds (>= 20 policies)
 
 ### 2. Comprehensive Persistence Tests
+
 **File:** `src/tests/unit/dealService.persistence.test.js`
 
 **Coverage (27 tests total):**
+
 - ✅ org_id inference (3 tests) - validates org scoping behavior
 - ✅ loaner assignment persistence (5 tests) - create, edit, removal scenarios
 - ✅ scheduling fallback (6 tests) - per-line vs job-level scheduling
@@ -36,16 +42,19 @@ This PR completes the remaining objectives from the RLS audit scope by adding co
 **All tests passing ✅**
 
 ### 3. Runtime Health Check Endpoint
+
 **File:** `src/api/health/deals-rel.js`
 
 **Endpoint:** `/api/health/deals-rel`
 
 **Checks performed:**
+
 1. ✅ Supabase connectivity test
 2. ✅ job_parts → vendors relationship validation
 3. ✅ Optional FK constraint verification (gracefully skips if RPC not available)
 
 **Response format:**
+
 ```json
 {
   "vendorRelationship": "ok",
@@ -60,6 +69,7 @@ This PR completes the remaining objectives from the RLS audit scope by adding co
 ```
 
 **Error detection:**
+
 - Detects schema cache staleness
 - Provides actionable recommendations
 - Returns appropriate HTTP status codes (200, 503, 500)
@@ -67,12 +77,14 @@ This PR completes the remaining objectives from the RLS audit scope by adding co
 ### 4. Documentation Updates
 
 **RLS_FIX_SUMMARY.md:**
+
 - Added section on new migration 20251107103000
 - Documented all 4 RLS-related migrations
 - Added comprehensive testing coverage section
 - Added health endpoint documentation
 
 **DEPLOYMENT_GUIDE.md:**
+
 - Added "Health Check Verification" section
 - Added "RLS Policy Verification" section with SQL queries
 - Updated production checklist with new health endpoint checks
@@ -81,12 +93,14 @@ This PR completes the remaining objectives from the RLS audit scope by adding co
 ## Verification Steps
 
 ### 1. Run the Migration
+
 ```bash
 cd /path/to/rocket_aftermarket_tracker
 supabase db push
 ```
 
 Expected output:
+
 ```
 ✓ Column vendor_id exists
 ✓ Foreign key constraint exists
@@ -96,6 +110,7 @@ Expected output:
 ```
 
 ### 2. Run Persistence Tests
+
 ```bash
 pnpm test src/tests/unit/dealService.persistence.test.js
 ```
@@ -103,6 +118,7 @@ pnpm test src/tests/unit/dealService.persistence.test.js
 Expected: All 27 tests pass ✅
 
 ### 3. Test Health Endpoint (Local)
+
 ```bash
 # Start dev server
 pnpm dev
@@ -112,20 +128,22 @@ curl http://localhost:5173/api/health/deals-rel
 ```
 
 Expected response:
+
 ```json
 {
   "vendorRelationship": "ok",
   "timestamp": "...",
   "details": {
     "checks": [
-      {"name": "supabase_connectivity", "status": "ok"},
-      {"name": "job_parts_vendor_relationship", "status": "ok"}
+      { "name": "supabase_connectivity", "status": "ok" },
+      { "name": "job_parts_vendor_relationship", "status": "ok" }
     ]
   }
 }
 ```
 
 ### 4. Verify RLS Policies (SQL)
+
 ```sql
 -- Check helper function source
 SELECT prosrc FROM pg_proc p
@@ -135,8 +153,8 @@ WHERE n.nspname = 'public' AND p.proname = 'is_admin_or_manager';
 
 -- Check policy coverage
 SELECT tablename, policyname, cmd as policy_type
-FROM pg_policies 
-WHERE schemaname = 'public' 
+FROM pg_policies
+WHERE schemaname = 'public'
   AND tablename IN ('loaner_assignments', 'transactions', 'vehicles', 'sms_templates')
 ORDER BY tablename, cmd;
 -- Should see INSERT, UPDATE, DELETE policies for each table
@@ -192,6 +210,7 @@ ORDER BY tablename, cmd;
 ## Rollback Plan
 
 If issues occur:
+
 1. Previous migration state is preserved
 2. Migration is idempotent and can be re-run
 3. No destructive operations performed
@@ -200,6 +219,7 @@ If issues occur:
 ## Questions?
 
 Refer to:
+
 - `docs/RLS_FIX_SUMMARY.md` - Comprehensive RLS fix documentation
 - `docs/DEPLOYMENT_GUIDE.md` - Deployment procedures and verification
 - `docs/IMPLEMENTATION_SUMMARY_VENDOR_RELATIONSHIP.md` - Vendor relationship context

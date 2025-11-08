@@ -17,7 +17,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
   const handleSave = async (payload) => {
     try {
       setError('')
-      
+
       // Add org_id if available
       const dealPayload = {
         ...payload,
@@ -27,10 +27,10 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
       // Use feature flag to determine if we need to adapt the payload
       const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
       const adapted = useV2 ? draftToCreatePayload(dealPayload) : dealPayload
-      
+
       // Create the deal via dealService
       const savedDeal = await dealService.createDeal(adapted)
-      
+
       // Success - call callbacks, passing back the saved deal for in-place update
       if (onSuccess) onSuccess(savedDeal)
       handleClose()
@@ -55,9 +55,7 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
         <div className="flex items-center justify-between p-6 border-b bg-slate-50 flex-shrink-0">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Create New Deal</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Enter deal information and line items
-            </p>
+            <p className="text-sm text-gray-600 mt-1">Enter deal information and line items</p>
           </div>
           <button
             onClick={handleClose}
@@ -86,14 +84,9 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
               </div>
             </div>
           )}
-          
+
           <div className="p-6">
-            <DealFormV2
-              mode="create"
-              job={null}
-              onSave={handleSave}
-              onCancel={handleClose}
-            />
+            <DealFormV2 mode="create" job={null} onSave={handleSave} onCancel={handleClose} />
           </div>
         </div>
       </div>

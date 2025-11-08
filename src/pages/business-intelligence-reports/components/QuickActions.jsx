@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import React, { useState } from 'react'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
 
 const QuickActions = ({ onQuickReport, isExporting }) => {
   const [recentReports, setRecentReports] = useState([
@@ -10,7 +10,7 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
       type: 'sales_summary',
       generatedAt: '2024-09-22T10:30:00Z',
       recordCount: 156,
-      format: 'excel'
+      format: 'excel',
     },
     {
       id: 2,
@@ -18,7 +18,7 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
       type: 'vendor_performance',
       generatedAt: '2024-09-21T14:15:00Z',
       recordCount: 12,
-      format: 'pdf'
+      format: 'pdf',
     },
     {
       id: 3,
@@ -26,20 +26,20 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
       type: 'product_profitability',
       generatedAt: '2024-09-20T09:45:00Z',
       recordCount: 8,
-      format: 'csv'
-    }
-  ]);
+      format: 'csv',
+    },
+  ])
 
   const quickReportTemplates = [
     {
       id: 'daily_sales',
       name: 'Daily Sales Report',
-      description: 'Today\'s sales transactions and profit summary',
+      description: "Today's sales transactions and profit summary",
       icon: 'Calendar',
       filters: {
         dateRange: 'today',
-        reportType: 'sales_summary'
-      }
+        reportType: 'sales_summary',
+      },
     },
     {
       id: 'weekly_vendor',
@@ -48,8 +48,8 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
       icon: 'Users',
       filters: {
         dateRange: 'last7days',
-        reportType: 'vendor_performance'
-      }
+        reportType: 'vendor_performance',
+      },
     },
     {
       id: 'monthly_profit',
@@ -58,8 +58,8 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
       icon: 'TrendingUp',
       filters: {
         dateRange: 'thisMonth',
-        reportType: 'product_profitability'
-      }
+        reportType: 'product_profitability',
+      },
     },
     {
       id: 'overdue_jobs',
@@ -69,32 +69,36 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
       filters: {
         dateRange: 'last30days',
         status: ['pending'],
-        reportType: 'operational_efficiency'
-      }
-    }
-  ];
+        reportType: 'operational_efficiency',
+      },
+    },
+  ]
 
   const handleQuickReport = (template) => {
-    onQuickReport(template?.filters, template?.name);
-  };
+    onQuickReport(template?.filters, template?.name)
+  }
 
   const formatDate = (dateString) => {
     return new Date(dateString)?.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+      minute: '2-digit',
+    })
+  }
 
   const getFormatIcon = (format) => {
     switch (format) {
-      case 'excel': return 'FileSpreadsheet';
-      case 'pdf': return 'FileText';
-      case 'csv': return 'File';
-      default: return 'File';
+      case 'excel':
+        return 'FileSpreadsheet'
+      case 'pdf':
+        return 'FileText'
+      case 'csv':
+        return 'File'
+      default:
+        return 'File'
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -129,7 +133,11 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
                     {template?.description}
                   </p>
                 </div>
-                <Icon name="ChevronRight" size={16} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                <Icon
+                  name="ChevronRight"
+                  size={16}
+                  className="text-muted-foreground group-hover:text-primary transition-colors"
+                />
               </div>
             </div>
           ))}
@@ -144,12 +152,7 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
               Previously generated reports and exports
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconName="History"
-            iconPosition="left"
-          >
+          <Button variant="ghost" size="sm" iconName="History" iconPosition="left">
             View All
           </Button>
         </div>
@@ -168,12 +171,14 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
                   <div className="flex items-center justify-center w-8 h-8 bg-muted rounded-lg">
-                    <Icon name={getFormatIcon(report?.format)} size={16} className="text-muted-foreground" />
+                    <Icon
+                      name={getFormatIcon(report?.format)}
+                      size={16}
+                      className="text-muted-foreground"
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-foreground truncate">
-                      {report?.name}
-                    </h4>
+                    <h4 className="text-sm font-medium text-foreground truncate">{report?.name}</h4>
                     <div className="flex items-center space-x-4 mt-1">
                       <span className="text-xs text-muted-foreground">
                         {formatDate(report?.generatedAt)}
@@ -194,12 +199,7 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
                     iconName="Download"
                     aria-label="Download report"
                   />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    iconName="Share"
-                    aria-label="Share report"
-                  />
+                  <Button variant="ghost" size="sm" iconName="Share" aria-label="Share report" />
                 </div>
               </div>
             ))
@@ -254,7 +254,7 @@ const QuickActions = ({ onQuickReport, isExporting }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default QuickActions;
+export default QuickActions

@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import Select from '../../../components/ui/Select';
-import Checkbox from '../../../components/ui/Checkbox';
+import React, { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import Icon from '../../../components/AppIcon'
+import Button from '../../../components/ui/Button'
+import Input from '../../../components/ui/Input'
+import Select from '../../../components/ui/Select'
+import Checkbox from '../../../components/ui/Checkbox'
 
 const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const [vendors, setVendors] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [selectedProducts, setSelectedProducts] = useState([]);
-  const [loadingVendors, setLoadingVendors] = useState(true);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [vendors, setVendors] = useState([])
+  const [products, setProducts] = useState([])
+  const [selectedProducts, setSelectedProducts] = useState([])
+  const [loadingVendors, setLoadingVendors] = useState(true)
+  const [loadingProducts, setLoadingProducts] = useState(true)
 
   const {
     register,
@@ -21,7 +21,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
     reset,
     watch,
     setValue,
-    formState: { errors, isValid }
+    formState: { errors, isValid },
   } = useForm({
     mode: 'onChange',
     defaultValues: {
@@ -39,14 +39,14 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
       notes: '',
       vehicle_status: 'active',
       needs_loaner: false,
-      primary_vendor_id: ''
-    }
-  });
+      primary_vendor_id: '',
+    },
+  })
 
   // Watch year and make for stock number generation
-  const watchedYear = watch('year');
-  const watchedMake = watch('make');
-  const watchedNeedsLoaner = watch('needs_loaner');
+  const watchedYear = watch('year')
+  const watchedMake = watch('make')
+  const watchedNeedsLoaner = watch('needs_loaner')
 
   // Load vendors and products on mount
   useEffect(() => {
@@ -56,129 +56,154 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
         const mockVendors = [
           { id: '1', name: 'Premium Auto Parts', specialty: 'Engine Components' },
           { id: '2', name: 'Elite Motors', specialty: 'Body Work' },
-          { id: '3', name: 'Speed Tech', specialty: 'Performance Upgrades' }
-        ];
-        
+          { id: '3', name: 'Speed Tech', specialty: 'Performance Upgrades' },
+        ]
+
         // Mock products data (replace with actual API call)
         const mockProducts = [
           { id: '1', name: 'Brake Pads Set', category: 'Braking System', unit_price: 89.99 },
           { id: '2', name: 'Air Filter', category: 'Engine', unit_price: 24.99 },
           { id: '3', name: 'LED Headlights', category: 'Lighting', unit_price: 159.99 },
           { id: '4', name: 'Performance Exhaust', category: 'Exhaust System', unit_price: 299.99 },
-          { id: '5', name: 'Ceramic Coating', category: 'Protection', unit_price: 199.99 }
-        ];
+          { id: '5', name: 'Ceramic Coating', category: 'Protection', unit_price: 199.99 },
+        ]
 
-        setVendors(mockVendors);
-        setProducts(mockProducts);
-        setLoadingVendors(false);
-        setLoadingProducts(false);
+        setVendors(mockVendors)
+        setProducts(mockProducts)
+        setLoadingVendors(false)
+        setLoadingProducts(false)
       } catch (error) {
-        console.error('Error loading vendors and products:', error);
-        setLoadingVendors(false);
-        setLoadingProducts(false);
+        console.error('Error loading vendors and products:', error)
+        setLoadingVendors(false)
+        setLoadingProducts(false)
       }
-    };
+    }
 
     if (isOpen) {
-      loadVendorsAndProducts();
+      loadVendorsAndProducts()
     }
-  }, [isOpen]);
+  }, [isOpen])
 
   const vehicleStatusOptions = [
     { value: 'active', label: 'Active' },
     { value: 'maintenance', label: 'Maintenance' },
     { value: 'retired', label: 'Retired' },
-    { value: 'sold', label: 'Sold' }
-  ];
+    { value: 'sold', label: 'Sold' },
+  ]
 
-  const currentYear = new Date()?.getFullYear();
-  const yearOptions = [];
+  const currentYear = new Date()?.getFullYear()
+  const yearOptions = []
   for (let year = currentYear + 1; year >= currentYear - 20; year--) {
-    yearOptions?.push({ value: year, label: year?.toString() });
+    yearOptions?.push({ value: year, label: year?.toString() })
   }
 
   const commonMakes = [
-    'Acura', 'Audi', 'BMW', 'Buick', 'Cadillac', 'Chevrolet', 'Chrysler', 
-    'Dodge', 'Ford', 'GMC', 'Honda', 'Hyundai', 'Infiniti', 'Jeep', 'Kia', 
-    'Lexus', 'Lincoln', 'Mazda', 'Mercedes-Benz', 'Nissan', 'Ram', 'Subaru', 
-    'Tesla', 'Toyota', 'Volkswagen', 'Volvo'
-  ];
+    'Acura',
+    'Audi',
+    'BMW',
+    'Buick',
+    'Cadillac',
+    'Chevrolet',
+    'Chrysler',
+    'Dodge',
+    'Ford',
+    'GMC',
+    'Honda',
+    'Hyundai',
+    'Infiniti',
+    'Jeep',
+    'Kia',
+    'Lexus',
+    'Lincoln',
+    'Mazda',
+    'Mercedes-Benz',
+    'Nissan',
+    'Ram',
+    'Subaru',
+    'Tesla',
+    'Toyota',
+    'Volkswagen',
+    'Volvo',
+  ]
 
   const makeOptions = [
     { value: '', label: 'Select Make' },
-    ...commonMakes?.map(make => ({ value: make, label: make }))
-  ];
+    ...commonMakes?.map((make) => ({ value: make, label: make })),
+  ]
 
   const vendorOptions = [
     { value: '', label: 'Select Vendor (Optional)' },
-    ...vendors?.map(vendor => ({ value: vendor?.id, label: `${vendor?.name} - ${vendor?.specialty}` }))
-  ];
+    ...vendors?.map((vendor) => ({
+      value: vendor?.id,
+      label: `${vendor?.name} - ${vendor?.specialty}`,
+    })),
+  ]
 
   // Generate suggested stock number
   const generateStockNumber = () => {
     if (watchedMake && watchedYear) {
-      const makePrefix = watchedMake?.substring(0, 2)?.toUpperCase();
-      const yearSuffix = watchedYear?.toString()?.slice(-2);
-      const randomNum = Math.floor(Math.random() * 999) + 1;
-      return `${makePrefix}${yearSuffix}${randomNum?.toString()?.padStart(3, '0')}`;
+      const makePrefix = watchedMake?.substring(0, 2)?.toUpperCase()
+      const yearSuffix = watchedYear?.toString()?.slice(-2)
+      const randomNum = Math.floor(Math.random() * 999) + 1
+      return `${makePrefix}${yearSuffix}${randomNum?.toString()?.padStart(3, '0')}`
     }
-    return '';
-  };
+    return ''
+  }
 
   const fillSuggestedStockNumber = () => {
-    const suggested = generateStockNumber();
+    const suggested = generateStockNumber()
     if (suggested) {
-      setValue('stock_number', suggested);
+      setValue('stock_number', suggested)
     }
-  };
+  }
 
   const handleProductToggle = (product, isChecked) => {
     if (isChecked) {
-      setSelectedProducts(prev => [...prev, {
-        ...product,
-        quantity: 1,
-        price: product?.unit_price
-      }]);
+      setSelectedProducts((prev) => [
+        ...prev,
+        {
+          ...product,
+          quantity: 1,
+          price: product?.unit_price,
+        },
+      ])
     } else {
-      setSelectedProducts(prev => prev?.filter(p => p?.id !== product?.id));
+      setSelectedProducts((prev) => prev?.filter((p) => p?.id !== product?.id))
     }
-  };
+  }
 
   const updateProductQuantity = (productId, quantity) => {
-    setSelectedProducts(prev =>
-      prev?.map(p =>
-        p?.id === productId
-          ? { ...p, quantity: Math.max(1, parseInt(quantity) || 1) }
-          : p
+    setSelectedProducts((prev) =>
+      prev?.map((p) =>
+        p?.id === productId ? { ...p, quantity: Math.max(1, parseInt(quantity) || 1) } : p
       )
-    );
-  };
+    )
+  }
 
   const updateProductPrice = (productId, price) => {
-    setSelectedProducts(prev =>
-      prev?.map(p =>
-        p?.id === productId
-          ? { ...p, price: parseFloat(price) || 0 }
-          : p
-      )
-    );
-  };
+    setSelectedProducts((prev) =>
+      prev?.map((p) => (p?.id === productId ? { ...p, price: parseFloat(price) || 0 } : p))
+    )
+  }
 
   const getTotalProductValue = () => {
-    return selectedProducts?.reduce((total, product) => 
-      total + (product?.quantity * product?.price), 0
-    );
-  };
+    return selectedProducts?.reduce(
+      (total, product) => total + product?.quantity * product?.price,
+      0
+    )
+  }
 
   const handleFormSubmit = async (data) => {
     // Validate mandatory products
     if (selectedProducts?.length === 0) {
-      setSubmitError('At least one product must be selected. We never add cars without tracking aftermarket products.');
-      return;
+      setSubmitError(
+        'At least one product must be selected. We never add cars without tracking aftermarket products.'
+      )
+      return
     }
 
-    setIsSubmitting(true);
-    setSubmitError('');
+    setIsSubmitting(true)
+    setSubmitError('')
 
     try {
       // Clean up data - remove empty strings, convert numbers
@@ -199,60 +224,57 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
         notes: data?.notes?.trim() || null,
         // Add selected products
         initial_products: selectedProducts,
-        total_initial_product_value: getTotalProductValue()
-      };
+        total_initial_product_value: getTotalProductValue(),
+      }
 
-      await onSubmit(cleanedData);
-      reset();
-      setSelectedProducts([]);
-      onClose();
+      await onSubmit(cleanedData)
+      reset()
+      setSelectedProducts([])
+      onClose()
     } catch (error) {
-      console.error('Error adding vehicle:', error);
-      setSubmitError(error?.message || 'Failed to add vehicle. Please try again.');
+      console.error('Error adding vehicle:', error)
+      setSubmitError(error?.message || 'Failed to add vehicle. Please try again.')
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const handleClose = () => {
     if (!isSubmitting) {
-      reset();
-      setSelectedProducts([]);
-      setSubmitError('');
-      onClose();
+      reset()
+      setSelectedProducts([])
+      setSubmitError('')
+      onClose()
     }
-  };
+  }
 
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e) => {
       if (e?.key === 'Escape' && isOpen && !isSubmitting) {
-        handleClose();
+        handleClose()
       }
-    };
+    }
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
+      document.addEventListener('keydown', handleEscape)
+      document.body.style.overflow = 'hidden'
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen, isSubmitting]);
+      document.removeEventListener('keydown', handleEscape)
+      document.body.style.overflow = 'unset'
+    }
+  }, [isOpen, isSubmitting])
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
-  const canSave = selectedProducts?.length > 0; // Must have products
+  const canSave = selectedProducts?.length > 0 // Must have products
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={handleClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
       {/* Modal */}
       <div className="relative bg-card border border-border rounded-xl shadow-elevation-3 w-full max-w-6xl max-h-[95vh] overflow-hidden mx-4">
         {/* Header */}
@@ -263,10 +285,12 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-foreground">Add New Vehicle</h2>
-              <p className="text-sm text-muted-foreground">Complete vehicle setup with vendor assignment and aftermarket products</p>
+              <p className="text-sm text-muted-foreground">
+                Complete vehicle setup with vendor assignment and aftermarket products
+              </p>
             </div>
           </div>
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -280,7 +304,10 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="overflow-y-auto max-h-[calc(95vh-140px)]">
+        <form
+          onSubmit={handleSubmit(handleFormSubmit)}
+          className="overflow-y-auto max-h-[calc(95vh-140px)]"
+        >
           <div className="p-6 space-y-8">
             {/* Error Message */}
             {submitError && (
@@ -309,9 +336,9 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                   label="Model *"
                   type="text"
                   placeholder="e.g., Civic, F-150, Camry"
-                  {...register('model', { 
+                  {...register('model', {
                     required: 'Model is required',
-                    minLength: { value: 1, message: 'Model cannot be empty' }
+                    minLength: { value: 1, message: 'Model cannot be empty' },
                   })}
                   error={errors?.model?.message}
                   required
@@ -320,9 +347,9 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                 <Select
                   label="Year *"
                   options={yearOptions}
-                  {...register('year', { 
+                  {...register('year', {
                     required: 'Year is required',
-                    valueAsNumber: true 
+                    valueAsNumber: true,
                   })}
                   error={errors?.year?.message}
                   required
@@ -358,8 +385,8 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                     maxLength: { value: 17, message: 'VIN must be 17 characters' },
                     pattern: {
                       value: /^[A-HJ-NPR-Z0-9]{17}$/i,
-                      message: 'Invalid VIN format'
-                    }
+                      message: 'Invalid VIN format',
+                    },
                   })}
                   error={errors?.vin?.message}
                   maxLength={17}
@@ -379,7 +406,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                   placeholder="e.g., 45000"
                   {...register('mileage', {
                     min: { value: 0, message: 'Mileage cannot be negative' },
-                    max: { value: 999999, message: 'Mileage too high' }
+                    max: { value: 999999, message: 'Mileage too high' },
                   })}
                   error={errors?.mileage?.message}
                 />
@@ -417,7 +444,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                     Customer needs loaner vehicle
                   </label>
                 </div>
-                
+
                 {watchedNeedsLoaner && (
                   <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
                     <p className="text-sm text-primary">
@@ -441,10 +468,13 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-lg font-medium text-foreground">Aftermarket Products *</h3>
-                  <p className="text-sm text-muted-foreground">Select initial products for aftermarket tracking (required)</p>
+                  <p className="text-sm text-muted-foreground">
+                    Select initial products for aftermarket tracking (required)
+                  </p>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Selected: {selectedProducts?.length} products | Total: ${getTotalProductValue()?.toFixed(2)}
+                  Selected: {selectedProducts?.length} products | Total: $
+                  {getTotalProductValue()?.toFixed(2)}
                 </div>
               </div>
 
@@ -456,22 +486,30 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-64 overflow-y-auto border border-border rounded-lg p-4">
-                    {products?.map(product => (
-                      <div key={product?.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    {products?.map((product) => (
+                      <div
+                        key={product?.id}
+                        className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
                           <Checkbox
                             id={`product_${product?.id}`}
                             name={`product_${product?.id}`}
                             label=""
                             description=""
-                            checked={selectedProducts?.some(p => p?.id === product?.id)}
+                            checked={selectedProducts?.some((p) => p?.id === product?.id)}
                             onChange={(e) => handleProductToggle(product, e?.target?.checked)}
                           />
                           <div>
-                            <label htmlFor={`product_${product?.id}`} className="text-sm font-medium text-foreground">
+                            <label
+                              htmlFor={`product_${product?.id}`}
+                              className="text-sm font-medium text-foreground"
+                            >
                               {product?.name}
                             </label>
-                            <p className="text-xs text-muted-foreground">{product?.category} - ${product?.unit_price}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {product?.category} - ${product?.unit_price}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -481,13 +519,22 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                   {/* Selected Products Configuration */}
                   {selectedProducts?.length > 0 && (
                     <div className="mt-4">
-                      <h4 className="text-sm font-medium text-foreground mb-3">Selected Products Configuration</h4>
+                      <h4 className="text-sm font-medium text-foreground mb-3">
+                        Selected Products Configuration
+                      </h4>
                       <div className="space-y-2">
-                        {selectedProducts?.map(product => (
-                          <div key={product?.id} className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                        {selectedProducts?.map((product) => (
+                          <div
+                            key={product?.id}
+                            className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg"
+                          >
                             <div className="flex-1">
-                              <span className="text-sm font-medium text-foreground">{product?.name}</span>
-                              <span className="text-xs text-muted-foreground ml-2">({product?.category})</span>
+                              <span className="text-sm font-medium text-foreground">
+                                {product?.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ({product?.category})
+                              </span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <label className="text-xs text-muted-foreground">Qty:</label>
@@ -495,7 +542,9 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                                 type="number"
                                 min="1"
                                 value={product?.quantity}
-                                onChange={(e) => updateProductQuantity(product?.id, e?.target?.value)}
+                                onChange={(e) =>
+                                  updateProductQuantity(product?.id, e?.target?.value)
+                                }
                                 className="w-16 px-2 py-1 text-xs border border-border rounded text-center"
                               />
                               <label className="text-xs text-muted-foreground">Price:</label>
@@ -538,8 +587,8 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                   {...register('owner_email', {
                     pattern: {
                       value: /^\S+@\S+$/,
-                      message: 'Invalid email format'
-                    }
+                      message: 'Invalid email format',
+                    },
                   })}
                   error={errors?.owner_email?.message}
                 />
@@ -586,7 +635,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                 </div>
               )}
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <Button
                 type="button"
@@ -615,7 +664,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default AddVehicleModal;
+export default AddVehicleModal
