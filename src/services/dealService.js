@@ -78,7 +78,7 @@ function deriveVehicleDescription(title, vehicle) {
   let vehicleDescription = ''
   const titleStr = title || ''
   const isGenericTitle = GENERIC_TITLE_PATTERN.test(titleStr.trim())
-  
+
   if (titleStr && !isGenericTitle) {
     vehicleDescription = titleStr
   } else if (vehicle) {
@@ -93,7 +93,7 @@ function deriveVehicleDescription(title, vehicle) {
 // Helper: Aggregate vendor from line items
 function aggregateVendor(jobParts, jobLevelVendorName) {
   const offSiteLineItems = (jobParts || []).filter((p) => p?.is_off_site)
-  
+
   // Get effective vendor names: prefer line item vendor_id, fallback to product vendor_id
   const lineVendors = offSiteLineItems
     .map((p) => {
@@ -101,9 +101,9 @@ function aggregateVendor(jobParts, jobLevelVendorName) {
       return p?.vendor?.name || null
     })
     .filter(Boolean)
-  
+
   const uniqueVendors = [...new Set(lineVendors)]
-  
+
   if (uniqueVendors.length === 1) {
     return uniqueVendors[0]
   }
@@ -181,6 +181,27 @@ function incrementFallbackTelemetry() {
   }
 }
 
+// --- Capability detection for user_profiles.name column ---------------------
+// Some environments may not yet have a `name` column on user_profiles (may use display_name/full_name).
+// We degrade gracefully by omitting the column from selects when missing.
+let USER_PROFILES_NAME_AVAILABLE = true
+if (typeof sessionStorage !== 'undefined') {
+  const stored = sessionStorage.getItem('cap_userProfilesName')
+  if (stored === 'false') USER_PROFILES_NAME_AVAILABLE = false
+}
+function disableUserProfilesNameCapability() {
+  USER_PROFILES_NAME_AVAILABLE = false
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('cap_userProfilesName', 'false')
+  }
+}
+function enableUserProfilesNameCapability() {
+  USER_PROFILES_NAME_AVAILABLE = true
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('cap_userProfilesName', 'true')
+  }
+}
+
 // Export capability status for UI components
 export function getCapabilities() {
   return {
@@ -193,76 +214,78 @@ export function getCapabilities() {
 
 // Internal helper: load a fully-joined deal/job by id with fallback for missing columns
 async function selectJoinedDealById(id) {
-  // Try with per-line scheduled times first
-  try {
-    const { data: job, error: jobError } = await supabase
-      ?.from('jobs')
-      ?.select(
-        `
+  // Attempt with capability-sensitive user_profiles fields and vendor relationship
+  let lastError = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const userProfileField = USER_PROFILES_NAME_AVAILABLE ? '(id, name)' : '(id)'
+    const salesConsultant = `sales_consultant:user_profiles!assigned_to${userProfileField}`
+    const deliveryCoordinator = `delivery_coordinator:user_profiles!delivery_coordinator_id${userProfileField}`
+    const financeManager = `finance_manager:user_profiles!finance_manager_id${userProfileField}`
+
+    const selectWithTimes = `
           id, job_number, title, description, job_status, priority, location,
           vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
           estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
           service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
           vehicle:vehicles(id, year, make, model, stock_number),
           vendor:vendors(id, name),
-          sales_consultant:user_profiles!assigned_to(id, name),
-          delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-          finance_manager:user_profiles!finance_manager_id(id, name),
+          ${salesConsultant},
+          ${deliveryCoordinator},
+          ${financeManager},
           job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, vendor_id, product:products(id, name, category, brand), vendor:vendors(id, name))
         `
-      )
+
+    const { data: job, error: jobError } = await supabase
+      ?.from('jobs')
+      ?.select(selectWithTimes)
       ?.eq('id', id)
       ?.single()
 
-    if (jobError) {
-      if (isMissingColumnError(jobError)) {
-        console.warn(
-          '[dealService:selectJoinedDealById] Per-line times not available, falling back...'
-        )
-        throw jobError // Let outer catch handle fallback
+    if (!jobError) return job
+
+    lastError = jobError
+
+    if (isMissingColumnError(jobError)) {
+      const msg = jobError?.message || ''
+      if (/user_profiles.*name/i.test(msg) && USER_PROFILES_NAME_AVAILABLE) {
+        console.warn('[dealService:selectJoinedDealById] user_profiles.name missing; degrading')
+        disableUserProfilesNameCapability()
+        continue
       }
-      if (isMissingRelationshipError(jobError)) {
-        throw new Error(
-          'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
-        )
-      }
-      throw new Error(`Failed to load deal: ${jobError.message}`)
-    }
-    return job
-  } catch (e) {
-    if (isMissingColumnError(e)) {
-      // Fallback: query without per-line scheduled times
-      const { data: job, error: jobError } = await supabase
-        ?.from('jobs')
-        ?.select(
-          `
+      // Retry without per-line times
+      const selectNoTimes = `
             id, job_number, title, description, job_status, priority, location,
             vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
             estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
             service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
             vehicle:vehicles(id, year, make, model, stock_number),
             vendor:vendors(id, name),
-            sales_consultant:user_profiles!assigned_to(id, name),
-            delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-            finance_manager:user_profiles!finance_manager_id(id, name),
+            ${salesConsultant},
+            ${deliveryCoordinator},
+            ${financeManager},
             job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, vendor_id, product:products(id, name, category, brand), vendor:vendors(id, name))
           `
-        )
+      const { data: fallbackJob, error: fallbackErr } = await supabase
+        ?.from('jobs')
+        ?.select(selectNoTimes)
         ?.eq('id', id)
         ?.single()
-
-      if (jobError) {
-        if (isMissingRelationshipError(jobError)) {
-          throw new Error(
-            'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
-          )
-        }
-        throw new Error(`Failed to load deal: ${jobError.message}`)
+      if (!fallbackErr) return fallbackJob
+      lastError = fallbackErr
+      if (/user_profiles.*name/i.test(fallbackErr?.message || '') && USER_PROFILES_NAME_AVAILABLE) {
+        disableUserProfilesNameCapability()
+        continue
       }
-      return job
     }
-    throw e
+    if (isMissingRelationshipError(jobError)) {
+      throw new Error(
+        'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
+      )
+    }
+    break
   }
+  if (lastError) throw new Error(`Failed to load deal: ${lastError.message}`)
+  throw new Error('Failed to load deal: unknown error')
 }
 
 // Map UI form state into DB-friendly pieces: job payload, normalized lineItems, loaner form
@@ -623,148 +646,68 @@ export async function getAllDeals() {
     let jobs = null
     let jobsError = null
 
-    // Try with per-line scheduled times and vendor relationship first
-    try {
-      const selectFields = JOB_PARTS_VENDOR_REL_AVAILABLE
-        ? `
+    // We may need up to 3 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const userProfileField = USER_PROFILES_NAME_AVAILABLE ? '(id, name)' : '(id)'
+      const salesConsultant = `sales_consultant:user_profiles!assigned_to${userProfileField}`
+      const deliveryCoordinator = `delivery_coordinator:user_profiles!delivery_coordinator_id${userProfileField}`
+      const financeManager = `finance_manager:user_profiles!finance_manager_id${userProfileField}`
+
+      const jobPartsFieldsVendor = `job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id), vendor:vendors(id, name))`
+      const jobPartsFieldsNoVendor = `job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id))`
+
+      const baseSelect = `
           id, created_at, job_status, service_type, color_code, title, job_number,
           customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
           scheduled_start_time, scheduled_end_time,
           vehicle:vehicles(year, make, model, stock_number),
           vendor:vendors(id, name),
-          sales_consultant:user_profiles!assigned_to(id, name),
-          delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-          finance_manager:user_profiles!finance_manager_id(id, name),
-          job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id), vendor:vendors(id, name))
-        `
-        : `
-          id, created_at, job_status, service_type, color_code, title, job_number,
-          customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
-          scheduled_start_time, scheduled_end_time,
-          vehicle:vehicles(year, make, model, stock_number),
-          vendor:vendors(id, name),
-          sales_consultant:user_profiles!assigned_to(id, name),
-          delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-          finance_manager:user_profiles!finance_manager_id(id, name),
-          job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id))
+          ${salesConsultant},
+          ${deliveryCoordinator},
+          ${financeManager},
+          ${JOB_PARTS_VENDOR_REL_AVAILABLE ? jobPartsFieldsVendor : jobPartsFieldsNoVendor}
         `
 
       const result = await supabase
         ?.from('jobs')
-        ?.select(selectFields)
+        ?.select(baseSelect)
         ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
         ?.order('created_at', { ascending: false })
 
       jobs = result?.data
       jobsError = result?.error
 
-      if (jobsError) {
-        if (isMissingColumnError(jobsError)) {
-          console.warn('[dealService:getAllDeals] Per-line times not available, falling back...')
-          throw jobsError
-        }
-        if (isMissingRelationshipError(jobsError)) {
-          console.warn(
-            '[dealService:getAllDeals] Vendor relationship not available, falling back...'
-          )
-          disableJobPartsVendorRelCapability()
-          incrementFallbackTelemetry()
-          throw jobsError
-        }
-      } else {
-        // Success with vendor relationship, mark as available
+      if (!jobsError) {
+        // Mark capabilities successful on success
         enableJobPartsVendorRelCapability()
+        if (USER_PROFILES_NAME_AVAILABLE) enableUserProfilesNameCapability()
+        break
       }
-    } catch (e) {
-      if (isMissingColumnError(e)) {
-        // Fallback: query without per-line scheduled times
-        const selectFields = JOB_PARTS_VENDOR_REL_AVAILABLE
-          ? `
-            id, created_at, job_status, service_type, color_code, title, job_number,
-            customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
-            scheduled_start_time, scheduled_end_time,
-            vehicle:vehicles(year, make, model, stock_number),
-            vendor:vendors(id, name),
-            sales_consultant:user_profiles!assigned_to(id, name),
-            delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-            finance_manager:user_profiles!finance_manager_id(id, name),
-            job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand, vendor_id), vendor:vendors(id, name))
-          `
-          : `
-            id, created_at, job_status, service_type, color_code, title, job_number,
-            customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
-            scheduled_start_time, scheduled_end_time,
-            vehicle:vehicles(year, make, model, stock_number),
-            vendor:vendors(id, name),
-            sales_consultant:user_profiles!assigned_to(id, name),
-            delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-            finance_manager:user_profiles!finance_manager_id(id, name),
-            job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand, vendor_id))
-          `
 
-        const result = await supabase
-          ?.from('jobs')
-          ?.select(selectFields)
-          ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
-          ?.order('created_at', { ascending: false })
-
-        jobs = result?.data
-        jobsError = result?.error
-
-        if (jobsError && isMissingRelationshipError(jobsError)) {
-          console.warn(
-            '[dealService:getAllDeals] Vendor relationship not available in fallback, disabling...'
-          )
-          disableJobPartsVendorRelCapability()
-          incrementFallbackTelemetry()
-          // Retry without vendor relationship
-          const result2 = await supabase
-            ?.from('jobs')
-            ?.select(
-              `
-              id, created_at, job_status, service_type, color_code, title, job_number,
-              customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
-              scheduled_start_time, scheduled_end_time,
-              vehicle:vehicles(year, make, model, stock_number),
-              vendor:vendors(id, name),
-              sales_consultant:user_profiles!assigned_to(id, name),
-              delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-              finance_manager:user_profiles!finance_manager_id(id, name),
-              job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand, vendor_id))
-            `
-            )
-            ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
-            ?.order('created_at', { ascending: false })
-          jobs = result2?.data
-          jobsError = result2?.error
+      // Handle specific fallbacks
+      if (isMissingColumnError(jobsError)) {
+        const msg = jobsError.message || ''
+        if (/user_profiles.*name/i.test(msg) && USER_PROFILES_NAME_AVAILABLE) {
+          console.warn('[dealService:getAllDeals] user_profiles.name missing, degrading capability')
+          disableUserProfilesNameCapability()
+          continue // retry with degraded user profile fields
         }
-      } else if (isMissingRelationshipError(e)) {
-        // Fallback: query without vendor relationship on job_parts
+        // Per-line scheduled time columns missing -> allow outer logic to re-run without changing select (they're already optional at insert time)
+        console.warn(
+          '[dealService:getAllDeals] Missing column detected, retrying if capability allows...'
+        )
+        // No specific flag to disable here except times which are not part of this select (times at job_parts already guarded individually). Continue attempts to avoid infinite loop.
+      }
+      if (isMissingRelationshipError(jobsError) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
+        console.warn(
+          '[dealService:getAllDeals] Vendor relationship missing, disabling and retrying...'
+        )
         disableJobPartsVendorRelCapability()
         incrementFallbackTelemetry()
-        const result = await supabase
-          ?.from('jobs')
-          ?.select(
-            `
-            id, created_at, job_status, service_type, color_code, title, job_number,
-            customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
-            scheduled_start_time, scheduled_end_time,
-            vehicle:vehicles(year, make, model, stock_number),
-            vendor:vendors(id, name),
-            sales_consultant:user_profiles!assigned_to(id, name),
-            delivery_coordinator:user_profiles!delivery_coordinator_id(id, name),
-            finance_manager:user_profiles!finance_manager_id(id, name),
-            job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id))
-          `
-          )
-          ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
-          ?.order('created_at', { ascending: false })
-
-        jobs = result?.data
-        jobsError = result?.error
-      } else {
-        throw e
+        continue
       }
+      // If we reach here and can't adjust further, break to throw
+      break
     }
 
     if (jobsError) throw jobsError
@@ -1501,7 +1444,8 @@ function mapDbDealToForm(dbDeal) {
 
   // Derive vehicle_description from title or vehicle fields
   // Priority: dbDeal.vehicle_description (if already computed) > derive using helper
-  const vehicleDescription = dbDeal?.vehicle_description || deriveVehicleDescription(dbDeal?.title, dbDeal?.vehicle)
+  const vehicleDescription =
+    dbDeal?.vehicle_description || deriveVehicleDescription(dbDeal?.title, dbDeal?.vehicle)
 
   return {
     id: dbDeal?.id,
