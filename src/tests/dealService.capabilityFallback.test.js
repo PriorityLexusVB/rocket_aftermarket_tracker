@@ -11,6 +11,9 @@ const sessionStorageMock = (() => {
     setItem: (key, value) => {
       store[key] = value
     },
+    removeItem: (key) => {
+      delete store[key]
+    },
     clear: () => {
       store = {}
     },
@@ -32,13 +35,13 @@ vi.mock('@/lib/supabase', () => ({
 describe('dealService - capability flag and retry logic', () => {
   let mockSupabase
   
-  beforeEach(() => {
+  beforeEach(async () => {
     sessionStorageMock.clear()
     // Reset module to clear capability flags
     vi.resetModules()
     
-    const { supabase } = await import('@/lib/supabase')
-    mockSupabase = supabase
+    const module = await import('@/lib/supabase')
+    mockSupabase = module.supabase
   })
 
   afterEach(() => {
