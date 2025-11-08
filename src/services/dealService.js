@@ -179,6 +179,24 @@ function enableJobPartsVendorRelCapability() {
   }
 }
 
+// --- Capability detection for job_parts.vendor_id column --------------------
+// Some pre-migration environments may not yet have per-line vendor_id.
+// We degrade gracefully by omitting vendor_id and any per-line vendor relationship when missing.
+let JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE = true
+if (typeof sessionStorage !== 'undefined') {
+  const stored = sessionStorage.getItem('cap_jobPartsVendorId')
+  if (stored === 'false') JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE = false
+}
+function disableJobPartsVendorIdCapability() {
+  JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE = false
+  // Also disable vendor relationship because it depends on vendor_id
+  disableJobPartsVendorRelCapability()
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('cap_jobPartsVendorId', 'false')
+  }
+}
+// (enable helper reserved for future positive detections)
+
 // Increment fallback telemetry counter
 function incrementFallbackTelemetry() {
   if (typeof sessionStorage !== 'undefined') {
@@ -213,6 +231,7 @@ export function getCapabilities() {
   return {
     jobPartsHasTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
     jobPartsVendorRel: JOB_PARTS_VENDOR_REL_AVAILABLE,
+    jobPartsVendorId: JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE,
   }
 }
 
@@ -229,6 +248,12 @@ async function selectJoinedDealById(id) {
     const deliveryCoordinator = `delivery_coordinator:user_profiles!delivery_coordinator_id${userProfileField}`
     const financeManager = `finance_manager:user_profiles!finance_manager_id${userProfileField}`
 
+    const perLineVendorFields = JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? 'vendor_id, ' : ''
+    const perLineVendorJoin =
+      JOB_PARTS_VENDOR_REL_AVAILABLE && JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+        ? ', vendor:vendors(id, name)'
+        : ''
+
     const selectWithTimes = `
           id, job_number, title, description, job_status, priority, location,
           vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
@@ -239,7 +264,7 @@ async function selectJoinedDealById(id) {
           ${salesConsultant},
           ${deliveryCoordinator},
           ${financeManager},
-          job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, vendor_id, product:products(id, name, category, brand), vendor:vendors(id, name))
+          job_parts(id, product_id, ${perLineVendorFields}unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand)${perLineVendorJoin})
         `
 
     const { data: job, error: jobError } = await supabase
@@ -272,7 +297,7 @@ async function selectJoinedDealById(id) {
             ${salesConsultant},
             ${deliveryCoordinator},
             ${financeManager},
-            job_parts(id, product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, vendor_id, product:products(id, name, category, brand), vendor:vendors(id, name))
+    job_parts(id, product_id, ${perLineVendorFields}unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, product:products(id, name, category, brand)${perLineVendorJoin})
           `
       const { data: fallbackJob, error: fallbackErr } = await supabase
         ?.from('jobs')
@@ -290,6 +315,21 @@ async function selectJoinedDealById(id) {
       throw new Error(
         'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
       )
+    }
+    // Detect missing vendor_id column and degrade capability
+    const msgLower = String(jobError?.message || '').toLowerCase()
+    if (
+      isMissingColumnError(jobError) &&
+      msgLower.includes('job_parts') &&
+      msgLower.includes('vendor_id')
+    ) {
+      if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
+        console.warn(
+          '[dealService:selectJoinedDealById] vendor_id column missing on job_parts; degrading capability'
+        )
+        disableJobPartsVendorIdCapability()
+        continue
+      }
     }
     break
   }
@@ -673,8 +713,13 @@ export async function getAllDeals() {
       const deliveryCoordinator = `delivery_coordinator:user_profiles!delivery_coordinator_id${userProfileField}`
       const financeManager = `finance_manager:user_profiles!finance_manager_id${userProfileField}`
 
-      const jobPartsFieldsVendor = `job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id), vendor:vendors(id, name))`
-      const jobPartsFieldsNoVendor = `job_parts(id, product_id, vendor_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand, vendor_id))`
+      const perLineVendorField = JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? 'vendor_id, ' : ''
+      const perLineVendorJoin2 =
+        JOB_PARTS_VENDOR_REL_AVAILABLE && JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+          ? ', vendor:vendors(id, name)'
+          : ''
+      const jobPartsFieldsVendor = `job_parts(id, product_id, ${perLineVendorField}unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})${perLineVendorJoin2})`
+      const jobPartsFieldsNoVendor = `job_parts(id, product_id, ${perLineVendorField}unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})${perLineVendorJoin2})`
 
       const baseSelect = `
           id, created_at, job_status, service_type, color_code, title, job_number,
@@ -722,6 +767,16 @@ export async function getAllDeals() {
           '[dealService:getAllDeals] Missing column detected, retrying if capability allows...'
         )
         // No specific flag to disable here except times which are not part of this select (times at job_parts already guarded individually). Continue attempts to avoid infinite loop.
+        const lower = msg.toLowerCase()
+        if (lower.includes('job_parts') && lower.includes('vendor_id')) {
+          if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
+            console.warn(
+              '[dealService:getAllDeals] vendor_id column missing on job_parts; degrading capability'
+            )
+            disableJobPartsVendorIdCapability()
+            continue
+          }
+        }
       }
       if (isMissingRelationshipError(jobsError) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
         console.warn(
@@ -1236,12 +1291,12 @@ export async function createDeal(formState) {
     // rollback best-effort: delete parts first, then job
     try {
       await supabase?.from('job_parts')?.delete()?.eq('job_id', job?.id)
-    } catch (_) {
+    } catch {
       // ignore
     }
     try {
       await supabase?.from('jobs')?.delete()?.eq('id', job?.id)
-    } catch (_) {
+    } catch {
       // ignore
     }
     // Friendlier guidance for common RLS misconfiguration seen in some environments

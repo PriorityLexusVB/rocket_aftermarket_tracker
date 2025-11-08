@@ -50,7 +50,7 @@ export async function listStaffByOrg(
   try {
     let q = supabase
       .from('user_profiles')
-      .select('id, full_name, email, department, role, is_active, vendor_id')
+      .select('id, full_name, email, department, role, is_active')
       .order('full_name', { ascending: true })
     // Include both org-scoped and global (NULL org_id) staff so dropdowns aren't empty
     // when shared/global staff are used across multiple orgs.

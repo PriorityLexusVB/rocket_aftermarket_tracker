@@ -7,6 +7,22 @@ import {
   downgradeCapForErrorMessage,
 } from '@/utils/userProfileName'
 
+// ---------------------------------------------------------------------------
+// Capability: user_profiles.vendor_id column (some environments may not have it yet)
+// We detect 400 errors / missing column messages and degrade selects to omit vendor_id.
+let USER_PROFILES_VENDOR_ID_AVAILABLE = true
+if (typeof sessionStorage !== 'undefined') {
+  const stored = sessionStorage.getItem('cap_userProfilesVendorId')
+  if (stored === 'false') USER_PROFILES_VENDOR_ID_AVAILABLE = false
+}
+function disableUserProfilesVendorIdCapability() {
+  USER_PROFILES_VENDOR_ID_AVAILABLE = false
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem('cap_userProfilesVendorId', 'false')
+  }
+}
+// (enable helper reserved for future positive detections)
+
 // Simple in-memory cache with TTL to speed dropdowns
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const _cache = new Map()
@@ -158,7 +174,15 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
     let q = supabase
       .from('user_profiles')
       .select(
-        ['id', nameCol, 'email', 'department', 'role', 'is_active', 'vendor_id']
+        [
+          'id',
+          nameCol,
+          'email',
+          'department',
+          'role',
+          'is_active',
+          USER_PROFILES_VENDOR_ID_AVAILABLE ? 'vendor_id' : null,
+        ]
           .filter(Boolean)
           .join(', '),
         { count: 'exact' }
@@ -187,6 +211,16 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
       try {
         downgradeCapForErrorMessage(err?.message || '')
       } catch {}
+      // Detect vendor_id missing column (400 with PostgREST schema cache message)
+      const msg = String(err?.message || '').toLowerCase()
+      if (msg.includes('vendor_id') && msg.includes('user_profiles')) {
+        if (USER_PROFILES_VENDOR_ID_AVAILABLE) {
+          console.warn(
+            '[dropdownService:getStaff] vendor_id column missing on user_profiles; degrading capability'
+          )
+          disableUserProfilesVendorIdCapability()
+        }
+      }
       // Recompute nameCol after potential capability downgrade
       const caps2 = getProfileCaps()
       const nameCol2 = caps2.name
@@ -221,7 +255,15 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
       let q2 = supabase
         .from('user_profiles')
         .select(
-          ['id', nameCol, 'email', 'department', 'role', 'is_active', 'vendor_id']
+          [
+            'id',
+            nameCol,
+            'email',
+            'department',
+            'role',
+            'is_active',
+            USER_PROFILES_VENDOR_ID_AVAILABLE ? 'vendor_id' : null,
+          ]
             .filter(Boolean)
             .join(', ')
         )
@@ -233,7 +275,33 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
       if (orgId) q2 = q2.or(`org_id.eq.${orgId},org_id.is.null`)
 
-      const { data: fuzzy } = await q2.throwOnError()
+      const { data: fuzzy, error: fuzzyErr } = await q2.throwOnError()
+      if (fuzzyErr) {
+        const msg = String(fuzzyErr?.message || '').toLowerCase()
+        if (msg.includes('vendor_id') && msg.includes('user_profiles')) {
+          if (USER_PROFILES_VENDOR_ID_AVAILABLE) {
+            console.warn(
+              '[dropdownService:getStaff] vendor_id column missing on fuzzy query; degrading capability'
+            )
+            disableUserProfilesVendorIdCapability()
+            // Retry once without vendor_id immediately
+            let qRetry = supabase
+              .from('user_profiles')
+              .select(
+                ['id', nameCol, 'email', 'department', 'role', 'is_active']
+                  .filter(Boolean)
+                  .join(', ')
+              )
+              .eq('is_active', true)
+              .or(ors || (nameCol ? `${nameCol}.ilike.%placeholder%` : 'email.ilike.%placeholder%'))
+            if (orgId) qRetry = qRetry.or(`org_id.eq.${orgId},org_id.is.null`)
+            const r = await qRetry
+            const opts2 = toOptions(r?.data || [])
+            _setCache(key, opts2)
+            return opts2
+          }
+        }
+      }
       const opts = toOptions(fuzzy || [])
       _setCache(key, opts)
       return opts
