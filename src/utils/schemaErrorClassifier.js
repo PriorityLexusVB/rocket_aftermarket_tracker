@@ -9,6 +9,9 @@ export const SchemaErrorCode = {
   MISSING_COLUMN: 'MISSING_COLUMN',
   MISSING_FK: 'MISSING_FK',
   STALE_CACHE: 'STALE_CACHE',
+  MISSING_PROFILE_NAME: 'MISSING_PROFILE_NAME',
+  MISSING_PROFILE_FULL_NAME: 'MISSING_PROFILE_FULL_NAME',
+  MISSING_PROFILE_DISPLAY_NAME: 'MISSING_PROFILE_DISPLAY_NAME',
   GENERIC: 'GENERIC',
 }
 
@@ -23,19 +26,23 @@ export function classifySchemaError(error) {
   // Check for missing column errors
   // PostgREST: "column \"xyz\" does not exist"
   // Supabase: "PGRST...column"
-  if (
-    /column .* does not exist/i.test(msg) ||
-    /pgrst.*column/i.test(msg)
-  ) {
+  if (/column .* does not exist/i.test(msg) || /pgrst.*column/i.test(msg)) {
+    // Specialized user_profiles columns
+    if (/user_profiles.*\bname\b/i.test(msg) && !/full_name|display_name/i.test(msg)) {
+      return SchemaErrorCode.MISSING_PROFILE_NAME
+    }
+    if (/user_profiles.*full_name/i.test(msg)) {
+      return SchemaErrorCode.MISSING_PROFILE_FULL_NAME
+    }
+    if (/user_profiles.*display_name/i.test(msg)) {
+      return SchemaErrorCode.MISSING_PROFILE_DISPLAY_NAME
+    }
     return SchemaErrorCode.MISSING_COLUMN
   }
 
   // Check for missing relationship/FK errors
   // PostgREST: "Could not find a relationship between 'table1' and 'table2' in the schema cache"
-  if (
-    /could not find a relationship/i.test(msg) ||
-    /relationship.*schema cache/i.test(msg)
-  ) {
+  if (/could not find a relationship/i.test(msg) || /relationship.*schema cache/i.test(msg)) {
     return SchemaErrorCode.MISSING_FK
   }
 
@@ -65,7 +72,13 @@ export function classifySchemaError(error) {
  * @returns {boolean}
  */
 export function isMissingColumnError(error) {
-  return classifySchemaError(error) === SchemaErrorCode.MISSING_COLUMN
+  const code = classifySchemaError(error)
+  return (
+    code === SchemaErrorCode.MISSING_COLUMN ||
+    code === SchemaErrorCode.MISSING_PROFILE_NAME ||
+    code === SchemaErrorCode.MISSING_PROFILE_FULL_NAME ||
+    code === SchemaErrorCode.MISSING_PROFILE_DISPLAY_NAME
+  )
 }
 
 /**

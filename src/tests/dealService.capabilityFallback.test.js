@@ -34,12 +34,12 @@ vi.mock('@/lib/supabase', () => ({
 
 describe('dealService - capability flag and retry logic', () => {
   let mockSupabase
-  
+
   beforeEach(async () => {
     sessionStorageMock.clear()
     // Reset module to clear capability flags
     vi.resetModules()
-    
+
     const module = await import('@/lib/supabase')
     mockSupabase = module.supabase
   })
@@ -76,8 +76,24 @@ describe('dealService - capability flag and retry logic', () => {
     // First call fails, second succeeds
     mockSupabase.from.mockReturnValueOnce({ select: mockSelect })
     mockSupabase.from.mockReturnValueOnce({ select: mockFallbackSelect })
-    mockSupabase.from.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }) }) })
-    mockSupabase.from.mockReturnValueOnce({ select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }) }) })
+    mockSupabase.from.mockReturnValueOnce({
+      select: vi
+        .fn()
+        .mockReturnValue({
+          in: vi
+            .fn()
+            .mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+        }),
+    })
+    mockSupabase.from.mockReturnValueOnce({
+      select: vi
+        .fn()
+        .mockReturnValue({
+          in: vi
+            .fn()
+            .mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+        }),
+    })
 
     try {
       await getAllDeals()
@@ -135,24 +151,23 @@ describe('dealService - capability flag and retry logic', () => {
       }),
     })
 
-    // Set up multiple calls
+    // First invocation triggers fallback once
     mockSupabase.from.mockReturnValueOnce({ select: mockSelect })
     mockSupabase.from.mockReturnValueOnce({ select: mockFallbackSelect })
-
     try {
       await getAllDeals()
-    } catch (e) {}
-
+    } catch {}
     expect(sessionStorage.getItem('telemetry_vendorFallback')).toBe('1')
 
-    // Second invocation
+    // Reset capability to true to simulate a fresh environment where relationship is attempted again
+    sessionStorage.setItem('cap_jobPartsVendorRel', 'true')
+
+    // Second invocation again triggers fallback once
     mockSupabase.from.mockReturnValueOnce({ select: mockSelect })
     mockSupabase.from.mockReturnValueOnce({ select: mockFallbackSelect })
-
     try {
       await getAllDeals()
-    } catch (e) {}
-
+    } catch {}
     expect(sessionStorage.getItem('telemetry_vendorFallback')).toBe('2')
   })
 

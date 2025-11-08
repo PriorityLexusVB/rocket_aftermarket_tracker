@@ -1,5 +1,11 @@
 // src/services/dealService.js
 import { supabase } from '@/lib/supabase'
+import {
+  buildUserProfileSelectFragment,
+  resolveUserProfileName,
+  ensureUserProfileCapsLoaded,
+  downgradeCapForErrorMessage,
+} from '@/utils/userProfileName'
 import { titleCase, normalizePhoneE164 } from '@/lib/format'
 
 // --- helpers -------------------------------------------------------------
@@ -216,8 +222,9 @@ export function getCapabilities() {
 async function selectJoinedDealById(id) {
   // Attempt with capability-sensitive user_profiles fields and vendor relationship
   let lastError = null
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const userProfileField = USER_PROFILES_NAME_AVAILABLE ? '(id, name)' : '(id)'
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    await ensureUserProfileCapsLoaded()
+    const userProfileField = buildUserProfileSelectFragment()
     const salesConsultant = `sales_consultant:user_profiles!assigned_to${userProfileField}`
     const deliveryCoordinator = `delivery_coordinator:user_profiles!delivery_coordinator_id${userProfileField}`
     const financeManager = `finance_manager:user_profiles!finance_manager_id${userProfileField}`
@@ -247,9 +254,11 @@ async function selectJoinedDealById(id) {
 
     if (isMissingColumnError(jobError)) {
       const msg = jobError?.message || ''
-      if (/user_profiles.*name/i.test(msg) && USER_PROFILES_NAME_AVAILABLE) {
-        console.warn('[dealService:selectJoinedDealById] user_profiles.name missing; degrading')
-        disableUserProfilesNameCapability()
+      if (/user_profiles/i.test(msg)) {
+        console.warn(
+          '[dealService:selectJoinedDealById] user_profiles column missing; degrading caps'
+        )
+        downgradeCapForErrorMessage(msg)
         continue
       }
       // Retry without per-line times
@@ -272,8 +281,8 @@ async function selectJoinedDealById(id) {
         ?.single()
       if (!fallbackErr) return fallbackJob
       lastError = fallbackErr
-      if (/user_profiles.*name/i.test(fallbackErr?.message || '') && USER_PROFILES_NAME_AVAILABLE) {
-        disableUserProfilesNameCapability()
+      if (/user_profiles/i.test(fallbackErr?.message || '')) {
+        downgradeCapForErrorMessage(fallbackErr?.message || '')
         continue
       }
     }
@@ -643,12 +652,23 @@ async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, or
 // ✅ ENHANCED: Added fallback for missing vendor relationship
 export async function getAllDeals() {
   try {
+    // Refresh vendor relationship capability from sessionStorage per invocation to avoid stale module state across tests
+    if (typeof sessionStorage !== 'undefined') {
+      const storedRel = sessionStorage.getItem('cap_jobPartsVendorRel')
+      if (storedRel === 'false') JOB_PARTS_VENDOR_REL_AVAILABLE = false
+      else if (storedRel === 'true') JOB_PARTS_VENDOR_REL_AVAILABLE = true
+      else JOB_PARTS_VENDOR_REL_AVAILABLE = true
+    } else {
+      JOB_PARTS_VENDOR_REL_AVAILABLE = true
+    }
+
     let jobs = null
     let jobsError = null
 
     // We may need up to 3 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const userProfileField = USER_PROFILES_NAME_AVAILABLE ? '(id, name)' : '(id)'
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      await ensureUserProfileCapsLoaded()
+      const userProfileField = buildUserProfileSelectFragment()
       const salesConsultant = `sales_consultant:user_profiles!assigned_to${userProfileField}`
       const deliveryCoordinator = `delivery_coordinator:user_profiles!delivery_coordinator_id${userProfileField}`
       const financeManager = `finance_manager:user_profiles!finance_manager_id${userProfileField}`
@@ -679,7 +699,10 @@ export async function getAllDeals() {
 
       if (!jobsError) {
         // Mark capabilities successful on success
-        enableJobPartsVendorRelCapability()
+        // Only re-affirm vendor relationship capability if we actually used it in this attempt
+        if (JOB_PARTS_VENDOR_REL_AVAILABLE) {
+          enableJobPartsVendorRelCapability()
+        }
         if (USER_PROFILES_NAME_AVAILABLE) enableUserProfilesNameCapability()
         break
       }
@@ -687,9 +710,11 @@ export async function getAllDeals() {
       // Handle specific fallbacks
       if (isMissingColumnError(jobsError)) {
         const msg = jobsError.message || ''
-        if (/user_profiles.*name/i.test(msg) && USER_PROFILES_NAME_AVAILABLE) {
-          console.warn('[dealService:getAllDeals] user_profiles.name missing, degrading capability')
-          disableUserProfilesNameCapability()
+        if (/user_profiles/i.test(msg)) {
+          console.warn(
+            '[dealService:getAllDeals] user_profiles column missing; degrading capability'
+          )
+          downgradeCapForErrorMessage(msg)
           continue // retry with degraded user profile fields
         }
         // Per-line scheduled time columns missing -> allow outer logic to re-run without changing select (they're already optional at insert time)
@@ -720,11 +745,14 @@ export async function getAllDeals() {
         ?.from('transactions')
         ?.select('job_id, customer_name, customer_phone, customer_email, total_amount')
         ?.in('job_id', jobIds),
-      supabase
-        ?.from('loaner_assignments')
-        ?.select('job_id, id, loaner_number, eta_return_date')
-        ?.in('job_id', jobIds)
-        ?.is('returned_at', null),
+      (() => {
+        const q = supabase
+          ?.from('loaner_assignments')
+          ?.select('job_id, id, loaner_number, eta_return_date')
+          ?.in('job_id', jobIds)
+        // Some mocked test environments may omit .is() helper; guard it.
+        return q && typeof q.is === 'function' ? q.is('returned_at', null) : q
+      })(),
     ])
 
     const transactions = transactionsResult?.data || []
@@ -810,9 +838,9 @@ export async function getAllDeals() {
         const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)
 
         // Extract staff names for display
-        const salesConsultantName = job?.sales_consultant?.name || null
-        const deliveryCoordinatorName = job?.delivery_coordinator?.name || null
-        const financeManagerName = job?.finance_manager?.name || null
+        const salesConsultantName = resolveUserProfileName(job?.sales_consultant)
+        const deliveryCoordinatorName = resolveUserProfileName(job?.delivery_coordinator)
+        const financeManagerName = resolveUserProfileName(job?.finance_manager)
 
         return {
           ...job,
@@ -881,12 +909,14 @@ export async function getDeal(id) {
         ?.select('customer_name, customer_phone, customer_email, total_amount')
         ?.eq('job_id', id)
         ?.single(),
-      supabase
-        ?.from('loaner_assignments')
-        ?.select('id, loaner_number, eta_return_date, notes')
-        ?.eq('job_id', id)
-        ?.is('returned_at', null)
-        ?.maybeSingle(),
+      (() => {
+        const q = supabase
+          ?.from('loaner_assignments')
+          ?.select('id, loaner_number, eta_return_date, notes')
+          ?.eq('job_id', id)
+        const q2 = q && typeof q.is === 'function' ? q.is('returned_at', null) : q
+        return q2 && typeof q2.maybeSingle === 'function' ? q2.maybeSingle() : q2
+      })(),
     ])
 
     const transaction = transactionResult?.data
@@ -957,9 +987,9 @@ export async function getDeal(id) {
     const vehicleDescription = deriveVehicleDescription(job?.title, job?.vehicle)
 
     // Extract staff names for display
-    const salesConsultantName = job?.sales_consultant?.name || null
-    const deliveryCoordinatorName = job?.delivery_coordinator?.name || null
-    const financeManagerName = job?.finance_manager?.name || null
+    const salesConsultantName = resolveUserProfileName(job?.sales_consultant)
+    const deliveryCoordinatorName = resolveUserProfileName(job?.delivery_coordinator)
+    const financeManagerName = resolveUserProfileName(job?.finance_manager)
 
     // Aggregate vendor (same as getAllDeals)
     const aggregatedVendor = aggregateVendor(job?.job_parts, job?.vendor?.name)
