@@ -14,6 +14,7 @@ import {
   SchemaErrorCode,
   getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
+import { incrementTelemetry, TelemetryKey } from '@/utils/capabilityTelemetry'
 
 // --- helpers -------------------------------------------------------------
 
@@ -190,9 +191,6 @@ function disableJobPartsVendorIdCapability() {
   }
 }
 // (enable helper reserved for future positive detections)
-
-// Import telemetry utility
-import { incrementTelemetry, TelemetryKey } from '@/utils/capabilityTelemetry'
 
 // Increment fallback telemetry counter (legacy support)
 function incrementFallbackTelemetry() {
@@ -605,6 +603,15 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       if (error) throw error
     }
   } catch (error) {
+    // Handle RLS permission denied (403) - track for observability
+    if (error?.code === 'PGRST301' || error?.message?.includes('permission denied')) {
+      console.warn('[upsertLoanerAssignment] RLS policy denied loaner assignment:', error)
+      incrementTelemetry(TelemetryKey.RLS_LOANER_DENIED)
+      throw new Error(
+        'Permission denied: Unable to manage loaner assignments. Contact your administrator.'
+      )
+    }
+    
     // Handle uniqueness constraint error gracefully
     if (error?.code === '23505') {
       throw new Error(

@@ -10,6 +10,7 @@ export const TelemetryKey = {
   VENDOR_REL_FALLBACK: 'telemetry_vendorRelFallback',
   SCHEDULED_TIMES_FALLBACK: 'telemetry_scheduledTimesFallback',
   USER_PROFILE_NAME_FALLBACK: 'telemetry_userProfileNameFallback',
+  RLS_LOANER_DENIED: 'telemetry_rlsLoanerDenied',
 }
 
 /**
@@ -56,6 +57,7 @@ export function getAllTelemetry() {
     vendorRelFallback: getTelemetry(TelemetryKey.VENDOR_REL_FALLBACK),
     scheduledTimesFallback: getTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK),
     userProfileNameFallback: getTelemetry(TelemetryKey.USER_PROFILE_NAME_FALLBACK),
+    rlsLoanerDenied: getTelemetry(TelemetryKey.RLS_LOANER_DENIED),
   }
 }
 
