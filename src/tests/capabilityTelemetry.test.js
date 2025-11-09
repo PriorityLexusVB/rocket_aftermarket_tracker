@@ -72,6 +72,7 @@ describe('Capability Telemetry', () => {
         vendorRelFallback: 0,
         scheduledTimesFallback: 0,
         userProfileNameFallback: 0,
+        rlsLoanerDenied: 0,
       })
     })
 
