@@ -112,7 +112,9 @@ export function isMissingColumnError(error) {
     code === SchemaErrorCode.MISSING_COLUMN ||
     code === SchemaErrorCode.MISSING_PROFILE_NAME ||
     code === SchemaErrorCode.MISSING_PROFILE_FULL_NAME ||
-    code === SchemaErrorCode.MISSING_PROFILE_DISPLAY_NAME
+    code === SchemaErrorCode.MISSING_PROFILE_DISPLAY_NAME ||
+    code === SchemaErrorCode.MISSING_JOB_PARTS_SCHEDULED_TIMES ||
+    code === SchemaErrorCode.MISSING_JOB_PARTS_VENDOR_ID
   )
 }
 
@@ -122,7 +124,11 @@ export function isMissingColumnError(error) {
  * @returns {boolean}
  */
 export function isMissingRelationshipError(error) {
-  return classifySchemaError(error) === SchemaErrorCode.MISSING_FK
+  const code = classifySchemaError(error)
+  return (
+    code === SchemaErrorCode.MISSING_FK ||
+    code === SchemaErrorCode.MISSING_JOB_PARTS_VENDOR_RELATIONSHIP
+  )
 }
 
 /**
