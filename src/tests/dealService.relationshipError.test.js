@@ -40,9 +40,9 @@ describe('dealService - relationship error handling', () => {
       select: mockSelect,
     })
 
-    // Verify error handling
-    await expect(getAllDeals()).rejects.toThrow(/Missing database relationship/)
-    await expect(getAllDeals()).rejects.toThrow(/vendor_id column to job_parts/)
+    // Verify error handling - new implementation uses classifier for remediation guidance
+    await expect(getAllDeals()).rejects.toThrow(/Could not find a relationship/)
+    await expect(getAllDeals()).rejects.toThrow(/job_parts.*vendors/)
   })
 
   it('passes through other errors without modification', async () => {

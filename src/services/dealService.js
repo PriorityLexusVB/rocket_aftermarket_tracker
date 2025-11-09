@@ -7,6 +7,13 @@ import {
   downgradeCapForErrorMessage,
 } from '@/utils/userProfileName'
 import { titleCase, normalizePhoneE164 } from '@/lib/format'
+import {
+  classifySchemaError,
+  isMissingColumnError,
+  isMissingRelationshipError,
+  SchemaErrorCode,
+  getRemediationGuidance,
+} from '@/utils/schemaErrorClassifier'
 
 // --- helpers -------------------------------------------------------------
 
@@ -60,21 +67,8 @@ function generateTransactionNumber() {
   return `TXN-${ts}-${rand}`
 }
 
-// Helper to detect missing column errors from PostgREST
-function isMissingColumnError(error) {
-  const msg = error?.message || error?.toString?.() || ''
-  return (
-    /column .* does not exist/i.test(msg) ||
-    /PGRST.*column/i.test(msg) ||
-    /Could not find.*column.*in the schema cache/i.test(msg)
-  )
-}
-
-// Helper to detect missing relationship errors from PostgREST
-function isMissingRelationshipError(error) {
-  const msg = error?.message || error?.toString?.() || ''
-  return /Could not find a relationship between .* in the schema cache/i.test(msg)
-}
+// NOTE: Error classification functions now imported from @/utils/schemaErrorClassifier
+// This provides centralized error detection and remediation guidance
 
 // Helper: Generic title detection pattern
 const GENERIC_TITLE_PATTERN = /^(Deal\s+[\w-]+|Untitled Deal)$/i
@@ -279,6 +273,8 @@ async function selectJoinedDealById(id) {
 
     if (isMissingColumnError(jobError)) {
       const msg = jobError?.message || ''
+      const errorCode = classifySchemaError(jobError)
+      
       if (/user_profiles/i.test(msg)) {
         console.warn(
           '[dealService:selectJoinedDealById] user_profiles column missing; degrading caps'
@@ -286,6 +282,10 @@ async function selectJoinedDealById(id) {
         downgradeCapForErrorMessage(msg)
         continue
       }
+      
+      // Log classified error for diagnostics
+      console.warn(`[dealService:selectJoinedDealById] Classified error: ${errorCode}`)
+      
       // Retry without per-line times
       const selectNoTimes = `
             id, job_number, title, description, job_status, priority, location,
@@ -313,17 +313,25 @@ async function selectJoinedDealById(id) {
     }
     if (isMissingRelationshipError(jobError)) {
       const msg = jobError?.message || ''
+      const errorCode = classifySchemaError(jobError)
+      
       // Detect vendor relationship issues and degrade
       if (/vendor/i.test(msg) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
         console.warn(
           '[dealService:selectJoinedDealById] Vendor relationship missing; degrading capability'
         )
         disableJobPartsVendorRelCapability()
+        incrementTelemetry(TelemetryKey.VENDOR_REL_FALLBACK)
         continue // retry without vendor relationship
       }
-      // For other relationship errors, throw with guidance
+      
+      // For other relationship errors, provide actionable guidance
+      const remediation = getRemediationGuidance(jobError)
+      const guidance = remediation.migrationFile 
+        ? `Apply migration: ${remediation.migrationFile}` 
+        : 'Please contact your administrator to apply the latest migrations.'
       throw new Error(
-        'Failed to load deal: Database schema update required. Please contact your administrator to apply the latest migrations.'
+        `Failed to load deal: Database schema update required. ${guidance}`
       )
     }
     // Detect missing vendor_id column and degrade capability
@@ -338,6 +346,7 @@ async function selectJoinedDealById(id) {
           '[dealService:selectJoinedDealById] vendor_id column missing on job_parts; degrading capability'
         )
         disableJobPartsVendorIdCapability()
+        incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
         continue
       }
     }
@@ -729,17 +738,19 @@ export async function getAllDeals() {
           .limit(1)
 
         if (probeError && isMissingColumnError(probeError)) {
+          const errorCode = classifySchemaError(probeError)
           const msg = probeError.message.toLowerCase()
+          
           if (msg.includes('scheduled_start_time') || msg.includes('scheduled_end_time')) {
             console.warn(
-              '[dealService:getAllDeals] Preflight: scheduled_* columns missing; disabling capability'
+              `[dealService:getAllDeals] Preflight: classified as ${errorCode}; disabling capability`
             )
             disableJobPartsTimeCapability()
             incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
           }
           if (msg.includes('vendor_id')) {
             console.warn(
-              '[dealService:getAllDeals] Preflight: vendor_id column missing; disabling capability'
+              `[dealService:getAllDeals] Preflight: classified as ${errorCode}; disabling capability`
             )
             disableJobPartsVendorIdCapability()
             incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
@@ -822,13 +833,16 @@ export async function getAllDeals() {
       // Handle specific fallbacks
       if (isMissingColumnError(jobsError)) {
         const msg = jobsError.message || ''
+        const errorCode = classifySchemaError(jobsError)
+        
         if (/user_profiles/i.test(msg)) {
           console.warn(
-            '[dealService:getAllDeals] user_profiles column missing; degrading capability'
+            `[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`
           )
           downgradeCapForErrorMessage(msg)
           continue // retry with degraded user profile fields
         }
+        
         const lower = msg.toLowerCase()
         // Detect missing per-line time columns on job_parts and disable that capability
         if (
@@ -837,20 +851,22 @@ export async function getAllDeals() {
         ) {
           if (JOB_PARTS_HAS_PER_LINE_TIMES) {
             console.warn(
-              '[dealService:getAllDeals] job_parts scheduled_* columns missing; disabling per-line time capability and retrying...'
+              `[dealService:getAllDeals] Classified as ${errorCode}; disabling per-line time capability and retrying...`
             )
             disableJobPartsTimeCapability()
             incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
             continue
           }
         }
+        
         console.warn(
-          '[dealService:getAllDeals] Missing column detected, retrying if capability allows...'
+          `[dealService:getAllDeals] Missing column detected (${errorCode}), retrying if capability allows...`
         )
+        
         if (lower.includes('job_parts') && lower.includes('vendor_id')) {
           if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
             console.warn(
-              '[dealService:getAllDeals] vendor_id column missing on job_parts; degrading capability'
+              `[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`
             )
             disableJobPartsVendorIdCapability()
             incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
@@ -859,8 +875,9 @@ export async function getAllDeals() {
         }
       }
       if (isMissingRelationshipError(jobsError) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
+        const errorCode = classifySchemaError(jobsError)
         console.warn(
-          '[dealService:getAllDeals] Vendor relationship missing, disabling and retrying...'
+          `[dealService:getAllDeals] Classified as ${errorCode}; disabling vendor relationship and retrying...`
         )
         disableJobPartsVendorRelCapability()
         incrementFallbackTelemetry()
@@ -1021,10 +1038,15 @@ export async function getAllDeals() {
     )
   } catch (error) {
     console.error('Failed to load deals:', error)
-    // Provide specific guidance for missing relationship errors
+    // Provide specific guidance for missing relationship errors using classifier
     if (isMissingRelationshipError(error)) {
+      const errorCode = classifySchemaError(error)
+      const remediation = getRemediationGuidance(error)
+      const guidance = remediation.migrationFile 
+        ? `Please run migration: ${remediation.migrationFile}` 
+        : 'Please run the migration to add per-line vendor support'
       throw new Error(
-        `Failed to load deals: Missing database relationship between job_parts and vendors. Please run the migration to add per-line vendor support (vendor_id column to job_parts table). Original error: ${error?.message}`
+        `Failed to load deals: ${remediation.description || 'Missing database relationship'}. ${guidance}. Original error: ${error?.message}`
       )
     }
     throw new Error(`Failed to load deals: ${error?.message}`)
@@ -1305,12 +1327,14 @@ export async function createDeal(formState) {
         const { error: partsErr } = await supabase?.from('job_parts')?.insert(rows)
         if (partsErr) {
           if (isMissingColumnError(partsErr)) {
+            const errorCode = classifySchemaError(partsErr)
             const lower = String(partsErr?.message || '').toLowerCase()
+            
             // Vendor column missing: disable capability and retry omitting vendor_id
             if (lower.includes('job_parts') && lower.includes('vendor_id')) {
               if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
                 console.warn(
-                  '[dealService:create] job_parts.vendor_id column missing; disabling capability and retrying without vendor_id'
+                  `[dealService:create] Classified as ${errorCode}; disabling capability and retrying without vendor_id`
                 )
                 disableJobPartsVendorIdCapability()
                 incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
@@ -1329,9 +1353,10 @@ export async function createDeal(formState) {
               (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
             ) {
               console.warn(
-                '[dealService:create] Per-line time columns not available, retrying without them'
+                `[dealService:create] Classified as ${errorCode}; retrying without time columns`
               )
               disableJobPartsTimeCapability()
+              incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
               const retryRows = toJobPartRows(job?.id, normalizedLineItems, { includeTimes: false })
               const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
               if (retryErr) throw retryErr
@@ -1566,12 +1591,14 @@ export async function updateDeal(id, formState) {
       const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)
       if (insErr) {
         if (isMissingColumnError(insErr)) {
+          const errorCode = classifySchemaError(insErr)
           const lower = String(insErr?.message || '').toLowerCase()
+          
           // If vendor_id missing on job_parts, disable capability and retry without vendor_id
           if (lower.includes('job_parts') && lower.includes('vendor_id')) {
             if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
               console.warn(
-                '[dealService:update] job_parts.vendor_id column missing; disabling capability and retrying without vendor_id'
+                `[dealService:update] Classified as ${errorCode}; disabling capability and retrying without vendor_id`
               )
               disableJobPartsVendorIdCapability()
               incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
@@ -1588,9 +1615,10 @@ export async function updateDeal(id, formState) {
             (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
           ) {
             console.warn(
-              '[dealService:update] Per-line time columns not available, retrying without them'
+              `[dealService:update] Classified as ${errorCode}; retrying without time columns`
             )
             disableJobPartsTimeCapability()
+            incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
             const retryRows = toJobPartRows(id, normalizedLineItems, { includeTimes: false })
             const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
             if (retryErr) throw wrapDbError(retryErr, 'update line items')
