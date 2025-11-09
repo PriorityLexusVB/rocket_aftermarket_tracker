@@ -96,10 +96,25 @@ Admin → Staff Records and Admin → User Accounts both support:
 
 These tools help keep tenant data clean without requiring additional logins for staff records.
 
+## Error Handling
+
+This application includes comprehensive error handling for PostgREST/Supabase 400 and 403 HTTP errors:
+
+- **Quick Reference**: See [QUICK_REFERENCE_ERROR_HANDLING.md](QUICK_REFERENCE_ERROR_HANDLING.md) for common scenarios and quick fixes
+- **Full Guide**: See [ERROR_HANDLING_GUIDE.md](ERROR_HANDLING_GUIDE.md) for complete architecture documentation
+
+Key features:
+- Automatic detection of missing database columns and relationships
+- Graceful degradation with capability flags
+- Telemetry tracking for monitoring
+- Health endpoints for proactive monitoring
+- Migration guidance for permanent fixes
+
 ## Testing
 
 - Unit tests: `pnpm test`
 - E2E tests: `pnpm e2e` (requires environment-based auth configured for the e2e user)
+- Error handling tests: `pnpm test src/tests/schemaErrorClassifier.test.js src/tests/capabilityTelemetry.test.js`
 
 To view the last Playwright report:
 
