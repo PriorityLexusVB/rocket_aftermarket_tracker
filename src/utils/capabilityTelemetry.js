@@ -1,5 +1,6 @@
 // src/utils/capabilityTelemetry.js
 // Telemetry utility for tracking capability fallback events
+// Enhanced with localStorage persistence and export/import capabilities
 
 /**
  * Telemetry counter keys
@@ -14,15 +15,44 @@ export const TelemetryKey = {
 }
 
 /**
+ * Storage preference - checks availability and falls back gracefully
+ * @returns {Storage | null} Available storage or null
+ */
+function getAvailableStorage() {
+  try {
+    if (typeof sessionStorage !== 'undefined' && sessionStorage) {
+      sessionStorage.setItem('__test__', '1')
+      sessionStorage.removeItem('__test__')
+      return sessionStorage
+    }
+  } catch (_e) {
+    // sessionStorage not available or blocked
+  }
+
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage) {
+      localStorage.setItem('__test__', '1')
+      localStorage.removeItem('__test__')
+      return localStorage
+    }
+  } catch (_e) {
+    // localStorage not available or blocked
+  }
+
+  return null
+}
+
+/**
  * Increment a telemetry counter
  * @param {string} key - One of TelemetryKey values
  */
 export function incrementTelemetry(key) {
-  if (typeof sessionStorage === 'undefined') return
+  const storage = getAvailableStorage()
+  if (!storage) return
 
   try {
-    const current = parseInt(sessionStorage.getItem(key) || '0', 10)
-    sessionStorage.setItem(key, String(current + 1))
+    const current = parseInt(storage.getItem(key) || '0', 10)
+    storage.setItem(key, String(current + 1))
   } catch (error) {
     console.warn('[capabilityTelemetry] Failed to increment counter:', key, error)
   }
@@ -34,10 +64,11 @@ export function incrementTelemetry(key) {
  * @returns {number} - Current counter value
  */
 export function getTelemetry(key) {
-  if (typeof sessionStorage === 'undefined') return 0
+  const storage = getAvailableStorage()
+  if (!storage) return 0
 
   try {
-    const value = parseInt(sessionStorage.getItem(key) || '0', 10)
+    const value = parseInt(storage.getItem(key) || '0', 10)
     // Handle NaN by returning 0
     return isNaN(value) ? 0 : value
   } catch (error) {
@@ -66,10 +97,11 @@ export function getAllTelemetry() {
  * @param {string} key - One of TelemetryKey values
  */
 export function resetTelemetry(key) {
-  if (typeof sessionStorage === 'undefined') return
+  const storage = getAvailableStorage()
+  if (!storage) return
 
   try {
-    sessionStorage.setItem(key, '0')
+    storage.setItem(key, '0')
   } catch (error) {
     console.warn('[capabilityTelemetry] Failed to reset counter:', key, error)
   }
@@ -87,9 +119,93 @@ export function resetAllTelemetry() {
  * @returns {Object} - Telemetry summary
  */
 export function getTelemetrySummary() {
+  const storage = getAvailableStorage()
   return {
     timestamp: new Date().toISOString(),
     counters: getAllTelemetry(),
-    sessionActive: typeof sessionStorage !== 'undefined',
+    sessionActive: storage !== null,
+    storageType: storage === sessionStorage ? 'sessionStorage' : storage === localStorage ? 'localStorage' : 'none',
+  }
+}
+
+/**
+ * Export telemetry data as JSON string
+ * @returns {string} - JSON string of telemetry data
+ */
+export function exportTelemetry() {
+  return JSON.stringify(getTelemetrySummary(), null, 2)
+}
+
+/**
+ * Import telemetry data from JSON string
+ * @param {string} jsonString - JSON string of telemetry data
+ * @returns {boolean} - Success status
+ */
+export function importTelemetry(jsonString) {
+  const storage = getAvailableStorage()
+  if (!storage) return false
+
+  try {
+    const data = JSON.parse(jsonString)
+    if (data.counters) {
+      Object.entries(data.counters).forEach(([key, value]) => {
+        const telemetryKey = Object.values(TelemetryKey).find((k) => k.includes(key))
+        if (telemetryKey && typeof value === 'number') {
+          storage.setItem(telemetryKey, String(value))
+        }
+      })
+      return true
+    }
+    return false
+  } catch (error) {
+    console.error('[capabilityTelemetry] Failed to import telemetry:', error)
+    return false
+  }
+}
+
+/**
+ * Persist current sessionStorage telemetry to localStorage
+ * Useful for preserving telemetry across sessions
+ * @returns {boolean} - Success status
+ */
+export function persistToLocalStorage() {
+  try {
+    if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') return false
+
+    let persisted = false
+    Object.values(TelemetryKey).forEach((key) => {
+      const value = sessionStorage.getItem(key)
+      if (value) {
+        localStorage.setItem(key, value)
+        persisted = true
+      }
+    })
+    return persisted
+  } catch (error) {
+    console.warn('[capabilityTelemetry] Failed to persist to localStorage:', error)
+    return false
+  }
+}
+
+/**
+ * Restore telemetry from localStorage to sessionStorage
+ * @returns {boolean} - Success status
+ */
+export function restoreFromLocalStorage() {
+  try {
+    if (typeof sessionStorage === 'undefined' || typeof localStorage === 'undefined') return false
+
+    let restored = false
+    Object.values(TelemetryKey).forEach((key) => {
+      const value = localStorage.getItem(key)
+      if (value) {
+        sessionStorage.setItem(key, value)
+        restored = true
+      }
+    })
+    return restored
+  } catch (error) {
+    console.warn('[capabilityTelemetry] Failed to restore from localStorage:', error)
+    return false
   }
 }

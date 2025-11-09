@@ -1,6 +1,44 @@
 // /api/admin/reload-schema (server route)
 // Admin-only endpoint to trigger PostgREST schema cache reload
+// Enhanced with rate limiting to prevent abuse
 import { supabase } from '@/lib/supabase'
+
+// Simple in-memory rate limiting
+const rateLimitMap = new Map()
+const RATE_LIMIT_WINDOW_MS = 60000 // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 5 // Max 5 requests per minute per user
+
+/**
+ * Check if request is within rate limit
+ * @param {string} userId - User ID to check
+ * @returns {Object} - { allowed: boolean, resetAt: Date }
+ */
+function checkRateLimit(userId) {
+  const now = Date.now()
+  const userLimit = rateLimitMap.get(userId) || { count: 0, windowStart: now }
+
+  // Reset window if expired
+  if (now - userLimit.windowStart > RATE_LIMIT_WINDOW_MS) {
+    userLimit.count = 0
+    userLimit.windowStart = now
+  }
+
+  // Check if limit exceeded
+  if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
+    const resetAt = new Date(userLimit.windowStart + RATE_LIMIT_WINDOW_MS)
+    return { allowed: false, resetAt, remaining: 0 }
+  }
+
+  // Increment counter
+  userLimit.count++
+  rateLimitMap.set(userId, userLimit)
+
+  return {
+    allowed: true,
+    remaining: MAX_REQUESTS_PER_WINDOW - userLimit.count,
+    resetAt: new Date(userLimit.windowStart + RATE_LIMIT_WINDOW_MS),
+  }
+}
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString()
@@ -15,6 +53,17 @@ export default async function handler(req, res) {
     if (authError || !user) {
       return res.status(401).json({
         error: 'Unauthorized: Authentication required',
+        timestamp,
+      })
+    }
+
+    // Check rate limit
+    const rateLimitResult = checkRateLimit(user.id)
+    if (!rateLimitResult.allowed) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: `Maximum ${MAX_REQUESTS_PER_WINDOW} requests per minute. Please try again later.`,
+        resetAt: rateLimitResult.resetAt.toISOString(),
         timestamp,
       })
     }
@@ -68,6 +117,10 @@ export default async function handler(req, res) {
       success: true,
       message: 'Schema cache reload notification sent',
       note: 'PostgREST will reload schema cache. Allow 1-2 seconds for completion.',
+      rateLimit: {
+        remaining: rateLimitResult.remaining,
+        resetAt: rateLimitResult.resetAt.toISOString(),
+      },
       timestamp,
     })
   } catch (error) {

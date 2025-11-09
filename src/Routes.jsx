@@ -32,6 +32,7 @@ const LoanerManagementDrawer = lazy(() => import('./pages/loaner-management-draw
 
 // Admin and utilities
 const AdminPage = lazy(() => import('./pages/admin'))
+const AdminCapabilities = lazy(() => import('./pages/AdminCapabilities'))
 const DebugAuthPage = lazy(() => import('./pages/debug-auth'))
 const CommunicationsCenter = lazy(() => import('./pages/communications'))
 const ProfileSettings = lazy(() => import('./pages/profile'))
@@ -135,6 +136,16 @@ const Routes = () => {
                   element={
                     <ProtectedRoute>
                       <AdminPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Admin Capabilities Diagnostics */}
+                <Route
+                  path="/admin/capabilities"
+                  element={
+                    <ProtectedRoute>
+                      <AdminCapabilities />
                     </ProtectedRoute>
                   }
                 />

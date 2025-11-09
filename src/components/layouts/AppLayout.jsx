@@ -1,6 +1,7 @@
 import React from 'react'
 import { useLocation } from 'react-router-dom'
 import Navbar from '../ui/Navbar'
+import { DiagnosticsBanner } from '../DiagnosticsBanner'
 
 const AppLayout = ({ children }) => {
   const location = useLocation()
@@ -14,6 +15,9 @@ const AppLayout = ({ children }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Conditionally render Navbar - exclude for guest claims form */}
       {shouldShowNavbar && <Navbar />}
+
+      {/* Diagnostics Banner - shows capability status */}
+      {shouldShowNavbar && import.meta.env.DEV && <DiagnosticsBanner />}
 
       {/* Main content area with proper spacing for top navbar */}
       <main className={`${shouldShowNavbar ? 'pt-16 md:pt-16' : ''}`}>
