@@ -36,7 +36,9 @@ export function getTelemetry(key) {
   if (typeof sessionStorage === 'undefined') return 0
 
   try {
-    return parseInt(sessionStorage.getItem(key) || '0', 10)
+    const value = parseInt(sessionStorage.getItem(key) || '0', 10)
+    // Handle NaN by returning 0
+    return isNaN(value) ? 0 : value
   } catch (error) {
     console.warn('[capabilityTelemetry] Failed to get counter:', key, error)
     return 0
