@@ -1,6 +1,7 @@
 // /api/health/deals-rel (server route)
 // Health check endpoint to verify vendor relationship integrity
 import { supabase } from '@/lib/supabase'
+import { getRemediationGuidance } from '@/utils/schemaErrorClassifier'
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString()
@@ -31,7 +32,37 @@ export default async function handler(req, res) {
       status: 'ok',
     })
 
-    // Test 2: Verify job_parts -> vendors relationship via REST API
+    // Test 2: Check vendor_id column exists in job_parts
+    const { data: vendorIdTest, error: vendorIdError } = await supabase
+      .from('job_parts')
+      .select('id, vendor_id')
+      .limit(1)
+
+    if (vendorIdError) {
+      const isMissingColumn = /column .* does not exist/i.test(vendorIdError.message)
+      const guidance = getRemediationGuidance(vendorIdError)
+
+      details.checks.push({
+        name: 'job_parts_vendor_id_column',
+        status: 'fail',
+        error: vendorIdError.message,
+        isMissingColumn,
+        remediation: guidance,
+      })
+
+      return res.status(503).json({
+        vendorRelationship: 'missing_column',
+        timestamp,
+        details,
+      })
+    }
+
+    details.checks.push({
+      name: 'job_parts_vendor_id_column',
+      status: 'ok',
+    })
+
+    // Test 3: Verify job_parts -> vendors relationship via REST API
     const { data: relationshipTest, error: relError } = await supabase
       .from('job_parts')
       .select('id, vendor:vendors(id, name)')
@@ -40,15 +71,14 @@ export default async function handler(req, res) {
     if (relError) {
       const isRelationshipError =
         /Could not find a relationship between .* in the schema cache/i.test(relError.message)
+      const guidance = getRemediationGuidance(relError)
 
       details.checks.push({
         name: 'job_parts_vendor_relationship',
         status: 'fail',
         error: relError.message,
         isRelationshipError,
-        recommendation: isRelationshipError
-          ? "Run: NOTIFY pgrst, 'reload schema'; or apply migration 20251107093000_verify_job_parts_vendor_fk.sql"
-          : 'Check RLS policies and database permissions',
+        remediation: guidance,
       })
 
       return res.status(503).json({
@@ -64,7 +94,7 @@ export default async function handler(req, res) {
       sample: relationshipTest?.[0] || null,
     })
 
-    // Test 3: Verify FK constraint exists in database (optional check)
+    // Test 4: Verify FK constraint exists in database (optional check)
     // Note: This RPC function check_job_parts_vendor_fk may not exist in all environments
     try {
       const { data: fkCheck, error: fkError } = await supabase.rpc('check_job_parts_vendor_fk', {})
