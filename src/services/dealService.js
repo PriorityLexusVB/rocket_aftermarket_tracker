@@ -715,7 +715,7 @@ export async function getAllDeals() {
     let jobs = null
     let jobsError = null
 
-    // We may need up to 3 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
+    // We may need up to 4 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
     for (let attempt = 1; attempt <= 4; attempt++) {
       await ensureUserProfileCapsLoaded()
       const userProfileField = buildUserProfileSelectFragment()
@@ -728,8 +728,14 @@ export async function getAllDeals() {
         JOB_PARTS_VENDOR_REL_AVAILABLE && JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
           ? ', vendor:vendors(id, name)'
           : ''
-      const jobPartsFieldsVendor = `job_parts(id, product_id, ${perLineVendorField}unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})${perLineVendorJoin2})`
-      const jobPartsFieldsNoVendor = `job_parts(id, product_id, ${perLineVendorField}unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site, scheduled_start_time, scheduled_end_time, product:products(id, name, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})${perLineVendorJoin2})`
+      // Build job_parts field lists with/without per-line time columns, gated by capability
+      const jobPartsCore = `id, product_id, ${perLineVendorField}unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site`
+      const jobPartsTimeFields = JOB_PARTS_HAS_PER_LINE_TIMES
+        ? ', scheduled_start_time, scheduled_end_time'
+        : ''
+      const productFields = `product:products(id, name, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})`
+      const jobPartsFieldsVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields}${perLineVendorJoin2})`
+      const jobPartsFieldsNoVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields}${perLineVendorJoin2})`
 
       const baseSelect = `
           id, created_at, job_status, service_type, color_code, title, job_number,
@@ -772,12 +778,21 @@ export async function getAllDeals() {
           downgradeCapForErrorMessage(msg)
           continue // retry with degraded user profile fields
         }
-        // Per-line scheduled time columns missing -> allow outer logic to re-run without changing select (they're already optional at insert time)
-        console.warn(
-          '[dealService:getAllDeals] Missing column detected, retrying if capability allows...'
-        )
-        // No specific flag to disable here except times which are not part of this select (times at job_parts already guarded individually). Continue attempts to avoid infinite loop.
         const lower = msg.toLowerCase()
+        // Detect missing per-line time columns on job_parts and disable that capability
+        if (
+          lower.includes('job_parts') &&
+          (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
+        ) {
+          if (JOB_PARTS_HAS_PER_LINE_TIMES) {
+            console.warn(
+              '[dealService:getAllDeals] job_parts scheduled_* columns missing; disabling per-line time capability and retrying...'
+            )
+            disableJobPartsTimeCapability()
+            continue
+          }
+        }
+        console.warn('[dealService:getAllDeals] Missing column detected, retrying if capability allows...')
         if (lower.includes('job_parts') && lower.includes('vendor_id')) {
           if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
             console.warn(
