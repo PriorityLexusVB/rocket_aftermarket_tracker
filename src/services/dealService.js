@@ -198,10 +198,7 @@ function disableJobPartsVendorIdCapability() {
 // (enable helper reserved for future positive detections)
 
 // Import telemetry utility
-import {
-  incrementTelemetry,
-  TelemetryKey,
-} from '@/utils/capabilityTelemetry'
+import { incrementTelemetry, TelemetryKey } from '@/utils/capabilityTelemetry'
 
 // Increment fallback telemetry counter (legacy support)
 function incrementFallbackTelemetry() {
@@ -527,7 +524,15 @@ export function toJobPartRows(jobId, items = [], opts = {}) {
         const row = {
           job_id: jobId,
           product_id: it?.product_id ?? null,
-          vendor_id: it?.vendor_id ?? it?.vendorId ?? null, // NEW: per-line vendor support
+          // Only include vendor_id column when the capability indicates the DB has it.
+          // Some pre-migration environments will not have this column and sending it
+          // in inserts causes a 400: "Could not find the 'vendor_id' column in the schema cache".
+          // We omit the key entirely in those cases so PostgREST will not reference it.
+          // The runtime flag `JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE` is persisted to
+          // sessionStorage when we detect a missing column during preflight.
+          ...(JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+            ? { vendor_id: it?.vendor_id ?? it?.vendorId ?? null }
+            : {}),
           quantity_used: it?.quantity_used ?? it?.quantity ?? 1,
           unit_price: it?.unit_price ?? it?.price ?? 0,
           // Add new per-line-item scheduling fields
@@ -741,7 +746,10 @@ export async function getAllDeals() {
           }
         }
       } catch (preflightError) {
-        console.warn('[dealService:getAllDeals] Preflight probe failed, continuing:', preflightError)
+        console.warn(
+          '[dealService:getAllDeals] Preflight probe failed, continuing:',
+          preflightError
+        )
       }
     }
 
@@ -836,7 +844,9 @@ export async function getAllDeals() {
             continue
           }
         }
-        console.warn('[dealService:getAllDeals] Missing column detected, retrying if capability allows...')
+        console.warn(
+          '[dealService:getAllDeals] Missing column detected, retrying if capability allows...'
+        )
         if (lower.includes('job_parts') && lower.includes('vendor_id')) {
           if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
             console.warn(
@@ -1294,16 +1304,40 @@ export async function createDeal(formState) {
       if (rows?.length > 0) {
         const { error: partsErr } = await supabase?.from('job_parts')?.insert(rows)
         if (partsErr) {
-          // If error is due to missing scheduled_* columns, retry without them
           if (isMissingColumnError(partsErr)) {
-            console.warn(
-              '[dealService:create] Per-line time columns not available, retrying without them'
-            )
-            disableJobPartsTimeCapability()
-            // Retry insert without scheduled_* fields
-            const retryRows = toJobPartRows(job?.id, normalizedLineItems, { includeTimes: false })
-            const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
-            if (retryErr) throw retryErr
+            const lower = String(partsErr?.message || '').toLowerCase()
+            // Vendor column missing: disable capability and retry omitting vendor_id
+            if (lower.includes('job_parts') && lower.includes('vendor_id')) {
+              if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
+                console.warn(
+                  '[dealService:create] job_parts.vendor_id column missing; disabling capability and retrying without vendor_id'
+                )
+                disableJobPartsVendorIdCapability()
+                incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
+                const retryRows = toJobPartRows(job?.id, normalizedLineItems, {
+                  includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
+                })
+                const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
+                if (retryErr) throw retryErr
+              } else {
+                throw partsErr
+              }
+            }
+            // Per-line time columns missing: retry without them
+            else if (
+              lower.includes('job_parts') &&
+              (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
+            ) {
+              console.warn(
+                '[dealService:create] Per-line time columns not available, retrying without them'
+              )
+              disableJobPartsTimeCapability()
+              const retryRows = toJobPartRows(job?.id, normalizedLineItems, { includeTimes: false })
+              const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
+              if (retryErr) throw retryErr
+            } else {
+              throw partsErr
+            }
           } else {
             throw partsErr
           }
@@ -1531,16 +1565,38 @@ export async function updateDeal(id, formState) {
     if (rows?.length > 0) {
       const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)
       if (insErr) {
-        // If error is due to missing scheduled_* columns, retry without them
         if (isMissingColumnError(insErr)) {
-          console.warn(
-            '[dealService:update] Per-line time columns not available, retrying without them'
-          )
-          disableJobPartsTimeCapability()
-          // Retry insert without scheduled_* fields
-          const retryRows = toJobPartRows(id, normalizedLineItems, { includeTimes: false })
-          const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
-          if (retryErr) throw wrapDbError(retryErr, 'update line items')
+          const lower = String(insErr?.message || '').toLowerCase()
+          // If vendor_id missing on job_parts, disable capability and retry without vendor_id
+          if (lower.includes('job_parts') && lower.includes('vendor_id')) {
+            if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
+              console.warn(
+                '[dealService:update] job_parts.vendor_id column missing; disabling capability and retrying without vendor_id'
+              )
+              disableJobPartsVendorIdCapability()
+              incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
+              const retryRows = toJobPartRows(id, normalizedLineItems, {
+                includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
+              })
+              const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
+              if (retryErr) throw wrapDbError(retryErr, 'update line items')
+            } else {
+              throw wrapDbError(insErr, 'update line items')
+            }
+          } else if (
+            lower.includes('job_parts') &&
+            (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
+          ) {
+            console.warn(
+              '[dealService:update] Per-line time columns not available, retrying without them'
+            )
+            disableJobPartsTimeCapability()
+            const retryRows = toJobPartRows(id, normalizedLineItems, { includeTimes: false })
+            const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
+            if (retryErr) throw wrapDbError(retryErr, 'update line items')
+          } else {
+            throw wrapDbError(insErr, 'update line items')
+          }
         } else {
           throw wrapDbError(insErr, 'update line items')
         }
