@@ -1,22 +1,37 @@
 // src/utils/dealMappers.js
 // Converts a DB "deal" (jobs + job_parts) to your UI form state and vice-versa.
 
-export const EMPTY_LINE_ITEM = () => ({
-  id: null, // DB id (for edit-only visuals)
-  productId: null,
-  vendorId: null,
-  unitPrice: 0,
-  notes: '',
-  isOffSite: false, // maps to is_off_site
-  needsLoaner: false,
-  promisedDate: '', // yyyy-MM-dd string for inputs
-  requiresScheduling: true, // maps to requires_scheduling
-  noScheduleReason: '', // maps to no_schedule_reason
-  quantity: 1,
-  _saved: false, // optional UI flag
-})
+import { getCapabilities } from '../services/dealService'
+
+export const EMPTY_LINE_ITEM = () => {
+  const capabilities = getCapabilities()
+  const baseItem = {
+    id: null, // DB id (for edit-only visuals)
+    productId: null,
+    vendorId: null,
+    unitPrice: 0,
+    notes: '',
+    isOffSite: false, // maps to is_off_site
+    needsLoaner: false,
+    promisedDate: '', // yyyy-MM-dd string for inputs
+    requiresScheduling: true, // maps to requires_scheduling
+    noScheduleReason: '', // maps to no_schedule_reason
+    quantity: 1,
+    _saved: false, // optional UI flag
+  }
+
+  // Conditionally add scheduled time fields if capability available
+  if (capabilities.jobPartsHasTimes) {
+    baseItem.scheduledStartTime = '' // ISO timestamp string
+    baseItem.scheduledEndTime = '' // ISO timestamp string
+  }
+
+  return baseItem
+}
 
 export function dealToFormState(deal) {
+  const capabilities = getCapabilities()
+
   if (!deal) {
     return {
       title: '',
@@ -29,20 +44,30 @@ export function dealToFormState(deal) {
     }
   }
 
-  const lineItems = (deal?.job_parts || [])?.map((p) => ({
-    id: p?.id ?? null,
-    productId: p?.product_id ?? null,
-    vendorId: p?.vendor_id ?? p?.product?.vendor_id ?? null, // Fallback to product.vendor_id
-    unitPrice: num(p?.unit_price),
-    notes: p?.notes ?? '',
-    isOffSite: !!p?.is_off_site, // ✅ Fixed: use correct column name
-    needsLoaner: false,
-    promisedDate: toYMD(p?.promised_date),
-    requiresScheduling: !!p?.requires_scheduling, // ✅ Fixed: use correct column name
-    noScheduleReason: p?.no_schedule_reason || '', // ✅ Fixed: use correct column name
-    quantity: p?.quantity_used ?? 1,
-    _saved: true,
-  }))
+  const lineItems = (deal?.job_parts || [])?.map((p) => {
+    const item = {
+      id: p?.id ?? null,
+      productId: p?.product_id ?? null,
+      vendorId: p?.vendor_id ?? p?.product?.vendor_id ?? null, // Fallback to product.vendor_id
+      unitPrice: num(p?.unit_price),
+      notes: p?.notes ?? '',
+      isOffSite: !!p?.is_off_site, // ✅ Fixed: use correct column name
+      needsLoaner: false,
+      promisedDate: toYMD(p?.promised_date),
+      requiresScheduling: !!p?.requires_scheduling, // ✅ Fixed: use correct column name
+      noScheduleReason: p?.no_schedule_reason || '', // ✅ Fixed: use correct column name
+      quantity: p?.quantity_used ?? 1,
+      _saved: true,
+    }
+
+    // Conditionally add scheduled time fields if capability available
+    if (capabilities.jobPartsHasTimes) {
+      item.scheduledStartTime = p?.scheduled_start_time || ''
+      item.scheduledEndTime = p?.scheduled_end_time || ''
+    }
+
+    return item
+  })
 
   return {
     id: deal?.id,

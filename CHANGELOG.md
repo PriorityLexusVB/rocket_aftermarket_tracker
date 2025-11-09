@@ -1,5 +1,83 @@
 # Changelog - Calendar-First Aftermarket Tracker
 
+## [2025-11-09] Job Parts Scheduling & Vendor Capability Hardening
+
+### Added
+
+- **Capability Detection Infrastructure**:
+  - Schema preflight probe in `dealService.getAllDeals()` to detect missing columns before main query
+  - `capabilityTelemetry.js` utility for tracking fallback events with 5 telemetry counters
+  - Enhanced `schemaErrorClassifier.js` with migration ID mapping and remediation guidance
+  - Automatic capability flag management in sessionStorage
+
+- **Health Check Endpoints**:
+  - `/api/health/job-parts-times` - Verifies scheduled_start_time/scheduled_end_time columns
+  - `/api/health/deals-rel` - Enhanced with vendor_id column check and FK verification
+  - `/api/health/capabilities` - Reports all capability flags and probe results
+  - `/api/admin/reload-schema` - Admin-only endpoint to trigger PostgREST schema cache reload
+
+- **Conditional UI Features**:
+  - `ExportButton.jsx` - Conditionally includes scheduled_* columns based on capabilities
+  - `dealMappers.js` - Conditionally includes scheduled_* fields in form state
+  - EMPTY_LINE_ITEM() function respects capability flags
+
+- **Documentation & Tests**:
+  - `RUNBOOK_migration_repair_job_parts_times_vendor.md` - Comprehensive operational runbook
+  - `docs/IMPLEMENTATION_SUMMARY.md` - Complete field mapping table and architecture guide
+  - `migration.verification.test.js` - 35 tests verifying migration file contents
+  - `capabilityTelemetry.test.js` - 19 tests for telemetry functionality
+  - Enhanced `schemaErrorClassifier.test.js` for new error codes
+
+### Enhanced
+
+- **Error Classification**:
+  - Added specific error codes: `MISSING_JOB_PARTS_SCHEDULED_TIMES`, `MISSING_JOB_PARTS_VENDOR_ID`, `MISSING_JOB_PARTS_VENDOR_RELATIONSHIP`
+  - `getRemediationGuidance()` function maps errors to specific migration files
+  - `extractColumnName()` helper for precise error diagnosis
+
+- **Telemetry Tracking**:
+  - Integrated telemetry tracking in all dealService fallback paths
+  - `getAllTelemetry()` provides complete counter snapshot
+  - `getTelemetrySummary()` includes timestamp and session status
+
+### Fixed
+
+- **Graceful Degradation**:
+  - Prevents 400 errors on initial page load when scheduled_* columns missing
+  - Handles missing vendor_id column gracefully
+  - Handles missing vendor relationship without breaking page load
+  - Automatic capability flag adjustment based on actual schema state
+
+### Migration Support
+
+- **Related Migrations**:
+  - `20250116000000_add_line_item_scheduling_fields.sql` - Base scheduling fields
+  - `20250117000000_add_job_parts_scheduling_times.sql` - Time windows (preflight checked)
+  - `20251106000000_add_job_parts_vendor_id.sql` - Vendor ID column (preflight checked)
+  - `20251107093000_verify_job_parts_vendor_fk.sql` - FK verification
+
+### Performance
+
+- Preflight probe adds ~10-50ms to first `getAllDeals()` call
+- Cached after first probe - no repeated overhead in same session
+- No impact on fully migrated environments (probe succeeds immediately)
+
+### Security
+
+- Admin reload-schema endpoint requires authentication and `is_admin` flag
+- Health endpoints are public (read-only diagnostics)
+- No sensitive data exposed in telemetry
+
+### Test Summary
+
+- **New Tests**: 54 tests added
+  - Migration verification: 35 tests
+  - Capability telemetry: 19 tests
+- **Fixed Tests**: Updated dealService capability fallback tests for new preflight behavior
+- **All Tests Passing**: 421 total tests (419 passed, 2 skipped)
+
+---
+
 ## [2025-11-08] RLS Hardening Remediation - Gap Closure
 
 ### Added

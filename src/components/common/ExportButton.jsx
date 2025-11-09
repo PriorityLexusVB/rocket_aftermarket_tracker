@@ -4,6 +4,7 @@ import Button from '../ui/Button'
 import Select from '../ui/Select'
 import { advancedFeaturesService } from '../../services/advancedFeaturesService'
 import { useAuth } from '../../contexts/AuthContext'
+import { getCapabilities } from '../../services/dealService'
 
 const ExportButton = ({
   exportType, // 'jobs', 'vehicles', 'vendors', 'transactions'
@@ -46,6 +47,9 @@ const ExportButton = ({
   const exportData = async () => {
     try {
       setIsExporting(true)
+
+      // Check capabilities for conditional field inclusion
+      const capabilities = getCapabilities()
 
       // Get data from service instead of undefined generateExportData
       const result = await advancedFeaturesService?.exportData(
@@ -94,7 +98,7 @@ const ExportButton = ({
           })?.format(num)
         }
 
-        return {
+        const baseExport = {
           // Core identification
           Stock: safeValue(row?.vehicle?.stock_number),
           Customer: safeValue(row?.customer_name),
@@ -148,6 +152,14 @@ const ExportButton = ({
           // Vendor information
           Vendor: safeValue(row?.vendor?.name),
         }
+
+        // Conditionally add scheduled times fields if capability available
+        if (capabilities.jobPartsHasTimes && exportType === 'jobs') {
+          baseExport.ScheduledStart = safeValue(row?.scheduled_start_time)
+          baseExport.ScheduledEnd = safeValue(row?.scheduled_end_time)
+        }
+
+        return baseExport
       })
 
       // Generate filename with timestamp

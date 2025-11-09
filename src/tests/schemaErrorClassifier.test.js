@@ -27,7 +27,11 @@ describe('schemaErrorClassifier', () => {
       )
       const error2 = new Error('relationship between tables not found in schema cache')
 
-      expect(classifySchemaError(error1)).toBe(SchemaErrorCode.MISSING_FK)
+      // error1 should be classified as the specific job_parts->vendors relationship error
+      expect(classifySchemaError(error1)).toBe(
+        SchemaErrorCode.MISSING_JOB_PARTS_VENDOR_RELATIONSHIP
+      )
+      // error2 is a generic relationship error (no job_parts/vendors mention)
       expect(classifySchemaError(error2)).toBe(SchemaErrorCode.MISSING_FK)
     })
 

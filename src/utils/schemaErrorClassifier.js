@@ -12,7 +12,31 @@ export const SchemaErrorCode = {
   MISSING_PROFILE_NAME: 'MISSING_PROFILE_NAME',
   MISSING_PROFILE_FULL_NAME: 'MISSING_PROFILE_FULL_NAME',
   MISSING_PROFILE_DISPLAY_NAME: 'MISSING_PROFILE_DISPLAY_NAME',
+  MISSING_JOB_PARTS_SCHEDULED_TIMES: 'MISSING_JOB_PARTS_SCHEDULED_TIMES',
+  MISSING_JOB_PARTS_VENDOR_ID: 'MISSING_JOB_PARTS_VENDOR_ID',
+  MISSING_JOB_PARTS_VENDOR_RELATIONSHIP: 'MISSING_JOB_PARTS_VENDOR_RELATIONSHIP',
   GENERIC: 'GENERIC',
+}
+
+/**
+ * Migration ID mappings for specific schema issues
+ */
+export const MigrationMapping = {
+  [SchemaErrorCode.MISSING_JOB_PARTS_SCHEDULED_TIMES]: {
+    migrationId: '20250117000000',
+    fileName: '20250117000000_add_job_parts_scheduling_times.sql',
+    description: 'Adds scheduled_start_time and scheduled_end_time columns to job_parts',
+  },
+  [SchemaErrorCode.MISSING_JOB_PARTS_VENDOR_ID]: {
+    migrationId: '20251106000000',
+    fileName: '20251106000000_add_job_parts_vendor_id.sql',
+    description: 'Adds vendor_id column to job_parts with FK to vendors',
+  },
+  [SchemaErrorCode.MISSING_JOB_PARTS_VENDOR_RELATIONSHIP]: {
+    migrationId: '20251107093000',
+    fileName: '20251107093000_verify_job_parts_vendor_fk.sql',
+    description: 'Verifies and creates FK relationship between job_parts and vendors',
+  },
 }
 
 /**
@@ -27,6 +51,13 @@ export function classifySchemaError(error) {
   // PostgREST: "column \"xyz\" does not exist"
   // Supabase: "PGRST...column"
   if (/column .* does not exist/i.test(msg) || /pgrst.*column/i.test(msg)) {
+    // Specialized job_parts columns
+    if (/job_parts/i.test(msg) && /scheduled_(start|end)_time/i.test(msg)) {
+      return SchemaErrorCode.MISSING_JOB_PARTS_SCHEDULED_TIMES
+    }
+    if (/job_parts/i.test(msg) && /vendor_id/i.test(msg)) {
+      return SchemaErrorCode.MISSING_JOB_PARTS_VENDOR_ID
+    }
     // Specialized user_profiles columns
     if (/user_profiles.*\bname\b/i.test(msg) && !/full_name|display_name/i.test(msg)) {
       return SchemaErrorCode.MISSING_PROFILE_NAME
@@ -43,6 +74,10 @@ export function classifySchemaError(error) {
   // Check for missing relationship/FK errors
   // PostgREST: "Could not find a relationship between 'table1' and 'table2' in the schema cache"
   if (/could not find a relationship/i.test(msg) || /relationship.*schema cache/i.test(msg)) {
+    // Detect job_parts -> vendors relationship specifically
+    if (/job_parts/i.test(msg) && /vendors/i.test(msg)) {
+      return SchemaErrorCode.MISSING_JOB_PARTS_VENDOR_RELATIONSHIP
+    }
     return SchemaErrorCode.MISSING_FK
   }
 
@@ -97,4 +132,50 @@ export function isMissingRelationshipError(error) {
  */
 export function isStaleCacheError(error) {
   return classifySchemaError(error) === SchemaErrorCode.STALE_CACHE
+}
+
+/**
+ * Get remediation guidance for a schema error
+ * @param {Error|string} error - The error to get guidance for
+ * @returns {Object} - Remediation object with migration info and instructions
+ */
+export function getRemediationGuidance(error) {
+  const code = classifySchemaError(error)
+  const migration = MigrationMapping[code]
+
+  if (migration) {
+    return {
+      code,
+      migrationId: migration.migrationId,
+      migrationFile: migration.fileName,
+      description: migration.description,
+      instructions: [
+        `Apply migration: supabase/migrations/${migration.fileName}`,
+        `Run: NOTIFY pgrst, 'reload schema';`,
+        `Verify: Check health endpoint /api/health/capabilities`,
+      ],
+    }
+  }
+
+  // Generic guidance for unclassified errors
+  return {
+    code,
+    instructions: [
+      'Check database connectivity',
+      'Verify RLS policies are correct',
+      'Ensure all migrations are applied',
+      'Run: NOTIFY pgrst, \'reload schema\';',
+    ],
+  }
+}
+
+/**
+ * Extract specific column name from error message
+ * @param {Error|string} error
+ * @returns {string|null} - Column name or null
+ */
+export function extractColumnName(error) {
+  const msg = String(error?.message || error || '')
+  const match = msg.match(/column\s+"?(\w+)"?\s+does not exist/i)
+  return match ? match[1] : null
 }

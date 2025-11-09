@@ -197,12 +197,15 @@ function disableJobPartsVendorIdCapability() {
 }
 // (enable helper reserved for future positive detections)
 
-// Increment fallback telemetry counter
+// Import telemetry utility
+import {
+  incrementTelemetry,
+  TelemetryKey,
+} from '@/utils/capabilityTelemetry'
+
+// Increment fallback telemetry counter (legacy support)
 function incrementFallbackTelemetry() {
-  if (typeof sessionStorage !== 'undefined') {
-    const current = parseInt(sessionStorage.getItem('telemetry_vendorFallback') || '0', 10)
-    sessionStorage.setItem('telemetry_vendorFallback', String(current + 1))
-  }
+  incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
 }
 
 // --- Capability detection for user_profiles.name column ---------------------
@@ -700,8 +703,48 @@ async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, or
 // ✅ FIXED: Updated getAllDeals to remove SQL RPC dependency and use direct queries
 // ✅ UPDATED: Added fallback for missing per-line time columns
 // ✅ ENHANCED: Added fallback for missing vendor relationship
+// ✅ ENHANCED: Added schema preflight probe to detect missing columns before main query
 export async function getAllDeals() {
   try {
+    // STEP 1: Schema preflight probe - detect missing columns BEFORE building main select
+    // This prevents initial 400 errors on environments missing scheduled_* or vendor_id
+    if (JOB_PARTS_HAS_PER_LINE_TIMES || JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
+      try {
+        const probeFields = []
+        if (JOB_PARTS_HAS_PER_LINE_TIMES) {
+          probeFields.push('scheduled_start_time', 'scheduled_end_time')
+        }
+        if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
+          probeFields.push('vendor_id')
+        }
+
+        const { error: probeError } = await supabase
+          .from('job_parts')
+          .select(probeFields.join(', '))
+          .limit(1)
+
+        if (probeError && isMissingColumnError(probeError)) {
+          const msg = probeError.message.toLowerCase()
+          if (msg.includes('scheduled_start_time') || msg.includes('scheduled_end_time')) {
+            console.warn(
+              '[dealService:getAllDeals] Preflight: scheduled_* columns missing; disabling capability'
+            )
+            disableJobPartsTimeCapability()
+            incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
+          }
+          if (msg.includes('vendor_id')) {
+            console.warn(
+              '[dealService:getAllDeals] Preflight: vendor_id column missing; disabling capability'
+            )
+            disableJobPartsVendorIdCapability()
+            incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
+          }
+        }
+      } catch (preflightError) {
+        console.warn('[dealService:getAllDeals] Preflight probe failed, continuing:', preflightError)
+      }
+    }
+
     // Refresh vendor relationship capability from sessionStorage per invocation to avoid stale module state across tests
     if (typeof sessionStorage !== 'undefined') {
       const storedRel = sessionStorage.getItem('cap_jobPartsVendorRel')
@@ -789,6 +832,7 @@ export async function getAllDeals() {
               '[dealService:getAllDeals] job_parts scheduled_* columns missing; disabling per-line time capability and retrying...'
             )
             disableJobPartsTimeCapability()
+            incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
             continue
           }
         }
@@ -799,6 +843,7 @@ export async function getAllDeals() {
               '[dealService:getAllDeals] vendor_id column missing on job_parts; degrading capability'
             )
             disableJobPartsVendorIdCapability()
+            incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
             continue
           }
         }
@@ -809,6 +854,7 @@ export async function getAllDeals() {
         )
         disableJobPartsVendorRelCapability()
         incrementFallbackTelemetry()
+        incrementTelemetry(TelemetryKey.VENDOR_REL_FALLBACK)
         continue
       }
       // If we reach here and can't adjust further, break to throw
