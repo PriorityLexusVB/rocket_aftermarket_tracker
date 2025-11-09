@@ -2,7 +2,21 @@ import React from 'react'
 import { cn } from '../../utils/cn'
 
 const Button = React.forwardRef(
-  ({ className, variant = 'default', size = 'default', disabled, children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant = 'default',
+      size = 'default',
+      disabled,
+      children,
+      iconName,
+      iconPosition,
+      ...props
+    },
+    ref
+  ) => {
+    // Destructure iconName and iconPosition to prevent them from being forwarded to the DOM
+    // These props are used internally but should not appear as attributes on the <button> element
     return (
       <button
         ref={ref}
