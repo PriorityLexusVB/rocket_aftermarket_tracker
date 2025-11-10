@@ -193,17 +193,36 @@ const ExportButton = ({
   // Helper function to convert data to CSV with proper escaping
   const convertToCSV = (data) => {
     if (!data || data?.length === 0) return ''
-
     const headers = Object.keys(data?.[0])
+
+    // Build metadata row (prefixed with # to allow easy ignoring by parsers)
+    const capabilities = getCapabilities()
+    const omitted = []
+    if (!capabilities.jobPartsHasTimes && exportType === 'jobs')
+      omitted.push('scheduled_start_time, scheduled_end_time')
+    if (!capabilities.jobPartsVendorRel) omitted.push('vendor relationship join')
+    if (!capabilities.jobPartsVendorId) omitted.push('vendor_id column')
+
+    const metadata = {
+      version: (typeof import.meta !== 'undefined' && import.meta.env?.APP_VERSION) || '0.1.0',
+      generated_at: new Date().toISOString(),
+      export_type: exportType,
+      scope: exportScope,
+      total_rows: data.length,
+      omitted_capabilities: omitted.join('; ') || 'none',
+    }
+
+    const metadataLine = `# metadata: ${Object.entries(metadata)
+      .map(([k, v]) => `${k}=${String(v).replace(/,/g, ';')}`)
+      .join(',')}`
+
     const csvRows = [
-      // Header row
+      metadataLine,
       headers?.map((header) => `"${header}"`)?.join(','),
-      // Data rows
       ...data?.map((row) =>
         headers
           ?.map((header) => {
             const value = row?.[header]
-            // Escape quotes and wrap in quotes
             const escapedValue = String(value || '')?.replace(/"/g, '""')
             return `"${escapedValue}"`
           })

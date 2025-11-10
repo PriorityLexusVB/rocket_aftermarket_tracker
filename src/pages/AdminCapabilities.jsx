@@ -1,11 +1,12 @@
 // src/pages/AdminCapabilities.jsx
 // Admin page for viewing and resetting capability flags
 import { useState, useEffect } from 'react'
-import { getAllTelemetry, resetAllTelemetry, exportTelemetry, importTelemetry } from '@/utils/capabilityTelemetry'
+import { getAllTelemetry, resetAllTelemetry, exportTelemetry, importTelemetry, getTelemetrySummary } from '@/utils/capabilityTelemetry'
 import { getLogs, getLogStats, clearLogs, exportLogs } from '@/utils/structuredLogger'
 
 export default function AdminCapabilities() {
   const [telemetry, setTelemetry] = useState({})
+  const [telemetrySummary, setTelemetrySummary] = useState(null)
   const [capabilities, setCapabilities] = useState({})
   const [logs, setLogs] = useState([])
   const [logStats, setLogStats] = useState({})
@@ -19,6 +20,8 @@ export default function AdminCapabilities() {
   const loadData = () => {
     // Load telemetry
     setTelemetry(getAllTelemetry())
+    // Load telemetry summary for metadata
+    setTelemetrySummary(getTelemetrySummary())
 
     // Load capability flags
     if (typeof sessionStorage !== 'undefined') {
@@ -160,6 +163,38 @@ export default function AdminCapabilities() {
               </button>
             </div>
           </div>
+          
+          {/* Telemetry Meta Box */}
+          {telemetrySummary && telemetrySummary.sessionActive && (
+            <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-2">
+                Telemetry Meta
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div>
+                  <span className="text-blue-700 font-medium">Storage:</span>{' '}
+                  <span className="text-blue-900">{telemetrySummary.storageType}</span>
+                </div>
+                <div>
+                  <span className="text-blue-700 font-medium">Last Reset:</span>{' '}
+                  <span className="text-blue-900">
+                    {telemetrySummary.lastResetAt 
+                      ? new Date(telemetrySummary.lastResetAt).toLocaleString()
+                      : 'Never'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-700 font-medium">Time Since Reset:</span>{' '}
+                  <span className="text-blue-900">
+                    {telemetrySummary.secondsSinceReset !== null
+                      ? `${Math.floor(telemetrySummary.secondsSinceReset / 60)}m ${telemetrySummary.secondsSinceReset % 60}s`
+                      : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
             {Object.entries(telemetry).map(([key, value]) => (
               <div key={key} className="rounded border border-gray-200 p-4">

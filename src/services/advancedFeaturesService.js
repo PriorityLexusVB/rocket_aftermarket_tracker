@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { getCapabilities } from '@/services/dealService'
 
 // Utility functions for safe data handling
 const safeNumber = (value, defaultValue = 0) => {
@@ -224,6 +225,26 @@ export const advancedFeaturesService = {
       }
 
       let csvContent = ''
+
+      // Optional metadata header for diagnostics and auditability
+      try {
+        const caps = getCapabilities?.() || {}
+        const omitted = []
+        if (caps.jobPartsHasTimes === false) omitted.push('scheduled_times')
+        if (caps.jobPartsVendorRel === false) omitted.push('vendor_relationship')
+        if (caps.jobPartsVendorId === false) omitted.push('vendor_id')
+        const metadata = {
+          generated_at: new Date().toISOString(),
+          mode: (typeof import.meta !== 'undefined' && import.meta.env?.MODE) || 'unknown',
+          omitted_capabilities: omitted.join('; ') || 'none',
+        }
+        csvContent +=
+          `# metadata: ${Object.entries(metadata)
+            .map(([k, v]) => `${k}=${String(v).replace(/,/g, ';')}`)
+            .join(',')}` + '\n'
+      } catch (_e) {
+        // Non-fatal if capabilities or env not available
+      }
 
       // Add headers
       if (headers) {

@@ -33,10 +33,14 @@ export default async function handler(req, res) {
         status: 'ok',
       })
     } else {
+      const hint = scheduledStartError.message?.includes('column')
+        ? 'Column missing. If recently migrated, trigger Admin > Reload Schema Cache.'
+        : undefined
       probeResults.checks.push({
         name: 'job_parts_scheduled_times',
         status: 'unavailable',
         error: scheduledStartError.message,
+        hint,
       })
     }
 
@@ -53,10 +57,14 @@ export default async function handler(req, res) {
         status: 'ok',
       })
     } else {
+      const hint = vendorIdError.message?.includes('column')
+        ? 'Column missing. If recently migrated, trigger Admin > Reload Schema Cache.'
+        : undefined
       probeResults.checks.push({
         name: 'job_parts_vendor_id',
         status: 'unavailable',
         error: vendorIdError.message,
+        hint,
       })
     }
 
@@ -73,10 +81,14 @@ export default async function handler(req, res) {
         status: 'ok',
       })
     } else {
+      const hint = vendorRelError.message?.toLowerCase?.().includes('relation')
+        ? 'Relationship missing. If recently migrated, trigger Admin > Reload Schema Cache.'
+        : undefined
       probeResults.checks.push({
         name: 'job_parts_vendor_relationship',
         status: 'unavailable',
         error: vendorRelError.message,
+        hint,
       })
     }
 
@@ -93,10 +105,14 @@ export default async function handler(req, res) {
         status: 'ok',
       })
     } else {
+      const hint = userProfileNameError.message?.includes('column')
+        ? 'Column missing. If recently migrated, trigger Admin > Reload Schema Cache.'
+        : undefined
       probeResults.checks.push({
         name: 'user_profiles_name',
         status: 'unavailable',
         error: userProfileNameError.message,
+        hint,
       })
     }
 

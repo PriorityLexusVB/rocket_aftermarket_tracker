@@ -14,6 +14,9 @@ export const TelemetryKey = {
   RLS_LOANER_DENIED: 'telemetry_rlsLoanerDenied',
 }
 
+// Separate key for tracking the last time all telemetry was reset
+const LAST_RESET_AT_KEY = 'telemetry_lastResetAt'
+
 /**
  * Storage preference - checks availability and falls back gracefully
  * @returns {Storage | null} Available storage or null
@@ -112,6 +115,12 @@ export function resetTelemetry(key) {
  */
 export function resetAllTelemetry() {
   Object.values(TelemetryKey).forEach((key) => resetTelemetry(key))
+  const storage = getAvailableStorage()
+  try {
+    storage?.setItem(LAST_RESET_AT_KEY, new Date().toISOString())
+  } catch (e) {
+    // non-fatal
+  }
 }
 
 /**
@@ -120,11 +129,32 @@ export function resetAllTelemetry() {
  */
 export function getTelemetrySummary() {
   const storage = getAvailableStorage()
+  let lastResetAt = null
+  try {
+    lastResetAt = storage?.getItem(LAST_RESET_AT_KEY) || null
+  } catch (_e) {
+    lastResetAt = null
+  }
+  const now = new Date()
+  let secondsSinceReset = null
+  if (lastResetAt) {
+    const resetDate = new Date(lastResetAt)
+    if (!isNaN(resetDate.getTime())) {
+      secondsSinceReset = Math.floor((now.getTime() - resetDate.getTime()) / 1000)
+    }
+  }
   return {
-    timestamp: new Date().toISOString(),
+    timestamp: now.toISOString(),
     counters: getAllTelemetry(),
     sessionActive: storage !== null,
-    storageType: storage === sessionStorage ? 'sessionStorage' : storage === localStorage ? 'localStorage' : 'none',
+    storageType:
+      storage === sessionStorage
+        ? 'sessionStorage'
+        : storage === localStorage
+          ? 'localStorage'
+          : 'none',
+    lastResetAt,
+    secondsSinceReset,
   }
 }
 

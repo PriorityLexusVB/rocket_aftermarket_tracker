@@ -134,6 +134,17 @@ describe('Enhanced Telemetry Features', () => {
       const summary = getTelemetrySummary()
       expect(typeof summary.sessionActive).toBe('boolean')
     })
+
+    it('should track lastResetAt after full reset', () => {
+      resetAllTelemetry()
+      const summary = getTelemetrySummary()
+      // lastResetAt may be null if storage not available; only assert when storage is present
+      if (summary.sessionActive) {
+        expect(summary.lastResetAt).toBeTruthy()
+        expect(typeof summary.secondsSinceReset === 'number').toBe(true)
+        expect(summary.secondsSinceReset).toBeGreaterThanOrEqual(0)
+      }
+    })
   })
 
   describe('localStorage fallback', () => {
