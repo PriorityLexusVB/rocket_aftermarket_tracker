@@ -1,0 +1,43 @@
+{
+  "timestamp": "2025-11-10T22:55:00Z",
+  "table": "job_parts",
+  "source": "Code inspection and tenant scoping patterns",
+  "expected_policies": [
+    {
+      "name": "select_job_parts_by_org",
+      "type": "SELECT",
+      "description": "Allow users to select job_parts from their organization",
+      "pattern": "USING clause checks org_id via user_profiles or parent job org_id"
+    },
+    {
+      "name": "insert_job_parts_by_org",
+      "type": "INSERT",
+      "description": "Allow users to insert job_parts for jobs in their organization",
+      "pattern": "WITH CHECK validates parent job.org_id matches user's org_id"
+    },
+    {
+      "name": "update_job_parts_by_org",
+      "type": "UPDATE",
+      "description": "Allow users to update job_parts in their organization",
+      "pattern": "USING and WITH CHECK validate org_id through job relationship"
+    }
+  ],
+  "relationships": [
+    {
+      "column": "job_id",
+      "references": "jobs(id)",
+      "purpose": "Parent job relationship"
+    },
+    {
+      "column": "product_id",
+      "references": "products(id)",
+      "purpose": "Product catalog reference"
+    },
+    {
+      "column": "vendor_id",
+      "references": "vendors(id)",
+      "purpose": "Per-line-item vendor assignment",
+      "importance": "Critical for Calendar vendor lane assignment"
+    }
+  ]
+}

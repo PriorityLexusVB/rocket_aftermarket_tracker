@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-11-10T22:55:00Z",
+  "source": "Simulated based on api/health-loaner-assignments.js",
+  "endpoint": "/api/health-loaner-assignments",
+  "expected_result": {
+    "ok": true,
+    "classification": "ok",
+    "rowsChecked": 1,
+    "ms": 52
+  },
+  "potential_failure": {
+    "ok": false,
+    "classification": "rls_denied",
+    "rlsDenied": true,
+    "error": "permission denied for table loaner_assignments",
+    "remediation": [
+      "Add SELECT RLS policy granting authenticated role access to loaner_assignments",
+      "create policy \"auth_read_loaner_assignments\"\non public.loaner_assignments for select\nto authenticated\nusing (true);"
+    ]
+  },
+  "purpose": "Verify RLS policies allow SELECT on loaner_assignments"
+}

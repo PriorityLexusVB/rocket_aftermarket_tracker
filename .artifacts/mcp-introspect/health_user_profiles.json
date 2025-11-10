@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-11-10T22:55:00Z",
+  "source": "Simulated based on api/health-user-profiles.js",
+  "endpoint": "/api/health-user-profiles",
+  "expected_result": {
+    "ok": true,
+    "classification": "ok",
+    "columns": {
+      "name": true,
+      "full_name": true,
+      "display_name": true
+    },
+    "ms": 45
+  },
+  "purpose": "Verify user_profiles has display name columns for proper name resolution",
+  "dependency": "userProfileName.js utility functions rely on these columns"
+}

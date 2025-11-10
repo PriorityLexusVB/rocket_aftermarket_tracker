@@ -1,0 +1,23 @@
+{
+  "timestamp": "2025-11-10T22:55:00Z",
+  "source": "Simulated based on api/health-indexes.js",
+  "endpoint": "/api/health-indexes",
+  "expected_result": {
+    "ok": true,
+    "columnsOk": true,
+    "expectedIndexes": [
+      "idx_job_parts_scheduled_start_time",
+      "idx_job_parts_scheduled_end_time",
+      "idx_job_parts_vendor_id"
+    ],
+    "verification": "Direct pg_indexes introspection is not available via PostgREST; use psql or MCP execute_sql to confirm.",
+    "remediation": [
+      "create index concurrently if not exists idx_job_parts_scheduled_start_time on public.job_parts(scheduled_start_time);",
+      "create index concurrently if not exists idx_job_parts_scheduled_end_time on public.job_parts(scheduled_end_time);",
+      "create index concurrently if not exists idx_job_parts_vendor_id on public.job_parts(vendor_id);"
+    ],
+    "ms": 38
+  },
+  "purpose": "Verify performance indexes exist on job_parts for calendar queries",
+  "reference": "See PERFORMANCE_INDEXES.md for full index plan"
+}

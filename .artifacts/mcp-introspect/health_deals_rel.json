@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-11-10T22:55:00Z",
+  "source": "Simulated based on api/health-deals-rel.js",
+  "endpoint": "/api/health-deals-rel",
+  "expected_result": {
+    "ok": true,
+    "classification": "ok",
+    "hasColumn": true,
+    "hasFk": true,
+    "fkName": "job_parts_vendor_id_fkey",
+    "cacheRecognized": true,
+    "restQueryOk": true,
+    "rowsChecked": 1,
+    "ms": 68
+  },
+  "potential_failures": [
+    {
+      "classification": "missing_fk",
+      "error": "Could not find a relationship between job_parts and vendor",
+      "advice": "Add FK & NOTIFY pgrst to reload schema"
+    },
+    {
+      "classification": "missing_column",
+      "error": "column \"vendor_id\" does not exist",
+      "advice": "Add vendor_id column to job_parts"
+    },
+    {
+      "classification": "stale_cache",
+      "error": "Could not find a relationship...",
+      "advice": "NOTIFY pgrst, 'reload schema'"
+    }
+  ],
+  "purpose": "Verify jobs -> job_parts -> vendors relationship expansion works in PostgREST",
+  "reference": "See docs/MCP-NOTES.md for stale cache remediation"
+}
