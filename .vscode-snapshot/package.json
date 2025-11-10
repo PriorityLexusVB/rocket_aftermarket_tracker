@@ -1,0 +1,136 @@
+{
+  "name": "rocket-aftermarket-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "rocketCritical": {
+    "dependencies": [
+      "@dhiwise/component-tagger",
+      "react",
+      "react-dom",
+      "@reduxjs/toolkit",
+      "redux",
+      "react-router-dom"
+    ],
+    "devDependencies": [
+      "@vitejs/plugin-react",
+      "vite",
+      "vite-tsconfig-paths",
+      "tailwindcss",
+      "autoprefixer",
+      "postcss"
+    ],
+    "scripts": [
+      "start",
+      "build",
+      "serve"
+    ],
+    "warning": "🚨 CRITICAL: DO NOT REMOVE OR MODIFY ABOVE DEPENDENCIES - Required for app functionality"
+  },
+  "dependencies": {
+    "@dhiwise/component-tagger": "^1.0.10",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@reduxjs/toolkit": "^2.6.1",
+    "@supabase/supabase-js": "^2.74.0",
+    "@tanstack/react-query": "^5.90.3",
+    "@testing-library/jest-dom": "^5.15.1",
+    "axios": "^1.8.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "d3": "^7.9.0",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^16.0.1",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.484.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-helmet": "^6.1.0",
+    "react-hook-form": "^7.55.0",
+    "react-router-dom": "6.0.2",
+    "react-router-hash-link": "^2.4.3",
+    "recharts": "^3.2.1",
+    "redux": "^5.0.1",
+    "supabase": "^2.53.6",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
+    "tailwindcss-elevation": "^2.0.0",
+    "tailwindcss-fluid-type": "^2.0.7"
+  },
+  "scripts": {
+    "dev": "vite",
+    "test": "vitest run",
+    "start": "vite",
+    "start:runner": "node scripts/runVite.js",
+    "build": "vite build --sourcemap",
+    "preview": "vite preview",
+    "serve": "vite preview",
+    "postinstall": "pnpm rebuild supabase",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --ext js,jsx,ts,tsx",
+    "typecheck": "tsc -p tsconfig.e2e.json --noEmit",
+    "dev:create-test-user": "node scripts/bootstrapTestUser.js",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:debug": "PWDEBUG=1 playwright test",
+    "db:push": "npx supabase@latest db push",
+    "db:audit": "npx supabase@latest db query ./scripts/sql/audit_security_surface.sql",
+    "db:seed-org": "npx supabase@latest db query ./scripts/attach_org.sql",
+    "db:seed-e2e": "node scripts/seedE2E.js"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@playwright/test": "^1.56.1",
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/line-clamp": "^0.1.0",
+    "@tailwindcss/typography": "^0.5.16",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.9.1",
+    "@types/testing-library__jest-dom": "^5.14.9",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
+    "@typescript-eslint/parser": "^8.46.3",
+    "@vitejs/plugin-react": "4.3.4",
+    "autoprefixer": "10.4.2",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "happy-dom": "^14.12.3",
+    "jsdom": "^27.0.1",
+    "pg": "^8.13.1",
+    "playwright": "^1.56.1",
+    "postcss": "8.4.8",
+    "prettier": "^3.6.2",
+    "prettier-plugin-tailwindcss": "^0.7.1",
+    "tailwindcss": "3.4.6",
+    "typescript": "^5.9.3",
+    "vite": "5.0.0",
+    "vite-tsconfig-paths": "3.6.0",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@10.15.0+sha512.486ebc259d3e999a4e8691ce03b5cac4a71cbeca39372a9b762cb500cfdf0873e2cb16abe3d951b1ee2cf012503f027b98b6584e4df22524e0c7450d9ec7aa7b"
+}
