@@ -114,13 +114,44 @@ function aggregateVendor(jobParts, jobLevelVendorName) {
   return jobLevelVendorName || 'Unassigned'
 }
 
+/**
+ * Map permission errors to friendly, actionable guidance.
+ * Specifically handles "permission denied for table users" which occurs when
+ * RLS policies incorrectly reference auth.users instead of public.user_profiles.
+ *
+ * @param {Error} err - The error from Supabase/PostgREST
+ * @throws {Error} - Throws a new error with friendly guidance if pattern matches, otherwise re-throws original
+ */
+function mapPermissionError(err) {
+  const msg = String(err?.message || '').toLowerCase()
+
+  // Pattern: "permission denied for table users" or "permission denied for relation users"
+  if (/permission denied for (table |relation )?users/i.test(msg)) {
+    throw new Error(
+      'Failed to save: RLS prevented update on auth.users. ' +
+        'Likely a policy references auth.users. ' +
+        'Remediation: NOTIFY pgrst, \'reload schema\' then retry; ' +
+        'update policy to reference public.user_profiles or tenant-scoped conditions. ' +
+        'See docs/MCP-NOTES.md and .artifacts/mcp-introspect/INTROSPECTION.md for details.'
+    )
+  }
+
+  // Re-throw original error if not a known permission pattern
+  throw err
+}
+
 // Helper: wrap common PostgREST permission errors with actionable guidance
+// This function uses mapPermissionError internally for consistency
 function wrapDbError(error, actionLabel = 'operation') {
   const raw = String(error?.message || error || '')
-  if (/permission denied for table users/i.test(raw)) {
-    return new Error(
-      `Failed to ${actionLabel}: permission denied while evaluating RLS (auth.users). Update policies to reference public.user_profiles instead of auth.users, or apply migration 20250107150001_fix_claims_rls_policies.sql.`
-    )
+  if (/permission denied for (table |relation )?users/i.test(raw)) {
+    // Use the new mapPermissionError for consistent messaging
+    try {
+      mapPermissionError(error)
+    } catch (mappedErr) {
+      // Prepend the action label
+      return new Error(`Failed to ${actionLabel}: ${mappedErr.message}`)
+    }
   }
   return new Error(`Failed to ${actionLabel}: ${error?.message || error}`)
 }
@@ -1790,4 +1821,4 @@ export const dealService = {
 
 export default dealService
 
-export { mapDbDealToForm, mapFormToDb }
+export { mapDbDealToForm, mapFormToDb, mapPermissionError }
