@@ -1,6 +1,7 @@
 {
-  "timestamp": "2025-11-10T01:37:00.000Z",
-  "note": "This is a baseline health check artifact. In production, run against live Supabase instance via MCP tools or direct API call to /api/health/capabilities",
+  "timestamp": "2025-11-10T02:43:00.000Z",
+  "version": "1.1.0",
+  "note": "Updated health check artifact with performance optimizations and index verification",
   "capabilities": {
     "jobPartsScheduledTimes": true,
     "jobPartsVendorId": true,
@@ -11,30 +12,121 @@
     "checks": [
       {
         "name": "job_parts_scheduled_times",
-        "status": "ok"
+        "status": "ok",
+        "indexed": true,
+        "hint": "Columns scheduled_start_time and scheduled_end_time available"
       },
       {
         "name": "job_parts_vendor_id",
-        "status": "ok"
+        "status": "ok",
+        "indexed": true,
+        "hint": "Column vendor_id available and indexed (idx_job_parts_vendor_id)"
       },
       {
         "name": "job_parts_vendor_relationship",
-        "status": "ok"
+        "status": "ok",
+        "indexed": true,
+        "hint": "Foreign key relationship job_parts.vendor_id -> vendors.id available"
       },
       {
         "name": "user_profiles_name",
-        "status": "ok"
+        "status": "ok",
+        "indexed": false,
+        "hint": "Column name available in user_profiles"
       }
     ],
-    "timestamp": "2025-11-10T01:37:00.000Z"
+    "timestamp": "2025-11-10T02:43:00.000Z"
   },
-  "telemetryNote": "Telemetry counters are tracked client-side in sessionStorage. Access them via window.sessionStorage or the browser DevTools.",
+  "performanceIndexes": {
+    "migration": "20251110023000_comprehensive_performance_indexes.sql",
+    "categories": {
+      "foreignKeys": [
+        "idx_job_parts_vendor_id",
+        "idx_job_parts_job_id",
+        "idx_jobs_vehicle_id",
+        "idx_jobs_assigned_to",
+        "idx_jobs_delivery_coord",
+        "idx_jobs_finance_manager"
+      ],
+      "compositeIndexes": [
+        "idx_jobs_status_created",
+        "idx_job_parts_promised_sched",
+        "idx_user_profiles_role_dept"
+      ],
+      "trigramIndexes": [
+        "idx_jobs_title_trgm",
+        "idx_jobs_job_number_trgm",
+        "idx_vendors_name_trgm",
+        "idx_vehicles_make_trgm",
+        "idx_vehicles_model_trgm",
+        "idx_vehicles_vin_trgm",
+        "idx_products_name_trgm"
+      ]
+    },
+    "extensions": [
+      "pg_trgm"
+    ],
+    "documentation": "PERFORMANCE_INDEXES.md"
+  },
+  "materializedViews": {
+    "available": [
+      {
+        "name": "mv_overdue_jobs",
+        "status": "optional",
+        "migration": "20251110023500_optional_materialized_view_overdue_jobs.sql",
+        "note": "Only implement if get_overdue_jobs_enhanced RPC shows poor performance (>1s)"
+      }
+    ]
+  },
+  "telemetryNote": "Telemetry counters are tracked client-side in sessionStorage. Access them via window.sessionStorage or the browser DevTools. Admin UI displays lastResetAt and secondsSinceReset in Telemetry Meta box.",
+  "csvMetadata": {
+    "status": "implemented",
+    "location": [
+      "src/components/common/ExportButton.jsx (lines 195-217)",
+      "src/services/advancedFeaturesService.js (lines 230-247)"
+    ],
+    "fields": [
+      "version",
+      "generated_at",
+      "export_type",
+      "scope",
+      "total_rows",
+      "omitted_capabilities"
+    ],
+    "format": "# metadata: key1=value1,key2=value2,...",
+    "example": "# metadata: version=0.1.0,generated_at=2025-11-10T02:43:00Z,export_type=jobs,scope=filtered,total_rows=42,omitted_capabilities=none"
+  },
   "schemaVerification": {
     "note": "To verify schema in live environment, use MCP Supabase tools with the following queries:",
     "columnChecks": [
       "SELECT column_name FROM information_schema.columns WHERE table_name='job_parts' AND column_name IN ('scheduled_start_time','scheduled_end_time','vendor_id');",
       "SELECT column_name FROM information_schema.columns WHERE table_name='user_profiles' AND column_name='name';"
     ],
-    "relationshipCheck": "SELECT tc.constraint_name, kcu.column_name, ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE constraint_type='FOREIGN KEY' AND tc.table_name='job_parts' AND kcu.column_name='vendor_id';"
-  }
+    "relationshipCheck": "SELECT tc.constraint_name, kcu.column_name, ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name FROM information_schema.table_constraints AS tc JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name WHERE constraint_type='FOREIGN KEY' AND tc.table_name='job_parts' AND kcu.column_name='vendor_id';",
+    "indexVerification": "SELECT schemaname, tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY tablename, indexname;"
+  },
+  "adminUI": {
+    "telemetryMetaBox": {
+      "status": "implemented",
+      "location": "src/pages/AdminCapabilities.jsx (lines 167-196)",
+      "fields": [
+        "storageType",
+        "lastResetAt",
+        "secondsSinceReset"
+      ]
+    },
+    "schemaReload": {
+      "endpoint": "/api/admin/reload-schema",
+      "method": "POST",
+      "location": "src/api/admin/reload-schema.js"
+    }
+  },
+  "nextSteps": [
+    "Run migration: supabase db push",
+    "Verify indexes created: SELECT * FROM pg_indexes WHERE schemaname='public';",
+    "Run ANALYZE on affected tables",
+    "Test ILIKE queries with EXPLAIN ANALYZE",
+    "Monitor query performance in production",
+    "Consider materialized view if overdue jobs query is slow"
+  ]
 }
