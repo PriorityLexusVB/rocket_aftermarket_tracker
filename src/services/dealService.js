@@ -1710,65 +1710,122 @@ export async function updateDealStatus(id, job_status) {
 }
 
 // ✅ ENHANCED: mapDbDealToForm implementation with proper customer data handling
+/**
+ * Normalize time/date fields to prevent "Invalid Date" issues.
+ * Rules:
+ * 1. Empty strings become null (not empty string)
+ * 2. Job scheduled_* fields preserved if explicitly set
+ * 3. Line item promised_date kept null if not requires_scheduling
+ * 4. No automatic derivation of job scheduled_* from line items (unless explicitly enabled)
+ *
+ * @param {Object} dbDeal - Raw deal from database
+ * @returns {Object} - Deal with normalized time fields
+ */
+function normalizeDealTimes(dbDeal) {
+  if (!dbDeal) return null
+
+  const normalized = { ...dbDeal }
+
+  // Normalize job-level scheduled times: empty string → null
+  if (normalized.scheduled_start_time === '') {
+    normalized.scheduled_start_time = null
+  }
+  if (normalized.scheduled_end_time === '') {
+    normalized.scheduled_end_time = null
+  }
+
+  // Normalize line items
+  if (normalized.job_parts && Array.isArray(normalized.job_parts)) {
+    normalized.job_parts = normalized.job_parts.map((part) => {
+      const normalizedPart = { ...part }
+
+      // If line item doesn't require scheduling, clear promised_date
+      if (!normalizedPart.requires_scheduling && normalizedPart.promised_date === '') {
+        normalizedPart.promised_date = null
+      }
+
+      // Normalize per-line scheduled times: empty string → null
+      if (normalizedPart.scheduled_start_time === '') {
+        normalizedPart.scheduled_start_time = null
+      }
+      if (normalizedPart.scheduled_end_time === '') {
+        normalizedPart.scheduled_end_time = null
+      }
+
+      // If promised_date is empty string, set to null
+      if (normalizedPart.promised_date === '') {
+        normalizedPart.promised_date = null
+      }
+
+      return normalizedPart
+    })
+  }
+
+  return normalized
+}
+
 function mapDbDealToForm(dbDeal) {
   if (!dbDeal) return null
+
+  // Normalize times first to prevent "Invalid Date" issues
+  const normalized = normalizeDealTimes(dbDeal)
 
   // Derive vehicle_description from title or vehicle fields
   // Priority: dbDeal.vehicle_description (if already computed) > derive using helper
   const vehicleDescription =
-    dbDeal?.vehicle_description || deriveVehicleDescription(dbDeal?.title, dbDeal?.vehicle)
+    normalized?.vehicle_description || deriveVehicleDescription(normalized?.title, normalized?.vehicle)
 
   return {
-    id: dbDeal?.id,
-    updated_at: dbDeal?.updated_at,
+    id: normalized?.id,
+    updated_at: normalized?.updated_at,
     // Deal date (local YYYY-MM-DD format)
     deal_date:
-      dbDeal?.deal_date ||
-      dbDeal?.created_at?.slice(0, 10) ||
+      normalized?.deal_date ||
+      normalized?.created_at?.slice(0, 10) ||
       new Date().toISOString().slice(0, 10),
-    job_number: dbDeal?.job_number || '',
-    title: dbDeal?.title || '',
+    job_number: normalized?.job_number || '',
+    title: normalized?.title || '',
     // Legacy: description kept for backward compatibility with old code
-    description: dbDeal?.description || '',
+    description: normalized?.description || '',
     // Map DB description to UI notes field (no jobs.notes column exists)
     // The UI displays "Notes" which reads/writes jobs.description
-    notes: dbDeal?.description || '',
+    notes: normalized?.description || '',
     vehicle_description: vehicleDescription,
     vehicleDescription: vehicleDescription,
-    stock_number: dbDeal?.stock_number || dbDeal?.vehicle?.stock_number || '',
-    stockNumber: dbDeal?.stock_number || dbDeal?.vehicle?.stock_number || '',
-    vendor_id: dbDeal?.vendor_id,
-    vehicle_id: dbDeal?.vehicle_id,
-    job_status: dbDeal?.job_status || 'pending',
-    priority: dbDeal?.priority || 'medium',
-    scheduled_start_time: dbDeal?.scheduled_start_time || '',
-    scheduled_end_time: dbDeal?.scheduled_end_time || '',
-    estimated_hours: dbDeal?.estimated_hours || '',
-    estimated_cost: dbDeal?.estimated_cost || '',
-    actual_cost: dbDeal?.actual_cost || '',
-    location: dbDeal?.location || '',
-    customer_needs_loaner: !!dbDeal?.customer_needs_loaner,
-    assigned_to: dbDeal?.assigned_to,
-    delivery_coordinator_id: dbDeal?.delivery_coordinator_id,
-    finance_manager_id: dbDeal?.finance_manager_id,
+    stock_number: normalized?.stock_number || normalized?.vehicle?.stock_number || '',
+    stockNumber: normalized?.stock_number || normalized?.vehicle?.stock_number || '',
+    vendor_id: normalized?.vendor_id,
+    vehicle_id: normalized?.vehicle_id,
+    job_status: normalized?.job_status || 'pending',
+    priority: normalized?.priority || 'medium',
+    scheduled_start_time: normalized?.scheduled_start_time || '',
+    scheduled_end_time: normalized?.scheduled_end_time || '',
+    estimated_hours: normalized?.estimated_hours || '',
+    estimated_cost: normalized?.estimated_cost || '',
+    actual_cost: normalized?.actual_cost || '',
+    location: normalized?.location || '',
+    customer_needs_loaner: !!normalized?.customer_needs_loaner,
+    assigned_to: normalized?.assigned_to,
+    delivery_coordinator_id: normalized?.delivery_coordinator_id,
+    finance_manager_id: normalized?.finance_manager_id,
     // ✅ ENHANCED: Include customer data from transactions
-    customer_name: dbDeal?.customer_name || '',
-    customerName: dbDeal?.customer_name || '',
-    customer_phone: dbDeal?.customer_phone || '',
-    customerPhone: dbDeal?.customer_phone || '',
-    customer_mobile: dbDeal?.customer_mobile || dbDeal?.customer_phone || '',
-    customerMobile: dbDeal?.customer_mobile || dbDeal?.customer_phone || '',
-    customer_email: dbDeal?.customer_email || '',
-    customerEmail: dbDeal?.customer_email || '',
+    customer_name: normalized?.customer_name || '',
+    customerName: normalized?.customer_name || '',
+    customer_phone: normalized?.customer_phone || '',
+    customerPhone: normalized?.customer_phone || '',
+    customer_mobile: normalized?.customer_mobile || normalized?.customer_phone || '',
+    customerMobile: normalized?.customer_mobile || normalized?.customer_phone || '',
+    customer_email: normalized?.customer_email || '',
+    customerEmail: normalized?.customer_email || '',
     // Loaner data
-    loaner_number: dbDeal?.loaner_number || '',
-    loanerNumber: dbDeal?.loaner_number || '',
+    loaner_number: normalized?.loaner_number || '',
+    loanerNumber: normalized?.loaner_number || '',
     // Preserve vehicle for header (stock number)
-    vehicle: dbDeal?.vehicle || null,
+    vehicle: normalized?.vehicle || null,
     // Line items in snake_case shape expected by the form/UI
-    lineItems: (dbDeal?.job_parts || [])?.map((part, index) => ({
+    lineItems: (normalized?.job_parts || [])?.map((part, index) => ({
       // Use existing ID or generate a stable temporary ID for new items
-      id: part?.id || `temp-${dbDeal?.id || 'new'}-${index}`,
+      id: part?.id || `temp-${normalized?.id || 'new'}-${index}`,
       product_id: part?.product_id,
       productId: part?.product_id,
       unit_price: part?.unit_price || 0,
@@ -1821,4 +1878,4 @@ export const dealService = {
 
 export default dealService
 
-export { mapDbDealToForm, mapFormToDb, mapPermissionError }
+export { mapDbDealToForm, mapFormToDb, mapPermissionError, normalizeDealTimes }
