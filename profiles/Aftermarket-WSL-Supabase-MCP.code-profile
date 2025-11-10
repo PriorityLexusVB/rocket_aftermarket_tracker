@@ -1,0 +1,21 @@
+{
+  "$schema": "vscode://schemas/profile",
+  "name": "Aftermarket-WSL-Supabase-MCP",
+  "settings": {
+    "editor.formatOnSave": true,
+    "files.eol": "\n",
+    "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+    "chat.mcp.access": "all"
+  },
+  "extensions": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "EditorConfig.EditorConfig",
+    "bradlc.vscode-tailwindcss",
+    "vitest.explorer",
+    "supabase.vscode-supabase",
+    "Prisma.prisma",
+    "github.copilot",
+    "github.copilot-chat"
+  ]
+}
