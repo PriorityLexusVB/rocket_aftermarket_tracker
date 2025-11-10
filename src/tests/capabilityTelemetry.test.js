@@ -152,6 +152,49 @@ describe('Capability Telemetry', () => {
       const timestamp = new Date(summary.timestamp)
       expect(timestamp.toString()).not.toBe('Invalid Date')
     })
+
+    it('should include lastResetAt and secondsSinceReset fields', () => {
+      const summary = getTelemetrySummary()
+      expect(summary).toHaveProperty('lastResetAt')
+      expect(summary).toHaveProperty('secondsSinceReset')
+    })
+
+    it('should have null lastResetAt before any reset', () => {
+      const summary = getTelemetrySummary()
+      expect(summary.lastResetAt).toBeNull()
+      expect(summary.secondsSinceReset).toBeNull()
+    })
+
+    it('should set lastResetAt timestamp after resetAllTelemetry', () => {
+      const beforeReset = Date.now()
+      resetAllTelemetry()
+      const summary = getTelemetrySummary()
+      
+      expect(summary.lastResetAt).not.toBeNull()
+      expect(typeof summary.lastResetAt).toBe('string')
+      
+      // Verify it's a valid ISO timestamp
+      const resetDate = new Date(summary.lastResetAt)
+      expect(resetDate.toString()).not.toBe('Invalid Date')
+      
+      // Verify the timestamp is recent (within last second)
+      expect(resetDate.getTime()).toBeGreaterThanOrEqual(beforeReset)
+      expect(resetDate.getTime()).toBeLessThanOrEqual(Date.now() + 1000)
+    })
+
+    it('should calculate secondsSinceReset correctly', () => {
+      resetAllTelemetry()
+      
+      // Get summary immediately
+      const summary = getTelemetrySummary()
+      
+      expect(summary.secondsSinceReset).not.toBeNull()
+      expect(typeof summary.secondsSinceReset).toBe('number')
+      
+      // Should be very recent (0-2 seconds to account for processing time)
+      expect(summary.secondsSinceReset).toBeGreaterThanOrEqual(0)
+      expect(summary.secondsSinceReset).toBeLessThan(3)
+    })
   })
 
   describe('TelemetryKey constants', () => {
