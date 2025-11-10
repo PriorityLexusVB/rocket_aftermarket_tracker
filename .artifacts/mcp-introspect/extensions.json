@@ -1,0 +1,24 @@
+{
+  "timestamp": "2025-11-10T22:55:00Z",
+  "source": "Code inspection - expected extensions",
+  "extensions": [
+    {
+      "name": "pg_trgm",
+      "purpose": "Trigram matching for fuzzy text search",
+      "status": "expected_present",
+      "verification_needed": true,
+      "usage": "Used for fuzzy search on customer names, vehicle descriptions"
+    },
+    {
+      "name": "uuid-ossp",
+      "purpose": "UUID generation",
+      "status": "expected_present"
+    },
+    {
+      "name": "pgjwt",
+      "purpose": "JWT token operations for Supabase",
+      "status": "expected_present"
+    }
+  ],
+  "recommendation": "Verify pg_trgm is enabled before creating trigram indexes"
+}

@@ -1,0 +1,39 @@
+{
+  "timestamp": "2025-11-10T22:55:00Z",
+  "table": "jobs",
+  "source": "Code inspection and docs/policies.md reference",
+  "expected_policies": [
+    {
+      "name": "select_jobs_by_org",
+      "type": "SELECT",
+      "description": "Allow users to select jobs from their organization",
+      "pattern": "USING clause checks org_id via user_profiles",
+      "potential_issue": "If policy references auth.users instead of user_profiles, will cause 'permission denied for table users'"
+    },
+    {
+      "name": "insert_jobs_by_org",
+      "type": "INSERT",
+      "description": "Allow users to insert jobs for their organization",
+      "pattern": "WITH CHECK clause validates NEW.org_id matches user's org_id"
+    },
+    {
+      "name": "update_jobs_by_org",
+      "type": "UPDATE",
+      "description": "Allow users to update jobs in their organization",
+      "pattern": "USING and WITH CHECK clauses validate org_id",
+      "common_error": "permission denied for table users - indicates RLS policy queries auth.users"
+    },
+    {
+      "name": "delete_jobs_by_org",
+      "type": "DELETE",
+      "description": "Allow users to delete jobs from their organization",
+      "pattern": "USING clause checks org_id"
+    }
+  ],
+  "rls_best_practices": [
+    "Always reference public.user_profiles, never auth.users in RLS policies",
+    "Use auth.uid() to get current user ID, then join to user_profiles",
+    "Include org_id in all tenant-scoped tables",
+    "Test policies with service role vs anon key to verify isolation"
+  ]
+}
