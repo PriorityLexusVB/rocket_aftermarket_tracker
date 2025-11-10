@@ -1,0 +1,5 @@
+# metadata: version=0.1.0,generated_at=2025-11-10T02:45:00.000Z,export_type=jobs,scope=filtered,total_rows=3,omitted_capabilities=none
+"Stock","Customer","Phone","Vehicle","Sales","Status","ServiceType","Loaner","NextPromised","Value","Vendor"
+"12345","John Doe","555-1234","2024 Honda Civic","Alice Smith","IN_PROGRESS","Off-Site","Yes","Jan 15, 2025","$3,500.00","Acme Auto Body"
+"67890","Jane Smith","555-5678","2023 Toyota Camry","Bob Johnson","PENDING","On-Site","No","Jan 20, 2025","$2,100.00","N/A"
+"11223","Mike Wilson","555-9012","2025 Ford F-150","Alice Smith","COMPLETED","Off-Site","Yes","","$5,250.00","Quality Paint Shop"
