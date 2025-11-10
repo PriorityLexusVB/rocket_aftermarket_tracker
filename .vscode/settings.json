@@ -13,6 +13,21 @@
     "node_modules": true
   },
   "editor.codeActions.triggerOnFocusChange": true,
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" },
+  "search.useIgnoreFiles": true,
+  "files.exclude": {
+    "**/.next": true,
+    "**/dist": true,
+    "**/.turbo": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.next/**": true
+  },
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.mcp.access": "all",
+  "chat.mcp.gallery.enabled": true,
+  "dev.containers.openRepositoryInContainer": "never",
   "cSpell.words": [
     "aftermarket",
     "PostgREST",
