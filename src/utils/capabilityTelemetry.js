@@ -147,7 +147,12 @@ export function getTelemetrySummary() {
     timestamp: now.toISOString(),
     counters: getAllTelemetry(),
     sessionActive: storage !== null,
-    storageType: storage === sessionStorage ? 'sessionStorage' : storage === localStorage ? 'localStorage' : 'none',
+    storageType:
+      storage === sessionStorage
+        ? 'sessionStorage'
+        : storage === localStorage
+          ? 'localStorage'
+          : 'none',
     lastResetAt,
     secondsSinceReset,
   }

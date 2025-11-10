@@ -238,9 +238,10 @@ export const advancedFeaturesService = {
           mode: (typeof import.meta !== 'undefined' && import.meta.env?.MODE) || 'unknown',
           omitted_capabilities: omitted.join('; ') || 'none',
         }
-        csvContent += `# metadata: ${Object.entries(metadata)
-          .map(([k, v]) => `${k}=${String(v).replace(/,/g, ';')}`)
-          .join(',')}` + '\n'
+        csvContent +=
+          `# metadata: ${Object.entries(metadata)
+            .map(([k, v]) => `${k}=${String(v).replace(/,/g, ';')}`)
+            .join(',')}` + '\n'
       } catch (_e) {
         // Non-fatal if capabilities or env not available
       }

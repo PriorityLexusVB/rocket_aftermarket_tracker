@@ -198,7 +198,8 @@ const ExportButton = ({
     // Build metadata row (prefixed with # to allow easy ignoring by parsers)
     const capabilities = getCapabilities()
     const omitted = []
-    if (!capabilities.jobPartsHasTimes && exportType === 'jobs') omitted.push('scheduled_start_time, scheduled_end_time')
+    if (!capabilities.jobPartsHasTimes && exportType === 'jobs')
+      omitted.push('scheduled_start_time, scheduled_end_time')
     if (!capabilities.jobPartsVendorRel) omitted.push('vendor relationship join')
     if (!capabilities.jobPartsVendorId) omitted.push('vendor_id column')
 
