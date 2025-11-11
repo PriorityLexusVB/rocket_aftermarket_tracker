@@ -576,6 +576,17 @@ export default function DealForm({
             // fallback: do nothing if mapping fails
             console.warn('Failed to map saved record to form:', e)
           }
+          // Optional: redirect to Agenda when feature flag enabled and scheduling set
+          try {
+            const agendaOn =
+              String(import.meta.env?.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
+            const hasSchedule = !!(
+              savedRecord?.scheduled_start_time || payload?.scheduled_start_time
+            )
+            if (agendaOn && hasSchedule && savedRecord?.id) {
+              navigate(`/calendar/agenda?focus=${encodeURIComponent(savedRecord.id)}`)
+            }
+          } catch (_) {}
         }
         await logFormSubmission?.(
           'DealForm',

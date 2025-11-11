@@ -19,6 +19,10 @@ const CurrentlyActiveAppointments = lazy(() => import('./pages/currently-active-
 
 // NEW: Calendar Flow Management Center
 const CalendarFlowManagementCenter = lazy(() => import('./pages/calendar-flow-management-center'))
+// Simple Agenda (feature-flagged)
+const SimpleAgendaEnabled =
+  String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
+const CalendarAgenda = SimpleAgendaEnabled ? lazy(() => import('./pages/calendar-agenda')) : null
 
 // NEW: Advanced Business Intelligence Analytics
 const AdvancedBusinessIntelligenceAnalytics = lazy(
@@ -113,6 +117,16 @@ const Routes = () => {
                     </ProtectedRoute>
                   }
                 />
+                {SimpleAgendaEnabled && (
+                  <Route
+                    path="/calendar/agenda"
+                    element={
+                      <ProtectedRoute>
+                        <CalendarAgenda />
+                      </ProtectedRoute>
+                    }
+                  />
+                )}
                 <Route
                   path="/currently-active-appointments"
                   element={
