@@ -5,24 +5,31 @@
  * @param {string|null|undefined} promiseDate - The promise date (YYYY-MM-DD format or ISO)
  * @returns {string} - Formatted date or "No promise date"
  */
+import { parse, parseISO, isValid as isValidDate, format as formatDate } from 'date-fns'
+
 export function formatPromiseDate(promiseDate) {
   if (!promiseDate || promiseDate === '') {
     return 'No promise date'
   }
 
   try {
-    const date = new Date(promiseDate)
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
+    let date
+    // If we have a plain date (YYYY-MM-DD), parse as a local date to avoid UTC shifts
+    if (typeof promiseDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(promiseDate)) {
+      date = parse(promiseDate, 'yyyy-MM-dd', new Date())
+    } else if (typeof promiseDate === 'string') {
+      // Otherwise, try ISO parse (keeps exact calendar day for ISO strings)
+      date = parseISO(promiseDate)
+    } else if (promiseDate instanceof Date) {
+      date = promiseDate
+    }
+
+    if (!date || !isValidDate(date)) {
       return 'No promise date'
     }
 
-    // Return formatted date (e.g., "Jan 15, 2025")
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    // Stable formatting independent of environment timezone
+    return formatDate(date, 'MMM d, yyyy')
   } catch (err) {
     return 'No promise date'
   }
