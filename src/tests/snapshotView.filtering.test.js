@@ -3,6 +3,8 @@ import { describe, it, expect } from 'vitest'
 import {
   filterAndSort,
   detectConflicts,
+  createUndoEntry,
+  canUndo,
 } from '@/pages/currently-active-appointments/components/SnapshotView'
 
 describe('SnapshotView.filterAndSort', () => {
@@ -88,5 +90,30 @@ describe('SnapshotView.filterAndSort', () => {
     expect(conflicts.has('a')).toBe(true)
     expect(conflicts.has('b')).toBe(true)
     expect(conflicts.has('c')).toBe(false)
+  })
+})
+
+describe('SnapshotView.undoHelpers', () => {
+  it('createUndoEntry creates entry with job id and previous status', () => {
+    const entry = createUndoEntry('job-123', 'in_progress')
+    expect(entry.jobId).toBe('job-123')
+    expect(entry.prevStatus).toBe('in_progress')
+    expect(entry.timeoutId).toBe(null)
+  })
+
+  it('canUndo returns true when undo entry exists', () => {
+    const undoMap = new Map()
+    undoMap.set('job-1', { prevStatus: 'scheduled', timeoutId: 123 })
+    expect(canUndo(undoMap, 'job-1')).toBe(true)
+  })
+
+  it('canUndo returns false when undo entry does not exist', () => {
+    const undoMap = new Map()
+    expect(canUndo(undoMap, 'job-1')).toBe(false)
+  })
+
+  it('canUndo returns false for empty map', () => {
+    const undoMap = new Map()
+    expect(canUndo(undoMap, 'any-id')).toBe(false)
   })
 })
