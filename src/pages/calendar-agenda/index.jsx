@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { jobService } from '@/services/jobService'
+import { calendarService } from '@/services/calendarService'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
 
@@ -25,9 +26,26 @@ function toDateKey(ts) {
 }
 
 // Derive filtered list
-function applyFilters(rows, { q, status }) {
+function applyFilters(rows, { q, status, dateRange, vendorFilter }) {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const next7Days = new Date(today)
+  next7Days.setDate(next7Days.getDate() + 7)
+
   return rows.filter((r) => {
     if (status && r.job_status !== status) return false
+    if (vendorFilter && r.vendor_id !== vendorFilter) return false
+    
+    // Date range filter
+    if (dateRange === 'today') {
+      const startDate = new Date(r.scheduled_start_time)
+      const jobDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+      if (jobDay.getTime() !== today.getTime()) return false
+    } else if (dateRange === 'next7days') {
+      const startDate = new Date(r.scheduled_start_time)
+      if (startDate < today || startDate >= next7Days) return false
+    }
+    
     if (q) {
       const needle = q.toLowerCase()
       const hay = [r.title, r.description, r.job_number, r.vehicle?.owner_name]
@@ -47,9 +65,16 @@ export default function CalendarAgenda() {
   const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [jobs, setJobs] = useState([])
+  const [conflicts, setConflicts] = useState(new Map()) // jobId -> boolean
   const [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') || '')
   const [status, setStatus] = useState(
     () => new URLSearchParams(location.search).get('status') || ''
+  )
+  const [dateRange, setDateRange] = useState(
+    () => new URLSearchParams(location.search).get('dateRange') || 'all'
+  )
+  const [vendorFilter, setVendorFilter] = useState(
+    () => new URLSearchParams(location.search).get('vendor') || ''
   )
   const focusId = useMemo(
     () => new URLSearchParams(location.search).get('focus'),
@@ -64,11 +89,15 @@ export default function CalendarAgenda() {
     else params.delete('q')
     if (status) params.set('status', status)
     else params.delete('status')
+    if (dateRange && dateRange !== 'all') params.set('dateRange', dateRange)
+    else params.delete('dateRange')
+    if (vendorFilter) params.set('vendor', vendorFilter)
+    else params.delete('vendor')
     if (focusId) params.set('focus', focusId)
     const next = params.toString()
     const current = location.search.replace(/^\?/, '')
     if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
-  }, [q, status, focusId, navigate, location.search])
+  }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -92,8 +121,38 @@ export default function CalendarAgenda() {
     load()
   }, [load])
 
+  // Check for conflicts (passive, no blocking)
+  useEffect(() => {
+    const checkConflicts = async () => {
+      const conflictMap = new Map()
+      for (const job of jobs) {
+        if (!job.vendor_id || !job.scheduled_start_time || !job.scheduled_end_time) continue
+        try {
+          const start = new Date(job.scheduled_start_time)
+          const end = new Date(job.scheduled_end_time)
+          // Check 30min window
+          const checkStart = new Date(start.getTime() - 30 * 60 * 1000)
+          const checkEnd = new Date(end.getTime() + 30 * 60 * 1000)
+          const { hasConflict } = await calendarService.checkSchedulingConflict(
+            job.vendor_id,
+            checkStart,
+            checkEnd,
+            job.id
+          )
+          conflictMap.set(job.id, hasConflict)
+        } catch (e) {
+          // Silent failure for conflict checking
+        }
+      }
+      setConflicts(conflictMap)
+    }
+    if (jobs.length > 0) {
+      checkConflicts()
+    }
+  }, [jobs])
+
   // Group
-  const filtered = useMemo(() => applyFilters(jobs, { q, status }), [jobs, q, status])
+  const filtered = useMemo(() => applyFilters(jobs, { q, status, dateRange, vendorFilter }), [jobs, q, status, dateRange, vendorFilter])
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach((j) => {
@@ -134,9 +193,32 @@ export default function CalendarAgenda() {
   }
 
   async function handleComplete(job) {
+    const previousStatus = job.job_status
+    const previousCompletedAt = job.completed_at
     try {
       await jobService.updateStatus(job.id, 'completed', { completed_at: new Date().toISOString() })
-      toast?.success?.('Marked completed')
+      
+      // Show success with Undo action
+      if (toast?.success) {
+        const undo = async () => {
+          try {
+            await jobService.updateStatus(job.id, previousStatus || 'scheduled', {
+              completed_at: previousCompletedAt || null,
+            })
+            toast.success('Undo successful')
+            await load()
+          } catch (e) {
+            toast.error('Undo failed')
+          }
+        }
+        
+        // Toast with undo action (10s timeout)
+        toast.success('Marked completed', { 
+          action: { label: 'Undo', onClick: undo },
+          duration: 10000 
+        })
+      }
+      
       await load()
     } catch (e) {
       toast?.error?.('Complete failed')
@@ -147,6 +229,8 @@ export default function CalendarAgenda() {
 
   return (
     <div className="p-4 space-y-4" aria-label="Scheduled Appointments Agenda">
+      {/* Aria-live region for screen reader announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
       <header className="flex items-center gap-4 flex-wrap" aria-label="Agenda controls">
         <h1 className="text-xl font-semibold">Scheduled Appointments</h1>
         <input
@@ -156,6 +240,16 @@ export default function CalendarAgenda() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        <select
+          aria-label="Filter by date range"
+          className="border rounded px-2 py-1"
+          value={dateRange}
+          onChange={(e) => setDateRange(e.target.value)}
+        >
+          <option value="all">All Dates</option>
+          <option value="today">Today</option>
+          <option value="next7days">Next 7 Days</option>
+        </select>
         <select
           aria-label="Filter by status"
           className="border rounded px-2 py-1"
@@ -179,6 +273,7 @@ export default function CalendarAgenda() {
           <ul className="divide-y rounded border bg-white" role="list">
             {rows.map((r) => {
               const focused = r.id === focusId
+              const hasConflict = conflicts.get(r.id)
               return (
                 <li
                   key={r.id}
@@ -194,7 +289,18 @@ export default function CalendarAgenda() {
                     })}
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium truncate">{r.title || r.job_number}</div>
+                    <div className="font-medium truncate flex items-center gap-2">
+                      {r.title || r.job_number}
+                      {hasConflict && (
+                        <span
+                          className="text-yellow-600"
+                          title="Potential scheduling conflict"
+                          aria-label="Potential scheduling conflict"
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-gray-500 truncate">
                       {r.vehicle?.make} {r.vehicle?.model} {r.vehicle?.year}
                     </div>
