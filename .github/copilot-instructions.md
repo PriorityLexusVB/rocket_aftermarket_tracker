@@ -85,11 +85,18 @@ Abort and emit TODO when:
 No UI redesigns; no state management rewrites; no switching test runners; no adding analytics vendors.
 
 ## 14. Reference Files
+- **Master Execution Prompt**: `MASTER_EXECUTION_PROMPT.md` (comprehensive phased execution plan)
 - Workspace Guardrails: `.github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md`
 - Performance Plan: `PERFORMANCE_INDEXES.md`
 - Telemetry Logic: `src/utils/capabilityTelemetry.js`
 - Health Endpoints: `api/health-*` & `src/api/health/*`
 - MCP Notes: `docs/MCP-NOTES.md`
+
+## 15. Phased Execution (See MASTER_EXECUTION_PROMPT.md)
+**Phases 1-3 COMPLETED** (Permission mapping, Time normalization, Date display)
+**Phases 4-10 READY** (Appointments, Drawers, Calendar, Performance, Scripts, Docs, PR)
+
+For detailed phase descriptions, implementation status, and execution guidelines, refer to `MASTER_EXECUTION_PROMPT.md`.
 
 ---
 If any ambiguity arises, agents must prefer READ + PLAN over MODIFY. Provide a precise diff proposal before acting if risk > low.
