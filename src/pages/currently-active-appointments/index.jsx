@@ -19,18 +19,24 @@ import { useNavigate } from 'react-router-dom'
 
 // Import components
 import AppointmentCard from './components/AppointmentCard'
+import SnapshotView from './components/SnapshotView'
 import AppointmentDetailPanel from './components/AppointmentDetailPanel'
 import FilterControls from './components/FilterControls'
 import BulkOperationsPanel from './components/BulkOperationsPanel'
 import PerformanceWidget from './components/PerformanceWidget'
 import AssignmentQuickPanel from './components/AssignmentQuickPanel'
-import SnapshotView from './components/SnapshotView'
 
-// Feature flag for snapshot mode
 const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
 
-// Legacy Workflow Management Center Component
-const LegacyWorkflowCenter = () => {
+const CurrentlyActiveAppointments = () => {
+  // Feature-flagged simplified snapshot: early return before legacy workflow logic mounts
+  if (SNAPSHOT_ON) {
+    return (
+      <AppLayout>
+        <SnapshotView />
+      </AppLayout>
+    )
+  }
   const [appointments, setAppointments] = useState([])
   const [originalAppointments, setOriginalAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -705,19 +711,6 @@ const LegacyWorkflowCenter = () => {
       </div>
     </AppLayout>
   )
-}
-
-// Main component - conditionally renders SnapshotView or Legacy
-const CurrentlyActiveAppointments = () => {
-  if (SNAPSHOT_ON) {
-    return (
-      <AppLayout>
-        <SnapshotView />
-      </AppLayout>
-    )
-  }
-  
-  return <LegacyWorkflowCenter />
 }
 
 export default CurrentlyActiveAppointments
