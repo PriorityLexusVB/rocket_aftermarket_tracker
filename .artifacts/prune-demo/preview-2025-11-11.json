@@ -1,0 +1,47 @@
+{
+  "metadata": {
+    "generated_at": "2025-11-11T03:54:57.212Z",
+    "mode": "dry-run",
+    "patterns": {
+      "jobNumber": {},
+      "customerName": {},
+      "customerEmail": {},
+      "vehicleVin": {},
+      "title": {}
+    }
+  },
+  "summary": {
+    "total_candidates": 2,
+    "demo_patterns_used": [
+      "jobNumber",
+      "customerName",
+      "customerEmail",
+      "vehicleVin",
+      "title"
+    ]
+  },
+  "candidates": [
+    {
+      "id": "test-1",
+      "job_number": "TEST-001",
+      "title": "Test Job 1",
+      "customer_name": "Test Customer",
+      "customer_email": "test@test.com",
+      "vehicle_vin": "TEST123456",
+      "created_at": "2025-01-01T00:00:00Z",
+      "job_status": "pending",
+      "reason": "job_number matches demo pattern; customer_name matches demo pattern; customer_email matches demo pattern; vehicle_vin matches demo pattern; title matches demo pattern"
+    },
+    {
+      "id": "test-2",
+      "job_number": "DEMO-002",
+      "title": "Demo Job 2",
+      "customer_name": "Demo Customer",
+      "customer_email": "demo@example.com",
+      "vehicle_vin": "DEMO789012",
+      "created_at": "2025-01-02T00:00:00Z",
+      "job_status": "in_progress",
+      "reason": "job_number matches demo pattern; customer_name matches demo pattern; customer_email matches demo pattern; vehicle_vin matches demo pattern; title matches demo pattern"
+    }
+  ]
+}
