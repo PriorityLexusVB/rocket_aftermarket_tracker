@@ -313,10 +313,14 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
             let qRetry = supabase
               .from('user_profiles')
               .select(
-                ['id', nameCol2, 'email', 'department', 'role', 'is_active'].filter(Boolean).join(', ')
+                ['id', nameCol2, 'email', 'department', 'role', 'is_active']
+                  .filter(Boolean)
+                  .join(', ')
               )
               .eq('is_active', true)
-              .or(ors || (nameCol2 ? `${nameCol2}.ilike.%placeholder%` : 'email.ilike.%placeholder%'))
+              .or(
+                ors || (nameCol2 ? `${nameCol2}.ilike.%placeholder%` : 'email.ilike.%placeholder%')
+              )
             if (orgId) qRetry = qRetry.or(`org_id.eq.${orgId},org_id.is.null`)
             const r = await qRetry
             const opts2 = toOptions(r?.data || [])

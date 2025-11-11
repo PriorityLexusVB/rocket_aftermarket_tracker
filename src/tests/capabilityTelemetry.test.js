@@ -38,7 +38,7 @@ describe('Capability Telemetry', () => {
       incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
       incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
       incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
-      
+
       expect(getTelemetry(TelemetryKey.VENDOR_FALLBACK)).toBe(2)
       expect(getTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)).toBe(1)
     })
@@ -80,7 +80,7 @@ describe('Capability Telemetry', () => {
       incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
       incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
       incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
-      
+
       const telemetry = getAllTelemetry()
       expect(telemetry.vendorFallback).toBe(1)
       expect(telemetry.vendorIdFallback).toBe(2)
@@ -93,7 +93,7 @@ describe('Capability Telemetry', () => {
       incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
       incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
       expect(getTelemetry(TelemetryKey.VENDOR_FALLBACK)).toBe(2)
-      
+
       resetTelemetry(TelemetryKey.VENDOR_FALLBACK)
       expect(getTelemetry(TelemetryKey.VENDOR_FALLBACK)).toBe(0)
     })
@@ -101,9 +101,9 @@ describe('Capability Telemetry', () => {
     it('should not affect other counters', () => {
       incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
       incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
-      
+
       resetTelemetry(TelemetryKey.VENDOR_FALLBACK)
-      
+
       expect(getTelemetry(TelemetryKey.VENDOR_FALLBACK)).toBe(0)
       expect(getTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)).toBe(1)
     })
@@ -115,9 +115,9 @@ describe('Capability Telemetry', () => {
       incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
       incrementTelemetry(TelemetryKey.VENDOR_REL_FALLBACK)
       incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
-      
+
       resetAllTelemetry()
-      
+
       const telemetry = getAllTelemetry()
       expect(telemetry.vendorFallback).toBe(0)
       expect(telemetry.vendorIdFallback).toBe(0)
@@ -139,7 +139,7 @@ describe('Capability Telemetry', () => {
     it('should include all counters in summary', () => {
       incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
       const summary = getTelemetrySummary()
-      
+
       expect(summary.counters).toHaveProperty('vendorFallback')
       expect(summary.counters).toHaveProperty('vendorIdFallback')
       expect(summary.counters).toHaveProperty('vendorRelFallback')
@@ -169,14 +169,14 @@ describe('Capability Telemetry', () => {
       const beforeReset = Date.now()
       resetAllTelemetry()
       const summary = getTelemetrySummary()
-      
+
       expect(summary.lastResetAt).not.toBeNull()
       expect(typeof summary.lastResetAt).toBe('string')
-      
+
       // Verify it's a valid ISO timestamp
       const resetDate = new Date(summary.lastResetAt)
       expect(resetDate.toString()).not.toBe('Invalid Date')
-      
+
       // Verify the timestamp is recent (within last second)
       expect(resetDate.getTime()).toBeGreaterThanOrEqual(beforeReset)
       expect(resetDate.getTime()).toBeLessThanOrEqual(Date.now() + 1000)
@@ -184,13 +184,13 @@ describe('Capability Telemetry', () => {
 
     it('should calculate secondsSinceReset correctly', () => {
       resetAllTelemetry()
-      
+
       // Get summary immediately
       const summary = getTelemetrySummary()
-      
+
       expect(summary.secondsSinceReset).not.toBeNull()
       expect(typeof summary.secondsSinceReset).toBe('number')
-      
+
       // Should be very recent (0-2 seconds to account for processing time)
       expect(summary.secondsSinceReset).toBeGreaterThanOrEqual(0)
       expect(summary.secondsSinceReset).toBeLessThan(3)

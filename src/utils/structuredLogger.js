@@ -69,8 +69,13 @@ export function log(level, category, message, context = {}) {
   }
 
   // Also log to console with appropriate method
-  const consoleMethod = level === LogLevel.ERROR || level === LogLevel.CRITICAL ? 'error' : level === LogLevel.WARN ? 'warn' : 'log'
-  
+  const consoleMethod =
+    level === LogLevel.ERROR || level === LogLevel.CRITICAL
+      ? 'error'
+      : level === LogLevel.WARN
+        ? 'warn'
+        : 'log'
+
   const prefix = `[${level.toUpperCase()}][${category}]`
   console[consoleMethod](prefix, message, context)
 

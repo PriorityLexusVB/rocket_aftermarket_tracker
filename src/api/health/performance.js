@@ -19,9 +19,10 @@ export default async function handler(req, res) {
     }
 
     // Check 1: Verify pg_trgm extension is enabled
-    const { data: extensionData, error: extensionError } = await supabase.rpc('pg_available_extensions')
+    const { data: extensionData, error: extensionError } = await supabase
+      .rpc('pg_available_extensions')
       .catch(() => ({ data: null, error: { message: 'Unable to query extensions' } }))
-    
+
     if (!extensionError && extensionData) {
       healthReport.database.reachable = true
       const pgTrgm = extensionData.find((ext) => ext.name === 'pg_trgm')
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
       healthReport.checks.push({
         name: 'pg_trgm_extension',
         status: pgTrgm?.installed_version ? 'ok' : 'warning',
-        message: pgTrgm?.installed_version 
+        message: pgTrgm?.installed_version
           ? 'Trigram extension enabled for ILIKE optimization'
           : 'pg_trgm extension not found - ILIKE searches may be slow',
       })
@@ -74,7 +75,7 @@ export default async function handler(req, res) {
             ? `Index ${expectedIdx.name} exists on ${expectedIdx.table}`
             : `Index ${expectedIdx.name} missing on ${expectedIdx.table}`,
         })
-        
+
         if (!exists) {
           healthReport.recommendations.push({
             priority: expectedIdx.type === 'trigram' ? 'high' : 'medium',
@@ -130,7 +131,7 @@ export default async function handler(req, res) {
     // Generate overall status
     const hasWarnings = healthReport.checks.some((check) => check.status === 'warning')
     const hasErrors = healthReport.checks.some((check) => check.status === 'error')
-    
+
     healthReport.status = hasErrors ? 'error' : hasWarnings ? 'warning' : 'healthy'
     healthReport.summary = {
       total_checks: healthReport.checks.length,

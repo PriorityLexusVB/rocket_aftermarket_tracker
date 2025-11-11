@@ -1,6 +1,6 @@
 /**
  * Calendar Color Mapping Utilities
- * 
+ *
  * Deterministic color assignment for calendar events based on service type and status.
  * Ensures visual consistency and lane clarity in calendar views.
  */

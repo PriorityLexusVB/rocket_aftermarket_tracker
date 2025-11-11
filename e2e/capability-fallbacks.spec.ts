@@ -100,11 +100,11 @@ test.describe('Capability Fallbacks', () => {
 
     // If page doesn't exist, this test will be skipped in CI
     const pageContent = await page.textContent('body').catch(() => '')
-    
+
     if (pageContent && pageContent.includes('Capability Flags')) {
       // Admin page exists, test reset functionality
       const resetButton = page.getByRole('button', { name: /reset/i }).first()
-      
+
       // Click reset (with dialog confirmation)
       page.on('dialog', (dialog) => dialog.accept())
       await resetButton.click()
@@ -134,8 +134,14 @@ test.describe('Capability Fallbacks', () => {
       if (typeof sessionStorage !== 'undefined') {
         return {
           vendorFallback: parseInt(sessionStorage.getItem('telemetry_vendorFallback') || '0', 10),
-          vendorIdFallback: parseInt(sessionStorage.getItem('telemetry_vendorIdFallback') || '0', 10),
-          scheduledTimesFallback: parseInt(sessionStorage.getItem('telemetry_scheduledTimesFallback') || '0', 10),
+          vendorIdFallback: parseInt(
+            sessionStorage.getItem('telemetry_vendorIdFallback') || '0',
+            10
+          ),
+          scheduledTimesFallback: parseInt(
+            sessionStorage.getItem('telemetry_scheduledTimesFallback') || '0',
+            10
+          ),
         }
       }
       return {}
@@ -151,7 +157,7 @@ test.describe('Capability Fallbacks', () => {
     await page.evaluate(() => {
       if (typeof sessionStorage !== 'undefined' && typeof localStorage !== 'undefined') {
         sessionStorage.setItem('telemetry_vendorFallback', '7')
-        
+
         // Simulate persist function
         const value = sessionStorage.getItem('telemetry_vendorFallback')
         if (value) {

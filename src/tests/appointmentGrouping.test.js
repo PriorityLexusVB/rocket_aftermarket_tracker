@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { groupVendorJobs, groupOnsiteJobs, groupByVendorAndType } from '../utils/appointmentGrouping'
+import {
+  groupVendorJobs,
+  groupOnsiteJobs,
+  groupByVendorAndType,
+} from '../utils/appointmentGrouping'
 
 describe('appointmentGrouping', () => {
   describe('groupVendorJobs', () => {

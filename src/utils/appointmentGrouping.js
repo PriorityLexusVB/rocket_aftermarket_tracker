@@ -1,6 +1,6 @@
 /**
  * Appointment Grouping Utilities
- * 
+ *
  * Pure helper functions for grouping appointments by vendor or service type.
  * Used for calendar lane organization and appointment list rendering.
  */
@@ -17,7 +17,7 @@ export function groupVendorJobs(appointments) {
 
   return appointments.reduce((acc, apt) => {
     if (!apt || !apt.id) return acc
-    
+
     const vendorId = apt.vendor_id || 'unassigned'
     if (!acc[vendorId]) {
       acc[vendorId] = []
@@ -42,7 +42,7 @@ export function groupOnsiteJobs(appointments) {
 
   appointments.forEach((apt) => {
     if (!apt || !apt.id) return
-    
+
     // is_off_site or service_type indicates offsite work
     if (apt.is_off_site === true || apt.service_type === 'vendor') {
       offsite.push(apt)
@@ -66,9 +66,9 @@ export function groupByVendorAndType(appointments) {
   }
 
   const { onsite, offsite } = groupOnsiteJobs(appointments)
-  
+
   return {
     onsite: groupVendorJobs(onsite),
-    offsite: groupVendorJobs(offsite)
+    offsite: groupVendorJobs(offsite),
   }
 }

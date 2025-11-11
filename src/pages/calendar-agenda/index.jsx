@@ -35,7 +35,7 @@ function applyFilters(rows, { q, status, dateRange, vendorFilter }) {
   return rows.filter((r) => {
     if (status && r.job_status !== status) return false
     if (vendorFilter && r.vendor_id !== vendorFilter) return false
-    
+
     // Date range filter
     if (dateRange === 'today') {
       const startDate = new Date(r.scheduled_start_time)
@@ -45,7 +45,7 @@ function applyFilters(rows, { q, status, dateRange, vendorFilter }) {
       const startDate = new Date(r.scheduled_start_time)
       if (startDate < today || startDate >= next7Days) return false
     }
-    
+
     if (q) {
       const needle = q.toLowerCase()
       const hay = [r.title, r.description, r.job_number, r.vehicle?.owner_name]
@@ -152,7 +152,10 @@ export default function CalendarAgenda() {
   }, [jobs])
 
   // Group
-  const filtered = useMemo(() => applyFilters(jobs, { q, status, dateRange, vendorFilter }), [jobs, q, status, dateRange, vendorFilter])
+  const filtered = useMemo(
+    () => applyFilters(jobs, { q, status, dateRange, vendorFilter }),
+    [jobs, q, status, dateRange, vendorFilter]
+  )
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach((j) => {
@@ -197,7 +200,7 @@ export default function CalendarAgenda() {
     const previousCompletedAt = job.completed_at
     try {
       await jobService.updateStatus(job.id, 'completed', { completed_at: new Date().toISOString() })
-      
+
       // Show success with Undo action
       if (toast?.success) {
         const undo = async () => {
@@ -211,14 +214,14 @@ export default function CalendarAgenda() {
             toast.error('Undo failed')
           }
         }
-        
+
         // Toast with undo action (10s timeout)
-        toast.success('Marked completed', { 
+        toast.success('Marked completed', {
           action: { label: 'Undo', onClick: undo },
-          duration: 10000 
+          duration: 10000,
         })
       }
-      
+
       await load()
     } catch (e) {
       toast?.error?.('Complete failed')

@@ -99,9 +99,7 @@ describe('dealService - capability flag and retry logic', () => {
     })
     mockSupabase.from.mockReturnValueOnce({
       select: vi.fn().mockReturnValue({
-        in: vi
-          .fn()
-          .mockReturnValue({ is: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+        in: vi.fn().mockReturnValue({ is: vi.fn().mockResolvedValue({ data: [], error: null }) }),
       }),
     })
 
@@ -117,9 +115,7 @@ describe('dealService - capability flag and retry logic', () => {
     const vendorFallback = sessionStorage.getItem('telemetry_vendorFallback')
     const vendorRelFallback = sessionStorage.getItem('telemetry_vendorRelFallback')
     // At least one should be incremented
-    expect(parseInt(vendorFallback || '0') + parseInt(vendorRelFallback || '0')).toBeGreaterThan(
-      0
-    )
+    expect(parseInt(vendorFallback || '0') + parseInt(vendorRelFallback || '0')).toBeGreaterThan(0)
   })
 
   it('should set capability flag to true when vendor relationship query succeeds', async () => {
