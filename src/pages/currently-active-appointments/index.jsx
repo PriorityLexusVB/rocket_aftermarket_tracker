@@ -24,8 +24,13 @@ import FilterControls from './components/FilterControls'
 import BulkOperationsPanel from './components/BulkOperationsPanel'
 import PerformanceWidget from './components/PerformanceWidget'
 import AssignmentQuickPanel from './components/AssignmentQuickPanel'
+import SnapshotView from './components/SnapshotView'
 
-const CurrentlyActiveAppointments = () => {
+// Feature flag for snapshot mode
+const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
+
+// Legacy Workflow Management Center Component
+const LegacyWorkflowCenter = () => {
   const [appointments, setAppointments] = useState([])
   const [originalAppointments, setOriginalAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -700,6 +705,19 @@ const CurrentlyActiveAppointments = () => {
       </div>
     </AppLayout>
   )
+}
+
+// Main component - conditionally renders SnapshotView or Legacy
+const CurrentlyActiveAppointments = () => {
+  if (SNAPSHOT_ON) {
+    return (
+      <AppLayout>
+        <SnapshotView />
+      </AppLayout>
+    )
+  }
+  
+  return <LegacyWorkflowCenter />
 }
 
 export default CurrentlyActiveAppointments
