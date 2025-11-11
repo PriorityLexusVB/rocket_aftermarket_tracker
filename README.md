@@ -67,7 +67,13 @@ Create a `.env.local` with your Supabase config and any feature flags.
 Optional feature flags:
 
 - **`VITE_DEAL_FORM_V2`** (default: `true` in development) – When `true`, deal creation and editing flows use unified form adapters for safer data handling. Set to `false` to revert to legacy behavior without modifying services or database. Recommended to keep `true` for local and preview environments. See [Feature Flag Guide](docs/FEATURE_FLAG_GUIDE.md) for detailed usage instructions.
+- **`VITE_SIMPLE_CALENDAR`** (default: `false`) – Enables the lean Agenda view at `/calendar/agenda` and redirects newly scheduled deals there (with focus highlighting). When disabled the legacy calendar flow management center remains the default.
+- **`VITE_ACTIVE_SNAPSHOT`** (default: `false`) – Replaces the "Currently Active Appointments" workflow center with a vendor‑centric snapshot list (schedule + in‑progress). Safe rollback: set to `false` or remove from env; legacy workflow center code path is preserved.
 - Deprecated: `VITE_ORG_SCOPED_DROPDOWNS` – previously scoped dropdowns via a database helper. This flag is now ignored and dropdowns are unscoped by default. Prefer tenant-aware lists via `tenantService` or Admin filters where applicable.
+
+Snapshot + Agenda notes:
+
+- Snapshot view adds an accessible conflict indicator (⚠) when two active appointments for the same vendor overlap locally (pure client check). For authoritative vendor conflict detection (server-side), use scheduling flows that call `calendarService.checkSchedulingConflict` during edits. The snapshot avoids direct Supabase queries and relies on already fetched job data.
 
 ## Dropdown caching & prefetch
 
@@ -104,6 +110,7 @@ This application includes comprehensive error handling for PostgREST/Supabase 40
 - **Full Guide**: See [ERROR_HANDLING_GUIDE.md](ERROR_HANDLING_GUIDE.md) for complete architecture documentation
 
 Key features:
+
 - Automatic detection of missing database columns and relationships
 - Graceful degradation with capability flags
 - Telemetry tracking for monitoring

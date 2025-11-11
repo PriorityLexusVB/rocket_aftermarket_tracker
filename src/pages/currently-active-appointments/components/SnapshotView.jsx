@@ -36,6 +36,47 @@ export function filterAndSort(jobs) {
   return filtered
 }
 
+// Exported to allow unit testing: detect overlapping appointments per vendor
+// Returns a Set of job ids that have a local overlap with at least one other job for the same vendor
+export function detectConflicts(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return new Set()
+
+  // Group jobs by vendor id (fallback to null for unassigned)
+  const byVendor = new Map()
+  for (const j of rows) {
+    const vId = j?.vendor?.id ?? j?.vendor_id ?? null
+    if (!byVendor.has(vId)) byVendor.set(vId, [])
+    byVendor.get(vId).push(j)
+  }
+
+  const conflictIds = new Set()
+  for (const [, jobs] of byVendor) {
+    // Only consider jobs that have both start/end for overlap detection
+    const withTimes = jobs
+      .filter((j) => j?.scheduled_start_time && j?.scheduled_end_time)
+      .map((j) => ({
+        id: j.id,
+        start: new Date(j.scheduled_start_time).getTime(),
+        end: new Date(j.scheduled_end_time).getTime(),
+      }))
+      .sort((a, b) => a.start - b.start)
+
+    // Sweep-line style check for overlaps
+    for (let i = 0; i < withTimes.length; i++) {
+      for (let k = i + 1; k < withTimes.length; k++) {
+        const a = withTimes[i]
+        const b = withTimes[k]
+        if (b.start >= a.end) break // no overlap onward for this i
+        // Overlap
+        conflictIds.add(a.id)
+        conflictIds.add(b.id)
+      }
+    }
+  }
+
+  return conflictIds
+}
+
 export default function SnapshotView() {
   const { orgId } = useTenant()
   const toast = useToast?.()
@@ -46,6 +87,7 @@ export default function SnapshotView() {
   const [undoMap, setUndoMap] = useState(new Map()) // id -> { prevStatus, timeoutId }
 
   const rows = useMemo(() => filterAndSort(rawJobs), [rawJobs])
+  const conflictIds = useMemo(() => detectConflicts(rows), [rows])
 
   async function load() {
     setLoading(true)
@@ -145,9 +187,20 @@ export default function SnapshotView() {
               className="flex items-center gap-3 px-3 py-2 text-sm"
               aria-label={`Appointment ${j.title || j.job_number}`}
             >
-              <div className="w-28 text-gray-700">
-                {start}
-                {end ? ` – ${end}` : ''}
+              <div className="w-28 text-gray-700 flex items-center gap-1">
+                <span>
+                  {start}
+                  {end ? ` – ${end}` : ''}
+                </span>
+                {conflictIds.has(j.id) && (
+                  <span
+                    className="text-amber-600"
+                    title="Potential scheduling overlap for this vendor"
+                    aria-label="Scheduling conflict detected"
+                  >
+                    6A0
+                  </span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{j.title || j.job_number}</div>
