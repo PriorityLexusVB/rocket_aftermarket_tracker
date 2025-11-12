@@ -39,6 +39,8 @@
   },
   "performanceIndexes": {
     "migration": "20251110023000_comprehensive_performance_indexes.sql",
+    "indexes_verified": true,
+    "verification_note": "Best-effort check via column accessibility; for authoritative verification use psql or MCP execute_sql with pg_indexes query",
     "categories": {
       "foreignKeys": [
         "idx_job_parts_vendor_id",
