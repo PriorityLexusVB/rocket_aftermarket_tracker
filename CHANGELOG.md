@@ -17,8 +17,8 @@
   - `/api/admin/reload-schema` - Admin-only endpoint to trigger PostgREST schema cache reload
 
 - **Conditional UI Features**:
-  - `ExportButton.jsx` - Conditionally includes scheduled_* columns based on capabilities
-  - `dealMappers.js` - Conditionally includes scheduled_* fields in form state
+  - `ExportButton.jsx` - Conditionally includes scheduled\_\* columns based on capabilities
+  - `dealMappers.js` - Conditionally includes scheduled\_\* fields in form state
   - EMPTY_LINE_ITEM() function respects capability flags
 
 - **Documentation & Tests**:
@@ -43,7 +43,7 @@
 ### Fixed
 
 - **Graceful Degradation**:
-  - Prevents 400 errors on initial page load when scheduled_* columns missing
+  - Prevents 400 errors on initial page load when scheduled\_\* columns missing
   - Handles missing vendor_id column gracefully
   - Handles missing vendor relationship without breaking page load
   - Automatic capability flag adjustment based on actual schema state

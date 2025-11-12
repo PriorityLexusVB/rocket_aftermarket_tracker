@@ -47,12 +47,14 @@ You are modifying Aftermarket Tracker under strict guardrails. This document ser
 ## Workspace Setup
 
 ### Package Manager & Node Version
+
 - **Package Manager**: `pnpm` (required)
 - **Node Version**: 20 (see `.nvmrc`)
 - Install: `npm install -g pnpm`
 - Dependencies: `pnpm install`
 
 ### Development Environment
+
 - **VS Code**: Profile and curated extensions provided
 - **Required Extensions**:
   - ESLint/Prettier (auto-formatting)
@@ -61,6 +63,7 @@ You are modifying Aftermarket Tracker under strict guardrails. This document ser
 - **MCP Access**: Enable per `docs/MCP-NOTES.md`
 
 ### Development Commands
+
 ```bash
 # Development server
 pnpm dev
@@ -83,37 +86,45 @@ pnpm build
 ## Required Tools and When to Use Them
 
 ### Supabase MCP (Schema Introspection)
+
 **When to use**: Before touching any schema-related code
 
 **Available operations**:
+
 - `list_tables` - Confirm table presence before building queries
 - `list_policies` - Ensure tenant scoping in RLS
 - `list_extensions` - Verify pg_trgm and other extensions
 - `explain` - Capture query performance (BUFFERS, ANALYZE)
 
 **Failure handling**:
+
 - If MCP returns unknown field errors → ABORT and emit TODO
 - Document all introspection results in `.artifacts/mcp-introspect/`
 
 ### GitHub Tools
+
 **When to use**: Before refactoring existing code
 
 **Available operations**:
+
 - Search code usages before making changes
 - Create small, focused PRs per phase
 - Review related issues and PRs
 
 ### Local Health Endpoints
+
 **Location**: `api/health-*.js`
 
 **When to use**: Verifying capabilities and performance
 
 **Process**:
+
 1. Run health checks
 2. Record outputs to `.artifacts/`
 3. Include in PR documentation
 
 ### Testing Tools
+
 - **Vitest**: Unit and integration tests (required)
 - **Playwright**: End-to-end tests (optional)
 
@@ -122,6 +133,7 @@ pnpm build
 ## Artifacts Management
 
 ### Directory Structure
+
 All evidence and introspection data goes in `.artifacts/`:
 
 ```
@@ -138,7 +150,9 @@ All evidence and introspection data goes in `.artifacts/`:
 ```
 
 ### Performance Tuning Artifacts
+
 For any query optimization work:
+
 1. Capture **BEFORE** state: `EXPLAIN (BUFFERS, ANALYZE)`
 2. Make changes (indexes, query rewrites, etc.)
 3. Capture **AFTER** state: `EXPLAIN (BUFFERS, ANALYZE)`
@@ -150,6 +164,7 @@ For any query optimization work:
 ## Do and Don't
 
 ### ✅ Allowed Actions
+
 - Add structured logging wrappers (side-effect free when disabled)
 - Non-invasive telemetry improvements (preserve existing keys)
 - Optional materialized views (flagged as OPTIONAL, document refresh strategy)
@@ -157,6 +172,7 @@ For any query optimization work:
 - Covering indexes from `PERFORMANCE_INDEXES.md` (check for duplicates first)
 
 ### ❌ Forbidden Actions
+
 - Breaking telemetry keys
 - Changing public component props
 - Altering existing migration files (create new timestamped ones instead)
@@ -169,9 +185,11 @@ For any query optimization work:
 ## Execution Plan (Phased Approach)
 
 ### Phase 1: Permission Error Mapping ✅ COMPLETED
+
 **Status**: IMPLEMENTED and VERIFIED
 
 **Deliverables**:
+
 - ✅ `mapPermissionError` function in `dealService.js`
 - ✅ Friendly remediation for "permission denied for (table|relation) users"
 - ✅ Documentation references to MCP-NOTES.md and INTROSPECTION.md
@@ -182,9 +200,11 @@ For any query optimization work:
 ---
 
 ### Phase 2: Time Normalization ✅ COMPLETED
+
 **Status**: IMPLEMENTED and VERIFIED
 
 **Deliverables**:
+
 - ✅ `normalizeDealTimes` function in `dealService.js`
 - ✅ Converts empty strings to null for time fields:
   - `scheduled_start_time`
@@ -198,15 +218,18 @@ For any query optimization work:
 ---
 
 ### Phase 3: UI-Safe Date Display ✅ COMPLETED
+
 **Status**: IMPLEMENTED and VERIFIED
 
 **Deliverables**:
+
 - ✅ `dateDisplay.js` utility module created
 - ✅ `formatPromiseDate`: Protects against "Invalid Date", treats YYYY-MM-DD as local date
 - ✅ `formatTimeWindow`: Returns "Not scheduled" unless both ends are valid
 - ✅ Tests passing: `src/tests/ui/promiseDate.display.test.jsx`
 
 **Functions**:
+
 ```javascript
 // src/utils/dateDisplay.js
 formatPromiseDate(promiseDate) → "MMM d, yyyy" or "No promise date"
@@ -218,18 +241,22 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 ---
 
 ### Phase 4: Appointments Simplification 🔄 READY
+
 **Goal**: Reduce incidental complexity in appointments rendering; preserve public props
 
 **Actions**:
+
 - Extract small pure helpers for calendar lane grouping and null-safety
 - Replace ad-hoc checks with `formatTimeWindow`/`formatPromiseDate`
 - Maintain stable component props (no breaking changes)
 
 **Tests Required**:
+
 - Unit: Calendar grouping with vendor vs onsite lanes
 - UI: No "Invalid Date"; null-safe windows show "Not scheduled"
 
 **Guardrails**:
+
 - No new global store
 - No schema changes
 - Maximum 10 files touched
@@ -237,61 +264,75 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 ---
 
 ### Phase 5: Drawer Streamlining 🔄 READY
+
 **Goal**: Reduce re-renders and prop drilling in drawers
 
 **Actions**:
+
 - Co-locate simple state with components
 - Keep forms controlled (`value` + `onChange`)
 - Memoize heavy child renders with stable keys
 
 **Tests Required**:
+
 - Interaction tests ensuring save/cancel behaviors unchanged
 
 **Guardrails**:
+
 - No prop API breaking changes
 - Preserve existing telemetry keys
 
 ---
 
 ### Phase 6: Calendar UX Lane Clarity 🔄 READY
+
 **Goal**: Clear visual separation for vendor vs onsite lanes; stable keys for events
 
 **Actions**:
+
 - Use deterministic color coding from `service_type`
 - Create legend documentation
 - Ensure event IDs are unique and non-null
 
 **Tests Required**:
+
 - Step 22 validations (already exist) remain green
 
 **Artifacts**:
+
 - Optional screenshots or JSON snapshots
 
 ---
 
 ### Phase 7: Performance Health Polish 🔄 READY
+
 **Goal**: Ensure index coverage and query narrowings remain in place
 
 **Actions**:
+
 1. Validate `PERFORMANCE_INDEXES.md` indexes exist in database
 2. Add only missing covering indexes (avoid duplicates)
 3. EXPLAIN key search/list queries before/after any changes
 4. Save results to `.artifacts/explain/<date>-<slug>.txt`
 
 **Performance Targets**:
+
 - Common list endpoints: < 50ms under test dataset size
 - If gain < 5%, STOP and ask for guidance with data
 
 **Guardrails**:
+
 - No dropping/changing existing indexes
 - Document all changes with BEFORE/AFTER evidence
 
 ---
 
 ### Phase 8: Prune Demo Jobs Script (Dry-Run Only) 🔄 READY
+
 **Goal**: Safety-first utility to list candidates; no destructive default
 
 **Actions**:
+
 1. Create `scripts/pruneDemoJobs.js` with:
    - `--dry-run` as default mode
    - `--apply` requires confirmation prompt
@@ -300,6 +341,7 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 2. Unit tests for candidate selection logic
 
 **Guardrails**:
+
 - No apply in CI
 - Document rollback (no-op for dry-run)
 - Never delete data without explicit confirmation
@@ -307,9 +349,11 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 ---
 
 ### Phase 9: Final Checks and Documentation 🔄 READY
+
 **Goal**: Ensure project is deployment-ready
 
 **Actions**:
+
 1. Re-run `pnpm test` (all tests green)
 2. Optional e2e smoke tests if configured
 3. Run `pnpm lint` and `pnpm typecheck` (0 errors)
@@ -317,6 +361,7 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 5. Summarize health endpoints and artifact paths
 
 **Success Criteria**:
+
 - All tests passing
 - No lint errors
 - No type errors
@@ -325,9 +370,11 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 ---
 
 ### Phase 10: PR and Rollback Notes 🔄 READY
+
 **Goal**: Create comprehensive PR with rollback strategy
 
 **PR Checklist** (MUST include):
+
 - [ ] Summary of change (1–2 sentences)
 - [ ] Guardrails respected (explicit bullets referencing sections 2–5)
 - [ ] Test results snippet (pass count)
@@ -336,6 +383,7 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 - [ ] Rollback plan (how to revert code/migration)
 
 **Merge Criteria**:
+
 - All CI checks green
 - At least one approval
 - Documentation updated
@@ -345,7 +393,9 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 ## MCP Usage Patterns
 
 ### Standard Workflow
+
 1. **Before schema-sensitive work**:
+
    ```
    list_tables → Confirm presence
    list_policies → Ensure tenant scoping
@@ -353,6 +403,7 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
    ```
 
 2. **If relationship queries fail**:
+
    ```sql
    NOTIFY pgrst, 'reload schema';
    -- Wait 5 seconds
@@ -370,12 +421,12 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 
 ### Failure Patterns & Remedies
 
-| Symptom | Likely Cause | Remedy |
-|---------|--------------|--------|
-| 400/403 on REST relationship select | Stale schema cache | `NOTIFY pgrst, 'reload schema'`; wait and retry |
-| Missing FK expansion | FK not created or named incorrectly | Verify constraint naming; re-run migration |
-| Slow COUNT(*) | Missing WHERE + index | Add selective index or approximate count strategy |
-| "unknown field" from MCP | Schema mismatch | STOP and emit TODO; do not guess |
+| Symptom                             | Likely Cause                        | Remedy                                            |
+| ----------------------------------- | ----------------------------------- | ------------------------------------------------- |
+| 400/403 on REST relationship select | Stale schema cache                  | `NOTIFY pgrst, 'reload schema'`; wait and retry   |
+| Missing FK expansion                | FK not created or named incorrectly | Verify constraint naming; re-run migration        |
+| Slow COUNT(\*)                      | Missing WHERE + index               | Add selective index or approximate count strategy |
+| "unknown field" from MCP            | Schema mismatch                     | STOP and emit TODO; do not guess                  |
 
 ---
 
@@ -384,9 +435,11 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 ### After Any Code Changes
 
 1. **Run tests**:
+
    ```bash
    pnpm test
    ```
+
    - If failures: Fix up to 3 targeted attempts
    - If still failing: Summarize failure and options, ask for guidance
 
@@ -395,10 +448,12 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
    - If gain < 5%: STOP and ask for guidance with data
 
 3. **Lint and typecheck**:
+
    ```bash
    pnpm lint
    pnpm typecheck
    ```
+
    - Fix only violations that you introduced
    - 0 errors required before PR
 
@@ -407,17 +462,20 @@ formatTimeWindow(startTime, endTime) → "h:mm AM/PM - h:mm AM/PM" or "Not sched
 ## Contracts to Observe
 
 ### Service Layer Contracts
+
 - **Services are the only layer that talks to Supabase**
 - React components use services; never import Supabase client directly
 - All service functions must handle tenant scoping
 
 ### Date/Time Formatting Contracts
+
 ```javascript
 formatPromiseDate(promiseDate) → "MMM d, yyyy" or "No promise date"
 formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 ```
 
 ### Error Handling Contracts
+
 - Map known RLS errors to helpful actions (use `mapPermissionError`)
 - Avoid swallowing stack traces
 - Provide actionable hint strings
@@ -436,7 +494,7 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
    - Document evidence in PR
 
 3. **Large queries**:
-   - Select explicit columns (avoid SELECT *)
+   - Select explicit columns (avoid SELECT \*)
    - Use LIMIT for list endpoints
    - Verify plan stability with EXPLAIN
 
@@ -450,6 +508,7 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 ## Current Verified Status
 
 ### Test Results
+
 ```
 ✅ Tests: PASS — 514 passed, 1 failed (unrelated), 2 skipped
 ✅ Total test suite: 517 tests
@@ -457,6 +516,7 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 ```
 
 ### Artifacts Present
+
 - ✅ `.artifacts/mcp-introspect/*` (tables, policies, extensions)
 - ✅ Health JSONs for capabilities verification
 - ✅ Performance artifacts from prior PRs
@@ -464,18 +524,19 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 - ✅ Time normalization test results
 
 ### Phase Completion Status
-| Phase | Status | Evidence Location |
-|-------|--------|-------------------|
-| Phase 1: Permission Error Mapping | ✅ COMPLETED | `.artifacts/deal-perm-map/` |
-| Phase 2: Time Normalization | ✅ COMPLETED | `.artifacts/time-normalize/` |
-| Phase 3: UI-Safe Date Display | ✅ COMPLETED | `src/tests/ui/promiseDate.display.test.jsx` |
-| Phase 4: Appointments Simplification | 🔄 READY | - |
-| Phase 5: Drawer Streamlining | 🔄 READY | - |
-| Phase 6: Calendar UX Lane Clarity | 🔄 READY | - |
-| Phase 7: Performance Health Polish | 🔄 READY | - |
-| Phase 8: Prune Demo Jobs Script | 🔄 READY | - |
-| Phase 9: Final Checks | 🔄 READY | - |
-| Phase 10: PR and Rollback | 🔄 READY | - |
+
+| Phase                                | Status       | Evidence Location                           |
+| ------------------------------------ | ------------ | ------------------------------------------- |
+| Phase 1: Permission Error Mapping    | ✅ COMPLETED | `.artifacts/deal-perm-map/`                 |
+| Phase 2: Time Normalization          | ✅ COMPLETED | `.artifacts/time-normalize/`                |
+| Phase 3: UI-Safe Date Display        | ✅ COMPLETED | `src/tests/ui/promiseDate.display.test.jsx` |
+| Phase 4: Appointments Simplification | 🔄 READY     | -                                           |
+| Phase 5: Drawer Streamlining         | 🔄 READY     | -                                           |
+| Phase 6: Calendar UX Lane Clarity    | 🔄 READY     | -                                           |
+| Phase 7: Performance Health Polish   | 🔄 READY     | -                                           |
+| Phase 8: Prune Demo Jobs Script      | 🔄 READY     | -                                           |
+| Phase 9: Final Checks                | 🔄 READY     | -                                           |
+| Phase 10: PR and Rollback            | 🔄 READY     | -                                           |
 
 ---
 
@@ -484,12 +545,14 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 **Principle**: Prefer READ + PLAN over MODIFY
 
 **Process**:
+
 1. If you cannot perform a requested action safely → STOP
 2. Output a TODO with clear rationale
 3. Provide options for user to choose from
 4. Wait for explicit approval before proceeding
 
 **Examples of when to STOP**:
+
 - Unknown field errors from MCP
 - Performance gain is insufficient (< 5%)
 - Required dependency must be changed
@@ -501,6 +564,7 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 ## Reference Documentation
 
 ### Primary Documents
+
 - **Workspace Guardrails**: `.github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md`
 - **Performance Plan**: `PERFORMANCE_INDEXES.md`
 - **MCP Usage**: `docs/MCP-NOTES.md`
@@ -508,6 +572,7 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 - **Deploy Checklist**: `docs/DEPLOY_CHECKLIST.md`
 
 ### Implementation Details
+
 - **Telemetry Logic**: `src/utils/capabilityTelemetry.js`
 - **Health Endpoints**: `api/health-*` & `src/api/health/*`
 - **Date Display**: `src/utils/dateDisplay.js`
@@ -515,6 +580,7 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 - **Schema Error Classifier**: `src/utils/schemaErrorClassifier.js`
 
 ### Test Coverage
+
 - **Permission Mapping**: `src/tests/unit/dealService.permissionMapping.test.js`
 - **Relationship Errors**: `src/tests/dealService.relationshipError.test.js`
 - **Date Display**: `src/tests/ui/promiseDate.display.test.jsx`
@@ -527,6 +593,7 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 This master execution prompt serves as the authoritative guide for all development work on the Aftermarket Tracker project. Phases 1-3 are completed and verified. Phases 4-10 are ready for execution following the guidelines and guardrails documented above.
 
 **Key Principles**:
+
 1. ✅ Minimal changes only
 2. ✅ Preserve existing functionality
 3. ✅ Document all evidence in `.artifacts/`

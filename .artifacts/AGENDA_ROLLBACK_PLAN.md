@@ -3,6 +3,7 @@
 ## Quick Rollback (Feature Flag)
 
 ### Step 1: Disable Feature Flag
+
 **File:** `.env.local` or deployment environment
 
 ```bash
@@ -14,12 +15,14 @@ VITE_SIMPLE_CALENDAR=false
 ```
 
 **Effect:**
+
 - Agenda route becomes inaccessible
 - DealForm stops redirecting to Agenda
 - No code removal needed
 - Instant rollback on next deployment
 
 **Verification:**
+
 1. Navigate to `/calendar/agenda` → should 404
 2. Create scheduled deal → should NOT redirect
 3. Legacy calendar flows unaffected
@@ -33,16 +36,18 @@ If you want to keep basic Agenda but remove enhancements:
 ### Files to Revert
 
 #### 1. Remove Undo Complete
+
 **File:** `src/pages/calendar-agenda/index.jsx`
 
 **Lines to revert:** 163-194 (handleComplete function)
 
 Replace with:
+
 ```javascript
 async function handleComplete(job) {
   try {
-    await jobService.updateStatus(job.id, 'completed', { 
-      completed_at: new Date().toISOString() 
+    await jobService.updateStatus(job.id, 'completed', {
+      completed_at: new Date().toISOString(),
     })
     toast?.success?.('Marked completed')
     await load()
@@ -53,9 +58,11 @@ async function handleComplete(job) {
 ```
 
 #### 2. Remove Advanced Filters
+
 **File:** `src/pages/calendar-agenda/index.jsx`
 
 **Lines to remove:**
+
 - Lines 67-68: `conflicts` and enhanced state
 - Lines 72-77: `dateRange` and `vendorFilter` state
 - Lines 79-94: Enhanced URL sync
@@ -63,6 +70,7 @@ async function handleComplete(job) {
 - Lines 28-52: Enhanced applyFilters (revert to original)
 
 **Revert to original:**
+
 ```javascript
 function applyFilters(rows, { q, status }) {
   return rows.filter((r) => {
@@ -81,17 +89,21 @@ function applyFilters(rows, { q, status }) {
 ```
 
 #### 3. Remove Conflict Hints
+
 **File:** `src/pages/calendar-agenda/index.jsx`
 
 **Lines to remove:**
+
 - Line 8: `import { calendarService }` (if not used elsewhere)
 - Lines 291-299: Conflict warning icon
 - Line 275: `const hasConflict = conflicts.get(r.id)`
 
 #### 4. Simplify Header
+
 **File:** `src/pages/calendar-agenda/index.jsx`
 
 **Lines to remove:**
+
 - Line 233: aria-live region
 - Lines 241-250: Date range filter dropdown
 
@@ -118,13 +130,16 @@ rm -f .artifacts/AGENDA_*.md
 ### Files to Revert
 
 #### 1. `.env.example`
+
 ```diff
 - VITE_SIMPLE_CALENDAR=false
 + VITE_SIMPLE_CALENDAR=
 ```
 
 #### 2. `src/Routes.jsx`
+
 Remove lines 23-25 and 120-129:
+
 ```diff
 - const SimpleAgendaEnabled =
 -   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -145,7 +160,9 @@ Remove lines 23-25 and 120-129:
 ```
 
 #### 3. `src/pages/deals/DealForm.jsx`
+
 Remove lines 579-589 (redirect logic):
+
 ```diff
 -         // Optional: redirect to Agenda when feature flag enabled and scheduling set
 -         try {
@@ -165,6 +182,7 @@ Remove lines 579-589 (redirect logic):
 ## Verification Steps After Rollback
 
 ### 1. Feature Flag Disabled
+
 ```bash
 # Should return 404
 curl http://localhost:5173/calendar/agenda
@@ -174,18 +192,21 @@ grep -r "SIMPLE_CALENDAR" src/pages/deals/DealForm.jsx
 ```
 
 ### 2. Build Still Works
+
 ```bash
 pnpm run build
 # Should succeed
 ```
 
 ### 3. Tests Still Pass
+
 ```bash
 pnpm test
 # Should pass (minus removed Agenda tests)
 ```
 
 ### 4. Legacy Calendar Works
+
 ```bash
 # Navigate to:
 http://localhost:5173/calendar-flow-management-center
@@ -213,6 +234,7 @@ git push --force origin copilot/confirm-agenda-flow-patches
 ### Cherry-pick Removal
 
 If you need to keep other changes but remove Agenda:
+
 ```bash
 # Revert specific commits
 git revert aa54075  # Enhancements
@@ -227,17 +249,20 @@ git revert <first-agenda-commit>
 ### No Database Changes Required
 
 ✅ **Good News:** Agenda feature uses existing tables and RPCs
+
 - No new migrations to roll back
 - No schema changes
 - No data modifications
 - No RLS policy changes
 
 **RPCs Used (already existed):**
+
 - `get_jobs_by_date_range` (keep)
 - `check_vendor_schedule_conflict` (keep)
 - Both used by other calendar features
 
 **Tables Used (no changes):**
+
 - `jobs` (read/update only)
 - `vendors` (read only)
 - `vehicles` (read only)
@@ -251,6 +276,7 @@ git revert <first-agenda-commit>
 ### Vercel/Production
 
 **Option 1: Revert Deployment**
+
 ```bash
 # Via Vercel dashboard
 1. Go to Deployments
@@ -259,6 +285,7 @@ git revert <first-agenda-commit>
 ```
 
 **Option 2: Environment Variable**
+
 ```bash
 # Via Vercel dashboard or CLI
 vercel env add VITE_SIMPLE_CALENDAR
@@ -267,6 +294,7 @@ vercel --prod
 ```
 
 **Option 3: Redeploy Previous Commit**
+
 ```bash
 git checkout <commit-before-agenda>
 git push origin HEAD:main --force
@@ -284,6 +312,7 @@ git push origin HEAD:main --force
 - [ ] Deploy with flag disabled
 
 **If Full Removal:**
+
 - [ ] Delete Agenda directory and files
 - [ ] Revert Routes.jsx changes
 - [ ] Revert DealForm.jsx redirect
@@ -296,12 +325,12 @@ git push origin HEAD:main --force
 
 ## Estimated Rollback Time
 
-| Method | Time | Difficulty | Risk |
-|--------|------|------------|------|
-| **Feature Flag Only** | < 1 min | Easy | None |
-| **Partial Removal** | 5-10 min | Easy | Low |
-| **Full Removal** | 15-20 min | Medium | Low |
-| **Git Revert** | 2-5 min | Easy | None |
+| Method                | Time      | Difficulty | Risk |
+| --------------------- | --------- | ---------- | ---- |
+| **Feature Flag Only** | < 1 min   | Easy       | None |
+| **Partial Removal**   | 5-10 min  | Easy       | Low  |
+| **Full Removal**      | 15-20 min | Medium     | Low  |
+| **Git Revert**        | 2-5 min   | Easy       | None |
 
 ---
 
@@ -328,7 +357,8 @@ curl http://localhost:5173/calendar/agenda
 
 **Branch:** `copilot/confirm-agenda-flow-patches`
 **PR:** (to be created)
-**Commits:** 
+**Commits:**
+
 - `1e624b2` - Initial
 - `d23f271` - ESC handlers
 - `aa54075` - Enhancements
@@ -341,14 +371,14 @@ curl http://localhost:5173/calendar/agenda
 
 ## Rollback Decision Matrix
 
-| Scenario | Recommended Action |
-|----------|-------------------|
-| **Bug in Agenda** | Disable flag temporarily |
-| **Performance issue** | Keep flag, remove conflict checks |
-| **User confusion** | Keep flag, improve docs/training |
-| **Security concern** | Disable flag immediately, investigate |
-| **Feature not needed** | Full removal after testing |
-| **Temporary disable** | Flag only, no code removal |
+| Scenario               | Recommended Action                    |
+| ---------------------- | ------------------------------------- |
+| **Bug in Agenda**      | Disable flag temporarily              |
+| **Performance issue**  | Keep flag, remove conflict checks     |
+| **User confusion**     | Keep flag, improve docs/training      |
+| **Security concern**   | Disable flag immediately, investigate |
+| **Feature not needed** | Full removal after testing            |
+| **Temporary disable**  | Flag only, no code removal            |
 
 ---
 

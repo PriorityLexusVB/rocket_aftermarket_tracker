@@ -20,11 +20,13 @@ Enhanced the existing capability gating and diagnostics system with RLS (Row-Lev
 **File**: `src/utils/capabilityTelemetry.js`
 
 Added new telemetry key:
+
 ```javascript
 RLS_LOANER_DENIED: 'telemetry_rlsLoanerDenied'
 ```
 
 Updated `getAllTelemetry()` to include:
+
 ```javascript
 rlsLoanerDenied: getTelemetry(TelemetryKey.RLS_LOANER_DENIED)
 ```
@@ -34,6 +36,7 @@ rlsLoanerDenied: getTelemetry(TelemetryKey.RLS_LOANER_DENIED)
 **File**: `src/services/dealService.js`
 
 Enhanced `upsertLoanerAssignment()` function to:
+
 - Detect RLS permission denied errors (PGRST301 or "permission denied")
 - Increment telemetry counter for observability
 - Provide user-friendly error message
@@ -55,9 +58,11 @@ catch (error) {
 ### 3. Test Coverage
 
 **Updated**: `src/tests/capabilityTelemetry.test.js`
+
 - Updated test expectations to include `rlsLoanerDenied: 0`
 
 **New**: `src/tests/dealService.rlsLoanerTelemetry.test.js`
+
 - 3 new tests documenting RLS loaner telemetry behavior
 - Tests verify telemetry key definition and initialization
 
@@ -68,6 +73,7 @@ catch (error) {
 ### Monitoring RLS Loaner Denied Errors
 
 **Browser Console**:
+
 ```javascript
 import { getAllTelemetry } from '@/utils/capabilityTelemetry'
 console.table(getAllTelemetry())
@@ -80,6 +86,7 @@ console.table(getAllTelemetry())
 ```
 
 **API Endpoint** (already supported via existing endpoints):
+
 ```bash
 curl https://your-app.vercel.app/api/diagnostics/telemetry
 ```
@@ -106,7 +113,7 @@ Log warning to console
 Increment telemetry: RLS_LOANER_DENIED
     ↓
 Throw user-friendly error:
-"Permission denied: Unable to manage loaner 
+"Permission denied: Unable to manage loaner
 assignments. Contact your administrator."
     ↓
 User sees error message in UI
@@ -126,11 +133,13 @@ User sees error message in UI
 ## Compatibility
 
 ✅ **Backward Compatible**: All changes are additive
+
 - Existing telemetry endpoints automatically include new counter
 - Existing error handling unchanged (only enhanced)
 - No breaking changes to APIs or services
 
 ✅ **Minimal Changes**: Only 4 files modified
+
 - 2 core files enhanced (telemetry + service)
 - 2 test files updated/added
 - Total: 49 additions, 3 deletions
@@ -140,15 +149,18 @@ User sees error message in UI
 ## Testing
 
 **Unit Tests**: ✅ 422 passing
+
 - All existing tests continue to pass
 - 3 new tests for RLS loaner telemetry
 - Updated 1 test to include new counter
 
 **Build**: ✅ Passing
+
 - No build errors or warnings
 - Production bundle generated successfully
 
 **Security**: ✅ CodeQL scan passed
+
 - No vulnerabilities detected
 - No security issues introduced
 
@@ -158,11 +170,11 @@ User sees error message in UI
 
 This enhancement complements the existing capability gating system:
 
-| System Component | Handles |
-|-----------------|---------|
-| **Schema Error Classifier** | Missing columns, FK relationships |
-| **Capability Telemetry** | Schema fallbacks (vendor_id, scheduled_times, etc.) |
-| **RLS Loaner Telemetry** ⭐ NEW | Permission denied errors on loaner_assignments |
+| System Component                | Handles                                             |
+| ------------------------------- | --------------------------------------------------- |
+| **Schema Error Classifier**     | Missing columns, FK relationships                   |
+| **Capability Telemetry**        | Schema fallbacks (vendor_id, scheduled_times, etc.) |
+| **RLS Loaner Telemetry** ⭐ NEW | Permission denied errors on loaner_assignments      |
 
 All components use the same telemetry infrastructure for consistency.
 

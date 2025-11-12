@@ -55,21 +55,25 @@ pnpm build
 ## Critical Rules (Never Violate)
 
 ### Stack Lock
+
 - ✅ Vite 5 + React 18 + TailwindCSS + Supabase
 - ❌ Do NOT change stack or remove `rocketCritical` dependencies
 
 ### Data Access
+
 - ✅ Import Supabase ONLY in service/lib modules
 - ❌ NEVER import Supabase directly in React components
 - ✅ All queries MUST include tenant scoping (orgId/profile context)
 
 ### Forms & UI
+
 - ✅ All form inputs are controlled (`value` + `onChange`)
 - ❌ Do NOT use `defaultValue`
 - ✅ Keep debounced autosave at ~600ms
 - ✅ Dropdown cache TTL = 5 minutes
 
 ### Schema Changes
+
 - ✅ Create NEW timestamped migration files
 - ❌ NEVER edit historical migration files
 - ✅ Include `NOTIFY pgrst, 'reload schema';` for relationship changes
@@ -80,6 +84,7 @@ pnpm build
 ## Troubleshooting
 
 ### "Could not find a relationship" Error
+
 ```sql
 -- Run in Supabase SQL editor:
 NOTIFY pgrst, 'reload schema';
@@ -87,6 +92,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 ### Tests Failing After Your Changes
+
 ```bash
 # 1. Run tests to see failures
 pnpm test
@@ -96,6 +102,7 @@ pnpm test
 ```
 
 ### Lint Errors
+
 ```bash
 # Check what's wrong
 pnpm lint
@@ -108,18 +115,18 @@ pnpm lint --fix
 
 ## Phase Status (See MASTER_EXECUTION_PROMPT.md)
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 1 | ✅ DONE | Permission error mapping |
-| 2 | ✅ DONE | Time normalization |
-| 3 | ✅ DONE | UI-safe date display |
-| 4 | 🔄 READY | Appointments simplification |
-| 5 | 🔄 READY | Drawer streamlining |
-| 6 | 🔄 READY | Calendar UX lane clarity |
-| 7 | 🔄 READY | Performance health polish |
-| 8 | 🔄 READY | Prune demo jobs script |
-| 9 | 🔄 READY | Final checks and docs |
-| 10 | 🔄 READY | PR and rollback notes |
+| Phase | Status   | Description                 |
+| ----- | -------- | --------------------------- |
+| 1     | ✅ DONE  | Permission error mapping    |
+| 2     | ✅ DONE  | Time normalization          |
+| 3     | ✅ DONE  | UI-safe date display        |
+| 4     | 🔄 READY | Appointments simplification |
+| 5     | 🔄 READY | Drawer streamlining         |
+| 6     | 🔄 READY | Calendar UX lane clarity    |
+| 7     | 🔄 READY | Performance health polish   |
+| 8     | 🔄 READY | Prune demo jobs script      |
+| 9     | 🔄 READY | Final checks and docs       |
+| 10    | 🔄 READY | PR and rollback notes       |
 
 ---
 
@@ -152,6 +159,7 @@ pnpm lint --fix
 **Principle**: Prefer READ + PLAN over MODIFY
 
 When in doubt:
+
 1. ✅ Stop and analyze
 2. ✅ Document what you found
 3. ✅ Propose a plan
@@ -159,6 +167,7 @@ When in doubt:
 5. ✅ Then implement
 
 **Never**:
+
 - ❌ Make breaking changes without approval
 - ❌ Remove existing functionality
 - ❌ Skip testing after changes

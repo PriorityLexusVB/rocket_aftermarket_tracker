@@ -17,6 +17,7 @@ The error **"permission denied for table users"** occurs when Row Level Security
 ## Table Inventory
 
 ### Core Application Tables
+
 All tables analyzed include `org_id` for tenant scoping:
 
 1. **jobs** - Primary deal/job management table
@@ -58,15 +59,15 @@ CREATE POLICY "update_jobs_by_org" ON public.jobs
 FOR UPDATE
 USING (
   EXISTS (
-    SELECT 1 FROM public.user_profiles up 
-    WHERE up.id = auth.uid() 
+    SELECT 1 FROM public.user_profiles up
+    WHERE up.id = auth.uid()
     AND up.org_id = jobs.org_id
   )
 )
 WITH CHECK (
   EXISTS (
-    SELECT 1 FROM public.user_profiles up 
-    WHERE up.id = auth.uid() 
+    SELECT 1 FROM public.user_profiles up
+    WHERE up.id = auth.uid()
     AND up.org_id = NEW.org_id
   )
 );
@@ -80,7 +81,7 @@ CREATE POLICY "update_jobs_bad" ON public.jobs
 FOR UPDATE
 USING (
   EXISTS (
-    SELECT 1 FROM auth.users u 
+    SELECT 1 FROM auth.users u
     WHERE u.id = auth.uid()
   )
 );
@@ -99,19 +100,24 @@ USING (
 ## Potential RLS Issues by Table
 
 ### jobs Table
+
 **Suspected policies:**
+
 - `select_jobs_by_org` ✅ (likely correct if using user_profiles)
 - `insert_jobs_by_org` ✅
 - `update_jobs_by_org` ⚠️ **HIGH RISK** - Most common source of "permission denied" errors
 - `delete_jobs_by_org` ⚠️
 
 **Action Required:**
+
 1. Inspect UPDATE policy with: `SELECT * FROM pg_policies WHERE tablename = 'jobs' AND cmd = 'UPDATE';`
 2. Verify it references `public.user_profiles`, not `auth.users`
 3. If incorrect, drop and recreate with correct pattern
 
 ### job_parts Table
+
 **Suspected policies:**
+
 - `select_job_parts_by_org` ✅
 - `insert_job_parts_by_org` ⚠️ **MEDIUM RISK**
 - `update_job_parts_by_org` ⚠️ **HIGH RISK**
@@ -119,7 +125,9 @@ USING (
 **Special consideration:** job_parts updates are frequent during deal editing. Any RLS issue will manifest immediately in UI.
 
 ### transactions Table
+
 **Suspected policies:**
+
 - `insert_transactions_by_org` ⚠️ **MEDIUM RISK**
 
 **Note:** Transaction inserts happen during deal saves. RLS errors here block the entire save operation.
@@ -129,6 +137,7 @@ USING (
 ## Extensions Verification
 
 ### Required Extensions
+
 1. **pg_trgm** - Trigram matching for fuzzy search
    - Status: Expected present
    - Verification: `SELECT * FROM pg_extension WHERE extname = 'pg_trgm';`
@@ -145,6 +154,7 @@ USING (
 ## Health Check Results (Simulated)
 
 ### ✅ /api/health-user-profiles
+
 ```json
 {
   "ok": true,
@@ -156,9 +166,11 @@ USING (
   }
 }
 ```
+
 **Status:** All display name columns present
 
 ### ✅ /api/health-loaner-assignments
+
 ```json
 {
   "ok": true,
@@ -166,9 +178,11 @@ USING (
   "rowsChecked": 1
 }
 ```
+
 **Status:** RLS allows SELECT (policy likely correct)
 
 ### ✅ /api/health-indexes
+
 ```json
 {
   "ok": true,
@@ -180,9 +194,11 @@ USING (
   ]
 }
 ```
+
 **Status:** Columns exist; index presence requires psql verification
 
 ### ✅ /api/health-deals-rel
+
 ```json
 {
   "ok": true,
@@ -193,6 +209,7 @@ USING (
   "restQueryOk": true
 }
 ```
+
 **Status:** job_parts.vendor_id FK exists and relationship expansion works
 
 ---
@@ -200,11 +217,13 @@ USING (
 ## Root Cause Summary: "Permission Denied for Table Users"
 
 ### Where It Occurs
+
 - **Operation:** UPDATE or INSERT on `jobs`, `job_parts`, or `transactions` tables
 - **Trigger:** RLS policy evaluation during write operations
 - **Error Message:** `"permission denied for table users"` or `"permission denied for relation users"`
 
 ### Why It Happens
+
 1. An RLS policy on a public schema table references `auth.users`
 2. PostgreSQL evaluates the policy during the write operation
 3. The policy tries to SELECT from `auth.users` to validate permissions
@@ -214,27 +233,31 @@ USING (
 ### How To Fix
 
 #### Step 1: Identify Problematic Policies
+
 ```sql
 -- List all policies on jobs table
-SELECT 
-  schemaname, 
-  tablename, 
-  policyname, 
-  cmd, 
-  qual, 
-  with_check 
-FROM pg_policies 
+SELECT
+  schemaname,
+  tablename,
+  policyname,
+  cmd,
+  qual,
+  with_check
+FROM pg_policies
 WHERE tablename IN ('jobs', 'job_parts', 'transactions')
 ORDER BY tablename, cmd;
 ```
 
 #### Step 2: Check for auth.users References
+
 Look for policies with `qual` or `with_check` containing:
+
 - `auth.users`
 - `auth."users"`
 - Any reference to the auth schema
 
 #### Step 3: Replace with Correct Pattern
+
 ```sql
 -- Drop problematic policy
 DROP POLICY "update_jobs_by_org" ON public.jobs;
@@ -244,25 +267,28 @@ CREATE POLICY "update_jobs_by_org" ON public.jobs
 FOR UPDATE
 USING (
   EXISTS (
-    SELECT 1 FROM public.user_profiles up 
-    WHERE up.id = auth.uid() 
+    SELECT 1 FROM public.user_profiles up
+    WHERE up.id = auth.uid()
     AND up.org_id = jobs.org_id
   )
 )
 WITH CHECK (
   EXISTS (
-    SELECT 1 FROM public.user_profiles up 
-    WHERE up.id = auth.uid() 
+    SELECT 1 FROM public.user_profiles up
+    WHERE up.id = auth.uid()
     AND up.org_id = NEW.org_id
   )
 );
 ```
 
 #### Step 4: Reload Schema Cache
+
 After fixing policies, reload PostgREST cache:
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```
+
 Wait 5 seconds and retry the failing operation.
 
 ---
@@ -287,20 +313,20 @@ Wait 5 seconds and retry the failing operation.
 
 ```javascript
 function mapPermissionError(err) {
-  const msg = String(err?.message || '').toLowerCase();
-  
+  const msg = String(err?.message || '').toLowerCase()
+
   if (/permission denied for (table |relation )?users/i.test(msg)) {
     throw new Error(
-      "Failed to save: RLS prevented update on auth.users. " +
-      "Likely a policy references auth.users. " +
-      "Remediation: NOTIFY pgrst, 'reload schema' then retry; " +
-      "update policy to reference public.user_profiles or tenant-scoped conditions. " +
-      "See docs/MCP-NOTES.md and .artifacts/mcp-introspect/INTROSPECTION.md for details."
-    );
+      'Failed to save: RLS prevented update on auth.users. ' +
+        'Likely a policy references auth.users. ' +
+        "Remediation: NOTIFY pgrst, 'reload schema' then retry; " +
+        'update policy to reference public.user_profiles or tenant-scoped conditions. ' +
+        'See docs/MCP-NOTES.md and .artifacts/mcp-introspect/INTROSPECTION.md for details.'
+    )
   }
-  
+
   // Re-throw original error if not a known pattern
-  throw err;
+  throw err
 }
 ```
 
@@ -323,6 +349,7 @@ function mapPermissionError(err) {
 ## Conclusion
 
 The "permission denied for table users" error is entirely preventable by following the pattern:
+
 1. ✅ Always reference `public.user_profiles` in RLS policies
 2. ✅ Use `auth.uid()` to get current user, then join to user_profiles
 3. ✅ Include `org_id` checks for tenant isolation

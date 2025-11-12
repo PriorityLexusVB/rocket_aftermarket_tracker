@@ -3,7 +3,7 @@
  * scripts/verify-capabilities.js
  * Enhanced verification script aggregating health + telemetry endpoints.
  * Assumes local dev or deployed endpoints available under process.env.VERIFY_BASE_URL.
- * 
+ *
  * Enhanced with:
  * - Comprehensive health checks
  * - Rate limit verification
@@ -30,10 +30,10 @@ async function fetchJson(url) {
 
 async function main() {
   console.log('🚀 Rocket Aftermarket Tracker - Capability Verification')
-  console.log('=' .repeat(60))
+  console.log('='.repeat(60))
   console.log(`Base URL: ${base}`)
   console.log(`Timestamp: ${new Date().toISOString()}`)
-  console.log('=' .repeat(60))
+  console.log('='.repeat(60))
   console.log('')
 
   const results = {}
@@ -75,7 +75,9 @@ async function main() {
     console.log('✅ User profiles health check passed')
     if (results.healthUserProfiles.data?.columns) {
       const cols = results.healthUserProfiles.data.columns
-      console.log(`   Columns: name=${cols.name}, full_name=${cols.full_name}, display_name=${cols.display_name}`)
+      console.log(
+        `   Columns: name=${cols.name}, full_name=${cols.full_name}, display_name=${cols.display_name}`
+      )
     }
   } else {
     console.log('⚠️  User profiles health check warning:', results.healthUserProfiles.error)
@@ -129,9 +131,9 @@ async function main() {
   console.log('')
 
   // Summary
-  console.log('=' .repeat(60))
+  console.log('='.repeat(60))
   console.log('📊 Verification Summary')
-  console.log('=' .repeat(60))
+  console.log('='.repeat(60))
 
   const passedTests = Object.values(results).filter((r) => r.ok).length
   const totalTests = Object.keys(results).length
@@ -149,7 +151,9 @@ async function main() {
     console.log('❌ Some critical checks failed')
     console.log('')
     console.log('Remediation guidance:')
-    console.log('  - If vendor_id or scheduled_* missing: apply migrations + NOTIFY pgrst, "reload schema"')
+    console.log(
+      '  - If vendor_id or scheduled_* missing: apply migrations + NOTIFY pgrst, "reload schema"'
+    )
     console.log('  - If RLS denied on loaner_assignments: add SELECT policy (see runbook)')
     console.log('  - If relationship errors: run scripts/verify-schema-cache.sh')
     console.log('  - Check CAPABILITY_GATING_IMPLEMENTATION_REPORT.md for details')

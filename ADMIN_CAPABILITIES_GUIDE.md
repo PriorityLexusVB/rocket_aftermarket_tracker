@@ -13,6 +13,7 @@ The Rocket Aftermarket Tracker includes comprehensive admin tools for monitoring
 #### 1. Telemetry Counters
 
 View real-time counts of capability fallback events:
+
 - **Vendor Fallback**: Legacy vendor capability fallbacks
 - **Vendor ID Fallback**: Missing vendor_id column fallbacks
 - **Vendor Rel Fallback**: Missing vendor relationship fallbacks
@@ -20,6 +21,7 @@ View real-time counts of capability fallback events:
 - **User Profile Name Fallback**: Missing user profile name column fallbacks
 
 **Actions**:
+
 - **Export**: Download telemetry data as JSON
 - **Import**: Restore telemetry from a JSON file
 - **Reset All**: Clear all telemetry counters
@@ -27,17 +29,20 @@ View real-time counts of capability fallback events:
 #### 2. Capability Flags
 
 Monitor and reset capability flags:
+
 - `jobPartsVendorRel`: Vendor relationship availability
 - `jobPartsScheduledTimes`: Per-line scheduling times availability
 - `jobPartsVendorId`: Vendor ID column availability
 - `userProfilesName`: User profiles name column availability
 
 **Status Indicators**:
+
 - 🟢 Green: Capability enabled
 - 🔴 Red: Capability disabled
 - ⚪ Gray: Not set
 
 **Actions**:
+
 - **Reset**: Remove capability flag to allow re-detection
 
 #### 3. Schema Cache Management
@@ -56,12 +61,14 @@ Reload the PostgREST schema cache after database migrations:
 #### 4. Structured Logs
 
 View and export diagnostic logs:
+
 - **Total Logs**: Count of logs in buffer (max 100)
 - **Errors**: Critical and error-level logs
 - **Warnings**: Warning-level logs
 - **Info**: Informational logs
 
 **Log Categories**:
+
 - `capability_fallback`: Capability degradation events
 - `schema_error`: Database schema issues
 - `database_error`: Database operation failures
@@ -70,6 +77,7 @@ View and export diagnostic logs:
 - `user_action`: User-initiated actions
 
 **Actions**:
+
 - **Export Logs**: Download all logs as JSON (includes critical logs from localStorage)
 - **Clear Logs**: Remove all logs from buffer
 
@@ -99,6 +107,7 @@ GET /api/health
 ```
 
 **Response**:
+
 ```json
 {
   "ok": true,
@@ -113,6 +122,7 @@ GET /api/health-deals-rel
 ```
 
 **Response**:
+
 ```json
 {
   "ok": true,
@@ -127,6 +137,7 @@ GET /api/health-deals-rel
 ```
 
 **Classifications**:
+
 - `ok`: All checks passed
 - `missing_column`: vendor_id column not found
 - `missing_fk`: Foreign key constraint missing
@@ -140,6 +151,7 @@ GET /api/health-user-profiles
 ```
 
 **Response**:
+
 ```json
 {
   "ok": true,
@@ -159,6 +171,7 @@ GET /api/health/capabilities
 ```
 
 **Response**:
+
 ```json
 {
   "capabilities": {
@@ -198,10 +211,12 @@ JSON_OUTPUT=true node scripts/verify-capabilities.js
 ```
 
 **Exit Codes**:
+
 - `0`: All critical checks passed
 - `1`: One or more critical checks failed
 
 **Output**:
+
 - Basic health check status
 - Deals relationship health
 - User profiles health
@@ -218,6 +233,7 @@ Database-level verification:
 ```
 
 **Checks**:
+
 - vendor_id column existence
 - Foreign key constraint presence
 - Index presence
@@ -239,7 +255,7 @@ import {
   importTelemetry,
   persistToLocalStorage,
   restoreFromLocalStorage,
-  getTelemetrySummary
+  getTelemetrySummary,
 } from '@/utils/capabilityTelemetry'
 
 // Increment a counter
@@ -280,19 +296,19 @@ import {
   logSchemaError,
   getLogs,
   exportLogs,
-  getLogStats
+  getLogStats,
 } from '@/utils/structuredLogger'
 
 // Log a capability fallback
 logCapabilityFallback('vendorRelationship', 'Missing FK', {
   table: 'job_parts',
-  column: 'vendor_id'
+  column: 'vendor_id',
 })
 
 // Log a schema error
 logSchemaError('MISSING_COLUMN', 'Column not found', {
   column: 'vendor_id',
-  table: 'job_parts'
+  table: 'job_parts',
 })
 
 // Get logs with filters

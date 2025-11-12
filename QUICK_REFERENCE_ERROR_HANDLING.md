@@ -7,6 +7,7 @@
 **Symptom:** Query fails with `column "vendor_id" does not exist`
 
 **Quick Fix:**
+
 ```javascript
 // The system will automatically:
 // 1. Detect the error
@@ -17,6 +18,7 @@
 ```
 
 **Manual Verification:**
+
 ```javascript
 // Check capability status
 console.log(sessionStorage.getItem('cap_jobPartsVendorId')) // 'false' = disabled
@@ -27,6 +29,7 @@ console.log(getTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)) // Counter value
 ```
 
 **Permanent Fix:** Apply the migration:
+
 ```bash
 # Check which migration is needed
 curl /api/health/capabilities
@@ -43,6 +46,7 @@ psql -c "NOTIFY pgrst, 'reload schema';"
 **Symptom:** Query fails with `Could not find a relationship between 'job_parts' and 'vendors'`
 
 **Quick Fix:**
+
 ```javascript
 // System automatically:
 // 1. Detects missing relationship
@@ -52,6 +56,7 @@ psql -c "NOTIFY pgrst, 'reload schema';"
 ```
 
 **Health Check:**
+
 ```bash
 curl /api/health-deals-rel
 # Returns:
@@ -63,10 +68,11 @@ curl /api/health-deals-rel
 ```
 
 **Permanent Fix:**
+
 ```sql
 -- Add FK constraint
-ALTER TABLE job_parts 
-ADD CONSTRAINT job_parts_vendor_id_fkey 
+ALTER TABLE job_parts
+ADD CONSTRAINT job_parts_vendor_id_fkey
 FOREIGN KEY (vendor_id) REFERENCES vendors(id);
 
 -- Reload cache
@@ -78,12 +84,14 @@ NOTIFY pgrst, 'reload schema';
 **Symptom:** Migration applied but queries still fail
 
 **Quick Fix:**
+
 ```sql
 -- Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
 ```
 
 **Verification:**
+
 ```bash
 # Check all capabilities
 curl /api/health/capabilities
@@ -113,7 +121,7 @@ console.log({
   vendorId: sessionStorage.getItem('cap_jobPartsVendorId'),
   vendorRel: sessionStorage.getItem('cap_jobPartsVendorRel'),
   times: sessionStorage.getItem('cap_jobPartsTimes'),
-  userNames: sessionStorage.getItem('cap_userProfilesName')
+  userNames: sessionStorage.getItem('cap_userProfilesName'),
 })
 
 // Reset a capability (force re-check)
@@ -123,18 +131,19 @@ location.reload()
 
 ## 🏥 Health Endpoint Quick Reference
 
-| Endpoint | Purpose | Quick Check |
-|----------|---------|-------------|
-| `/api/health/capabilities` | All capabilities | `curl /api/health/capabilities` |
-| `/api/health-deals-rel` | Vendor relationship | `curl /api/health-deals-rel` |
-| `/api/health-user-profiles` | Profile columns | `curl /api/health-user-profiles` |
-| `/api/health/job-parts-times` | Scheduling columns | `curl /api/health/job-parts-times` |
+| Endpoint                      | Purpose             | Quick Check                        |
+| ----------------------------- | ------------------- | ---------------------------------- |
+| `/api/health/capabilities`    | All capabilities    | `curl /api/health/capabilities`    |
+| `/api/health-deals-rel`       | Vendor relationship | `curl /api/health-deals-rel`       |
+| `/api/health-user-profiles`   | Profile columns     | `curl /api/health-user-profiles`   |
+| `/api/health/job-parts-times` | Scheduling columns  | `curl /api/health/job-parts-times` |
 
 ## 🛠️ Quick Troubleshooting
 
 ### Problem: Application slow after upgrade
 
 **Check:** Are preflight probes failing?
+
 ```javascript
 // Monitor network tab for 400 errors on job_parts
 // Check telemetry counters
@@ -142,6 +151,7 @@ getAllTelemetry()
 ```
 
 **Solution:** Apply missing migrations
+
 ```bash
 npx supabase db push
 psql -c "NOTIFY pgrst, 'reload schema';"
@@ -150,14 +160,16 @@ psql -c "NOTIFY pgrst, 'reload schema';"
 ### Problem: Features missing after deployment
 
 **Check:** Which capabilities are disabled?
+
 ```javascript
 // In browser console
 Object.keys(sessionStorage)
-  .filter(k => k.startsWith('cap_'))
-  .map(k => ({ [k]: sessionStorage.getItem(k) }))
+  .filter((k) => k.startsWith('cap_'))
+  .map((k) => ({ [k]: sessionStorage.getItem(k) }))
 ```
 
 **Solution:** Check health endpoints
+
 ```bash
 curl /api/health/capabilities | jq
 ```
@@ -165,6 +177,7 @@ curl /api/health/capabilities | jq
 ### Problem: Errors persisting after fix
 
 **Solution:** Clear capability cache
+
 ```javascript
 // Clear all capability flags
 sessionStorage.clear()
@@ -260,6 +273,7 @@ When queries are failing in production:
 ## 📱 Mobile/Edge Cases
 
 The error handling system works in environments with:
+
 - ✅ SSR/Server-side rendering (capabilities re-checked)
 - ✅ No sessionStorage (gracefully degrades)
 - ✅ Offline mode (returns cached errors)

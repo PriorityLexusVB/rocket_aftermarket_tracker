@@ -8,6 +8,7 @@
 ## Problem Statement
 
 The current Supabase schema has grown to **83 migration files** creating:
+
 - Complex dependency chains
 - Slow schema cache reloads
 - Difficult troubleshooting and auditing
@@ -25,12 +26,13 @@ The current Supabase schema has grown to **83 migration files** creating:
 ### Phase 1: Audit and Document (1 day)
 
 1. **Generate Current Schema Snapshot**
+
    ```bash
    npx supabase db dump --schema public > schema_snapshot_$(date +%Y%m%d).sql
    ```
 
 2. **Index Analysis**
-   - Run queries against `pg_stat_user_indexes` 
+   - Run queries against `pg_stat_user_indexes`
    - Identify unused indexes (0 or low usage)
    - Document all indexes with their purpose
 
@@ -48,12 +50,13 @@ The current Supabase schema has grown to **83 migration files** creating:
 
 1. **Generate Squashed Migration**
    Create a new migration that represents the complete, optimized schema:
+
    ```sql
    -- 20251110000000_schema_consolidation_v1.sql
-   
+
    -- Drop old objects if starting fresh
    -- (Only for new environments, not production)
-   
+
    -- Create tables with optimized structure
    CREATE TABLE IF NOT EXISTS public.jobs (
      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,11 +65,11 @@ The current Supabase schema has grown to **83 migration files** creating:
      created_at timestamptz DEFAULT now(),
      updated_at timestamptz DEFAULT now()
    );
-   
+
    -- Add optimized indexes
-   CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_org_created 
+   CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_org_created
      ON jobs(org_id, created_at DESC);
-   
+
    -- Add consolidated RLS policies
    CREATE POLICY "org_isolation" ON jobs
      FOR ALL USING (org_id = get_user_org_id());
@@ -81,13 +84,14 @@ The current Supabase schema has grown to **83 migration files** creating:
 ### Phase 3: Testing (0.5 day)
 
 1. **Test in Development Environment**
+
    ```bash
    # Apply to fresh DB
    npx supabase db reset
-   
+
    # Apply consolidation migration
    npx supabase db push
-   
+
    # Run full test suite
    npm test
    ```
@@ -110,11 +114,12 @@ The current Supabase schema has grown to **83 migration files** creating:
    - Test rollback procedure in staging
 
 2. **Deploy with Monitoring**
+
    ```bash
    # Maintenance window recommended
    # Apply migration
    npx supabase db push --db-url $PRODUCTION_URL
-   
+
    # Monitor logs
    npx supabase logs --db-url $PRODUCTION_URL
    ```
@@ -129,12 +134,14 @@ The current Supabase schema has grown to **83 migration files** creating:
 ### 1. Index Consolidation
 
 **Current (Example):**
+
 ```sql
 CREATE INDEX idx_jobs_org_id ON jobs(org_id);
 CREATE INDEX idx_jobs_created_at ON jobs(created_at);
 ```
 
 **Optimized:**
+
 ```sql
 -- Single composite index serves both queries
 CREATE INDEX idx_jobs_org_created ON jobs(org_id, created_at DESC);
@@ -143,16 +150,18 @@ CREATE INDEX idx_jobs_org_created ON jobs(org_id, created_at DESC);
 ### 2. RLS Policy Simplification
 
 **Current (Example):**
+
 ```sql
-CREATE POLICY "select_own_org" ON jobs FOR SELECT 
+CREATE POLICY "select_own_org" ON jobs FOR SELECT
   USING (org_id = get_user_org_id());
-CREATE POLICY "insert_own_org" ON jobs FOR INSERT 
+CREATE POLICY "insert_own_org" ON jobs FOR INSERT
   WITH CHECK (org_id = get_user_org_id());
-CREATE POLICY "update_own_org" ON jobs FOR UPDATE 
+CREATE POLICY "update_own_org" ON jobs FOR UPDATE
   USING (org_id = get_user_org_id());
 ```
 
 **Simplified:**
+
 ```sql
 -- Single policy covers all operations
 CREATE POLICY "org_isolation" ON jobs FOR ALL
@@ -163,6 +172,7 @@ CREATE POLICY "org_isolation" ON jobs FOR ALL
 ### 3. Function Optimization
 
 **Review and optimize these patterns:**
+
 ```sql
 -- Mark functions as STABLE when appropriate
 CREATE OR REPLACE FUNCTION get_user_org_id()
@@ -171,7 +181,7 @@ LANGUAGE sql
 STABLE  -- Not VOLATILE - result doesn't change within transaction
 SECURITY DEFINER
 AS $$
-  SELECT org_id FROM user_profiles 
+  SELECT org_id FROM user_profiles
   WHERE auth_user_id = auth.uid()
   LIMIT 1;
 $$;
@@ -180,9 +190,10 @@ $$;
 ### 4. Materialized View for Reporting
 
 **Add for expensive aggregations:**
+
 ```sql
 CREATE MATERIALIZED VIEW job_summary_by_org AS
-SELECT 
+SELECT
   org_id,
   COUNT(*) as total_jobs,
   SUM(total_amount) as total_revenue,
@@ -197,6 +208,7 @@ CREATE INDEX ON job_summary_by_org(org_id, day DESC);
 ## Risk Mitigation
 
 ### High-Risk Changes
+
 - Altering primary keys or foreign keys
 - Changing data types
 - Removing columns still in use
@@ -204,16 +216,19 @@ CREATE INDEX ON job_summary_by_org(org_id, day DESC);
 **Mitigation:** Avoid these entirely in consolidation; handle separately with proper deprecation
 
 ### Medium-Risk Changes
+
 - Removing unused indexes
 - Consolidating RLS policies
 - Optimizing function definitions
 
-**Mitigation:** 
+**Mitigation:**
+
 - Test thoroughly in staging
 - Deploy during maintenance window
 - Monitor closely post-deployment
 
 ### Low-Risk Changes
+
 - Adding comments and documentation
 - Renaming internal functions
 - Optimizing query plans
@@ -232,18 +247,21 @@ CREATE INDEX ON job_summary_by_org(org_id, day DESC);
 ## Alternative Approaches
 
 ### Option A: Gradual Cleanup (Recommended for Production)
+
 - Keep all existing migrations
 - Add cleanup migrations incrementally
 - Mark old migrations as "consolidated" in comments
 - Lower risk, easier rollback
 
 ### Option B: Complete Rebuild (Only for New Environments)
+
 - Create entirely new schema from scratch
 - Migrate data with custom scripts
 - Highest risk, most thorough cleanup
 - Only recommended for new deployments
 
 ### Option C: Hybrid Approach (Current Recommendation)
+
 - Document current schema thoroughly
 - Add new "cleanup" migrations for obviously redundant items
 - Create snapshot migration for reference but don't force rebuild

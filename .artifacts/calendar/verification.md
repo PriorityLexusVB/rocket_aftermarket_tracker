@@ -74,9 +74,9 @@ Duration  1.09s
 import { getEventColors, generateEventId } from '@/utils/calendarColors'
 
 // In calendar event rendering:
-const job = { 
-  id: 123, 
-  service_type: 'vendor', 
+const job = {
+  id: 123,
+  service_type: 'vendor',
   job_status: 'in_progress',
   scheduled_start_time: '2025-01-15T10:00:00Z'
 }
@@ -85,7 +85,7 @@ const eventId = generateEventId(job) // 'event-123-1736935200000'
 const colors = getEventColors(job.service_type, job.job_status)
 
 // Apply colors:
-<div 
+<div
   id={eventId}
   className={colors.className}
   style={{ borderColor: colors.hex }}
@@ -118,23 +118,24 @@ import CalendarLegend from '@/components/calendar/CalendarLegend'
 
 ### Color Palette
 
-| Service Type | Background | Border | Text | Hex |
-|-------------|-----------|--------|------|-----|
-| Onsite | `bg-blue-100` | `border-blue-300` | `text-blue-900` | #3B82F6 |
+| Service Type   | Background      | Border              | Text              | Hex     |
+| -------------- | --------------- | ------------------- | ----------------- | ------- |
+| Onsite         | `bg-blue-100`   | `border-blue-300`   | `text-blue-900`   | #3B82F6 |
 | Vendor/Offsite | `bg-purple-100` | `border-purple-300` | `text-purple-900` | #A855F7 |
 
 ### Status Indicators
 
-| Status | Badge Color | Opacity | Special |
-|--------|------------|---------|---------|
-| Scheduled | Blue | 90% | - |
-| In Progress | Orange | 100% | Pulse animation |
-| Quality Check | Green | 80% | - |
-| Completed | Green | 60% | Muted |
+| Status        | Badge Color | Opacity | Special         |
+| ------------- | ----------- | ------- | --------------- |
+| Scheduled     | Blue        | 90%     | -               |
+| In Progress   | Orange      | 100%    | Pulse animation |
+| Quality Check | Green       | 80%     | -               |
+| Completed     | Green       | 60%     | Muted           |
 
 ## Event ID Uniqueness
 
 The `generateEventId()` function ensures:
+
 - ✅ Deterministic IDs (same job → same ID)
 - ✅ Uniqueness (different jobs → different IDs)
 - ✅ Includes job ID and timestamp
@@ -178,6 +179,7 @@ The `generateEventId()` function ensures:
 ## Artifacts Created
 
 **`.artifacts/calendar/lane-snapshot.json`**:
+
 ```json
 {
   "phase": 6,
@@ -194,11 +196,13 @@ The `generateEventId()` function ensures:
 ## Rollback Strategy
 
 To revert Phase 6:
+
 ```bash
 git revert <commit-hash>
 ```
 
 Or manually:
+
 ```bash
 rm src/utils/calendarColors.js
 rm src/components/calendar/CalendarLegend.jsx
@@ -211,6 +215,7 @@ No database or state changes, rollback is immediate and safe.
 ## Conclusion
 
 Phase 6 successfully implements:
+
 - ✅ Deterministic color system for calendar events
 - ✅ Visual distinction between onsite and vendor work
 - ✅ Reusable legend component

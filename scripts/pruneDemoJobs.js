@@ -2,15 +2,15 @@
 
 /**
  * Prune Demo Jobs Script
- * 
+ *
  * Safely identifies and optionally removes demo/test jobs from the database.
  * DEFAULT MODE: --dry-run (list candidates only, no deletions)
- * 
+ *
  * Usage:
  *   node scripts/pruneDemoJobs.js                    # Dry run (default)
  *   node scripts/pruneDemoJobs.js --dry-run          # Explicit dry run
  *   node scripts/pruneDemoJobs.js --apply --confirm  # Actually delete (requires confirmation)
- * 
+ *
  * Safety Features:
  * - Dry-run by default
  * - Requires explicit --confirm flag for deletion

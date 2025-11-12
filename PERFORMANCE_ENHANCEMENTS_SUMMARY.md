@@ -15,17 +15,20 @@ This document summarizes the performance enhancements and verification tools imp
 **Location**: `src/services/advancedFeaturesService.js`
 
 **Changes**:
+
 - Added explicit column selection for `searchWithFilters` method instead of using `SELECT *`
 - Implemented defensive LIMIT clause (200 rows) to prevent excessive result sets
 - Defined specific column lists for each table type (jobs, vehicles, vendors)
 
 **Benefits**:
+
 - Reduced payload size by ~50-70% (only fetching needed columns)
 - Enables use of covering indexes when available
 - Prevents timeout errors on large result sets
 - Faster network transfer and client-side processing
 
 **Column Selections**:
+
 ```javascript
 jobs: 'id,job_number,title,job_status,customer_name,customer_phone,created_at,updated_at,org_id,assigned_to,vehicle_id'
 vehicles: 'id,vin,make,model,year,license_plate,created_at,updated_at,org_id'
@@ -39,6 +42,7 @@ vendors: 'id,name,specialty,contact_person,phone,email,created_at,updated_at,org
 **Purpose**: Provides real-time performance monitoring and index verification
 
 **Features**:
+
 - Verifies pg_trgm extension is enabled
 - Checks existence of all critical performance indexes
 - Reports on materialized view status (optional)
@@ -47,6 +51,7 @@ vendors: 'id,name,specialty,contact_person,phone,email,created_at,updated_at,org
 - Overall health status (healthy/warning/error)
 
 **Usage**:
+
 ```bash
 # Via API (when server is running)
 curl http://localhost:5173/api/health/performance
@@ -77,9 +82,11 @@ curl http://localhost:5173/api/health/performance
 **Location**: `scripts/sql/`
 
 #### a. Comprehensive Verification Script
+
 **File**: `verify_performance_indexes.sql`
 
 Provides detailed verification report including:
+
 - pg_trgm extension status
 - All indexes on key tables
 - Critical performance index verification
@@ -89,21 +96,25 @@ Provides detailed verification report including:
 - Index sizes
 
 **Usage**:
+
 ```bash
 npx supabase db query ./scripts/sql/verify_performance_indexes.sql
 ```
 
 #### b. Quick Check Script
+
 **File**: `check_performance_indexes.sql`
 
 Simple pass/fail check for all critical indexes.
 
 **Usage**:
+
 ```bash
 npx supabase db query ./scripts/sql/check_performance_indexes.sql
 ```
 
 **Expected Output**:
+
 ```
 check_name                    | status | description
 -----------------------------+--------+------------------------------------------
@@ -116,18 +127,21 @@ idx_jobs_job_number_trgm     | PASS   | Jobs job_number search index
 ## Performance Impact
 
 ### Before Optimization
+
 - Search queries: `SELECT * FROM jobs WHERE title ILIKE '%search%'`
 - Query time: 200-500ms for 1000 rows
 - Network transfer: ~500KB-1MB
 - Risk of timeouts on large datasets
 
 ### After Optimization
+
 - Search queries: `SELECT id,job_number,title,... FROM jobs WHERE title ILIKE '%search%' LIMIT 200`
 - Query time: 50-150ms with trigram indexes
 - Network transfer: ~100-200KB
 - Protected against large result sets
 
 **Estimated Improvements**:
+
 - Query performance: **2-5x faster** (with indexes)
 - Network transfer: **50-70% reduction** (explicit columns)
 - Timeout protection: **100%** (defensive LIMIT)
@@ -148,18 +162,23 @@ Use this checklist after deployment:
 ## Troubleshooting
 
 ### Issue: Health endpoint returns 500 error
+
 **Solution**: Verify Supabase connection and permissions. Check that user has SELECT access to system tables.
 
 ### Issue: Indexes show as missing
+
 **Solution**: Run migration: `npx supabase db push`
 
 ### Issue: Search queries still slow
-**Solution**: 
+
+**Solution**:
+
 1. Run `ANALYZE;` to update query planner statistics
 2. Verify indexes are being used: `EXPLAIN ANALYZE SELECT ...`
 3. Check pg_trgm extension is installed
 
 ### Issue: Materialized view not found
+
 **Note**: Materialized view is optional. Only implement if `get_overdue_jobs_enhanced` RPC is slow (>1 second).
 
 ## Related Files
@@ -174,11 +193,13 @@ Use this checklist after deployment:
 ## Monitoring
 
 ### Regular Checks
+
 - **Weekly**: Review slow query logs
 - **Monthly**: Run verification script and update statistics
 - **Quarterly**: Review index usage via `pg_stat_user_indexes`
 
 ### Key Metrics to Monitor
+
 - Query response times (target: <200ms for searches)
 - Index scan counts (should increase over time)
 - Table statistics (last_analyze should be recent)

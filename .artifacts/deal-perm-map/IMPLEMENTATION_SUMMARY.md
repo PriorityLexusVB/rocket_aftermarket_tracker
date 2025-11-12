@@ -9,6 +9,7 @@
 ## Changes Made
 
 ### 1. Enhanced `mapPermissionError` Function
+
 **File:** `src/services/dealService.js`
 
 Added a new exported function `mapPermissionError(err)` that specifically handles "permission denied for table users" errors:
@@ -26,7 +27,7 @@ function mapPermissionError(err) {
     throw new Error(
       'Failed to save: RLS prevented update on auth.users. ' +
         'Likely a policy references auth.users. ' +
-        'Remediation: NOTIFY pgrst, \'reload schema\' then retry; ' +
+        "Remediation: NOTIFY pgrst, 'reload schema' then retry; " +
         'update policy to reference public.user_profiles or tenant-scoped conditions. ' +
         'See docs/MCP-NOTES.md and .artifacts/mcp-introspect/INTROSPECTION.md for details.'
     )
@@ -37,6 +38,7 @@ function mapPermissionError(err) {
 ```
 
 **Key Features:**
+
 - ✅ Detects both "permission denied for table users" and "permission denied for relation users"
 - ✅ Case-insensitive matching
 - ✅ Provides specific remediation steps
@@ -45,6 +47,7 @@ function mapPermissionError(err) {
 - ✅ Re-throws non-matching errors unchanged
 
 ### 2. Updated `wrapDbError` Function
+
 **File:** `src/services/dealService.js`
 
 Refactored existing `wrapDbError` to use `mapPermissionError` internally for consistency:
@@ -64,6 +67,7 @@ function wrapDbError(error, actionLabel = 'operation') {
 ```
 
 **Benefits:**
+
 - Centralized error mapping logic
 - Consistent messaging across all write operations
 - Maintains existing `actionLabel` parameter for context
@@ -71,6 +75,7 @@ function wrapDbError(error, actionLabel = 'operation') {
 ### 3. Applied to Write Operations
 
 The `wrapDbError` function (which now uses `mapPermissionError`) is already applied to:
+
 - ✅ `updateDeal` - Line 1540
 - ✅ `upsert transaction` - Line 1577
 - ✅ `update line items` - Lines 1583, 1609, 1611, 1624, 1626, 1629
@@ -78,9 +83,11 @@ The `wrapDbError` function (which now uses `mapPermissionError`) is already appl
 **No additional code changes required** - existing integration points ensure comprehensive coverage.
 
 ### 4. Comprehensive Unit Tests
+
 **File:** `src/tests/unit/dealService.permissionMapping.test.js`
 
 Created 16 test cases covering:
+
 - ✅ Basic permission denied error mapping
 - ✅ "table users" variant
 - ✅ "relation users" variant
@@ -101,29 +108,34 @@ Created 16 test cases covering:
 ## Test Results
 
 ### New Tests: ✅ All Pass
+
 ```
 ✓ src/tests/unit/dealService.permissionMapping.test.js (16 tests) 5ms
 ```
 
 **Test Coverage:**
+
 - mapPermissionError function: 12 tests
 - Integration patterns: 2 tests
 - Real-world scenarios: 2 tests
 - Documentation references: 2 tests (nested)
 
 ### Full Test Suite: ✅ No New Failures
+
 ```
 Test Files  1 failed | 48 passed (49)
       Tests  6 failed | 468 passed | 2 skipped (476)
 ```
 
 **Note:** The 1 failed test file (6 failures) is pre-existing and unrelated to this change:
+
 - `src/tests/step23-dealformv2-customer-name-date.test.jsx` - vendor select visibility test
 - `src/tests/step16-deals-list-verification.test.jsx` - scheduling status tests
 
 **Our changes introduced 0 new test failures.**
 
 ### Lint Status: ✅ Clean
+
 ```
 0 errors, only pre-existing warnings
 ```
@@ -161,22 +173,25 @@ Test Files  1 failed | 48 passed (49)
 ## Error Message Examples
 
 ### Before (Old Message)
+
 ```
-Failed to update deal: permission denied while evaluating RLS (auth.users). 
-Update policies to reference public.user_profiles instead of auth.users, 
+Failed to update deal: permission denied while evaluating RLS (auth.users).
+Update policies to reference public.user_profiles instead of auth.users,
 or apply migration 20250107150001_fix_claims_rls_policies.sql.
 ```
 
 ### After (New Message)
+
 ```
-Failed to update deal: Failed to save: RLS prevented update on auth.users. 
-Likely a policy references auth.users. 
-Remediation: NOTIFY pgrst, 'reload schema' then retry; 
-update policy to reference public.user_profiles or tenant-scoped conditions. 
+Failed to update deal: Failed to save: RLS prevented update on auth.users.
+Likely a policy references auth.users.
+Remediation: NOTIFY pgrst, 'reload schema' then retry;
+update policy to reference public.user_profiles or tenant-scoped conditions.
 See docs/MCP-NOTES.md and .artifacts/mcp-introspect/INTROSPECTION.md for details.
 ```
 
 **Improvements:**
+
 - ✅ Clearer problem statement ("RLS prevented update on auth.users")
 - ✅ Identifies root cause ("policy references auth.users")
 - ✅ Provides immediate action ("NOTIFY pgrst, 'reload schema'")
@@ -209,7 +224,7 @@ src/tests/unit/dealService.permissionMapping.test.js       (Created)
 ✅ **No global stores** - No state management changes  
 ✅ **Debounce/TTL unchanged** - No timing changes  
 ✅ **Tests added** - 16 new tests, all passing  
-✅ **Lint clean** - 0 errors  
+✅ **Lint clean** - 0 errors
 
 ---
 
@@ -227,10 +242,11 @@ src/tests/unit/dealService.permissionMapping.test.js       (Created)
 ## Next Phase Actions
 
 **Phase 3: Time/Date Normalization** will:
+
 - Implement `normalizeDealTimes(dbDeal)` function
 - Update `mapDbDealToForm` and `toJobPartRows`
 - Replace "Invalid Date" with "No promise date"
-- Ensure promised_date vs scheduled_* distinction
+- Ensure promised*date vs scheduled*\* distinction
 - Add unit tests for time mapping
 - Add UI tests for date display
 
@@ -239,6 +255,7 @@ src/tests/unit/dealService.permissionMapping.test.js       (Created)
 ## Rollback Plan
 
 If this change needs to be reverted:
+
 1. Revert commit on branch `feature/deal-perm-map`
 2. Delete test file: `src/tests/unit/dealService.permissionMapping.test.js`
 3. Old `wrapDbError` implementation will be restored
@@ -259,6 +276,7 @@ If this change needs to be reverted:
 ## Conclusion
 
 Phase 2 successfully implements friendly RLS error mapping for "permission denied for table users" errors. The solution:
+
 - Provides immediate, actionable guidance
 - References comprehensive documentation
 - Maintains backward compatibility

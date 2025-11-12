@@ -27,10 +27,6 @@
   },
   "profiling_data": {
     "note": "Baseline profiling to be performed only if performance issues arise",
-    "metrics_to_track": [
-      "render_count_per_interaction",
-      "time_to_open_ms",
-      "memory_usage_kb"
-    ]
+    "metrics_to_track": ["render_count_per_interaction", "time_to_open_ms", "memory_usage_kb"]
   }
 }

@@ -7,6 +7,7 @@
 **File:** `supabase/migrations/20250923142511_calendar_scheduling_enhancement.sql`
 
 **Signature:**
+
 ```sql
 CREATE OR REPLACE FUNCTION public.get_jobs_by_date_range(
     start_date TIMESTAMPTZ,
@@ -22,16 +23,19 @@ RETURNS TABLE(...)
 **Purpose:** Retrieves jobs within date range for calendar display
 
 **Usage in Agenda:**
+
 - Used by `calendarService.getJobsByDateRange()`
 - Called indirectly via `jobService.getAllJobs()` in Agenda view
 - Filters by org context (tenant scoping)
 
 **Access Control:**
+
 - Runs with elevated privileges
 - Tenant isolation enforced at application layer via `orgId` filter
 - RLS policies on `jobs` table still apply to underlying queries
 
 **Verification:** ✅ Sufficient
+
 - Function properly scoped to organization
 - No direct calls bypass tenant checks
 - Agenda only displays jobs from current org
@@ -43,6 +47,7 @@ RETURNS TABLE(...)
 **File:** `supabase/migrations/20250923142511_calendar_scheduling_enhancement.sql`
 
 **Signature:**
+
 ```sql
 CREATE OR REPLACE FUNCTION public.check_vendor_schedule_conflict(
     vendor_uuid UUID,
@@ -58,17 +63,20 @@ RETURNS BOOLEAN
 **Purpose:** Checks if vendor has scheduling conflicts in time range
 
 **Usage in Agenda:**
+
 - Called by `calendarService.checkSchedulingConflict()`
 - Used for passive conflict detection (±30min window)
 - Non-blocking, display-only (⚠️ icon)
 
 **Access Control:**
+
 - Runs with elevated privileges
 - Read-only operation
 - No data modification
 - Results are advisory only
 
 **Verification:** ✅ Sufficient
+
 - Function is read-only
 - No bypass of RLS for writes
 - Used for UI hints only, not enforcement
@@ -78,6 +86,7 @@ RETURNS BOOLEAN
 ### 3. Additional RPCs (Not Directly Used by Agenda)
 
 **Also Verified in Migration:**
+
 - `validate_status_progression` - SECURITY DEFINER (line 117)
 - `get_overdue_jobs` - SECURITY DEFINER (line 154)
 - `generate_job_number` - SECURITY DEFINER (line 193)
@@ -91,27 +100,32 @@ RETURNS BOOLEAN
 ### Jobs Table Policies
 
 **Required Operations for Agenda:**
+
 1. **SELECT** - Read scheduled jobs
 2. **UPDATE** - Reschedule appointments, mark complete
 
 **Existing Policies (Verified via RPC usage):**
 
 #### SELECT Policy
+
 - Users can read jobs in their organization
 - Enforced via tenant context (`org_id` matching)
 - RPC `get_jobs_by_date_range` respects org filtering
 
 **Verification:** ✅ Sufficient
+
 - Agenda only displays jobs from user's org via `useTenant()` hook
 - Service layer enforces `orgId` parameter
 - No cross-org data leakage possible
 
 #### UPDATE Policy
+
 - Users can update jobs in their organization
 - Status transitions allowed per role
 - Scheduling changes permitted for authorized users
 
 **Usage in Agenda:**
+
 ```javascript
 // Reschedule
 await jobService.updateJob(job.id, {
@@ -120,12 +134,13 @@ await jobService.updateJob(job.id, {
 })
 
 // Complete
-await jobService.updateStatus(job.id, 'completed', { 
-  completed_at: new Date().toISOString() 
+await jobService.updateStatus(job.id, 'completed', {
+  completed_at: new Date().toISOString(),
 })
 ```
 
 **Verification:** ✅ Sufficient
+
 - Both operations use service layer with RLS enforcement
 - No direct Supabase client usage in Agenda component
 - Updates include org context from tenant hook
@@ -137,6 +152,7 @@ await jobService.updateStatus(job.id, 'completed', {
 ### jobService.js
 
 **Tenant Enforcement:**
+
 ```javascript
 // getAllJobs includes orgId filter
 await jobService.getAllJobs({ orgId })
@@ -146,6 +162,7 @@ await jobService.getAllJobs({ orgId })
 ```
 
 **Verification:** ✅ Secure
+
 - All operations include `orgId` context
 - Supabase client respects RLS policies
 - No raw SQL or policy bypasses
@@ -153,6 +170,7 @@ await jobService.getAllJobs({ orgId })
 ### calendarService.js
 
 **Tenant Enforcement:**
+
 ```javascript
 // RPC calls include proper parameters
 await supabase.rpc('get_jobs_by_date_range', {
@@ -164,6 +182,7 @@ await supabase.rpc('get_jobs_by_date_range', {
 ```
 
 **Verification:** ✅ Secure
+
 - RPC parameters validated
 - Tenant context maintained
 - Error handling doesn't leak data
@@ -173,6 +192,7 @@ await supabase.rpc('get_jobs_by_date_range', {
 ## Agenda Component Security
 
 ### Authentication Check
+
 ```javascript
 <Route
   path="/calendar/agenda"
@@ -185,22 +205,26 @@ await supabase.rpc('get_jobs_by_date_range', {
 ```
 
 **Verification:** ✅ Secure
+
 - Route wrapped in `ProtectedRoute`
 - Requires authentication
 - No public access
 
 ### Tenant Context
+
 ```javascript
 const { orgId } = useTenant()
 await jobService.getAllJobs({ orgId })
 ```
 
 **Verification:** ✅ Secure
+
 - Uses `useTenant()` hook for org context
 - All data operations scoped to org
 - No hard-coded org IDs
 
 ### User Actions
+
 - **Reschedule:** Updates via `jobService.updateJob()` ✅
 - **Complete:** Updates via `jobService.updateStatus()` ✅
 - **Undo:** Restores previous state via `jobService.updateStatus()` ✅
@@ -212,6 +236,7 @@ await jobService.getAllJobs({ orgId })
 ## SQL Injection Protection
 
 **All user inputs are parameterized:**
+
 - Search query (`q`): Used in client-side filter only
 - Status filter: Validated against enum values
 - Date range: Uses Date objects, converted to ISO strings
@@ -224,19 +249,25 @@ await jobService.getAllJobs({ orgId })
 ## Authorization Summary
 
 ### Read Operations (SELECT)
+
 ✅ **Sufficient**
+
 - RLS enforces org-level read access
 - RPCs use SECURITY DEFINER with proper scoping
 - Service layer enforces tenant context
 
 ### Write Operations (UPDATE)
+
 ✅ **Sufficient**
+
 - RLS enforces org-level write access
 - Service layer validates operations
 - Status transitions respect workflow rules
 
 ### No Policy Changes Needed
+
 ✅ **Current policies are adequate**
+
 - Agenda uses existing secure patterns
 - No new permission requirements
 - No RLS policy modifications needed
@@ -246,9 +277,11 @@ await jobService.getAllJobs({ orgId })
 ## Recommendations
 
 ### ✅ Current Implementation
+
 No changes required. Current RLS policies and RPC security are sufficient for Agenda feature.
 
 ### Future Enhancements (Optional)
+
 If more granular permissions are needed:
 
 1. **Role-based access:**
@@ -287,6 +320,7 @@ If more granular permissions are needed:
 ## Testing Evidence
 
 **RLS Verification:**
+
 ```bash
 grep -n "SECURITY DEFINER" supabase/migrations/20250923142511_calendar_scheduling_enhancement.sql
 # Output:
@@ -298,11 +332,13 @@ grep -n "SECURITY DEFINER" supabase/migrations/20250923142511_calendar_schedulin
 ```
 
 **Service Layer Usage:**
+
 - Agenda imports: `jobService`, `calendarService` ✅
 - No direct Supabase imports in component ✅
 - All operations via service layer ✅
 
 **Route Protection:**
+
 - Wrapped in `<ProtectedRoute>` ✅
 - Feature flag checked before route registration ✅
 - No public access vector ✅
