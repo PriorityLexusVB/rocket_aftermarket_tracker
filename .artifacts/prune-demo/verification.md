@@ -60,18 +60,22 @@ The script identifies demo/test jobs using multiple patterns:
 ### Output Reports
 
 #### CSV Report
+
 **File**: `.artifacts/prune-demo/preview-{date}.csv`
 
 Example output:
+
 ```csv
 ID,Job Number,Title,Customer Name,Customer Email,VIN,Created At,Status,Reason
 test-1,TEST-001,Test Job 1,Test Customer,test@test.com,TEST123456,2025-01-01T00:00:00Z,pending,job_number matches demo pattern; customer_name matches demo pattern
 ```
 
 #### JSON Report
+
 **File**: `.artifacts/prune-demo/preview-{date}.json`
 
 Contains:
+
 - **metadata**: Generated timestamp, mode (dry-run/applied), patterns used
 - **summary**: Total candidates, patterns used
 - **candidates**: Array of full job details with reasons
@@ -113,9 +117,15 @@ class MockDatabase {
     ]
   }
 
-  async findDemoJobs() { /* ... */ }
-  async deleteJobs(jobIds) { /* ... */ }
-  isDemoJob(job) { /* ... */ }
+  async findDemoJobs() {
+    /* ... */
+  }
+  async deleteJobs(jobIds) {
+    /* ... */
+  }
+  isDemoJob(job) {
+    /* ... */
+  }
 }
 ```
 
@@ -129,17 +139,14 @@ async function findDemoJobs() {
     .from('jobs')
     .select('*')
     .or('job_number.ilike.TEST%,job_number.ilike.DEMO%')
-  
+
   if (error) throw error
-  return data.filter(job => isDemoJob(job))
+  return data.filter((job) => isDemoJob(job))
 }
 
 async function deleteJobs(jobIds) {
-  const { data, error } = await supabase
-    .from('jobs')
-    .delete()
-    .in('id', jobIds)
-  
+  const { data, error } = await supabase.from('jobs').delete().in('id', jobIds)
+
   if (error) throw error
   return { deletedCount: jobIds.length, deleted: data }
 }
@@ -190,17 +197,20 @@ async function deleteJobs(jobIds) {
 ### Manual Testing Performed
 
 ✅ **Dry-run mode** (default):
+
 - Identified 2 demo jobs
 - Generated CSV report
 - Generated JSON report
 - No deletions performed
 
 ✅ **Report generation**:
+
 - CSV contains all expected columns
 - JSON includes metadata, summary, and candidates
 - Files saved to `.artifacts/prune-demo/`
 
 ✅ **Pattern matching**:
+
 - TEST prefix matched ✅
 - DEMO prefix matched ✅
 - Test email domains matched ✅
@@ -210,7 +220,8 @@ async function deleteJobs(jobIds) {
 
 ❌ **Unit tests not included** due to Vite import configuration limitations with script files.
 
-**Rationale**: 
+**Rationale**:
+
 - Script is standalone Node.js file in `scripts/` directory
 - Vite test setup doesn't handle `scripts/` imports
 - Manual testing sufficient for utility script
@@ -253,10 +264,12 @@ node scripts/pruneDemoJobs.js --apply --confirm
 ## Artifacts Created
 
 ### Reports Generated
+
 - `.artifacts/prune-demo/preview-2025-11-11.csv` - Demo CSV output
 - `.artifacts/prune-demo/preview-2025-11-11.json` - Demo JSON output
 
 ### Files Tracked
+
 All generated reports are saved to `.artifacts/prune-demo/` directory with date-stamped filenames for audit trail.
 
 ## Rollback Strategy
@@ -266,6 +279,7 @@ Since dry-run is default and actual deletion requires explicit flags:
 **No Rollback Needed for Dry-Run**: No changes made
 
 **For Applied Deletions** (if real database integration added):
+
 1. Restore from database backup (if available)
 2. Use soft-delete pattern instead of hard delete
 3. Add `deleted_at` timestamp column for reversibility
@@ -274,6 +288,7 @@ Since dry-run is default and actual deletion requires explicit flags:
 ## Conclusion
 
 Phase 8 successfully delivers:
+
 - ✅ Safe, dry-run-default script for demo job cleanup
 - ✅ Pattern-based detection with multiple criteria
 - ✅ CSV + JSON reporting for audit trail

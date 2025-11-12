@@ -5,43 +5,82 @@
     {
       "name": "jobs",
       "columns": [
-        "id", "job_number", "title", "description", "vehicle_id", "vendor_id", 
-        "job_status", "priority", "location", "scheduled_start_time", "scheduled_end_time",
-        "estimated_hours", "estimated_cost", "actual_cost", "customer_needs_loaner",
-        "service_type", "delivery_coordinator_id", "finance_manager_id", "assigned_to", "org_id"
+        "id",
+        "job_number",
+        "title",
+        "description",
+        "vehicle_id",
+        "vendor_id",
+        "job_status",
+        "priority",
+        "location",
+        "scheduled_start_time",
+        "scheduled_end_time",
+        "estimated_hours",
+        "estimated_cost",
+        "actual_cost",
+        "customer_needs_loaner",
+        "service_type",
+        "delivery_coordinator_id",
+        "finance_manager_id",
+        "assigned_to",
+        "org_id"
       ],
       "purpose": "Primary table for job/deal management"
     },
     {
       "name": "job_parts",
       "columns": [
-        "id", "job_id", "product_id", "vendor_id", "quantity", "unit_price", "total_price",
-        "is_off_site", "promised_date", "requires_scheduling", "scheduled_start_time", 
-        "scheduled_end_time", "notes", "org_id"
+        "id",
+        "job_id",
+        "product_id",
+        "vendor_id",
+        "quantity",
+        "unit_price",
+        "total_price",
+        "is_off_site",
+        "promised_date",
+        "requires_scheduling",
+        "scheduled_start_time",
+        "scheduled_end_time",
+        "notes",
+        "org_id"
       ],
       "purpose": "Line items for jobs with vendor assignment and scheduling"
     },
     {
       "name": "transactions",
       "columns": [
-        "id", "transaction_number", "job_id", "amount", "transaction_type",
-        "payment_method", "transaction_date", "notes", "org_id"
+        "id",
+        "transaction_number",
+        "job_id",
+        "amount",
+        "transaction_type",
+        "payment_method",
+        "transaction_date",
+        "notes",
+        "org_id"
       ],
       "purpose": "Financial transactions linked to jobs"
     },
     {
       "name": "user_profiles",
       "columns": [
-        "id", "user_id", "name", "full_name", "display_name", "email", "phone", 
-        "role", "org_id"
+        "id",
+        "user_id",
+        "name",
+        "full_name",
+        "display_name",
+        "email",
+        "phone",
+        "role",
+        "org_id"
       ],
       "purpose": "Extended profile data for users, tenant-scoped"
     },
     {
       "name": "loaner_assignments",
-      "columns": [
-        "id", "job_id", "loaner_number", "assigned_at", "returned_at", "org_id"
-      ],
+      "columns": ["id", "job_id", "loaner_number", "assigned_at", "returned_at", "org_id"],
       "purpose": "Tracks loaner vehicle assignments to jobs"
     },
     {

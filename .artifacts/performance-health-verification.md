@@ -18,27 +18,31 @@ Ensure covering indexes from PERFORMANCE_INDEXES.md are properly deployed and do
 ### Indexes Confirmed
 
 #### A. Extension (✅ Verified)
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
+
 - **Purpose**: Trigram indexes for ILIKE optimization
 - **Status**: Enabled via migration
 
 #### B. Foreign Key Indexes (✅ Verified)
+
 All foreign keys are indexed:
 
-| Table | Column | Index Name | Status |
-|-------|--------|------------|--------|
-| job_parts | vendor_id | idx_job_parts_vendor_id | ✅ Created |
-| job_parts | job_id | idx_job_parts_job_id | ✅ Created |
-| jobs | vehicle_id | idx_jobs_vehicle_id | ✅ Created |
-| jobs | assigned_to | idx_jobs_assigned_to | ✅ Created |
-| jobs | delivery_coordinator_id | idx_jobs_delivery_coord | ✅ Created |
-| jobs | finance_manager_id | idx_jobs_finance_manager | ✅ Created |
+| Table     | Column                  | Index Name               | Status     |
+| --------- | ----------------------- | ------------------------ | ---------- |
+| job_parts | vendor_id               | idx_job_parts_vendor_id  | ✅ Created |
+| job_parts | job_id                  | idx_job_parts_job_id     | ✅ Created |
+| jobs      | vehicle_id              | idx_jobs_vehicle_id      | ✅ Created |
+| jobs      | assigned_to             | idx_jobs_assigned_to     | ✅ Created |
+| jobs      | delivery_coordinator_id | idx_jobs_delivery_coord  | ✅ Created |
+| jobs      | finance_manager_id      | idx_jobs_finance_manager | ✅ Created |
 
 **Expected Improvement**: 10-50x faster JOIN operations
 
 #### C. Common Query Pattern Indexes (✅ Verified)
+
 Composite indexes for frequent queries:
 
 ```sql
@@ -55,21 +59,23 @@ CREATE INDEX idx_jobs_org_id ON jobs(org_id);
 **Status**: All present in migration
 
 #### D. Trigram Search Indexes (✅ Verified)
+
 GIN indexes for efficient ILIKE pattern matching:
 
-| Table | Column | Index Name | Search Use Case |
-|-------|--------|------------|----------------|
-| jobs | title | idx_jobs_title_trgm | Job search |
-| jobs | job_number | idx_jobs_job_number_trgm | Job# lookup |
-| vendors | name | idx_vendors_name_trgm | Vendor search |
-| vehicles | make | idx_vehicles_make_trgm | Make search |
-| vehicles | model | idx_vehicles_model_trgm | Model search |
-| vehicles | vin | idx_vehicles_vin_trgm | VIN lookup |
-| products | name | idx_products_name_trgm | Product search |
+| Table    | Column     | Index Name               | Search Use Case |
+| -------- | ---------- | ------------------------ | --------------- |
+| jobs     | title      | idx_jobs_title_trgm      | Job search      |
+| jobs     | job_number | idx_jobs_job_number_trgm | Job# lookup     |
+| vendors  | name       | idx_vendors_name_trgm    | Vendor search   |
+| vehicles | make       | idx_vehicles_make_trgm   | Make search     |
+| vehicles | model      | idx_vehicles_model_trgm  | Model search    |
+| vehicles | vin        | idx_vehicles_vin_trgm    | VIN lookup      |
+| products | name       | idx_products_name_trgm   | Product search  |
 
 **Expected Improvement**: 20-100x faster text searches
 
 #### E. Additional Coverage Indexes (✅ Verified)
+
 ```sql
 -- Loaner customer lookup
 CREATE INDEX idx_loaner_assignments_customer ON loaner_assignments(customer_phone);
@@ -87,6 +93,7 @@ CREATE INDEX idx_user_profiles_role_dept ON user_profiles(role, department);
 #### Example 1: Job Title Search
 
 **Before (Without Trigram Index)**:
+
 ```
 Seq Scan on jobs  (cost=0.00..2500.00 rows=100 width=256)
   Filter: (title ~~* '%civic%'::text)
@@ -95,6 +102,7 @@ Seq Scan on jobs  (cost=0.00..2500.00 rows=100 width=256)
 ```
 
 **After (With idx_jobs_title_trgm)**:
+
 ```
 Bitmap Heap Scan on jobs  (cost=12.00..116.01 rows=100 width=256)
   Recheck Cond: (title ~~* '%civic%'::text)
@@ -109,6 +117,7 @@ Bitmap Heap Scan on jobs  (cost=12.00..116.01 rows=100 width=256)
 #### Example 2: Status + Created Date Query
 
 **Before (Without Composite Index)**:
+
 ```
 Sort  (cost=1200.00..1250.00 rows=200 width=256)
   Sort Key: created_at DESC
@@ -119,6 +128,7 @@ Sort  (cost=1200.00..1250.00 rows=200 width=256)
 ```
 
 **After (With idx_jobs_status_created)**:
+
 ```
 Index Scan using idx_jobs_status_created on jobs
   (cost=0.28..95.50 rows=200 width=256)
@@ -132,6 +142,7 @@ Index Scan using idx_jobs_status_created on jobs
 #### Example 3: Vehicle JOIN
 
 **Before (Without FK Index)**:
+
 ```
 Hash Join  (cost=500.00..3500.00 rows=1000 width=512)
   Hash Cond: (jobs.vehicle_id = vehicles.id)
@@ -143,6 +154,7 @@ Hash Join  (cost=500.00..3500.00 rows=1000 width=512)
 ```
 
 **After (With idx_jobs_vehicle_id)**:
+
 ```
 Nested Loop  (cost=0.56..2450.00 rows=1000 width=512)
   ->  Index Scan using idx_jobs_vehicle_id on jobs
@@ -160,18 +172,19 @@ Nested Loop  (cost=0.56..2450.00 rows=1000 width=512)
 
 ### Comprehensive Coverage Achieved ✅
 
-| Category | Indexes Planned | Indexes Created | Coverage |
-|----------|----------------|-----------------|----------|
-| Extensions | 1 (pg_trgm) | 1 | 100% |
-| Foreign Keys | 6 | 6 | 100% |
-| Query Patterns | 3 | 3 | 100% |
-| Trigram Search | 7 | 7 | 100% |
-| Additional | 2 | 2 | 100% |
-| **Total** | **19** | **19** | **100%** |
+| Category       | Indexes Planned | Indexes Created | Coverage |
+| -------------- | --------------- | --------------- | -------- |
+| Extensions     | 1 (pg_trgm)     | 1               | 100%     |
+| Foreign Keys   | 6               | 6               | 100%     |
+| Query Patterns | 3               | 3               | 100%     |
+| Trigram Search | 7               | 7               | 100%     |
+| Additional     | 2               | 2               | 100%     |
+| **Total**      | **19**          | **19**          | **100%** |
 
 ### No Missing Indexes
 
 Cross-referencing PERFORMANCE_INDEXES.md against the migration file confirms:
+
 - ✅ All planned indexes are present
 - ✅ All foreign keys are indexed
 - ✅ All common query patterns are covered
@@ -194,6 +207,7 @@ Cross-referencing PERFORMANCE_INDEXES.md against the migration file confirms:
 **File**: `supabase/migrations/20251110023500_optional_materialized_view_overdue_jobs.sql`
 
 A separate migration exists for the optional materialized view:
+
 - **Status**: Optional (not required for baseline performance)
 - **Purpose**: Further optimize overdue jobs query
 - **Refresh Strategy**: Manual or scheduled
@@ -203,13 +217,13 @@ A separate migration exists for the optional materialized view:
 
 Based on index coverage and typical dataset sizes:
 
-| Query Type | Target | Expected with Indexes |
-|------------|--------|----------------------|
-| List jobs by status | < 50ms | ~8-15ms ✅ |
-| Search by job title | < 100ms | ~15-25ms ✅ |
-| Vehicle lookup (JOIN) | < 100ms | ~80-100ms ✅ |
-| Vendor name search | < 100ms | ~10-20ms ✅ |
-| Overdue parts detection | < 200ms | ~50-100ms ✅ |
+| Query Type              | Target  | Expected with Indexes |
+| ----------------------- | ------- | --------------------- |
+| List jobs by status     | < 50ms  | ~8-15ms ✅            |
+| Search by job title     | < 100ms | ~15-25ms ✅           |
+| Vehicle lookup (JOIN)   | < 100ms | ~80-100ms ✅          |
+| Vendor name search      | < 100ms | ~10-20ms ✅           |
+| Overdue parts detection | < 200ms | ~50-100ms ✅          |
 
 All targets achieved or exceeded with current index strategy.
 
@@ -221,8 +235,8 @@ When deployed to production Supabase:
 
 ```sql
 -- 1. Verify all indexes exist
-SELECT schemaname, tablename, indexname 
-FROM pg_indexes 
+SELECT schemaname, tablename, indexname
+FROM pg_indexes
 WHERE schemaname = 'public'
 ORDER BY tablename, indexname;
 
@@ -230,7 +244,7 @@ ORDER BY tablename, indexname;
 SELECT * FROM pg_extension WHERE extname = 'pg_trgm';
 
 -- 3. Verify index usage statistics
-SELECT 
+SELECT
   schemaname,
   tablename,
   indexname,
@@ -241,19 +255,21 @@ WHERE schemaname = 'public'
 ORDER BY idx_scan DESC;
 
 -- 4. Test a search query
-EXPLAIN ANALYZE 
-SELECT * FROM jobs 
-WHERE title ILIKE '%civic%' 
+EXPLAIN ANALYZE
+SELECT * FROM jobs
+WHERE title ILIKE '%civic%'
 LIMIT 100;
 ```
 
 ### Health Endpoint Integration
 
 The existing health endpoints should reflect index status:
+
 - `/api/health/capabilities` - Overall system health
 - `/api/health/database` - Connection and performance checks
 
 Recommend adding index verification to health endpoint:
+
 ```javascript
 // Pseudo-code for health check enhancement
 async function checkIndexHealth() {
@@ -265,7 +281,7 @@ async function checkIndexHealth() {
   `)
   return {
     indexes_present: result.index_count >= 19,
-    count: result.index_count
+    count: result.index_count,
   }
 }
 ```
@@ -311,6 +327,7 @@ DROP EXTENSION IF EXISTS pg_trgm CASCADE;
 ## Conclusion
 
 Phase 7 verification confirms:
+
 - ✅ 100% index coverage from PERFORMANCE_INDEXES.md
 - ✅ All 19 planned indexes present in migration
 - ✅ pg_trgm extension enabled

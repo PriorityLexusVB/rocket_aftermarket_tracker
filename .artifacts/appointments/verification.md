@@ -63,7 +63,6 @@ The following utilities from Phase 3 are now ready to be integrated into appoint
 - **`formatPromiseDate(promiseDate)`** from `src/utils/dateDisplay.js`
   - Safely formats promise dates or returns "No promise date"
   - Prevents "Invalid Date" errors
-  
 - **`formatTimeWindow(startTime, endTime)`** from `src/utils/dateDisplay.js`
   - Formats time windows as "h:mm AM/PM - h:mm AM/PM"
   - Returns "Not scheduled" for invalid/missing times
@@ -72,6 +71,7 @@ The following utilities from Phase 3 are now ready to be integrated into appoint
 ### Next Integration Step
 
 The grouping utilities created in this phase can now be used in:
+
 - `src/pages/currently-active-appointments/index.jsx` - for organizing appointment lists
 - `src/pages/calendar/components/CalendarGrid.jsx` - for vendor lane views
 - Future calendar components requiring job grouping
@@ -99,7 +99,6 @@ The date display utilities should be integrated to replace ad-hoc null checks an
 1. **Phase 5**: Integrate grouping utilities into appointment pages
    - Use in currently-active-appointments for list organization
    - Apply to calendar vendor lane views
-   
 2. **Integrate date utilities**: Replace ad-hoc time formatting with Phase 3 utilities
    - Search for null checks on `scheduled_start_time`, `scheduled_end_time`
    - Replace with `formatTimeWindow` calls
@@ -110,11 +109,13 @@ The date display utilities should be integrated to replace ad-hoc null checks an
 ## Rollback Strategy
 
 To revert Phase 4:
+
 ```bash
 git revert <commit-hash>
 ```
 
 Or manually:
+
 ```bash
 rm src/utils/appointmentGrouping.js
 rm src/tests/appointmentGrouping.test.js
@@ -125,6 +126,7 @@ No database or configuration changes made, so rollback is safe and immediate.
 ## Conclusion
 
 Phase 4 successfully creates the foundation for appointments simplification with:
+
 - Pure grouping helper functions
 - Comprehensive test coverage
 - Zero breaking changes

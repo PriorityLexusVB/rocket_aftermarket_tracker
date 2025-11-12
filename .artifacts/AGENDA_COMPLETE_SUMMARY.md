@@ -13,6 +13,7 @@ The Agenda feature has been verified, patched, and enhanced according to specifi
 ### Key Findings
 
 ✅ **All Expected Features Present**
+
 - Agenda view accessible at `/calendar/agenda` behind `VITE_SIMPLE_CALENDAR` flag
 - Displays scheduled appointments grouped by date (America/New_York timezone)
 - Reschedule and Complete actions implemented
@@ -20,17 +21,20 @@ The Agenda feature has been verified, patched, and enhanced according to specifi
 - Legacy calendar flows unaffected
 
 ✅ **All RPCs Secure**
+
 - 5 RPCs verified as `SECURITY DEFINER`
 - RLS policies adequate for all operations
 - No security vulnerabilities introduced
 
 ✅ **All Tests Pass**
+
 - TypeScript: 0 errors
 - Unit Tests: 2/2 pass
 - Build: Success (8.91s)
 - 1 pre-existing failure (unrelated)
 
 ✅ **Enhancements Delivered**
+
 - Undo Complete (10s toast with action)
 - Date range filters (Today/Next 7 Days/All)
 - Conflict detection with ⚠️ hints
@@ -41,9 +45,11 @@ The Agenda feature has been verified, patched, and enhanced according to specifi
 ## Deliverables
 
 ### 1. Found vs Expected Matrix ✅
+
 **File:** `.artifacts/AGENDA_VERIFICATION_MATRIX.md`
 
 All expected items verified:
+
 - Routes, pages, services, RPCs all present
 - Feature flag correctly gates functionality
 - Post-create redirect working as specified
@@ -54,9 +60,11 @@ All expected items verified:
 ---
 
 ### 2. Patch Summary ✅
+
 **File:** `.artifacts/AGENDA_PATCH_SUMMARY.md`
 
 **Files Modified:** 5
+
 - `.env.example` - Set default flag value
 - `RescheduleModal.jsx` - Added ESC/click-outside handlers
 - `index.jsx` - Enhanced with filters, undo, conflicts
@@ -69,9 +77,11 @@ All expected items verified:
 ---
 
 ### 3. Test Output Summary ✅
+
 **File:** `.artifacts/AGENDA_TEST_OUTPUT.md`
 
 **Results:**
+
 - ✅ TypeCheck: Pass (0 errors)
 - ✅ Unit Tests: 2/2 pass
 - ✅ Build: Success (8.91s)
@@ -82,9 +92,11 @@ All expected items verified:
 ---
 
 ### 4. RLS/RPC Check ✅
+
 **File:** `.artifacts/AGENDA_RLS_RPC_CHECK.md`
 
 **Security Audit:**
+
 - ✅ All 5 RPCs are SECURITY DEFINER
 - ✅ RLS policies adequate for read/write operations
 - ✅ Service layer enforces tenant isolation
@@ -96,9 +108,11 @@ All expected items verified:
 ---
 
 ### 5. Rollback Plan ✅
+
 **File:** `.artifacts/AGENDA_ROLLBACK_PLAN.md`
 
 **Options:**
+
 1. **Quick:** Disable feature flag (< 1 min)
 2. **Partial:** Remove enhancements only (5-10 min)
 3. **Full:** Complete removal (15-20 min)
@@ -112,10 +126,12 @@ All expected items verified:
 ### Core Features (Spec Requirements)
 
 #### 1. Agenda View
+
 **File:** `src/pages/calendar-agenda/index.jsx`
 **Lines:** 348 total
 
 **Features:**
+
 - Lists upcoming scheduled appointments
 - Groups by date key (America/New_York)
 - Sorts ascending by start time
@@ -123,26 +139,33 @@ All expected items verified:
 - URL parameter persistence
 
 #### 2. Actions
+
 - **View:** Navigate to deal edit page
 - **Reschedule:** Inline +1 hour adjustment
 - **Complete:** Mark as completed with timestamp
 - **Undo:** (Enhancement) Restore previous state (10s window)
 
 #### 3. Routing
+
 **File:** `src/Routes.jsx`
+
 - Feature flag check: lines 23-25
 - Protected route: lines 120-129
 - Conditional lazy loading
 
 #### 4. Post-Create Redirect
+
 **File:** `src/pages/deals/DealForm.jsx`
+
 - Lines 579-589
 - Checks flag + scheduling fields
 - Navigates with focus parameter
 - 3s pulse animation on target
 
 #### 5. Date Key Helper
+
 **Function:** `toDateKey(ts)`
+
 - Uses `Intl.DateTimeFormat` for NY timezone
 - Returns `yyyy-mm-dd` format
 - Handles null → "unscheduled"
@@ -153,25 +176,31 @@ All expected items verified:
 ### Enhancements (Beyond Spec)
 
 #### 1. Undo Complete ✅
+
 **Implementation:** handleComplete function
+
 - Stores previous status before update
 - Shows toast with "Undo" action button
 - 10 second timeout
 - Restores state on click
 
 **User Flow:**
+
 1. Click "Complete" → job marked completed
 2. Toast appears: "Marked completed [Undo]"
 3. Click Undo → job restored to previous status
 4. Toast: "Undo successful"
 
 #### 2. Enhanced Filters ✅
+
 **Date Range:**
+
 - All Dates (default)
 - Today
 - Next 7 Days
 
 **Status:**
+
 - All Statuses (default)
 - Scheduled
 - In Progress
@@ -182,7 +211,9 @@ All expected items verified:
 **Persistence:** All filters saved in URL query params
 
 #### 3. Conflict Detection ✅
+
 **Implementation:**
+
 - Passive check via `check_vendor_schedule_conflict` RPC
 - ±30 minute window
 - Non-blocking (display only)
@@ -190,12 +221,15 @@ All expected items verified:
 - Tooltip: "Potential scheduling conflict"
 
 **Performance:**
+
 - Runs after job load
 - Silent failure (doesn't block UI)
 - Map-based state for efficient lookup
 
 #### 4. Accessibility ✅
+
 **Improvements:**
+
 - aria-live region for screen reader announcements
 - All controls properly labeled
 - ESC key closes modal
@@ -208,18 +242,22 @@ All expected items verified:
 ## Testing Strategy
 
 ### Unit Tests
+
 **File:** `src/tests/agenda.dateKey.test.js`
 
 **Coverage:**
+
 - toDateKey timezone conversion
 - toDateKey null handling
 
 **Status:** 2/2 pass
 
 ### E2E Tests
+
 **File:** `e2e/agenda.spec.ts`
 
 **Coverage:**
+
 - Page load verification
 - Filter presence check
 - (Skipped) Create-redirect flow
@@ -227,7 +265,9 @@ All expected items verified:
 **Status:** Updated, not run in CI
 
 ### Integration Testing
+
 **Manual verification needed:**
+
 1. Enable flag: `VITE_SIMPLE_CALENDAR=true`
 2. Create scheduled deal
 3. Verify redirect to `/calendar/agenda?focus=<id>`
@@ -244,6 +284,7 @@ All expected items verified:
 ## Performance Considerations
 
 ### Bundle Size Impact
+
 **Before:** ~882 KB main chunk
 **After:** ~882.26 KB main chunk
 **Increase:** +260 bytes (0.03%)
@@ -251,12 +292,14 @@ All expected items verified:
 **Reason:** Minimal - feature is lazy-loaded
 
 ### Runtime Performance
+
 - Conflict checking is async and non-blocking
 - Filter operations are client-side (fast)
 - Date grouping uses Map (O(n) complexity)
 - No performance regressions observed
 
 ### Database Load
+
 - Uses existing RPCs (no new queries)
 - Conflict checks are passive (no writes)
 - All operations properly indexed
@@ -266,12 +309,14 @@ All expected items verified:
 ## Browser Compatibility
 
 **Tested:**
+
 - Intl.DateTimeFormat (all modern browsers)
 - ESC key handler (all browsers)
 - Click-outside (all browsers)
 - CSS animations (all browsers)
 
 **Requirements:**
+
 - ES2022 (already project requirement)
 - Modern browser (Chrome, Firefox, Safari, Edge)
 - JavaScript enabled
@@ -281,7 +326,9 @@ All expected items verified:
 ## Migration Path
 
 ### From Legacy Calendar
+
 **Steps:**
+
 1. Set `VITE_SIMPLE_CALENDAR=true`
 2. Train users on new Agenda view
 3. Monitor usage and feedback
@@ -289,6 +336,7 @@ All expected items verified:
 5. (Optional) Deprecate legacy calendar
 
 **Considerations:**
+
 - Both calendars can coexist
 - Feature flag allows gradual rollout
 - No data migration needed
@@ -299,24 +347,28 @@ All expected items verified:
 ## Known Limitations
 
 ### 1. Reschedule Action
+
 **Current:** Simple +1 hour adjustment
 **Future:** Rich modal with date/time picker
 
 **Workaround:** Users can click "View" to edit in full form
 
 ### 2. Conflict Detection
+
 **Current:** Display only (⚠️ icon)
 **Future:** Could block saves if conflict detected
 
 **Rationale:** Non-blocking is better UX for now
 
 ### 3. Vendor Filter
+
 **Current:** State exists but no dropdown
 **Future:** Add vendor dropdown with API call
 
 **Reason:** Kept minimal for initial release
 
 ### 4. E2E Create-Redirect Test
+
 **Current:** Skipped (requires fixtures)
 **Future:** Add test data factory
 
@@ -327,6 +379,7 @@ All expected items verified:
 ## Security Considerations
 
 ### Implemented
+
 ✅ Feature behind authentication
 ✅ Tenant isolation enforced
 ✅ All RPCs are SECURITY DEFINER
@@ -336,6 +389,7 @@ All expected items verified:
 ✅ RLS policies respected
 
 ### Not Needed
+
 - No new permissions required
 - No RLS policy changes
 - No migration of sensitive data
@@ -348,6 +402,7 @@ All expected items verified:
 ## Deployment Checklist
 
 ### Pre-Deployment
+
 - [x] All tests pass
 - [x] Build succeeds
 - [x] Security audit complete
@@ -355,6 +410,7 @@ All expected items verified:
 - [x] Rollback plan ready
 
 ### Deployment
+
 - [ ] Set `VITE_SIMPLE_CALENDAR=true` in production env
 - [ ] Deploy branch to staging
 - [ ] Manual QA on staging
@@ -362,6 +418,7 @@ All expected items verified:
 - [ ] Monitor for errors
 
 ### Post-Deployment
+
 - [ ] Verify route accessible
 - [ ] Create test scheduled deal
 - [ ] Verify redirect works
@@ -374,6 +431,7 @@ All expected items verified:
 ## Maintenance Notes
 
 ### Code Location
+
 - **Main component:** `src/pages/calendar-agenda/index.jsx`
 - **Modal:** `src/pages/calendar-agenda/RescheduleModal.jsx`
 - **Tests:** `src/tests/agenda.dateKey.test.js`, `e2e/agenda.spec.ts`
@@ -382,11 +440,13 @@ All expected items verified:
 - **DealForm hook:** `src/pages/deals/DealForm.jsx` (lines 579-589)
 
 ### Dependencies
+
 - No new packages added
 - Uses existing: React, React Router, Supabase client
 - All dependencies already in package.json
 
 ### Future Enhancements
+
 1. Rich reschedule modal with date/time picker
 2. Vendor filter dropdown
 3. "Mine" filter (assigned to me)
@@ -400,6 +460,7 @@ All expected items verified:
 ## Metrics to Track
 
 ### Usage
+
 - Page views on `/calendar/agenda`
 - Reschedule action count
 - Complete action count
@@ -407,12 +468,14 @@ All expected items verified:
 - Filter usage (which filters are most used)
 
 ### Performance
+
 - Page load time
 - Time to interactive
 - Conflict check latency
 - Filter response time
 
 ### Quality
+
 - Error rate
 - User feedback/ratings
 - Support tickets related to Agenda
@@ -423,6 +486,7 @@ All expected items verified:
 ## Success Criteria
 
 ### Technical ✅
+
 - [x] All tests pass
 - [x] Build succeeds
 - [x] No security vulnerabilities
@@ -430,6 +494,7 @@ All expected items verified:
 - [x] Accessibility compliant
 
 ### Functional ✅
+
 - [x] Agenda view displays scheduled jobs
 - [x] Reschedule works correctly
 - [x] Complete marks jobs as completed
@@ -438,6 +503,7 @@ All expected items verified:
 - [x] Post-create redirect triggers
 
 ### User Experience ✅
+
 - [x] Intuitive interface
 - [x] Fast and responsive
 - [x] Accessible to all users
@@ -458,14 +524,14 @@ The Agenda feature has been thoroughly verified, patched, and enhanced. All requ
 
 ## Quick Reference
 
-| Document | Purpose |
-|----------|---------|
-| `AGENDA_VERIFICATION_MATRIX.md` | Found vs Expected comparison |
-| `AGENDA_PATCH_SUMMARY.md` | Files changed and line counts |
-| `AGENDA_TEST_OUTPUT.md` | Test results and logs |
-| `AGENDA_RLS_RPC_CHECK.md` | Security audit |
-| `AGENDA_ROLLBACK_PLAN.md` | How to disable/remove |
-| This file | Complete summary |
+| Document                        | Purpose                       |
+| ------------------------------- | ----------------------------- |
+| `AGENDA_VERIFICATION_MATRIX.md` | Found vs Expected comparison  |
+| `AGENDA_PATCH_SUMMARY.md`       | Files changed and line counts |
+| `AGENDA_TEST_OUTPUT.md`         | Test results and logs         |
+| `AGENDA_RLS_RPC_CHECK.md`       | Security audit                |
+| `AGENDA_ROLLBACK_PLAN.md`       | How to disable/remove         |
+| This file                       | Complete summary              |
 
 **All documentation:** `.artifacts/AGENDA_*.md`
 

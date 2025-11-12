@@ -63,9 +63,7 @@
         "idx_products_name_trgm"
       ]
     },
-    "extensions": [
-      "pg_trgm"
-    ],
+    "extensions": ["pg_trgm"],
     "documentation": "PERFORMANCE_INDEXES.md"
   },
   "materializedViews": {
@@ -109,11 +107,7 @@
     "telemetryMetaBox": {
       "status": "implemented",
       "location": "src/pages/AdminCapabilities.jsx (lines 167-196)",
-      "fields": [
-        "storageType",
-        "lastResetAt",
-        "secondsSinceReset"
-      ]
+      "fields": ["storageType", "lastResetAt", "secondsSinceReset"]
     },
     "schemaReload": {
       "endpoint": "/api/admin/reload-schema",

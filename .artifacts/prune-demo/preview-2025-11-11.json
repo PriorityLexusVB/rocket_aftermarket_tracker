@@ -12,13 +12,7 @@
   },
   "summary": {
     "total_candidates": 2,
-    "demo_patterns_used": [
-      "jobNumber",
-      "customerName",
-      "customerEmail",
-      "vehicleVin",
-      "title"
-    ]
+    "demo_patterns_used": ["jobNumber", "customerName", "customerEmail", "vehicleVin", "title"]
   },
   "candidates": [
     {

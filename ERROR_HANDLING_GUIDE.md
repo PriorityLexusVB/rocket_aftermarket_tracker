@@ -22,6 +22,7 @@ const code = classifySchemaError(error)
 ```
 
 **Supported Error Codes:**
+
 - `MISSING_COLUMN` - Generic missing column
 - `MISSING_FK` - Generic missing foreign key relationship
 - `STALE_CACHE` - PostgREST schema cache needs reload
@@ -59,11 +60,11 @@ const guidance = getRemediationGuidance(error)
 Tracks capability fallback events in sessionStorage:
 
 ```javascript
-import { 
-  incrementTelemetry, 
-  getTelemetry, 
+import {
+  incrementTelemetry,
+  getTelemetry,
   getAllTelemetry,
-  TelemetryKey 
+  TelemetryKey,
 } from '@/utils/capabilityTelemetry'
 
 // Increment counter
@@ -85,6 +86,7 @@ const telemetry = getAllTelemetry()
 ```
 
 **Telemetry Keys:**
+
 - `VENDOR_FALLBACK` - Legacy vendor capability fallback
 - `VENDOR_ID_FALLBACK` - vendor_id column missing fallback
 - `VENDOR_REL_FALLBACK` - Vendor relationship missing fallback
@@ -98,6 +100,7 @@ const telemetry = getAllTelemetry()
 The `dealService` integrates both utilities with automatic retry and graceful degradation:
 
 **Key Features:**
+
 1. **Preflight Schema Probe** - Detects missing columns BEFORE main query
 2. **Multi-Attempt Retry** - Up to 4 retry attempts with capability downgrade
 3. **SessionStorage Caching** - Capabilities cached to prevent repeated errors
@@ -115,6 +118,7 @@ The `dealService` integrates both utilities with automatic retry and graceful de
 ```
 
 **Capability Flags:**
+
 - `JOB_PARTS_HAS_PER_LINE_TIMES` - scheduled_start_time/scheduled_end_time available
 - `JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE` - vendor_id column available
 - `JOB_PARTS_VENDOR_REL_AVAILABLE` - vendor relationship available
@@ -125,9 +129,10 @@ The `dealService` integrates both utilities with automatic retry and graceful de
 ```javascript
 // Conditional query building based on capabilities
 const perLineVendorField = JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? 'vendor_id, ' : ''
-const perLineVendorJoin = JOB_PARTS_VENDOR_REL_AVAILABLE && JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
-  ? ', vendor:vendors(id, name)'
-  : ''
+const perLineVendorJoin =
+  JOB_PARTS_VENDOR_REL_AVAILABLE && JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+    ? ', vendor:vendors(id, name)'
+    : ''
 const jobPartsTimeFields = JOB_PARTS_HAS_PER_LINE_TIMES
   ? ', scheduled_start_time, scheduled_end_time'
   : ''
@@ -140,6 +145,7 @@ const jobPartsTimeFields = JOB_PARTS_HAS_PER_LINE_TIMES
 Validates job_parts → vendors relationship health.
 
 **Response:**
+
 ```json
 {
   "ok": true,
@@ -155,6 +161,7 @@ Validates job_parts → vendors relationship health.
 ```
 
 **Error Response:**
+
 ```json
 {
   "ok": false,
@@ -172,6 +179,7 @@ Validates job_parts → vendors relationship health.
 Detects which user profile display columns exist.
 
 **Response:**
+
 ```json
 {
   "ok": true,
@@ -190,6 +198,7 @@ Detects which user profile display columns exist.
 Comprehensive capability check with all probes.
 
 **Response:**
+
 ```json
 {
   "capabilities": {
@@ -217,6 +226,7 @@ Comprehensive capability check with all probes.
 Verifies job_parts scheduling time columns with remediation guidance.
 
 **Response:**
+
 ```json
 {
   "scheduledTimes": "ok",
@@ -234,6 +244,7 @@ Verifies job_parts scheduling time columns with remediation guidance.
 ```
 
 **Error Response with Remediation:**
+
 ```json
 {
   "scheduledTimes": "missing",
@@ -327,7 +338,7 @@ console.log({
   jobPartsVendorId: sessionStorage.getItem('cap_jobPartsVendorId'),
   jobPartsVendorRel: sessionStorage.getItem('cap_jobPartsVendorRel'),
   jobPartsTimes: sessionStorage.getItem('cap_jobPartsTimes'),
-  userProfilesName: sessionStorage.getItem('cap_userProfilesName')
+  userProfilesName: sessionStorage.getItem('cap_userProfilesName'),
 })
 ```
 
@@ -405,7 +416,7 @@ try {
   if (error) throw error
 } catch (error) {
   const code = classifySchemaError(error)
-  
+
   if (code === SchemaErrorCode.MISSING_COLUMN) {
     // Disable capability and increment telemetry
     incrementTelemetry(TelemetryKey.RELEVANT_FALLBACK)
@@ -423,6 +434,7 @@ try {
 ### Problem: Queries still failing after migration
 
 **Solution:** Reload PostgREST schema cache
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```
@@ -430,6 +442,7 @@ NOTIFY pgrst, 'reload schema';
 ### Problem: Capability not detected after fix
 
 **Solution:** Clear sessionStorage flags
+
 ```javascript
 sessionStorage.clear()
 // OR target specific flags
@@ -439,6 +452,7 @@ sessionStorage.removeItem('cap_jobPartsVendorRel')
 ### Problem: Telemetry counters not incrementing
 
 **Solution:** Check sessionStorage availability
+
 ```javascript
 console.log(typeof sessionStorage !== 'undefined') // Should be true
 ```
@@ -446,17 +460,18 @@ console.log(typeof sessionStorage !== 'undefined') // Should be true
 ### Problem: Health endpoint returns stale results
 
 **Solution:** Check PostgREST cache and RLS policies
+
 1. Verify migrations applied: `supabase db pull`
 2. Reload schema cache: `NOTIFY pgrst, 'reload schema';`
 3. Check RLS policies allow SELECT on checked tables
 
 ## Migration Mappings
 
-| Error Code | Migration ID | Migration File | Description |
-|------------|--------------|----------------|-------------|
-| MISSING_JOB_PARTS_SCHEDULED_TIMES | 20250117000000 | 20250117000000_add_job_parts_scheduling_times.sql | Adds scheduled_start_time and scheduled_end_time |
-| MISSING_JOB_PARTS_VENDOR_ID | 20251106000000 | 20251106000000_add_job_parts_vendor_id.sql | Adds vendor_id column to job_parts |
-| MISSING_JOB_PARTS_VENDOR_RELATIONSHIP | 20251107093000 | 20251107093000_verify_job_parts_vendor_fk.sql | Verifies FK relationship |
+| Error Code                            | Migration ID   | Migration File                                    | Description                                      |
+| ------------------------------------- | -------------- | ------------------------------------------------- | ------------------------------------------------ |
+| MISSING_JOB_PARTS_SCHEDULED_TIMES     | 20250117000000 | 20250117000000_add_job_parts_scheduling_times.sql | Adds scheduled_start_time and scheduled_end_time |
+| MISSING_JOB_PARTS_VENDOR_ID           | 20251106000000 | 20251106000000_add_job_parts_vendor_id.sql        | Adds vendor_id column to job_parts               |
+| MISSING_JOB_PARTS_VENDOR_RELATIONSHIP | 20251107093000 | 20251107093000_verify_job_parts_vendor_fk.sql     | Verifies FK relationship                         |
 
 ## Performance Considerations
 

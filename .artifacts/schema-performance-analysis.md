@@ -6,11 +6,13 @@
 ## Current State
 
 ### Migration Statistics
+
 - **Total Migration Files:** 83
 - **Schema Objects:** ~144 (tables, indexes, functions, views)
 - **Core Tables:** ~20+ tables
 
 ### Key Tables Identified
+
 1. `user_profiles` - User management
 2. `vehicles` - Vehicle tracking
 3. `vendors` - Vendor management
@@ -35,24 +37,30 @@
 ## Performance Concerns
 
 ### 1. Migration Sprawl
+
 - **Issue:** 83 migrations create complex dependency chains
 - **Impact:** Schema cache reload complexity, difficult to audit
 - **Risk:** Performance degradation, hard to troubleshoot
 
 ### 2. RLS Policy Complexity
+
 Recent migrations show extensive RLS (Row Level Security) policy additions:
+
 - Multiple policies per table
 - Complex org_id based multi-tenancy
 - Frequent RLS refinements (see 20251022230000, 20251105000000, 20251106210000)
 
 ### 3. Index Proliferation
+
 Multiple index-related migrations:
+
 - 20251022204600_add_helpful_indexes.sql
 - 20251022211000_add_targeted_perf_indexes.sql
 - 20251022230500_add_org_id_indexes.sql
 - 202510270001_add_loaner_indexes.sql
 
 ### 4. Function and View Overhead
+
 - Function search_path fixes (20251022213500)
 - View security settings (20251022203000)
 
@@ -120,31 +128,34 @@ Multiple index-related migrations:
 ### Critical Queries to Optimize
 
 1. **Job List Query with Relationships**
+
    ```sql
    -- Ensure these are indexed:
-   CREATE INDEX IF NOT EXISTS idx_jobs_org_id_created_at 
+   CREATE INDEX IF NOT EXISTS idx_jobs_org_id_created_at
      ON jobs(org_id, created_at DESC);
-   CREATE INDEX IF NOT EXISTS idx_job_parts_job_id_org_id 
+   CREATE INDEX IF NOT EXISTS idx_job_parts_job_id_org_id
      ON job_parts(job_id, org_id);
    ```
 
 2. **Vendor Relationship Join**
+
    ```sql
    -- Verify FK index exists:
-   CREATE INDEX IF NOT EXISTS idx_job_parts_vendor_id 
+   CREATE INDEX IF NOT EXISTS idx_job_parts_vendor_id
      ON job_parts(vendor_id) WHERE vendor_id IS NOT NULL;
    ```
 
 3. **User Profile Lookups**
    ```sql
    -- Ensure auth.uid() lookups are fast:
-   CREATE INDEX IF NOT EXISTS idx_user_profiles_auth_user_id 
+   CREATE INDEX IF NOT EXISTS idx_user_profiles_auth_user_id
      ON user_profiles(auth_user_id);
    ```
 
 ### RLS Policy Optimization
 
 Current multi-tenant pattern:
+
 ```sql
 -- Typical policy:
 CREATE POLICY "Users see own org data" ON jobs
@@ -152,6 +163,7 @@ CREATE POLICY "Users see own org data" ON jobs
 ```
 
 **Optimization:**
+
 - Ensure `get_user_org_id()` function is marked `STABLE` not `VOLATILE`
 - Cache function results per transaction
 - Consider session variables for org_id
@@ -159,12 +171,14 @@ CREATE POLICY "Users see own org data" ON jobs
 ## Health Check Integration
 
 The health check endpoint (`/api/health/capabilities`) already probes:
+
 - Column existence (scheduled_start_time, scheduled_end_time, vendor_id)
 - Relationship health (job_parts -> vendors FK)
 - User profile schema (name column)
 
 **Enhancement Needed:**
 Add performance metrics to health check:
+
 ```javascript
 {
   "capabilities": { ... },

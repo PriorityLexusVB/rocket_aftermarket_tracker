@@ -1,11 +1,13 @@
 # Snapshot View Implementation - Final Summary
 
 ## Overview
+
 Successfully implemented a feature-flagged simplified "Currently Active Appointments" snapshot view for the Rocket Aftermarket Tracker application.
 
 ## Implementation Details
 
 ### Feature Flag
+
 - **Environment Variable**: `VITE_ACTIVE_SNAPSHOT`
 - **Values**: `true` (enable snapshot view) / `false` or unset (legacy workflow center)
 - **Location**: `.env.example` (documented), `.env.local` (user's deployment)
@@ -13,6 +15,7 @@ Successfully implemented a feature-flagged simplified "Currently Active Appointm
 ### Architecture
 
 #### Component Structure
+
 ```
 src/pages/currently-active-appointments/
 ├── index.jsx                      # Main entry point with conditional rendering
@@ -27,6 +30,7 @@ src/pages/currently-active-appointments/
 ```
 
 #### Data Flow
+
 1. **SnapshotView** → `useTenant()` → get `orgId`
 2. **SnapshotView** → `jobService.getAllJobs({ orgId })` → fetch all jobs
 3. **Filter locally**: `job_status in ['scheduled', 'in_progress'] && scheduled_start_time != null`
@@ -39,12 +43,14 @@ src/pages/currently-active-appointments/
 ### Key Features
 
 #### Display
+
 - Minimal table with 6 columns: Time, Customer, Vehicle, Vendor, Status, Actions
 - Time displayed as local time range (start → end)
 - Graceful fallbacks for missing customer/vehicle/vendor data
 - Status badges with color coding
 
 #### Actions
+
 1. **View Deal**: Navigate to full deal editor
 2. **Complete**: Mark job as completed
    - Updates `job_status` to 'completed'
@@ -55,6 +61,7 @@ src/pages/currently-active-appointments/
    - Links to Agenda view with focus on job
 
 #### Undo Functionality
+
 - 10-second window to undo marking job as completed
 - Toast notification with Undo button
 - Restores previous status and clears completed_at
@@ -73,6 +80,7 @@ src/pages/currently-active-appointments/
 ### Testing
 
 #### Unit Tests
+
 - **File**: `src/tests/snapshotView.filtering.test.js`
 - **Tests**: 7 test cases covering:
   1. Filter only scheduled/in_progress with non-null start time
@@ -84,11 +92,13 @@ src/pages/currently-active-appointments/
   7. Preserve job data structure
 
 #### Integration
+
 - **Typecheck**: ✓ Passes
 - **Build**: ✓ Succeeds with flag on/off
 - **Test Suite**: ✓ 55 files, 551 tests pass
 
 #### Security
+
 - **CodeQL Scan**: ✓ 0 alerts (JavaScript)
 
 ### RLS Policy Verification

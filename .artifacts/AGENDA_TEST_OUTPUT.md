@@ -41,10 +41,10 @@
 
 ### Test Coverage
 
-| Test | Purpose | Status |
-|------|---------|--------|
-| `toDateKey` maps to NY timezone | Verifies date conversion uses America/New_York | ✅ Pass |
-| `toDateKey` returns "unscheduled" for null | Verifies null handling | ✅ Pass |
+| Test                                       | Purpose                                        | Status  |
+| ------------------------------------------ | ---------------------------------------------- | ------- |
+| `toDateKey` maps to NY timezone            | Verifies date conversion uses America/New_York | ✅ Pass |
+| `toDateKey` returns "unscheduled" for null | Verifies null handling                         | ✅ Pass |
 
 ---
 
@@ -62,6 +62,7 @@
 ```
 
 **Pre-existing Failure (Unrelated to Agenda):**
+
 ```
 FAIL  src/tests/step23-dealformv2-customer-name-date.test.jsx
   > Step 23: DealFormV2 - Customer Name + Deal Date at top; Vendor per line item
@@ -107,16 +108,19 @@ dist/assets/index-DQWJGe7S.js                882.26 kB │ gzip: 172.37 kB │ m
 **Status:** ⚠️ NOT RUN IN CI
 
 **Reason:** E2E tests require:
+
 1. Live Supabase connection with test data
 2. Valid E2E_EMAIL and E2E_PASSWORD environment variables
 3. VITE_SIMPLE_CALENDAR=true flag enabled
 
 **Updated Test:** `e2e/agenda.spec.ts`
+
 - Replaced placeholder with realistic page load test
 - Skip create-redirect flow (requires fixtures)
 - Verifies page renders, filters present
 
 **Manual Run Instructions:**
+
 ```bash
 export VITE_SIMPLE_CALENDAR=true
 export E2E_EMAIL="tester@example.com"
@@ -125,6 +129,7 @@ pnpm exec playwright test e2e/agenda.spec.ts
 ```
 
 **Expected Behavior:**
+
 1. `agenda view renders with flag enabled` - Should pass
 2. `redirect after create focuses new appointment` - Skipped (requires fixtures)
 
@@ -143,24 +148,28 @@ Build includes ESLint and TypeScript checks. All passed during build phase.
 ## Test Summary by Phase
 
 ### Phase A: Verification
+
 - ✅ RPCs exist and are SECURITY DEFINER
 - ✅ Routes configured correctly
 - ✅ DealForm redirect logic verified
 - ✅ Unit test passes
 
 ### Phase B: Patches
+
 - ✅ RescheduleModal ESC/click-outside handlers work
 - ✅ .env.example updated
 - ✅ Unit test moved and passing
 - ✅ E2E test updated with real selectors
 
 ### Phase C: Enhancements
+
 - ✅ Undo Complete logic implemented (unit test not added for brevity)
 - ✅ Filter state management working
 - ✅ Conflict detection imports and state added
 - ✅ A11y attributes present
 
 ### Phase D: Build & Integration
+
 - ✅ TypeScript compilation successful
 - ✅ Build successful
 - ✅ No new failing tests
@@ -213,6 +222,7 @@ Received: <select data-testid="vendor-select" style="display: none;">
 ## Conclusion
 
 ✅ **All Critical Tests Pass**
+
 - TypeCheck: Pass
 - Unit Tests (Agenda): 2/2 Pass
 - Build: Success

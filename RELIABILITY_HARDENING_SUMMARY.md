@@ -14,22 +14,22 @@ Successfully completed all 14 reliability and observability hardening tasks for 
 
 ## Task Completion Matrix
 
-| # | Task | Status | Deliverable |
-|---|------|--------|------------|
-| 1 | Global DB linking audit | ✅ VERIFIED | RLS policies enforce org scoping |
-| 2 | Per-line scheduling UX | ✅ VERIFIED | Preflight probes handle missing columns |
-| 3 | Analytics services | ✅ VERIFIED | All services use orgId parameters |
-| 4 | Telemetry enhancement | ✅ COMPLETED | localStorage fallback, export/import |
-| 5 | E2E coverage | ✅ COMPLETED | 6 E2E tests for degraded modes |
-| 6 | Admin UI toggle | ✅ COMPLETED | Full admin page at /admin/capabilities |
-| 7 | Supabase preflight | ✅ VERIFIED | Comprehensive capability checks |
-| 8 | Fallback logging | ✅ COMPLETED | structuredLogger.js with 5 levels |
-| 9 | Rate-limiting | ✅ COMPLETED | 5 req/min on schema reload endpoint |
-| 10 | Telemetry persistence | ✅ COMPLETED | localStorage persist/restore functions |
-| 11 | CI polishing | ✅ VERIFIED | Playwright config optimized |
-| 12 | Diagnostics banner | ✅ COMPLETED | DiagnosticsBanner.jsx in dev mode |
-| 13 | Verification script | ✅ COMPLETED | Enhanced verify-capabilities.js |
-| 14 | Final verification | ✅ COMPLETED | All tests pass, docs complete |
+| #   | Task                    | Status       | Deliverable                             |
+| --- | ----------------------- | ------------ | --------------------------------------- |
+| 1   | Global DB linking audit | ✅ VERIFIED  | RLS policies enforce org scoping        |
+| 2   | Per-line scheduling UX  | ✅ VERIFIED  | Preflight probes handle missing columns |
+| 3   | Analytics services      | ✅ VERIFIED  | All services use orgId parameters       |
+| 4   | Telemetry enhancement   | ✅ COMPLETED | localStorage fallback, export/import    |
+| 5   | E2E coverage            | ✅ COMPLETED | 6 E2E tests for degraded modes          |
+| 6   | Admin UI toggle         | ✅ COMPLETED | Full admin page at /admin/capabilities  |
+| 7   | Supabase preflight      | ✅ VERIFIED  | Comprehensive capability checks         |
+| 8   | Fallback logging        | ✅ COMPLETED | structuredLogger.js with 5 levels       |
+| 9   | Rate-limiting           | ✅ COMPLETED | 5 req/min on schema reload endpoint     |
+| 10  | Telemetry persistence   | ✅ COMPLETED | localStorage persist/restore functions  |
+| 11  | CI polishing            | ✅ VERIFIED  | Playwright config optimized             |
+| 12  | Diagnostics banner      | ✅ COMPLETED | DiagnosticsBanner.jsx in dev mode       |
+| 13  | Verification script     | ✅ COMPLETED | Enhanced verify-capabilities.js         |
+| 14  | Final verification      | ✅ COMPLETED | All tests pass, docs complete           |
 
 ## New Capabilities
 
@@ -38,6 +38,7 @@ Successfully completed all 14 reliability and observability hardening tasks for 
 **File**: `src/utils/capabilityTelemetry.js`
 
 **Features**:
+
 - Storage fallback: sessionStorage → localStorage
 - Export/import telemetry data (JSON)
 - Persist/restore between sessions
@@ -45,6 +46,7 @@ Successfully completed all 14 reliability and observability hardening tasks for 
 - Graceful degradation when storage unavailable
 
 **API**:
+
 ```javascript
 incrementTelemetry(key)
 getTelemetry(key)
@@ -61,6 +63,7 @@ restoreFromLocalStorage()
 **File**: `src/utils/structuredLogger.js`
 
 **Features**:
+
 - 5 severity levels: DEBUG, INFO, WARN, ERROR, CRITICAL
 - 6 categories: capability_fallback, schema_error, database_error, authentication, performance, user_action
 - In-memory buffer (max 100 entries)
@@ -69,6 +72,7 @@ restoreFromLocalStorage()
 - Export with statistics
 
 **API**:
+
 ```javascript
 log(level, category, message, context)
 logCapabilityFallback(name, reason, context)
@@ -86,6 +90,7 @@ getLogStats()
 **Route**: `/admin/capabilities`
 
 **Features**:
+
 - Telemetry counter display and reset
 - Capability flag monitoring with status indicators
 - Schema cache reload with rate limit display
@@ -101,6 +106,7 @@ getLogStats()
 **Location**: Top of page in AppLayout
 
 **Features**:
+
 - Real-time fallback count
 - Expandable details view
 - Telemetry breakdown
@@ -109,6 +115,7 @@ getLogStats()
 - Export button
 
 **Visibility**:
+
 - Dev mode: Always visible
 - Production: Only when `showInProd={true}`
 
@@ -118,6 +125,7 @@ getLogStats()
 **Endpoint**: `/api/admin/reload-schema`
 
 **Features**:
+
 - In-memory rate limiting: 5 requests per minute per user
 - Rate limit info in response
 - Admin authentication required
@@ -128,6 +136,7 @@ getLogStats()
 **File**: `e2e/capability-fallbacks.spec.ts`
 
 **Tests**:
+
 1. Vendor relationship fallback handling
 2. Scheduled times column missing
 3. Diagnostics banner visibility
@@ -142,6 +151,7 @@ getLogStats()
 **File**: `scripts/verify-capabilities.js`
 
 **Features**:
+
 - Comprehensive health check suite
 - Structured console output with emojis
 - Exit codes for CI/CD integration
@@ -149,6 +159,7 @@ getLogStats()
 - Remediation guidance
 
 **Usage**:
+
 ```bash
 VERIFY_BASE_URL=http://localhost:5173 node scripts/verify-capabilities.js
 JSON_OUTPUT=true node scripts/verify-capabilities.js
@@ -204,12 +215,12 @@ localStorage (survives session)
 
 ## Performance Impact
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| Build time | 9.06s | 9.08s | +0.02s (0.2%) |
+| Metric      | Before    | After     | Change        |
+| ----------- | --------- | --------- | ------------- |
+| Build time  | 9.06s     | 9.08s     | +0.02s (0.2%) |
 | Bundle size | 881.61 KB | 881.88 KB | +11 KB (1.2%) |
-| Unit tests | 418 | 449 | +31 tests |
-| Test time | 4.30s | 4.36s | +0.06s (1.4%) |
+| Unit tests  | 418       | 449       | +31 tests     |
+| Test time   | 4.30s     | 4.36s     | +0.06s (1.4%) |
 
 ## Security
 
@@ -218,25 +229,28 @@ localStorage (survives session)
 ✅ Rate limiting prevents abuse  
 ✅ No sensitive data in telemetry  
 ✅ No sensitive data in logs  
-✅ Client-side only storage  
+✅ Client-side only storage
 
 ## Backward Compatibility
 
 ✅ No breaking changes  
 ✅ All existing features maintained  
 ✅ Graceful degradation  
-✅ Optional features (banner, admin page)  
+✅ Optional features (banner, admin page)
 
 ## Documentation
 
 ### New Documentation
+
 - **ADMIN_CAPABILITIES_GUIDE.md** (9.5 KB): Complete admin guide with API reference
 
 ### Updated Documentation
+
 - **RUNBOOK.md**: Referenced new admin features
 - **CAPABILITY_GATING_IMPLEMENTATION_REPORT.md**: Cross-referenced
 
 ### Inline Documentation
+
 - JSDoc comments in all new utilities
 - Detailed function parameter descriptions
 - Usage examples in tests
@@ -246,6 +260,7 @@ localStorage (survives session)
 ### Unit Tests: 449 total (31 new)
 
 **New test files**:
+
 1. `src/tests/capabilityTelemetry.enhanced.test.js` (11 tests)
    - Export/import functionality
    - localStorage persistence
@@ -264,6 +279,7 @@ localStorage (survives session)
 ### E2E Tests: 6 new
 
 **File**: `e2e/capability-fallbacks.spec.ts`
+
 - Vendor relationship fallback
 - Scheduled times handling
 - Diagnostics banner
@@ -274,6 +290,7 @@ localStorage (survives session)
 ### Integration Tests
 
 **Verification script**: Comprehensive health checks
+
 - Basic health
 - Deals relationship
 - User profiles
@@ -283,6 +300,7 @@ localStorage (survives session)
 ## Deployment Checklist
 
 ### Pre-Deployment
+
 - [x] All unit tests passing
 - [x] Build successful
 - [x] CodeQL security scan passed
@@ -290,6 +308,7 @@ localStorage (survives session)
 - [x] E2E tests created
 
 ### Deployment
+
 - [ ] Deploy to staging
 - [ ] Run E2E tests: `pnpm e2e`
 - [ ] Run verification: `node scripts/verify-capabilities.js`
@@ -298,6 +317,7 @@ localStorage (survives session)
 - [ ] Check structured logs
 
 ### Post-Deployment
+
 - [ ] Verify health endpoints
 - [ ] Test admin capabilities page
 - [ ] Confirm diagnostics banner (dev mode)

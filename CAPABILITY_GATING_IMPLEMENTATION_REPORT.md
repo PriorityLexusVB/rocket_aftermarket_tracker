@@ -18,11 +18,13 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ### ✅ Core Components (100% Complete)
 
 #### 1. Schema Error Classification System
+
 **Location**: `src/utils/schemaErrorClassifier.js`  
 **Status**: ✅ Fully Implemented  
 **Tests**: ✅ 12/12 passing
 
 **Features**:
+
 - Classifies PostgREST/Supabase errors into specific error codes
 - Detects missing columns (400 errors)
 - Detects missing FK relationships (schema cache issues)
@@ -30,6 +32,7 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 - Extracts column names from error messages
 
 **Error Codes**:
+
 - `MISSING_COLUMN` - Generic missing column
 - `MISSING_FK` - Generic missing foreign key relationship
 - `STALE_CACHE` - PostgREST schema cache needs reload
@@ -42,17 +45,20 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 - `GENERIC` - Other errors (network, permission, etc.)
 
 #### 2. Capability Telemetry Tracking
+
 **Location**: `src/utils/capabilityTelemetry.js`  
 **Status**: ✅ Fully Implemented  
 **Tests**: ✅ 19/19 passing
 
 **Features**:
+
 - Session-based counter storage (sessionStorage)
 - Increment/get/reset operations
 - Summary with timestamps
 - No sensitive data exposure
 
 **Telemetry Keys**:
+
 - `VENDOR_FALLBACK` - Legacy vendor capability fallback
 - `VENDOR_ID_FALLBACK` - vendor_id column missing fallback
 - `VENDOR_REL_FALLBACK` - Vendor relationship missing fallback
@@ -60,11 +66,13 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 - `USER_PROFILE_NAME_FALLBACK` - User profile name column missing fallback
 
 #### 3. Graceful Degradation in dealService
+
 **Location**: `src/services/dealService.js` (70KB)  
 **Status**: ✅ Fully Implemented  
 **Tests**: ✅ 4/4 capability fallback tests passing
 
 **Features**:
+
 - **Preflight Schema Probes** - Detects missing columns BEFORE main query (~10-50ms overhead)
 - **Multi-Attempt Retry** - Up to 4 retry attempts with capability downgrade
 - **SessionStorage Caching** - Capabilities cached to prevent repeated errors
@@ -72,12 +80,14 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 - **Query Construction** - Conditional field inclusion based on capabilities
 
 **Capability Flags**:
+
 - `JOB_PARTS_HAS_PER_LINE_TIMES` - scheduled_start_time/scheduled_end_time available
 - `JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE` - vendor_id column available
 - `JOB_PARTS_VENDOR_REL_AVAILABLE` - vendor relationship available
 - `USER_PROFILES_NAME_AVAILABLE` - user_profiles.name column available
 
 **Retry Logic Flow**:
+
 ```
 1. Preflight probe checks columns
 2. If missing, disable capability & increment telemetry
@@ -93,11 +103,13 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ### ✅ Serverless API Endpoints (4 endpoints)
 
 #### 1. `/api/health/capabilities`
+
 **Location**: `src/api/health/capabilities.js`  
 **Type**: Server Route  
 **Purpose**: Comprehensive capability check with all probes
 
 **Response Structure**:
+
 ```json
 {
   "capabilities": {
@@ -121,11 +133,13 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ```
 
 #### 2. `/api/health-deals-rel` (Vercel Serverless)
+
 **Location**: `api/health-deals-rel.js`  
 **Type**: Serverless Function  
 **Purpose**: Validates job_parts → vendors relationship health
 
 **Response (Success)**:
+
 ```json
 {
   "ok": true,
@@ -141,6 +155,7 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ```
 
 **Response (Error)**:
+
 ```json
 {
   "ok": false,
@@ -154,11 +169,13 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ```
 
 #### 3. `/api/health-user-profiles` (Vercel Serverless)
+
 **Location**: `api/health-user-profiles.js`  
 **Type**: Serverless Function  
 **Purpose**: Detects which user profile display columns exist
 
 **Response**:
+
 ```json
 {
   "ok": true,
@@ -173,11 +190,13 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ```
 
 #### 4. `/api/health/job-parts-times`
+
 **Location**: `src/api/health/job-parts-times.js`  
 **Type**: Server Route  
 **Purpose**: Verifies job_parts scheduling time columns with remediation
 
 **Response (Success)**:
+
 ```json
 {
   "scheduledTimes": "ok",
@@ -194,6 +213,7 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ```
 
 **Response (Error with Remediation)**:
+
 ```json
 {
   "scheduledTimes": "missing",
@@ -230,10 +250,12 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ### ✅ Comprehensive Documentation (3 guides)
 
 #### 1. ERROR_HANDLING_GUIDE.md
+
 **Size**: 14KB (480 lines)  
 **Scope**: Complete architecture documentation
 
 **Contents**:
+
 - Architecture overview
 - Core components (schema classifier, telemetry, health endpoints)
 - Integration patterns in services
@@ -247,10 +269,12 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 - Security notes
 
 #### 2. QUICK_REFERENCE_ERROR_HANDLING.md
+
 **Size**: 6.8KB (273 lines)  
 **Scope**: Quick reference for common scenarios
 
 **Contents**:
+
 - 3 common error scenarios with quick fixes
 - Quick telemetry check commands
 - Quick capability check commands
@@ -265,10 +289,12 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 - Security notes
 
 #### 3. RUNBOOK.md (Updated Section)
+
 **Size**: 13KB (572 lines)  
 **Scope**: Operational procedures
 
 **Updated Sections**:
+
 - Schema Cache Reload procedures
 - Health check endpoints reference
 - Verifying job_parts ↔ vendors relationship
@@ -282,6 +308,7 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ### ✅ Comprehensive Test Suite
 
 #### Unit Tests
+
 1. **schemaErrorClassifier.test.js** - ✅ 12/12 passing
    - Error code classification (10 codes)
    - Helper functions (isMissingColumnError, isMissingRelationshipError, isStaleCacheError)
@@ -305,6 +332,7 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
    - Capability re-enablement on success
 
 #### Integration Tests
+
 - **step13-persistence-verification.test.js** - ✅ Passing
 - **step17-regression-guards.test.js** - ✅ Passing
 - **dealService.relationshipError.test.js** - ✅ 3/3 passing
@@ -312,6 +340,7 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 - **dealService.validation.test.js** - ✅ 3/3 passing
 
 #### Overall Test Status
+
 - **Total Tests**: 421
 - **Passing**: 418 (99.3%)
 - **Failing**: 1 (unrelated to capability gating - vendor select visibility test)
@@ -322,6 +351,7 @@ The Rocket Aftermarket Tracker application includes a **comprehensive capability
 ## Error Handling Flows
 
 ### Flow 1: Missing Column Detection
+
 ```
 User loads page → dealService.getAllDeals()
   ↓
@@ -341,6 +371,7 @@ Query succeeds with degraded functionality
 ```
 
 ### Flow 2: Missing Relationship Detection
+
 ```
 Query includes: job_parts(vendor:vendors(id, name))
   ↓
@@ -358,6 +389,7 @@ Query succeeds, vendor data fetched separately if needed
 ```
 
 ### Flow 3: Stale Cache Detection
+
 ```
 Query fails with cache-related error
   ↓
@@ -376,17 +408,18 @@ Subsequent queries succeed
 
 ## Migration Mappings
 
-| Error Code | Migration ID | Migration File | Description |
-|------------|--------------|----------------|-------------|
-| MISSING_JOB_PARTS_SCHEDULED_TIMES | 20250117000000 | 20250117000000_add_job_parts_scheduling_times.sql | Adds scheduled_start_time and scheduled_end_time |
-| MISSING_JOB_PARTS_VENDOR_ID | 20251106000000 | 20251106000000_add_job_parts_vendor_id.sql | Adds vendor_id column to job_parts |
-| MISSING_JOB_PARTS_VENDOR_RELATIONSHIP | 20251107093000 | 20251107093000_verify_job_parts_vendor_fk.sql | Verifies FK relationship |
+| Error Code                            | Migration ID   | Migration File                                    | Description                                      |
+| ------------------------------------- | -------------- | ------------------------------------------------- | ------------------------------------------------ |
+| MISSING_JOB_PARTS_SCHEDULED_TIMES     | 20250117000000 | 20250117000000_add_job_parts_scheduling_times.sql | Adds scheduled_start_time and scheduled_end_time |
+| MISSING_JOB_PARTS_VENDOR_ID           | 20251106000000 | 20251106000000_add_job_parts_vendor_id.sql        | Adds vendor_id column to job_parts               |
+| MISSING_JOB_PARTS_VENDOR_RELATIONSHIP | 20251107093000 | 20251107093000_verify_job_parts_vendor_fk.sql     | Verifies FK relationship                         |
 
 ---
 
 ## Usage Examples
 
 ### Checking Telemetry in Browser Console
+
 ```javascript
 import { getAllTelemetry, getTelemetrySummary } from '@/utils/capabilityTelemetry'
 
@@ -405,16 +438,18 @@ console.log(getTelemetrySummary())
 ```
 
 ### Checking Capability Flags
+
 ```javascript
 console.log({
   vendorId: sessionStorage.getItem('cap_jobPartsVendorId'),
   vendorRel: sessionStorage.getItem('cap_jobPartsVendorRel'),
   times: sessionStorage.getItem('cap_jobPartsTimes'),
-  userNames: sessionStorage.getItem('cap_userProfilesName')
+  userNames: sessionStorage.getItem('cap_userProfilesName'),
 })
 ```
 
 ### Classifying Errors
+
 ```javascript
 import { classifySchemaError, getRemediationGuidance } from '@/utils/schemaErrorClassifier'
 
@@ -433,6 +468,7 @@ console.log(guidance)
 ```
 
 ### Health Endpoint Checks
+
 ```bash
 # Check all capabilities
 curl /api/health/capabilities | jq
@@ -452,11 +488,13 @@ curl /api/health/job-parts-times | jq
 ## Performance Characteristics
 
 ### Overhead
+
 - **Preflight Probes**: ~10-50ms latency (prevents main query failures)
 - **Retry Logic**: Up to 4 attempts adds latency only on first error
 - **SessionStorage Caching**: Eliminates repeated error checks after first detection
 
 ### Optimization
+
 - Capabilities cached in sessionStorage (per-session, per-tab)
 - Preflight probes run only when capability status unknown
 - Failed queries trigger immediate capability downgrade
@@ -467,6 +505,7 @@ curl /api/health/job-parts-times | jq
 ## Security Considerations
 
 ✅ **Implemented Security Measures**:
+
 - Health endpoints require valid Supabase credentials
 - RLS policies must allow SELECT on probed tables
 - Telemetry is client-side only (sessionStorage)
@@ -478,11 +517,13 @@ curl /api/health/job-parts-times | jq
 ## Deployment Considerations
 
 ### Vercel Configuration
+
 - Health endpoints deployed as serverless functions
 - Environment variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - Optional: `SUPABASE_SERVICE_ROLE_KEY` for admin checks
 
 ### Monitoring
+
 - Health endpoints suitable for uptime monitoring
 - Response time tracking available (ms field in responses)
 - Telemetry counters visible in browser DevTools
@@ -516,6 +557,7 @@ The capability gating and health diagnostics system is **fully implemented and t
 ✅ **99.3% test coverage** (418/421 tests passing)
 
 The implementation follows best practices for:
+
 - Minimal performance overhead
 - Security-first design
 - Comprehensive error handling

@@ -11,18 +11,21 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 ## Acceptance Criteria - Status
 
 ### ✅ Health
+
 - **Status:** VERIFIED
 - Health endpoint `/api/health/capabilities` returns "ok" for available probes
 - When failures occur, each includes a "hint" field recommending schema reload
 - Baseline health check artifact created at `.artifacts/health-capabilities.json`
 
 ### ✅ Telemetry
+
 - **Status:** VERIFIED
 - `lastResetAt` + `secondsSinceReset` included in `getTelemetrySummary()`
 - Tests added and passing (23 telemetry tests, 35 total including enhanced tests)
 - All TelemetryKey constants verified including `telemetry_rlsLoanerDenied`
 
 ### ✅ CSV Export
+
 - **Status:** VERIFIED
 - All generated CSVs include a single metadata line prefixed with `"# metadata:"`
 - Metadata includes: `generated_at`, `mode`, and `omitted_capabilities`
@@ -31,6 +34,7 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
   - `ExportButton.jsx` - `convertToCSV()` helper
 
 ### ✅ Tests
+
 - **Status:** PASSING
 - `vitest run` succeeds with 452 passing tests
 - 6 failures in unrelated step16-deals-list tests (pre-existing)
@@ -38,12 +42,14 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 - Build successful with no errors
 
 ### ✅ Artifacts
+
 - **Status:** CREATED
 - `.artifacts/health-capabilities.json` - Baseline health check with timestamp
 - `.artifacts/schema-performance-analysis.md` - Current state assessment
 - `.artifacts/schema-simplification-plan.md` - Optimization roadmap
 
 ### ✅ Security
+
 - **Status:** VERIFIED
 - CodeQL scan completed: 0 alerts found
 - No secrets logged or exposed
@@ -54,6 +60,7 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 ### Code Changes
 
 #### 1. AdminCapabilities.jsx Enhancement
+
 ```javascript
 // Added Telemetry Meta box showing:
 - Storage type (sessionStorage/localStorage)
@@ -64,6 +71,7 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 **Impact:** Low risk, UI-only enhancement with proper guards for `sessionActive`
 
 #### 2. Telemetry Tests Enhancement
+
 ```javascript
 // Added tests for:
 - lastResetAt field existence and format
@@ -74,6 +82,7 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 **Coverage:** All new functionality tested with 6 additional test cases
 
 #### 3. Documentation Artifacts
+
 - **health-capabilities.json:** JSON baseline for health probes
 - **schema-performance-analysis.md:** 208 lines documenting current state
 - **schema-simplification-plan.md:** 281 lines with consolidation roadmap
@@ -81,17 +90,20 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 ### Schema Analysis Findings
 
 **Current State:**
+
 - 83 migration files
 - ~144 schema objects (tables, indexes, functions, views)
 - 20+ core tables identified
 
 **Performance Concerns:**
+
 1. Migration sprawl affecting schema cache reload
 2. RLS policy complexity (multiple refinements over time)
 3. Index proliferation (multiple index-related migrations)
 4. Function and view overhead
 
 **Recommendations Provided:**
+
 - Immediate: Consolidate future migrations, review index usage
 - Medium-term: Schema consolidation, denormalization opportunities
 - Long-term: API layer optimization, caching strategy, read replicas
@@ -99,10 +111,11 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 ## Test Results
 
 ### Telemetry Tests (23 tests in capabilityTelemetry.test.js)
+
 ```
 ✓ incrementTelemetry
 ✓ getTelemetry
-✓ getAllTelemetry  
+✓ getAllTelemetry
 ✓ resetTelemetry
 ✓ resetAllTelemetry
 ✓ getTelemetrySummary (6 tests including new ones)
@@ -111,6 +124,7 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 ```
 
 ### Build
+
 ```
 ✓ vite build --sourcemap completed successfully
 ✓ No TypeScript errors
@@ -119,6 +133,7 @@ Successfully implemented telemetry enhancements, UI improvements, comprehensive 
 ```
 
 ### Security Scan
+
 ```
 ✓ CodeQL analysis: 0 alerts (JavaScript)
 ✓ No vulnerabilities detected
@@ -139,6 +154,7 @@ src/tests/capabilityTelemetry.test.js     (modified, +43 lines)
 ## Features Verified
 
 ### 1. Telemetry Tracking ✅
+
 - [x] Counter increments work correctly
 - [x] Reset functionality sets `lastResetAt`
 - [x] `getTelemetrySummary()` includes all metadata
@@ -146,6 +162,7 @@ src/tests/capabilityTelemetry.test.js     (modified, +43 lines)
 - [x] Storage fallback (sessionStorage → localStorage) works
 
 ### 2. CSV Export Metadata ✅
+
 - [x] Metadata line starts with `#`
 - [x] Includes `generated_at` timestamp
 - [x] Includes `omitted_capabilities` list
@@ -153,12 +170,14 @@ src/tests/capabilityTelemetry.test.js     (modified, +43 lines)
 - [x] Compatible with standard CSV parsers (comment line)
 
 ### 3. Health Probes ✅
+
 - [x] Column existence checks (scheduled_start_time, vendor_id)
 - [x] Relationship checks (job_parts → vendors FK)
 - [x] User profile schema (name column)
 - [x] Error hints for schema reload
 
 ### 4. UI Enhancements ✅
+
 - [x] Telemetry Meta box displays in AdminCapabilities
 - [x] Formatted timestamps with locale support
 - [x] Duration display (minutes + seconds)
@@ -168,9 +187,11 @@ src/tests/capabilityTelemetry.test.js     (modified, +43 lines)
 ## Known Limitations
 
 ### MCP Supabase Verification
+
 **Status:** Not completed (requires live environment)
 
 The following steps were documented but not executed due to environment constraints:
+
 - [ ] Run SQL diagnostics against live Supabase instance
 - [ ] Check column existence via information_schema queries
 - [ ] Verify foreign key relationships
@@ -178,15 +199,18 @@ The following steps were documented but not executed due to environment constrai
 
 **Reason:** Requires Supabase credentials (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-**Workaround:** 
+**Workaround:**
+
 - Baseline health check artifact created with expected structure
 - SQL queries documented for manual execution
 - Health endpoint implementation verified in code review
 
 ### Pre-existing Test Failures
+
 **Status:** Not addressed (out of scope)
 
 6 tests in `step16-deals-list-verification.test.jsx` are failing:
+
 - Display full product names without OP codes
 - Calculate and display correct values
 - Handle filter toggles
@@ -199,6 +223,7 @@ The following steps were documented but not executed due to environment constrai
 ## Deployment Notes
 
 ### Production Deployment Checklist
+
 - [x] All tests passing (except pre-existing failures)
 - [x] Build successful
 - [x] Security scan clean
@@ -207,6 +232,7 @@ The following steps were documented but not executed due to environment constrai
 - [x] Documentation complete
 
 ### Post-Deployment Validation
+
 1. Check `/api/health/capabilities` endpoint
 2. Open AdminCapabilities page and verify Telemetry Meta box
 3. Trigger a telemetry reset and verify timestamp updates
@@ -214,7 +240,9 @@ The following steps were documented but not executed due to environment constrai
 5. Monitor for any RLS policy errors in logs
 
 ### Rollback Plan
+
 If issues arise:
+
 1. Revert commits: `git revert 4fab8cc 6bd3909`
 2. Redeploy previous version
 3. Changes are purely additive, minimal risk
@@ -222,6 +250,7 @@ If issues arise:
 ## Future Work
 
 ### Recommended Next Steps
+
 1. **Schema Consolidation (Medium Priority)**
    - Follow schema-simplification-plan.md
    - Allocate 2-3 days for implementation
@@ -254,6 +283,7 @@ All primary objectives achieved:
 ✅ Build successful
 
 The application now has:
+
 - Enhanced observability through telemetry timestamps
 - Better diagnostics with Telemetry Meta UI
 - Improved auditability through CSV metadata

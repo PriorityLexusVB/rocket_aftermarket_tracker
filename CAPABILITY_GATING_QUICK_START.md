@@ -7,6 +7,7 @@
 ## What This System Does
 
 Automatically handles **400/403 HTTP errors** from PostgREST/Supabase:
+
 1. 🔍 **Detects** missing database columns and relationships
 2. 🔄 **Retries** queries with degraded capabilities
 3. 📊 **Tracks** fallback events with telemetry
@@ -23,7 +24,7 @@ curl https://your-app.vercel.app/api/health/capabilities
 # Check vendor relationship
 curl https://your-app.vercel.app/api/health-deals-rel
 
-# Check user profiles  
+# Check user profiles
 curl https://your-app.vercel.app/api/health-user-profiles
 
 # Check scheduling columns
@@ -86,11 +87,13 @@ When queries fail:
 ## File Reference
 
 ### Core Implementation
+
 - `src/utils/schemaErrorClassifier.js` - Error classification (188 lines)
 - `src/utils/capabilityTelemetry.js` - Telemetry tracking (94 lines)
 - `src/services/dealService.js` - Graceful degradation (70KB)
 
 ### Health Endpoints
+
 - `src/api/health/capabilities.js` - All capability probes
 - `src/api/health/deals-rel.js` - Vendor relationship check
 - `src/api/health/job-parts-times.js` - Scheduling columns check
@@ -98,6 +101,7 @@ When queries fail:
 - `api/health-user-profiles.js` - Serverless profile check
 
 ### Documentation
+
 - `ERROR_HANDLING_GUIDE.md` - Complete architecture (480 lines)
 - `QUICK_REFERENCE_ERROR_HANDLING.md` - Quick reference (273 lines)
 - `RUNBOOK.md` - Operations guide (updated sections)
@@ -158,18 +162,19 @@ User Request
 
 ## Performance
 
-| Operation | Overhead | Impact |
-|-----------|----------|--------|
-| Preflight probe | 10-50ms | Minimal, prevents failures |
-| Retry logic | First error only | Only on initial detection |
-| SessionStorage | <1ms | Negligible |
-| Health endpoint | 20-100ms | Acceptable for monitoring |
+| Operation       | Overhead         | Impact                     |
+| --------------- | ---------------- | -------------------------- |
+| Preflight probe | 10-50ms          | Minimal, prevents failures |
+| Retry logic     | First error only | Only on initial detection  |
+| SessionStorage  | <1ms             | Negligible                 |
+| Health endpoint | 20-100ms         | Acceptable for monitoring  |
 
 ---
 
 ## Security
 
 ✅ **All Security Measures in Place**:
+
 - Health endpoints require valid Supabase credentials
 - RLS policies enforced server-side (capabilities are hints only)
 - No sensitive data in telemetry counters
@@ -181,24 +186,28 @@ User Request
 ## Key Features
 
 ### 1. Automatic Error Detection
+
 - ✅ Missing columns (400 errors)
 - ✅ Missing FK relationships
 - ✅ Stale PostgREST cache
 - ✅ RLS policy issues (403 errors)
 
 ### 2. Graceful Degradation
+
 - ✅ Preflight schema probes
 - ✅ Multi-attempt retry (up to 4 attempts)
 - ✅ SessionStorage caching
 - ✅ Conditional query building
 
 ### 3. Observability
+
 - ✅ 4 health endpoints
 - ✅ 5 telemetry counters
 - ✅ Response time tracking
 - ✅ Error classification in responses
 
 ### 4. Developer Experience
+
 - ✅ Clear error messages
 - ✅ Remediation guidance
 - ✅ Migration mappings
@@ -209,6 +218,7 @@ User Request
 ## Production Ready ✅
 
 **Deployment Checklist**: 10/10 Complete
+
 - [x] All tests passing (99.3%)
 - [x] Build successful
 - [x] Health endpoints functional
@@ -225,6 +235,7 @@ User Request
 ## Need Help?
 
 📖 **Full Documentation**:
+
 - Architecture: `ERROR_HANDLING_GUIDE.md`
 - Quick Reference: `QUICK_REFERENCE_ERROR_HANDLING.md`
 - Operations: `RUNBOOK.md`
