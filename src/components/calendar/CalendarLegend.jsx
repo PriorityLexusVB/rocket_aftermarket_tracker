@@ -4,7 +4,7 @@ import { getColorLegend, getStatusLegend } from '../../utils/calendarColors'
 
 /**
  * CalendarLegend - Visual guide for calendar color coding
- * 
+ *
  * Displays legend for service types (onsite vs vendor) and job statuses
  * Helps users understand color-coded calendar events at a glance
  */
@@ -46,7 +46,9 @@ export default function CalendarLegend({ showStatuses = false, compact = false }
           const Icon = iconMap[item.icon]
           return (
             <div key={index} className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg ${item.bg} ${item.border} border-2 flex items-center justify-center`}>
+              <div
+                className={`w-8 h-8 rounded-lg ${item.bg} ${item.border} border-2 flex items-center justify-center`}
+              >
                 {Icon && <Icon className={`w-4 h-4 ${item.text}`} />}
               </div>
               <div>

@@ -23,10 +23,10 @@ describe('RLS Loaner Telemetry', () => {
     // This test documents expected behavior when RLS errors occur
     // The actual incrementation happens in dealService.upsertLoanerAssignment()
     // when a PGRST301 error or "permission denied" error is caught
-    
+
     const initialCount = getTelemetry(TelemetryKey.RLS_LOANER_DENIED)
     expect(initialCount).toBe(0)
-    
+
     // In production, this counter would be incremented when:
     // 1. User attempts to create/update loaner assignment
     // 2. RLS policy denies the operation (403/PGRST301)

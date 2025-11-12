@@ -1,7 +1,13 @@
 // src/pages/AdminCapabilities.jsx
 // Admin page for viewing and resetting capability flags
 import { useState, useEffect } from 'react'
-import { getAllTelemetry, resetAllTelemetry, exportTelemetry, importTelemetry, getTelemetrySummary } from '@/utils/capabilityTelemetry'
+import {
+  getAllTelemetry,
+  resetAllTelemetry,
+  exportTelemetry,
+  importTelemetry,
+  getTelemetrySummary,
+} from '@/utils/capabilityTelemetry'
 import { getLogs, getLogStats, clearLogs, exportLogs } from '@/utils/structuredLogger'
 
 export default function AdminCapabilities() {
@@ -163,7 +169,7 @@ export default function AdminCapabilities() {
               </button>
             </div>
           </div>
-          
+
           {/* Telemetry Meta Box */}
           {telemetrySummary && telemetrySummary.sessionActive && (
             <div className="mb-4 rounded border border-blue-200 bg-blue-50 p-3">
@@ -178,7 +184,7 @@ export default function AdminCapabilities() {
                 <div>
                   <span className="text-blue-700 font-medium">Last Reset:</span>{' '}
                   <span className="text-blue-900">
-                    {telemetrySummary.lastResetAt 
+                    {telemetrySummary.lastResetAt
                       ? new Date(telemetrySummary.lastResetAt).toLocaleString()
                       : 'Never'}
                   </span>
@@ -194,7 +200,7 @@ export default function AdminCapabilities() {
               </div>
             </div>
           )}
-          
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
             {Object.entries(telemetry).map(([key, value]) => (
               <div key={key} className="rounded border border-gray-200 p-4">
@@ -210,13 +216,19 @@ export default function AdminCapabilities() {
           <h2 className="mb-4 text-xl font-semibold">Capability Flags</h2>
           <div className="space-y-2">
             {Object.entries(capabilities).map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between rounded border border-gray-200 p-4">
+              <div
+                key={key}
+                className="flex items-center justify-between rounded border border-gray-200 p-4"
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`h-3 w-3 rounded-full ${value === 'false' ? 'bg-red-500' : value === 'true' ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <div
+                    className={`h-3 w-3 rounded-full ${value === 'false' ? 'bg-red-500' : value === 'true' ? 'bg-green-500' : 'bg-gray-400'}`}
+                  />
                   <div>
                     <div className="font-medium text-gray-900">{formatKey(key)}</div>
                     <div className="text-sm text-gray-500">
-                      Status: {value === 'false' ? 'Disabled' : value === 'true' ? 'Enabled' : 'Not Set'}
+                      Status:{' '}
+                      {value === 'false' ? 'Disabled' : value === 'true' ? 'Enabled' : 'Not Set'}
                     </div>
                   </div>
                 </div>
@@ -235,7 +247,8 @@ export default function AdminCapabilities() {
         <div className="mb-6 rounded-lg bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold">Schema Cache Management</h2>
           <p className="mb-4 text-sm text-gray-600">
-            Reload the PostgREST schema cache to recognize new columns or relationships after database migrations.
+            Reload the PostgREST schema cache to recognize new columns or relationships after
+            database migrations.
           </p>
           <button
             onClick={handleReloadSchema}
@@ -245,7 +258,9 @@ export default function AdminCapabilities() {
             {reloadStatus?.loading ? 'Reloading...' : 'Reload Schema Cache'}
           </button>
           {reloadStatus && !reloadStatus.loading && (
-            <div className={`mt-4 rounded p-4 ${reloadStatus.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+            <div
+              className={`mt-4 rounded p-4 ${reloadStatus.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}
+            >
               <div className="font-medium">{reloadStatus.message}</div>
               {reloadStatus.data?.rateLimit && (
                 <div className="mt-2 text-sm">
@@ -304,32 +319,39 @@ export default function AdminCapabilities() {
               </div>
             ) : (
               <div className="space-y-2">
-                {logs.slice(-20).reverse().map((log, idx) => (
-                  <div key={idx} className="rounded border border-gray-200 p-3 text-sm">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-2">
-                        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${getLevelColor(log.level)}`}>
-                          {log.level.toUpperCase()}
-                        </span>
-                        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                          {log.category}
+                {logs
+                  .slice(-20)
+                  .reverse()
+                  .map((log, idx) => (
+                    <div key={idx} className="rounded border border-gray-200 p-3 text-sm">
+                      <div className="flex items-start justify-between">
+                        <div className="flex gap-2">
+                          <span
+                            className={`rounded px-2 py-0.5 text-xs font-semibold ${getLevelColor(log.level)}`}
+                          >
+                            {log.level.toUpperCase()}
+                          </span>
+                          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                            {log.category}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(log.timestamp).toLocaleString()}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </span>
+                      <div className="mt-2 text-gray-900">{log.message}</div>
+                      {Object.keys(log.context).length > 0 && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-gray-600">
+                            Context
+                          </summary>
+                          <pre className="mt-1 overflow-x-auto rounded bg-gray-50 p-2 text-xs">
+                            {JSON.stringify(log.context, null, 2)}
+                          </pre>
+                        </details>
+                      )}
                     </div>
-                    <div className="mt-2 text-gray-900">{log.message}</div>
-                    {Object.keys(log.context).length > 0 && (
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-gray-600">Context</summary>
-                        <pre className="mt-1 overflow-x-auto rounded bg-gray-50 p-2 text-xs">
-                          {JSON.stringify(log.context, null, 2)}
-                        </pre>
-                      </details>
-                    )}
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

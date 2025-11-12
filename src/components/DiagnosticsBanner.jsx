@@ -55,20 +55,45 @@ export function DiagnosticsBanner({ showInProd = false }) {
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`flex h-6 w-6 items-center justify-center rounded-full ${hasFallbacks ? 'bg-yellow-200' : 'bg-blue-200'}`}>
+            <div
+              className={`flex h-6 w-6 items-center justify-center rounded-full ${hasFallbacks ? 'bg-yellow-200' : 'bg-blue-200'}`}
+            >
               {hasFallbacks ? (
-                <svg className={`h-4 w-4 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className={`h-4 w-4 ${iconColor}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               ) : (
-                <svg className={`h-4 w-4 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className={`h-4 w-4 ${iconColor}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               )}
             </div>
             <div className={`text-sm font-medium ${textColor}`}>
               {hasFallbacks ? (
-                <>Capability Fallbacks Active: {totalFallbacks} event{totalFallbacks !== 1 ? 's' : ''}</>
+                <>
+                  Capability Fallbacks Active: {totalFallbacks} event
+                  {totalFallbacks !== 1 ? 's' : ''}
+                </>
               ) : (
                 <>All Capabilities OK</>
               )}
@@ -111,7 +136,9 @@ export function DiagnosticsBanner({ showInProd = false }) {
               </div>
               <div className="rounded bg-white px-3 py-2 shadow-sm">
                 <div className="text-xs text-gray-500">Profile Name</div>
-                <div className="text-lg font-semibold">{telemetry.userProfileNameFallback || 0}</div>
+                <div className="text-lg font-semibold">
+                  {telemetry.userProfileNameFallback || 0}
+                </div>
               </div>
             </div>
 
@@ -153,7 +180,9 @@ export function DiagnosticsBanner({ showInProd = false }) {
               <button
                 onClick={() => {
                   const data = getTelemetrySummary()
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+                  const blob = new Blob([JSON.stringify(data, null, 2)], {
+                    type: 'application/json',
+                  })
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a')
                   a.href = url

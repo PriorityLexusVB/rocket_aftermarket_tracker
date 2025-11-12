@@ -77,6 +77,16 @@ export function detectConflicts(rows) {
   return conflictIds
 }
 
+// Exported to allow unit testing: manage undo state transitions
+export function createUndoEntry(jobId, prevStatus) {
+  return { jobId, prevStatus, timeoutId: null }
+}
+
+// Exported to allow unit testing: check if undo is available
+export function canUndo(undoMap, jobId) {
+  return undoMap.has(jobId)
+}
+
 export default function SnapshotView() {
   const { orgId } = useTenant()
   const toast = useToast?.()
@@ -85,6 +95,7 @@ export default function SnapshotView() {
   const [rawJobs, setRawJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [undoMap, setUndoMap] = useState(new Map()) // id -> { prevStatus, timeoutId }
+  const [statusMessage, setStatusMessage] = useState('') // For aria-live announcements
 
   const rows = useMemo(() => filterAndSort(rawJobs), [rawJobs])
   const conflictIds = useMemo(() => detectConflicts(rows), [rows])
@@ -108,9 +119,12 @@ export default function SnapshotView() {
 
   async function handleComplete(job) {
     const prevStatus = job?.job_status || 'scheduled'
+    const jobTitle = job?.title || job?.job_number || 'Appointment'
     try {
       await jobService.updateStatus(job.id, 'completed', { completed_at: new Date().toISOString() })
-      toast?.success?.(`Marked "${job?.title || job?.job_number || 'Appointment'}" as completed`)
+      const message = `Marked "${jobTitle}" as completed`
+      toast?.success?.(message)
+      setStatusMessage(message) // For screen readers
       await load()
 
       // set undo window (10s)
@@ -127,7 +141,9 @@ export default function SnapshotView() {
         return copy
       })
     } catch (e) {
-      toast?.error?.('Complete failed')
+      const errorMsg = 'Complete failed'
+      toast?.error?.(errorMsg)
+      setStatusMessage(errorMsg)
     }
   }
 
@@ -137,9 +153,13 @@ export default function SnapshotView() {
     clearTimeout(meta.timeoutId)
     try {
       await jobService.updateStatus(jobId, meta.prevStatus, { completed_at: null })
-      toast?.success?.('Restored status')
+      const message = 'Restored status'
+      toast?.success?.(message)
+      setStatusMessage(message)
     } catch (e) {
-      toast?.error?.('Undo failed')
+      const errorMsg = 'Undo failed'
+      toast?.error?.(errorMsg)
+      setStatusMessage(errorMsg)
     } finally {
       setUndoMap((m) => {
         const copy = new Map(m)
@@ -154,6 +174,11 @@ export default function SnapshotView() {
 
   return (
     <div className="p-6 space-y-4" aria-label="Active Appointments Snapshot">
+      {/* Accessible status announcements */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true" role="status">
+        {statusMessage}
+      </div>
+
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Active Appointments (Snapshot)</h1>
         {SIMPLE_CAL_ON && (

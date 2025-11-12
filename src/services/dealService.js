@@ -130,7 +130,7 @@ function mapPermissionError(err) {
     throw new Error(
       'Failed to save: RLS prevented update on auth.users. ' +
         'Likely a policy references auth.users. ' +
-        'Remediation: NOTIFY pgrst, \'reload schema\' then retry; ' +
+        "Remediation: NOTIFY pgrst, 'reload schema' then retry; " +
         'update policy to reference public.user_profiles or tenant-scoped conditions. ' +
         'See docs/MCP-NOTES.md and .artifacts/mcp-introspect/INTROSPECTION.md for details.'
     )
@@ -305,7 +305,7 @@ async function selectJoinedDealById(id) {
     if (isMissingColumnError(jobError)) {
       const msg = jobError?.message || ''
       const errorCode = classifySchemaError(jobError)
-      
+
       if (/user_profiles/i.test(msg)) {
         console.warn(
           '[dealService:selectJoinedDealById] user_profiles column missing; degrading caps'
@@ -313,10 +313,10 @@ async function selectJoinedDealById(id) {
         downgradeCapForErrorMessage(msg)
         continue
       }
-      
+
       // Log classified error for diagnostics
       console.warn(`[dealService:selectJoinedDealById] Classified error: ${errorCode}`)
-      
+
       // Retry without per-line times
       const selectNoTimes = `
             id, job_number, title, description, job_status, priority, location,
@@ -345,7 +345,7 @@ async function selectJoinedDealById(id) {
     if (isMissingRelationshipError(jobError)) {
       const msg = jobError?.message || ''
       const errorCode = classifySchemaError(jobError)
-      
+
       // Detect vendor relationship issues and degrade
       if (/vendor/i.test(msg) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
         console.warn(
@@ -355,15 +355,13 @@ async function selectJoinedDealById(id) {
         incrementTelemetry(TelemetryKey.VENDOR_REL_FALLBACK)
         continue // retry without vendor relationship
       }
-      
+
       // For other relationship errors, provide actionable guidance
       const remediation = getRemediationGuidance(jobError)
-      const guidance = remediation.migrationFile 
-        ? `Apply migration: ${remediation.migrationFile}` 
+      const guidance = remediation.migrationFile
+        ? `Apply migration: ${remediation.migrationFile}`
         : 'Please contact your administrator to apply the latest migrations.'
-      throw new Error(
-        `Failed to load deal: Database schema update required. ${guidance}`
-      )
+      throw new Error(`Failed to load deal: Database schema update required. ${guidance}`)
     }
     // Detect missing vendor_id column and degrade capability
     const msgLower = String(jobError?.message || '').toLowerCase()
@@ -771,7 +769,7 @@ export async function getAllDeals() {
         if (probeError && isMissingColumnError(probeError)) {
           const errorCode = classifySchemaError(probeError)
           const msg = probeError.message.toLowerCase()
-          
+
           if (msg.includes('scheduled_start_time') || msg.includes('scheduled_end_time')) {
             console.warn(
               `[dealService:getAllDeals] Preflight: classified as ${errorCode}; disabling capability`
@@ -865,15 +863,13 @@ export async function getAllDeals() {
       if (isMissingColumnError(jobsError)) {
         const msg = jobsError.message || ''
         const errorCode = classifySchemaError(jobsError)
-        
+
         if (/user_profiles/i.test(msg)) {
-          console.warn(
-            `[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`
-          )
+          console.warn(`[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`)
           downgradeCapForErrorMessage(msg)
           continue // retry with degraded user profile fields
         }
-        
+
         const lower = msg.toLowerCase()
         // Detect missing per-line time columns on job_parts and disable that capability
         if (
@@ -889,11 +885,11 @@ export async function getAllDeals() {
             continue
           }
         }
-        
+
         console.warn(
           `[dealService:getAllDeals] Missing column detected (${errorCode}), retrying if capability allows...`
         )
-        
+
         if (lower.includes('job_parts') && lower.includes('vendor_id')) {
           if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
             console.warn(
@@ -1073,8 +1069,8 @@ export async function getAllDeals() {
     if (isMissingRelationshipError(error)) {
       const errorCode = classifySchemaError(error)
       const remediation = getRemediationGuidance(error)
-      const guidance = remediation.migrationFile 
-        ? `Please run migration: ${remediation.migrationFile}` 
+      const guidance = remediation.migrationFile
+        ? `Please run migration: ${remediation.migrationFile}`
         : 'Please run the migration to add per-line vendor support'
       throw new Error(
         `Failed to load deals: ${remediation.description || 'Missing database relationship'}. ${guidance}. Original error: ${error?.message}`
@@ -1360,7 +1356,7 @@ export async function createDeal(formState) {
           if (isMissingColumnError(partsErr)) {
             const errorCode = classifySchemaError(partsErr)
             const lower = String(partsErr?.message || '').toLowerCase()
-            
+
             // Vendor column missing: disable capability and retry omitting vendor_id
             if (lower.includes('job_parts') && lower.includes('vendor_id')) {
               if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
@@ -1624,7 +1620,7 @@ export async function updateDeal(id, formState) {
         if (isMissingColumnError(insErr)) {
           const errorCode = classifySchemaError(insErr)
           const lower = String(insErr?.message || '').toLowerCase()
-          
+
           // If vendor_id missing on job_parts, disable capability and retry without vendor_id
           if (lower.includes('job_parts') && lower.includes('vendor_id')) {
             if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
@@ -1773,7 +1769,8 @@ function mapDbDealToForm(dbDeal) {
   // Derive vehicle_description from title or vehicle fields
   // Priority: dbDeal.vehicle_description (if already computed) > derive using helper
   const vehicleDescription =
-    normalized?.vehicle_description || deriveVehicleDescription(normalized?.title, normalized?.vehicle)
+    normalized?.vehicle_description ||
+    deriveVehicleDescription(normalized?.title, normalized?.vehicle)
 
   return {
     id: normalized?.id,

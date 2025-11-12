@@ -170,7 +170,7 @@ export function getRemediationGuidance(error) {
       'Check database connectivity',
       'Verify RLS policies are correct',
       'Ensure all migrations are applied',
-      'Run: NOTIFY pgrst, \'reload schema\';',
+      "Run: NOTIFY pgrst, 'reload schema';",
     ],
   }
 }
