@@ -149,7 +149,18 @@ export function validateScheduleRange(startIso, endIso) {
     if (isNaN(s.getTime()) || isNaN(e.getTime())) errors.push('invalid')
     else if (e.getTime() <= s.getTime()) errors.push('end_not_after_start')
   }
-  return { valid: errors.length === 0, errors }
+  
+  // Map error codes to user-friendly messages
+  const errorMessages = {
+    start_required: 'Start time is required',
+    end_required: 'End time is required',
+    invalid: 'Invalid date/time format',
+    end_not_after_start: 'End time must be after start time'
+  }
+  
+  const error = errors.length > 0 ? errorMessages[errors[0]] || 'Invalid schedule' : ''
+  
+  return { valid: errors.length === 0, errors, error }
 }
 
 export default {
