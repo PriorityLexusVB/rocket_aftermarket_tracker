@@ -9,6 +9,7 @@ import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
+import { formatScheduleRange } from '../../utils/dateTimeUtils'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -16,6 +17,9 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
+
+// Feature flag for Simple Agenda
+const SIMPLE_AGENDA_ENABLED = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
 // ✅ UPDATED: StatusPill with enhanced styling
 const StatusPill = ({ status }) => {
@@ -97,6 +101,59 @@ const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
     >
       Next: {short}
     </span>
+  )
+}
+
+// ✅ ADDED: Schedule chip component for displaying appointment times
+const ScheduleChip = ({ deal, onClick }) => {
+  if (!deal) {
+    return <span className="text-xs text-gray-500">—</span>
+  }
+
+  // Check job-level scheduling first
+  const hasJobSchedule = deal?.scheduled_start_time && deal?.scheduled_end_time
+  
+  // Fallback: derive from earliest line item times if available
+  let startTime = hasJobSchedule ? deal.scheduled_start_time : null
+  let endTime = hasJobSchedule ? deal.scheduled_end_time : null
+  
+  if (!hasJobSchedule && Array.isArray(deal?.job_parts)) {
+    // Find earliest scheduled line item
+    const scheduledParts = deal.job_parts
+      .filter(p => p?.scheduled_start_time && p?.scheduled_end_time)
+      .sort((a, b) => new Date(a.scheduled_start_time) - new Date(b.scheduled_start_time))
+    
+    if (scheduledParts.length > 0) {
+      startTime = scheduledParts[0].scheduled_start_time
+      endTime = scheduledParts[0].scheduled_end_time
+    }
+  }
+  
+  // Also check for legacy appt_start/appt_end fields
+  if (!startTime && deal?.appt_start) {
+    startTime = deal.appt_start
+    endTime = deal?.appt_end || null
+  }
+  
+  if (!startTime) {
+    return <span className="text-xs text-gray-500">—</span>
+  }
+
+  const formatted = formatScheduleRange(startTime, endTime)
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick?.(deal)
+      }}
+      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
+      aria-label={`Schedule: ${formatted}`}
+      title="Click to view in agenda"
+    >
+      <Icon name="Clock" size={12} className="mr-1" />
+      {formatted}
+    </button>
   )
 }
 
@@ -494,6 +551,19 @@ export default function DealsPage() {
       console.error('Mark returned error:', e)
     } finally {
       setReturningLoaner(false)
+    }
+  }
+
+  // ✅ ADDED: Handle schedule chip click
+  const handleScheduleClick = (deal) => {
+    if (!deal?.id) return
+    
+    // If Simple Agenda is enabled, navigate to agenda with focus parameter
+    if (SIMPLE_AGENDA_ENABLED) {
+      navigate(`/calendar/agenda?focus=${deal.id}`)
+    } else {
+      // Otherwise, open edit modal
+      handleEditDeal(deal.id)
     }
   }
 
@@ -1476,38 +1546,7 @@ export default function DealsPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3 w-[180px]">
-                      {deal?.appt_start ? (
-                        <span className="text-sm text-slate-700">
-                          {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                          {' • '}
-                          {(() => {
-                            const startTime = new Date(deal?.appt_start).toLocaleTimeString(
-                              'en-US',
-                              {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }
-                            )
-                            const endTime = deal?.appt_end
-                              ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : null
-
-                            // If start and end times are identical, only show once
-                            if (endTime && startTime !== endTime) {
-                              return `${startTime}–${endTime}`
-                            }
-                            return startTime
-                          })()}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-500">—</span>
-                      )}
+                      <ScheduleChip deal={deal} onClick={handleScheduleClick} />
                     </td>
                     <td
                       className="px-4 py-3 max-w-[220px]"
@@ -1764,26 +1803,7 @@ export default function DealsPage() {
                             )
                           })()}
                         </span>
-                        {deal?.appt_start && (
-                          <span className="text-xs text-slate-700" data-testid="mobile-appt-window">
-                            {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                            {' • '}
-                            {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                            {'–'}
-                            {deal?.appt_end
-                              ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : ''}
-                          </span>
-                        )}
+                        <ScheduleChip deal={deal} onClick={handleScheduleClick} />
                         {(deal?.loaner_number || deal?.has_active_loaner) && (
                           <LoanerBadge deal={deal} />
                         )}
