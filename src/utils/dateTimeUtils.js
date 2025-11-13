@@ -92,7 +92,11 @@ export function formatScheduleRange(startIso, endIso) {
     if (isNaN(start.getTime())) return ''
     const end = endIso ? new Date(endIso) : null
     const sameDay = end && isSameDayTZ(start, end, TZ)
-    const dateFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, month: 'short', day: 'numeric' })
+    const dateFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ,
+      month: 'short',
+      day: 'numeric',
+    })
     const timeFmt = new Intl.DateTimeFormat('en-US', {
       timeZone: TZ,
       hour: '2-digit',
@@ -134,7 +138,12 @@ function normalizeTime(t) {
 }
 
 function isSameDayTZ(a, b, tz) {
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' })
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
   return fmt.format(a) === fmt.format(b)
 }
 

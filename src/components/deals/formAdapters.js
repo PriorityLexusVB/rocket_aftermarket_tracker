@@ -120,6 +120,11 @@ export function draftToCreatePayload(draft = {}) {
     finance_manager_id: stripped.finance_manager_id ?? '',
     delivery_coordinator_id: stripped.delivery_coordinator_id ?? '',
     customer_needs_loaner: !!stripped.customer_needs_loaner,
+    scheduled_start_time: stripped.scheduled_start_time || null,
+    scheduled_end_time: stripped.scheduled_end_time || null,
+    scheduling_location: stripped.scheduling_location || null,
+    scheduling_notes: stripped.scheduling_notes || null,
+    color_code: stripped.color_code || null,
   }
 
   // Normalize phone if customer_mobile is present
@@ -158,6 +163,11 @@ export function draftToUpdatePayload(original = {}, draft = {}) {
   if (id && !payload.id) payload.id = id
   if (actualDraft.id) payload.id = actualDraft.id
   payload.updated_at = actualDraft.updated_at ?? new Date().toISOString()
+  payload.scheduled_start_time = actualDraft.scheduled_start_time || null
+  payload.scheduled_end_time = actualDraft.scheduled_end_time || null
+  payload.scheduling_location = actualDraft.scheduling_location || null
+  payload.scheduling_notes = actualDraft.scheduling_notes || null
+  payload.color_code = actualDraft.color_code || null
   return payload
 }
 
