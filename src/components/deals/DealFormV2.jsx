@@ -16,6 +16,10 @@ import {
   getVendors,
   getProducts,
 } from '../../services/dropdownService'
+import { toLocalDateTimeFields, fromLocalDateTimeFields } from '../../utils/dateTimeUtils'
+
+// Guard flag for auto-earliest-window feature (disabled by default to avoid test conflicts)
+const ENABLE_AUTO_EARLIEST_WINDOW = false
 
 export default function DealFormV2({ mode = 'create', job = null, onSave, onCancel }) {
   const { user } = useAuth()
@@ -51,6 +55,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     financeManager: job?.finance_manager_id || null,
     needsLoaner: Boolean(job?.customer_needs_loaner),
     loanerNumber: job?.loaner_number || '',
+    // Scheduling fields
+    scheduledStartTime: job?.scheduled_start_time ? toLocalDateTimeFields(job.scheduled_start_time) : '',
+    scheduledEndTime: job?.scheduled_end_time ? toLocalDateTimeFields(job.scheduled_end_time) : '',
+    location: job?.location || '',
+    calendarNotes: job?.calendar_notes || '',
+    colorCode: job?.color_code || '#3B82F6', // Default blue
   })
 
   // Line items data - pre-hydrate vendor_id from job level if missing
@@ -246,6 +256,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     setError('')
 
     try {
+      // Convert datetime-local values to ISO timestamps
+      const scheduledStartISO = customerData?.scheduledStartTime 
+        ? fromLocalDateTimeFields(customerData.scheduledStartTime) 
+        : null
+      const scheduledEndISO = customerData?.scheduledEndTime 
+        ? fromLocalDateTimeFields(customerData.scheduledEndTime) 
+        : null
+
       const payload = {
         customer_name: customerData?.customerName?.trim(),
         deal_date: customerData?.dealDate,
@@ -259,6 +277,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         delivery_coordinator_id: customerData?.deliveryCoordinator || null,
         finance_manager_id: customerData?.financeManager || null,
         customer_needs_loaner: Boolean(customerData?.needsLoaner),
+        // Scheduling fields
+        scheduled_start_time: scheduledStartISO,
+        scheduled_end_time: scheduledEndISO,
+        location: customerData?.location?.trim() || null,
+        calendar_notes: customerData?.calendarNotes?.trim() || null,
+        color_code: customerData?.colorCode || null,
         // Send loanerForm when needsLoaner is true for proper persistence via loaner_assignments
         loanerForm: customerData?.needsLoaner
           ? {
@@ -546,6 +570,98 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </div>
             </div>
           )}
+
+          {/* Scheduling Section */}
+          <div className="border-t border-gray-200 pt-6 mt-6">
+            <h3 className="text-lg font-medium text-slate-900 mb-4">Job Scheduling (Optional)</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Schedule the entire job or leave empty to schedule individual line items. All times use America/New_York timezone.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Start Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={customerData?.scheduledStartTime}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, scheduledStartTime: e?.target?.value }))
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  data-testid="scheduled-start-time-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  End Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={customerData?.scheduledEndTime}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, scheduledEndTime: e?.target?.value }))
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  data-testid="scheduled-end-time-input"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={customerData?.location}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, location: e?.target?.value }))
+                  }
+                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Service bay, vendor location, etc."
+                  data-testid="location-input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Calendar Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={customerData?.colorCode}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, colorCode: e?.target?.value }))
+                    }
+                    className="h-11 w-20 border border-gray-300 rounded-lg cursor-pointer"
+                    data-testid="color-code-input"
+                  />
+                  <span className="text-sm text-gray-600">{customerData?.colorCode}</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Calendar Notes
+              </label>
+              <textarea
+                rows={2}
+                value={customerData?.calendarNotes}
+                onChange={(e) =>
+                  setCustomerData((prev) => ({ ...prev, calendarNotes: e?.target?.value }))
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Additional scheduling notes for calendar view"
+                data-testid="calendar-notes-input"
+              />
+            </div>
+          </div>
         </div>
       )}
 
