@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-11-12T04:06:54.691Z",
+  "version": "1.0.0",
+  "description": "Safety ledger: enumerated candidate IDs and counts before prune operation",
+  "candidateCount": 2,
+  "candidateIds": [
+    "test-1",
+    "test-2"
+  ],
+  "candidateJobNumbers": [
+    "TEST-001",
+    "DEMO-002"
+  ],
+  "matchReasons": {
+    "job_number matches demo pattern; customer_name matches demo pattern; customer_email matches demo pattern; vehicle_vin matches demo pattern; title matches demo pattern": 2
+  },
+  "warning": "This ledger is informational only. No data changes occur in dry-run mode. To delete, run with --apply --confirm."
+}

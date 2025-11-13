@@ -1,0 +1,64 @@
+═══════════════════════════════════════════════════════════════
+  RLS POLICY AUDIT REPORT
+═══════════════════════════════════════════════════════════════
+Timestamp: 2025-11-12T04:05:11.815Z
+
+Summary:
+  Tables checked:     6
+  Policies expected:  22
+  Policies found:     7
+  Missing:            15
+  Extra:              0
+
+─────────────────────────────────────────────────────────────────
+
+Table: jobs
+  Status: OK
+  ✅ All expected policies found
+
+Table: job_parts
+  Status: DRIFT
+  ⚠️  Missing policies:
+     - delete_job_parts_by_org
+
+Table: vendors
+  Status: DRIFT
+  ⚠️  Missing policies:
+     - select_vendors_by_org
+     - insert_vendors_by_org
+     - update_vendors_by_org
+
+Table: vehicles
+  Status: DRIFT
+  ⚠️  Missing policies:
+     - select_vehicles_by_org
+     - insert_vehicles_by_org
+     - update_vehicles_by_org
+     - delete_vehicles_by_org
+
+Table: user_profiles
+  Status: DRIFT
+  ⚠️  Missing policies:
+     - select_user_profiles_by_org
+     - insert_user_profiles
+     - update_user_profiles_by_org
+
+Table: loaner_assignments
+  Status: DRIFT
+  ⚠️  Missing policies:
+     - select_loaner_assignments_by_org
+     - insert_loaner_assignments_by_org
+     - update_loaner_assignments_by_org
+     - delete_loaner_assignments_by_org
+
+─────────────────────────────────────────────────────────────────
+
+Note: This is a read-only audit comparing expected policy names
+      against MCP introspection artifacts. For live verification,
+      use Supabase MCP tools to query pg_policies directly.
+
+Next Steps:
+  1. Review missing policies and add if needed
+  2. Verify extra policies are intentional or remove if not
+  3. Run MCP introspection to get live policy data:
+     supabase-mcp list_policies --table=<table_name>

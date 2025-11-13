@@ -1,0 +1,3 @@
+ID,Job Number,Title,Customer Name,Customer Email,VIN,Created At,Status,Reason
+test-1,TEST-001,Test Job 1,Test Customer,test@test.com,TEST123456,2025-01-01T00:00:00Z,pending,job_number matches demo pattern; customer_name matches demo pattern; customer_email matches demo pattern; vehicle_vin matches demo pattern; title matches demo pattern
+test-2,DEMO-002,Demo Job 2,Demo Customer,demo@example.com,DEMO789012,2025-01-02T00:00:00Z,in_progress,job_number matches demo pattern; customer_name matches demo pattern; customer_email matches demo pattern; vehicle_vin matches demo pattern; title matches demo pattern

@@ -10,6 +10,12 @@ This project is a React 18 + Vite app using TailwindCSS and Supabase (Auth/Postg
 - `pnpm test` – run unit tests (Vitest)
 - `pnpm e2e` – run end-to-end tests (Playwright)
 
+## Agent Run
+
+For automated coding agents (Copilot, MCP agents), see the comprehensive one-page execution guide:
+
+- **[AGENT_RUN_PROMPT_ONEPAGE.md](./AGENT_RUN_PROMPT_ONEPAGE.md)** — Complete agent execution prompt with guardrails, stack lock, and phased execution plan
+
 ## Development Environment Setup
 
 ### Using Dev Containers (Recommended)

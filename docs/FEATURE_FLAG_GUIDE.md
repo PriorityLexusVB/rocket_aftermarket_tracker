@@ -270,3 +270,108 @@ For questions or issues:
 **Last Updated:** 2024-10-30
 **Flag Status:** Active (safe to use in all environments)
 **Recommended Setting:** `true` for development and staging, test thoroughly before enabling in production
+
+---
+
+## VITE_TELEMETRY_CALENDAR_MS
+
+### Overview
+
+Optional feature flag to enable calendar render time telemetry tracking. When enabled, the application records the most recent calendar render duration in milliseconds.
+
+### Default Configuration
+
+By default, this flag is **disabled** (not set or `false`).
+
+```bash
+# .env.local or .env.development
+VITE_TELEMETRY_CALENDAR_MS=false  # or omit entirely
+```
+
+### Enabling Calendar Telemetry
+
+To enable calendar render time tracking:
+
+```bash
+# .env.local or .env.development
+VITE_TELEMETRY_CALENDAR_MS=true
+```
+
+Then restart the dev server:
+
+```bash
+pnpm dev
+```
+
+### What It Does
+
+When `VITE_TELEMETRY_CALENDAR_MS=true`:
+
+1. **Tracks render time**: Calendar components can record their render duration
+2. **Stores in sessionStorage**: Most recent render time is stored (not cumulative)
+3. **Export compatible**: Included in telemetry exports via `getAllTelemetry()`
+4. **Non-breaking**: New metric is additive and doesn't affect existing telemetry
+
+When `VITE_TELEMETRY_CALENDAR_MS=false` (default):
+
+1. **No-op**: `recordCalendarRenderTime()` is side-effect free
+2. **Not exported**: `calendarRenderMs` key is not included in `getAllTelemetry()`
+3. **Zero overhead**: No storage operations when disabled
+
+### Usage in Code
+
+```javascript
+import { recordCalendarRenderTime, isCalendarTelemetryEnabled } from '../utils/capabilityTelemetry'
+
+// In a calendar component
+const startTime = performance.now()
+// ... render calendar ...
+const duration = performance.now() - startTime
+
+// Safe to call unconditionally - no-op when disabled
+recordCalendarRenderTime(duration)
+
+// Check if enabled (optional)
+if (isCalendarTelemetryEnabled()) {
+  console.log('Calendar telemetry is active')
+}
+```
+
+### Accessing the Metric
+
+```javascript
+import { getAllTelemetry, getTelemetry, TelemetryKey } from '../utils/capabilityTelemetry'
+
+// Get all telemetry (includes calendarRenderMs when flag is true)
+const allMetrics = getAllTelemetry()
+console.log(allMetrics.calendarRenderMs) // undefined when disabled, number when enabled
+
+// Get specific metric
+const renderTime = getTelemetry(TelemetryKey.CALENDAR_RENDER_MS)
+console.log(`Last calendar render: ${renderTime}ms`)
+```
+
+### Best Practices
+
+1. **Development only**: Enable in development to monitor performance
+2. **Disable in production**: Unless you need production performance metrics
+3. **Safe to call**: Always safe to call `recordCalendarRenderTime()` regardless of flag state
+4. **Not cumulative**: Stores most recent value, not total/average
+
+### Troubleshooting
+
+**Metric not appearing in exports:**
+- Ensure `VITE_TELEMETRY_CALENDAR_MS=true` in your `.env` file
+- Restart the dev server after changing the flag
+- Check `isCalendarTelemetryEnabled()` returns `true`
+
+**Values seem incorrect:**
+- The metric stores the most recent render time only
+- Negative or invalid values are filtered out
+- Decimal values are rounded to nearest integer
+
+---
+
+**Last Updated:** 2025-11-12
+**Calendar Telemetry Flag Status:** Optional (disabled by default)
+**Recommended Setting:** Enable in development for performance monitoring, disable in production unless needed

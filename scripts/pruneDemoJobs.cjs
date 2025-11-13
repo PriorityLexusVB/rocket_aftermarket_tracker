@@ -9,12 +9,14 @@
  * Usage:
  *   node scripts/pruneDemoJobs.js                    # Dry run (default)
  *   node scripts/pruneDemoJobs.js --dry-run          # Explicit dry run
+ *   node scripts/pruneDemoJobs.js --dry-run --ledger # Dry run with ledger manifest
  *   node scripts/pruneDemoJobs.js --apply --confirm  # Actually delete (requires confirmation)
  *
  * Safety Features:
  * - Dry-run by default
  * - Requires explicit --confirm flag for deletion
  * - Creates CSV and JSON reports
+ * - Optional --ledger flag generates enumerated manifest
  * - Logs all operations
  * - Never deletes jobs with real customer data
  */
@@ -26,6 +28,7 @@ const path = require('path')
 const args = process.argv.slice(2)
 const isDryRun = !args.includes('--apply')
 const isConfirmed = args.includes('--confirm')
+const shouldGenerateLedger = args.includes('--ledger')
 const outputDir = path.join(__dirname, '../.artifacts/prune-demo')
 
 // Demo job patterns to identify test data
@@ -227,6 +230,47 @@ function saveReports(candidates, isDryRun) {
 }
 
 /**
+ * Generate ledger manifest (dry-run safety artifact)
+ */
+function generateLedger(candidates) {
+  const timestamp = new Date().toISOString()
+  const dateStr = timestamp.split('T')[0]
+
+  return {
+    timestamp,
+    version: '1.0.0',
+    description: 'Safety ledger: enumerated candidate IDs and counts before prune operation',
+    candidateCount: candidates.length,
+    candidateIds: candidates.map((job) => job.id),
+    candidateJobNumbers: candidates.map((job) => job.job_number),
+    matchReasons: candidates.reduce((acc, job) => {
+      acc[job.reason] = (acc[job.reason] || 0) + 1
+      return acc
+    }, {}),
+    warning:
+      'This ledger is informational only. No data changes occur in dry-run mode. To delete, run with --apply --confirm.',
+  }
+}
+
+/**
+ * Save ledger manifest to disk
+ */
+function saveLedger(candidates) {
+  const timestamp = new Date().toISOString().split('T')[0]
+  const ledgerPath = path.join(outputDir, `ledger-${timestamp}.json`)
+
+  // Ensure output directory exists
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true })
+  }
+
+  const ledger = generateLedger(candidates)
+  fs.writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2))
+
+  return ledgerPath
+}
+
+/**
  * Main execution
  */
 async function main() {
@@ -255,6 +299,13 @@ async function main() {
   const { csvPath, jsonPath } = saveReports(candidates, isDryRun)
   console.log(`   CSV: ${csvPath}`)
   console.log(`   JSON: ${jsonPath}`)
+
+  // Save ledger if requested
+  if (shouldGenerateLedger) {
+    console.log('\n📋 Generating safety ledger...')
+    const ledgerPath = saveLedger(candidates)
+    console.log(`   Ledger: ${ledgerPath}`)
+  }
 
   // Apply deletion if requested
   if (!isDryRun && isConfirmed) {

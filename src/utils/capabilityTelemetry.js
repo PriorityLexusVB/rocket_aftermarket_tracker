@@ -12,7 +12,12 @@ export const TelemetryKey = {
   SCHEDULED_TIMES_FALLBACK: 'telemetry_scheduledTimesFallback',
   USER_PROFILE_NAME_FALLBACK: 'telemetry_userProfileNameFallback',
   RLS_LOANER_DENIED: 'telemetry_rlsLoanerDenied',
+  CALENDAR_RENDER_MS: 'telemetry_calendarRenderMs', // Optional: Calendar render time metric
 }
+
+// Flag to enable calendar render time telemetry (defaults to false)
+const CALENDAR_TELEMETRY_ENABLED =
+  String(import.meta.env.VITE_TELEMETRY_CALENDAR_MS || '').toLowerCase() === 'true'
 
 // Separate key for tracking the last time all telemetry was reset
 const LAST_RESET_AT_KEY = 'telemetry_lastResetAt'
@@ -85,7 +90,7 @@ export function getTelemetry(key) {
  * @returns {Object} - Object with all counter values
  */
 export function getAllTelemetry() {
-  return {
+  const base = {
     vendorFallback: getTelemetry(TelemetryKey.VENDOR_FALLBACK),
     vendorIdFallback: getTelemetry(TelemetryKey.VENDOR_ID_FALLBACK),
     vendorRelFallback: getTelemetry(TelemetryKey.VENDOR_REL_FALLBACK),
@@ -93,6 +98,11 @@ export function getAllTelemetry() {
     userProfileNameFallback: getTelemetry(TelemetryKey.USER_PROFILE_NAME_FALLBACK),
     rlsLoanerDenied: getTelemetry(TelemetryKey.RLS_LOANER_DENIED),
   }
+  // Optionally include calendar metric when enabled
+  if (CALENDAR_TELEMETRY_ENABLED) {
+    base.calendarRenderMs = getTelemetry(TelemetryKey.CALENDAR_RENDER_MS)
+  }
+  return base
 }
 
 /**
@@ -238,4 +248,33 @@ export function restoreFromLocalStorage() {
     console.warn('[capabilityTelemetry] Failed to restore from localStorage:', error)
     return false
   }
+}
+
+/**
+ * Record calendar render time (only when VITE_TELEMETRY_CALENDAR_MS=true)
+ * Side-effect free when disabled - safe to call unconditionally
+ * @param {number} durationMs - Render duration in milliseconds
+ * @returns {void}
+ */
+export function recordCalendarRenderTime(durationMs) {
+  if (!CALENDAR_TELEMETRY_ENABLED) return
+  if (typeof durationMs !== 'number' || durationMs < 0) return
+
+  const storage = getAvailableStorage()
+  if (!storage) return
+
+  try {
+    // Store the most recent render time (not cumulative)
+    storage.setItem(TelemetryKey.CALENDAR_RENDER_MS, String(Math.round(durationMs)))
+  } catch (error) {
+    console.warn('[capabilityTelemetry] Failed to record calendar render time:', error)
+  }
+}
+
+/**
+ * Check if calendar telemetry is enabled
+ * @returns {boolean}
+ */
+export function isCalendarTelemetryEnabled() {
+  return CALENDAR_TELEMETRY_ENABLED
 }

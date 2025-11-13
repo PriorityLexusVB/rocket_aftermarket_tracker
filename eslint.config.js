@@ -83,9 +83,7 @@ export default [
       'react/jsx-uses-react': 'off',
       // Hooks rules
       'react-hooks/rules-of-hooks': 'error',
-      // Temporarily disabled due to plugin incompatibility with ESLint v9 API (context.getSource error).
-      // Re-enable after upgrading eslint-plugin-react-hooks once it supports v9.
-      'react-hooks/exhaustive-deps': 'off',
+      'react-hooks/exhaustive-deps': 'warn',
       // General JS hygiene
       'no-unused-vars': 'warn',
       'no-console': 'off', // console used for operational diagnostics; refine later

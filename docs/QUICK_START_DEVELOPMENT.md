@@ -47,8 +47,17 @@ pnpm build
 
 1. **MASTER_EXECUTION_PROMPT.md** — Complete development guide with phased execution plan
 2. **.github/copilot-instructions.md** — Workspace guardrails (must follow)
-3. **docs/MCP-NOTES.md** — How to use Supabase MCP for schema introspection
-4. **PERFORMANCE_INDEXES.md** — Index optimization guidelines
+3. **AGENT_RUN_PROMPT_ONEPAGE.md** — One-page agent execution guide (for automated coding agents)
+4. **docs/MCP-NOTES.md** — How to use Supabase MCP for schema introspection
+5. **PERFORMANCE_INDEXES.md** — Index optimization guidelines
+
+---
+
+## Agent Run
+
+For automated coding agents (Copilot, MCP agents), see:
+
+- **[AGENT_RUN_PROMPT_ONEPAGE.md](../AGENT_RUN_PROMPT_ONEPAGE.md)** — Complete agent execution prompt with guardrails, stack lock, abort conditions, and phased execution plan
 
 ---
 
