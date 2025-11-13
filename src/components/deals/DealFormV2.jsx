@@ -10,6 +10,11 @@ import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { titleCase } from '../../lib/format'
 import {
+  toLocalDateTimeFields,
+  fromLocalDateTimeFields,
+  validateScheduleRange,
+} from '../../utils/dateTimeUtils'
+import {
   getSalesConsultants,
   getDeliveryCoordinators,
   getFinanceManagers,
@@ -51,6 +56,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     financeManager: job?.finance_manager_id || null,
     needsLoaner: Boolean(job?.customer_needs_loaner),
     loanerNumber: job?.loaner_number || '',
+    // Scheduling fields
+    scheduledStartTime: job?.scheduled_start_time || '',
+    scheduledEndTime: job?.scheduled_end_time || '',
+    schedulingLocation: job?.scheduling_location || '',
+    schedulingNotes: job?.scheduling_notes || '',
+    colorCode: job?.color_code || '',
   })
 
   // Line items data - pre-hydrate vendor_id from job level if missing
@@ -546,6 +557,114 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </div>
             </div>
           )}
+
+          {/* Scheduling Section */}
+          <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <h3 className="text-base font-medium text-slate-900 mb-4 flex items-center">
+              <Icon name="Calendar" size={18} className="mr-2" />
+              Scheduling (Optional)
+            </h3>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="scheduled-start" className="block text-sm font-medium text-slate-700 mb-1">
+                    Start Time
+                  </label>
+                  <input
+                    id="scheduled-start"
+                    type="datetime-local"
+                    value={toLocalDateTimeFields(customerData?.scheduledStartTime)}
+                    onChange={(e) => {
+                      const isoValue = fromLocalDateTimeFields(e.target.value)
+                      setCustomerData((prev) => ({ ...prev, scheduledStartTime: isoValue }))
+                    }}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    data-testid="scheduled-start-input"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="scheduled-end" className="block text-sm font-medium text-slate-700 mb-1">
+                    End Time
+                  </label>
+                  <input
+                    id="scheduled-end"
+                    type="datetime-local"
+                    value={toLocalDateTimeFields(customerData?.scheduledEndTime)}
+                    onChange={(e) => {
+                      const isoValue = fromLocalDateTimeFields(e.target.value)
+                      setCustomerData((prev) => ({ ...prev, scheduledEndTime: isoValue }))
+                    }}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    data-testid="scheduled-end-input"
+                  />
+                </div>
+              </div>
+
+              {/* Validation message */}
+              {customerData?.scheduledStartTime && 
+               customerData?.scheduledEndTime && 
+               !validateScheduleRange(customerData?.scheduledStartTime, customerData?.scheduledEndTime) && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded">
+                  <Icon name="AlertCircle" size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-red-700">End time must be after start time</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="scheduling-location" className="block text-sm font-medium text-slate-700 mb-1">
+                    Location
+                  </label>
+                  <input
+                    id="scheduling-location"
+                    type="text"
+                    value={customerData?.schedulingLocation}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, schedulingLocation: e.target.value }))
+                    }
+                    placeholder="e.g., Bay 3, Service Drive"
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    data-testid="scheduling-location-input"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="color-code" className="block text-sm font-medium text-slate-700 mb-1">
+                    Color Code
+                  </label>
+                  <input
+                    id="color-code"
+                    type="color"
+                    value={customerData?.colorCode || '#3B82F6'}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, colorCode: e.target.value }))
+                    }
+                    className="w-full h-11 p-1 border border-gray-300 rounded-lg cursor-pointer"
+                    data-testid="color-code-input"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="scheduling-notes" className="block text-sm font-medium text-slate-700 mb-1">
+                  Scheduling Notes
+                </label>
+                <textarea
+                  id="scheduling-notes"
+                  value={customerData?.schedulingNotes}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, schedulingNotes: e.target.value }))
+                  }
+                  placeholder="Add scheduling-specific notes..."
+                  rows={2}
+                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  data-testid="scheduling-notes-input"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

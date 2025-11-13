@@ -134,6 +134,23 @@ export function draftToCreatePayload(draft = {}) {
     payload.loanerForm = null
   }
 
+  // Handle scheduling fields
+  if (stripped.scheduledStartTime) {
+    payload.scheduled_start_time = stripped.scheduledStartTime
+  }
+  if (stripped.scheduledEndTime) {
+    payload.scheduled_end_time = stripped.scheduledEndTime
+  }
+  if (stripped.schedulingLocation) {
+    payload.scheduling_location = stripped.schedulingLocation
+  }
+  if (stripped.schedulingNotes) {
+    payload.scheduling_notes = stripped.schedulingNotes
+  }
+  if (stripped.colorCode) {
+    payload.color_code = stripped.colorCode
+  }
+
   // Normalize lineItems
   payload.lineItems = normalizeLineItems(stripped)
   payload.items = payload.lineItems
