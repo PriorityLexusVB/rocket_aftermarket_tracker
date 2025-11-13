@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { jobService } from '@/services/jobService'
 import { useToast } from '@/components/ui/ToastProvider'
+import { createUndoEntry, canUndo } from './undoHelpers'
 import { formatTime } from '@/utils/dateTimeUtils'
 
 const SIMPLE_CAL_ON = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -63,15 +64,7 @@ export function detectConflicts(rows) {
   return conflictIds
 }
 
-// Exported to allow unit testing: manage undo state transitions
-export function createUndoEntry(jobId, prevStatus) {
-  return { jobId, prevStatus, timeoutId: null }
-}
-
-// Exported to allow unit testing: check if undo is available
-export function canUndo(undoMap, jobId) {
-  return undoMap.has(jobId)
-}
+// Undo helpers moved to './undoHelpers'
 
 export default function SnapshotView() {
   const { orgId } = useTenant()
@@ -123,7 +116,7 @@ export default function SnapshotView() {
       }, 10000)
       setUndoMap((m) => {
         const copy = new Map(m)
-        copy.set(job.id, { prevStatus, timeoutId: tId })
+        copy.set(job.id, createUndoEntry(job.id, prevStatus, tId))
         return copy
       })
     } catch (e) {
@@ -241,7 +234,7 @@ export default function SnapshotView() {
                     Reschedule
                   </button>
                 )}
-                {undoInfo ? (
+                {canUndo(undoMap, j.id) ? (
                   <button
                     onClick={() => handleUndo(j.id)}
                     className="text-amber-600 hover:underline"

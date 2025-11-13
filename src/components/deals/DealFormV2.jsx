@@ -16,7 +16,11 @@ import {
   getVendors,
   getProducts,
 } from '../../services/dropdownService'
-import { toLocalDateTimeFields, fromLocalDateTimeFields, validateScheduleRange } from '../../utils/dateTimeUtils'
+import {
+  toLocalDateTimeFields,
+  fromLocalDateTimeFields,
+  validateScheduleRange,
+} from '../../utils/dateTimeUtils'
 
 // Guard flag for auto-earliest-window feature (disabled by default to avoid test conflicts)
 const ENABLE_AUTO_EARLIEST_WINDOW = false
@@ -57,7 +61,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     needsLoaner: Boolean(job?.customer_needs_loaner),
     loanerNumber: job?.loaner_number || '',
     // Scheduling fields
-    scheduledStartTime: job?.scheduled_start_time ? toLocalDateTimeFields(job.scheduled_start_time) : '',
+    scheduledStartTime: job?.scheduled_start_time
+      ? toLocalDateTimeFields(job.scheduled_start_time)
+      : '',
     scheduledEndTime: job?.scheduled_end_time ? toLocalDateTimeFields(job.scheduled_end_time) : '',
     location: job?.location || '',
     calendarNotes: job?.calendar_notes || '',
@@ -121,7 +127,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     if (customerData?.scheduledStartTime && customerData?.scheduledEndTime) {
       const startISO = fromLocalDateTimeFields(customerData.scheduledStartTime)
       const endISO = fromLocalDateTimeFields(customerData.scheduledEndTime)
-      
+
       if (startISO && endISO) {
         const validation = validateScheduleRange(startISO, endISO)
         setScheduleValidationError(validation.valid ? '' : validation.error)
@@ -273,11 +279,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
     try {
       // Convert datetime-local values to ISO timestamps
-      const scheduledStartISO = customerData?.scheduledStartTime 
-        ? fromLocalDateTimeFields(customerData.scheduledStartTime) 
+      const scheduledStartISO = customerData?.scheduledStartTime
+        ? fromLocalDateTimeFields(customerData.scheduledStartTime)
         : null
-      const scheduledEndISO = customerData?.scheduledEndTime 
-        ? fromLocalDateTimeFields(customerData.scheduledEndTime) 
+      const scheduledEndISO = customerData?.scheduledEndTime
+        ? fromLocalDateTimeFields(customerData.scheduledEndTime)
         : null
 
       const payload = {
@@ -591,14 +597,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           <div className="border-t border-gray-200 pt-6 mt-6">
             <h3 className="text-lg font-medium text-slate-900 mb-4">Job Scheduling (Optional)</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Schedule the entire job or leave empty to schedule individual line items. All times use America/New_York timezone.
+              Schedule the entire job or leave empty to schedule individual line items. All times
+              use America/New_York timezone.
             </p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Start Time
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Start Time</label>
                 <input
                   type="datetime-local"
                   value={customerData?.scheduledStartTime || ''}
@@ -611,9 +616,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  End Time
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">End Time</label>
                 <input
                   type="datetime-local"
                   value={customerData?.scheduledEndTime || ''}
@@ -635,9 +638,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Location
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
                 <input
                   type="text"
                   value={customerData?.location || ''}
@@ -684,6 +685,87 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 data-testid="calendar-notes-input"
               />
             </div>
+          </div>
+          {/* Scheduling (Unified UX) */}
+          <div
+            className="border rounded-lg p-4 bg-slate-50 space-y-3"
+            aria-label="Scheduling section"
+          >
+            <h3 className="text-sm font-semibold text-slate-700">Scheduling</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Start Time</label>
+                <input
+                  type="datetime-local"
+                  value={customerData?.scheduled_start_time || ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, scheduled_start_time: e.target.value }))
+                  }
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
+                  aria-label="Scheduled start time"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">End Time</label>
+                <input
+                  type="datetime-local"
+                  value={customerData?.scheduled_end_time || ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, scheduled_end_time: e.target.value }))
+                  }
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
+                  aria-label="Scheduled end time"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Location</label>
+                <input
+                  type="text"
+                  value={customerData?.scheduling_location || ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, scheduling_location: e.target.value }))
+                  }
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
+                  aria-label="Scheduling location"
+                  placeholder="Service bay"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Color Code</label>
+                <input
+                  type="text"
+                  value={customerData?.color_code || ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, color_code: e.target.value }))
+                  }
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
+                  aria-label="Scheduling color code"
+                  placeholder="e.g. amber"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-medium text-slate-600 mb-1">Notes</label>
+                <textarea
+                  value={customerData?.scheduling_notes || ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, scheduling_notes: e.target.value }))
+                  }
+                  rows={2}
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-xs"
+                  aria-label="Scheduling notes"
+                  placeholder="Optional scheduling notes"
+                />
+              </div>
+            </div>
+            {/* Simple validation display */}
+            {customerData?.scheduled_start_time &&
+              customerData?.scheduled_end_time &&
+              new Date(customerData.scheduled_end_time) <=
+                new Date(customerData.scheduled_start_time) && (
+                <div className="text-xs text-red-600" role="alert">
+                  End time must be after start time
+                </div>
+              )}
           </div>
         </div>
       )}
