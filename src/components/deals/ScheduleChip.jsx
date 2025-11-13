@@ -5,8 +5,10 @@ import { useNavigate } from 'react-router-dom'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
 
 export default function ScheduleChip({ scheduledStartTime, scheduledEndTime, jobId, enableAgendaNavigation = false, className = '' }) {
-  if (!scheduledStartTime) return null
   const navigate = useNavigate()
+  
+  if (!scheduledStartTime) return null
+  
   const label = formatScheduleRange(scheduledStartTime, scheduledEndTime)
 
   return (

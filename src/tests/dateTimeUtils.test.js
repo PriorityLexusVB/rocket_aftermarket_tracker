@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+// src/tests/dateTimeUtils.test.js
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   toLocalDateTimeFields,
   fromLocalDateTimeFields,
@@ -34,19 +35,8 @@ describe('dateTimeUtils', () => {
   it('formatTime returns empty for invalid', () => {
     expect(formatTime('bad')).toBe('')
   })
-})
-// src/tests/dateTimeUtils.test.js (extended tests)
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  toLocalDateTimeFields,
-  fromLocalDateTimeFields,
-  formatScheduleRange,
-  formatTime,
-  validateScheduleRange,
-} from '../utils/dateTimeUtils'
 
-describe('dateTimeUtils (extended)', () => {
-  describe('toLocalDateTimeFields', () => {
+  describe('toLocalDateTimeFields (extended)', () => {
     it('should convert ISO timestamp to date/time object', () => {
       // Test with a known timestamp
       const iso = '2024-01-15T14:30:00.000Z'
@@ -71,7 +61,7 @@ describe('dateTimeUtils (extended)', () => {
     })
   })
 
-  describe('fromLocalDateTimeFields', () => {
+  describe('fromLocalDateTimeFields (extended)', () => {
     it('should convert date/time fields to ISO timestamp', () => {
       const fields = { date: '2024-01-15', time: '09:30' }
       const result = fromLocalDateTimeFields(fields)
@@ -104,7 +94,7 @@ describe('dateTimeUtils (extended)', () => {
     })
   })
 
-  describe('formatScheduleRange', () => {
+  describe('formatScheduleRange (extended)', () => {
     afterEach(() => {
       vi.useRealTimers()
     })
