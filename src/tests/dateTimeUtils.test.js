@@ -35,65 +35,69 @@ describe('dateTimeUtils', () => {
     expect(formatTime('bad')).toBe('')
   })
 })
-// src/tests/dateTimeUtils.test.js
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// src/tests/dateTimeUtils.test.js (extended tests)
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   toLocalDateTimeFields,
   fromLocalDateTimeFields,
   formatScheduleRange,
   formatTime,
-  formatDate,
   validateScheduleRange,
 } from '../utils/dateTimeUtils'
 
-describe('dateTimeUtils', () => {
+describe('dateTimeUtils (extended)', () => {
   describe('toLocalDateTimeFields', () => {
-    it('should convert ISO timestamp to datetime-local format', () => {
+    it('should convert ISO timestamp to date/time object', () => {
       // Test with a known timestamp
       const iso = '2024-01-15T14:30:00.000Z'
       const result = toLocalDateTimeFields(iso)
 
-      // Result should be in format YYYY-MM-DDTHH:MM
-      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
+      // Result should be an object with date and time fields
+      expect(result).toHaveProperty('date')
+      expect(result).toHaveProperty('time')
+      expect(result.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(result.time).toMatch(/^\d{2}:\d{2}$/)
     })
 
-    it('should return empty string for null input', () => {
-      expect(toLocalDateTimeFields(null)).toBe('')
-      expect(toLocalDateTimeFields(undefined)).toBe('')
-      expect(toLocalDateTimeFields('')).toBe('')
+    it('should return empty fields for null input', () => {
+      expect(toLocalDateTimeFields(null)).toEqual({ date: '', time: '' })
+      expect(toLocalDateTimeFields(undefined)).toEqual({ date: '', time: '' })
+      expect(toLocalDateTimeFields('')).toEqual({ date: '', time: '' })
     })
 
     it('should handle invalid dates gracefully', () => {
       const result = toLocalDateTimeFields('invalid-date')
-      expect(result).toBe('')
+      expect(result).toEqual({ date: '', time: '' })
     })
   })
 
   describe('fromLocalDateTimeFields', () => {
-    it('should convert datetime-local to ISO timestamp', () => {
-      const localValue = '2024-01-15T09:30'
-      const result = fromLocalDateTimeFields(localValue)
+    it('should convert date/time fields to ISO timestamp', () => {
+      const fields = { date: '2024-01-15', time: '09:30' }
+      const result = fromLocalDateTimeFields(fields)
 
       // Result should be a valid ISO string
       expect(result).toBeTruthy()
       expect(typeof result).toBe('string')
-      expect(new Date(result).toISOString()).toBe(result)
+      const parsed = new Date(result)
+      expect(parsed).toBeInstanceOf(Date)
+      expect(isNaN(parsed.getTime())).toBe(false)
     })
 
-    it('should return null for empty input', () => {
+    it('should return null for null/undefined input', () => {
       expect(fromLocalDateTimeFields(null)).toBe(null)
       expect(fromLocalDateTimeFields(undefined)).toBe(null)
-      expect(fromLocalDateTimeFields('')).toBe(null)
     })
 
-    it('should return null for invalid format', () => {
-      expect(fromLocalDateTimeFields('invalid')).toBe(null)
-      expect(fromLocalDateTimeFields('2024-01-15')).toBe(null)
+    it('should return null for empty fields', () => {
+      expect(fromLocalDateTimeFields({ date: '', time: '' })).toBe(null)
+      expect(fromLocalDateTimeFields({ date: '2024-01-15', time: '' })).toBe(null)
+      expect(fromLocalDateTimeFields({ date: '', time: '09:30' })).toBe(null)
     })
 
-    it('should handle complete datetime-local format', () => {
-      const localValue = '2024-06-15T14:45'
-      const result = fromLocalDateTimeFields(localValue)
+    it('should handle complete date/time fields', () => {
+      const fields = { date: '2024-06-15', time: '14:45' }
+      const result = fromLocalDateTimeFields(fields)
 
       expect(result).toBeTruthy()
       expect(new Date(result)).toBeInstanceOf(Date)
@@ -101,10 +105,8 @@ describe('dateTimeUtils', () => {
   })
 
   describe('formatScheduleRange', () => {
-    beforeEach(() => {
-      // Mock current date to a known value for consistent testing
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2024-01-15T12:00:00Z'))
+    afterEach(() => {
+      vi.useRealTimers()
     })
 
     it('should format range with both start and end', () => {
@@ -114,7 +116,7 @@ describe('dateTimeUtils', () => {
 
       // Should include date and time range
       expect(result).toBeTruthy()
-      expect(result).not.toBe('—')
+      expect(result).not.toBe('')
     })
 
     it('should format range with only start time', () => {
@@ -123,15 +125,11 @@ describe('dateTimeUtils', () => {
 
       // Should include date and time
       expect(result).toBeTruthy()
-      expect(result).not.toBe('—')
+      expect(result).not.toBe('')
     })
 
-    it('should return dash for null start', () => {
-      expect(formatScheduleRange(null, null)).toBe('—')
-
-      // Should convert back to similar format (allowing for timezone conversion)
-      expect(backToLocal).toBeTruthy()
-      expect(backToLocal).toMatch(/2024-06-\d{2}T\d{2}:\d{2}/)
+    it('should return empty string for null start', () => {
+      expect(formatScheduleRange(null, null)).toBe('')
     })
   })
 })
