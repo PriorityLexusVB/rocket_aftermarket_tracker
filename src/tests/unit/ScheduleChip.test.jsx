@@ -1,6 +1,6 @@
 // src/tests/unit/ScheduleChip.test.jsx
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import ScheduleChip from '../../components/deals/ScheduleChip'
 
@@ -17,6 +17,7 @@ vi.mock('react-router-dom', async () => {
 describe('ScheduleChip', () => {
   beforeEach(() => {
     mockNavigate.mockClear()
+    cleanup()
   })
 
   it('should render em dash when no schedule time provided', () => {
@@ -29,7 +30,7 @@ describe('ScheduleChip', () => {
   })
 
   it('should render formatted schedule time', () => {
-    render(
+    const { container } = render(
       <BrowserRouter>
         <ScheduleChip
           scheduledStartTime="2024-01-15T14:00:00Z"
@@ -39,13 +40,13 @@ describe('ScheduleChip', () => {
       </BrowserRouter>
     )
     
-    const chip = screen.getByTestId('schedule-chip')
+    const chip = container.querySelector('[data-testid="schedule-chip"]')
     expect(chip).toBeInTheDocument()
     expect(chip.textContent).toMatch(/Jan 15/)
   })
 
   it('should navigate to edit deal when clicked and enableAgendaNavigation is false', () => {
-    render(
+    const { container } = render(
       <BrowserRouter>
         <ScheduleChip
           scheduledStartTime="2024-01-15T14:00:00Z"
@@ -56,14 +57,14 @@ describe('ScheduleChip', () => {
       </BrowserRouter>
     )
     
-    const chip = screen.getByTestId('schedule-chip')
+    const chip = container.querySelector('[data-testid="schedule-chip"]')
     fireEvent.click(chip)
     
     expect(mockNavigate).toHaveBeenCalledWith('/deals?edit=job-123')
   })
 
   it('should navigate to agenda when clicked and enableAgendaNavigation is true', () => {
-    render(
+    const { container } = render(
       <BrowserRouter>
         <ScheduleChip
           scheduledStartTime="2024-01-15T14:00:00Z"
@@ -74,7 +75,7 @@ describe('ScheduleChip', () => {
       </BrowserRouter>
     )
     
-    const chip = screen.getByTestId('schedule-chip')
+    const chip = container.querySelector('[data-testid="schedule-chip"]')
     fireEvent.click(chip)
     
     expect(mockNavigate).toHaveBeenCalledWith('/calendar/agenda?job=job-456')
@@ -83,7 +84,7 @@ describe('ScheduleChip', () => {
   it('should stop event propagation when clicked', () => {
     const mockRowClick = vi.fn()
     
-    render(
+    const { container } = render(
       <BrowserRouter>
         <div onClick={mockRowClick}>
           <ScheduleChip
@@ -95,7 +96,7 @@ describe('ScheduleChip', () => {
       </BrowserRouter>
     )
     
-    const chip = screen.getByTestId('schedule-chip')
+    const chip = container.querySelector('[data-testid="schedule-chip"]')
     fireEvent.click(chip)
     
     // Row click should not be triggered due to stopPropagation
