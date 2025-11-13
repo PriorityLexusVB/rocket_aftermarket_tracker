@@ -694,8 +694,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             <h3 className="text-sm font-semibold text-slate-700">Scheduling</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Start Time</label>
+                <label htmlFor="scheduled-start-time" className="block text-xs font-medium text-slate-600 mb-1">
+                  Start Time
+                </label>
                 <input
+                  id="scheduled-start-time"
                   type="datetime-local"
                   value={customerData?.scheduled_start_time || ''}
                   onChange={(e) =>
@@ -706,8 +709,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">End Time</label>
+                <label htmlFor="scheduled-end-time" className="block text-xs font-medium text-slate-600 mb-1">
+                  End Time
+                </label>
                 <input
+                  id="scheduled-end-time"
                   type="datetime-local"
                   value={customerData?.scheduled_end_time || ''}
                   onChange={(e) =>
@@ -766,6 +772,18 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                   End time must be after start time
                 </div>
               )}
+            
+            {/* Accessibility: Live region for schedule validation announcements */}
+            <div className="sr-only" aria-live="polite" aria-atomic="true" role="status">
+              {customerData?.scheduled_start_time &&
+                customerData?.scheduled_end_time &&
+                new Date(customerData.scheduled_end_time) <=
+                  new Date(customerData.scheduled_start_time)
+                ? 'Schedule validation error: End time must be after start time'
+                : customerData?.scheduled_start_time && customerData?.scheduled_end_time
+                  ? 'Schedule times are valid'
+                  : ''}
+            </div>
           </div>
         </div>
       )}

@@ -201,8 +201,9 @@ export default function SnapshotView() {
                     className="text-amber-600"
                     title="Potential scheduling overlap for this vendor"
                     aria-label="Scheduling conflict detected"
+                    role="img"
                   >
-                    6A0
+                    ⚠️
                   </span>
                 )}
               </div>
