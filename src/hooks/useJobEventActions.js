@@ -214,6 +214,12 @@ export function useJobEventActions(deps) {
   }
 
   return {
+    // Primary API (matching problem statement)
+    handleOpenDeal: openDeal,
+    handleReschedule: openRescheduleModal,
+    handleComplete: completeJob,
+    handleUndoComplete: undoComplete,
+    // Backward compatibility
     openDeal,
     openRescheduleModal,
     completeJob,

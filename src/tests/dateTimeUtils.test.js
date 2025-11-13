@@ -6,6 +6,7 @@ import {
   formatScheduleRange,
   formatTime,
   formatDate,
+  validateScheduleRange,
 } from '../utils/dateTimeUtils'
 
 describe('dateTimeUtils', () => {
@@ -161,6 +162,56 @@ describe('dateTimeUtils', () => {
     it('should handle invalid dates gracefully', () => {
       const result = formatDate('invalid-date')
       expect(result).toBe('')
+    })
+  })
+
+  describe('validateScheduleRange', () => {
+    it('should return valid for correct range', () => {
+      const start = '2024-06-15T10:00:00Z'
+      const end = '2024-06-15T12:00:00Z'
+      const result = validateScheduleRange(start, end)
+      
+      expect(result.valid).toBe(true)
+      expect(result.error).toBeUndefined()
+    })
+
+    it('should reject end time before start time', () => {
+      const start = '2024-06-15T12:00:00Z'
+      const end = '2024-06-15T10:00:00Z'
+      const result = validateScheduleRange(start, end)
+      
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('End time must be after start time')
+    })
+
+    it('should reject equal start and end times', () => {
+      const start = '2024-06-15T10:00:00Z'
+      const end = '2024-06-15T10:00:00Z'
+      const result = validateScheduleRange(start, end)
+      
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('End time must be after start time')
+    })
+
+    it('should reject missing start time', () => {
+      const result = validateScheduleRange(null, '2024-06-15T12:00:00Z')
+      
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Both start and end times are required')
+    })
+
+    it('should reject missing end time', () => {
+      const result = validateScheduleRange('2024-06-15T10:00:00Z', null)
+      
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Both start and end times are required')
+    })
+
+    it('should handle invalid date formats', () => {
+      const result = validateScheduleRange('invalid-date', '2024-06-15T12:00:00Z')
+      
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Invalid date/time format')
     })
   })
 

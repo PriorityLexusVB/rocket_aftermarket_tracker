@@ -58,10 +58,6 @@ export function fromLocalDateTimeFields(localValue) {
     
     // Create a date string that will be interpreted as America/New_York
     // We use Intl.DateTimeFormat to get the offset, then adjust accordingly
-    const testDate = new Date(year, month - 1, day, hour, minute)
-    
-    // Format this date in both UTC and NY timezone to calculate offset
-    const utcTime = testDate.getTime()
     
     // Get the timezone offset for America/New_York at this specific date/time
     // (accounts for DST)
@@ -75,10 +71,6 @@ export function fromLocalDateTimeFields(localValue) {
       second: '2-digit',
       hour12: false,
     })
-    
-    // Build a date in UTC that represents the same wall-clock time in NY
-    // We need to find the UTC timestamp that, when displayed in NY timezone, shows our target time
-    const targetNYString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`
     
     // Use a more reliable method: create Date treating input as UTC, then adjust
     const utcDate = new Date(`${datePart}T${timePart}:00Z`)
@@ -230,5 +222,48 @@ export function formatDate(iso) {
   } catch (e) {
     console.warn('[dateTimeUtils] formatDate failed:', e)
     return ''
+  }
+}
+
+/**
+ * Validate that a schedule range is valid (end time after start time)
+ * 
+ * @param {string} startISO - Start time ISO timestamp
+ * @param {string} endISO - End time ISO timestamp
+ * @returns {Object} Validation result with { valid: boolean, error?: string }
+ */
+export function validateScheduleRange(startISO, endISO) {
+  if (!startISO || !endISO) {
+    return {
+      valid: false,
+      error: 'Both start and end times are required',
+    }
+  }
+
+  try {
+    const startTime = new Date(startISO).getTime()
+    const endTime = new Date(endISO).getTime()
+
+    if (isNaN(startTime) || isNaN(endTime)) {
+      return {
+        valid: false,
+        error: 'Invalid date/time format',
+      }
+    }
+
+    if (endTime <= startTime) {
+      return {
+        valid: false,
+        error: 'End time must be after start time',
+      }
+    }
+
+    return { valid: true }
+  } catch (e) {
+    console.warn('[dateTimeUtils] validateScheduleRange failed:', e)
+    return {
+      valid: false,
+      error: 'Failed to validate schedule range',
+    }
   }
 }

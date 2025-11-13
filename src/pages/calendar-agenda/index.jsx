@@ -9,7 +9,7 @@ import { calendarService } from '@/services/calendarService'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
-import { useJobEventActions } from '@/utils/useJobEventActions'
+import { useJobEventActions } from '@/hooks/useJobEventActions'
 import RescheduleModal from './RescheduleModal'
 
 // Lightweight date key grouping (America/New_York)
