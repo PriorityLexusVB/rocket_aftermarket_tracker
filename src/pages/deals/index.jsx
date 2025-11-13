@@ -9,7 +9,7 @@ import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
-import { formatScheduleRange } from '../../utils/dateTimeUtils'
+import ScheduleChip from '../../components/deals/ScheduleChip'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -101,59 +101,6 @@ const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
     >
       Next: {short}
     </span>
-  )
-}
-
-// ✅ ADDED: Schedule chip component for displaying appointment times
-const ScheduleChip = ({ deal, onClick }) => {
-  if (!deal) {
-    return <span className="text-xs text-gray-500">—</span>
-  }
-
-  // Check job-level scheduling first
-  const hasJobSchedule = deal?.scheduled_start_time && deal?.scheduled_end_time
-  
-  // Fallback: derive from earliest line item times if available
-  let startTime = hasJobSchedule ? deal.scheduled_start_time : null
-  let endTime = hasJobSchedule ? deal.scheduled_end_time : null
-  
-  if (!hasJobSchedule && Array.isArray(deal?.job_parts)) {
-    // Find earliest scheduled line item
-    const scheduledParts = deal.job_parts
-      .filter(p => p?.scheduled_start_time && p?.scheduled_end_time)
-      .sort((a, b) => new Date(a.scheduled_start_time) - new Date(b.scheduled_start_time))
-    
-    if (scheduledParts.length > 0) {
-      startTime = scheduledParts[0].scheduled_start_time
-      endTime = scheduledParts[0].scheduled_end_time
-    }
-  }
-  
-  // Also check for legacy appt_start/appt_end fields
-  if (!startTime && deal?.appt_start) {
-    startTime = deal.appt_start
-    endTime = deal?.appt_end || null
-  }
-  
-  if (!startTime) {
-    return <span className="text-xs text-gray-500">—</span>
-  }
-
-  const formatted = formatScheduleRange(startTime, endTime)
-
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick?.(deal)
-      }}
-      className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
-      aria-label={`Schedule: ${formatted}`}
-      title="Click to view in agenda"
-    >
-      <Icon name="Clock" size={12} className="mr-1" />
-      {formatted}
-    </button>
   )
 }
 
@@ -1546,7 +1493,13 @@ export default function DealsPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3 w-[180px]">
-                      <ScheduleChip deal={deal} onClick={handleScheduleClick} />
+                      <ScheduleChip 
+                        deal={deal} 
+                        onClick={handleScheduleClick}
+                        showIcon={true}
+                        Icon={Icon}
+                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
+                      />
                     </td>
                     <td
                       className="px-4 py-3 max-w-[220px]"
@@ -1803,7 +1756,13 @@ export default function DealsPage() {
                             )
                           })()}
                         </span>
-                        <ScheduleChip deal={deal} onClick={handleScheduleClick} />
+                        <ScheduleChip 
+                          deal={deal} 
+                          onClick={handleScheduleClick}
+                          showIcon={true}
+                          Icon={Icon}
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
+                        />
                         {(deal?.loaner_number || deal?.has_active_loaner) && (
                           <LoanerBadge deal={deal} />
                         )}
