@@ -24,10 +24,7 @@ export default function ScheduleChip({
     return <span className="text-xs text-gray-500">—</span>
   }
 
-  const formattedRange = formatScheduleRange(scheduledStartTime, scheduledEndTime, {
-    includeDate: true,
-    short: false,
-  })
+  const formattedRange = formatScheduleRange(scheduledStartTime, scheduledEndTime)
 
   const handleClick = (e) => {
     e.stopPropagation() // Prevent row click
