@@ -1,7 +1,13 @@
 // src/tests/snapshotView.filtering.test.js
 import { describe, it, expect } from 'vitest'
-import { filterAndSort, detectConflicts } from '@/pages/currently-active-appointments/components/SnapshotView'
-import { createUndoEntry, canUndo } from '@/pages/currently-active-appointments/components/undoHelpers'
+import {
+  filterAndSort,
+  detectConflicts,
+} from '@/pages/currently-active-appointments/components/SnapshotView'
+import {
+  createUndoEntry,
+  canUndo,
+} from '@/pages/currently-active-appointments/components/undoHelpers'
 
 describe('SnapshotView.filterAndSort', () => {
   it('filters to scheduled and in_progress with start time', () => {
