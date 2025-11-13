@@ -229,13 +229,15 @@ describe('dateTimeUtils', () => {
       // Missing start
       expect(validateScheduleRange(null, '2024-01-20T14:00:00Z')).toEqual({
         valid: false,
-        errors: ['start_required']
+        errors: ['start_required'],
+        error: 'Start time is required'
       })
 
       // Missing end
       expect(validateScheduleRange('2024-01-20T14:00:00Z', null)).toEqual({
         valid: false,
-        errors: ['end_required']
+        errors: ['end_required'],
+        error: 'End time is required'
       })
 
       // Both missing
@@ -243,17 +245,20 @@ describe('dateTimeUtils', () => {
       expect(result.valid).toBe(false)
       expect(result.errors).toContain('start_required')
       expect(result.errors).toContain('end_required')
+      expect(result.error).toBe('Start time is required')
 
       // End before start
       expect(validateScheduleRange('2024-01-20T14:00:00Z', '2024-01-20T13:00:00Z')).toEqual({
         valid: false,
-        errors: ['end_not_after_start']
+        errors: ['end_not_after_start'],
+        error: 'End time must be after start time'
       })
 
       // Valid range
       expect(validateScheduleRange('2024-01-20T13:00:00Z', '2024-01-20T14:00:00Z')).toEqual({
         valid: true,
-        errors: []
+        errors: [],
+        error: ''
       })
     })
 

@@ -86,7 +86,8 @@ describe('ScheduleChip Navigation', () => {
     )
 
     const chip = screen.getByRole('button')
-    expect(chip).toHaveAttribute('aria-label', 'Open scheduling context for deal job-abc')
+    // Component uses descriptive aria-label with the formatted schedule
+    expect(chip).toHaveAttribute('aria-label', 'Schedule: Jan 20, 09:00–11:00 ET')
   })
 
   it('should show navigation arrow when enableAgendaNavigation is true', () => {

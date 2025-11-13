@@ -2,10 +2,16 @@
 process.env.TZ = 'America/New_York'
 
 import '@testing-library/jest-dom'
-import { vi, expect as vitestExpect, beforeEach as vitestBeforeEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
+import { vi, expect as vitestExpect, beforeEach as vitestBeforeEach, afterEach } from 'vitest'
 
 // Force consistent timezone for date formatting stability in tests
 process.env.TZ = 'America/New_York'
+
+// Cleanup DOM after each test to prevent test pollution
+afterEach(() => {
+  cleanup()
+})
 
 // Ensure globals some tests spy on are real spies on both globalThis and window
 const openModalSpy = vi.fn()
