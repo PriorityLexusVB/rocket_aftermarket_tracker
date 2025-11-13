@@ -27,8 +27,16 @@ export default function RescheduleModal({
       const start = initialStart || job?.scheduled_start_time
       const end = initialEnd || job?.scheduled_end_time
       
-      setStartLocal(start ? toLocalDateTimeFields(start) : '')
-      setEndLocal(end ? toLocalDateTimeFields(end) : '')
+      // Convert ISO to datetime-local format (YYYY-MM-DDTHH:MM)
+      const startFields = start ? toLocalDateTimeFields(start) : null
+      const endFields = end ? toLocalDateTimeFields(end) : null
+      
+      setStartLocal(startFields && startFields.date && startFields.time 
+        ? `${startFields.date}T${startFields.time}` 
+        : '')
+      setEndLocal(endFields && endFields.date && endFields.time 
+        ? `${endFields.date}T${endFields.time}` 
+        : '')
       setError('')
       setSubmitting(false)
       
@@ -63,8 +71,12 @@ export default function RescheduleModal({
       return false
     }
 
-    const startISO = fromLocalDateTimeFields(startLocal)
-    const endISO = fromLocalDateTimeFields(endLocal)
+    // Convert datetime-local format (YYYY-MM-DDTHH:MM) to fields object
+    const [startDate, startTime] = startLocal.split('T')
+    const [endDate, endTime] = endLocal.split('T')
+    
+    const startISO = fromLocalDateTimeFields({ date: startDate, time: startTime })
+    const endISO = fromLocalDateTimeFields({ date: endDate, time: endTime })
     
     if (!startISO || !endISO) {
       setError('Invalid date/time format')
@@ -73,7 +85,7 @@ export default function RescheduleModal({
 
     const validation = validateScheduleRange(startISO, endISO)
     if (!validation.valid) {
-      setError(validation.error)
+      setError(validation.errors[0] === 'end_not_after_start' ? 'End time must be after start time' : 'Invalid schedule')
       return false
     }
 
@@ -91,9 +103,12 @@ export default function RescheduleModal({
     setSubmitting(true)
     
     try {
-      // Convert local times to ISO
-      const startISO = fromLocalDateTimeFields(startLocal)
-      const endISO = fromLocalDateTimeFields(endLocal)
+      // Convert datetime-local format to ISO
+      const [startDate, startTime] = startLocal.split('T')
+      const [endDate, endTime] = endLocal.split('T')
+      
+      const startISO = fromLocalDateTimeFields({ date: startDate, time: startTime })
+      const endISO = fromLocalDateTimeFields({ date: endDate, time: endTime })
       
       await onSubmit?.({
         startTime: startISO,

@@ -992,6 +992,8 @@ export async function getAllDeals() {
             (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || '')
           )
 
+        // DEPRECATED: appt_start/appt_end maintained for backward compatibility
+        // Prefer using scheduled_start_time/scheduled_end_time from job or line items
         const apptStart =
           lineItemsWithSchedule?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
         const apptEnd =
@@ -1042,6 +1044,7 @@ export async function getAllDeals() {
             : null,
           loaner_eta_return_date: loaner?.eta_return_date || null,
           age_days: ageDays,
+          // DEPRECATED: Legacy fields for backward compatibility only
           appt_start: apptStart,
           appt_end: apptEnd,
           vendor_name: aggregatedVendor,
@@ -1149,6 +1152,8 @@ export async function getDeal(id) {
       .filter((part) => part?.scheduled_start_time && part?.scheduled_end_time)
       .sort((a, b) => (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || ''))
 
+    // DEPRECATED: appt_start/appt_end maintained for backward compatibility
+    // Prefer using scheduled_start_time/scheduled_end_time from job or line items
     const apptStart =
       lineItemsWithSchedule?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
     const apptEnd =
@@ -1209,6 +1214,7 @@ export async function getDeal(id) {
         : null,
       loaner_notes: loaner?.notes || '',
       age_days: ageDays,
+      // DEPRECATED: Legacy fields for backward compatibility only
       appt_start: apptStart,
       appt_end: apptEnd,
       vendor_name: aggregatedVendor,
