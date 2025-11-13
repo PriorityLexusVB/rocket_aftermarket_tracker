@@ -63,7 +63,9 @@ export function toLocalDateTimeFields(iso) {
 }
 
 // Convert local fields back to ISO (UTC) while preserving meaning.
-export function fromLocalDateTimeFields({ date, time }) {
+export function fromLocalDateTimeFields(fields) {
+  if (!fields || typeof fields !== 'object') return null
+  const { date, time } = fields
   if (!date || !time) return null
   try {
     const adjusted = makeDateFromLocalFields(date, time)
