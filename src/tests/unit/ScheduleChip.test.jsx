@@ -103,7 +103,7 @@ describe('ScheduleChip', () => {
   })
 
   it('should have hover and focus styles', () => {
-    render(
+    const { container } = render(
       <BrowserRouter>
         <ScheduleChip
           scheduledStartTime="2024-01-15T14:00:00Z"
@@ -113,7 +113,7 @@ describe('ScheduleChip', () => {
       </BrowserRouter>
     )
     
-    const chip = screen.getByTestId('schedule-chip')
+    const chip = container.querySelector('[data-testid="schedule-chip"]')
     expect(chip).toHaveClass('hover:bg-blue-100')
   })
 })
