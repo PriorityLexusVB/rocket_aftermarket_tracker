@@ -7,24 +7,16 @@ const TZ = 'America/New_York'
 // Internal: build Date from local date + time (YYYY-MM-DD + HH:MM) in target timezone
 function makeDateFromLocalFields(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null
-  // Construct in timezone by parsing components and then using Date.UTC adjusted by offset.
-  // Simpler approach: create an ISO by assuming local TZ then rely on Date to parse.
   const [year, month, day] = dateStr.split('-').map(Number)
   const [hour, minute] = timeStr.split(':').map(Number)
   if ([year, month, day, hour, minute].some((n) => Number.isNaN(n))) return null
-  // Create a Date in UTC based on NY local components by subtracting the NY offset at that local time.
-  // Acquire offset by constructing a date in NY via Intl and diffing.
   const temp = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0))
-  // offset in minutes for NY at that moment
   const tzOffsetMinutes = getTimeZoneOffsetMinutes(temp)
-  // Adjust the UTC time so that when displayed in NY it matches given local fields.
-  const adjusted = new Date(temp.getTime() - tzOffsetMinutes * 60000)
-  return adjusted
+  return new Date(temp.getTime() - tzOffsetMinutes * 60000)
 }
 
 // Internal: get timezone offset (minutes) for given Date in target TZ
 function getTimeZoneOffsetMinutes(date) {
-  // Format the date parts in target tz and reconstruct a Date to compute difference
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: TZ,
     year: 'numeric',
@@ -42,49 +34,46 @@ function getTimeZoneOffsetMinutes(date) {
   const hour = Number(map.hour)
   const minute = Number(map.minute)
   const reconstructedUTC = Date.UTC(year, month - 1, day, hour, minute)
-  const diffMinutes = (reconstructedUTC - date.getTime()) / 60000
-  return diffMinutes
+  return (reconstructedUTC - date.getTime()) / 60000
 }
 
-// Convert an ISO string (UTC or any timezone) into local date/time fields for form controls.
+// Convert an ISO string (UTC or any timezone) into local date/time fields.
 export function toLocalDateTimeFields(iso) {
   if (!iso) return { date: '', time: '' }
   try {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return { date: '', time: '' }
-    const f = new Intl.DateTimeFormat('en-CA', {
+    const dateStr = new Intl.DateTimeFormat('en-CA', {
       timeZone: TZ,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(d) // YYYY-MM-DD
-    const t = new Intl.DateTimeFormat('en-US', {
+    }).format(d)
+    const rawTime = new Intl.DateTimeFormat('en-US', {
       timeZone: TZ,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    }).format(d) // HH:MM
-    // en-US hour may be "08" or "8" depending; ensure 2-digit
-    const time = t.length === 4 ? '0' + t : t
-    return { date: f, time }
+    }).format(d)
+    const timeStr = rawTime.length === 4 ? '0' + rawTime : rawTime
+    return { date: dateStr, time: timeStr }
   } catch {
     return { date: '', time: '' }
   }
 }
 
-// Convert local fields back to an ISO string (UTC) while preserving NY original meaning.
+// Convert local fields back to ISO (UTC) while preserving meaning.
 export function fromLocalDateTimeFields({ date, time }) {
   if (!date || !time) return null
   try {
     const adjusted = makeDateFromLocalFields(date, time)
-    if (!adjusted) return null
-    return adjusted.toISOString()
+    return adjusted ? adjusted.toISOString() : null
   } catch {
     return null
   }
 }
 
-// Format a schedule range (start & end ISO). Same-day => "Nov 13, 10:00–11:30 ET"; multi-day => "Nov 13 10:00 – Nov 14 09:00 ET"
+// Format schedule range for display.
 export function formatScheduleRange(startIso, endIso) {
   if (!startIso) return ''
   try {
@@ -115,19 +104,19 @@ export function formatScheduleRange(startIso, endIso) {
   }
 }
 
-// Simple time formatting for chip-level display (HH:MM) local TZ
+// Simple HH:MM formatting in local TZ.
 export function formatTime(iso) {
   if (!iso) return ''
   try {
     const d = new Date(iso)
     if (isNaN(d.getTime())) return ''
-    const t = new Intl.DateTimeFormat('en-US', {
+    const raw = new Intl.DateTimeFormat('en-US', {
       timeZone: TZ,
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
     }).format(d)
-    return normalizeTime(t)
+    return normalizeTime(raw)
   } catch {
     return ''
   }
@@ -147,7 +136,7 @@ function isSameDayTZ(a, b, tz) {
   return fmt.format(a) === fmt.format(b)
 }
 
-// Validate schedule range: both present & end > start (millis). Returns { valid, errors }
+// Validate schedule range.
 export function validateScheduleRange(startIso, endIso) {
   const errors = []
   if (!startIso) errors.push('start_required')
