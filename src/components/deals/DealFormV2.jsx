@@ -16,7 +16,7 @@ import {
   getVendors,
   getProducts,
 } from '../../services/dropdownService'
-import { toLocalDateTimeFields, fromLocalDateTimeFields } from '../../utils/dateTimeUtils'
+import { toLocalDateTimeFields, fromLocalDateTimeFields, validateScheduleRange } from '../../utils/dateTimeUtils'
 
 // Guard flag for auto-earliest-window feature (disabled by default to avoid test conflicts)
 const ENABLE_AUTO_EARLIEST_WINDOW = false
@@ -28,6 +28,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [scheduleValidationError, setScheduleValidationError] = useState('')
 
   // Dropdown state
   const [dropdownData, setDropdownData] = useState({
@@ -114,6 +115,21 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   useEffect(() => {
     loadDropdownData()
   }, [])
+
+  // Validate schedule range when times change
+  useEffect(() => {
+    if (customerData?.scheduledStartTime && customerData?.scheduledEndTime) {
+      const startISO = fromLocalDateTimeFields(customerData.scheduledStartTime)
+      const endISO = fromLocalDateTimeFields(customerData.scheduledEndTime)
+      
+      if (startISO && endISO) {
+        const validation = validateScheduleRange(startISO, endISO)
+        setScheduleValidationError(validation.valid ? '' : validation.error)
+      }
+    } else {
+      setScheduleValidationError('')
+    }
+  }, [customerData?.scheduledStartTime, customerData?.scheduledEndTime])
 
   // Normalize customer name and vehicle description on initial load (idempotent)
   useEffect(() => {
@@ -585,7 +601,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 </label>
                 <input
                   type="datetime-local"
-                  value={customerData?.scheduledStartTime}
+                  value={customerData?.scheduledStartTime || ''}
                   onChange={(e) =>
                     setCustomerData((prev) => ({ ...prev, scheduledStartTime: e?.target?.value }))
                   }
@@ -600,7 +616,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 </label>
                 <input
                   type="datetime-local"
-                  value={customerData?.scheduledEndTime}
+                  value={customerData?.scheduledEndTime || ''}
                   onChange={(e) =>
                     setCustomerData((prev) => ({ ...prev, scheduledEndTime: e?.target?.value }))
                   }
@@ -610,6 +626,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </div>
             </div>
 
+            {/* Schedule validation error */}
+            {scheduleValidationError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                {scheduleValidationError}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -617,7 +640,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 </label>
                 <input
                   type="text"
-                  value={customerData?.location}
+                  value={customerData?.location || ''}
                   onChange={(e) =>
                     setCustomerData((prev) => ({ ...prev, location: e?.target?.value }))
                   }
@@ -634,7 +657,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
-                    value={customerData?.colorCode}
+                    value={customerData?.colorCode || '#3B82F6'}
                     onChange={(e) =>
                       setCustomerData((prev) => ({ ...prev, colorCode: e?.target?.value }))
                     }
@@ -652,7 +675,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </label>
               <textarea
                 rows={2}
-                value={customerData?.calendarNotes}
+                value={customerData?.calendarNotes || ''}
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, calendarNotes: e?.target?.value }))
                 }

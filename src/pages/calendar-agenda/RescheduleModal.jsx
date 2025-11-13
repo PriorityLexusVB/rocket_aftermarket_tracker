@@ -2,7 +2,7 @@
 // Full-featured reschedule modal with datetime-local inputs and validation
 // Uses America/New_York timezone for all datetime-local fields
 import React, { useEffect, useRef, useState } from 'react'
-import { toLocalDateTimeFields, fromLocalDateTimeFields } from '../../utils/dateTimeUtils'
+import { toLocalDateTimeFields, fromLocalDateTimeFields, validateScheduleRange } from '../../utils/dateTimeUtils'
 
 export default function RescheduleModal({ 
   open, 
@@ -51,7 +51,7 @@ export default function RescheduleModal({
     return () => document.removeEventListener('keydown', handleEsc)
   }, [open, onClose])
 
-  // Validate that end > start
+  // Validate that end > start using validateScheduleRange
   const validate = () => {
     if (!startLocal) {
       setError('Start time is required')
@@ -71,11 +71,9 @@ export default function RescheduleModal({
       return false
     }
 
-    const startTime = new Date(startISO).getTime()
-    const endTime = new Date(endISO).getTime()
-
-    if (endTime <= startTime) {
-      setError('End time must be after start time')
+    const validation = validateScheduleRange(startISO, endISO)
+    if (!validation.valid) {
+      setError(validation.error)
       return false
     }
 
@@ -159,7 +157,7 @@ export default function RescheduleModal({
                 ref={startInputRef}
                 id="reschedule-start"
                 type="datetime-local"
-                value={startLocal}
+                value={startLocal || ''}
                 onChange={(e) => {
                   setStartLocal(e.target.value)
                   setError('') // Clear error on change
@@ -181,7 +179,7 @@ export default function RescheduleModal({
               <input
                 id="reschedule-end"
                 type="datetime-local"
-                value={endLocal}
+                value={endLocal || ''}
                 onChange={(e) => {
                   setEndLocal(e.target.value)
                   setError('') // Clear error on change
