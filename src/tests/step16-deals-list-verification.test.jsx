@@ -12,8 +12,8 @@
  */
 
 import React from 'react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DealsPage from '../pages/deals/index.jsx'
 import * as dealService from '../services/dealService'
@@ -176,6 +176,10 @@ describe('Step 16: Deals List Screen Verification', () => {
   beforeEach(() => {
     vi?.clearAllMocks()
     dealService?.getAllDeals?.mockResolvedValue(mockDealsData)
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   const renderComponent = () => {
