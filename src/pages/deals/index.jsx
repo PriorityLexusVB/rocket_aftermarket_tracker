@@ -8,6 +8,7 @@ import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
+import ScheduleChip from '../../components/deals/ScheduleChip'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
@@ -1385,7 +1386,7 @@ export default function DealsPage() {
                   Promise
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Appt Window
+                  Schedule
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Customer
@@ -1476,38 +1477,12 @@ export default function DealsPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3 w-[180px]">
-                      {deal?.appt_start ? (
-                        <span className="text-sm text-slate-700">
-                          {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                          {' • '}
-                          {(() => {
-                            const startTime = new Date(deal?.appt_start).toLocaleTimeString(
-                              'en-US',
-                              {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }
-                            )
-                            const endTime = deal?.appt_end
-                              ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : null
-
-                            // If start and end times are identical, only show once
-                            if (endTime && startTime !== endTime) {
-                              return `${startTime}–${endTime}`
-                            }
-                            return startTime
-                          })()}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-500">—</span>
-                      )}
+                      <ScheduleChip
+                        scheduledStartTime={deal?.scheduled_start_time}
+                        scheduledEndTime={deal?.scheduled_end_time}
+                        jobId={deal?.id}
+                        enableAgendaNavigation={false}
+                      />
                     </td>
                     <td
                       className="px-4 py-3 max-w-[220px]"
@@ -1764,24 +1739,14 @@ export default function DealsPage() {
                             )
                           })()}
                         </span>
-                        {deal?.appt_start && (
-                          <span className="text-xs text-slate-700" data-testid="mobile-appt-window">
-                            {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                            {' • '}
-                            {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                            {'–'}
-                            {deal?.appt_end
-                              ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : ''}
+                        {deal?.scheduled_start_time && (
+                          <span data-testid="mobile-schedule-chip">
+                            <ScheduleChip
+                              scheduledStartTime={deal?.scheduled_start_time}
+                              scheduledEndTime={deal?.scheduled_end_time}
+                              jobId={deal?.id}
+                              enableAgendaNavigation={false}
+                            />
                           </span>
                         )}
                         {(deal?.loaner_number || deal?.has_active_loaner) && (
