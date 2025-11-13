@@ -26,9 +26,10 @@ export default function useJobEventActions(options = {}) {
   const handleOpenDeal = useCallback(
     (jobId) => {
       if (!jobId) {
-        setError('Invalid job ID')
+        console.warn('handleOpenDeal: Invalid job ID')
         return
       }
+      setError(null) // Clear any previous errors
       navigate(`/deals?edit=${jobId}`)
     },
     [navigate]
@@ -41,10 +42,11 @@ export default function useJobEventActions(options = {}) {
   const handleReschedule = useCallback(
     (event) => {
       if (!event || !event.id) {
-        setError('Invalid event data')
+        console.warn('handleReschedule: Invalid event data')
         return
       }
       
+      setError(null) // Clear any previous errors
       if (onRescheduleOpen) {
         onRescheduleOpen(event)
       } else {

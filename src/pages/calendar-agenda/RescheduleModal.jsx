@@ -25,6 +25,12 @@ export default function RescheduleModal({ open, onClose, onSubmit, event }) {
     }
   }, [open, event])
 
+  const handleClose = () => {
+    setValidationError('')
+    setIsSubmitting(false)
+    onClose?.()
+  }
+
   // Handle ESC key
   useEffect(() => {
     if (!open) return
@@ -33,13 +39,7 @@ export default function RescheduleModal({ open, onClose, onSubmit, event }) {
     }
     document.addEventListener('keydown', handleEsc)
     return () => document.removeEventListener('keydown', handleEsc)
-  }, [open])
-
-  const handleClose = () => {
-    setValidationError('')
-    setIsSubmitting(false)
-    onClose?.()
-  }
+  }, [open, onClose]) // Added onClose to dependencies since handleClose uses it
 
   const handleSubmit = async () => {
     setValidationError('')

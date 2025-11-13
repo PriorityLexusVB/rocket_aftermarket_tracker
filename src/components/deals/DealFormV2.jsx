@@ -620,7 +620,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                   <input
                     id="scheduling-location"
                     type="text"
-                    value={customerData?.schedulingLocation}
+                    value={customerData?.schedulingLocation || ''}
                     onChange={(e) =>
                       setCustomerData((prev) => ({ ...prev, schedulingLocation: e.target.value }))
                     }
@@ -653,7 +653,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 </label>
                 <textarea
                   id="scheduling-notes"
-                  value={customerData?.schedulingNotes}
+                  value={customerData?.schedulingNotes || ''}
                   onChange={(e) =>
                     setCustomerData((prev) => ({ ...prev, schedulingNotes: e.target.value }))
                   }
