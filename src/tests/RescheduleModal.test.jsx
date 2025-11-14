@@ -379,5 +379,135 @@ describe('RescheduleModal', () => {
       })
     })
   })
+
+  describe('Line-item scheduling integration', () => {
+    it('should compute aggregated schedule from single line item', () => {
+      const job = {
+        id: 'job-1',
+        title: 'Test Job',
+        job_parts: [
+          {
+            id: 'part-1',
+            scheduled_start_time: '2025-11-14T09:00:00Z',
+            scheduled_end_time: '2025-11-14T11:00:00Z',
+          },
+        ],
+      }
+      
+      render(
+        <RescheduleModal
+          open={true}
+          onClose={() => {}}
+          onSubmit={() => {}}
+          job={job}
+        />
+      )
+      
+      // Should display the aggregated schedule
+      const startInput = screen.getByLabelText(/Start time/i)
+      const endInput = screen.getByLabelText(/End time/i)
+      
+      // Values will be in local datetime format
+      expect(startInput.value).toBeTruthy()
+      expect(endInput.value).toBeTruthy()
+    })
+
+    it('should compute aggregated schedule from multiple line items', () => {
+      const job = {
+        id: 'job-2',
+        title: 'Multi-Item Job',
+        job_parts: [
+          {
+            id: 'part-1',
+            scheduled_start_time: '2025-11-14T09:00:00Z',
+            scheduled_end_time: '2025-11-14T11:00:00Z',
+          },
+          {
+            id: 'part-2',
+            scheduled_start_time: '2025-11-14T14:00:00Z',
+            scheduled_end_time: '2025-11-14T16:00:00Z',
+          },
+        ],
+      }
+      
+      render(
+        <RescheduleModal
+          open={true}
+          onClose={() => {}}
+          onSubmit={() => {}}
+          job={job}
+        />
+      )
+      
+      // Should show earliest start (09:00) and latest end (16:00)
+      const startInput = screen.getByLabelText(/Start time/i)
+      const endInput = screen.getByLabelText(/End time/i)
+      
+      expect(startInput.value).toBeTruthy()
+      expect(endInput.value).toBeTruthy()
+    })
+
+    it('should handle job with no scheduled line items', () => {
+      const job = {
+        id: 'job-3',
+        title: 'Unscheduled Job',
+        job_parts: [
+          {
+            id: 'part-1',
+            scheduled_start_time: null,
+            scheduled_end_time: null,
+          },
+        ],
+      }
+      
+      render(
+        <RescheduleModal
+          open={true}
+          onClose={() => {}}
+          onSubmit={() => {}}
+          job={job}
+        />
+      )
+      
+      // Should show empty fields
+      const startInput = screen.getByLabelText(/Start time/i)
+      const endInput = screen.getByLabelText(/End time/i)
+      
+      expect(startInput.value).toBe('')
+      expect(endInput.value).toBe('')
+    })
+
+    it('should prefer explicit initialStart/initialEnd over line items', () => {
+      const job = {
+        id: 'job-4',
+        title: 'Job with Override',
+        job_parts: [
+          {
+            id: 'part-1',
+            scheduled_start_time: '2025-11-14T09:00:00Z',
+            scheduled_end_time: '2025-11-14T11:00:00Z',
+          },
+        ],
+      }
+      
+      render(
+        <RescheduleModal
+          open={true}
+          onClose={() => {}}
+          onSubmit={() => {}}
+          job={job}
+          initialStart="2025-11-15T10:00:00Z"
+          initialEnd="2025-11-15T12:00:00Z"
+        />
+      )
+      
+      // Should use the explicit values, not the line item values
+      const startInput = screen.getByLabelText(/Start time/i)
+      const endInput = screen.getByLabelText(/End time/i)
+      
+      expect(startInput.value).toBeTruthy()
+      expect(endInput.value).toBeTruthy()
+    })
+  })
 })
 

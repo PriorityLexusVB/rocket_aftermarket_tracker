@@ -206,11 +206,18 @@ export default function CalendarAgenda() {
     if (!rescheduleModal.job) return
 
     try {
-      await jobActions.updateSchedule(rescheduleModal.job.id, scheduleData, orgId)
+      // Update line item schedules using the new service method
+      await jobService.updateLineItemSchedules(rescheduleModal.job.id, scheduleData)
+      
+      // Show success message
+      toast?.success?.('Schedule updated successfully')
+      
+      // Close modal and refresh
       setRescheduleModal({ open: false, job: null })
+      await load()
     } catch (e) {
-      // Error already handled by jobActions
       console.error('[agenda] reschedule failed', e)
+      toast?.error?.(e?.message || 'Failed to reschedule')
     }
   }
 
