@@ -196,7 +196,8 @@ describe('useJobEventActions', () => {
       
       expect(validation).toEqual({
         valid: true,
-        errors: []
+        errors: [],
+        error: ''
       })
     })
 
@@ -210,7 +211,8 @@ describe('useJobEventActions', () => {
       
       expect(validation).toEqual({
         valid: false,
-        errors: ['end_not_after_start']
+        errors: ['end_not_after_start'],
+        error: 'End time must be after start time'
       })
     })
 
@@ -224,6 +226,7 @@ describe('useJobEventActions', () => {
       
       expect(validation.valid).toBe(false)
       expect(validation.errors).toContain('start_required')
+      expect(validation.error).toBe('Start time is required')
     })
 
     it('should detect missing end time', () => {
@@ -236,6 +239,7 @@ describe('useJobEventActions', () => {
       
       expect(validation.valid).toBe(false)
       expect(validation.errors).toContain('end_required')
+      expect(validation.error).toBe('End time is required')
     })
 
     it('should handle invalid ISO timestamps', () => {
@@ -259,7 +263,8 @@ describe('useJobEventActions', () => {
       
       expect(validation).toEqual({
         valid: true,
-        errors: []
+        errors: [],
+        error: ''
       })
     })
 
@@ -273,7 +278,8 @@ describe('useJobEventActions', () => {
       
       expect(validation).toEqual({
         valid: true,
-        errors: []
+        errors: [],
+        error: ''
       })
     })
   })
