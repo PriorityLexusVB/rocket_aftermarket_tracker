@@ -66,8 +66,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             item?.vendorId ||
             (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
             null,
+          dateScheduled: item?.promised_date || '',
           scheduledStartTime: item?.scheduled_start_time || '',
           scheduledEndTime: item?.scheduled_end_time || '',
+          isMultiDay: false, // Default to false, can be determined from date range if needed
         }))
       : []
   )
