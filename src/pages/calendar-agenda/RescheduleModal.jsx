@@ -1,6 +1,7 @@
 // src/pages/calendar-agenda/RescheduleModal.jsx
 // Full-featured reschedule modal with datetime-local inputs and validation
 // Uses America/New_York timezone for all datetime-local fields
+// Updated: Reads and aggregates scheduling from line items (job_parts)
 import React, { useEffect, useRef, useState } from 'react'
 import { toLocalDateTimeFields, fromLocalDateTimeFields, validateScheduleRange } from '../../utils/dateTimeUtils'
 
@@ -24,8 +25,29 @@ export default function RescheduleModal({
   // Initialize form fields when modal opens or job changes
   useEffect(() => {
     if (open) {
-      const start = initialStart || job?.scheduled_start_time
-      const end = initialEnd || job?.scheduled_end_time
+      // Compute aggregated schedule from line items (new line-item scheduling model)
+      let start = initialStart
+      let end = initialEnd
+      
+      // If no explicit start AND end provided, compute from job's line items
+      if (!start && !end) {
+        const lineItems = job?.job_parts || []
+        const scheduledItems = lineItems.filter(
+          (item) => item?.scheduled_start_time && item?.scheduled_end_time
+        )
+        
+        if (scheduledItems.length > 0) {
+          // Aggregate: earliest start, latest end
+          const starts = scheduledItems.map((item) => new Date(item.scheduled_start_time))
+          const ends = scheduledItems.map((item) => new Date(item.scheduled_end_time))
+          start = new Date(Math.min(...starts)).toISOString()
+          end = new Date(Math.max(...ends)).toISOString()
+        } else {
+          // Fallback to job-level fields (backward compatibility)
+          start = start || job?.scheduled_start_time
+          end = end || job?.scheduled_end_time
+        }
+      }
       
       // Convert ISO to datetime-local format (YYYY-MM-DDTHH:MM)
       const startFields = start ? toLocalDateTimeFields(start) : null
