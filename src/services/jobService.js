@@ -360,10 +360,15 @@ export const jobService = {
       // Update all scheduled line items with the new times
       // Strategy: Apply the same start/end to all items (simplified approach)
       // More complex: could preserve relative offsets if needed
+      
+      // Extract date from scheduled_start_time for promised_date field
+      const promisedDate = scheduleData.startTime ? new Date(scheduleData.startTime).toISOString().split('T')[0] : null
+      
       const updates = scheduledItems.map((item) => ({
         id: item.id,
         scheduled_start_time: scheduleData.startTime,
         scheduled_end_time: scheduleData.endTime,
+        promised_date: promisedDate,
         updated_at: nowIso(),
       }))
 
@@ -374,6 +379,7 @@ export const jobService = {
           ?.update({
             scheduled_start_time: update.scheduled_start_time,
             scheduled_end_time: update.scheduled_end_time,
+            promised_date: update.promised_date,
             updated_at: update.updated_at,
           })
           ?.eq('id', update.id)
