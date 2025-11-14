@@ -485,7 +485,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
     }
 
     if (!dateData?.promised_date) {
-      throw new Error('Promised Date is required')
+      throw new Error('Date Scheduled is required')
     }
 
     if (!lineItems || lineItems?.length === 0) {
@@ -1090,7 +1090,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <span className="text-red-500">*</span> Promised Date (no time component)
+                      <span className="text-red-500">*</span> Date Scheduled (no time component)
                     </label>
                     <input
                       type="date"
@@ -1248,10 +1248,10 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
                         </div>
                       )}
 
-                      {/* Per-line Promised Date (optional) */}
+                      {/* Per-line Date Scheduled (optional) */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Per-line Promised Date (optional)
+                          Per-line Date Scheduled (optional)
                         </label>
                         <input
                           type="date"

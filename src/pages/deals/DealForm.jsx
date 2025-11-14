@@ -986,7 +986,7 @@ export default function DealForm({
               {/* Scheduling controls */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Promised Date</label>
+                  <label className="block text-sm font-medium text-slate-700">Date Scheduled</label>
                   <input
                     data-testid={`promised-date-${idx}`}
                     type="date"
