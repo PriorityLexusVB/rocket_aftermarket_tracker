@@ -113,7 +113,44 @@ Validate that the `rocket_aftermarket_tracker` codebase follows Rob's business r
 
 1. **Quick Check**: Read [SCHEDULING_AUDIT_EXECUTIVE_SUMMARY.md](./SCHEDULING_AUDIT_EXECUTIVE_SUMMARY.md) (2 minutes)
 2. **Technical Review**: Read [SCHEDULING_ASSIGNMENTS_AUDIT_REPORT.md](./SCHEDULING_ASSIGNMENTS_AUDIT_REPORT.md) (15 minutes)
-3. **Implementation**: Use recommendations section to prioritize fixes
+3. **Architecture Reference**: Read [docs/SCHEDULING_ARCHITECTURE.md](./docs/SCHEDULING_ARCHITECTURE.md) (comprehensive guide)
+4. **Implementation**: Use recommendations section to prioritize fixes
+
+---
+
+## 🔧 Implementation Status
+
+### ✅ Completed (2025-11-15)
+
+1. **Quick Assign Bug Fix**
+   - **File**: `src/pages/currently-active-appointments/index.jsx:443`
+   - **Change**: Status changed from `'scheduled'` to `'pending'` when assigning staff without scheduling data
+   - **Impact**: Eliminates confusion about "scheduled" status - now only used when job has vendor + time windows
+   - **Tests**: All passing (657 passed, 2 skipped)
+
+2. **Documentation Updates**
+   - **Created**: `docs/SCHEDULING_ARCHITECTURE.md` - comprehensive scheduling architecture guide
+   - **Updated**: Migration files with deprecation notices
+     - `20250923142511_calendar_scheduling_enhancement.sql` - marked job-level fields as deprecated
+     - `20251114163000_calendar_line_item_scheduling.sql` - documented line-item architecture
+
+### 📋 Recommendations Status
+
+#### ✅ Immediate Actions (COMPLETE)
+- [x] Fix "Quick Assign" to not set 'scheduled' status without actual scheduling
+
+#### 🔄 Short-Term Actions (COMPLETE)
+- [x] Document vendor_id relationships (jobs vs job_parts) → See `docs/SCHEDULING_ARCHITECTURE.md`
+- [x] Add deprecation comments to old scheduling fields → Added to migration files
+- [ ] Apply delivery_coordinator_id migration OR add feature flag (deferred - see notes below)
+
+#### 📅 Long-Term Actions (Backlog)
+- [ ] Drop deprecated job-level scheduling columns (after full testing)
+- [ ] Review assignment defaults (null vs current user)
+
+### 📝 Notes
+
+**delivery_coordinator_id**: Migration exists in `_hold_dec2025/` folder but not yet applied. Code references the field (43 instances). This is tracked separately and does not block current work.
 
 ---
 

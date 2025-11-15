@@ -2,6 +2,13 @@
 -- Schema Analysis: Extending existing aftermarket tracking system with calendar scheduling
 -- Integration Type: Enhancement - Adding calendar scheduling fields to existing jobs table
 -- Dependencies: jobs, user_profiles, vendors, vehicles (all existing)
+--
+-- ⚠️ DEPRECATION NOTICE (as of 2025-11-14):
+-- The job-level scheduling fields (scheduled_start_time, scheduled_end_time) added by this migration
+-- are DEPRECATED. Calendar scheduling has been migrated to line-item level via job_parts table.
+-- See migration 20251114163000_calendar_line_item_scheduling.sql for the new implementation.
+-- These fields remain in the schema for backward compatibility but should not be used in new code.
+-- Reference: docs/SCHEDULING_ARCHITECTURE.md
 
 -- Step 1: Add new enum values (MUST be separate from any usage)
 -- PostgreSQL requires enum modifications to be committed before usage

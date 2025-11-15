@@ -440,7 +440,7 @@ const CurrentlyActiveAppointments = () => {
         ?.from('jobs')
         ?.update({
           assigned_to: staffId,
-          job_status: 'scheduled',
+          job_status: 'pending', // Changed from 'scheduled' - job is assigned but not yet scheduled on calendar
           updated_at: new Date()?.toISOString(),
         })
         ?.eq('id', jobId)
