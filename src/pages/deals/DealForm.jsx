@@ -136,6 +136,11 @@ export default function DealForm({
       delivery_coordinator_id: initial.delivery_coordinator_id || '',
       customer_mobile: initial.customer_mobile || '',
       customer_needs_loaner: !!initial.customer_needs_loaner,
+      loanerForm: {
+        loaner_number: initial?.loanerForm?.loaner_number || '',
+        eta_return_date: initial?.loanerForm?.eta_return_date || '',
+        notes: initial?.loanerForm?.notes || '',
+      },
       lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
       promised_date: initial.promised_date || '',
       scheduled_start_time: initial.scheduled_start_time || '',
