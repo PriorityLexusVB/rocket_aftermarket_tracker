@@ -40,6 +40,33 @@
 
 ---
 
+## Deprecated Scheduling Fields
+
+**⚠️ IMPORTANT**: The following fields still exist in the schema but are **no longer used** by calendar logic:
+
+- `jobs.scheduled_start_time`
+- `jobs.scheduled_end_time`
+
+### Current State
+- Migration `20251114163000_calendar_line_item_scheduling.sql` moved all calendar scheduling logic to `job_parts` table
+- Calendar RPCs (`get_jobs_by_date_range`, `check_vendor_schedule_conflict`) read from `job_parts.scheduled_start_time` and `job_parts.scheduled_end_time`
+- The job-level scheduling columns are kept only for **backward compatibility** and **legacy reporting**
+
+### For New Features
+**DO NOT** rely on `jobs.scheduled_start_time` or `jobs.scheduled_end_time` for:
+- Calendar display logic
+- Conflict detection
+- Scheduling queries
+- Time-based filtering
+
+Instead, use the line-item scheduling fields:
+- `job_parts.scheduled_start_time`
+- `job_parts.scheduled_end_time`
+
+These fields enable per-line-item scheduling for off-site work and complex jobs.
+
+---
+
 ## Issues Found (1 Medium, 4 Low)
 
 ### 🟡 MEDIUM Priority
@@ -86,6 +113,34 @@
 | People fields are metadata | ✅ YES | No forms require them, all default to null |
 | Never required for scheduling | ✅ YES | No validation enforces them |
 | Never used in conflict checks | ✅ YES | check_vendor_schedule_conflict uses vendor_id only |
+
+---
+
+## Deferred / Future Items
+
+### Held Migration: delivery_coordinator_id
+- **Status**: Migration exists in `supabase/migrations/_hold_dec2025/20251222181000_add_delivery_coordinator.sql` but is **NOT applied** to live schema
+- **Current State**: `jobs.delivery_coordinator_id` should be treated as **optional metadata only** and may not exist in older environments
+- **Code References**: 43 instances in codebase reference this field
+- **Future Action Required**:
+  - If/when this field is needed in production, promote the migration from `_hold_dec2025/` into the main migrations folder
+  - Must be done in a dedicated migration/PR with proper testing
+  - Until then, treat this field as potentially non-existent
+
+---
+
+## Assignment Defaults
+
+### Current Behavior
+When creating a new job in `DealFormV2.jsx`:
+- If **Sales Consultant** is left blank, `assigned_to` defaults to the **current user's ID**
+- This is **intentional** and **allowed** by business rules
+
+### Why This Is Acceptable
+- Assignments are **metadata only** and do not affect scheduling or constraints
+- Jobs can still be scheduled with vendor + time even if assignment fields are null or auto-defaulted
+- **No validation requires** `assigned_to`, `finance_manager_id`, or `delivery_coordinator_id` for saving or scheduling
+- The system rule: "Nothing should force assignments as a precondition for scheduling" remains intact
 
 ---
 

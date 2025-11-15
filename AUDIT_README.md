@@ -109,6 +109,94 @@ Validate that the `rocket_aftermarket_tracker` codebase follows Rob's business r
 
 ---
 
+## 📋 Schema Overview & Important Notes
+
+### ⚠️ Deprecated Scheduling Fields
+
+**Job-level scheduling columns are deprecated and not used in calendar logic:**
+
+- `jobs.scheduled_start_time` - **DEPRECATED** (legacy field, kept for backward compatibility)
+- `jobs.scheduled_end_time` - **DEPRECATED** (legacy field, kept for backward compatibility)
+
+**Current active scheduling is line-item-based:**
+
+- `job_parts.scheduled_start_time` - **ACTIVE** (used by calendar RPCs)
+- `job_parts.scheduled_end_time` - **ACTIVE** (used by calendar RPCs)
+
+**Migration**: `20251114163000_calendar_line_item_scheduling.sql` transitioned calendar logic from job-level to line-item scheduling. The job-level fields remain in the schema for backward compatibility and legacy reporting only.
+
+---
+
+## 🔧 Held Migration: delivery_coordinator_id
+
+### Current Status
+- **Location**: `supabase/migrations/_hold_dec2025/20251222181000_add_delivery_coordinator.sql`
+- **Applied**: ❌ **NO** - Migration is held and not applied to live schema
+- **Column**: `jobs.delivery_coordinator_id` (UUID, references `user_profiles.id`)
+
+### Important Considerations
+1. **Optional Field**: `jobs.delivery_coordinator_id` should be treated as **optional metadata only**
+2. **Environment Compatibility**: This column may not exist in older environments or deployments
+3. **Code References**: 43 instances in codebase reference this field, but must handle cases where it doesn't exist
+4. **No Blocking**: Absence of this field does not block scheduling or core functionality
+
+### Future Action (When Needed)
+If this field needs to be used in production:
+1. Promote migration from `_hold_dec2025/` to main `supabase/migrations/` folder
+2. Create dedicated PR with:
+   - Migration promotion
+   - Testing plan
+   - Rollback strategy
+3. Ensure all environments are updated consistently
+4. Update documentation to reflect the field as active
+
+**Until promoted, treat `delivery_coordinator_id` as potentially non-existent.**
+
+---
+
+## 🏢 Vendor IDs and Scheduling
+
+### Overview
+Two vendor ID fields exist in the schema, each serving different purposes:
+
+### `jobs.vendor_id` (Primary Vendor for Scheduling)
+- **Purpose**: Primary vendor assigned to the entire job
+- **Used For**:
+  - Calendar conflict detection via `check_vendor_schedule_conflict()`
+  - Calendar display via `get_jobs_by_date_range()`
+  - Vendor-based filtering and reporting
+- **Scheduling Role**: **This is the vendor used for conflict detection**
+- **Required**: Yes (for scheduled jobs)
+
+### `job_parts.vendor_id` (Optional Per-Line Vendor)
+- **Purpose**: Optional per-line-item vendor override
+- **Used For**:
+  - Off-site work with different vendors per part
+  - Multi-vendor jobs (e.g., body shop + glass shop)
+  - Detailed vendor tracking per line item
+- **Scheduling Role**: **Currently NOT used in conflict detection**
+- **Required**: No (optional override)
+
+### Calendar Function Behavior
+The calendar RPCs aggregate scheduling data as follows:
+
+1. **`get_jobs_by_date_range()`**:
+   - Reads time windows from `job_parts.scheduled_start_time` and `job_parts.scheduled_end_time`
+   - Aggregates earliest start and latest end across all line items
+   - Uses `jobs.vendor_id` for vendor display and filtering
+
+2. **`check_vendor_schedule_conflict()`**:
+   - Reads time windows from `job_parts` table
+   - Checks conflicts based on `jobs.vendor_id` (NOT `job_parts.vendor_id`)
+   - This ensures conflicts are detected at the job level, not per-line-item
+
+### Implementation Reference
+See migration `20251114163000_calendar_line_item_scheduling.sql` for complete RPC implementations.
+
+**Note**: If future requirements need per-line-item vendor conflict detection, the `check_vendor_schedule_conflict()` function would need to be updated to consider `job_parts.vendor_id` in addition to `jobs.vendor_id`.
+
+---
+
 ## 📖 How to Use These Documents
 
 1. **Quick Check**: Read [SCHEDULING_AUDIT_EXECUTIVE_SUMMARY.md](./SCHEDULING_AUDIT_EXECUTIVE_SUMMARY.md) (2 minutes)
