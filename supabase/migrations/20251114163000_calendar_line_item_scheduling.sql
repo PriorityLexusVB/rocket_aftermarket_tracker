@@ -1,6 +1,14 @@
 -- Migration: Update calendar functions to read from line-item scheduling
 -- Purpose: Support line-item only scheduling model (no more job-level scheduling)
 -- Date: 2025-11-14
+--
+-- ARCHITECTURE NOTE:
+-- This migration transitions calendar scheduling from job-level to line-item level.
+-- Previous: jobs.scheduled_start_time, jobs.scheduled_end_time (now deprecated)
+-- Current: job_parts.scheduled_start_time, job_parts.scheduled_end_time (active)
+--
+-- This enables per-line-item scheduling for off-site work and complex jobs.
+-- See docs/SCHEDULING_ARCHITECTURE.md for complete documentation.
 
 -- Drop the existing function first (required when changing return type/logic)
 DROP FUNCTION IF EXISTS public.get_jobs_by_date_range(timestamp with time zone, timestamp with time zone, uuid, text);
