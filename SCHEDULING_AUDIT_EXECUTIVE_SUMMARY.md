@@ -99,9 +99,10 @@ These fields enable per-line-item scheduling for off-site work and complex jobs.
 **Impact**: Developer confusion.
 
 #### 4. assigned_to Auto-Default
-**Problem**: If no sales consultant selected, `assigned_to` defaults to current user instead of null.  
+**Problem**: If the Sales field is left blank, `assigned_to` defaults to current user instead of null.  
 **Fix**: Change to null or make opt-in.  
-**Impact**: Minor UX inconsistency.
+**Impact**: Minor UX inconsistency.  
+**Note**: Only delivery coordinators use this system, so default is to a delivery coordinator.
 
 ---
 
@@ -133,8 +134,8 @@ These fields enable per-line-item scheduling for off-site work and complex jobs.
 
 ### Current Behavior
 When creating a new job in `DealFormV2.jsx`:
-- If **Sales Consultant** is left blank, `assigned_to` defaults to the **current user's ID**
-- This is **intentional** and **allowed** by business rules
+- If the **Sales** field is left blank, `assigned_to` defaults to the **current user's ID** (line 267: `assigned_to: customerData?.assignedTo || user?.id`)
+- **Important Context**: Only delivery coordinators have access to this system, so the default is effectively to a delivery coordinator, not a sales person
 
 ### Why This Is Acceptable
 - Assignments are **metadata only** and do not affect scheduling or constraints
