@@ -1820,9 +1820,14 @@ function mapDbDealToForm(dbDeal) {
     customerMobile: normalized?.customer_mobile || normalized?.customer_phone || '',
     customer_email: normalized?.customer_email || '',
     customerEmail: normalized?.customer_email || '',
-    // Loaner data
+    // Loaner data - include both flat fields (legacy) and nested loanerForm (current)
     loaner_number: normalized?.loaner_number || '',
     loanerNumber: normalized?.loaner_number || '',
+    loanerForm: {
+      loaner_number: normalized?.loaner_number || '',
+      eta_return_date: normalized?.loaner_eta_return_date || '',
+      notes: normalized?.loaner_notes || '',
+    },
     // Preserve vehicle for header (stock number)
     vehicle: normalized?.vehicle || null,
     // Line items in snake_case shape expected by the form/UI
