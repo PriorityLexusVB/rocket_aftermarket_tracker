@@ -742,12 +742,23 @@ export default function DealForm({
                 type="button"
                 onClick={() => navigate('/admin/staff')}
                 className="underline hover:text-amber-900"
-                data-testid="admin-link-sales"
+                data-testid="admin-link-sales-empty"
               >
                 Open Admin
               </button>
             </p>
           )}
+          <p className="mt-1 text-xs text-slate-500">
+            Need to edit sales staff?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/staff')}
+              className="text-blue-600 hover:underline"
+              data-testid="admin-link-sales"
+            >
+              Open Admin
+            </button>
+          </p>
         </div>
 
         <div>
@@ -778,17 +789,17 @@ export default function DealForm({
               </button>
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              const currentPath = window.location.pathname
-              navigate(`/admin/staff?return=${encodeURIComponent(currentPath)}`)
-            }}
-            className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            data-testid="admin-staff-link"
-          >
-            <span>Admin</span>
-          </button>
+          <p className="mt-1 text-xs text-slate-500">
+            Need to edit finance managers?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/staff')}
+              className="text-blue-600 hover:underline"
+              data-testid="admin-link-finance"
+            >
+              Open Admin
+            </button>
+          </p>
         </div>
 
         <div>
@@ -813,12 +824,23 @@ export default function DealForm({
                 type="button"
                 onClick={() => navigate('/admin/staff')}
                 className="underline hover:text-amber-900"
-                data-testid="admin-link-delivery"
+                data-testid="admin-link-delivery-empty"
               >
                 Open Admin
               </button>
             </p>
           )}
+          <p className="mt-1 text-xs text-slate-500">
+            Need to edit coordinators?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/staff')}
+              className="text-blue-600 hover:underline"
+              data-testid="admin-link-delivery"
+            >
+              Open Admin
+            </button>
+          </p>
         </div>
       </section>
 

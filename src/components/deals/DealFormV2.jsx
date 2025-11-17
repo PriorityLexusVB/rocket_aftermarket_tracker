@@ -525,6 +525,18 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               onChange={(value) => setCustomerData((prev) => ({ ...prev, assignedTo: value }))}
               placeholder="Select sales consultant"
               testId="sales-select"
+              helpLink={
+                <span>
+                  Need to edit sales staff?{' '}
+                  <a
+                    data-testid="admin-link-sales"
+                    className="underline"
+                    href="/admin/staff"
+                  >
+                    Open Admin
+                  </a>
+                </span>
+              }
             />
 
             <MobileSelect
@@ -534,6 +546,18 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               onChange={(value) => setCustomerData((prev) => ({ ...prev, financeManager: value }))}
               placeholder="Select finance manager"
               testId="finance-select"
+              helpLink={
+                <span>
+                  Need to edit finance managers?{' '}
+                  <a
+                    data-testid="admin-link-finance"
+                    className="underline"
+                    href="/admin/staff"
+                  >
+                    Open Admin
+                  </a>
+                </span>
+              }
             />
 
             <MobileSelect
@@ -551,7 +575,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                   <a
                     data-testid="admin-link-delivery"
                     className="underline"
-                    href="/admin?section=staff"
+                    href="/admin/staff"
                   >
                     Open Admin
                   </a>
