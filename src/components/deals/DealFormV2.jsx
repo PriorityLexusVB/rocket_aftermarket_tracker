@@ -24,6 +24,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const { user } = useAuth()
   const { orgId } = useTenant() || {}
   const loanerRef = useRef(null)
+  const initializedJobId = useRef(null)
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -110,9 +111,51 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     loadDropdownData()
   }, [])
 
-  // Normalize customer name and vehicle description on initial load (idempotent)
+  // ✅ FIX: Reload customer data and line items from job prop when it changes in edit mode
+  // This ensures that when EditDealModal loads deal data asynchronously, the form picks it up
   useEffect(() => {
-    if (job && mode === 'edit') {
+    if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
+      initializedJobId.current = job.id
+      
+      setCustomerData({
+        customerName: job?.customer_name || job?.customerName || '',
+        dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
+        jobNumber: job?.job_number || '',
+        stockNumber: job?.stock_number || job?.stockNumber || '',
+        customerMobile: job?.customer_mobile || job?.customerMobile || '',
+        vendorId: job?.vendor_id || null,
+        notes: job?.notes || job?.description || '',
+        vehicleDescription: job?.vehicle_description || job?.vehicleDescription || '',
+        assignedTo: job?.assigned_to || null,
+        deliveryCoordinator: job?.delivery_coordinator_id || null,
+        financeManager: job?.finance_manager_id || null,
+        needsLoaner: Boolean(job?.customer_needs_loaner),
+        loanerNumber: job?.loaner_number || job?.loanerNumber || '',
+      })
+
+      // Also reload line items to handle both initial load and prop changes
+      if (job?.lineItems?.length) {
+        setLineItems(
+          job.lineItems.map((item) => ({
+            ...item,
+            vendorId:
+              item?.vendor_id ||
+              item?.vendorId ||
+              (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
+              null,
+            dateScheduled: item?.promised_date || '',
+            scheduledStartTime: item?.scheduled_start_time || '',
+            scheduledEndTime: item?.scheduled_end_time || '',
+            isMultiDay: false,
+          }))
+        )
+      }
+    }
+  }, [job?.id, mode])
+
+  // Normalize customer name and vehicle description after data loads
+  useEffect(() => {
+    if (mode === 'edit' && customerData.customerName) {
       setCustomerData((prev) => {
         const normalizedName = titleCase(prev.customerName)
         const normalizedVehicle = titleCase(prev.vehicleDescription)
@@ -128,7 +171,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         return prev
       })
     }
-  }, [job?.id, mode])
+  }, [mode, customerData.customerName ? 'has-name' : 'no-name', customerData.vehicleDescription ? 'has-vehicle' : 'no-vehicle'])
 
   // Native select component
   const MobileSelect = ({ label, options, value, onChange, placeholder, testId, helpLink }) => (
