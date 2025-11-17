@@ -1,12 +1,8 @@
 // Test to reproduce Deal Edit Flow issues
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createDeal, updateDeal, getDeal } from '../services/dealService'
 
 describe('Deal Edit Flow - Issue Reproduction', () => {
-  let testDealId
-  
   beforeEach(() => {
-    // Mock Supabase client to trace the actual calls
     vi.clearAllMocks()
   })
 

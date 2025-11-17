@@ -100,11 +100,12 @@ const calculateTotal = () => {
 - Transaction table properly updated with correct total
 
 **Evidence**:
-- Test verifies: 299 + (199 × 2) = 697
-- But UI only shows 299 + 199 + 399 = 897 (because UI always uses qty=1)
-- Database correctly stores quantity_used for each line item
+- Test example: Database has items with unit_price values [299, 199, 399]
+- UI calculates total as: 299 + 199 + 399 = 897
+- Database stores quantity_used=1 for each item
+- Backend calculations use actual quantity_used from database when needed
 
-**Note**: If business needs variable quantities, UI needs to add quantity input field
+**Note**: If business needs variable quantities reflected in the UI, a quantity input field should be added to the UI and the total calculation would need to be updated to multiply by quantity.
 
 ### Issue #4: "Unknown" Customers ✅ FIXED BY #1
 
@@ -206,7 +207,7 @@ EditDealModal
 
 ### Rollback Plan
 If issues occur:
-1. Revert commit `f05d097`
+1. Revert this commit
 2. Redeploy previous version
 3. No data cleanup needed (changes are read-only to existing data)
 

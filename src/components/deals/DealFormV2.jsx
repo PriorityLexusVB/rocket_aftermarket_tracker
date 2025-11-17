@@ -134,7 +134,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       })
 
       // Also reload line items to handle both initial load and prop changes
-      if (job?.lineItems?.length) {
+      if (Array.isArray(job?.lineItems)) {
         setLineItems(
           job.lineItems.map((item) => ({
             ...item,
@@ -171,7 +171,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         return prev
       })
     }
-  }, [mode, customerData.customerName ? 'has-name' : 'no-name', customerData.vehicleDescription ? 'has-vehicle' : 'no-vehicle'])
+  }, [mode, customerData.customerName, customerData.vehicleDescription])
 
   // Native select component
   const MobileSelect = ({ label, options, value, onChange, placeholder, testId, helpLink }) => (
