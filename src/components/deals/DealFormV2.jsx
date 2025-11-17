@@ -426,7 +426,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     customerName: titleCase(e?.target?.value),
                   }))
                 }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base capitalize focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter customer name"
                 required
                 data-testid="customer-name-input"
@@ -468,7 +468,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     vehicleDescription: titleCase(e?.target?.value),
                   }))
                 }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base capitalize focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="2025 Lexus RX350"
                 data-testid="vehicle-description-input"
               />
