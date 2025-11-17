@@ -8,12 +8,12 @@ Successfully resolved the "permission denied while evaluating RLS (auth.users)" 
 
 ### Code Changes (Minimal, Surgical Approach)
 
-1. **Updated Error Message** (`src/services/dealService.js`, lines 1465-1472)
+1. **Updated Error Message** (`src/services/dealService.js`, lines 1468-1474)
    - Replaced outdated migration reference (20250107150001) with current ones (20251104221500, 20251115222458)
    - Added guidance for schema cache reload (actual solution if error occurs)
    - Maintained same error detection pattern for backward compatibility
 
-2. **Updated Test Documentation** (`src/tests/dealService.fallbacks.test.js`, lines 158-171)
+2. **Updated Test Documentation** (`src/tests/dealService.fallbacks.test.js`, lines 159-171)
    - Aligned test expectations with new error message
    - Updated comments to reflect current troubleshooting steps
 

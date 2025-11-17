@@ -26,7 +26,7 @@ Upon investigation, we discovered that:
 
 ### Code Changes
 
-#### 1. Updated `src/services/dealService.js` (Lines 1465-1472)
+#### 1. Updated `src/services/dealService.js` (Lines 1468-1474)
 
 **Before:**
 ```javascript
@@ -50,7 +50,7 @@ if (/permission denied for table users/i.test(msg)) {
 }
 ```
 
-#### 2. Updated `src/tests/dealService.fallbacks.test.js` (Lines 158-171)
+#### 2. Updated `src/tests/dealService.fallbacks.test.js` (Lines 159-171)
 
 **Before:**
 ```javascript

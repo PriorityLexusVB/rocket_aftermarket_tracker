@@ -164,7 +164,6 @@ describe('dealService fallback behaviors', () => {
       // - Reference migrations 20251104221500 and 20251115222458
 
       const rlsError = 'permission denied for table users'
-      const guidancePattern = /reload schema|user_profiles|20251104221500|20251115222458/i
 
       // The error handler should provide schema cache reload guidance
       expect(rlsError).toContain('permission denied')
