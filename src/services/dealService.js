@@ -1466,7 +1466,11 @@ export async function createDeal(formState) {
     const msg = String(error?.message || error || '')
     if (/permission denied for table users/i.test(msg)) {
       throw new Error(
-        'Failed to create deal: permission denied while evaluating RLS (auth.users). Please update RLS policies to reference public.user_profiles instead of auth.users, or apply the migration 20250107150001_fix_claims_rls_policies.sql.'
+        'Failed to create deal: permission denied while evaluating RLS policies. ' +
+          'This may indicate a database schema cache issue. ' +
+          'Try reloading the schema with: NOTIFY pgrst, \'reload schema\'; ' +
+          'If the issue persists, verify that all RLS policies use public.user_profiles instead of auth.users. ' +
+          'See migrations 20251104221500 and 20251115222458 for reference.'
       )
     }
     throw new Error(`Failed to create deal: ${error.message}`)

@@ -159,13 +159,14 @@ describe('dealService fallback behaviors', () => {
     it('documents RLS error guidance', () => {
       // When error contains "permission denied for table users":
       // Wrap with actionable message instructing to:
-      // - Update RLS policies to reference public.user_profiles instead of auth.users
-      // - Or apply migration 20250107150001_fix_claims_rls_policies.sql
+      // - Reload schema cache with NOTIFY pgrst, 'reload schema'
+      // - Verify RLS policies use public.user_profiles instead of auth.users
+      // - Reference migrations 20251104221500 and 20251115222458
 
       const rlsError = 'permission denied for table users'
-      const guidancePattern = /user_profiles.*migration.*20250107150001/i
+      const guidancePattern = /reload schema|user_profiles|20251104221500|20251115222458/i
 
-      // The wrapDbError function should transform this error
+      // The error handler should provide schema cache reload guidance
       expect(rlsError).toContain('permission denied')
     })
   })
