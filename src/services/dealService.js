@@ -1413,6 +1413,7 @@ export async function createDeal(formState) {
       const baseTransaction = {
         job_id: job?.id,
         vehicle_id: payload?.vehicle_id || null,
+        org_id: payload?.org_id || null, // ✅ FIX: Include org_id for RLS compliance
         total_amount:
           (normalizedLineItems || []).reduce((sum, item) => {
             const qty = Number(item?.quantity_used || item?.quantity || 1)
@@ -1583,6 +1584,7 @@ export async function updateDeal(id, formState) {
   const baseTransactionData = {
     job_id: id,
     vehicle_id: payload?.vehicle_id || null,
+    org_id: payload?.org_id || null, // ✅ FIX: Include org_id for RLS compliance
     total_amount: totalDealValue,
     customer_name: customerName || 'Unknown Customer',
     customer_phone: customerPhone || null,

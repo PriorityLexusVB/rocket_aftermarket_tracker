@@ -85,7 +85,7 @@ describe('ScheduleChip Navigation', () => {
       </BrowserRouter>
     )
 
-    const chip = screen.getByRole('button')
+    const chip = screen.getByTestId('schedule-chip')
     // Component uses descriptive aria-label with the formatted schedule
     expect(chip).toHaveAttribute('aria-label', 'Schedule: Jan 20, 09:00–11:00 ET')
   })
@@ -149,7 +149,7 @@ describe('ScheduleChip Navigation', () => {
       </BrowserRouter>
     )
 
-    const chip = screen.getByRole('button')
+    const chip = screen.getByTestId('schedule-chip')
     fireEvent.keyDown(chip, { key: 'Enter', code: 'Enter' })
     
     // Button click handler will fire on Enter automatically
