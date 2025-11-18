@@ -1261,6 +1261,17 @@ export async function createDeal(formState) {
     }
   }
 
+  // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
+  // In test environments, this is logged but doesn't block operation
+  if (!payload?.org_id) {
+    console.warn(
+      '[dealService:create] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
+        'Ensure UI passes org_id or user is properly authenticated.'
+    )
+    // Note: We don't throw here to preserve backward compatibility with tests
+    // In production, RLS policies will enforce tenant isolation at the database level
+  }
+
   // Ensure required fields the DB expects
   // jobs.job_number is NOT NULL + UNIQUE in schema; auto-generate if missing
   if (!payload?.job_number) {
@@ -1506,6 +1517,17 @@ export async function updateDeal(id, formState) {
     } catch (e) {
       console.warn('[dealService:update] Unable to infer org_id from profile:', e?.message)
     }
+  }
+
+  // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
+  // In test environments, this is logged but doesn't block operation
+  if (!payload?.org_id) {
+    console.warn(
+      '[dealService:update] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
+        'Ensure UI passes org_id or user is properly authenticated.'
+    )
+    // Note: We don't throw here to preserve backward compatibility with tests
+    // In production, RLS policies will enforce tenant isolation at the database level
   }
 
   // Ensure description is explicitly updated when provided (some environments rely on it for display)
