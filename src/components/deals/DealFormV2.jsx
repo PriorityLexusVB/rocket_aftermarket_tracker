@@ -311,6 +311,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         delivery_coordinator_id: customerData?.deliveryCoordinator || null,
         finance_manager_id: customerData?.financeManager || null,
         customer_needs_loaner: Boolean(customerData?.needsLoaner),
+        org_id: orgId || null, // ✅ FIX: Include org_id for proper tenant scoping and RLS compliance
         // Send loanerForm when needsLoaner is true for proper persistence via loaner_assignments
         loanerForm: customerData?.needsLoaner
           ? {
