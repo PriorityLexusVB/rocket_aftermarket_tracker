@@ -46,7 +46,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
     jobNumber: job?.job_number || '',
     stockNumber: job?.stock_number || '',
-    customerMobile: job?.customer_mobile || '',
+    customerMobile: job?.customer_phone || '',
     vendorId: job?.vendor_id || null,
     notes: job?.notes || job?.description || '', // Notes field with legacy fallback
     vehicleDescription: job?.vehicle_description || '',
