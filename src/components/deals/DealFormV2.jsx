@@ -264,6 +264,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Validation
   const validateStep1 = () => {
+    // Validate org_id for RLS compliance
+    if (!orgId) {
+      setError('Organization context required. Please refresh and try again.')
+      return false
+    }
+
     return (
       customerData?.customerName?.trim()?.length > 0 && customerData?.jobNumber?.trim()?.length > 0
     )
