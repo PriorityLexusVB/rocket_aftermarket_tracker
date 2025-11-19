@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/rlsPolicyAudit.js
+// scripts/rlsPolicyAudit.cjs
 // Read-only RLS policy audit: compares expected policies against MCP introspection artifacts
 
 const fs = require('fs')
