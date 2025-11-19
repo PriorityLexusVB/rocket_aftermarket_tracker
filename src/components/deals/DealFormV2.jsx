@@ -6,6 +6,7 @@ import useTenant from '../../hooks/useTenant'
 import dealService, { getCapabilities } from '../../services/dealService'
 import { draftToCreatePayload, draftToUpdatePayload } from './formAdapters'
 import { vehicleService } from '../../services/vehicleService'
+import { supabase } from '../../lib/supabase'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { titleCase } from '../../lib/format'
@@ -314,6 +315,27 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     setError('')
 
     try {
+      // Check job number uniqueness (skip in edit mode for same job)
+      const jobNumber = customerData?.jobNumber?.trim()
+      if (jobNumber) {
+        const { data: existing, error: checkError } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('job_number', jobNumber)
+          .maybeSingle()
+
+        if (checkError) {
+          throw new Error(`Failed to validate job number: ${checkError.message}`)
+        }
+
+        // If found and it's not the current job (edit mode), it's a duplicate
+        if (existing && existing.id !== job?.id) {
+          setError('Job number already exists. Please use a unique job number.')
+          setIsSubmitting(false)
+          return
+        }
+      }
+
       const payload = {
         customer_name: customerData?.customerName?.trim(),
         deal_date: customerData?.dealDate,
