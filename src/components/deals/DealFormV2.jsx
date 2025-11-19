@@ -326,6 +326,51 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     }, 0)
   }
 
+  // Parse database errors into user-friendly messages
+  const parseError = (err) => {
+    const msg = err?.message || ''
+
+    // RLS policy violations
+    if (msg.includes('permission denied') || msg.includes('RLS')) {
+      return 'You do not have permission to perform this action. Please contact your administrator.'
+    }
+
+    // Duplicate key violations
+    if (msg.includes('duplicate key') || msg.includes('already exists')) {
+      if (msg.includes('job_number')) {
+        return 'This job number already exists. Please use a unique job number.'
+      }
+      return 'A record with this information already exists. Please check for duplicates.'
+    }
+
+    // Foreign key violations
+    if (msg.includes('foreign key') || msg.includes('violates foreign key constraint')) {
+      if (msg.includes('vendor')) {
+        return 'Invalid vendor selected. Please refresh the page and try again.'
+      }
+      if (msg.includes('product')) {
+        return 'Invalid product selected. Please refresh the page and try again.'
+      }
+      if (msg.includes('user') || msg.includes('assigned_to')) {
+        return 'Invalid user assignment. Please refresh the page and try again.'
+      }
+      return 'Invalid reference to related data. Please refresh and try again.'
+    }
+
+    // Check constraint violations
+    if (msg.includes('violates check constraint')) {
+      return 'Invalid data format. Please check all fields and try again.'
+    }
+
+    // Network/connection errors
+    if (msg.includes('fetch') || msg.includes('network') || msg.includes('ECONNREFUSED')) {
+      return 'Network error. Please check your connection and try again.'
+    }
+
+    // Generic fallback
+    return `Failed to save: ${msg}`
+  }
+
   // Handle save
   const handleSave = async () => {
     if (!validateStep1() || !validateStep2()) {
@@ -412,7 +457,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
       if (onCancel) onCancel()
     } catch (err) {
-      setError(`Failed to save: ${err?.message}`)
+      setError(parseError(err))
     } finally {
       setIsSubmitting(false)
     }
