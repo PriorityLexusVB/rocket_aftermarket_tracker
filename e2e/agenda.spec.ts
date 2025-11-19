@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 // Assumes environment has VITE_SIMPLE_CALENDAR=true
 
 test.describe('Agenda View', () => {
-  test.skip('redirect after create focuses new appointment', async ({ page }) => {
+  test.skip('redirect after create focuses new appointment', async () => {
     // Note: This test requires a full deal creation flow which involves multiple steps:
     // 1. Create deal with customer/vehicle
     // 2. Add line items with scheduling
@@ -83,8 +83,8 @@ test.describe('Agenda View', () => {
     await page.goto('/')
     await page.goto('/calendar/agenda')
 
-    // Check if filter persisted (implementation dependent)
-    // For now, just verify page loads correctly after navigation
+    // Check if filter persisted
+    await expect(statusFilter).toHaveValue('completed')
     await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible()
   })
 })

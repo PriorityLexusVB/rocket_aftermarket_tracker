@@ -50,7 +50,7 @@ const StatsOverview = ({ stats, userRole = 'staff' }) => {
     statCards?.push({
       id: 'profit',
       title: 'Total Profit',
-      value: `$${(stats?.totalProfit || 0)?.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+      value: `$${(stats?.totalProfit || 0)?.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
       icon: 'DollarSign',
       color: 'text-success',
       bgColor: 'bg-success/10',

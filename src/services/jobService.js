@@ -324,6 +324,76 @@ export const jobService = {
   async getRecentJobs(limit = 20) {
     return this.getAllJobs({ limit })
   },
+
+  /**
+   * Update scheduling for all line items of a job
+   * This is used by the calendar reschedule functionality
+   * 
+   * @param {string} jobId - Job ID
+   * @param {Object} scheduleData - New schedule data
+   * @param {string} scheduleData.startTime - ISO timestamp for start
+   * @param {string} scheduleData.endTime - ISO timestamp for end
+   * @returns {Promise<Object>} Updated job with line items
+   */
+  async updateLineItemSchedules(jobId, scheduleData) {
+    if (!jobId) throw new Error('Job ID is required')
+    if (!scheduleData?.startTime || !scheduleData?.endTime) {
+      throw new Error('Start time and end time are required')
+    }
+
+    try {
+      // First, get all line items for this job that have requires_scheduling = true
+      const { data: lineItems, error: fetchErr } = await supabase
+        ?.from('job_parts')
+        ?.select('id, requires_scheduling')
+        ?.eq('job_id', jobId)
+
+      if (fetchErr) throw fetchErr
+
+      // Filter to only those that require scheduling
+      const scheduledItems = (lineItems || []).filter((item) => item?.requires_scheduling)
+
+      if (scheduledItems.length === 0) {
+        throw new Error('No line items require scheduling for this job')
+      }
+
+      // Update all scheduled line items with the new times
+      // Strategy: Apply the same start/end to all items (simplified approach)
+      // More complex: could preserve relative offsets if needed
+      
+      // Extract date from scheduled_start_time for promised_date field
+      const promisedDate = scheduleData.startTime ? new Date(scheduleData.startTime).toISOString().split('T')[0] : null
+      
+      const updates = scheduledItems.map((item) => ({
+        id: item.id,
+        scheduled_start_time: scheduleData.startTime,
+        scheduled_end_time: scheduleData.endTime,
+        promised_date: promisedDate,
+        updated_at: nowIso(),
+      }))
+
+      // Batch update all line items
+      for (const update of updates) {
+        const { error: updateErr } = await supabase
+          ?.from('job_parts')
+          ?.update({
+            scheduled_start_time: update.scheduled_start_time,
+            scheduled_end_time: update.scheduled_end_time,
+            promised_date: update.promised_date,
+            updated_at: update.updated_at,
+          })
+          ?.eq('id', update.id)
+
+        if (updateErr) throw updateErr
+      }
+
+      // Fetch and return the updated job with line items
+      return await this.getJobById(jobId)
+    } catch (err) {
+      console.error('[jobs] updateLineItemSchedules failed:', err?.message || err)
+      throw new Error(`Failed to update line item schedules: ${err?.message || err}`)
+    }
+  },
 }
 
 // Named exports for back-compat
@@ -333,5 +403,6 @@ export const createDeal = jobService?.createJob
 export const updateDeal = jobService?.updateJob
 export const deleteDeal = jobService?.deleteJob
 export const updateStatus = jobService?.updateStatus
+export const updateLineItemSchedules = jobService?.updateLineItemSchedules
 
 export default jobService

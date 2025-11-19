@@ -8,6 +8,9 @@ import { jobService } from '@/services/jobService'
 import { calendarService } from '@/services/calendarService'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
+import { formatScheduleRange } from '@/utils/dateTimeUtils'
+import useJobEventActions from '@/hooks/useJobEventActions'
+import RescheduleModal from './RescheduleModal'
 
 // Lightweight date key grouping (America/New_York)
 function toDateKey(ts) {
@@ -81,6 +84,12 @@ export default function CalendarAgenda() {
     [location.search]
   )
   const focusRef = useRef(null)
+
+  // Reschedule modal state
+  const [rescheduleModal, setRescheduleModal] = useState({ open: false, job: null })
+
+  // Filters toggle state
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
 
   // Sync filters to URL
   useEffect(() => {
@@ -177,21 +186,38 @@ export default function CalendarAgenda() {
     }
   }, [focusId])
 
-  async function handleReschedule(job) {
-    // Minimal inline reschedule: +1 hour from current end or start
-    const start = new Date(job.scheduled_start_time)
-    const end = new Date(job.scheduled_end_time || start.getTime() + 60 * 60 * 1000)
-    start.setHours(start.getHours() + 1)
-    end.setHours(end.getHours() + 1)
+  // Shared job event actions
+  const jobActions = useJobEventActions({
+    navigate,
+    toast,
+    jobService,
+    calendarService,
+    onReschedule: (job) => {
+      setRescheduleModal({ open: true, job })
+    },
+    onRefresh: load,
+  })
+
+  function handleReschedule(job) {
+    jobActions.openRescheduleModal(job)
+  }
+
+  async function handleRescheduleSubmit(scheduleData) {
+    if (!rescheduleModal.job) return
+
     try {
-      await jobService.updateJob(job.id, {
-        scheduled_start_time: start.toISOString(),
-        scheduled_end_time: end.toISOString(),
-      })
-      toast?.success?.('Rescheduled')
+      // Update line item schedules using the new service method
+      await jobService.updateLineItemSchedules(rescheduleModal.job.id, scheduleData)
+      
+      // Show success message
+      toast?.success?.('Schedule updated successfully')
+      
+      // Close modal and refresh
+      setRescheduleModal({ open: false, job: null })
       await load()
     } catch (e) {
-      toast?.error?.('Reschedule failed')
+      console.error('[agenda] reschedule failed', e)
+      toast?.error?.(e?.message || 'Failed to reschedule')
     }
   }
 
@@ -234,37 +260,59 @@ export default function CalendarAgenda() {
     <div className="p-4 space-y-4" aria-label="Scheduled Appointments Agenda">
       {/* Aria-live region for screen reader announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
-      <header className="flex items-center gap-4 flex-wrap" aria-label="Agenda controls">
-        <h1 className="text-xl font-semibold">Scheduled Appointments</h1>
-        <input
-          aria-label="Search appointments"
-          placeholder="Search"
-          className="border rounded px-2 py-1"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <select
-          aria-label="Filter by date range"
-          className="border rounded px-2 py-1"
-          value={dateRange}
-          onChange={(e) => setDateRange(e.target.value)}
-        >
-          <option value="all">All Dates</option>
-          <option value="today">Today</option>
-          <option value="next7days">Next 7 Days</option>
-        </select>
-        <select
-          aria-label="Filter by status"
-          className="border rounded px-2 py-1"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">All Statuses</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="in_progress">In Progress</option>
-          <option value="completed">Completed</option>
-        </select>
+      
+      {/* Header with always-visible search and date range */}
+      <header className="space-y-3" aria-label="Agenda controls">
+        <div className="flex items-center gap-4 flex-wrap">
+          <h1 className="text-xl font-semibold">Scheduled Appointments</h1>
+          <input
+            aria-label="Search appointments"
+            placeholder="Search"
+            className="border rounded px-2 py-1"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <select
+            aria-label="Filter by date range"
+            className="border rounded px-2 py-1"
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+          >
+            <option value="all">All Dates</option>
+            <option value="today">Today</option>
+            <option value="next7days">Next 7 Days</option>
+          </select>
+          
+          {/* Filter toggle button */}
+          <button
+            onClick={() => setFiltersExpanded((prev) => !prev)}
+            className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
+            aria-expanded={filtersExpanded}
+            aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
+          >
+            Filters {filtersExpanded ? '▲' : '▼'}
+          </button>
+        </div>
+
+        {/* Collapsible filters panel */}
+        {filtersExpanded && (
+          <div className="flex items-center gap-4 flex-wrap p-3 bg-gray-50 rounded border">
+            <select
+              aria-label="Filter by status"
+              className="border rounded px-2 py-1 bg-white"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+            {/* Note: vendor filter can be added here when vendor list is available */}
+          </div>
+        )}
       </header>
+      
       {groups.length === 0 && (
         <div role="status" aria-live="polite">
           No upcoming appointments.
@@ -277,6 +325,8 @@ export default function CalendarAgenda() {
             {rows.map((r) => {
               const focused = r.id === focusId
               const hasConflict = conflicts.get(r.id)
+              const timeRange = formatScheduleRange(r.scheduled_start_time, r.scheduled_end_time)
+              
               return (
                 <li
                   key={r.id}
@@ -285,11 +335,8 @@ export default function CalendarAgenda() {
                   aria-label={`Appointment ${r.title || r.job_number}`}
                   className={`flex items-center gap-3 px-3 py-2 text-sm ${focused ? 'bg-yellow-50' : ''}`}
                 >
-                  <div className="w-32 text-gray-700">
-                    {new Date(r.scheduled_start_time).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                  <div className="w-40 text-gray-700 font-mono text-xs">
+                    {timeRange}
                   </div>
                   <div className="flex-1">
                     <div className="font-medium truncate flex items-center gap-2">
@@ -337,6 +384,16 @@ export default function CalendarAgenda() {
           </ul>
         </section>
       ))}
+
+      {/* Reschedule Modal */}
+      <RescheduleModal
+        open={rescheduleModal.open}
+        onClose={() => setRescheduleModal({ open: false, job: null })}
+        onSubmit={handleRescheduleSubmit}
+        job={rescheduleModal.job}
+        initialStart={rescheduleModal.job?.scheduled_start_time}
+        initialEnd={rescheduleModal.job?.scheduled_end_time}
+      />
     </div>
   )
 }

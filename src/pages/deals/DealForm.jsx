@@ -136,6 +136,11 @@ export default function DealForm({
       delivery_coordinator_id: initial.delivery_coordinator_id || '',
       customer_mobile: initial.customer_mobile || '',
       customer_needs_loaner: !!initial.customer_needs_loaner,
+      loanerForm: {
+        loaner_number: initial?.loanerForm?.loaner_number || '',
+        eta_return_date: initial?.loanerForm?.eta_return_date || '',
+        notes: initial?.loanerForm?.notes || '',
+      },
       lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
       promised_date: initial.promised_date || '',
       scheduled_start_time: initial.scheduled_start_time || '',
@@ -737,12 +742,23 @@ export default function DealForm({
                 type="button"
                 onClick={() => navigate('/admin/staff')}
                 className="underline hover:text-amber-900"
-                data-testid="admin-link-sales"
+                data-testid="admin-link-sales-empty"
               >
                 Open Admin
               </button>
             </p>
           )}
+          <p className="mt-1 text-xs text-slate-500">
+            Need to edit sales staff?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/staff')}
+              className="text-blue-600 hover:underline"
+              data-testid="admin-link-sales"
+            >
+              Open Admin
+            </button>
+          </p>
         </div>
 
         <div>
@@ -773,17 +789,17 @@ export default function DealForm({
               </button>
             </p>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              const currentPath = window.location.pathname
-              navigate(`/admin/staff?return=${encodeURIComponent(currentPath)}`)
-            }}
-            className="mt-2 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            data-testid="admin-staff-link"
-          >
-            <span>Admin</span>
-          </button>
+          <p className="mt-1 text-xs text-slate-500">
+            Need to edit finance managers?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/staff')}
+              className="text-blue-600 hover:underline"
+              data-testid="admin-link-finance"
+            >
+              Open Admin
+            </button>
+          </p>
         </div>
 
         <div>
@@ -808,12 +824,23 @@ export default function DealForm({
                 type="button"
                 onClick={() => navigate('/admin/staff')}
                 className="underline hover:text-amber-900"
-                data-testid="admin-link-delivery"
+                data-testid="admin-link-delivery-empty"
               >
                 Open Admin
               </button>
             </p>
           )}
+          <p className="mt-1 text-xs text-slate-500">
+            Need to edit coordinators?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/admin/staff')}
+              className="text-blue-600 hover:underline"
+              data-testid="admin-link-delivery"
+            >
+              Open Admin
+            </button>
+          </p>
         </div>
       </section>
 
@@ -986,7 +1013,7 @@ export default function DealForm({
               {/* Scheduling controls */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Promised Date</label>
+                  <label className="block text-sm font-medium text-slate-700">Date Scheduled</label>
                   <input
                     data-testid={`promised-date-${idx}`}
                     type="date"

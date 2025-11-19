@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import Button from '../../../components/ui/Button'
 import Icon from '../../../components/ui/Icon'
+import ScheduleChip from '@/components/deals/ScheduleChip'
 
 // Read-only Deal Detail Drawer with 8 tabs and quick actions
 export default function DealDetailDrawer({ isOpen, onClose, deal }) {
@@ -133,28 +134,14 @@ export default function DealDetailDrawer({ isOpen, onClose, deal }) {
         return (
           <>
             <Section title="Appointment">
-              {deal?.appt_start ? (
-                <div className="text-sm">
-                  {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                  {' • '}
-                  {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  {'–'}
-                  {deal?.appt_end
-                    ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : ''}
-                </div>
-              ) : (
-                '—'
-              )}
+              {/* Unified scheduling chip (falls back to legacy fields appt_start/appt_end) */}
+              <ScheduleChip
+                scheduledStartTime={deal?.scheduled_start_time || deal?.appt_start}
+                scheduledEndTime={deal?.scheduled_end_time || deal?.appt_end}
+                jobId={deal?.id}
+                enableAgendaNavigation={false}
+              />
+              {!deal?.scheduled_start_time && !deal?.appt_start && '—'}
             </Section>
             <Section title="Next Promise">
               {deal?.next_promised_iso ? new Date(deal?.next_promised_iso).toLocaleString() : '—'}

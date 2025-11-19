@@ -1,0 +1,155 @@
+================================================================================
+                    LOANER TOGGLE WORKFLOW - VERIFICATION SUMMARY
+================================================================================
+
+QUESTION 1: Is there a toggle that shows/hides loaner fields?
+STATUS: ✅ YES, FULLY IMPLEMENTED
+Location: DealFormV2.jsx lines 589-606
+- Checkbox with ID "needsLoaner"
+- Auto-focuses loaner number input when checked
+- Test ID: "loaner-checkbox"
+
+================================================================================
+
+QUESTION 2: When toggle is OFF, are loaner fields cleared and hidden?
+STATUS: ✅ YES, PARTIALLY IMPLEMENTED (ACCEPTABLE)
+Location: DealFormV2.jsx lines 608-625
+
+UI HIDING:
+  ✅ Fields are conditional: {customerData?.needsLoaner && (...)}
+  ✅ Section disappears when toggle is OFF
+
+PAYLOAD CLEARING:
+  ✅ loanerForm: null when needsLoaner is false (line 322)
+  ✅ stripLoanerWhenOff() removes all loaner keys (formAdapters.js:54-63)
+
+DATABASE CLEARING:
+  ⚠️ ISSUE: Existing loaner_assignments records NOT deleted
+  ⚠️ They remain orphaned when toggle is turned OFF
+  ⚠️ Recommendation: Add deletion logic in dealService.js updateDeal()
+
+================================================================================
+
+QUESTION 3: When toggle is ON, do loaner fields appear with inputs?
+STATUS: ✅ YES, PARTIALLY IMPLEMENTED
+Location: DealFormV2.jsx lines 608-625
+
+IMPLEMENTED:
+  ✅ Loaner # (vendor/loaner number input)
+  ✅ Text input for loaner number
+  ✅ Auto-focus on toggle check
+  ✅ Test ID: "loaner-number-input"
+
+NOT IMPLEMENTED IN V2 UI:
+  ❌ ETA Return Date (exists in formAdapters but not shown)
+  ❌ Notes field (exists in formAdapters but not shown)
+  → These ARE persisted to database, just not shown in DealFormV2
+
+DATA STRUCTURE SUPPORTS:
+  - loanerForm.loaner_number ✅
+  - loanerForm.eta_return_date (not in UI)
+  - loanerForm.notes (not in UI)
+
+================================================================================
+
+QUESTION 4: In edit mode, does toggle reflect current loaner status?
+STATUS: ✅ YES, FULLY IMPLEMENTED
+Location: DealFormV2.jsx lines 116-134
+
+IMPLEMENTATION:
+  ✅ Loads job.customer_needs_loaner as boolean → needsLoaner state
+  ✅ Loads job.loaner_number → loanerNumber state
+  ✅ Data comes from mapDbDealToForm() in dealService.js
+  ✅ Handles both snake_case (DB) and camelCase (form) variants
+
+EDIT FLOW:
+  Database → getDeal() → mapDbDealToForm() 
+    → { needsLoaner: boolean, loanerNumber: string }
+    → DealFormV2 checkbox reflects saved state
+    → User can toggle and resave
+
+TEST COVERAGE: ✅ Tested in dealForm.loanerToggle.test.jsx (edit mode tests)
+
+================================================================================
+
+QUESTION 5: Does turning toggle OFF clear all loaner data on save?
+STATUS: ⚠️ MOSTLY YES, WITH IMPORTANT CAVEAT
+
+FORM PAYLOAD CLEARING:
+  ✅ loanerForm: null when needsLoaner is false (DealFormV2.jsx:322)
+  ✅ stripLoanerWhenOff() applied (formAdapters.js:112)
+  ✅ customer_needs_loaner: false in payload
+  
+DATABASE FIELD CLEARING:
+  ✅ jobs.customer_needs_loaner set to false
+  ✅ Loaner data in jobs table not updated (ignored)
+  
+LOANER ASSIGNMENTS TABLE:
+  ⚠️ CRITICAL ISSUE: Records NOT deleted when toggle turns OFF
+  
+  Current behavior (line 1697 in dealService.js):
+    if (payload?.customer_needs_loaner && loanerForm) {
+      await upsertLoanerAssignment(id, loanerForm)
+    }
+  
+  This means:
+    - When customer_needs_loaner = false
+    - upsertLoanerAssignment is NOT called
+    - Existing loaner_assignments record stays in database
+    - It's orphaned (customer_needs_loaner is false)
+  
+  Missing logic:
+    if (!payload?.customer_needs_loaner) {
+      // DELETE from loaner_assignments table
+    }
+
+IMPACT:
+  - Loaner data in payload is cleared ✅
+  - Database loaner_assignments table has ghost records ⚠️
+  - No functional issue (records ignored) but database bloat
+  - Recommendation: Add deletion logic
+
+================================================================================
+
+KEY FINDINGS SUMMARY
+================================================================================
+
+STRENGTHS:
+  ✅ Toggle UI properly implemented and tested
+  ✅ Conditional rendering works correctly
+  ✅ Edit mode properly loads loaner state
+  ✅ Payload clearing works in form
+  ✅ Data persistence to loaner_assignments works
+  ✅ Comprehensive test coverage
+  ✅ stripLoanerWhenOff function available for legacy forms
+
+GAPS:
+  ⚠️ No deletion of loaner_assignments when toggle OFF
+  ❌ Return date and notes fields not in DealFormV2 UI
+  ❌ No visual indicator of loaner status in deal lists
+
+CRITICAL: Should implement loaner_assignments deletion when toggle is OFF
+
+================================================================================
+
+FILE REFERENCES
+================================================================================
+Core Implementation:
+  /src/components/deals/DealFormV2.jsx (lines 589-625)
+  /src/components/deals/formAdapters.js (lines 54-63, 112)
+  /src/services/dealService.js (lines 1418, 1697)
+
+Data Persistence:
+  /src/services/dealService.js::upsertLoanerAssignment() (lines 601-645)
+  /src/services/dealService.js::mapDbDealToForm() (lines 1851-1858)
+
+Testing:
+  /src/tests/dealForm.loanerToggle.test.jsx
+  /src/tests/dealService.loanerToggle.test.jsx
+  /src/tests/dealService.loanerPersistence.test.js
+
+Documentation:
+  /LOANER_PERSISTENCE_FIX.md
+  /LOANER_TOGGLE_VERIFICATION.md (newly created)
+
+================================================================================
