@@ -1912,6 +1912,54 @@ export async function markLoanerReturned(loanerAssignmentId) {
   }
 }
 
+/**
+ * Search for existing customers by name to prevent duplicates
+ * @param {string} searchTerm - Partial customer name to search for
+ * @param {number} limit - Maximum number of results to return
+ * @returns {Promise<Array>} Array of unique customer records with name, email, phone
+ */
+export async function searchCustomers(searchTerm = '', limit = 10) {
+  if (!searchTerm || searchTerm.trim().length < 2) {
+    return []
+  }
+
+  try {
+    const { data, error } = await supabase
+      ?.from('transactions')
+      ?.select('customer_name, customer_email, customer_phone')
+      ?.ilike('customer_name', `%${searchTerm.trim()}%`)
+      ?.order('customer_name')
+      ?.limit(limit * 3) // Get more to dedupe
+
+    if (error) {
+      console.error('[dealService:searchCustomers] Query error:', error)
+      return []
+    }
+
+    // Deduplicate by customer_name (case-insensitive)
+    const seen = new Map()
+    const unique = []
+
+    for (const customer of data || []) {
+      const key = customer?.customer_name?.toLowerCase()
+      if (key && !seen.has(key)) {
+        seen.set(key, true)
+        unique.push({
+          name: customer.customer_name,
+          email: customer.customer_email || '',
+          phone: customer.customer_phone || '',
+        })
+        if (unique.length >= limit) break
+      }
+    }
+
+    return unique
+  } catch (err) {
+    console.error('[dealService:searchCustomers] Unexpected error:', err)
+    return []
+  }
+}
+
 // Back-compat default export (so both import styles work):
 export const dealService = {
   getAllDeals,
