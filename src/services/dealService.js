@@ -1696,6 +1696,16 @@ export async function updateDeal(id, formState) {
   // A3: Handle loaner assignment updates
   if (payload?.customer_needs_loaner && loanerForm) {
     await upsertLoanerAssignment(id, loanerForm)
+  } else if (payload?.customer_needs_loaner === false) {
+    // Delete loaner assignments when toggle is turned OFF
+    const { error: deleteErr } = await supabase
+      ?.from('loaner_assignments')
+      ?.delete()
+      ?.eq('job_id', id)
+
+    if (deleteErr) {
+      console.warn('[dealService:update] Failed to delete loaner assignment:', deleteErr.message)
+    }
   }
 
   // 3.5) Update vehicle with stock_number and owner_phone if vehicle_id is present
