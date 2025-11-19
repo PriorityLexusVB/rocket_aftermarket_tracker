@@ -530,8 +530,9 @@ function mapFormToDb(formState = {}) {
 
   const customerEmail = (formState?.customerEmail || formState?.customer_email || '').trim()
 
-  // Extract stock_number for vehicle upsert
+  // Extract stock_number and VIN for vehicle upsert
   const stockNumber = formState?.stockNumber?.trim() || formState?.stock_number?.trim() || ''
+  const vin = (formState?.vin?.trim() || formState?.vehicle_vin?.trim() || '').toUpperCase()
 
   return {
     // Back-compat keys used internally
@@ -546,6 +547,7 @@ function mapFormToDb(formState = {}) {
     customerPhone,
     customerEmail,
     stockNumber,
+    vin,
   }
 }
 
@@ -683,12 +685,13 @@ function computeEarliestTimeWindow(normalizedLineItems) {
 }
 
 // Helper: Attach or create vehicle by stock number when vehicle_id is missing
-async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, orgId = null) {
+async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, orgId = null, vin = null) {
   if (!stockNumber?.trim()) {
     return null // No stock number provided
   }
 
   const normalizedStock = stockNumber.trim()
+  const normalizedVin = vin?.trim()?.toUpperCase() || null
 
   try {
     // Try to find existing vehicle by stock_number
@@ -717,6 +720,10 @@ async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, or
     const vehicleData = {
       stock_number: normalizedStock,
       owner_phone: customerPhone || null,
+    }
+
+    if (normalizedVin) {
+      vehicleData.vin = normalizedVin
     }
 
     if (orgId) {
@@ -1241,6 +1248,7 @@ export async function createDeal(formState) {
     customerPhone,
     customerEmail,
     stockNumber,
+    vin,
   } = mapFormToDb(formState || {})
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
@@ -1289,7 +1297,8 @@ export async function createDeal(formState) {
     const vehicleId = await attachOrCreateVehicleByStockNumber(
       stockNumber,
       customerPhone,
-      payload?.org_id
+      payload?.org_id,
+      vin
     )
     if (vehicleId) {
       payload.vehicle_id = vehicleId
@@ -1499,6 +1508,7 @@ export async function updateDeal(id, formState) {
     customerPhone,
     customerEmail,
     stockNumber,
+    vin,
   } = mapFormToDb(formState || {})
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile (align with createDeal)
@@ -1549,7 +1559,8 @@ export async function updateDeal(id, formState) {
     const vehicleId = await attachOrCreateVehicleByStockNumber(
       stockNumber,
       customerPhone,
-      payload?.org_id
+      payload?.org_id,
+      vin
     )
     if (vehicleId) {
       payload.vehicle_id = vehicleId
@@ -1696,12 +1707,23 @@ export async function updateDeal(id, formState) {
   // A3: Handle loaner assignment updates
   if (payload?.customer_needs_loaner && loanerForm) {
     await upsertLoanerAssignment(id, loanerForm)
+  } else if (payload?.customer_needs_loaner === false) {
+    // Delete loaner assignments when toggle is turned OFF
+    const { error: deleteErr } = await supabase
+      ?.from('loaner_assignments')
+      ?.delete()
+      ?.eq('job_id', id)
+
+    if (deleteErr) {
+      console.warn('[dealService:update] Failed to delete loaner assignment:', deleteErr.message)
+    }
   }
 
-  // 3.5) Update vehicle with stock_number and owner_phone if vehicle_id is present
-  if (payload?.vehicle_id && (stockNumber || customerPhone)) {
+  // 3.5) Update vehicle with stock_number, VIN, and owner_phone if vehicle_id is present
+  if (payload?.vehicle_id && (stockNumber || vin || customerPhone)) {
     const vehicleUpdate = {}
     if (stockNumber) vehicleUpdate.stock_number = stockNumber
+    if (vin) vehicleUpdate.vin = vin.toUpperCase()
     if (customerPhone) vehicleUpdate.owner_phone = customerPhone
 
     if (Object.keys(vehicleUpdate).length > 0) {
@@ -1899,6 +1921,54 @@ export async function markLoanerReturned(loanerAssignmentId) {
   } catch (error) {
     console.error('Failed to mark loaner as returned:', error)
     throw new Error(`Failed to mark loaner as returned: ${error?.message}`)
+  }
+}
+
+/**
+ * Search for existing customers by name to prevent duplicates
+ * @param {string} searchTerm - Partial customer name to search for
+ * @param {number} limit - Maximum number of results to return
+ * @returns {Promise<Array>} Array of unique customer records with name, email, phone
+ */
+export async function searchCustomers(searchTerm = '', limit = 10) {
+  if (!searchTerm || searchTerm.trim().length < 2) {
+    return []
+  }
+
+  try {
+    const { data, error } = await supabase
+      ?.from('transactions')
+      ?.select('customer_name, customer_email, customer_phone')
+      ?.ilike('customer_name', `%${searchTerm.trim()}%`)
+      ?.order('customer_name')
+      ?.limit(limit * 3) // Get more to dedupe
+
+    if (error) {
+      console.error('[dealService:searchCustomers] Query error:', error)
+      return []
+    }
+
+    // Deduplicate by customer_name (case-insensitive)
+    const seen = new Map()
+    const unique = []
+
+    for (const customer of data || []) {
+      const key = customer?.customer_name?.toLowerCase()
+      if (key && !seen.has(key)) {
+        seen.set(key, true)
+        unique.push({
+          name: customer.customer_name,
+          email: customer.customer_email || '',
+          phone: customer.customer_phone || '',
+        })
+        if (unique.length >= limit) break
+      }
+    }
+
+    return unique
+  } catch (err) {
+    console.error('[dealService:searchCustomers] Unexpected error:', err)
+    return []
   }
 }
 

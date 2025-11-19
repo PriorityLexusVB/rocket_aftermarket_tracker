@@ -1,9 +1,41 @@
-// Phone normalization helper
+// Phone normalization helper with edge case handling
 export const normalizePhone = (s = '') => {
+  if (!s || typeof s !== 'string') return ''
+
+  // Handle extensions (preserve original if extension detected)
+  // Common patterns: ext, x, #, extension
+  if (/\b(ext|x|extension|#)\s*\.?\s*\d+/i.test(s)) {
+    // Return original for manual review - extensions need special handling
+    return s.trim()
+  }
+
+  // Extract only digits
   const d = (s.match(/\d/g) || []).join('')
-  if (d.length === 10) return `+1${d}`
-  if (d.startsWith('1') && d.length === 11) return `+${d}`
-  return d ? `+${d}` : ''
+
+  // Validate minimum length (at least 10 digits for valid phone)
+  if (d.length < 10) {
+    // Return original if too short - likely invalid or incomplete
+    return s.trim()
+  }
+
+  // Validate maximum length (reasonable phone number limit)
+  if (d.length > 15) {
+    // E.164 max is 15 digits - return original if exceeded
+    return s.trim()
+  }
+
+  // US/Canada numbers (NANP - North American Numbering Plan)
+  if (d.length === 10) {
+    return `+1${d}` // Add US/Canada country code
+  }
+
+  if (d.startsWith('1') && d.length === 11) {
+    return `+${d}` // Already has US/Canada country code
+  }
+
+  // International numbers (10-15 digits, not US/Canada)
+  // Format as E.164 with + prefix
+  return `+${d}`
 }
 
 export function normalizeLineItems(draft = {}) {
