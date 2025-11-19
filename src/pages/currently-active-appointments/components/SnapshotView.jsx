@@ -4,23 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { jobService } from '@/services/jobService'
 import { useToast } from '@/components/ui/ToastProvider'
+import { createUndoEntry, canUndo } from './undoHelpers'
+import { formatTime } from '@/utils/dateTimeUtils'
 
 const SIMPLE_CAL_ON = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
-
-// Format a time in America/New_York without adding a new dependency
-function formatLocalTimeNY(iso) {
-  if (!iso) return ''
-  try {
-    const d = new Date(iso)
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(d)
-  } catch (_) {
-    return ''
-  }
-}
 
 // Exported to allow unit testing
 export function filterAndSort(jobs) {
@@ -77,15 +64,7 @@ export function detectConflicts(rows) {
   return conflictIds
 }
 
-// Exported to allow unit testing: manage undo state transitions
-export function createUndoEntry(jobId, prevStatus) {
-  return { jobId, prevStatus, timeoutId: null }
-}
-
-// Exported to allow unit testing: check if undo is available
-export function canUndo(undoMap, jobId) {
-  return undoMap.has(jobId)
-}
+// Undo helpers moved to './undoHelpers'
 
 export default function SnapshotView() {
   const { orgId } = useTenant()
@@ -137,7 +116,7 @@ export default function SnapshotView() {
       }, 10000)
       setUndoMap((m) => {
         const copy = new Map(m)
-        copy.set(job.id, { prevStatus, timeoutId: tId })
+        copy.set(job.id, createUndoEntry(job.id, prevStatus, tId))
         return copy
       })
     } catch (e) {
@@ -200,8 +179,8 @@ export default function SnapshotView() {
 
       <ul role="list" className="divide-y rounded border bg-white">
         {rows.map((j) => {
-          const start = formatLocalTimeNY(j.scheduled_start_time)
-          const end = formatLocalTimeNY(j.scheduled_end_time)
+          const start = formatTime(j.scheduled_start_time)
+          const end = formatTime(j.scheduled_end_time)
           const vehicle = j?.vehicle
           const vendorName = j?.vendor?.name || 'Unassigned'
           const customer = vehicle?.owner_name || ''
@@ -212,7 +191,7 @@ export default function SnapshotView() {
               className="flex items-center gap-3 px-3 py-2 text-sm"
               aria-label={`Appointment ${j.title || j.job_number}`}
             >
-              <div className="w-28 text-gray-700 flex items-center gap-1">
+              <div className="w-28 text-gray-700 flex items-center gap-1 text-xs">
                 <span>
                   {start}
                   {end ? ` – ${end}` : ''}
@@ -222,8 +201,9 @@ export default function SnapshotView() {
                     className="text-amber-600"
                     title="Potential scheduling overlap for this vendor"
                     aria-label="Scheduling conflict detected"
+                    role="img"
                   >
-                    6A0
+                    ⚠️
                   </span>
                 )}
               </div>
@@ -255,7 +235,7 @@ export default function SnapshotView() {
                     Reschedule
                   </button>
                 )}
-                {undoInfo ? (
+                {canUndo(undoMap, j.id) ? (
                   <button
                     onClick={() => handleUndo(j.id)}
                     className="text-amber-600 hover:underline"

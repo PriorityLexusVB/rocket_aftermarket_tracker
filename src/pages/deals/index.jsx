@@ -9,6 +9,7 @@ import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
+import ScheduleChip from '../../components/deals/ScheduleChip'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -16,6 +17,9 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
+
+// Feature flag for Simple Agenda
+const SIMPLE_AGENDA_ENABLED = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
 // ✅ UPDATED: StatusPill with enhanced styling
 const StatusPill = ({ status }) => {
@@ -87,8 +91,8 @@ const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
       ? 'bg-amber-100 text-amber-800 border-amber-200'
       : 'bg-green-100 text-green-800 border-green-200'
 
-  // Use date-fns for consistent formatting: "MMM d" (e.g., "Jan 18")
-  const short = format(parseISO(nextPromisedAt), 'MMM d')
+  // Use date-fns for consistent formatting: "EEE d" (e.g., "Mon 18")
+  const short = format(parseISO(nextPromisedAt), 'EEE d')
 
   return (
     <span
@@ -105,7 +109,7 @@ const CustomerDisplay = ({ deal }) => {
   if (!deal) return <span className="text-sm text-slate-700">—</span>
 
   const rawName = deal?.customer_name || deal?.customerEmail || '—'
-  const name = rawName !== '—' ? titleCase(rawName) : rawName
+  const name = rawName  // Already titleCased in database
   const email = deal?.customer_email || ''
   const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
   const title = [name, email, tags.length ? `Tags: ${tags.join(', ')}` : null]
@@ -494,6 +498,19 @@ export default function DealsPage() {
       console.error('Mark returned error:', e)
     } finally {
       setReturningLoaner(false)
+    }
+  }
+
+  // ✅ ADDED: Handle schedule chip click
+  const handleScheduleClick = (deal) => {
+    if (!deal?.id) return
+    
+    // If Simple Agenda is enabled, navigate to agenda with focus parameter
+    if (SIMPLE_AGENDA_ENABLED) {
+      navigate(`/calendar/agenda?focus=${deal.id}`)
+    } else {
+      // Otherwise, open edit modal
+      handleEditDeal(deal.id)
     }
   }
 
@@ -1476,38 +1493,13 @@ export default function DealsPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3 w-[180px]">
-                      {deal?.appt_start ? (
-                        <span className="text-sm text-slate-700">
-                          {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                          {' • '}
-                          {(() => {
-                            const startTime = new Date(deal?.appt_start).toLocaleTimeString(
-                              'en-US',
-                              {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }
-                            )
-                            const endTime = deal?.appt_end
-                              ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : null
-
-                            // If start and end times are identical, only show once
-                            if (endTime && startTime !== endTime) {
-                              return `${startTime}–${endTime}`
-                            }
-                            return startTime
-                          })()}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-500">—</span>
-                      )}
+                      <ScheduleChip 
+                        deal={deal} 
+                        onClick={handleScheduleClick}
+                        showIcon={true}
+                        Icon={Icon}
+                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
+                      />
                     </td>
                     <td
                       className="px-4 py-3 max-w-[220px]"
@@ -1692,7 +1684,7 @@ export default function DealsPage() {
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
                           <div className="truncate font-medium text-slate-900 text-sm">
-                            {deal?.customer_name ? titleCase(deal.customer_name) : '—'}
+                            {deal?.customer_name || '—'}
                           </div>
                           <div className="text-xs text-slate-500 truncate">
                             {deal?.customer_phone_e164 ||
@@ -1764,26 +1756,13 @@ export default function DealsPage() {
                             )
                           })()}
                         </span>
-                        {deal?.appt_start && (
-                          <span className="text-xs text-slate-700" data-testid="mobile-appt-window">
-                            {new Date(deal?.appt_start).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                            {' • '}
-                            {new Date(deal?.appt_start).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                            {'–'}
-                            {deal?.appt_end
-                              ? new Date(deal?.appt_end).toLocaleTimeString('en-US', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })
-                              : ''}
-                          </span>
-                        )}
+                        <ScheduleChip 
+                          deal={deal} 
+                          onClick={handleScheduleClick}
+                          showIcon={true}
+                          Icon={Icon}
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
+                        />
                         {(deal?.loaner_number || deal?.has_active_loaner) && (
                           <LoanerBadge deal={deal} />
                         )}

@@ -1,9 +1,41 @@
-// Phone normalization helper
+// Phone normalization helper with edge case handling
 export const normalizePhone = (s = '') => {
+  if (!s || typeof s !== 'string') return ''
+
+  // Handle extensions (preserve original if extension detected)
+  // Common patterns: ext, x, #, extension
+  if (/\b(ext|x|extension|#)\s*\.?\s*\d+/i.test(s)) {
+    // Return original for manual review - extensions need special handling
+    return s.trim()
+  }
+
+  // Extract only digits
   const d = (s.match(/\d/g) || []).join('')
-  if (d.length === 10) return `+1${d}`
-  if (d.startsWith('1') && d.length === 11) return `+${d}`
-  return d ? `+${d}` : ''
+
+  // Validate minimum length (at least 10 digits for valid phone)
+  if (d.length < 10) {
+    // Return original if too short - likely invalid or incomplete
+    return s.trim()
+  }
+
+  // Validate maximum length (reasonable phone number limit)
+  if (d.length > 15) {
+    // E.164 max is 15 digits - return original if exceeded
+    return s.trim()
+  }
+
+  // US/Canada numbers (NANP - North American Numbering Plan)
+  if (d.length === 10) {
+    return `+1${d}` // Add US/Canada country code
+  }
+
+  if (d.startsWith('1') && d.length === 11) {
+    return `+${d}` // Already has US/Canada country code
+  }
+
+  // International numbers (10-15 digits, not US/Canada)
+  // Format as E.164 with + prefix
+  return `+${d}`
 }
 
 export function normalizeLineItems(draft = {}) {
@@ -120,6 +152,11 @@ export function draftToCreatePayload(draft = {}) {
     finance_manager_id: stripped.finance_manager_id ?? '',
     delivery_coordinator_id: stripped.delivery_coordinator_id ?? '',
     customer_needs_loaner: !!stripped.customer_needs_loaner,
+    scheduled_start_time: stripped.scheduled_start_time || null,
+    scheduled_end_time: stripped.scheduled_end_time || null,
+    scheduling_location: stripped.scheduling_location || null,
+    scheduling_notes: stripped.scheduling_notes || null,
+    color_code: stripped.color_code || null,
   }
 
   // Normalize phone if customer_mobile is present
@@ -158,6 +195,11 @@ export function draftToUpdatePayload(original = {}, draft = {}) {
   if (id && !payload.id) payload.id = id
   if (actualDraft.id) payload.id = actualDraft.id
   payload.updated_at = actualDraft.updated_at ?? new Date().toISOString()
+  payload.scheduled_start_time = actualDraft.scheduled_start_time || null
+  payload.scheduled_end_time = actualDraft.scheduled_end_time || null
+  payload.scheduling_location = actualDraft.scheduling_location || null
+  payload.scheduling_notes = actualDraft.scheduling_notes || null
+  payload.color_code = actualDraft.color_code || null
   return payload
 }
 

@@ -530,8 +530,9 @@ function mapFormToDb(formState = {}) {
 
   const customerEmail = (formState?.customerEmail || formState?.customer_email || '').trim()
 
-  // Extract stock_number for vehicle upsert
+  // Extract stock_number and VIN for vehicle upsert
   const stockNumber = formState?.stockNumber?.trim() || formState?.stock_number?.trim() || ''
+  const vin = (formState?.vin?.trim() || formState?.vehicle_vin?.trim() || '').toUpperCase()
 
   return {
     // Back-compat keys used internally
@@ -546,6 +547,7 @@ function mapFormToDb(formState = {}) {
     customerPhone,
     customerEmail,
     stockNumber,
+    vin,
   }
 }
 
@@ -683,12 +685,13 @@ function computeEarliestTimeWindow(normalizedLineItems) {
 }
 
 // Helper: Attach or create vehicle by stock number when vehicle_id is missing
-async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, orgId = null) {
+async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, orgId = null, vin = null) {
   if (!stockNumber?.trim()) {
     return null // No stock number provided
   }
 
   const normalizedStock = stockNumber.trim()
+  const normalizedVin = vin?.trim()?.toUpperCase() || null
 
   try {
     // Try to find existing vehicle by stock_number
@@ -717,6 +720,10 @@ async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, or
     const vehicleData = {
       stock_number: normalizedStock,
       owner_phone: customerPhone || null,
+    }
+
+    if (normalizedVin) {
+      vehicleData.vin = normalizedVin
     }
 
     if (orgId) {
@@ -992,6 +999,8 @@ export async function getAllDeals() {
             (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || '')
           )
 
+        // DEPRECATED: appt_start/appt_end maintained for backward compatibility
+        // Prefer using scheduled_start_time/scheduled_end_time from job or line items
         const apptStart =
           lineItemsWithSchedule?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
         const apptEnd =
@@ -1029,7 +1038,7 @@ export async function getAllDeals() {
           customer_phone_e164: phoneE164,
           customer_phone_last4: phoneLast4,
           customer_email: transaction?.customer_email || '',
-          total_amount: transaction?.total_amount || 0,
+          total_amount: parseFloat(transaction?.total_amount) || 0,
           has_active_loaner: !!loaner?.id,
           next_promised_iso: nextPromisedDate || null,
           loaner_id: loaner?.id || null,
@@ -1042,6 +1051,7 @@ export async function getAllDeals() {
             : null,
           loaner_eta_return_date: loaner?.eta_return_date || null,
           age_days: ageDays,
+          // DEPRECATED: Legacy fields for backward compatibility only
           appt_start: apptStart,
           appt_end: apptEnd,
           vendor_name: aggregatedVendor,
@@ -1149,6 +1159,8 @@ export async function getDeal(id) {
       .filter((part) => part?.scheduled_start_time && part?.scheduled_end_time)
       .sort((a, b) => (a.scheduled_start_time || '').localeCompare(b.scheduled_start_time || ''))
 
+    // DEPRECATED: appt_start/appt_end maintained for backward compatibility
+    // Prefer using scheduled_start_time/scheduled_end_time from job or line items
     const apptStart =
       lineItemsWithSchedule?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
     const apptEnd =
@@ -1195,7 +1207,7 @@ export async function getDeal(id) {
       customer_phone_e164: phoneE164,
       customer_phone_last4: phoneLast4,
       customer_email: transaction?.customer_email || '',
-      total_amount: transaction?.total_amount || 0,
+      total_amount: parseFloat(transaction?.total_amount) || 0,
       has_active_loaner: !!loaner?.id,
       next_promised_iso: nextPromisedDate || null,
       loaner_number: loaner?.loaner_number || '',
@@ -1209,6 +1221,7 @@ export async function getDeal(id) {
         : null,
       loaner_notes: loaner?.notes || '',
       age_days: ageDays,
+      // DEPRECATED: Legacy fields for backward compatibility only
       appt_start: apptStart,
       appt_end: apptEnd,
       vendor_name: aggregatedVendor,
@@ -1235,6 +1248,7 @@ export async function createDeal(formState) {
     customerPhone,
     customerEmail,
     stockNumber,
+    vin,
   } = mapFormToDb(formState || {})
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
@@ -1255,6 +1269,17 @@ export async function createDeal(formState) {
     }
   }
 
+  // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
+  // In test environments, this is logged but doesn't block operation
+  if (!payload?.org_id) {
+    console.warn(
+      '[dealService:create] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
+        'Ensure UI passes org_id or user is properly authenticated.'
+    )
+    // Note: We don't throw here to preserve backward compatibility with tests
+    // In production, RLS policies will enforce tenant isolation at the database level
+  }
+
   // Ensure required fields the DB expects
   // jobs.job_number is NOT NULL + UNIQUE in schema; auto-generate if missing
   if (!payload?.job_number) {
@@ -1272,7 +1297,8 @@ export async function createDeal(formState) {
     const vehicleId = await attachOrCreateVehicleByStockNumber(
       stockNumber,
       customerPhone,
-      payload?.org_id
+      payload?.org_id,
+      vin
     )
     if (vehicleId) {
       payload.vehicle_id = vehicleId
@@ -1407,6 +1433,7 @@ export async function createDeal(formState) {
       const baseTransaction = {
         job_id: job?.id,
         vehicle_id: payload?.vehicle_id || null,
+        org_id: payload?.org_id || null, // ✅ FIX: Include org_id for RLS compliance
         total_amount:
           (normalizedLineItems || []).reduce((sum, item) => {
             const qty = Number(item?.quantity_used || item?.quantity || 1)
@@ -1460,7 +1487,11 @@ export async function createDeal(formState) {
     const msg = String(error?.message || error || '')
     if (/permission denied for table users/i.test(msg)) {
       throw new Error(
-        'Failed to create deal: permission denied while evaluating RLS (auth.users). Please update RLS policies to reference public.user_profiles instead of auth.users, or apply the migration 20250107150001_fix_claims_rls_policies.sql.'
+        'Failed to create deal: permission denied while evaluating RLS policies. ' +
+          'This may indicate a database schema cache issue. ' +
+          'Try reloading the schema with: NOTIFY pgrst, \'reload schema\'; ' +
+          'If the issue persists, verify that all RLS policies use public.user_profiles instead of auth.users. ' +
+          'See migrations 20251104221500 and 20251115222458 for reference.'
       )
     }
     throw new Error(`Failed to create deal: ${error.message}`)
@@ -1477,6 +1508,7 @@ export async function updateDeal(id, formState) {
     customerPhone,
     customerEmail,
     stockNumber,
+    vin,
   } = mapFormToDb(formState || {})
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile (align with createDeal)
@@ -1495,6 +1527,17 @@ export async function updateDeal(id, formState) {
     } catch (e) {
       console.warn('[dealService:update] Unable to infer org_id from profile:', e?.message)
     }
+  }
+
+  // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
+  // In test environments, this is logged but doesn't block operation
+  if (!payload?.org_id) {
+    console.warn(
+      '[dealService:update] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
+        'Ensure UI passes org_id or user is properly authenticated.'
+    )
+    // Note: We don't throw here to preserve backward compatibility with tests
+    // In production, RLS policies will enforce tenant isolation at the database level
   }
 
   // Ensure description is explicitly updated when provided (some environments rely on it for display)
@@ -1516,7 +1559,8 @@ export async function updateDeal(id, formState) {
     const vehicleId = await attachOrCreateVehicleByStockNumber(
       stockNumber,
       customerPhone,
-      payload?.org_id
+      payload?.org_id,
+      vin
     )
     if (vehicleId) {
       payload.vehicle_id = vehicleId
@@ -1573,6 +1617,7 @@ export async function updateDeal(id, formState) {
   const baseTransactionData = {
     job_id: id,
     vehicle_id: payload?.vehicle_id || null,
+    org_id: payload?.org_id || null, // ✅ FIX: Include org_id for RLS compliance
     total_amount: totalDealValue,
     customer_name: customerName || 'Unknown Customer',
     customer_phone: customerPhone || null,
@@ -1662,12 +1707,23 @@ export async function updateDeal(id, formState) {
   // A3: Handle loaner assignment updates
   if (payload?.customer_needs_loaner && loanerForm) {
     await upsertLoanerAssignment(id, loanerForm)
+  } else if (payload?.customer_needs_loaner === false) {
+    // Delete loaner assignments when toggle is turned OFF
+    const { error: deleteErr } = await supabase
+      ?.from('loaner_assignments')
+      ?.delete()
+      ?.eq('job_id', id)
+
+    if (deleteErr) {
+      console.warn('[dealService:update] Failed to delete loaner assignment:', deleteErr.message)
+    }
   }
 
-  // 3.5) Update vehicle with stock_number and owner_phone if vehicle_id is present
-  if (payload?.vehicle_id && (stockNumber || customerPhone)) {
+  // 3.5) Update vehicle with stock_number, VIN, and owner_phone if vehicle_id is present
+  if (payload?.vehicle_id && (stockNumber || vin || customerPhone)) {
     const vehicleUpdate = {}
     if (stockNumber) vehicleUpdate.stock_number = stockNumber
+    if (vin) vehicleUpdate.vin = vin.toUpperCase()
     if (customerPhone) vehicleUpdate.owner_phone = customerPhone
 
     if (Object.keys(vehicleUpdate).length > 0) {
@@ -1814,9 +1870,14 @@ function mapDbDealToForm(dbDeal) {
     customerMobile: normalized?.customer_mobile || normalized?.customer_phone || '',
     customer_email: normalized?.customer_email || '',
     customerEmail: normalized?.customer_email || '',
-    // Loaner data
+    // Loaner data - include both flat fields (legacy) and nested loanerForm (current)
     loaner_number: normalized?.loaner_number || '',
     loanerNumber: normalized?.loaner_number || '',
+    loanerForm: {
+      loaner_number: normalized?.loaner_number || '',
+      eta_return_date: normalized?.loaner_eta_return_date || '',
+      notes: normalized?.loaner_notes || '',
+    },
     // Preserve vehicle for header (stock number)
     vehicle: normalized?.vehicle || null,
     // Line items in snake_case shape expected by the form/UI
@@ -1860,6 +1921,54 @@ export async function markLoanerReturned(loanerAssignmentId) {
   } catch (error) {
     console.error('Failed to mark loaner as returned:', error)
     throw new Error(`Failed to mark loaner as returned: ${error?.message}`)
+  }
+}
+
+/**
+ * Search for existing customers by name to prevent duplicates
+ * @param {string} searchTerm - Partial customer name to search for
+ * @param {number} limit - Maximum number of results to return
+ * @returns {Promise<Array>} Array of unique customer records with name, email, phone
+ */
+export async function searchCustomers(searchTerm = '', limit = 10) {
+  if (!searchTerm || searchTerm.trim().length < 2) {
+    return []
+  }
+
+  try {
+    const { data, error } = await supabase
+      ?.from('transactions')
+      ?.select('customer_name, customer_email, customer_phone')
+      ?.ilike('customer_name', `%${searchTerm.trim()}%`)
+      ?.order('customer_name')
+      ?.limit(limit * 3) // Get more to dedupe
+
+    if (error) {
+      console.error('[dealService:searchCustomers] Query error:', error)
+      return []
+    }
+
+    // Deduplicate by customer_name (case-insensitive)
+    const seen = new Map()
+    const unique = []
+
+    for (const customer of data || []) {
+      const key = customer?.customer_name?.toLowerCase()
+      if (key && !seen.has(key)) {
+        seen.set(key, true)
+        unique.push({
+          name: customer.customer_name,
+          email: customer.customer_email || '',
+          phone: customer.customer_phone || '',
+        })
+        if (unique.length >= limit) break
+      }
+    }
+
+    return unique
+  } catch (err) {
+    console.error('[dealService:searchCustomers] Unexpected error:', err)
+    return []
   }
 }
 

@@ -1,0 +1,216 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp",
+      "description": "Supabase Model Context Protocol server for database schema inspection, querying, and migration management",
+      "capabilities": [
+        "list_tables",
+        "list_policies", 
+        "list_extensions",
+        "explain_query",
+        "get_table_schema",
+        "get_policy_details",
+        "list_functions",
+        "list_triggers"
+      ],
+      "useCases": [
+        "Schema introspection and validation",
+        "RLS policy verification and auditing",
+        "Query performance analysis with EXPLAIN",
+        "Extension verification (e.g., pg_trgm for full-text search)",
+        "Migration planning and validation",
+        "Relationship inspection for foreign keys"
+      ],
+      "bestPractices": [
+        "Always use read-only operations first before generating migrations",
+        "Run 'NOTIFY pgrst, reload schema' if relationship queries fail",
+        "Verify tenant isolation in RLS policies before deploying",
+        "Capture EXPLAIN ANALYZE output for performance tuning"
+      ],
+      "authenticationRequired": true,
+      "authenticationMethod": "Supabase project credentials (configured via environment or VS Code)"
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "description": "GitHub Model Context Protocol server for repository operations, PR/issue management, and code search",
+      "capabilities": [
+        "list_pull_requests",
+        "list_issues",
+        "search_code",
+        "search_repositories",
+        "get_file_contents",
+        "list_commits",
+        "list_branches",
+        "get_workflow_runs",
+        "summarize_job_log_failures"
+      ],
+      "useCases": [
+        "PR and issue metadata access",
+        "Code search across repositories",
+        "Workflow run analysis and debugging",
+        "Commit history inspection",
+        "Branch management and comparison",
+        "CI/CD pipeline troubleshooting"
+      ],
+      "bestPractices": [
+        "Use summarize_job_log_failures for efficient workflow debugging",
+        "Search code before making refactors to identify all usages",
+        "Check workflow status before merging PRs",
+        "Use pagination for large result sets"
+      ],
+      "authenticationRequired": true,
+      "authenticationMethod": "GitHub OAuth token (configured via environment or VS Code)"
+    }
+  },
+  "workspaceConfiguration": {
+    "project": "rocket_aftermarket_tracker",
+    "repository": "PriorityLexusVB/rocket_aftermarket_tracker",
+    "technology": {
+      "frontend": "React 18 + Vite 5 + TailwindCSS",
+      "backend": "Supabase (PostgREST + RLS + pg_trgm)",
+      "testing": "Vitest (unit), Playwright (e2e)",
+      "packageManager": "pnpm@10.15.0",
+      "nodeVersion": "20.x"
+    },
+    "guardrails": {
+      "noStackChanges": true,
+      "noDependencyRemovals": true,
+      "requireTenantScoping": true,
+      "noDirectSupabaseInComponents": true,
+      "controlledInputsOnly": true,
+      "debouncedAutosave": "600ms"
+    }
+  },
+  "commonWorkflows": {
+    "schemaVerification": {
+      "description": "Verify database schema and RLS policies",
+      "steps": [
+        "Use Supabase MCP to list all tables",
+        "Check RLS policies for each table",
+        "Verify tenant isolation with org_id scoping",
+        "Confirm foreign key relationships",
+        "Check for required extensions (pg_trgm)"
+      ]
+    },
+    "performanceAnalysis": {
+      "description": "Analyze and optimize query performance",
+      "steps": [
+        "Run EXPLAIN ANALYZE on slow queries",
+        "Check for missing indexes",
+        "Verify covering indexes from PERFORMANCE_INDEXES.md",
+        "Capture BEFORE and AFTER metrics",
+        "Store results in .artifacts/ directory"
+      ]
+    },
+    "ciWorkflowDebugging": {
+      "description": "Debug failed CI/CD workflows",
+      "steps": [
+        "Use GitHub MCP to list recent workflow runs",
+        "Use summarize_run_log_failures for failed runs",
+        "Identify common failure patterns",
+        "Check for missing secrets or environment variables",
+        "Verify pnpm setup and dependency installation"
+      ]
+    },
+    "codeRefactoring": {
+      "description": "Safely refactor code with awareness",
+      "steps": [
+        "Use GitHub MCP search_code to find all usages",
+        "Check for indirect dependencies",
+        "Run linter and tests before committing",
+        "Verify no breaking changes to public APIs",
+        "Update documentation if needed"
+      ]
+    }
+  },
+  "errorHandlingPatterns": {
+    "staleSchemaCache": {
+      "symptom": "400/403 on REST relationship select or 'Could not find a relationship' errors",
+      "remedy": "Run 'NOTIFY pgrst, reload schema' via Supabase SQL editor, wait 5 seconds, then retry the query"
+    },
+    "missingForeignKey": {
+      "symptom": "FK not expanded in query results",
+      "remedy": "Verify foreign key constraint exists and has correct naming convention, re-run migration if needed"
+    },
+    "slowQueries": {
+      "symptom": "Queries taking > 50ms for common operations",
+      "remedy": "Add selective indexes, verify covering indexes, or use approximate count strategies for COUNT(*)"
+    },
+    "rlsViolations": {
+      "symptom": "Row-level security policy violations or empty result sets",
+      "remedy": "Verify org_id is passed in all queries, check RLS policies allow the operation, ensure user has proper permissions"
+    },
+    "pnpmCacheIssues": {
+      "symptom": "GitHub Actions failing with 'pnpm not found' or cache errors",
+      "remedy": "Ensure corepack enable and pnpm setup runs BEFORE setup-node with cache: 'pnpm'"
+    }
+  },
+  "artifactStorage": {
+    "location": ".artifacts/",
+    "types": {
+      "performanceMetrics": ".artifacts/explain/",
+      "mcpIntrospection": ".artifacts/mcp-introspect/",
+      "testResults": "playwright-report/",
+      "buildOutput": "dist/"
+    },
+    "retention": "Commit performance evidence to PR, clean up test artifacts after merge"
+  },
+  "references": {
+    "documentation": [
+      "MASTER_EXECUTION_PROMPT.md",
+      "PERFORMANCE_INDEXES.md",
+      "docs/MCP-NOTES.md",
+      "ERROR_HANDLING_GUIDE.md",
+      "DEPLOYMENT_GUIDE.md"
+    ],
+    "ciWorkflows": [
+      ".github/workflows/ci-pnpm.yml",
+      ".github/workflows/ci.yml",
+      ".github/workflows/e2e.yml"
+    ],
+    "healthEndpoints": [
+      "api/health-*",
+      "src/api/health/*"
+    ]
+  },
+  "vscodeIntegration": {
+    "settingsFile": ".vscode/mcp.json",
+    "profile": "profiles/Aftermarket-WSL-Supabase-MCP.code-profile",
+    "notes": "MCP servers are configured in .vscode/mcp.json for VS Code integration. The GitHub Copilot extension will automatically use these servers when available."
+  },
+  "securityConsiderations": {
+    "secrets": [
+      "VITE_SUPABASE_URL",
+      "VITE_SUPABASE_ANON_KEY",
+      "E2E_EMAIL",
+      "E2E_PASSWORD"
+    ],
+    "sensitiveData": [
+      "Never commit Supabase credentials to repository",
+      "Use GitHub secrets for CI/CD workflows",
+      "Rotate API keys regularly",
+      "Audit RLS policies for tenant isolation",
+      "Verify all queries include org_id scoping"
+    ]
+  },
+  "migrationStrategy": {
+    "workflow": [
+      "Inspect current schema using Supabase MCP",
+      "Plan changes and create migration file",
+      "Test migration on local/dev environment",
+      "Verify RLS policies after migration",
+      "Run schema reload: NOTIFY pgrst, 'reload schema'",
+      "Test all affected endpoints",
+      "Document changes in PR"
+    ],
+    "guardrails": [
+      "Never edit historical migration files",
+      "Create new timestamped migration for changes",
+      "Include reversible DDL when possible",
+      "Provide verification SQL and expected results",
+      "Store EXPLAIN output for performance changes"
+    ]
+  }
+}
