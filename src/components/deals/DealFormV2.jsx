@@ -438,7 +438,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           requires_scheduling: Boolean(item?.requiresScheduling),
           no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
           is_off_site: Boolean(item?.isOffSite),
-          vendor_id: item?.vendorId || null,
+          vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
         })),
       }
 
