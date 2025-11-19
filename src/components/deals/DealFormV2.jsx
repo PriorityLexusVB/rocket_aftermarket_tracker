@@ -261,9 +261,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     }
   }
 
-  // Remove line item
+  // Remove line item with confirmation
   const removeLineItem = (id) => {
-    setLineItems((prev) => prev?.filter((item) => item?.id !== id))
+    if (window.confirm('Are you sure you want to delete this line item?')) {
+      setLineItems((prev) => prev?.filter((item) => item?.id !== id))
+    }
   }
 
   // Validation
