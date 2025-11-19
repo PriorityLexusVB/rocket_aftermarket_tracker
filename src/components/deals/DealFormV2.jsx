@@ -298,6 +298,18 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       return false
     }
 
+    // Validate stock number format if provided (optional field)
+    if (customerData?.stockNumber?.trim()) {
+      const stockNo = customerData.stockNumber.trim()
+      // Allow alphanumeric with common separators (hyphens, underscores)
+      // Length between 3-20 characters
+      const stockRegex = /^[A-Z0-9][A-Z0-9\-_]{2,19}$/i
+      if (!stockRegex.test(stockNo)) {
+        setError('Stock number must be 3-20 alphanumeric characters (hyphens and underscores allowed)')
+        return false
+      }
+    }
+
     // Validate email format if provided (optional field)
     if (customerData?.customerEmail?.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
