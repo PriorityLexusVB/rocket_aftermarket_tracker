@@ -506,8 +506,29 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   return (
     <div className="bg-white rounded-xl border shadow-sm p-6">
-      {/* Progress indicator */}
-      <div className="mb-6 flex items-center space-x-4">
+      {/* Loading skeleton while dropdown data loads */}
+      {dropdownData?.loading && (
+        <div className="space-y-4 animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="h-12 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="h-12 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+            <div className="h-12 bg-gray-200 rounded"></div>
+          </div>
+          <div className="h-24 bg-gray-200 rounded"></div>
+        </div>
+      )}
+
+      {/* Main form - hidden while loading */}
+      {!dropdownData?.loading && (
+        <>
+          {/* Progress indicator */}
+          <div className="mb-6 flex items-center space-x-4">
         <div
           className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}
         >
@@ -1095,6 +1116,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }
