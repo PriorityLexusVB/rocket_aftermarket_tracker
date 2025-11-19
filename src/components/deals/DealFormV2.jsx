@@ -57,6 +57,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     financeManager: job?.finance_manager_id || null,
     needsLoaner: Boolean(job?.customer_needs_loaner),
     loanerNumber: job?.loaner_number || '',
+    loanerReturnDate: job?.eta_return_date || '',
+    loanerNotes: job?.loaner_notes || '',
   })
 
   // Line items data - pre-hydrate vendor_id from job level if missing
@@ -422,8 +424,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         loanerForm: customerData?.needsLoaner
           ? {
               loaner_number: customerData?.loanerNumber?.trim() || '',
-              eta_return_date: null,
-              notes: null,
+              eta_return_date: customerData?.loanerReturnDate || null,
+              notes: customerData?.loanerNotes?.trim() || null,
             }
           : null,
         lineItems: lineItems.map((item) => ({
@@ -741,6 +743,35 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
                   }
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Expected Return Date
+                </label>
+                <input
+                  type="date"
+                  data-testid="loaner-return-date-input"
+                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                  value={customerData?.loanerReturnDate ?? ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Loaner Notes</label>
+                <input
+                  type="text"
+                  data-testid="loaner-notes-input"
+                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                  placeholder="Any special instructions"
+                  value={customerData?.loanerNotes ?? ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
+                  }
                 />
               </div>
             </div>
