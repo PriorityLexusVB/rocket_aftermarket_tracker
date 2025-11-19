@@ -55,6 +55,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
     jobNumber: job?.job_number || '',
     stockNumber: job?.stock_number || '',
+    vin: job?.vehicle?.vin || '',
     customerMobile: job?.customer_phone || '',
     customerEmail: job?.customer_email || '',
     vendorId: job?.vendor_id || null,
@@ -134,7 +135,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
         jobNumber: job?.job_number || '',
         stockNumber: job?.stock_number || job?.stockNumber || '',
+        vin: job?.vehicle?.vin || '',
         customerMobile: job?.customer_phone || job?.customerMobile || '',
+        customerEmail: job?.customer_email || '',
         vendorId: job?.vendor_id || null,
         notes: job?.notes || job?.description || '',
         vehicleDescription: job?.vehicle_description || job?.vehicleDescription || '',
@@ -143,6 +146,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         financeManager: job?.finance_manager_id || null,
         needsLoaner: Boolean(job?.customer_needs_loaner),
         loanerNumber: job?.loaner_number || job?.loanerNumber || '',
+        loanerReturnDate: job?.eta_return_date || '',
+        loanerNotes: job?.loaner_notes || '',
       })
 
       // Also reload line items to handle both initial load and prop changes
@@ -356,7 +361,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   }
 
   // Validation
-  const validateStep1 = () => {
+  const validateStep1 = async () => {
     // Validate org_id for RLS compliance
     if (!orgId) {
       setError('Organization context required. Please refresh and try again.')
@@ -372,6 +377,41 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       if (!stockRegex.test(stockNo)) {
         setError('Stock number must be 3-20 alphanumeric characters (hyphens and underscores allowed)')
         return false
+      }
+    }
+
+    // Validate VIN format if provided (optional field)
+    if (customerData?.vin?.trim()) {
+      const vinTrimmed = customerData.vin.trim().toUpperCase()
+
+      // VIN must be exactly 17 characters
+      if (vinTrimmed.length !== 17) {
+        setError('VIN must be exactly 17 characters')
+        return false
+      }
+
+      // VIN must be alphanumeric excluding I, O, Q (to avoid confusion with 1, 0)
+      const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/i
+      if (!vinRegex.test(vinTrimmed)) {
+        setError('Invalid VIN format (cannot contain I, O, or Q)')
+        return false
+      }
+
+      // Check for duplicate VIN (skip if editing existing vehicle with same VIN)
+      try {
+        const vinExists = await vehicleService.checkVinExists(vinTrimmed)
+        if (vinExists && mode === 'create') {
+          setError('A vehicle with this VIN already exists in the system')
+          return false
+        }
+        // For edit mode, allow same VIN if it belongs to current vehicle
+        if (vinExists && mode === 'edit' && job?.vehicle?.vin !== vinTrimmed) {
+          setError('A vehicle with this VIN already exists in the system')
+          return false
+        }
+      } catch (err) {
+        console.error('[DealFormV2] VIN check error:', err)
+        // Don't block save on VIN check failure, just log warning
       }
     }
 
@@ -474,9 +514,23 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     return `Failed to save: ${msg}`
   }
 
+  // Handle "Next" button click
+  const handleNext = async () => {
+    const isValid = await validateStep1()
+    if (isValid) {
+      setCurrentStep(2)
+    }
+  }
+
+  // Quick synchronous check for basic required fields (for disabled state)
+  const hasRequiredFields = () => {
+    return customerData?.customerName?.trim()?.length > 0 && customerData?.jobNumber?.trim()?.length > 0
+  }
+
   // Handle save
   const handleSave = async () => {
-    if (!validateStep1() || !validateStep2()) {
+    const step1Valid = await validateStep1()
+    if (!step1Valid || !validateStep2()) {
       setError('Please complete all required fields')
       return
     }
@@ -765,6 +819,25 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 placeholder="Enter stock number"
                 data-testid="stock-number-display"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">VIN</label>
+              <input
+                type="text"
+                value={customerData?.vin}
+                onChange={(e) => {
+                  const value = e?.target?.value?.toUpperCase() || ''
+                  setCustomerData((prev) => ({ ...prev, vin: value }))
+                }}
+                maxLength={17}
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                placeholder="17-character VIN"
+                data-testid="vin-input"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Optional. Must be 17 characters (excludes I, O, Q)
+              </p>
             </div>
 
             <div>
@@ -1205,8 +1278,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
           {currentStep === 1 && (
             <Button
-              onClick={() => setCurrentStep(2)}
-              disabled={!validateStep1() || isSubmitting}
+              onClick={handleNext}
+              disabled={!hasRequiredFields() || isSubmitting}
               className="bg-blue-600 hover:bg-blue-700 text-white"
               data-testid="next-to-line-items-btn"
             >
@@ -1217,7 +1290,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           {currentStep === 2 && (
             <Button
               onClick={handleSave}
-              disabled={!validateStep1() || !validateStep2() || isSubmitting}
+              disabled={!hasRequiredFields() || !validateStep2() || isSubmitting}
               className="bg-green-600 hover:bg-green-700 text-white"
               data-testid="save-deal-btn"
             >
