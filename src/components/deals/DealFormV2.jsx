@@ -29,6 +29,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   // Dropdown state
   const [dropdownData, setDropdownData] = useState({
@@ -176,6 +177,27 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       })
     }
   }, [mode, customerData.customerName, customerData.vehicleDescription])
+
+  // Track unsaved changes
+  useEffect(() => {
+    // Mark as changed when user modifies form (skip for initial load in edit mode)
+    if (mode === 'create' || (mode === 'edit' && initializedJobId.current)) {
+      setHasUnsavedChanges(true)
+    }
+  }, [customerData, lineItems, mode])
+
+  // Warn before navigation if unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges && !isSubmitting) {
+        e.preventDefault()
+        e.returnValue = '' // Required for Chrome
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges, isSubmitting])
 
   // Native select component
   const MobileSelect = ({ label, options, value, onChange, placeholder, testId, helpLink }) => (
@@ -458,6 +480,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           await dealService.createDeal(adapted)
         }
       }
+
+      // Mark as saved (no unsaved changes after successful save)
+      setHasUnsavedChanges(false)
 
       if (onCancel) onCancel()
     } catch (err) {
