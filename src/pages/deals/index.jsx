@@ -91,8 +91,8 @@ const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
       ? 'bg-amber-100 text-amber-800 border-amber-200'
       : 'bg-green-100 text-green-800 border-green-200'
 
-  // Use date-fns for consistent formatting: "MMM d" (e.g., "Jan 18")
-  const short = format(parseISO(nextPromisedAt), 'MMM d')
+  // Use date-fns for consistent formatting: "EEE d" (e.g., "Mon 18")
+  const short = format(parseISO(nextPromisedAt), 'EEE d')
 
   return (
     <span
