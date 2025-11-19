@@ -281,6 +281,19 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       }
     }
 
+    // Validate deal date is not in the future
+    if (customerData?.dealDate) {
+      const dealDate = new Date(customerData.dealDate)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      dealDate.setHours(0, 0, 0, 0)
+
+      if (dealDate > today) {
+        setError('Deal date cannot be in the future')
+        return false
+      }
+    }
+
     return (
       customerData?.customerName?.trim()?.length > 0 && customerData?.jobNumber?.trim()?.length > 0
     )
@@ -289,10 +302,19 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const validateStep2 = () => {
     if (lineItems?.length === 0) return false
 
-    return lineItems?.every((item) => {
+    return lineItems?.every((item, index) => {
       if (!item?.productId || !item?.unitPrice) return false
       if (item?.requiresScheduling && !item?.dateScheduled) return false
       if (!item?.requiresScheduling && !item?.noScheduleReason?.trim()) return false
+
+      // Validate scheduled time ranges
+      if (item?.requiresScheduling && item?.scheduledStartTime && item?.scheduledEndTime) {
+        if (item.scheduledStartTime >= item.scheduledEndTime) {
+          setError(`Line item ${index + 1}: Start time must be before end time`)
+          return false
+        }
+      }
+
       return true
     })
   }
