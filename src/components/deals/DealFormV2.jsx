@@ -47,6 +47,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     jobNumber: job?.job_number || '',
     stockNumber: job?.stock_number || '',
     customerMobile: job?.customer_phone || '',
+    customerEmail: job?.customer_email || '',
     vendorId: job?.vendor_id || null,
     notes: job?.notes || job?.description || '', // Notes field with legacy fallback
     vehicleDescription: job?.vehicle_description || '',
@@ -270,6 +271,15 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       return false
     }
 
+    // Validate email format if provided (optional field)
+    if (customerData?.customerEmail?.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(customerData.customerEmail.trim())) {
+        setError('Please enter a valid email address')
+        return false
+      }
+    }
+
     return (
       customerData?.customerName?.trim()?.length > 0 && customerData?.jobNumber?.trim()?.length > 0
     )
@@ -310,6 +320,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         job_number: customerData?.jobNumber?.trim(),
         stock_number: customerData?.stockNumber?.trim() || null,
         customer_mobile: customerData?.customerMobile?.trim() || null,
+        customer_email: customerData?.customerEmail?.trim() || null,
         vendor_id: customerData?.vendorId || null,
         notes: customerData?.notes?.trim() || null, // Notes field maps to description in dealService
         vehicle_description: customerData?.vehicleDescription?.trim() || null,
@@ -508,6 +519,22 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter phone"
                 data-testid="customer-mobile-input"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Customer Email
+              </label>
+              <input
+                type="email"
+                value={customerData?.customerEmail}
+                onChange={(e) =>
+                  setCustomerData((prev) => ({ ...prev, customerEmail: e?.target?.value }))
+                }
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter email"
+                data-testid="customer-email-input"
               />
             </div>
           </div>
