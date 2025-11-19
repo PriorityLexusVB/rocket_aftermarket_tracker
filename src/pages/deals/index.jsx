@@ -109,7 +109,7 @@ const CustomerDisplay = ({ deal }) => {
   if (!deal) return <span className="text-sm text-slate-700">—</span>
 
   const rawName = deal?.customer_name || deal?.customerEmail || '—'
-  const name = rawName !== '—' ? titleCase(rawName) : rawName
+  const name = rawName  // Already titleCased in database
   const email = deal?.customer_email || ''
   const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
   const title = [name, email, tags.length ? `Tags: ${tags.join(', ')}` : null]
@@ -1684,7 +1684,7 @@ export default function DealsPage() {
                       <div className="flex items-center justify-between">
                         <div className="min-w-0">
                           <div className="truncate font-medium text-slate-900 text-sm">
-                            {deal?.customer_name ? titleCase(deal.customer_name) : '—'}
+                            {deal?.customer_name || '—'}
                           </div>
                           <div className="text-xs text-slate-500 truncate">
                             {deal?.customer_phone_e164 ||
