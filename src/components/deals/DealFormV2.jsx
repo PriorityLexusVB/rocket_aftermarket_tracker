@@ -127,7 +127,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
         jobNumber: job?.job_number || '',
         stockNumber: job?.stock_number || job?.stockNumber || '',
-        customerMobile: job?.customer_mobile || job?.customerMobile || '',
+        customerMobile: job?.customer_phone || job?.customerMobile || '',
         vendorId: job?.vendor_id || null,
         notes: job?.notes || job?.description || '',
         vehicleDescription: job?.vehicle_description || job?.vehicleDescription || '',
