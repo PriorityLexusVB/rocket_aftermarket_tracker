@@ -23,7 +23,7 @@ const ENABLE_AUTO_EARLIEST_WINDOW = false
 
 export default function DealFormV2({ mode = 'create', job = null, onSave, onCancel }) {
   const { user } = useAuth()
-  const { orgId, loading: tenantLoading } = useTenant() || {}
+  const { orgId, loading: tenantLoading } = useTenant()
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
@@ -304,7 +304,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Validation
   const validateStep1 = async () => {
     // Validate org_id for RLS compliance
-    console.log('[DealFormV2] Validating orgId:', { orgId, tenantLoading, user: user?.id })
+    if (import.meta.env.MODE === 'development') {
+      console.log('[DealFormV2] Validating orgId:', { orgId, tenantLoading, user: user?.id })
+    }
 
     if (tenantLoading) {
       setError('Loading organization context. Please wait...')
@@ -554,13 +556,15 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         })),
       }
 
-      console.log('[DealFormV2] Saving deal with payload:', {
-        mode,
-        org_id: payload.org_id,
-        customer_name: payload.customer_name,
-        job_number: payload.job_number,
-        lineItemsCount: payload.lineItems?.length,
-      })
+      if (import.meta.env.MODE === 'development') {
+        console.log('[DealFormV2] Saving deal with payload:', {
+          mode,
+          org_id: payload.org_id,
+          customer_name: payload.customer_name,
+          job_number: payload.job_number,
+          lineItemsCount: payload.lineItems?.length,
+        })
+      }
 
       if (onSave) {
         await onSave(payload)
