@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
-import dealService, { getCapabilities, searchCustomers } from '../../services/dealService'
+import dealService, { getCapabilities } from '../../services/dealService'
 import { draftToCreatePayload, draftToUpdatePayload } from './formAdapters'
 import { vehicleService } from '../../services/vehicleService'
 import { supabase } from '../../lib/supabase'
@@ -23,7 +23,7 @@ const ENABLE_AUTO_EARLIEST_WINDOW = false
 
 export default function DealFormV2({ mode = 'create', job = null, onSave, onCancel }) {
   const { user } = useAuth()
-  const { orgId } = useTenant() || {}
+  const { orgId, loading: tenantLoading } = useTenant() || {}
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
@@ -42,12 +42,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     error: null,
   })
 
-  // Customer autocomplete state
-  const [customerSuggestions, setCustomerSuggestions] = useState([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const [isSearching, setIsSearching] = useState(false)
-  const customerInputRef = useRef(null)
-  const suggestionsRef = useRef(null)
+  // Removed autocomplete feature per user request - it was interfering with typing
 
   // Customer form data
   const [customerData, setCustomerData] = useState({
@@ -211,52 +206,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasUnsavedChanges, isSubmitting])
 
-  // Customer search autocomplete with debouncing
-  useEffect(() => {
-    const searchTerm = customerData?.customerName?.trim()
-
-    // Don't search if less than 2 characters or in edit mode with unchanged name
-    if (!searchTerm || searchTerm.length < 2) {
-      setCustomerSuggestions([])
-      setShowSuggestions(false)
-      return
-    }
-
-    // Debounce the search
-    const timeoutId = setTimeout(async () => {
-      setIsSearching(true)
-      try {
-        const results = await searchCustomers(searchTerm, 5)
-        setCustomerSuggestions(results)
-        setShowSuggestions(results.length > 0)
-      } catch (err) {
-        console.error('[DealFormV2] Customer search error:', err)
-        setCustomerSuggestions([])
-        setShowSuggestions(false)
-      } finally {
-        setIsSearching(false)
-      }
-    }, 300) // 300ms debounce
-
-    return () => clearTimeout(timeoutId)
-  }, [customerData?.customerName])
-
-  // Close suggestions dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(e.target) &&
-        customerInputRef.current &&
-        !customerInputRef.current.contains(e.target)
-      ) {
-        setShowSuggestions(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  // Autocomplete removed - user reported it was interfering with typing
 
   // Native select component
   const MobileSelect = ({ label, options, value, onChange, placeholder, testId, helpLink }) => (
@@ -349,22 +299,29 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     }
   }
 
-  // Handle customer suggestion selection
-  const selectCustomerSuggestion = (suggestion) => {
-    setCustomerData((prev) => ({
-      ...prev,
-      customerName: suggestion.name || '',
-      customerEmail: suggestion.email || prev.customerEmail || '',
-      customerMobile: suggestion.phone || prev.customerMobile || '',
-    }))
-    setShowSuggestions(false)
-  }
+  // Autocomplete removed per user request
 
   // Validation
   const validateStep1 = async () => {
     // Validate org_id for RLS compliance
+    console.log('[DealFormV2] Validating orgId:', { orgId, tenantLoading, user: user?.id })
+
+    if (tenantLoading) {
+      setError('Loading organization context. Please wait...')
+      return false
+    }
+
     if (!orgId) {
-      setError('Organization context required. Please refresh and try again.')
+      console.error('[DealFormV2] Missing orgId - RLS will fail')
+      setError('Organization context required. Please refresh the page and try again.')
+      return false
+    }
+
+    // Validate orgId is a valid UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(String(orgId))) {
+      console.error('[DealFormV2] Invalid orgId format:', orgId)
+      setError('Invalid organization context. Please refresh the page and try again.')
       return false
     }
 
@@ -574,7 +531,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         delivery_coordinator_id: customerData?.deliveryCoordinator || null,
         finance_manager_id: customerData?.financeManager || null,
         customer_needs_loaner: Boolean(customerData?.needsLoaner),
-        org_id: orgId || null, // ✅ FIX: Include org_id for proper tenant scoping and RLS compliance
+        org_id: orgId, // ✅ Include org_id for proper tenant scoping and RLS compliance
         // Send loanerForm when needsLoaner is true for proper persistence via loaner_assignments
         loanerForm: customerData?.needsLoaner
           ? {
@@ -596,6 +553,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
         })),
       }
+
+      console.log('[DealFormV2] Saving deal with payload:', {
+        mode,
+        org_id: payload.org_id,
+        customer_name: payload.customer_name,
+        job_number: payload.job_number,
+        lineItemsCount: payload.lineItems?.length,
+      })
 
       if (onSave) {
         await onSave(payload)
@@ -698,72 +663,28 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               />
             </div>
 
-            <div className="relative">
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Customer Name <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  ref={customerInputRef}
-                  type="text"
-                  value={customerData?.customerName}
-                  onChange={(e) => {
-                    setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
-                  }}
-                  onBlur={(e) => {
-                    // Delay to allow suggestion click to register
-                    setTimeout(() => {
-                      setCustomerData((prev) => ({
-                        ...prev,
-                        customerName: titleCase(e?.target?.value),
-                      }))
-                    }, 200)
-                  }}
-                  onFocus={() => {
-                    // Re-show suggestions if they exist
-                    if (customerSuggestions.length > 0) {
-                      setShowSuggestions(true)
-                    }
-                  }}
-                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter customer name"
-                  required
-                  data-testid="customer-name-input"
-                  autoComplete="off"
-                />
-                {isSearching && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                  </div>
-                )}
-              </div>
-
-              {/* Suggestions dropdown */}
-              {showSuggestions && customerSuggestions.length > 0 && (
-                <div
-                  ref={suggestionsRef}
-                  className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto"
-                >
-                  <div className="p-2 text-xs text-gray-500 bg-gray-50 border-b">
-                    Existing customers (click to auto-fill):
-                  </div>
-                  {customerSuggestions.map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => selectCustomerSuggestion(suggestion)}
-                      className="w-full text-left px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none border-b last:border-b-0"
-                    >
-                      <div className="font-medium text-gray-900">{suggestion.name}</div>
-                      {(suggestion.email || suggestion.phone) && (
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {[suggestion.email, suggestion.phone].filter(Boolean).join(' • ')}
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <input
+                type="text"
+                value={customerData?.customerName}
+                onChange={(e) => {
+                  setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
+                }}
+                onBlur={(e) => {
+                  setCustomerData((prev) => ({
+                    ...prev,
+                    customerName: titleCase(e?.target?.value),
+                  }))
+                }}
+                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter customer name"
+                required
+                data-testid="customer-name-input"
+                autoComplete="off"
+              />
             </div>
 
             <div>
