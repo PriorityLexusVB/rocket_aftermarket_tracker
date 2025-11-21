@@ -401,13 +401,50 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     )
   }
 
+  // Pure validation function (no side effects) - safe to call on every render
   const validateStep2 = () => {
     if (lineItems?.length === 0) return false
 
-    return lineItems?.every((item, index) => {
+    return lineItems?.every((item) => {
       if (!item?.productId || !item?.unitPrice) return false
       if (item?.requiresScheduling && !item?.dateScheduled) return false
       if (!item?.requiresScheduling && !item?.noScheduleReason?.trim()) return false
+
+      // Validate scheduled time ranges
+      if (item?.requiresScheduling && item?.scheduledStartTime && item?.scheduledEndTime) {
+        if (item.scheduledStartTime >= item.scheduledEndTime) {
+          return false // Don't set error here - this runs on every render
+        }
+      }
+
+      return true
+    })
+  }
+
+  // Validation with error messages - only call when actually validating (e.g., on save)
+  const validateStep2WithErrors = () => {
+    if (lineItems?.length === 0) {
+      setError('Please add at least one line item')
+      return false
+    }
+
+    for (let index = 0; index < lineItems.length; index++) {
+      const item = lineItems[index]
+
+      if (!item?.productId || !item?.unitPrice) {
+        setError(`Line item ${index + 1}: Product and price are required`)
+        return false
+      }
+
+      if (item?.requiresScheduling && !item?.dateScheduled) {
+        setError(`Line item ${index + 1}: Scheduled date is required`)
+        return false
+      }
+
+      if (!item?.requiresScheduling && !item?.noScheduleReason?.trim()) {
+        setError(`Line item ${index + 1}: No-schedule reason is required`)
+        return false
+      }
 
       // Validate scheduled time ranges
       if (item?.requiresScheduling && item?.scheduledStartTime && item?.scheduledEndTime) {
@@ -416,9 +453,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           return false
         }
       }
+    }
 
-      return true
-    })
+    return true
   }
 
   // Calculate total
@@ -489,8 +526,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Handle save
   const handleSave = async () => {
     const step1Valid = await validateStep1()
-    if (!step1Valid || !validateStep2()) {
-      setError('Please complete all required fields')
+    if (!step1Valid) {
+      return
+    }
+
+    const step2Valid = validateStep2WithErrors()
+    if (!step2Valid) {
       return
     }
 
