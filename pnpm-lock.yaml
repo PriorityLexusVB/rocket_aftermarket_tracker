@@ -80,9 +80,6 @@ importers:
       redux:
         specifier: ^5.0.1
         version: 5.0.1
-      supabase:
-        specifier: ^2.53.6
-        version: 2.53.6
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.3.1
@@ -174,6 +171,9 @@ importers:
       prettier-plugin-tailwindcss:
         specifier: ^0.7.1
         version: 0.7.1(prettier@3.6.2)
+      supabase:
+        specifier: ^2.53.6
+        version: 2.53.6
       tailwindcss:
         specifier: 3.4.6
         version: 3.4.6
