@@ -699,7 +699,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               <label className="block text-sm font-medium text-slate-700 mb-1">Deal Date</label>
               <input
                 type="date"
-                value={customerData?.dealDate}
+                value={customerData?.dealDate || ''}
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, dealDate: e?.target?.value }))
                 }
@@ -714,7 +714,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </label>
               <input
                 type="text"
-                value={customerData?.customerName}
+                value={customerData?.customerName || ''}
                 onChange={(e) => {
                   setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
                 }}
@@ -738,7 +738,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </label>
               <input
                 type="text"
-                value={customerData?.jobNumber}
+                value={customerData?.jobNumber || ''}
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, jobNumber: e?.target?.value }))
                 }
@@ -757,7 +757,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </label>
               <input
                 type="text"
-                value={customerData?.vehicleDescription}
+                value={customerData?.vehicleDescription || ''}
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, vehicleDescription: e?.target?.value }))
                 }
@@ -777,7 +777,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               <label className="block text-sm font-medium text-slate-700 mb-1">Stock #</label>
               <input
                 type="text"
-                value={customerData?.stockNumber}
+                value={customerData?.stockNumber || ''}
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, stockNumber: e?.target?.value }))
                 }
@@ -791,7 +791,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               <label className="block text-sm font-medium text-slate-700 mb-1">VIN</label>
               <input
                 type="text"
-                value={customerData?.vin}
+                value={customerData?.vin || ''}
                 onChange={(e) => {
                   const value = e?.target?.value?.toUpperCase() || ''
                   setCustomerData((prev) => ({ ...prev, vin: value }))
@@ -812,7 +812,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </label>
               <input
                 type="tel"
-                value={customerData?.customerMobile}
+                value={customerData?.customerMobile || ''}
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, customerMobile: e?.target?.value }))
                 }
@@ -828,7 +828,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </label>
               <input
                 type="email"
-                value={customerData?.customerEmail}
+                value={customerData?.customerEmail || ''}
                 onChange={(e) =>
                   setCustomerData((prev) => ({ ...prev, customerEmail: e?.target?.value }))
                 }
@@ -843,7 +843,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
             <textarea
               rows={3}
-              value={customerData?.notes}
+              value={customerData?.notes || ''}
               onChange={(e) => setCustomerData((prev) => ({ ...prev, notes: e?.target?.value }))}
               className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="Enter notes"
@@ -855,7 +855,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             <MobileSelect
               label="Sales"
               options={dropdownData?.salesConsultants}
-              value={customerData?.assignedTo}
+              value={customerData?.assignedTo || ''}
               onChange={(value) => setCustomerData((prev) => ({ ...prev, assignedTo: value }))}
               placeholder="Select sales consultant"
               testId="sales-select"
@@ -876,7 +876,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             <MobileSelect
               label="Finance"
               options={dropdownData?.financeManagers}
-              value={customerData?.financeManager}
+              value={customerData?.financeManager || ''}
               onChange={(value) => setCustomerData((prev) => ({ ...prev, financeManager: value }))}
               placeholder="Select finance manager"
               testId="finance-select"
@@ -897,7 +897,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             <MobileSelect
               label="Delivery Coordinator"
               options={dropdownData?.deliveryCoordinators}
-              value={customerData?.deliveryCoordinator}
+              value={customerData?.deliveryCoordinator || ''}
               onChange={(value) =>
                 setCustomerData((prev) => ({ ...prev, deliveryCoordinator: value }))
               }
