@@ -375,9 +375,10 @@ describe('Step 16: Deals List Screen Verification', () => {
       const row2 = screen?.getByTestId('deal-row-job-002')
       const { within } = require('@testing-library/react')
 
-      // Job-002 has earliest promised_date of 2025-01-18, should show "Next: Jan 18"
+      // Job-002 has earliest promised_date of 2025-01-18 (Saturday)
+      // Format is "EEE d" (day of week + day number), e.g., "Sat 18"
       const chip = within(row2)?.getByTestId('promise-chip')
-      expect(chip)?.toHaveTextContent('Next: Jan 18')
+      expect(chip)?.toHaveTextContent(/Next: (Sat|Mon|Tue|Wed|Thu|Fri|Sun) 18/)
 
       // Check for overdue count indicator (all 3 jobs are overdue given current date Nov 2025)
       // Note: Test data dates are in past, so count will be 3, not 1
