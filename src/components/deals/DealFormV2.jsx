@@ -165,25 +165,32 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     }
   }, [job?.id, mode])
 
-  // Normalize customer name and vehicle description after data loads
+  // Normalize customer name and vehicle description ONCE when job data loads in edit mode
+  // This effect should only run when the job.id changes, not on every keystroke
   useEffect(() => {
-    if (mode === 'edit' && customerData.customerName) {
-      setCustomerData((prev) => {
-        const normalizedName = titleCase(prev.customerName)
-        const normalizedVehicle = titleCase(prev.vehicleDescription)
+    if (mode === 'edit' && job?.id && initializedJobId.current === job.id) {
+      // Only normalize once after the job data has been loaded and set
+      // Check if normalization is needed before applying
+      const currentName = customerData.customerName
+      const currentVehicle = customerData.vehicleDescription
+      
+      if (currentName || currentVehicle) {
+        const normalizedName = currentName ? titleCase(currentName) : currentName
+        const normalizedVehicle = currentVehicle ? titleCase(currentVehicle) : currentVehicle
 
         // Only update if values actually changed to prevent unnecessary re-renders
-        if (normalizedName !== prev.customerName || normalizedVehicle !== prev.vehicleDescription) {
-          return {
+        if (normalizedName !== currentName || normalizedVehicle !== currentVehicle) {
+          setCustomerData((prev) => ({
             ...prev,
             customerName: normalizedName,
             vehicleDescription: normalizedVehicle,
-          }
+          }))
         }
-        return prev
-      })
+      }
     }
-  }, [mode, customerData.customerName, customerData.vehicleDescription])
+    // Dependencies: only run when mode or job.id changes (not on every keystroke)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, job?.id])
 
   // Track unsaved changes
   useEffect(() => {
@@ -688,6 +695,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
           <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {tenantLoading && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+          <strong>Loading:</strong> Initializing organization context...
         </div>
       )}
 
@@ -1245,7 +1258,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           {currentStep === 1 && (
             <Button
               onClick={handleNext}
-              disabled={!hasRequiredFields() || isSubmitting}
+              disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
               data-testid="next-to-line-items-btn"
             >
