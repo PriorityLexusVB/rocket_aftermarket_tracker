@@ -125,8 +125,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
       initializedJobId.current = job.id
       
+      // Apply titleCase normalization immediately when loading job data in edit mode
+      const customerName = job?.customer_name || job?.customerName || ''
+      const vehicleDescription = job?.vehicle_description || job?.vehicleDescription || ''
+      
       setCustomerData({
-        customerName: job?.customer_name || job?.customerName || '',
+        customerName: customerName ? titleCase(customerName) : '',
         dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
         jobNumber: job?.job_number || '',
         stockNumber: job?.stock_number || job?.stockNumber || '',
@@ -135,7 +139,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         customerEmail: job?.customer_email || '',
         vendorId: job?.vendor_id || null,
         notes: job?.notes || job?.description || '',
-        vehicleDescription: job?.vehicle_description || job?.vehicleDescription || '',
+        vehicleDescription: vehicleDescription ? titleCase(vehicleDescription) : '',
         assignedTo: job?.assigned_to || null,
         deliveryCoordinator: job?.delivery_coordinator_id || null,
         financeManager: job?.finance_manager_id || null,
@@ -164,34 +168,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       }
     }
   }, [job?.id, mode])
-
-  // Normalize customer name and vehicle description ONCE when job data loads in edit mode
-  // This effect should only run when the job.id changes, not on every keystroke
-  useEffect(() => {
-    if (mode === 'edit' && job?.id && initializedJobId.current === job.id) {
-      // Only normalize once after the job data has been loaded and set
-      // Check if normalization is needed before applying
-      const currentName = customerData.customerName
-      const currentVehicle = customerData.vehicleDescription
-      
-      if (currentName || currentVehicle) {
-        const normalizedName = currentName ? titleCase(currentName) : currentName
-        const normalizedVehicle = currentVehicle ? titleCase(currentVehicle) : currentVehicle
-
-        // Only update if values actually changed to prevent unnecessary re-renders
-        if (normalizedName !== currentName || normalizedVehicle !== currentVehicle) {
-          setCustomerData((prev) => ({
-            ...prev,
-            customerName: normalizedName,
-            vehicleDescription: normalizedVehicle,
-          }))
-        }
-      }
-    }
-    // Dependencies: only run when mode or job.id changes (not on every keystroke)
-    // customerData fields are intentionally excluded to prevent running on every keystroke
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, job?.id])
 
   // Track unsaved changes
   useEffect(() => {
