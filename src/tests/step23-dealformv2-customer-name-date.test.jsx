@@ -15,19 +15,27 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import DealFormV2 from '../components/deals/DealFormV2.jsx'
 
-// Mock Auth context
+// Mock Auth context - use valid UUID format
 vi.mock('../contexts/AuthContext', () => ({
-  useAuth: () => ({ user: { id: 'test-user-id' } }),
+  useAuth: () => ({ user: { id: '87654321-4321-4321-4321-210987654321' } }),
 }))
 
-// Mock Tenant hook
+// Mock Tenant hook - use valid UUID format
 vi.mock('../hooks/useTenant', () => ({
-  default: () => ({ orgId: 'test-org-id' }),
+  default: () => ({ orgId: '12345678-1234-1234-1234-123456789012', loading: false }),
 }))
 
-// Mock Supabase
+// Mock Supabase with proper query chain for job number validation
 vi.mock('../lib/supabase', () => ({
-  supabase: {},
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        })),
+      })),
+    })),
+  },
 }))
 
 // Mock dropdown service
@@ -53,16 +61,15 @@ vi.mock('../services/dealService', () => ({
   getCapabilities: () => ({ jobPartsHasTimes: true }),
 }))
 
-// Mock vehicle service
+// Mock vehicle service with checkVinExists for VIN validation
 vi.mock('../services/vehicleService', () => ({
-  vehicleService: {},
+  vehicleService: {
+    checkVinExists: vi.fn(() => Promise.resolve(false)), // No duplicate VINs
+  },
 }))
 
-// Mock form adapters
-vi.mock('../components/deals/formAdapters', () => ({
-  draftToCreatePayload: vi.fn((draft) => draft),
-  draftToUpdatePayload: vi.fn((original, draft) => draft),
-}))
+// DO NOT mock form adapters - let them run normally to transform payload correctly
+// The form creates a payload with customer_name and deal_date which should be preserved
 
 describe('Step 23: DealFormV2 - Customer Name + Deal Date at top; Vendor per line item', () => {
   const mockOnSave = vi.fn()
