@@ -125,8 +125,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
       initializedJobId.current = job.id
       
+      // Apply titleCase normalization immediately when loading job data in edit mode
+      const customerName = job?.customer_name || job?.customerName || ''
+      const vehicleDescription = job?.vehicle_description || job?.vehicleDescription || ''
+      
       setCustomerData({
-        customerName: job?.customer_name || job?.customerName || '',
+        customerName: customerName ? titleCase(customerName) : '',
         dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
         jobNumber: job?.job_number || '',
         stockNumber: job?.stock_number || job?.stockNumber || '',
@@ -135,7 +139,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         customerEmail: job?.customer_email || '',
         vendorId: job?.vendor_id || null,
         notes: job?.notes || job?.description || '',
-        vehicleDescription: job?.vehicle_description || job?.vehicleDescription || '',
+        vehicleDescription: vehicleDescription ? titleCase(vehicleDescription) : '',
         assignedTo: job?.assigned_to || null,
         deliveryCoordinator: job?.delivery_coordinator_id || null,
         financeManager: job?.finance_manager_id || null,
@@ -164,26 +168,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       }
     }
   }, [job?.id, mode])
-
-  // Normalize customer name and vehicle description after data loads
-  useEffect(() => {
-    if (mode === 'edit' && customerData.customerName) {
-      setCustomerData((prev) => {
-        const normalizedName = titleCase(prev.customerName)
-        const normalizedVehicle = titleCase(prev.vehicleDescription)
-
-        // Only update if values actually changed to prevent unnecessary re-renders
-        if (normalizedName !== prev.customerName || normalizedVehicle !== prev.vehicleDescription) {
-          return {
-            ...prev,
-            customerName: normalizedName,
-            vehicleDescription: normalizedVehicle,
-          }
-        }
-        return prev
-      })
-    }
-  }, [mode, customerData.customerName, customerData.vehicleDescription])
 
   // Track unsaved changes
   useEffect(() => {
@@ -688,6 +672,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
           <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {tenantLoading && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+          <strong>Loading:</strong> Initializing organization context...
         </div>
       )}
 
@@ -1245,7 +1235,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           {currentStep === 1 && (
             <Button
               onClick={handleNext}
-              disabled={!hasRequiredFields() || isSubmitting}
+              disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
               data-testid="next-to-line-items-btn"
             >
