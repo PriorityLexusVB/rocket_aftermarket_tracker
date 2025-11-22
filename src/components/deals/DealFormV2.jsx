@@ -189,6 +189,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       }
     }
     // Dependencies: only run when mode or job.id changes (not on every keystroke)
+    // customerData fields are intentionally excluded to prevent running on every keystroke
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, job?.id])
 
