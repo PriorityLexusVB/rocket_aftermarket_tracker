@@ -1655,26 +1655,41 @@ export async function updateDeal(id, formState) {
     // This handles legacy data where transaction.org_id might be NULL or stale
     if (selectErr) {
       const errMsg = String(selectErr?.message || '').toLowerCase()
-      // If it's an RLS/permission error, try to find and fix the transaction via the job
-      if (errMsg.includes('policy') || errMsg.includes('permission') || errMsg.includes('rls')) {
+      const errCode = selectErr?.code
+      
+      // Check for RLS/permission errors using both error code and message
+      // Common RLS error codes: '42501' (insufficient_privilege), 'PGRST' codes from PostgREST
+      const isRlsError =
+        errCode === '42501' ||
+        errCode?.startsWith?.('PGRST') ||
+        errMsg.includes('policy') ||
+        errMsg.includes('permission') ||
+        errMsg.includes('rls') ||
+        errMsg.includes('row-level security')
+
+      if (isRlsError) {
         console.warn('[dealService:update] RLS blocked transaction SELECT, attempting recovery via job')
         
         // Try to get the job's org_id to use for the transaction
         let jobOrgId = baseTransactionData.org_id
         if (!jobOrgId) {
-          const { data: jobData } = await supabase
+          const { data: jobData, error: jobErr } = await supabase
             ?.from('jobs')
             ?.select('org_id')
             ?.eq('id', id)
             ?.single()
+          
+          if (jobErr) {
+            console.error('[dealService:update] Failed to fetch job org_id:', jobErr?.message)
+            throw jobErr
+          }
           jobOrgId = jobData?.org_id
         }
 
         if (jobOrgId) {
-          // Update the transaction's org_id to match the job's org_id using a service role or admin query
-          // Since we can't SELECT the transaction due to RLS, we need to use the job relationship
-          // The RLS INSERT policy allows: org_id matches OR job.org_id matches
-          // So we can safely use the job's org_id
+          // Set the transaction's org_id to match the job's org_id for subsequent INSERT/UPDATE
+          // The RLS INSERT/UPDATE policies allow operations when: org_id matches user's org OR job.org_id matches user's org
+          // By using the job's org_id, we ensure the transaction satisfies the RLS policy
           baseTransactionData.org_id = jobOrgId
           console.info('[dealService:update] Using job org_id for transaction:', jobOrgId)
         }
