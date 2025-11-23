@@ -94,7 +94,7 @@ WITH CHECK (
 
 ### 1. Added org_id to mapDbDealToForm
 
-**File**: `src/services/dealService.js` (line 1933)
+**File**: `src/services/dealService.js` (line 1972)
 
 ```javascript
 function mapDbDealToForm(dbDeal) {
@@ -156,7 +156,7 @@ const baseTransactionData = {
 
 ### 3. Enhanced Error Messages
 
-**File**: `src/services/dealService.js` (lines 1772-1784)
+**File**: `src/services/dealService.js` (lines 1772-1787)
 
 ```javascript
 } catch (e) {
@@ -168,9 +168,11 @@ const baseTransactionData = {
       job_id: id,
       has_org_id: !!transactionOrgId,
     })
+    // User-facing message without sensitive org_id
     throw new Error(
       `Failed to upsert transaction: ${e?.message}. ` +
-        `org_id=${transactionOrgId || 'NULL'} - Ensure user is authenticated and belongs to the correct organization.`
+        `Organization context ${transactionOrgId ? 'provided' : 'missing'}. ` +
+        `Ensure you are authenticated and have permission to edit this deal.`
     )
   }
   throw wrapDbError(e, 'upsert transaction')
@@ -459,9 +461,9 @@ git push origin copilot/fix-updating-deals-error
 
 Edit `src/services/dealService.js`:
 
-1. Remove `org_id: normalized?.org_id,` from `mapDbDealToForm` (line 1933)
-2. Remove safety fallback code (lines 1638-1655)
-3. Revert error message enhancement (lines 1772-1784)
+1. Remove `org_id: normalized?.org_id,` from `mapDbDealToForm` (line 1972)
+2. Remove safety fallback code (lines 1638-1659)
+3. Revert error message enhancement (lines 1772-1787)
 
 ### Re-enable After Investigation
 
@@ -495,12 +497,12 @@ Once root cause identified:
 **Lines Changed**: 3 locations
 
 1. **Line 1933**: Added org_id to mapDbDealToForm return object
-2. **Lines 1638-1655**: Added safety fallback to fetch org_id from job
+2. **Lines 1638-1659**: Added safety fallback to fetch org_id from job
 3. **Lines 1772-1784**: Enhanced error messages for RLS violations
 
 ### Test Files Created
 
-1. **src/tests/dealService.editOrgId.test.js**: 144 lines, 6 tests
+1. **src/tests/dealService.editOrgId.test.js**: 137 lines, 6 tests
 2. **src/tests/formAdapters.orgId.test.js**: 81 lines, 5 tests
 
 ---

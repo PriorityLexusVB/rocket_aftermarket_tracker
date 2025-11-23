@@ -131,7 +131,7 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
 1. Check you have the latest code with the fix
 2. Clear browser cache and localStorage
-3. Verify `mapDbDealToForm` includes `org_id` (line 1933 in dealService.js)
+3. Verify `mapDbDealToForm` includes `org_id` (line 1972 in dealService.js)
 4. Contact team with:
    - Browser console logs
    - Database query results for job and transaction

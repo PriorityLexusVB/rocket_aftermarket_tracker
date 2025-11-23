@@ -45,7 +45,7 @@ Code Review: ✓ Addressed all feedback
 | File | Lines | Description |
 |------|-------|-------------|
 | dealService.js | +28 | Core fix + safety fallback |
-| dealService.editOrgId.test.js | +147 | 6 comprehensive tests |
+| dealService.editOrgId.test.js | +137 | 6 comprehensive tests |
 | formAdapters.orgId.test.js | +81 | 5 adapter tests |
 | TRANSACTION_RLS_FIX_COMPLETE.md | +496 | Technical documentation |
 | TROUBLESHOOTING_RLS_QUICK.md | +127 | Quick reference |
@@ -117,9 +117,9 @@ git revert c1b1081
 ```
 
 Or manually remove:
-- Line 1933 in dealService.js: `org_id: normalized?.org_id,`
-- Lines 1639-1660: Safety fallback code
-- Lines 1777-1789: Enhanced error messages
+- Line 1972 in dealService.js: `org_id: normalized?.org_id,`
+- Lines 1638-1659: Safety fallback code
+- Lines 1772-1787: Enhanced error messages
 
 ## Next Steps
 

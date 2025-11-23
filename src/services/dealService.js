@@ -1649,7 +1649,7 @@ export async function updateDeal(id, formState) {
         ?.single()
       if (!jobFetchErr && jobData?.org_id) {
         transactionOrgId = jobData.org_id
-        console.info('[dealService:update] Retrieved org_id from job:', transactionOrgId)
+        console.info('[dealService:update] Retrieved org_id from job:', transactionOrgId ? transactionOrgId.slice(0, 8) + '...' : 'N/A')
       } else {
         console.error('[dealService:update] Failed to fetch org_id from job:', jobFetchErr?.message)
       }
