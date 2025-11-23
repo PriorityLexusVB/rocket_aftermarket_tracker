@@ -1635,10 +1635,31 @@ export async function updateDeal(id, formState) {
   // Prefer server-truth; do not write localStorage fallbacks for description
 
   // 2) ✅ ENHANCED: Upsert transaction with customer data
+  // ✅ SAFETY: If org_id is missing from payload, fetch it from the job record
+  let transactionOrgId = payload?.org_id || null
+  if (!transactionOrgId) {
+    console.warn('[dealService:update] org_id missing from payload, fetching from job record')
+    try {
+      const { data: jobData, error: jobFetchErr } = await supabase
+        ?.from('jobs')
+        ?.select('org_id')
+        ?.eq('id', id)
+        ?.single()
+      if (!jobFetchErr && jobData?.org_id) {
+        transactionOrgId = jobData.org_id
+        console.info('[dealService:update] Retrieved org_id from job:', transactionOrgId)
+      } else {
+        console.error('[dealService:update] Failed to fetch org_id from job:', jobFetchErr?.message)
+      }
+    } catch (e) {
+      console.error('[dealService:update] Error fetching org_id from job:', e?.message)
+    }
+  }
+
   const baseTransactionData = {
     job_id: id,
     vehicle_id: payload?.vehicle_id || null,
-    org_id: payload?.org_id || null, // ✅ FIX: Include org_id for RLS compliance
+    org_id: transactionOrgId, // ✅ FIX: Include org_id for RLS compliance (from payload or job)
     total_amount: totalDealValue,
     customer_name: customerName || 'Unknown Customer',
     customer_phone: customerPhone || null,
@@ -1746,6 +1767,19 @@ export async function updateDeal(id, formState) {
       }
     }
   } catch (e) {
+    // Enhance error message with context about org_id
+    if (String(e?.message || '').toLowerCase().includes('row-level security')) {
+      console.error('[dealService:update] RLS violation on transactions table:', {
+        error: e?.message,
+        org_id: transactionOrgId,
+        job_id: id,
+        has_org_id: !!transactionOrgId,
+      })
+      throw new Error(
+        `Failed to upsert transaction: ${e?.message}. ` +
+          `org_id=${transactionOrgId || 'NULL'} - Ensure user is authenticated and belongs to the correct organization.`
+      )
+    }
     throw wrapDbError(e, 'upsert transaction')
   }
 
@@ -1931,6 +1965,7 @@ function mapDbDealToForm(dbDeal) {
   return {
     id: normalized?.id,
     updated_at: normalized?.updated_at,
+    org_id: normalized?.org_id, // ✅ FIX: Include org_id for RLS compliance in edit flow
     // Deal date (local YYYY-MM-DD format)
     deal_date:
       normalized?.deal_date ||
