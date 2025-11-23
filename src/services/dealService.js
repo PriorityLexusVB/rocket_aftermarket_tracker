@@ -1636,6 +1636,8 @@ export async function updateDeal(id, formState) {
 
   // 2) ✅ ENHANCED: Upsert transaction with customer data
   // ✅ SAFETY: If org_id is missing from payload, fetch it from the job record
+  // NOTE: This fallback should rarely execute - org_id should come from form state (mapDbDealToForm).
+  // If this executes frequently, investigate why form state lacks org_id.
   let transactionOrgId = payload?.org_id || null
   if (!transactionOrgId) {
     console.warn('[dealService:update] org_id missing from payload, fetching from job record')
@@ -1775,9 +1777,11 @@ export async function updateDeal(id, formState) {
         job_id: id,
         has_org_id: !!transactionOrgId,
       })
+      // User-facing message without sensitive org_id
       throw new Error(
         `Failed to upsert transaction: ${e?.message}. ` +
-          `org_id=${transactionOrgId || 'NULL'} - Ensure user is authenticated and belongs to the correct organization.`
+          `Organization context ${transactionOrgId ? 'provided' : 'missing'}. ` +
+          `Ensure you are authenticated and have permission to edit this deal.`
       )
     }
     throw wrapDbError(e, 'upsert transaction')

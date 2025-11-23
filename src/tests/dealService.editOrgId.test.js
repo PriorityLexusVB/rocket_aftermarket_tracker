@@ -121,6 +121,8 @@ describe('dealService - org_id preservation in edit flow', () => {
     expect(formData.updated_at).toBeDefined()
 
     // Customer fields
+    // NOTE: Both snake_case and camelCase provided for backward compatibility
+    // with different parts of the codebase. Consider standardizing in the future.
     expect(formData.customer_name).toBe('John Doe')
     expect(formData.customerName).toBe('John Doe')
 
