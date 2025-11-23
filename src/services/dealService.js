@@ -1714,7 +1714,7 @@ export async function updateDeal(id, formState) {
         }
 
         // If UPDATE affected rows, we're done (transaction was updated)
-        if (updateResult && updateResult.length > 0) {
+        if (updateResult?.length > 0) {
           console.info('[dealService:update] Successfully updated transaction via RLS recovery, org_id:', jobOrgId)
           rlsRecoveryAttempted = true
         }
