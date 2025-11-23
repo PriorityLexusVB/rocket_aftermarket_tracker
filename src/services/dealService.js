@@ -1430,10 +1430,17 @@ export async function createDeal(formState) {
 
     // 3) Ensure a transaction row exists immediately to satisfy NOT NULLs in some environments
     try {
+      // ✅ Ensure org_id is set, fallback to job's org_id if not in payload
+      let transactionOrgId = payload?.org_id || null
+      if (!transactionOrgId && job?.org_id) {
+        transactionOrgId = job.org_id
+        console.info('[dealService:create] Using job org_id for transaction:', transactionOrgId)
+      }
+
       const baseTransaction = {
         job_id: job?.id,
         vehicle_id: payload?.vehicle_id || null,
-        org_id: payload?.org_id || null, // ✅ FIX: Include org_id for RLS compliance
+        org_id: transactionOrgId, // ✅ FIX: Include org_id for RLS compliance
         total_amount:
           (normalizedLineItems || []).reduce((sum, item) => {
             const qty = Number(item?.quantity_used || item?.quantity || 1)
@@ -1448,15 +1455,24 @@ export async function createDeal(formState) {
       }
 
       // best-effort: insert only if not exists (race-safe enough for single client)
-      const { data: existingTxn } = await supabase
+      const { data: existingTxn, error: selectErr } = await supabase
         ?.from('transactions')
         ?.select('id')
         ?.eq('job_id', job?.id)
         ?.limit(1)
         ?.maybeSingle?.()
 
+      // If SELECT failed due to RLS, transaction might exist but be inaccessible
+      // This is non-fatal in createDeal; updateDeal will handle it
+      if (selectErr) {
+        console.warn('[dealService:create] Transaction SELECT failed (non-fatal):', selectErr?.message)
+      }
+
       if (!existingTxn?.id) {
-        await supabase?.from('transactions')?.insert([baseTransaction])
+        const { error: insErr } = await supabase?.from('transactions')?.insert([baseTransaction])
+        if (insErr) {
+          console.warn('[dealService:create] Transaction INSERT failed (non-fatal):', insErr?.message)
+        }
       }
     } catch (e) {
       // non-fatal; updateDeal will try again, but we attempted to satisfy NOT NULL early
@@ -1627,14 +1643,54 @@ export async function updateDeal(id, formState) {
 
   // Upsert without relying on a DB unique constraint (some envs lack a unique index on job_id)
   try {
-    const { data: existingTxn } = await supabase
+    // ✅ FIX: Check for errors and handle RLS-blocked SELECTs
+    const { data: existingTxn, error: selectErr } = await supabase
       ?.from('transactions')
-      ?.select('id, transaction_number')
+      ?.select('id, transaction_number, org_id')
       ?.eq('job_id', id)
       ?.limit(1)
       ?.maybeSingle?.() // keep compatibility if maybeSingle exists
 
+    // If SELECT failed due to RLS (org_id mismatch), try to fix the existing transaction's org_id
+    // This handles legacy data where transaction.org_id might be NULL or stale
+    if (selectErr) {
+      const errMsg = String(selectErr?.message || '').toLowerCase()
+      // If it's an RLS/permission error, try to find and fix the transaction via the job
+      if (errMsg.includes('policy') || errMsg.includes('permission') || errMsg.includes('rls')) {
+        console.warn('[dealService:update] RLS blocked transaction SELECT, attempting recovery via job')
+        
+        // Try to get the job's org_id to use for the transaction
+        let jobOrgId = baseTransactionData.org_id
+        if (!jobOrgId) {
+          const { data: jobData } = await supabase
+            ?.from('jobs')
+            ?.select('org_id')
+            ?.eq('id', id)
+            ?.single()
+          jobOrgId = jobData?.org_id
+        }
+
+        if (jobOrgId) {
+          // Update the transaction's org_id to match the job's org_id using a service role or admin query
+          // Since we can't SELECT the transaction due to RLS, we need to use the job relationship
+          // The RLS INSERT policy allows: org_id matches OR job.org_id matches
+          // So we can safely use the job's org_id
+          baseTransactionData.org_id = jobOrgId
+          console.info('[dealService:update] Using job org_id for transaction:', jobOrgId)
+        }
+      } else {
+        // Other SELECT errors should be thrown
+        throw selectErr
+      }
+    }
+
     if (existingTxn?.id) {
+      // ✅ Ensure org_id is set for UPDATE to avoid RLS violations
+      // Preserve existing org_id if not provided in payload (don't overwrite with null)
+      if (!baseTransactionData.org_id && existingTxn.org_id) {
+        baseTransactionData.org_id = existingTxn.org_id
+      }
+      
       const { error: updErr } = await supabase
         ?.from('transactions')
         ?.update(baseTransactionData) // don't overwrite transaction_number on update
