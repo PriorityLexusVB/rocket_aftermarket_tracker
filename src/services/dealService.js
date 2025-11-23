@@ -1431,10 +1431,9 @@ export async function createDeal(formState) {
     // 3) Ensure a transaction row exists immediately to satisfy NOT NULLs in some environments
     try {
       // ✅ Ensure org_id is set, fallback to job's org_id if not in payload
-      let transactionOrgId = payload?.org_id || null
-      if (!transactionOrgId && job?.org_id) {
-        transactionOrgId = job.org_id
-        console.info('[dealService:create] Using job org_id for transaction:', transactionOrgId)
+      let transactionOrgId = payload?.org_id || job?.org_id || null
+      if (transactionOrgId) {
+        console.info('[dealService:create] Using org_id for transaction:', transactionOrgId)
       }
 
       const baseTransaction = {
@@ -1462,13 +1461,19 @@ export async function createDeal(formState) {
         ?.limit(1)
         ?.maybeSingle?.()
 
-      // If SELECT failed due to RLS, transaction might exist but be inaccessible
-      // This is non-fatal in createDeal; updateDeal will handle it
+      // If SELECT failed due to RLS, skip INSERT to avoid potential duplicates
+      // Transaction likely exists but is inaccessible; updateDeal will handle fixing it
       if (selectErr) {
-        console.warn('[dealService:create] Transaction SELECT failed (non-fatal):', selectErr?.message)
-      }
-
-      if (!existingTxn?.id) {
+        const errMsg = String(selectErr?.message || '').toLowerCase()
+        const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || errMsg.includes('rls')
+        
+        if (isRlsError) {
+          console.warn('[dealService:create] RLS blocked transaction SELECT; skipping INSERT to avoid duplicates')
+        } else {
+          console.warn('[dealService:create] Transaction SELECT failed (non-fatal):', selectErr?.message)
+        }
+      } else if (!existingTxn?.id) {
+        // Only INSERT if SELECT succeeded and found no transaction
         const { error: insErr } = await supabase?.from('transactions')?.insert([baseTransaction])
         if (insErr) {
           console.warn('[dealService:create] Transaction INSERT failed (non-fatal):', insErr?.message)
@@ -1651,8 +1656,9 @@ export async function updateDeal(id, formState) {
       ?.limit(1)
       ?.maybeSingle?.() // keep compatibility if maybeSingle exists
 
-    // If SELECT failed due to RLS (org_id mismatch), try to fix the existing transaction's org_id
+    // Handle RLS-blocked SELECT: update existing transaction by job_id instead of attempting INSERT
     // This handles legacy data where transaction.org_id might be NULL or stale
+    let rlsRecoveryAttempted = false
     if (selectErr) {
       const errMsg = String(selectErr?.message || '').toLowerCase()
       const errCode = selectErr?.code
@@ -1661,16 +1667,16 @@ export async function updateDeal(id, formState) {
       // Common RLS error codes: '42501' (insufficient_privilege), 'PGRST' codes from PostgREST
       const isRlsError =
         errCode === '42501' ||
-        (errCode && String(errCode).startsWith('PGRST')) ||
+        (errCode && String(errCode).toUpperCase().startsWith('PGRST')) ||
         errMsg.includes('policy') ||
         errMsg.includes('permission') ||
         errMsg.includes('rls') ||
         errMsg.includes('row-level security')
 
       if (isRlsError) {
-        console.warn('[dealService:update] RLS blocked transaction SELECT, attempting recovery via job')
+        console.warn('[dealService:update] RLS blocked transaction SELECT, attempting UPDATE by job_id')
         
-        // Try to get the job's org_id to use for the transaction
+        // Get the job's org_id to use for the transaction
         let jobOrgId = baseTransactionData.org_id
         if (!jobOrgId) {
           const { data: jobData, error: jobErr } = await supabase
@@ -1686,35 +1692,58 @@ export async function updateDeal(id, formState) {
           jobOrgId = jobData?.org_id
         }
 
-        if (jobOrgId) {
-          // Set the transaction's org_id to match the job's org_id for subsequent INSERT/UPDATE
-          // The RLS INSERT/UPDATE policies allow operations when: org_id matches user's org OR job.org_id matches user's org
-          // By using the job's org_id, we ensure the transaction satisfies the RLS policy
-          baseTransactionData.org_id = jobOrgId
-          console.info('[dealService:update] Using job org_id for transaction:', jobOrgId)
+        if (!jobOrgId) {
+          throw new Error('Cannot recover from RLS error: job has no org_id')
         }
+
+        // Set the transaction's org_id to match the job's org_id
+        // The RLS UPDATE policy allows: org_id matches user's org OR job.org_id matches user's org
+        baseTransactionData.org_id = jobOrgId
+        
+        // Attempt UPDATE by job_id (RLS policy allows this via job relationship)
+        // This will update the existing transaction's org_id and other fields
+        const { data: updateResult, error: updErr } = await supabase
+          ?.from('transactions')
+          ?.update(baseTransactionData)
+          ?.eq('job_id', id)
+          ?.select('id')
+
+        if (updErr) {
+          console.error('[dealService:update] RLS recovery UPDATE failed:', updErr?.message)
+          throw updErr
+        }
+
+        // If UPDATE affected rows, we're done (transaction was updated)
+        if (updateResult && updateResult.length > 0) {
+          console.info('[dealService:update] Successfully updated transaction via RLS recovery, org_id:', jobOrgId)
+          rlsRecoveryAttempted = true
+        }
+        // If UPDATE affected 0 rows, transaction doesn't exist - will INSERT below
       } else {
         // Other SELECT errors should be thrown
         throw selectErr
       }
     }
 
-    if (existingTxn?.id) {
-      // ✅ Ensure org_id is set for UPDATE to avoid RLS violations
-      // Preserve existing org_id if not provided in payload (don't overwrite with null)
-      if (!baseTransactionData.org_id && existingTxn.org_id) {
-        baseTransactionData.org_id = existingTxn.org_id
+    // Normal path when SELECT succeeded or RLS recovery didn't update any rows
+    if (!rlsRecoveryAttempted) {
+      if (existingTxn?.id) {
+        // Preserve existing org_id if not provided in payload (don't overwrite with null)
+        if (!baseTransactionData.org_id && existingTxn.org_id) {
+          baseTransactionData.org_id = existingTxn.org_id
+        }
+        
+        const { error: updErr } = await supabase
+          ?.from('transactions')
+          ?.update(baseTransactionData) // don't overwrite transaction_number on update
+          ?.eq('id', existingTxn.id)
+        if (updErr) throw updErr
+      } else {
+        // No transaction exists - create one
+        const insertData = { ...baseTransactionData, transaction_number: generateTransactionNumber() }
+        const { error: insErr } = await supabase?.from('transactions')?.insert([insertData])
+        if (insErr) throw insErr
       }
-      
-      const { error: updErr } = await supabase
-        ?.from('transactions')
-        ?.update(baseTransactionData) // don't overwrite transaction_number on update
-        ?.eq('id', existingTxn.id)
-      if (updErr) throw updErr
-    } else {
-      const insertData = { ...baseTransactionData, transaction_number: generateTransactionNumber() }
-      const { error: insErr } = await supabase?.from('transactions')?.insert([insertData])
-      if (insErr) throw insErr
     }
   } catch (e) {
     throw wrapDbError(e, 'upsert transaction')
