@@ -1661,7 +1661,7 @@ export async function updateDeal(id, formState) {
       // Common RLS error codes: '42501' (insufficient_privilege), 'PGRST' codes from PostgREST
       const isRlsError =
         errCode === '42501' ||
-        errCode?.startsWith?.('PGRST') ||
+        (errCode && String(errCode).startsWith('PGRST')) ||
         errMsg.includes('policy') ||
         errMsg.includes('permission') ||
         errMsg.includes('rls') ||
