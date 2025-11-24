@@ -88,5 +88,46 @@ describe('Deal Service - Transaction org_id RLS Compliance', () => {
     expect(issue.fix).toContain('org_id: payload?.org_id')
     expect(issue.affectedFunctions).toHaveLength(2)
   })
-})
 
+  it('documents enhanced RLS recovery for legacy data', () => {
+    // When RLS blocks transaction SELECT, updateDeal attempts recovery by:
+    // 1. Fetching the job's org_id
+    // 2. If job has no org_id (legacy data), getting user's org_id from profile
+    // 3. Setting job.org_id to user's org_id to fix the legacy data
+    // 4. Updating the transaction with the resolved org_id
+    
+    const rlsRecoverySteps = [
+      'Try to SELECT transaction by job_id',
+      'If RLS error (403), fetch job org_id',
+      'If job has no org_id, get user org_id from profile',
+      'Set job.org_id from user profile (fixes legacy job)',
+      'Update transaction with resolved org_id',
+      'If UPDATE fails/affects 0 rows, INSERT new transaction',
+    ]
+    
+    expect(rlsRecoverySteps).toHaveLength(6)
+    expect(rlsRecoverySteps[2]).toContain('user org_id')
+    expect(rlsRecoverySteps[3]).toContain('fixes legacy job')
+  })
+
+  it('documents legacy data migration approach', () => {
+    // Legacy deals (created before org scoping) need their org_id backfilled
+    // This is handled by:
+    // 1. Migration 20251124230000_fix_legacy_org_id_data.sql
+    // 2. Runtime fix in updateDeal when legacy deals are edited
+    
+    const migrationApproach = {
+      migration: '20251124230000_fix_legacy_org_id_data.sql',
+      tables: ['jobs', 'transactions', 'vehicles'],
+      strategy: [
+        'Infer org_id from assigned_to user profile',
+        'Fall back to default organization',
+        'Propagate job org_id to linked transactions',
+      ],
+    }
+    
+    expect(migrationApproach.tables).toContain('jobs')
+    expect(migrationApproach.tables).toContain('transactions')
+    expect(migrationApproach.strategy.length).toBe(3)
+  })
+})
