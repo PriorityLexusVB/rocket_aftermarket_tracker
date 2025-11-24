@@ -1786,7 +1786,7 @@ export async function updateDeal(id, formState) {
 
         // If UPDATE affected rows, we're done (transaction was updated)
         if (updateResult?.length > 0) {
-          console.info('[dealService:update] Successfully updated transaction via RLS recovery, org_id:', jobOrgId)
+          console.info('[dealService:update] Successfully updated transaction via RLS recovery')
           rlsRecoveryAttempted = true
         }
         // If UPDATE affected 0 rows or failed with RLS, transaction may not exist - will INSERT below
@@ -1822,7 +1822,6 @@ export async function updateDeal(id, formState) {
     if (errMsg.includes('row-level security') || errMsg.includes('policy')) {
       console.error('[dealService:update] RLS violation on transactions table:', {
         error: e?.message,
-        org_id: transactionOrgId,
         job_id: id,
         has_org_id: !!transactionOrgId,
       })
