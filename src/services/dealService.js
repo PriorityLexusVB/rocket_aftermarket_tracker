@@ -1720,27 +1720,34 @@ export async function updateDeal(id, formState) {
         if (!jobOrgId) {
           console.warn('[dealService:update] Job has no org_id - attempting to set from user profile')
           try {
-            const { data: auth } = await supabase?.auth?.getUser?.()
-            const userId = auth?.user?.id
+            const authResult = await supabase.auth.getUser()
+            if (authResult.error) {
+              console.warn('[dealService:update] Auth getUser failed:', authResult.error.message)
+            }
+            const userId = authResult.data?.user?.id
             if (userId) {
-              const { data: prof } = await supabase
-                ?.from('user_profiles')
-                ?.select('org_id')
-                ?.eq('id', userId)
-                ?.single()
+              const profileResult = await supabase
+                .from('user_profiles')
+                .select('org_id')
+                .eq('id', userId)
+                .single()
               
-              if (prof?.org_id) {
-                jobOrgId = prof.org_id
+              if (profileResult.error) {
+                console.warn('[dealService:update] Profile fetch failed:', profileResult.error.message)
+              }
+              
+              if (profileResult.data?.org_id) {
+                jobOrgId = profileResult.data.org_id
                 // Set org_id on the job to fix the legacy data
-                const { error: jobUpdateErr } = await supabase
-                  ?.from('jobs')
-                  ?.update({ org_id: jobOrgId })
-                  ?.eq('id', id)
+                const jobUpdateResult = await supabase
+                  .from('jobs')
+                  .update({ org_id: jobOrgId })
+                  .eq('id', id)
                 
-                if (jobUpdateErr) {
-                  console.warn('[dealService:update] Failed to set job org_id:', jobUpdateErr?.message)
+                if (jobUpdateResult.error) {
+                  console.warn('[dealService:update] Failed to set job org_id:', jobUpdateResult.error.message)
                 } else {
-                  console.info('[dealService:update] Set job org_id from user profile:', jobOrgId?.slice(0, 8) + '...')
+                  console.info('[dealService:update] Successfully set job org_id from user profile')
                 }
               }
             }
