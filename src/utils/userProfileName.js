@@ -2,9 +2,15 @@
 // Unified user profile display-name resolution and capability management.
 
 // Capability flags are cached in sessionStorage to avoid repeated probing.
-let CAP_NAME = true
-let CAP_FULL_NAME = true
-let CAP_DISPLAY_NAME = true
+// Default ALL to false to avoid query failures when columns don't exist.
+// Queries will use only id+email initially (which should always exist).
+// Capability detection is performed via health endpoints (e.g., /api/health-user-profiles
+// called from ensureUserProfileCapsLoaded()). The service layer's downgradeCapForErrorMessage()
+// only disables capabilities when columns are missing; it does NOT upgrade capabilities.
+// To reset capability detection after schema changes, clear sessionStorage.
+let CAP_NAME = false
+let CAP_FULL_NAME = false
+let CAP_DISPLAY_NAME = false
 let CAPS_LOADED = false
 
 const SS_KEYS = {
@@ -18,9 +24,13 @@ function readCapsFromStorage() {
   const name = sessionStorage.getItem(SS_KEYS.name)
   const full = sessionStorage.getItem(SS_KEYS.full)
   const display = sessionStorage.getItem(SS_KEYS.display)
+  // Read both true and false values from storage
   if (name === 'false') CAP_NAME = false
+  else if (name === 'true') CAP_NAME = true
   if (full === 'false') CAP_FULL_NAME = false
+  else if (full === 'true') CAP_FULL_NAME = true
   if (display === 'false') CAP_DISPLAY_NAME = false
+  else if (display === 'true') CAP_DISPLAY_NAME = true
 }
 
 function writeCapsToStorage() {
@@ -61,7 +71,19 @@ export async function ensureUserProfileCapsLoaded() {
   if (CAPS_LOADED) return
   // Initialize from storage first
   readCapsFromStorage()
-  // If none disabled yet, try probing the serverless health endpoint (best-effort)
+  
+  // Check if we already have caps from storage
+  const hasStoredCaps = typeof sessionStorage !== 'undefined' && 
+    (sessionStorage.getItem(SS_KEYS.name) !== null ||
+     sessionStorage.getItem(SS_KEYS.full) !== null ||
+     sessionStorage.getItem(SS_KEYS.display) !== null)
+  
+  if (hasStoredCaps) {
+    CAPS_LOADED = true
+    return
+  }
+  
+  // Try probing the serverless health endpoint (best-effort)
   if (typeof fetch === 'function' && typeof window !== 'undefined') {
     try {
       const resp = await fetch('/api/health-user-profiles', { method: 'GET' })
@@ -77,7 +99,9 @@ export async function ensureUserProfileCapsLoaded() {
         }
       }
     } catch (_) {
-      // ignore network errors; capabilities remain as-is
+      // Health endpoint not available (e.g., local dev without Vercel)
+      // Capabilities remain at their default (false) values, meaning queries will only use id+email.
+      // When columns are detected to exist, they'll be enabled via the health endpoint on subsequent loads.
     }
   }
   CAPS_LOADED = true

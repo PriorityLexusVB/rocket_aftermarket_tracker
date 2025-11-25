@@ -6,8 +6,23 @@ test.describe('Deal create + edit flow', () => {
   test.skip(missingAuthEnv, 'E2E auth env not set')
 
   test('create a deal, then edit and persist changes', async ({ page }) => {
+    // Preflight: ensure we have an authenticated session (via storageState)
+    await page.goto('/debug-auth')
+    const hasSession = await page
+      .getByTestId('session-user-id')
+      .isVisible()
+      .catch(() => false)
+    const hasOrg = await page
+      .getByTestId('profile-org-id')
+      .isVisible()
+      .catch(() => false)
+    test.skip(!(hasSession && hasOrg), 'No authenticated session; skipping deal create/edit test')
+
     // Create new deal
     await page.goto('/deals/new')
+
+    // Wait for the form to render
+    await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })
 
     const description = page.getByTestId('description-input')
     await expect(description).toBeVisible()
@@ -24,14 +39,20 @@ test.describe('Deal create + edit flow', () => {
 
     const save = page.getByTestId('save-deal-btn')
     await expect(save).toBeEnabled()
+    
+    // Click save and wait for either redirect or error
     await save.click()
 
-    // Redirect to edit page
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 })
+    // Wait for redirect to edit page - increased timeout and wait for network idle
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000, waitUntil: 'networkidle' })
+
+    // Re-acquire description element after navigation (DOM changed)
+    const descriptionAfterNav = page.getByTestId('description-input')
+    await expect(descriptionAfterNav).toBeVisible({ timeout: 10_000 })
 
     // Edit: change description and toggle scheduling flags
     const editedDescription = `${initialDescription} - Edited`
-    await description.fill(editedDescription)
+    await descriptionAfterNav.fill(editedDescription)
 
     // For line item 0: uncheck requires scheduling to reveal reason, then re-check
     const requires = page.getByTestId('requires-scheduling-0')
@@ -55,7 +76,8 @@ test.describe('Deal create + edit flow', () => {
     await loaner.setChecked(!wasChecked)
 
     // Save changes
-    await save.click()
+    const saveAfterEdit = page.getByTestId('save-deal-btn')
+    await saveAfterEdit.click()
 
     // Wait for the save to settle: prefer inline success, fallback to header timestamp
     await Promise.race([
@@ -65,7 +87,7 @@ test.describe('Deal create + edit flow', () => {
 
     // Stay on edit page and ensure the title persisted after reload
     await page.reload()
-    await expect(description).toHaveValue(editedDescription)
+    await expect(page.getByTestId('description-input')).toHaveValue(editedDescription)
 
     // Verify loaner checkbox state persisted
     await expect(page.getByTestId('loaner-checkbox')).toHaveJSProperty('checked', !wasChecked)

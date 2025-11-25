@@ -4,11 +4,15 @@ import path from 'path'
 // Ensure env vars (E2E_EMAIL/E2E_PASSWORD, PLAYWRIGHT_BASE_URL) load from .env.local/.env
 import dotenv from 'dotenv'
 import { existsSync } from 'fs'
+import { fileURLToPath } from 'url'
+
+// ESM-compatible __dirname equivalent
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 try {
-  const root = __dirname
   for (const f of ['.env.local', '.env']) {
-    const p = path.resolve(root, f)
+    const p = path.resolve(__dirname, f)
     if (existsSync(p)) dotenv.config({ path: p })
   }
 } catch {}
