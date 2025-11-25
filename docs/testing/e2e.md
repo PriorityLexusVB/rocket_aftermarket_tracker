@@ -20,7 +20,7 @@ The following environment variables are required for E2E tests to run successful
 | `E2E_EMAIL` | Email address for E2E test user | Authentication |
 | `E2E_PASSWORD` | Password for E2E test user | Authentication |
 | `VITE_ORG_SCOPED_DROPDOWNS` | Set to `true` for org-scoped dropdown behavior | App runtime |
-| `PLAYWRIGHT_BASE_URL` | Base URL for tests (default: `http://localhost:5174`) | Test execution |
+| `PLAYWRIGHT_BASE_URL` | Base URL for tests (default: `http://localhost:5173`) | Test execution |
 
 ## Running E2E Tests Locally
 
@@ -119,9 +119,9 @@ const __dirname = path.dirname(__filename)
 
 ### Port Conflicts
 
-**Symptom**: Tests fail because the dev server can't start on port 5174.
+**Symptom**: Tests fail because the dev server can't start on port 5173.
 
-**Solution**: The Playwright config uses port 5174 to avoid conflicts with a running dev server on 5173. Ensure no other process is using port 5174.
+**Solution**: The Playwright config starts a fresh dev server on port 5173 with `reuseExistingServer: false`, which means it won't reuse an existing dev server. If you have a dev server running on port 5173, stop it before running E2E tests, or Playwright will fail to start its own server.
 
 ## Test Files Overview
 

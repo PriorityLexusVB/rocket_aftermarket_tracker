@@ -4,7 +4,10 @@
 // Capability flags are cached in sessionStorage to avoid repeated probing.
 // Default ALL to false to avoid query failures when columns don't exist.
 // Queries will use only id+email initially (which should always exist).
-// The service layer's retry logic will detect and enable columns that actually exist.
+// Capability detection is performed via health endpoints (e.g., /api/health-user-profiles
+// called from ensureUserProfileCapsLoaded()). The service layer's downgradeCapForErrorMessage()
+// only disables capabilities when columns are missing; it does NOT upgrade capabilities.
+// To reset capability detection after schema changes, clear sessionStorage.
 let CAP_NAME = false
 let CAP_FULL_NAME = false
 let CAP_DISPLAY_NAME = false
@@ -97,8 +100,8 @@ export async function ensureUserProfileCapsLoaded() {
       }
     } catch (_) {
       // Health endpoint not available (e.g., local dev without Vercel)
-      // Use conservative defaults - display_name is the most common column
-      // The service layer's retry logic will handle detecting other columns if available
+      // Capabilities remain at their default (false) values, meaning queries will only use id+email.
+      // When columns are detected to exist, they'll be enabled via the health endpoint on subsequent loads.
     }
   }
   CAPS_LOADED = true

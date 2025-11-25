@@ -30,7 +30,7 @@ export default defineConfig({
       : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5174',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -39,9 +39,9 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // If our dev server script is not "dev", detect and adjust to the correct one (e.g., "start").
   webServer: {
-    // Launch a fresh Vite dev server on an alternate port with explicit env vars so no .env.local is required in CI/agent
-    command: 'npm run start -- --port 5174',
-    port: 5174,
+    // Launch a fresh Vite dev server with explicit env vars so no .env.local is required in CI/agent
+    command: 'npm run start -- --port 5173',
+    port: 5173,
     reuseExistingServer: false,
     env: {
       // Supabase client for the SPA
@@ -52,7 +52,7 @@ export default defineConfig({
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nanRtdG5kZ2lxcWR0d2F0c3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTE5OTcsImV4cCI6MjA3NDEyNzk5N30.n17KiM5c08XuKY-W9fL667VsVWABwzGmJpxVieSgcX4',
       VITE_ORG_SCOPED_DROPDOWNS: process.env.VITE_ORG_SCOPED_DROPDOWNS || 'true',
       // E2E config for global.setup
-      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5174',
+      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173',
       E2E_EMAIL: process.env.E2E_EMAIL || 'rob.brasco@priorityautomotive.com',
       E2E_PASSWORD: process.env.E2E_PASSWORD || 'Rocket123!',
     },

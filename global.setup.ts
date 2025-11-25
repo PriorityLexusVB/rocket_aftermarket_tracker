@@ -18,7 +18,7 @@ try {
 } catch {}
 
 export default async function globalSetup() {
-  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5174'
+  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
   const storageDir = path.join(process.cwd(), 'e2e')
   const storagePath = path.join(storageDir, 'storageState.json')
 
