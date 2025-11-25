@@ -1743,9 +1743,8 @@ export async function updateDeal(id, formState) {
             if (profileResult.error) {
               authFailureReason = `profile fetch failed: ${profileResult.error.message}`
               console.warn('[dealService:update] Profile fetch failed:', profileResult.error.message)
-            }
-            
-            if (profileResult.data?.org_id) {
+              // Don't process further if profile fetch failed
+            } else if (profileResult.data?.org_id) {
               jobOrgId = profileResult.data.org_id
               // Set org_id on the job to fix the legacy data
               const jobUpdateResult = await supabase
@@ -1759,7 +1758,7 @@ export async function updateDeal(id, formState) {
                 console.info('[dealService:update] Successfully set job org_id from user profile')
               }
             } else {
-              authFailureReason = authFailureReason || 'user profile has no org_id'
+              authFailureReason = 'user profile has no org_id'
             }
           } catch (e) {
             authFailureReason = authFailureReason || e?.message
