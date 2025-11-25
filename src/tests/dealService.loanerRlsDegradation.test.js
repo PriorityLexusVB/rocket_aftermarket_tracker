@@ -114,18 +114,4 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     
     warnSpy.mockRestore()
   })
-
-  it('should gracefully handle RLS errors in upsertLoanerAssignment', async () => {
-    // Re-import to get fresh module
-    vi.resetModules()
-    const module = await import('@/lib/supabase')
-    mockSupabase = module.supabase
-    
-    // Dynamically import the module that contains upsertLoanerAssignment
-    // Note: upsertLoanerAssignment is not exported, so we test it indirectly via createDeal
-    
-    // This test documents expected behavior: when RLS blocks loaner operations,
-    // the deal save should still succeed, just without the loaner data
-    expect(true).toBe(true) // Placeholder for indirect testing
-  })
 })

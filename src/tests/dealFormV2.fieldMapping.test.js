@@ -2,7 +2,7 @@
 // Documents and tests the UI → DB field mapping for DealFormV2
 // This test serves as documentation and validation of the form's data flow
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mapFormToDb, mapDbDealToForm, toJobPartRows } from '@/services/dealService'
 
 /**
