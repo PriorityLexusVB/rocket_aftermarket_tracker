@@ -63,7 +63,7 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
         lineItems: [],
       }
       const { customerName } = mapFormToDb(formData)
-      // Note: Title Case is applied by normalizePhone in formAdapters
+      // Note: Title Case is applied by titleCase function in dealService
       expect(customerName).toBe('John Smith')
     })
 
