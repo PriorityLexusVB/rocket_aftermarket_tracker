@@ -57,6 +57,7 @@ jobs:
           # App runtime env (Vite reads VITE_* at dev server start)
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_ORG_SCOPED_DROPDOWNS: true
           # Playwright/global.setup auth and base URL
           PLAYWRIGHT_BASE_URL: http://localhost:5173
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
@@ -126,6 +127,7 @@ jobs:
           # App runtime env (Vite reads VITE_* at dev server start)
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_ORG_SCOPED_DROPDOWNS: true
           # Playwright/global.setup auth and base URL
           PLAYWRIGHT_BASE_URL: http://localhost:5173
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
