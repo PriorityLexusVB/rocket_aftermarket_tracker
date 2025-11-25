@@ -2,11 +2,12 @@
 // Unified user profile display-name resolution and capability management.
 
 // Capability flags are cached in sessionStorage to avoid repeated probing.
-// Default to false to avoid query failures when columns don't exist.
-// The ensureUserProfileCapsLoaded() function will probe the database to detect available columns.
+// Default ALL to false to avoid query failures when columns don't exist.
+// Queries will use only id+email initially (which should always exist).
+// The service layer's retry logic will detect and enable columns that actually exist.
 let CAP_NAME = false
 let CAP_FULL_NAME = false
-let CAP_DISPLAY_NAME = true // display_name is the most common fallback
+let CAP_DISPLAY_NAME = false
 let CAPS_LOADED = false
 
 const SS_KEYS = {
