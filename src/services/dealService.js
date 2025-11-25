@@ -17,6 +17,29 @@ import {
 
 // --- helpers -------------------------------------------------------------
 
+/**
+ * Check if an error is an RLS (Row Level Security) permission error.
+ * Used to gracefully handle access denied scenarios without failing operations.
+ * @param {Error|Object} error - The error from Supabase/PostgREST
+ * @returns {boolean} - True if the error is an RLS permission error
+ */
+function isRlsError(error) {
+  if (!error) return false
+  const errMsg = String(error?.message || '').toLowerCase()
+  const errCode = error?.code
+  // Check for common RLS/permission error codes and messages
+  // 42501: insufficient_privilege (PostgreSQL)
+  // PGRST*: PostgREST errors
+  return (
+    errCode === '42501' ||
+    (errCode && String(errCode).toUpperCase().startsWith('PGRST')) ||
+    errMsg.includes('policy') ||
+    errMsg.includes('permission') ||
+    errMsg.includes('rls') ||
+    errMsg.includes('row-level security')
+  )
+}
+
 // Only pass columns we're confident exist on your `jobs` table.
 // Add more keys here if you confirm additional columns.
 const JOB_COLS = [
@@ -607,12 +630,25 @@ async function upsertLoanerAssignment(jobId, loanerData) {
 
   try {
     // Check for existing active assignment for this job
-    const { data: existing } = await supabase
+    const { data: existing, error: selectError } = await supabase
       ?.from('loaner_assignments')
       ?.select('id')
       ?.eq('job_id', jobId)
       ?.is('returned_at', null)
       ?.single()
+
+    // Handle RLS errors on SELECT gracefully
+    if (selectError) {
+      const isNoRows = selectError?.code === 'PGRST116' // No rows found - expected for new assignments
+      
+      if (isRlsError(selectError)) {
+        console.warn('[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context')
+        // Fall through to INSERT path - RLS may allow INSERT even if SELECT is blocked
+      } else if (!isNoRows) {
+        console.warn('[dealService:upsertLoanerAssignment] SELECT failed:', selectError?.message)
+        // Fall through to INSERT path
+      }
+    }
 
     const assignmentData = {
       job_id: jobId,
@@ -628,12 +664,24 @@ async function upsertLoanerAssignment(jobId, loanerData) {
         ?.update(assignmentData)
         ?.eq('id', existing?.id)
 
-      if (error) throw error
+      if (error) {
+        if (isRlsError(error)) {
+          console.warn('[dealService:upsertLoanerAssignment] RLS blocked UPDATE (non-fatal):', error?.message)
+          return // Silently degrade - loaner data won't be saved but deal save continues
+        }
+        throw error
+      }
     } else {
       // Create new assignment
       const { error } = await supabase?.from('loaner_assignments')?.insert([assignmentData])
 
-      if (error) throw error
+      if (error) {
+        if (isRlsError(error)) {
+          console.warn('[dealService:upsertLoanerAssignment] RLS blocked INSERT (non-fatal):', error?.message)
+          return // Silently degrade - loaner data won't be saved but deal save continues
+        }
+        throw error
+      }
     }
   } catch (error) {
     // Handle uniqueness constraint error gracefully
@@ -641,6 +689,11 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       throw new Error(
         `Loaner ${loanerData?.loaner_number} is already assigned to another active job`
       )
+    }
+    // Handle RLS errors at the top level
+    if (isRlsError(error)) {
+      console.warn('[dealService:upsertLoanerAssignment] RLS error (non-fatal):', error?.message)
+      return // Silently degrade
     }
     throw error
   }
@@ -943,7 +996,20 @@ export async function getAllDeals() {
     ])
 
     const transactions = transactionsResult?.data || []
-    const loaners = loanersResult?.data || []
+    
+    // Handle loaner_assignments RLS errors gracefully
+    // 403 errors can occur when jobs have missing org_id or user lacks access
+    let loaners = []
+    if (loanersResult?.error) {
+      if (isRlsError(loanersResult.error)) {
+        console.warn('[dealService:getAllDeals] RLS blocked loaner_assignments query (non-fatal):', loanersResult.error?.message)
+        // Silently degrade - deals will show without loaner info for inaccessible jobs
+      } else {
+        console.warn('[dealService:getAllDeals] loaner_assignments query failed (non-fatal):', loanersResult.error?.message)
+      }
+    } else {
+      loaners = loanersResult?.data || []
+    }
 
     // Process and enhance the data
     return (
@@ -1115,7 +1181,20 @@ export async function getDeal(id) {
     ])
 
     const transaction = transactionResult?.data
-    const loaner = loanerResult?.data
+    
+    // Handle loaner_assignments RLS errors gracefully
+    // 403 errors can occur when jobs have missing org_id or user lacks access
+    let loaner = null
+    if (loanerResult?.error) {
+      if (isRlsError(loanerResult.error)) {
+        console.warn('[dealService:getDeal] RLS blocked loaner_assignments query (non-fatal):', loanerResult.error?.message)
+        // Silently degrade - deal will show without loaner info
+      } else {
+        console.warn('[dealService:getDeal] loaner_assignments query failed (non-fatal):', loanerResult.error?.message)
+      }
+    } else {
+      loaner = loanerResult?.data || null
+    }
 
     // Calculate next promised date from job parts (same as getAllDeals)
     const schedulingParts =
@@ -1464,10 +1543,7 @@ export async function createDeal(formState) {
       // If SELECT failed due to RLS, skip INSERT to avoid potential duplicates
       // Transaction likely exists but is inaccessible; updateDeal will handle fixing it
       if (selectErr) {
-        const errMsg = String(selectErr?.message || '').toLowerCase()
-        const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || errMsg.includes('rls')
-        
-        if (isRlsError) {
+        if (isRlsError(selectErr)) {
           console.warn('[dealService:create] RLS blocked transaction SELECT; skipping INSERT to avoid duplicates')
         } else {
           console.warn('[dealService:create] Transaction SELECT failed (non-fatal):', selectErr?.message)
@@ -1683,20 +1759,7 @@ export async function updateDeal(id, formState) {
     // This handles legacy data where transaction.org_id might be NULL or stale
     let rlsRecoveryAttempted = false
     if (selectErr) {
-      const errMsg = String(selectErr?.message || '').toLowerCase()
-      const errCode = selectErr?.code
-      
-      // Check for RLS/permission errors using both error code and message
-      // Common RLS error codes: '42501' (insufficient_privilege), 'PGRST' codes from PostgREST
-      const isRlsError =
-        errCode === '42501' ||
-        (errCode && String(errCode).toUpperCase().startsWith('PGRST')) ||
-        errMsg.includes('policy') ||
-        errMsg.includes('permission') ||
-        errMsg.includes('rls') ||
-        errMsg.includes('row-level security')
-
-      if (isRlsError) {
+      if (isRlsError(selectErr)) {
         console.warn('[dealService:update] RLS blocked transaction SELECT, attempting UPDATE by job_id')
         
         // Get the job's org_id to use for the transaction
@@ -1839,8 +1902,7 @@ export async function updateDeal(id, formState) {
     }
   } catch (e) {
     // Enhance error message with context about org_id
-    const errMsg = String(e?.message || '').toLowerCase()
-    if (errMsg.includes('row-level security') || errMsg.includes('policy')) {
+    if (isRlsError(e)) {
       console.error('[dealService:update] RLS violation on transactions table:', {
         error: e?.message,
         job_id: id,
