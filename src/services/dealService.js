@@ -607,12 +607,28 @@ async function upsertLoanerAssignment(jobId, loanerData) {
 
   try {
     // Check for existing active assignment for this job
-    const { data: existing } = await supabase
+    const { data: existing, error: selectError } = await supabase
       ?.from('loaner_assignments')
       ?.select('id')
       ?.eq('job_id', jobId)
       ?.is('returned_at', null)
       ?.single()
+
+    // Handle RLS errors on SELECT gracefully
+    if (selectError) {
+      const errMsg = String(selectError?.message || '').toLowerCase()
+      const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || 
+                         errMsg.includes('rls') || selectError?.code === '42501'
+      const isNoRows = selectError?.code === 'PGRST116' // No rows found - expected for new assignments
+      
+      if (isRlsError) {
+        console.warn('[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context')
+        // Fall through to INSERT path - RLS may allow INSERT even if SELECT is blocked
+      } else if (!isNoRows) {
+        console.warn('[dealService:upsertLoanerAssignment] SELECT failed:', selectError?.message)
+        // Fall through to INSERT path
+      }
+    }
 
     const assignmentData = {
       job_id: jobId,
@@ -628,12 +644,30 @@ async function upsertLoanerAssignment(jobId, loanerData) {
         ?.update(assignmentData)
         ?.eq('id', existing?.id)
 
-      if (error) throw error
+      if (error) {
+        const errMsg = String(error?.message || '').toLowerCase()
+        const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || 
+                           errMsg.includes('rls') || error?.code === '42501'
+        if (isRlsError) {
+          console.warn('[dealService:upsertLoanerAssignment] RLS blocked UPDATE (non-fatal):', error?.message)
+          return // Silently degrade - loaner data won't be saved but deal save continues
+        }
+        throw error
+      }
     } else {
       // Create new assignment
       const { error } = await supabase?.from('loaner_assignments')?.insert([assignmentData])
 
-      if (error) throw error
+      if (error) {
+        const errMsg = String(error?.message || '').toLowerCase()
+        const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || 
+                           errMsg.includes('rls') || error?.code === '42501'
+        if (isRlsError) {
+          console.warn('[dealService:upsertLoanerAssignment] RLS blocked INSERT (non-fatal):', error?.message)
+          return // Silently degrade - loaner data won't be saved but deal save continues
+        }
+        throw error
+      }
     }
   } catch (error) {
     // Handle uniqueness constraint error gracefully
@@ -641,6 +675,14 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       throw new Error(
         `Loaner ${loanerData?.loaner_number} is already assigned to another active job`
       )
+    }
+    // Handle RLS errors at the top level
+    const errMsg = String(error?.message || '').toLowerCase()
+    const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || 
+                       errMsg.includes('rls') || error?.code === '42501'
+    if (isRlsError) {
+      console.warn('[dealService:upsertLoanerAssignment] RLS error (non-fatal):', error?.message)
+      return // Silently degrade
     }
     throw error
   }
@@ -943,7 +985,23 @@ export async function getAllDeals() {
     ])
 
     const transactions = transactionsResult?.data || []
-    const loaners = loanersResult?.data || []
+    
+    // Handle loaner_assignments RLS errors gracefully
+    // 403 errors can occur when jobs have missing org_id or user lacks access
+    let loaners = []
+    if (loanersResult?.error) {
+      const errMsg = String(loanersResult.error?.message || '').toLowerCase()
+      const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || 
+                         errMsg.includes('rls') || loanersResult.error?.code === '42501'
+      if (isRlsError) {
+        console.warn('[dealService:getAllDeals] RLS blocked loaner_assignments query (non-fatal):', loanersResult.error?.message)
+        // Silently degrade - deals will show without loaner info for inaccessible jobs
+      } else {
+        console.warn('[dealService:getAllDeals] loaner_assignments query failed (non-fatal):', loanersResult.error?.message)
+      }
+    } else {
+      loaners = loanersResult?.data || []
+    }
 
     // Process and enhance the data
     return (
@@ -1115,7 +1173,23 @@ export async function getDeal(id) {
     ])
 
     const transaction = transactionResult?.data
-    const loaner = loanerResult?.data
+    
+    // Handle loaner_assignments RLS errors gracefully
+    // 403 errors can occur when jobs have missing org_id or user lacks access
+    let loaner = null
+    if (loanerResult?.error) {
+      const errMsg = String(loanerResult.error?.message || '').toLowerCase()
+      const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || 
+                         errMsg.includes('rls') || loanerResult.error?.code === '42501'
+      if (isRlsError) {
+        console.warn('[dealService:getDeal] RLS blocked loaner_assignments query (non-fatal):', loanerResult.error?.message)
+        // Silently degrade - deal will show without loaner info
+      } else {
+        console.warn('[dealService:getDeal] loaner_assignments query failed (non-fatal):', loanerResult.error?.message)
+      }
+    } else {
+      loaner = loanerResult?.data || null
+    }
 
     // Calculate next promised date from job parts (same as getAllDeals)
     const schedulingParts =
