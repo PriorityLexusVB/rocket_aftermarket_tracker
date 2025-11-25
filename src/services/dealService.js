@@ -1715,11 +1715,67 @@ export async function updateDeal(id, formState) {
           jobOrgId = jobData?.org_id
         }
 
+        // If job has no org_id (legacy data), try to get user's org_id and set it on both job and transaction
+        // This is a graceful recovery for legacy deals created before org scoping was implemented
+        let authFailureReason = null
         if (!jobOrgId) {
-          throw new Error('Cannot recover from RLS error: job has no org_id')
+          console.warn('[dealService:update] Job has no org_id - attempting to set from user profile')
+          try {
+            const authResult = await supabase.auth.getUser()
+            if (authResult.error) {
+              authFailureReason = `auth failed: ${authResult.error.message}`
+              console.warn('[dealService:update] Auth getUser failed:', authResult.error.message)
+              // Auth failure is critical for RLS recovery - throw to provide clear error
+              throw new Error(`Authentication failed during RLS recovery: ${authResult.error.message}`)
+            }
+            const userId = authResult.data?.user?.id
+            if (!userId) {
+              authFailureReason = 'no user ID in auth result'
+              throw new Error('No authenticated user found during RLS recovery')
+            }
+            
+            const profileResult = await supabase
+              .from('user_profiles')
+              .select('org_id')
+              .eq('id', userId)
+              .single()
+            
+            if (profileResult.error) {
+              authFailureReason = `profile fetch failed: ${profileResult.error.message}`
+              console.warn('[dealService:update] Profile fetch failed:', profileResult.error.message)
+              // Don't process further if profile fetch failed
+            } else if (profileResult.data?.org_id) {
+              jobOrgId = profileResult.data.org_id
+              // Set org_id on the job to fix the legacy data
+              const jobUpdateResult = await supabase
+                .from('jobs')
+                .update({ org_id: jobOrgId })
+                .eq('id', id)
+              
+              if (jobUpdateResult.error) {
+                console.warn('[dealService:update] Failed to set job org_id:', jobUpdateResult.error.message)
+              } else {
+                console.info('[dealService:update] Successfully set job org_id from user profile')
+              }
+            } else {
+              authFailureReason = 'user profile has no org_id'
+            }
+          } catch (e) {
+            authFailureReason = authFailureReason || e?.message
+            console.warn('[dealService:update] Unable to get user org_id for legacy fix:', e?.message)
+            // Re-throw if this was an auth/user error we explicitly threw
+            if (e?.message?.includes('RLS recovery') || e?.message?.includes('authenticated user')) {
+              throw e
+            }
+          }
         }
 
-        // Set the transaction's org_id to match the job's org_id
+        if (!jobOrgId) {
+          const reason = authFailureReason ? ` (${authFailureReason})` : ''
+          throw new Error(`Cannot recover from RLS error: job has no org_id and unable to get user org_id${reason}`)
+        }
+
+        // Set the transaction's org_id to match the job's org_id (or user's org_id)
         // The RLS UPDATE policy allows: org_id matches user's org OR job.org_id matches user's org
         baseTransactionData.org_id = jobOrgId
         
@@ -1733,15 +1789,28 @@ export async function updateDeal(id, formState) {
 
         if (updErr) {
           console.error('[dealService:update] RLS recovery UPDATE failed:', updErr?.message)
-          throw updErr
+          // If UPDATE fails due to RLS, the transaction may not exist yet.
+          // This is expected for legacy deals that never had a transaction created.
+          // We suppress this RLS error and let the code fall through to the INSERT path below,
+          // where a new transaction will be created with the correct org_id.
+          const updErrMsg = String(updErr?.message || '').toLowerCase()
+          if (updErrMsg.includes('policy') || updErrMsg.includes('permission') || updErrMsg.includes('rls')) {
+            console.warn('[dealService:update] RLS recovery UPDATE failed (likely no existing transaction) - will attempt INSERT')
+            // rlsRecoveryAttempted stays false, allowing INSERT path at line ~1830
+          } else {
+            throw updErr
+          }
         }
 
         // If UPDATE affected rows, we're done (transaction was updated)
         if (updateResult?.length > 0) {
-          console.info('[dealService:update] Successfully updated transaction via RLS recovery, org_id:', jobOrgId)
+          // Log truncated org_id for debugging while maintaining security
+          const orgIdPrefix = jobOrgId ? jobOrgId.slice(0, 8) + '...' : 'N/A'
+          console.info('[dealService:update] Successfully updated transaction via RLS recovery, org:', orgIdPrefix)
           rlsRecoveryAttempted = true
         }
-        // If UPDATE affected 0 rows, transaction doesn't exist - will INSERT below
+        // If UPDATE affected 0 rows or failed with RLS, rlsRecoveryAttempted stays false
+        // and the normal INSERT path below will create a new transaction
       } else {
         // Other SELECT errors should be thrown
         throw selectErr
@@ -1770,18 +1839,25 @@ export async function updateDeal(id, formState) {
     }
   } catch (e) {
     // Enhance error message with context about org_id
-    if (String(e?.message || '').toLowerCase().includes('row-level security')) {
+    const errMsg = String(e?.message || '').toLowerCase()
+    if (errMsg.includes('row-level security') || errMsg.includes('policy')) {
       console.error('[dealService:update] RLS violation on transactions table:', {
         error: e?.message,
-        org_id: transactionOrgId,
         job_id: id,
         has_org_id: !!transactionOrgId,
       })
+      
+      // Provide more specific guidance based on the scenario
+      let guidance = ''
+      if (!transactionOrgId) {
+        guidance = 'Your user profile may not have an organization assigned. Please contact your administrator to ensure your account is properly configured.'
+      } else {
+        guidance = 'This deal may have been created before organization scoping was enabled. Please contact your administrator if the issue persists.'
+      }
+      
       // User-facing message without sensitive org_id
       throw new Error(
-        `Failed to upsert transaction: ${e?.message}. ` +
-          `Organization context ${transactionOrgId ? 'provided' : 'missing'}. ` +
-          `Ensure you are authenticated and have permission to edit this deal.`
+        `Failed to save deal: Transaction access denied. ${guidance}`
       )
     }
     throw wrapDbError(e, 'upsert transaction')
