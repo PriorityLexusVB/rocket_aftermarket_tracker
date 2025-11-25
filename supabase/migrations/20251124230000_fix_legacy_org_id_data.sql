@@ -20,8 +20,12 @@
 DO $$
 DECLARE
   default_org_id UUID;
-  updated_jobs_count INT := 0;
-  updated_transactions_count INT := 0;
+  updated_jobs_from_profile INT := 0;
+  updated_jobs_from_default INT := 0;
+  updated_transactions_from_jobs INT := 0;
+  updated_transactions_orphaned INT := 0;
+  updated_vehicles_from_jobs INT := 0;
+  updated_vehicles_from_default INT := 0;
 BEGIN
   -- Find the default organization
   SELECT id INTO default_org_id
@@ -56,16 +60,16 @@ BEGIN
     AND j.assigned_to = up.id
     AND up.org_id IS NOT NULL;
 
-  GET DIAGNOSTICS updated_jobs_count = ROW_COUNT;
-  RAISE NOTICE 'Updated % jobs from assigned_to user profile', updated_jobs_count;
+  GET DIAGNOSTICS updated_jobs_from_profile = ROW_COUNT;
+  RAISE NOTICE 'Updated % jobs from assigned_to user profile', updated_jobs_from_profile;
 
   -- For remaining jobs without org_id, use the default org
   UPDATE public.jobs
   SET org_id = default_org_id
   WHERE org_id IS NULL;
 
-  GET DIAGNOSTICS updated_jobs_count = ROW_COUNT;
-  RAISE NOTICE 'Updated % jobs with default org_id', updated_jobs_count;
+  GET DIAGNOSTICS updated_jobs_from_default = ROW_COUNT;
+  RAISE NOTICE 'Updated % jobs with default org_id', updated_jobs_from_default;
 
   -- =============================================================================
   -- SECTION 3: Backfill transactions.org_id from linked jobs
@@ -79,16 +83,16 @@ BEGIN
     AND t.org_id IS NULL
     AND j.org_id IS NOT NULL;
 
-  GET DIAGNOSTICS updated_transactions_count = ROW_COUNT;
-  RAISE NOTICE 'Updated % transactions from linked jobs', updated_transactions_count;
+  GET DIAGNOSTICS updated_transactions_from_jobs = ROW_COUNT;
+  RAISE NOTICE 'Updated % transactions from linked jobs', updated_transactions_from_jobs;
 
   -- For any orphaned transactions (no linked job), use the default org
   UPDATE public.transactions
   SET org_id = default_org_id
   WHERE org_id IS NULL;
 
-  GET DIAGNOSTICS updated_transactions_count = ROW_COUNT;
-  RAISE NOTICE 'Updated % orphaned transactions with default org_id', updated_transactions_count;
+  GET DIAGNOSTICS updated_transactions_orphaned = ROW_COUNT;
+  RAISE NOTICE 'Updated % orphaned transactions with default org_id', updated_transactions_orphaned;
 
   -- =============================================================================
   -- SECTION 4: Backfill vehicles.org_id from linked jobs
@@ -106,7 +110,16 @@ BEGIN
   )
   WHERE v.org_id IS NULL;
 
-  RAISE NOTICE 'Backfilled org_id for vehicles from linked jobs';
+  GET DIAGNOSTICS updated_vehicles_from_jobs = ROW_COUNT;
+  RAISE NOTICE 'Updated % vehicles from linked jobs', updated_vehicles_from_jobs;
+
+  -- For any vehicles without linked jobs or whose linked jobs had NULL org_id, use the default org
+  UPDATE public.vehicles
+  SET org_id = default_org_id
+  WHERE org_id IS NULL;
+
+  GET DIAGNOSTICS updated_vehicles_from_default = ROW_COUNT;
+  RAISE NOTICE 'Updated % vehicles with default org_id', updated_vehicles_from_default;
 
   -- =============================================================================
   -- SECTION 5: Verification
