@@ -151,7 +151,7 @@ VITE_ORG_SCOPED_DROPDOWNS="true"     # Org-scoped dropdown queries
 | `capability-fallbacks.spec.ts` | should allow admin to reset capability flags | Capability |
 | `capability-fallbacks.spec.ts` | should export telemetry data | Capability |
 | `capability-fallbacks.spec.ts` | should persist telemetry to localStorage | Capability |
-| `deals-list-refresh.spec.ts` | should show updated vehicle description, stock, and loaner badge | Deals |
+| `deals-list-refresh.spec.ts` | should show updated vehicle description, stock, and loaner badge in deals list | Deals |
 | `deals-redirect.spec.ts` | saving a new deal redirects to /deals/:id/edit | Deals |
 | `scheduling-quick-assign.spec.ts` | new pending job appears in Unassigned and can be assigned | Scheduling |
 | `snapshot-smoke.spec.ts` | snapshot view loads successfully | Snapshot |
