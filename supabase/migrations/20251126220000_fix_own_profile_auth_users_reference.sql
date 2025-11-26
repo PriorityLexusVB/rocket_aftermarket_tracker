@@ -35,7 +35,8 @@ BEGIN
     FOR SELECT TO authenticated
     USING (
       -- Use JWT email claim instead of auth.users table
-      email = (auth.jwt() ->> 'email')
+      -- Wrapped in (SELECT ...) to avoid auth_rls_initplan anti-pattern
+      email = ((SELECT auth.jwt()) ->> 'email')
     );
     
     RAISE NOTICE 'Created policy: own profile read by email via jwt';
