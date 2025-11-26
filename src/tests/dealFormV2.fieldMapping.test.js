@@ -382,3 +382,67 @@ describe('DealFormV2 - V2 Flag Behavior', () => {
     expect(loanerForm).toBeNull()
   })
 })
+
+/**
+ * Tests for org_id preservation - critical for RLS compliance
+ * These tests document the expected behavior when editing legacy deals
+ */
+describe('DealFormV2 - org_id Preservation for RLS Compliance', () => {
+  it('org_id flows through full edit cycle: DB → Form → Payload', () => {
+    // Simulate loading a deal from database
+    const dbDeal = {
+      id: 'job-uuid-123',
+      org_id: 'org-uuid-456',
+      job_number: 'JOB-TEST-001',
+      title: '2024 Lexus RX350',
+      description: 'Customer notes',
+      job_status: 'pending',
+      customer_needs_loaner: false,
+      job_parts: [
+        {
+          id: 'part-1',
+          product_id: 'prod-1',
+          unit_price: '499.00',
+          quantity_used: 1,
+          requires_scheduling: true,
+          promised_date: '2025-12-15',
+        },
+      ],
+    }
+    
+    // Map DB → Form
+    const formData = mapDbDealToForm(dbDeal)
+    expect(formData.org_id).toBe('org-uuid-456')
+    
+    // Simulate user editing (org_id should NOT be lost)
+    const editedFormData = {
+      ...formData,
+      customer_name: 'Updated Customer Name',
+    }
+    
+    // Map Form → DB payload
+    const { payload } = mapFormToDb(editedFormData)
+    expect(payload.org_id).toBe('org-uuid-456')
+  })
+
+  it('org_id in payload enables RLS-compliant transaction updates', () => {
+    const formData = {
+      org_id: 'org-uuid-789',
+      job_number: 'JOB-002',
+      customer_name: 'Test Customer',
+      lineItems: [
+        {
+          product_id: 'prod-1',
+          unit_price: 299.99,
+          quantity_used: 1,
+        },
+      ],
+    }
+    
+    const { payload } = mapFormToDb(formData)
+    
+    // The transaction upsert will use this org_id
+    // to satisfy RLS policy: org_id = auth_user_org() OR job.org_id = auth_user_org()
+    expect(payload.org_id).toBe('org-uuid-789')
+  })
+})
