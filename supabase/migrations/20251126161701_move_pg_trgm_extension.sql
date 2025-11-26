@@ -61,6 +61,10 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_vin_trgm
 CREATE INDEX IF NOT EXISTS idx_products_name_trgm 
   ON public.products USING GIN (name extensions.gin_trgm_ops);
 
+-- user_profiles table - department search
+CREATE INDEX IF NOT EXISTS idx_user_profiles_department_trgm 
+  ON public.user_profiles USING GIN (department extensions.gin_trgm_ops);
+
 -- =============================================================================
 -- STEP 5: Validation
 -- =============================================================================

@@ -63,7 +63,7 @@ BEGIN
   
   CREATE POLICY "org members read user_profiles" ON public.user_profiles
     FOR SELECT TO authenticated
-    USING (org_id = public.auth_user_org() AND COALESCE(is_active, true));
+    USING (org_id = (SELECT public.auth_user_org()) AND COALESCE(is_active, true));
   
   RAISE NOTICE 'Recreated policy: org members read user_profiles';
 END $$;
@@ -362,7 +362,7 @@ BEGIN
         WHERE j.id = loaner_assignments.job_id
         AND j.org_id = (SELECT public.auth_user_org())
       )
-      OR public.is_admin_or_manager()
+      OR (SELECT public.is_admin_or_manager())
     );
   
   RAISE NOTICE 'Recreated policy: org can select loaner_assignments via jobs';
@@ -391,7 +391,7 @@ BEGIN
         FOR SELECT TO authenticated
         USING (
           org_id = (SELECT public.auth_user_org())
-          OR public.is_admin_or_manager()
+          OR (SELECT public.is_admin_or_manager())
         );
       
       RAISE NOTICE 'Recreated policy: claims_select_policy';

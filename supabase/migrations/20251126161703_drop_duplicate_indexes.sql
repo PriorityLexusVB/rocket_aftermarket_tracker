@@ -27,19 +27,29 @@ DECLARE
   loaner_idx_count INT;
   trans_idx_count INT;
 BEGIN
-  -- Count indexes on loaner_assignments(job_id)
-  SELECT COUNT(*) INTO loaner_idx_count
-  FROM pg_indexes
-  WHERE schemaname = 'public'
-  AND tablename = 'loaner_assignments'
-  AND indexdef LIKE '%job_id%';
+  -- Count indexes on loaner_assignments(job_id) using catalog tables
+  SELECT COUNT(DISTINCT i.indexrelid) INTO loaner_idx_count
+  FROM pg_index i
+  JOIN pg_class t ON t.oid = i.indrelid
+  JOIN pg_class idx ON idx.oid = i.indexrelid
+  JOIN pg_namespace n ON n.oid = t.relnamespace
+  JOIN pg_attribute a ON a.attrelid = t.oid
+  WHERE n.nspname = 'public'
+    AND t.relname = 'loaner_assignments'
+    AND a.attname = 'job_id'
+    AND a.attnum = ANY(i.indkey);
   
-  -- Count indexes on transactions(job_id)
-  SELECT COUNT(*) INTO trans_idx_count
-  FROM pg_indexes
-  WHERE schemaname = 'public'
-  AND tablename = 'transactions'
-  AND indexdef LIKE '%job_id%';
+  -- Count indexes on transactions(job_id) using catalog tables
+  SELECT COUNT(DISTINCT i.indexrelid) INTO trans_idx_count
+  FROM pg_index i
+  JOIN pg_class t ON t.oid = i.indrelid
+  JOIN pg_class idx ON idx.oid = i.indexrelid
+  JOIN pg_namespace n ON n.oid = t.relnamespace
+  JOIN pg_attribute a ON a.attrelid = t.oid
+  WHERE n.nspname = 'public'
+    AND t.relname = 'transactions'
+    AND a.attname = 'job_id'
+    AND a.attnum = ANY(i.indkey);
 
   RAISE NOTICE '========================================';
   RAISE NOTICE 'Duplicate Index Cleanup Complete';
