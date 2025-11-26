@@ -303,7 +303,7 @@ async function selectJoinedDealById(id) {
         : ''
 
     const selectWithTimes = `
-          id, job_number, title, description, job_status, priority, location,
+          id, org_id, job_number, title, description, job_status, priority, location,
           vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
           estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
           service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
@@ -342,7 +342,7 @@ async function selectJoinedDealById(id) {
 
       // Retry without per-line times
       const selectNoTimes = `
-            id, job_number, title, description, job_status, priority, location,
+            id, org_id, job_number, title, description, job_status, priority, location,
             vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
             estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
             service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
@@ -889,7 +889,7 @@ export async function getAllDeals() {
       const jobPartsFieldsNoVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields}${perLineVendorJoin2})`
 
       const baseSelect = `
-          id, created_at, job_status, service_type, color_code, title, job_number,
+          id, org_id, created_at, job_status, service_type, color_code, title, job_number,
           customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
           scheduled_start_time, scheduled_end_time,
           vehicle:vehicles(year, make, model, stock_number),
