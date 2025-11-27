@@ -31,10 +31,17 @@ test.describe('Agenda View', () => {
     // Verify page loads
     await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible()
 
-    // Verify filters are present
+    // Verify always-visible filters are present
     await expect(page.locator('select[aria-label="Filter by date range"]')).toBeVisible()
-    await expect(page.locator('select[aria-label="Filter by status"]')).toBeVisible()
     await expect(page.locator('input[aria-label="Search appointments"]')).toBeVisible()
+
+    // Expand the filters panel to reveal status filter
+    const filtersButton = page.locator('button:has-text("Filters")')
+    await expect(filtersButton).toBeVisible()
+    await filtersButton.click()
+
+    // Now the status filter should be visible
+    await expect(page.locator('select[aria-label="Filter by status"]')).toBeVisible()
   })
 
   test('agenda view handles focus parameter', async ({ page }) => {
@@ -72,8 +79,14 @@ test.describe('Agenda View', () => {
     // Navigate to agenda
     await page.goto('/calendar/agenda')
 
+    // Expand the filters panel to reveal status filter
+    const filtersButton = page.locator('button:has-text("Filters")')
+    await expect(filtersButton).toBeVisible()
+    await filtersButton.click()
+
     // Change a filter
     const statusFilter = page.locator('select[aria-label="Filter by status"]')
+    await expect(statusFilter).toBeVisible()
     await statusFilter.selectOption({ label: 'Completed' })
 
     // Verify filter was applied
@@ -83,8 +96,14 @@ test.describe('Agenda View', () => {
     await page.goto('/')
     await page.goto('/calendar/agenda')
 
+    // Expand filters again to check persistence
+    const filtersButtonAfter = page.locator('button:has-text("Filters")')
+    await expect(filtersButtonAfter).toBeVisible()
+    await filtersButtonAfter.click()
+
     // Check if filter persisted
-    await expect(statusFilter).toHaveValue('completed')
+    const statusFilterAfter = page.locator('select[aria-label="Filter by status"]')
+    await expect(statusFilterAfter).toHaveValue('completed')
     await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible()
   })
 })
