@@ -84,8 +84,10 @@ test.describe('Agenda View', () => {
     await expect(filtersButton).toBeVisible()
     await filtersButton.click()
 
-    // Change a filter
+    // Define status filter selector once for reuse
     const statusFilter = page.locator('select[aria-label="Filter by status"]')
+
+    // Change a filter
     await expect(statusFilter).toBeVisible()
     await statusFilter.selectOption({ label: 'Completed' })
 
@@ -97,13 +99,11 @@ test.describe('Agenda View', () => {
     await page.goto('/calendar/agenda')
 
     // Expand filters again to check persistence
-    const filtersButtonAfter = page.locator('button:has-text("Filters")')
-    await expect(filtersButtonAfter).toBeVisible()
-    await filtersButtonAfter.click()
+    await expect(filtersButton).toBeVisible()
+    await filtersButton.click()
 
-    // Check if filter persisted
-    const statusFilterAfter = page.locator('select[aria-label="Filter by status"]')
-    await expect(statusFilterAfter).toHaveValue('completed')
+    // Check if filter persisted - reusing the same statusFilter locator
+    await expect(statusFilter).toHaveValue('completed')
     await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible()
   })
 })
