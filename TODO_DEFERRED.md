@@ -113,14 +113,16 @@ When expanding test coverage in a future sprint:
 
 | Category | Count | Priority | Status |
 |----------|-------|----------|--------|
-| Supabase Security Lint | 3 | Medium | 1 resolved, 2 pending |
+| Supabase Security Lint | 2 | Medium | Pending design/config |
 | Test Enhancement | 1 | Low | Deferred |
 
-**Total Deferred TODOs:** 4  
+**Total Deferred TODOs:** 3  
 **Blocking TODOs:** 0  
 **Critical TODOs:** 0
 
 All deferred items are non-blocking. Security items have partial mitigations in place and full resolution is planned for a future "Supabase Hardening" sprint.
+
+> **Note:** The pg_trgm extension relocation (item #2 above) is fully resolved and not counted as a deferred TODO.
 
 ---
 
