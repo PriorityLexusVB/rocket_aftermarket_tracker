@@ -2,7 +2,75 @@
 
 This document tracks TODO/FIXME items that are **non-blocking** and deferred to future sprints.
 
-**Last Updated:** November 12, 2025
+**Last Updated:** November 28, 2025
+
+---
+
+## Supabase Security Lint Follow-ups (Medium Priority)
+
+**Category:** Security Hardening  
+**Severity:** Medium  
+**Related:** `docs/db-lint/README.md`, `docs/security.md`
+
+Supabase's database linter flags the following items that require future attention:
+
+### 1. Organizations Multi-Tenant Model Design
+
+**Status:** Partial fix applied; design decision pending  
+**Migration:** `20251126161700_enable_rls_on_organizations.sql`
+
+**Current State:**
+- RLS is enabled on `public.organizations` with basic org membership policies
+- Users can SELECT/UPDATE their own organization via `user_profiles.org_id`
+
+**Future Work Required:**
+- Design decision needed: `owner_id` vs `tenant_id` vs membership table approach
+- Consider role-based permissions for organization management (admin-only updates)
+- Evaluate INSERT/DELETE policy requirements for multi-org scenarios
+- Document the chosen multi-tenant model in architecture docs
+
+**Why Deferred:**
+- Current single-org implementation works for existing use cases
+- Requires stakeholder input on multi-tenant requirements
+- Low risk with RLS already enabled; policies can be refined later
+
+### 2. pg_trgm Extension Schema Location
+
+**Status:** Fixed  
+**Migration:** `20251126161701_move_pg_trgm_extension.sql`
+
+**Resolution:**
+- `pg_trgm` extension moved from `public` to `extensions` schema
+- Trigram indexes recreated with explicit `extensions.gin_trgm_ops` reference
+- Search path includes `extensions` for proper resolution
+
+**No further action required** — this item is resolved.
+
+### 3. Auth Leaked Password Protection
+
+**Status:** Dashboard configuration required  
+**Documentation:** `docs/security.md`
+
+**Current State:**
+- This is a Supabase Auth configuration setting, not a SQL migration
+- Production environments should have this enabled
+
+**Future Work Required:**
+- Enable "Leaked password protection" in Supabase Dashboard → Authentication → Settings
+- Choose appropriate protection level (Medium or High for production)
+- Document the setting in deployment runbook
+
+**Why Deferred:**
+- Requires manual Dashboard configuration per environment
+- Will be addressed as part of production hardening checklist
+- Does not affect development/staging functionality
+
+### Proposed Follow-up Timeline
+
+These items will be addressed in a dedicated "Supabase Hardening" change after:
+1. Multi-tenant model design decision is made for organizations
+2. Production deployment checklist is finalized
+3. Security review is scheduled
 
 ---
 
@@ -43,12 +111,17 @@ When expanding test coverage in a future sprint:
 
 ## Summary
 
-**Total Deferred TODOs:** 1  
+| Category | Count | Priority | Status |
+|----------|-------|----------|--------|
+| Supabase Security Lint | 3 | Medium | 1 resolved, 2 pending |
+| Test Enhancement | 1 | Low | Deferred |
+
+**Total Deferred TODOs:** 4  
 **Blocking TODOs:** 0  
 **Critical TODOs:** 0
 
-All deferred items are low-priority enhancements that do not impact functionality, security, or operational readiness.
+All deferred items are non-blocking. Security items have partial mitigations in place and full resolution is planned for a future "Supabase Hardening" sprint.
 
 ---
 
-*For urgent TODOs that need immediate attention, search codebase for "TODO(urgent)" or "FIXME(critical)" (none found as of 2025-11-12).*
+*For urgent TODOs that need immediate attention, search codebase for "TODO(urgent)" or "FIXME(critical)" (none found as of 2025-11-28).*
