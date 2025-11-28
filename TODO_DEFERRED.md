@@ -34,19 +34,7 @@ Supabase's database linter flags the following items that require future attenti
 - Requires stakeholder input on multi-tenant requirements
 - Low risk with RLS already enabled; policies can be refined later
 
-### 2. pg_trgm Extension Schema Location
-
-**Status:** Fixed  
-**Migration:** `20251126161701_move_pg_trgm_extension.sql`
-
-**Resolution:**
-- `pg_trgm` extension moved from `public` to `extensions` schema
-- Trigram indexes recreated with explicit `extensions.gin_trgm_ops` reference
-- Search path includes `extensions` for proper resolution
-
-**No further action required** — this item is resolved.
-
-### 3. Auth Leaked Password Protection
+### 2. Auth Leaked Password Protection
 
 **Status:** Dashboard configuration required  
 **Documentation:** `docs/security.md`
@@ -122,7 +110,7 @@ When expanding test coverage in a future sprint:
 
 All deferred items are non-blocking. Security items have partial mitigations in place and full resolution is planned for a future "Supabase Hardening" sprint.
 
-> **Note:** The pg_trgm extension relocation (item #2 above) is fully resolved and not counted as a deferred TODO.
+> **Note:** The pg_trgm extension relocation is fully resolved and documented in `docs/db-lint/README.md` under "Fixed Issues".
 
 ---
 
