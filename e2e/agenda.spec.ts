@@ -31,10 +31,17 @@ test.describe('Agenda View', () => {
     // Verify page loads
     await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible()
 
-    // Verify filters are present
+    // Verify always-visible filters are present
     await expect(page.locator('select[aria-label="Filter by date range"]')).toBeVisible()
-    await expect(page.locator('select[aria-label="Filter by status"]')).toBeVisible()
     await expect(page.locator('input[aria-label="Search appointments"]')).toBeVisible()
+
+    // Expand the filters panel to reveal status filter
+    const filtersButton = page.locator('button:has-text("Filters")')
+    await expect(filtersButton).toBeVisible()
+    await filtersButton.click()
+
+    // Now the status filter should be visible
+    await expect(page.locator('select[aria-label="Filter by status"]')).toBeVisible()
   })
 
   test('agenda view handles focus parameter', async ({ page }) => {
@@ -72,8 +79,16 @@ test.describe('Agenda View', () => {
     // Navigate to agenda
     await page.goto('/calendar/agenda')
 
-    // Change a filter
+    // Expand the filters panel to reveal status filter
+    const filtersButton = page.locator('button:has-text("Filters")')
+    await expect(filtersButton).toBeVisible()
+    await filtersButton.click()
+
+    // Define status filter selector once for reuse
     const statusFilter = page.locator('select[aria-label="Filter by status"]')
+
+    // Change a filter
+    await expect(statusFilter).toBeVisible()
     await statusFilter.selectOption({ label: 'Completed' })
 
     // Verify filter was applied
@@ -83,7 +98,11 @@ test.describe('Agenda View', () => {
     await page.goto('/')
     await page.goto('/calendar/agenda')
 
-    // Check if filter persisted
+    // Expand filters again to check persistence
+    await expect(filtersButton).toBeVisible()
+    await filtersButton.click()
+
+    // Check if filter persisted - reusing the same statusFilter locator
     await expect(statusFilter).toHaveValue('completed')
     await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible()
   })
