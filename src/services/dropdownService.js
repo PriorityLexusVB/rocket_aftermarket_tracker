@@ -106,6 +106,7 @@ async function getScopedOrgId() {
       // Primary: match by id
       let prof = null
       let primaryError = null
+      let emailError = null
       if (userId) {
         const { data, error } = await supabase
           .from('user_profiles')
@@ -126,13 +127,15 @@ async function getScopedOrgId() {
 
       // Fallback: match by email if id lookup failed or returned null
       if ((!prof || !prof.org_id) && email) {
-        const { data: profByEmail, error: emailError } = await supabase
+        const { data: profByEmail, error: emailErr } = await supabase
           .from('user_profiles')
           .select('org_id')
           .eq('email', email)
           .order('updated_at', { ascending: false })
           .limit(1)
-          .maybeSingle?.()
+          .maybeSingle()
+        
+        emailError = emailErr
 
         if (profByEmail?.org_id) {
           prof = profByEmail
@@ -154,8 +157,8 @@ async function getScopedOrgId() {
       // No org_id found from either lookup - this may be:
       // 1. User genuinely has no org_id (valid state)
       // 2. RLS blocked our query (transient state, should retry)
-      // If we had RLS errors, don't cache - allow retry on next call
-      if (primaryError && _isRlsError(primaryError)) {
+      // If we had RLS errors from either lookup, don't cache - allow retry on next call
+      if ((primaryError && _isRlsError(primaryError)) || (emailError && _isRlsError(emailError))) {
         console.warn(
           '[dropdownService] getScopedOrgId: No org_id found due to RLS - will retry on next call'
         )

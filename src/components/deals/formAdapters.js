@@ -96,10 +96,8 @@ export function stripLoanerWhenOff(draft = {}) {
 
 export function entityToDraft(entity = {}) {
   const draft = {
+    // ✅ org_id is preserved via spread for RLS compliance in edit flows
     ...entity,
-    // ✅ Explicitly preserve org_id for RLS compliance in edit flows
-    // NOTE: Intentionally explicit (not relying on spread) to prevent accidental loss of this critical field
-    org_id: entity.org_id,
     job_number: entity.job_number ?? '',
     description: entity.description ?? '',
     vendor_id: entity.vendor_id ?? '',
@@ -147,10 +145,8 @@ export function draftToCreatePayload(draft = {}) {
   const stripped = stripLoanerWhenOff(draft)
 
   const payload = {
+    // ✅ org_id is preserved via spread for RLS compliance
     ...stripped,
-    // ✅ Explicitly preserve org_id for RLS compliance
-    // NOTE: Intentionally explicit (not relying on spread) to prevent accidental loss of this critical field
-    org_id: stripped.org_id,
     job_number: stripped.job_number ?? '',
     description: stripped.description ?? '',
     vendor_id: stripped.vendor_id ?? '',
