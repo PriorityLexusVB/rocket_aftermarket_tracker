@@ -40,6 +40,61 @@ function isRlsError(error) {
   )
 }
 
+/**
+ * Get the current user's org_id with email fallback.
+ * Attempts to find org_id by user id first, then falls back to email lookup.
+ * This handles cases where user_profiles.id != auth.uid() but email matches.
+ * @param {string} label - Label for logging (e.g., 'create', 'update')
+ * @returns {Promise<string|null>} - The org_id or null if not found
+ */
+async function getUserOrgIdWithFallback(label = 'operation') {
+  try {
+    const { data: auth } = await supabase?.auth?.getUser?.()
+    const userId = auth?.user?.id
+    const userEmail = auth?.user?.email
+
+    // Primary: try to find profile by id
+    if (userId) {
+      const { data: prof, error: profErr } = await supabase
+        ?.from('user_profiles')
+        ?.select('org_id')
+        ?.eq('id', userId)
+        ?.maybeSingle()
+
+      if (prof?.org_id) {
+        return prof.org_id
+      }
+      if (profErr && isRlsError(profErr)) {
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by id, trying email fallback`)
+      }
+    }
+
+    // Fallback: try to find profile by email if id lookup failed
+    if (userEmail) {
+      const { data: profByEmail, error: emailErr } = await supabase
+        ?.from('user_profiles')
+        ?.select('org_id')
+        ?.eq('email', userEmail)
+        ?.order('created_at', { ascending: false }) // Use created_at for more deterministic ordering
+        ?.limit(1)
+        ?.maybeSingle()
+
+      if (profByEmail?.org_id) {
+        console.info(`[dealService:${label}] Found org_id via email fallback`)
+        return profByEmail.org_id
+      }
+      if (emailErr && isRlsError(emailErr)) {
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by email:`, emailErr?.message)
+      }
+    }
+
+    return null
+  } catch (e) {
+    console.warn(`[dealService:${label}] Unable to get user org_id:`, e?.message)
+    return null
+  }
+}
+
 // Only pass columns we're confident exist on your `jobs` table.
 // Add more keys here if you confirm additional columns.
 const JOB_COLS = [
@@ -1332,19 +1387,9 @@ export async function createDeal(formState) {
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
   if (!payload?.org_id) {
-    try {
-      const { data: auth } = await supabase?.auth?.getUser?.()
-      const userId = auth?.user?.id
-      if (userId) {
-        const { data: prof } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('id', userId)
-          ?.single()
-        if (prof?.org_id) payload.org_id = prof.org_id
-      }
-    } catch (e) {
-      console.warn('[dealService:create] Unable to infer org_id from profile:', e?.message)
+    const inferredOrgId = await getUserOrgIdWithFallback('create')
+    if (inferredOrgId) {
+      payload.org_id = inferredOrgId
     }
   }
 
@@ -1610,19 +1655,9 @@ export async function updateDeal(id, formState) {
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile (align with createDeal)
   if (!payload?.org_id) {
-    try {
-      const { data: auth } = await supabase?.auth?.getUser?.()
-      const userId = auth?.user?.id
-      if (userId) {
-        const { data: prof } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('id', userId)
-          ?.single()
-        if (prof?.org_id) payload.org_id = prof.org_id
-      }
-    } catch (e) {
-      console.warn('[dealService:update] Unable to infer org_id from profile:', e?.message)
+    const inferredOrgId = await getUserOrgIdWithFallback('update')
+    if (inferredOrgId) {
+      payload.org_id = inferredOrgId
     }
   }
 
@@ -1792,23 +1827,49 @@ export async function updateDeal(id, formState) {
               throw new Error(`Authentication failed during RLS recovery: ${authResult.error.message}`)
             }
             const userId = authResult.data?.user?.id
-            if (!userId) {
-              authFailureReason = 'no user ID in auth result'
+            const userEmail = authResult.data?.user?.email
+            if (!userId && !userEmail) {
+              authFailureReason = 'no user ID or email in auth result'
               throw new Error('No authenticated user found during RLS recovery')
             }
             
-            const profileResult = await supabase
-              .from('user_profiles')
-              .select('org_id')
-              .eq('id', userId)
-              .single()
+            // Primary: try to find profile by id
+            let profileOrgId = null
+            if (userId) {
+              const profileResult = await supabase
+                .from('user_profiles')
+                .select('org_id')
+                .eq('id', userId)
+                .maybeSingle()
+              
+              if (profileResult.error && isRlsError(profileResult.error)) {
+                console.warn('[dealService:update] RLS blocked profile lookup by id, trying email fallback:', profileResult.error.message)
+              } else if (profileResult.data?.org_id) {
+                profileOrgId = profileResult.data.org_id
+              }
+            }
             
-            if (profileResult.error) {
-              authFailureReason = `profile fetch failed: ${profileResult.error.message}`
-              console.warn('[dealService:update] Profile fetch failed:', profileResult.error.message)
-              // Don't process further if profile fetch failed
-            } else if (profileResult.data?.org_id) {
-              jobOrgId = profileResult.data.org_id
+            // Fallback: try to find profile by email if id lookup failed
+            if (!profileOrgId && userEmail) {
+              const emailResult = await supabase
+                .from('user_profiles')
+                .select('org_id')
+                .eq('email', userEmail)
+                .order('created_at', { ascending: false }) // Use created_at for more deterministic ordering
+                .limit(1)
+                .maybeSingle()
+              
+              if (emailResult.error && isRlsError(emailResult.error)) {
+                console.warn('[dealService:update] RLS blocked profile lookup by email:', emailResult.error.message)
+                authFailureReason = `profile fetch by email blocked by RLS: ${emailResult.error.message}`
+              } else if (emailResult.data?.org_id) {
+                profileOrgId = emailResult.data.org_id
+                console.info('[dealService:update] Found org_id via email fallback')
+              }
+            }
+            
+            if (profileOrgId) {
+              jobOrgId = profileOrgId
               // Set org_id on the job to fix the legacy data
               const jobUpdateResult = await supabase
                 .from('jobs')
@@ -1821,7 +1882,7 @@ export async function updateDeal(id, formState) {
                 console.info('[dealService:update] Successfully set job org_id from user profile')
               }
             } else {
-              authFailureReason = 'user profile has no org_id'
+              authFailureReason = authFailureReason || 'user profile has no org_id (checked both id and email)'
             }
           } catch (e) {
             authFailureReason = authFailureReason || e?.message
