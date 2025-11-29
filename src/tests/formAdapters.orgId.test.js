@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { draftToCreatePayload, draftToUpdatePayload } from '../components/deals/formAdapters'
+import { entityToDraft, draftToCreatePayload, draftToUpdatePayload } from '../components/deals/formAdapters'
 
 describe('formAdapters - org_id preservation', () => {
   it('draftToCreatePayload should preserve org_id', () => {
@@ -77,5 +77,44 @@ describe('formAdapters - org_id preservation', () => {
 
     // org_id should be explicitly null if provided as null
     expect(payload.org_id).toBeNull()
+  })
+
+  it('entityToDraft should preserve org_id from entity', () => {
+    const entity = {
+      id: 'job-123',
+      org_id: '123e4567-e89b-12d3-a456-426614174000',
+      job_number: 'JOB-123',
+      customer_name: 'John Doe',
+      job_parts: [],
+    }
+
+    const draft = entityToDraft(entity)
+
+    expect(draft.org_id).toBe('123e4567-e89b-12d3-a456-426614174000')
+  })
+
+  it('entityToDraft should handle null org_id gracefully', () => {
+    const entity = {
+      id: 'job-123',
+      org_id: null,
+      job_number: 'JOB-123',
+      job_parts: [],
+    }
+
+    const draft = entityToDraft(entity)
+
+    expect(draft.org_id).toBeNull()
+  })
+
+  it('entityToDraft should handle undefined org_id gracefully', () => {
+    const entity = {
+      id: 'job-123',
+      job_number: 'JOB-123',
+      job_parts: [],
+    }
+
+    const draft = entityToDraft(entity)
+
+    expect(draft.org_id).toBeUndefined()
   })
 })

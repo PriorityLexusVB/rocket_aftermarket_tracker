@@ -64,35 +64,114 @@ function _clearPending(key) {
 }
 
 // Resolve current user's org_id once per session for org-scoped dropdowns
+// Returns cached org_id if available, or null if user has no org (deliberately not caching errors)
 let _orgIdCache = null
 let _orgIdPending = null
+let _orgIdCacheValid = false // Track whether cache is valid (vs. error state)
+
+/**
+ * Helper: Check if an error is an RLS/permission error
+ */
+function _isRlsError(error) {
+  if (!error) return false
+  const msg = String(error?.message || '').toLowerCase()
+  const code = error?.code
+  return (
+    code === '42501' ||
+    (code && String(code).toUpperCase().startsWith('PGRST')) ||
+    msg.includes('policy') ||
+    msg.includes('permission') ||
+    msg.includes('rls') ||
+    msg.includes('row-level security')
+  )
+}
+
 async function getScopedOrgId() {
-  if (_orgIdCache) return _orgIdCache
+  // If we have a valid cached value, return it immediately
+  if (_orgIdCacheValid && _orgIdCache !== undefined) return _orgIdCache
   if (_orgIdPending) return _orgIdPending
+
   _orgIdPending = (async () => {
     try {
       const { data: auth } = await supabase?.auth?.getUser?.()
       const userId = auth?.user?.id
       const email = auth?.user?.email
-      if (!userId && !email) return null
+      if (!userId && !email) {
+        // User is not authenticated - cache null as valid (no org available)
+        _orgIdCache = null
+        _orgIdCacheValid = true
+        return null
+      }
+
       // Primary: match by id
-      let { data: prof } = userId
-        ? await supabase.from('user_profiles').select('org_id').eq('id', userId).single()
-        : { data: null, error: null }
+      let prof = null
+      let primaryError = null
+      let emailError = null
+      if (userId) {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('org_id')
+          .eq('id', userId)
+          .single()
+        prof = data
+        primaryError = error
+
+        // If RLS error on primary lookup, log but don't fail - try email fallback
+        if (error && _isRlsError(error)) {
+          console.warn(
+            '[dropdownService] getScopedOrgId: RLS error on primary lookup, trying email fallback:',
+            error?.message
+          )
+        }
+      }
+
       // Fallback: match by email if id lookup failed or returned null
       if ((!prof || !prof.org_id) && email) {
-        const { data: profByEmail } = await supabase
+        const { data: profByEmail, error: emailErr } = await supabase
           .from('user_profiles')
           .select('org_id')
           .eq('email', email)
           .order('updated_at', { ascending: false })
           .limit(1)
-          .maybeSingle?.()
-        prof = profByEmail || prof
+          .maybeSingle()
+        
+        emailError = emailErr
+
+        if (profByEmail?.org_id) {
+          prof = profByEmail
+        } else if (emailError && _isRlsError(emailError)) {
+          console.warn(
+            '[dropdownService] getScopedOrgId: RLS error on email fallback:',
+            emailError?.message
+          )
+        }
       }
-      _orgIdCache = prof?.org_id || null
-      return _orgIdCache
+
+      // If we found an org_id, cache it as valid
+      if (prof?.org_id) {
+        _orgIdCache = prof.org_id
+        _orgIdCacheValid = true
+        return _orgIdCache
+      }
+
+      // No org_id found from either lookup - this may be:
+      // 1. User genuinely has no org_id (valid state)
+      // 2. RLS blocked our query (transient state, should retry)
+      // If we had RLS errors from either lookup, don't cache - allow retry on next call
+      if ((primaryError && _isRlsError(primaryError)) || (emailError && _isRlsError(emailError))) {
+        console.warn(
+          '[dropdownService] getScopedOrgId: No org_id found due to RLS - will retry on next call'
+        )
+        // Don't cache - allow retry
+        return null
+      }
+
+      // No RLS errors, user just doesn't have org_id - cache null as valid
+      _orgIdCache = null
+      _orgIdCacheValid = true
+      return null
     } catch (e) {
+      // Unexpected error - don't cache, allow retry
       console.warn('[dropdownService] getScopedOrgId failed:', e?.message || e)
       return null
     } finally {
@@ -545,5 +624,9 @@ export function clearDropdownCache() {
     if (typeof _pending?.clear === 'function') {
       _pending.clear()
     }
+    // Reset org_id cache to allow re-fetch
+    _orgIdCache = null
+    _orgIdCacheValid = false
+    _orgIdPending = null
   } catch {}
 }
