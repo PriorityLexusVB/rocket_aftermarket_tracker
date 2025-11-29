@@ -33,10 +33,11 @@ RETURNS uuid
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   -- Check both id and auth_user_id columns to support all user linking scenarios
   -- Priority: id match first (most common), then auth_user_id fallback
-  SELECT COALESCE(
-    (SELECT org_id FROM public.user_profiles WHERE id = (SELECT auth.uid()) LIMIT 1),
-    (SELECT org_id FROM public.user_profiles WHERE auth_user_id = (SELECT auth.uid()) LIMIT 1)
-  );
+  -- Uses a single query with ORDER BY to prioritize id matches
+  SELECT org_id FROM public.user_profiles 
+  WHERE id = (SELECT auth.uid()) OR auth_user_id = (SELECT auth.uid())
+  ORDER BY CASE WHEN id = (SELECT auth.uid()) THEN 0 ELSE 1 END
+  LIMIT 1;
 $$;
 
 -- =============================================================================

@@ -40,6 +40,61 @@ function isRlsError(error) {
   )
 }
 
+/**
+ * Get the current user's org_id with email fallback.
+ * Attempts to find org_id by user id first, then falls back to email lookup.
+ * This handles cases where user_profiles.id != auth.uid() but email matches.
+ * @param {string} label - Label for logging (e.g., 'create', 'update')
+ * @returns {Promise<string|null>} - The org_id or null if not found
+ */
+async function getUserOrgIdWithFallback(label = 'operation') {
+  try {
+    const { data: auth } = await supabase?.auth?.getUser?.()
+    const userId = auth?.user?.id
+    const userEmail = auth?.user?.email
+
+    // Primary: try to find profile by id
+    if (userId) {
+      const { data: prof, error: profErr } = await supabase
+        ?.from('user_profiles')
+        ?.select('org_id')
+        ?.eq('id', userId)
+        ?.maybeSingle()
+
+      if (prof?.org_id) {
+        return prof.org_id
+      }
+      if (profErr && isRlsError(profErr)) {
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by id, trying email fallback`)
+      }
+    }
+
+    // Fallback: try to find profile by email if id lookup failed
+    if (userEmail) {
+      const { data: profByEmail, error: emailErr } = await supabase
+        ?.from('user_profiles')
+        ?.select('org_id')
+        ?.eq('email', userEmail)
+        ?.order('created_at', { ascending: false }) // Use created_at for more deterministic ordering
+        ?.limit(1)
+        ?.maybeSingle()
+
+      if (profByEmail?.org_id) {
+        console.info(`[dealService:${label}] Found org_id via email fallback`)
+        return profByEmail.org_id
+      }
+      if (emailErr && isRlsError(emailErr)) {
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by email:`, emailErr?.message)
+      }
+    }
+
+    return null
+  } catch (e) {
+    console.warn(`[dealService:${label}] Unable to get user org_id:`, e?.message)
+    return null
+  }
+}
+
 // Only pass columns we're confident exist on your `jobs` table.
 // Add more keys here if you confirm additional columns.
 const JOB_COLS = [
@@ -1332,45 +1387,9 @@ export async function createDeal(formState) {
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
   if (!payload?.org_id) {
-    try {
-      const { data: auth } = await supabase?.auth?.getUser?.()
-      const userId = auth?.user?.id
-      const userEmail = auth?.user?.email
-      
-      // Primary: try to find profile by id
-      if (userId) {
-        const { data: prof, error: profErr } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('id', userId)
-          ?.maybeSingle()
-        
-        if (prof?.org_id) {
-          payload.org_id = prof.org_id
-        } else if (profErr && isRlsError(profErr)) {
-          console.warn('[dealService:create] RLS blocked profile lookup by id, trying email fallback')
-        }
-      }
-      
-      // Fallback: try to find profile by email if id lookup failed
-      if (!payload?.org_id && userEmail) {
-        const { data: profByEmail, error: emailErr } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('email', userEmail)
-          ?.order('updated_at', { ascending: false })
-          ?.limit(1)
-          ?.maybeSingle()
-        
-        if (profByEmail?.org_id) {
-          payload.org_id = profByEmail.org_id
-          console.info('[dealService:create] Found org_id via email fallback')
-        } else if (emailErr && isRlsError(emailErr)) {
-          console.warn('[dealService:create] RLS blocked profile lookup by email:', emailErr?.message)
-        }
-      }
-    } catch (e) {
-      console.warn('[dealService:create] Unable to infer org_id from profile:', e?.message)
+    const inferredOrgId = await getUserOrgIdWithFallback('create')
+    if (inferredOrgId) {
+      payload.org_id = inferredOrgId
     }
   }
 
@@ -1636,45 +1655,9 @@ export async function updateDeal(id, formState) {
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile (align with createDeal)
   if (!payload?.org_id) {
-    try {
-      const { data: auth } = await supabase?.auth?.getUser?.()
-      const userId = auth?.user?.id
-      const userEmail = auth?.user?.email
-      
-      // Primary: try to find profile by id
-      if (userId) {
-        const { data: prof, error: profErr } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('id', userId)
-          ?.maybeSingle()
-        
-        if (prof?.org_id) {
-          payload.org_id = prof.org_id
-        } else if (profErr && isRlsError(profErr)) {
-          console.warn('[dealService:update] RLS blocked profile lookup by id, trying email fallback')
-        }
-      }
-      
-      // Fallback: try to find profile by email if id lookup failed
-      if (!payload?.org_id && userEmail) {
-        const { data: profByEmail, error: emailErr } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('email', userEmail)
-          ?.order('updated_at', { ascending: false })
-          ?.limit(1)
-          ?.maybeSingle()
-        
-        if (profByEmail?.org_id) {
-          payload.org_id = profByEmail.org_id
-          console.info('[dealService:update] Found org_id via email fallback')
-        } else if (emailErr && isRlsError(emailErr)) {
-          console.warn('[dealService:update] RLS blocked profile lookup by email:', emailErr?.message)
-        }
-      }
-    } catch (e) {
-      console.warn('[dealService:update] Unable to infer org_id from profile:', e?.message)
+    const inferredOrgId = await getUserOrgIdWithFallback('update')
+    if (inferredOrgId) {
+      payload.org_id = inferredOrgId
     }
   }
 
@@ -1872,7 +1855,7 @@ export async function updateDeal(id, formState) {
                 .from('user_profiles')
                 .select('org_id')
                 .eq('email', userEmail)
-                .order('updated_at', { ascending: false })
+                .order('created_at', { ascending: false }) // Use created_at for more deterministic ordering
                 .limit(1)
                 .maybeSingle()
               
