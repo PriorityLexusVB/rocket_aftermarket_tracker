@@ -98,6 +98,7 @@ export function entityToDraft(entity = {}) {
   const draft = {
     ...entity,
     // ✅ Explicitly preserve org_id for RLS compliance in edit flows
+    // NOTE: Intentionally explicit (not relying on spread) to prevent accidental loss of this critical field
     org_id: entity.org_id,
     job_number: entity.job_number ?? '',
     description: entity.description ?? '',
@@ -148,6 +149,7 @@ export function draftToCreatePayload(draft = {}) {
   const payload = {
     ...stripped,
     // ✅ Explicitly preserve org_id for RLS compliance
+    // NOTE: Intentionally explicit (not relying on spread) to prevent accidental loss of this critical field
     org_id: stripped.org_id,
     job_number: stripped.job_number ?? '',
     description: stripped.description ?? '',
