@@ -97,6 +97,8 @@ export function stripLoanerWhenOff(draft = {}) {
 export function entityToDraft(entity = {}) {
   const draft = {
     ...entity,
+    // ✅ Explicitly preserve org_id for RLS compliance in edit flows
+    org_id: entity.org_id,
     job_number: entity.job_number ?? '',
     description: entity.description ?? '',
     vendor_id: entity.vendor_id ?? '',
@@ -145,6 +147,8 @@ export function draftToCreatePayload(draft = {}) {
 
   const payload = {
     ...stripped,
+    // ✅ Explicitly preserve org_id for RLS compliance
+    org_id: stripped.org_id,
     job_number: stripped.job_number ?? '',
     description: stripped.description ?? '',
     vendor_id: stripped.vendor_id ?? '',
