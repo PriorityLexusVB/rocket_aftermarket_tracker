@@ -91,7 +91,7 @@ describe('dealService - email fallback for org_id lookup', () => {
     const emailResult = await emailQuery
       .select('org_id')
       .eq('email', mockUserEmail)
-      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
     expect(emailResult.data?.org_id).toBe(mockOrgId)
@@ -192,7 +192,7 @@ describe('dealService - email fallback for org_id lookup', () => {
     const emailResult = await emailQuery
       .select('org_id')
       .eq('email', mockUserEmail)
-      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
@@ -236,7 +236,7 @@ describe('dealService - email fallback for org_id lookup', () => {
     const emailResult = await emailQuery
       .select('org_id')
       .eq('email', mockUserEmail)
-      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
     expect(emailResult.data).toBeNull()
