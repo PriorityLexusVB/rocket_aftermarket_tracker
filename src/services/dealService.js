@@ -40,6 +40,61 @@ function isRlsError(error) {
   )
 }
 
+/**
+ * Get the current user's org_id with email fallback.
+ * Attempts to find org_id by user id first, then falls back to email lookup.
+ * This handles cases where user_profiles.id != auth.uid() but email matches.
+ * @param {string} label - Label for logging (e.g., 'create', 'update')
+ * @returns {Promise<string|null>} - The org_id or null if not found
+ */
+async function getUserOrgIdWithFallback(label = 'operation') {
+  try {
+    const { data: auth } = await supabase?.auth?.getUser?.()
+    const userId = auth?.user?.id
+    const userEmail = auth?.user?.email
+
+    // Primary: try to find profile by id
+    if (userId) {
+      const { data: prof, error: profErr } = await supabase
+        ?.from('user_profiles')
+        ?.select('org_id')
+        ?.eq('id', userId)
+        ?.maybeSingle()
+
+      if (prof?.org_id) {
+        return prof.org_id
+      }
+      if (profErr && isRlsError(profErr)) {
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by id, trying email fallback`)
+      }
+    }
+
+    // Fallback: try to find profile by email if id lookup failed
+    if (userEmail) {
+      const { data: profByEmail, error: emailErr } = await supabase
+        ?.from('user_profiles')
+        ?.select('org_id')
+        ?.eq('email', userEmail)
+        ?.order('created_at', { ascending: false }) // Order by created_at descending to select most recently created profile when multiple exist
+        ?.limit(1)
+        ?.maybeSingle()
+
+      if (profByEmail?.org_id) {
+        console.info(`[dealService:${label}] Found org_id via email fallback`)
+        return profByEmail.org_id
+      }
+      if (emailErr && isRlsError(emailErr)) {
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by email:`, emailErr?.message)
+      }
+    }
+
+    return null
+  } catch (e) {
+    console.warn(`[dealService:${label}] Unable to get user org_id:`, e?.message)
+    return null
+  }
+}
+
 // Only pass columns we're confident exist on your `jobs` table.
 // Add more keys here if you confirm additional columns.
 const JOB_COLS = [
@@ -1332,19 +1387,9 @@ export async function createDeal(formState) {
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
   if (!payload?.org_id) {
-    try {
-      const { data: auth } = await supabase?.auth?.getUser?.()
-      const userId = auth?.user?.id
-      if (userId) {
-        const { data: prof } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('id', userId)
-          ?.single()
-        if (prof?.org_id) payload.org_id = prof.org_id
-      }
-    } catch (e) {
-      console.warn('[dealService:create] Unable to infer org_id from profile:', e?.message)
+    const inferredOrgId = await getUserOrgIdWithFallback('create')
+    if (inferredOrgId) {
+      payload.org_id = inferredOrgId
     }
   }
 
@@ -1610,19 +1655,9 @@ export async function updateDeal(id, formState) {
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile (align with createDeal)
   if (!payload?.org_id) {
-    try {
-      const { data: auth } = await supabase?.auth?.getUser?.()
-      const userId = auth?.user?.id
-      if (userId) {
-        const { data: prof } = await supabase
-          ?.from('user_profiles')
-          ?.select('org_id')
-          ?.eq('id', userId)
-          ?.single()
-        if (prof?.org_id) payload.org_id = prof.org_id
-      }
-    } catch (e) {
-      console.warn('[dealService:update] Unable to infer org_id from profile:', e?.message)
+    const inferredOrgId = await getUserOrgIdWithFallback('update')
+    if (inferredOrgId) {
+      payload.org_id = inferredOrgId
     }
   }
 
@@ -1780,62 +1815,30 @@ export async function updateDeal(id, formState) {
 
         // If job has no org_id (legacy data), try to get user's org_id and set it on both job and transaction
         // This is a graceful recovery for legacy deals created before org scoping was implemented
-        let authFailureReason = null
         if (!jobOrgId) {
           console.warn('[dealService:update] Job has no org_id - attempting to set from user profile')
-          try {
-            const authResult = await supabase.auth.getUser()
-            if (authResult.error) {
-              authFailureReason = `auth failed: ${authResult.error.message}`
-              console.warn('[dealService:update] Auth getUser failed:', authResult.error.message)
-              // Auth failure is critical for RLS recovery - throw to provide clear error
-              throw new Error(`Authentication failed during RLS recovery: ${authResult.error.message}`)
-            }
-            const userId = authResult.data?.user?.id
-            if (!userId) {
-              authFailureReason = 'no user ID in auth result'
-              throw new Error('No authenticated user found during RLS recovery')
-            }
+          
+          // Use the shared helper function to get org_id with email fallback
+          const profileOrgId = await getUserOrgIdWithFallback('update:rls-recovery')
+          
+          if (profileOrgId) {
+            jobOrgId = profileOrgId
+            // Set org_id on the job to fix the legacy data
+            const jobUpdateResult = await supabase
+              .from('jobs')
+              .update({ org_id: jobOrgId })
+              .eq('id', id)
             
-            const profileResult = await supabase
-              .from('user_profiles')
-              .select('org_id')
-              .eq('id', userId)
-              .single()
-            
-            if (profileResult.error) {
-              authFailureReason = `profile fetch failed: ${profileResult.error.message}`
-              console.warn('[dealService:update] Profile fetch failed:', profileResult.error.message)
-              // Don't process further if profile fetch failed
-            } else if (profileResult.data?.org_id) {
-              jobOrgId = profileResult.data.org_id
-              // Set org_id on the job to fix the legacy data
-              const jobUpdateResult = await supabase
-                .from('jobs')
-                .update({ org_id: jobOrgId })
-                .eq('id', id)
-              
-              if (jobUpdateResult.error) {
-                console.warn('[dealService:update] Failed to set job org_id:', jobUpdateResult.error.message)
-              } else {
-                console.info('[dealService:update] Successfully set job org_id from user profile')
-              }
+            if (jobUpdateResult.error) {
+              console.warn('[dealService:update] Failed to set job org_id:', jobUpdateResult.error.message)
             } else {
-              authFailureReason = 'user profile has no org_id'
-            }
-          } catch (e) {
-            authFailureReason = authFailureReason || e?.message
-            console.warn('[dealService:update] Unable to get user org_id for legacy fix:', e?.message)
-            // Re-throw if this was an auth/user error we explicitly threw
-            if (e?.message?.includes('RLS recovery') || e?.message?.includes('authenticated user')) {
-              throw e
+              console.info('[dealService:update] Successfully set job org_id from user profile')
             }
           }
         }
 
         if (!jobOrgId) {
-          const reason = authFailureReason ? ` (${authFailureReason})` : ''
-          throw new Error(`Cannot recover from RLS error: job has no org_id and unable to get user org_id${reason}`)
+          throw new Error('Cannot recover from RLS error: job has no org_id and unable to get user org_id')
         }
 
         // Set the transaction's org_id to match the job's org_id (or user's org_id)
