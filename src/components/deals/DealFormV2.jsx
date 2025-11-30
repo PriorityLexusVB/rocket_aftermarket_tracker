@@ -125,11 +125,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // GUARD: Only rehydrate if user hasn't made intentional edits to avoid data loss
   useEffect(() => {
     if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
-      // Guard: If user has made edits, don't overwrite their changes
-      // This prevents async job loads from clobbering user input
-      if (userHasEdited.current) {
-        console.info('[DealFormV2] Skipping rehydration - user has made edits')
-        return
+      // If switching to a different job, reset the edit tracking to allow fresh rehydration
+      // This handles the case where user navigates between different deals
+      if (initializedJobId.current !== null) {
+        userHasEdited.current = false
       }
       
       initializedJobId.current = job.id

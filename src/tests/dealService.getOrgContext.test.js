@@ -5,12 +5,22 @@
  * which is used for RLS compliance in DB operations.
  */
 
-import { describe, it, expect, vi, beforeAll } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 
 // Mock supabase for testing
 const mockOrgId = 'test-org-123'
 const mockUserId = 'test-user-456'
 const mockUserEmail = 'test@example.com'
+
+// Create a configurable mock for testing different scenarios
+let mockAuthResponse = {
+  data: { user: { id: mockUserId, email: mockUserEmail } },
+  error: null
+}
+let mockProfileResponse = {
+  data: { org_id: mockOrgId },
+  error: null
+}
 
 vi.mock('../lib/supabase', () => {
   const mockChain = () => ({
@@ -19,51 +29,87 @@ vi.mock('../lib/supabase', () => {
     eq: vi.fn(() => mockChain()),
     order: vi.fn(() => mockChain()),
     limit: vi.fn(() => mockChain()),
-    maybeSingle: vi.fn(() => Promise.resolve({ 
-      data: { org_id: mockOrgId }, 
-      error: null 
-    })),
+    maybeSingle: vi.fn(() => Promise.resolve(mockProfileResponse)),
   })
   
   return {
     supabase: {
       from: vi.fn(() => mockChain()),
       auth: {
-        getUser: vi.fn(() => Promise.resolve({ 
-          data: { user: { id: mockUserId, email: mockUserEmail } }, 
-          error: null 
-        })),
+        getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
       },
     },
     default: {
       from: vi.fn(() => mockChain()),
       auth: {
-        getUser: vi.fn(() => Promise.resolve({ 
-          data: { user: { id: mockUserId, email: mockUserEmail } }, 
-          error: null 
-        })),
+        getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
       },
     },
   }
 })
 
-// Import isRlsError after mocks are set up
-// Using dynamic import in beforeAll to ensure mocks are ready
+// Import functions after mocks are set up
 let isRlsError
+let getOrgContext
 
 beforeAll(async () => {
   const dealService = await import('../services/dealService')
   isRlsError = dealService.isRlsError
+  getOrgContext = dealService.getOrgContext
 })
 
-describe('dealService - getOrgContext Documentation', () => {
-  describe('getOrgContext Helper', () => {
-    it('documents the structure returned by getOrgContext', () => {
-      // getOrgContext returns an object with:
-      // - org_id: The organization ID from user_profiles (with email fallback)
-      // - user_id: The authenticated user's ID from auth.getUser()
-      // - user_email: The authenticated user's email from auth.getUser()
+beforeEach(() => {
+  // Reset mocks to default successful state before each test
+  mockAuthResponse = {
+    data: { user: { id: mockUserId, email: mockUserEmail } },
+    error: null
+  }
+  mockProfileResponse = {
+    data: { org_id: mockOrgId },
+    error: null
+  }
+})
+
+describe('dealService - getOrgContext', () => {
+  describe('getOrgContext Helper - Behavioral Tests', () => {
+    it('should return org context with user_id and user_email from auth', async () => {
+      const context = await getOrgContext('test')
       
+      // Should have all three fields
+      expect(context).toHaveProperty('org_id')
+      expect(context).toHaveProperty('user_id')
+      expect(context).toHaveProperty('user_email')
+      
+      // user_id and user_email should come from auth
+      expect(context.user_id).toBe(mockUserId)
+      expect(context.user_email).toBe(mockUserEmail)
+    })
+
+    it('should return context object with null values when auth fails', async () => {
+      // Simulate auth failure
+      mockAuthResponse = { data: { user: null }, error: { message: 'Not authenticated' } }
+      
+      const context = await getOrgContext('test-auth-fail')
+      
+      // Should still return context object (never throws)
+      expect(context).toHaveProperty('org_id')
+      expect(context).toHaveProperty('user_id')
+      expect(context).toHaveProperty('user_email')
+      expect(context.user_id).toBeNull()
+      expect(context.user_email).toBeNull()
+    })
+
+    it('should return context object structure matching documented interface', async () => {
+      const context = await getOrgContext('test-structure')
+      
+      // Verify exact structure as documented
+      const expectedKeys = ['org_id', 'user_id', 'user_email']
+      expect(Object.keys(context).sort()).toEqual(expectedKeys.sort())
+    })
+  })
+
+  describe('getOrgContext Helper - Documentation', () => {
+    it('documents the structure returned by getOrgContext', () => {
       const expectedStructure = {
         org_id: 'expect: string UUID or null',
         user_id: 'expect: string UUID or null',
@@ -74,11 +120,6 @@ describe('dealService - getOrgContext Documentation', () => {
     })
 
     it('documents org_id resolution order', () => {
-      // getOrgContext uses the following resolution order for org_id:
-      // 1. Primary: Look up user_profiles by auth user id
-      // 2. Fallback: Look up user_profiles by auth user email
-      // 3. Return null if both lookups fail
-      
       const resolutionOrder = [
         { step: 1, method: 'user_profiles.id = auth.uid()', priority: 'primary' },
         { step: 2, method: 'user_profiles.email = auth.email', priority: 'fallback' },
@@ -91,12 +132,6 @@ describe('dealService - getOrgContext Documentation', () => {
     })
 
     it('documents error handling behavior', () => {
-      // When errors occur during context resolution:
-      // - RLS errors on id lookup: Try email fallback, don't throw
-      // - RLS errors on email lookup: Log warning, return null org_id
-      // - Other errors: Log warning, return null org_id
-      // - Never throws - always returns context object (possibly with null values)
-      
       const errorBehavior = {
         onRlsErrorIdLookup: 'try email fallback',
         onRlsErrorEmailLookup: 'log warning, return null org_id',
@@ -135,11 +170,6 @@ describe('dealService - getOrgContext Documentation', () => {
 
   describe('Usage in Service Layer', () => {
     it('documents usage in createDeal', () => {
-      // In createDeal, org context is used to:
-      // 1. Set job.org_id for tenant isolation
-      // 2. Set transaction.org_id for RLS compliance
-      // 3. Set vehicle.org_id when creating new vehicles
-      
       const createDealUsage = {
         jobPayload: 'org_id from context or form input',
         transactionPayload: 'org_id from job or inferred',
@@ -150,11 +180,6 @@ describe('dealService - getOrgContext Documentation', () => {
     })
 
     it('documents usage in updateDeal', () => {
-      // In updateDeal, org context is used for:
-      // 1. Optimistic concurrency scoping (match job.org_id)
-      // 2. RLS recovery (set missing org_id on legacy data)
-      // 3. Transaction upsert (ensure org_id is set)
-      
       const updateDealUsage = {
         optimisticConcurrency: 'eq("org_id", payload.org_id) if provided',
         rlsRecovery: 'set job.org_id from user profile when NULL',
