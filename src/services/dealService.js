@@ -2293,4 +2293,10 @@ export const dealService = {
 
 export default dealService
 
-export { mapDbDealToForm, mapFormToDb, mapPermissionError, normalizeDealTimes, isRlsError }
+export {
+  mapDbDealToForm,
+  mapFormToDb,
+  mapPermissionError,
+  normalizeDealTimes,
+  isRlsError,
+}

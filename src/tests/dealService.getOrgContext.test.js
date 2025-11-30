@@ -5,7 +5,7 @@
  * which is used for RLS compliance in DB operations.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll } from 'vitest'
 
 // Mock supabase for testing
 const mockOrgId = 'test-org-123'
@@ -45,6 +45,15 @@ vi.mock('../lib/supabase', () => {
       },
     },
   }
+})
+
+// Import isRlsError after mocks are set up
+// Using dynamic import in beforeAll to ensure mocks are ready
+let isRlsError
+
+beforeAll(async () => {
+  const dealService = await import('../services/dealService')
+  isRlsError = dealService.isRlsError
 })
 
 describe('dealService - getOrgContext Documentation', () => {
@@ -100,27 +109,22 @@ describe('dealService - getOrgContext Documentation', () => {
   })
 
   describe('isRlsError Function', () => {
-    it('should identify PostgreSQL insufficient_privilege (42501)', async () => {
-      // Import isRlsError from dealService
-      const { isRlsError } = await import('../services/dealService')
+    it('should identify PostgreSQL insufficient_privilege (42501)', () => {
       expect(isRlsError({ code: '42501', message: 'insufficient_privilege' })).toBe(true)
     })
 
-    it('should identify PostgREST errors (PGRST*)', async () => {
-      const { isRlsError } = await import('../services/dealService')
+    it('should identify PostgREST errors (PGRST*)', () => {
       expect(isRlsError({ code: 'PGRST301', message: 'JWT claim missing' })).toBe(true)
       expect(isRlsError({ code: 'PGRST302', message: 'Auth error' })).toBe(true)
     })
 
-    it('should identify policy-related messages', async () => {
-      const { isRlsError } = await import('../services/dealService')
+    it('should identify policy-related messages', () => {
       expect(isRlsError({ message: 'new row violates row-level security policy' })).toBe(true)
       expect(isRlsError({ message: 'RLS policy violation' })).toBe(true)
       expect(isRlsError({ message: 'permission denied for table transactions' })).toBe(true)
     })
 
-    it('should NOT identify non-RLS errors', async () => {
-      const { isRlsError } = await import('../services/dealService')
+    it('should NOT identify non-RLS errors', () => {
       expect(isRlsError({ message: 'Network error: Failed to fetch' })).toBe(false)
       expect(isRlsError({ message: 'column "foo" does not exist' })).toBe(false)
       expect(isRlsError({ code: '23505', message: 'unique_violation' })).toBe(false)
