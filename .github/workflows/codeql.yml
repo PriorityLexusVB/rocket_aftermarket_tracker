@@ -1,0 +1,53 @@
+# CodeQL Security Analysis Workflow
+# Auto-generated for Rocket Aftermarket Tracker
+# Languages detected: JavaScript/TypeScript
+
+name: "CodeQL"
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    # Weekly security scan every Monday at 10:00 UTC (5:00 AM EST / 6:00 AM EDT)
+    - cron: "0 10 * * 1"
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["javascript-typescript"]
+        # CodeQL supports: 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'swift'
+        # Only javascript-typescript is relevant for this repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Use default query suite for comprehensive analysis
+          queries: +security-extended,security-and-quality
+
+      # Autobuild attempts to build any compiled languages (not needed for JS/TS)
+      # However, it can help CodeQL understand the project structure better
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

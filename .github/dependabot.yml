@@ -1,0 +1,81 @@
+# Dependabot configuration for Rocket Aftermarket Tracker
+# Auto-generated based on repository analysis
+# Stack: JavaScript/TypeScript (Vite + React 18), pnpm package manager
+
+version: 2
+updates:
+  # npm ecosystem for JavaScript/TypeScript dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    groups:
+      # Group security updates for faster review
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      # Group non-breaking dependency updates to reduce PR noise
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+        exclude-patterns:
+          # Exclude rocketCritical packages from automatic minor/patch grouping
+          # These require careful review per package.json guardrails
+          - "@dhiwise/component-tagger"
+          - "react"
+          - "react-dom"
+          - "@reduxjs/toolkit"
+          - "redux"
+          - "react-router-dom"
+          - "@vitejs/plugin-react"
+          - "vite"
+          - "vite-tsconfig-paths"
+          - "tailwindcss"
+          - "autoprefixer"
+          - "postcss"
+      # Separate group for major updates requiring more attention
+      major-updates:
+        applies-to: version-updates
+        update-types:
+          - "major"
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "chore(deps)"
+    reviewers:
+      - "PriorityLexusVB"
+
+  # GitHub Actions ecosystem for workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    groups:
+      # Group all GitHub Actions updates together
+      actions-updates:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "automated"
+    commit-message:
+      prefix: "chore(ci)"
+    reviewers:
+      - "PriorityLexusVB"
