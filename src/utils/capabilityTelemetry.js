@@ -12,6 +12,8 @@ export const TelemetryKey = {
   SCHEDULED_TIMES_FALLBACK: 'telemetry_scheduledTimesFallback',
   USER_PROFILE_NAME_FALLBACK: 'telemetry_userProfileNameFallback',
   RLS_LOANER_DENIED: 'telemetry_rlsLoanerDenied',
+  DROPDOWN_ORG_FALLBACK: 'telemetry_dropdownOrgFallback', // When dropdown queries fail org-scoped and use fallback
+  RLS_TRANSACTION_RECOVERY: 'telemetry_rlsTransactionRecovery', // When transaction RLS recovery is triggered
   CALENDAR_RENDER_MS: 'telemetry_calendarRenderMs', // Optional: Calendar render time metric
 }
 
@@ -97,6 +99,8 @@ export function getAllTelemetry() {
     scheduledTimesFallback: getTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK),
     userProfileNameFallback: getTelemetry(TelemetryKey.USER_PROFILE_NAME_FALLBACK),
     rlsLoanerDenied: getTelemetry(TelemetryKey.RLS_LOANER_DENIED),
+    dropdownOrgFallback: getTelemetry(TelemetryKey.DROPDOWN_ORG_FALLBACK),
+    rlsTransactionRecovery: getTelemetry(TelemetryKey.RLS_TRANSACTION_RECOVERY),
   }
   // Optionally include calendar metric when enabled
   if (CALENDAR_TELEMETRY_ENABLED) {
