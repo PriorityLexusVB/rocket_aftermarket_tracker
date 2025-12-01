@@ -6,6 +6,7 @@ import {
   resolveUserProfileName,
   downgradeCapForErrorMessage,
 } from '@/utils/userProfileName'
+import { incrementTelemetry, TelemetryKey } from '@/utils/capabilityTelemetry'
 
 // ---------------------------------------------------------------------------
 // Capability: user_profiles.vendor_id column (some environments may not have it yet)
@@ -162,6 +163,8 @@ async function getScopedOrgId() {
         console.warn(
           '[dropdownService] getScopedOrgId: No org_id found due to RLS - will retry on next call'
         )
+        // Track RLS fallback in telemetry for auditing
+        incrementTelemetry(TelemetryKey.DROPDOWN_ORG_FALLBACK)
         // Don't cache - allow retry
         return null
       }

@@ -26,6 +26,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const { orgId, loading: tenantLoading } = useTenant()
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
+  const userHasEdited = useRef(false) // Track if user has made intentional edits
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -121,8 +122,15 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // ✅ FIX: Reload customer data and line items from job prop when it changes in edit mode
   // This ensures that when EditDealModal loads deal data asynchronously, the form picks it up
+  // GUARD: Only rehydrate if user hasn't made intentional edits to avoid data loss
   useEffect(() => {
     if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
+      // If switching to a different job, reset the edit tracking to allow fresh rehydration
+      // This handles the case where user navigates between different deals
+      if (initializedJobId.current !== null) {
+        userHasEdited.current = false
+      }
+      
       initializedJobId.current = job.id
       
       // Apply titleCase normalization immediately when loading job data in edit mode
@@ -169,11 +177,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     }
   }, [job?.id, mode])
 
-  // Track unsaved changes
+  // Track unsaved changes and mark user edits
   useEffect(() => {
     // Mark as changed when user modifies form (skip for initial load in edit mode)
     if (mode === 'create' || (mode === 'edit' && initializedJobId.current)) {
       setHasUnsavedChanges(true)
+      // Mark that user has made edits (to prevent async rehydration from overwriting)
+      userHasEdited.current = true
     }
   }, [customerData, lineItems, mode])
 

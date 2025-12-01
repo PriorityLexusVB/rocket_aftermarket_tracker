@@ -41,6 +41,32 @@ function isRlsError(error) {
 }
 
 /**
+ * Get the complete org context (org_id, user_id, user_email) for tenant scoping.
+ * This helper provides all fields needed for proper RLS compliance in DB operations.
+ * Uses id-based lookup with email fallback for maximum compatibility with legacy profiles.
+ * 
+ * @param {string} label - Label for logging (e.g., 'create', 'update', 'save')
+ * @returns {Promise<{org_id: string|null, user_id: string|null, user_email: string|null}>} 
+ */
+export async function getOrgContext(label = 'operation') {
+  const context = { org_id: null, user_id: null, user_email: null }
+  
+  try {
+    const { data: auth } = await supabase?.auth?.getUser?.()
+    context.user_id = auth?.user?.id || null
+    context.user_email = auth?.user?.email || null
+
+    // Attempt to resolve org_id using the fallback helper
+    context.org_id = await getUserOrgIdWithFallback(label)
+    
+    return context
+  } catch (e) {
+    console.warn(`[dealService:getOrgContext:${label}] Unable to get org context:`, e?.message)
+    return context
+  }
+}
+
+/**
  * Get the current user's org_id with email fallback.
  * Attempts to find org_id by user id first, then falls back to email lookup.
  * This handles cases where user_profiles.id != auth.uid() but email matches.
@@ -1797,6 +1823,9 @@ export async function updateDeal(id, formState) {
       if (isRlsError(selectErr)) {
         console.warn('[dealService:update] RLS blocked transaction SELECT, attempting UPDATE by job_id')
         
+        // Track RLS recovery attempt in telemetry
+        incrementTelemetry(TelemetryKey.RLS_TRANSACTION_RECOVERY)
+        
         // Get the job's org_id to use for the transaction
         let jobOrgId = baseTransactionData.org_id
         if (!jobOrgId) {
@@ -2264,4 +2293,10 @@ export const dealService = {
 
 export default dealService
 
-export { mapDbDealToForm, mapFormToDb, mapPermissionError, normalizeDealTimes }
+export {
+  mapDbDealToForm,
+  mapFormToDb,
+  mapPermissionError,
+  normalizeDealTimes,
+  isRlsError,
+}

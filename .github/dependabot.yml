@@ -1,110 +1,69 @@
 # Dependabot configuration for Rocket Aftermarket Tracker
-# Auto-generated based on repository analysis
-# Stack: JavaScript/TypeScript (Vite + React 18), pnpm package manager
+# Keeps dependencies updated with minimal PR noise.
 
 version: 2
 updates:
-  # npm ecosystem for JavaScript/TypeScript dependencies
+  # Root npm / pnpm dependencies (Next.js / React app)
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/"  # location of package.json / lockfile
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "06:00"
+      time: "05:00"
       timezone: "America/New_York"
-    open-pull-requests-limit: 10
+
+    # Don't let Dependabot flood you
+    open-pull-requests-limit: 3
+
     groups:
-      # Group security updates for faster review (excludes rocketCritical packages for individual review)
-      security-updates:
-        applies-to: security-updates
+      # 1) ONE PR for ALL security updates
+      npm-security:
+        applies-to: "security-updates"
         patterns:
           - "*"
-        exclude-patterns:
-          # Exclude rocketCritical packages - these get individual PRs for careful review
-          - "@dhiwise/component-tagger"
-          - "react"
-          - "react-dom"
-          - "@reduxjs/toolkit"
-          - "redux"
-          - "react-router-dom"
-          - "@vitejs/plugin-react"
-          - "vite"
-          - "vite-tsconfig-paths"
-          - "tailwindcss"
-          - "autoprefixer"
-          - "postcss"
-      # Group non-breaking dependency updates to reduce PR noise
-      minor-and-patch:
-        applies-to: version-updates
+
+      # 2) ONE PR for ALL minor/patch version bumps (prod + dev)
+      npm-minor-patch:
+        applies-to: "version-updates"
         update-types:
           - "minor"
           - "patch"
         patterns:
           - "*"
-        exclude-patterns:
-          # Exclude rocketCritical packages from automatic grouping - they get individual PRs
-          # These require careful review per package.json guardrails
-          - "@dhiwise/component-tagger"
-          - "react"
-          - "react-dom"
-          - "@reduxjs/toolkit"
-          - "redux"
-          - "react-router-dom"
-          - "@vitejs/plugin-react"
-          - "vite"
-          - "vite-tsconfig-paths"
-          - "tailwindcss"
-          - "autoprefixer"
-          - "postcss"
-      # Separate group for major updates requiring more attention (excludes rocketCritical)
-      major-updates:
-        applies-to: version-updates
-        update-types:
-          - "major"
-        patterns:
-          - "*"
-        exclude-patterns:
-          # Exclude rocketCritical packages - major updates for these get individual PRs
-          # Breaking changes to critical dependencies require thorough testing
-          - "@dhiwise/component-tagger"
-          - "react"
-          - "react-dom"
-          - "@reduxjs/toolkit"
-          - "redux"
-          - "react-router-dom"
-          - "@vitejs/plugin-react"
-          - "vite"
-          - "vite-tsconfig-paths"
-          - "tailwindcss"
-          - "autoprefixer"
-          - "postcss"
-    labels:
-      - "dependencies"
-      - "automated"
+
+      # (Optional) If you later want majors grouped too, uncomment:
+      # npm-majors:
+      #   applies-to: "version-updates"
+      #   update-types:
+      #     - "major"
+      #   patterns:
+      #     - "*"
+
     commit-message:
       prefix: "chore(deps)"
-    reviewers:
-      - "PriorityLexusVB"
+    labels:
+      - "dependencies"
+      - "npm"
 
-  # GitHub Actions ecosystem for workflow dependencies
+  # GitHub Actions workflow updates
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
       day: "monday"
-      time: "06:00"
+      time: "05:00"
       timezone: "America/New_York"
-    open-pull-requests-limit: 5
+
+    # At most one Actions PR at a time
+    open-pull-requests-limit: 1
+
     groups:
-      # Group all GitHub Actions updates together
-      actions-updates:
+      actions-all:
         patterns:
           - "*"
+
+    commit-message:
+      prefix: "chore(ci)"
     labels:
       - "dependencies"
       - "github-actions"
-      - "automated"
-    commit-message:
-      prefix: "chore(ci)"
-    reviewers:
-      - "PriorityLexusVB"
