@@ -14,11 +14,25 @@ updates:
       timezone: "America/New_York"
     open-pull-requests-limit: 10
     groups:
-      # Group security updates for faster review
+      # Group security updates for faster review (excludes rocketCritical packages for individual review)
       security-updates:
         applies-to: security-updates
         patterns:
           - "*"
+        exclude-patterns:
+          # Exclude rocketCritical packages - these get individual PRs for careful review
+          - "@dhiwise/component-tagger"
+          - "react"
+          - "react-dom"
+          - "@reduxjs/toolkit"
+          - "redux"
+          - "react-router-dom"
+          - "@vitejs/plugin-react"
+          - "vite"
+          - "vite-tsconfig-paths"
+          - "tailwindcss"
+          - "autoprefixer"
+          - "postcss"
       # Group non-breaking dependency updates to reduce PR noise
       minor-and-patch:
         applies-to: version-updates
@@ -28,7 +42,7 @@ updates:
         patterns:
           - "*"
         exclude-patterns:
-          # Exclude rocketCritical packages from automatic minor/patch grouping
+          # Exclude rocketCritical packages from automatic grouping - they get individual PRs
           # These require careful review per package.json guardrails
           - "@dhiwise/component-tagger"
           - "react"
@@ -42,13 +56,28 @@ updates:
           - "tailwindcss"
           - "autoprefixer"
           - "postcss"
-      # Separate group for major updates requiring more attention
+      # Separate group for major updates requiring more attention (excludes rocketCritical)
       major-updates:
         applies-to: version-updates
         update-types:
           - "major"
         patterns:
           - "*"
+        exclude-patterns:
+          # Exclude rocketCritical packages - major updates for these get individual PRs
+          # Breaking changes to critical dependencies require thorough testing
+          - "@dhiwise/component-tagger"
+          - "react"
+          - "react-dom"
+          - "@reduxjs/toolkit"
+          - "redux"
+          - "react-router-dom"
+          - "@vitejs/plugin-react"
+          - "vite"
+          - "vite-tsconfig-paths"
+          - "tailwindcss"
+          - "autoprefixer"
+          - "postcss"
     labels:
       - "dependencies"
       - "automated"

@@ -48,7 +48,7 @@ Some security features require manual activation in the GitHub UI. Navigate to y
 
 ### Settings → Code security and analysis
 
-Go to: `https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/settings/security_analysis`
+Go to: `https://github.com/<your-org-or-username>/<your-repo>/settings/security_analysis`
 
 | Feature | Status | Action Required |
 |---------|--------|-----------------|
@@ -81,7 +81,7 @@ Go to: `https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/settings/s
 
 5. **Enable Code Scanning**
    - Find "Code scanning" section
-   - Select "Set up" → "Default" or the CodeQL workflow will be picked up automatically
+   - The existing `codeql.yml` workflow will be picked up automatically, or you can explicitly select "Set up" → "Default" if needed
    - The `codeql.yml` workflow will run on pushes and PRs
 
 6. **Enable Secret Scanning**
