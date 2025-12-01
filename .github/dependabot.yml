@@ -3,7 +3,7 @@
 
 version: 2
 updates:
-  # Root npm / pnpm dependencies (Next.js app)
+  # Root npm / pnpm dependencies (Next.js / React app)
   - package-ecosystem: "npm"
     directory: "/"  # location of package.json / lockfile
     schedule:
