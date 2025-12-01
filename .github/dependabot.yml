@@ -1,0 +1,69 @@
+# Dependabot configuration for Rocket Aftermarket Tracker
+# Keeps dependencies updated with minimal PR noise.
+
+version: 2
+updates:
+  # Root npm / pnpm dependencies (Next.js app)
+  - package-ecosystem: "npm"
+    directory: "/"  # location of package.json / lockfile
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/New_York"
+
+    # Don't let Dependabot flood you
+    open-pull-requests-limit: 3
+
+    groups:
+      # 1) ONE PR for ALL security updates
+      npm-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+
+      # 2) ONE PR for ALL minor/patch version bumps (prod + dev)
+      npm-minor-patch:
+        applies-to: "version-updates"
+        update-types:
+          - "minor"
+          - "patch"
+        patterns:
+          - "*"
+
+      # (Optional) If you later want majors grouped too, uncomment:
+      # npm-majors:
+      #   applies-to: "version-updates"
+      #   update-types:
+      #     - "major"
+      #   patterns:
+      #     - "*"
+
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "npm"
+
+  # GitHub Actions workflow updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/New_York"
+
+    # At most one Actions PR at a time
+    open-pull-requests-limit: 1
+
+    groups:
+      actions-all:
+        patterns:
+          - "*"
+
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - "dependencies"
+      - "github-actions"
