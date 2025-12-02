@@ -1,5 +1,5 @@
 # Dependabot configuration for Rocket Aftermarket Tracker
-# Keeps dependencies updated with minimal PR noise.
+# Grouped updates, no semver-major bumps, minimal PR noise.
 
 version: 2
 updates:
@@ -16,13 +16,13 @@ updates:
     open-pull-requests-limit: 3
 
     groups:
-      # 1) ONE PR for ALL security updates
+      # One PR for ALL security updates
       npm-security:
         applies-to: "security-updates"
         patterns:
           - "*"
 
-      # 2) ONE PR for ALL minor/patch version bumps (prod + dev)
+      # One PR for ALL minor/patch version updates (prod + dev)
       npm-minor-patch:
         applies-to: "version-updates"
         update-types:
@@ -31,19 +31,14 @@ updates:
         patterns:
           - "*"
 
-      # (Optional) If you later want majors grouped too, uncomment:
-      # npm-majors:
-      #   applies-to: "version-updates"
-      #   update-types:
-      #     - "major"
-      #   patterns:
-      #     - "*"
+    # Ignore semver-major version updates
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
 
     commit-message:
       prefix: "chore(deps)"
-    labels:
-      - "dependencies"
-      - "npm"
 
   # GitHub Actions workflow updates
   - package-ecosystem: "github-actions"
@@ -62,8 +57,11 @@ updates:
         patterns:
           - "*"
 
+    # Ignore semver-major version updates for actions
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
     commit-message:
       prefix: "chore(ci)"
-    labels:
-      - "dependencies"
-      - "github-actions"
