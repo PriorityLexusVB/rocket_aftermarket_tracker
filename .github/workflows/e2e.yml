@@ -25,6 +25,9 @@ jobs:
           echo "Using pnpm@${PNPM_VER} via corepack"
           corepack prepare pnpm@"${PNPM_VER}" --activate
 
+      - name: Ensure pnpm store directory exists
+        run: mkdir -p "$(pnpm store path 2>/dev/null || echo ~/.local/share/pnpm/store)"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -92,6 +95,9 @@ jobs:
           PNPM_VER=$(node -p "require('./package.json').packageManager.split('@')[1].split('+')[0]")
           echo "Using pnpm@${PNPM_VER} via corepack"
           corepack prepare pnpm@"${PNPM_VER}" --activate
+
+      - name: Ensure pnpm store directory exists
+        run: mkdir -p "$(pnpm store path 2>/dev/null || echo ~/.local/share/pnpm/store)"
 
       - name: Setup Node
         uses: actions/setup-node@v4
