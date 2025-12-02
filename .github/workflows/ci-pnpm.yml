@@ -16,7 +16,7 @@ jobs:
 
       - name: Ensure pnpm store directory exists
         run: mkdir -p "$(pnpm store path 2>/dev/null || echo ~/.local/share/pnpm/store)"
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
