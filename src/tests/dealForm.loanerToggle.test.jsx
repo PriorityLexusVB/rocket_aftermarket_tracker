@@ -1,19 +1,10 @@
-// Ensure import.meta.env exists and set default VITE_DEAL_FORM_V2 before any imports
-if (!import.meta.env) {
-  Object.defineProperty(import.meta, 'env', {
-    value: { VITE_DEAL_FORM_V2: 'true' },
-    writable: true,
-    configurable: true,
-    enumerable: true,
-  });
-} else {
-  Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
-    value: 'true',
-    writable: true,
-    configurable: true,
-    enumerable: true,
-  });
-}
+// Ensure VITE_DEAL_FORM_V2 is set before any imports
+Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
+  value: 'true',
+  writable: true,
+  configurable: true,
+  enumerable: true,
+});
 
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
