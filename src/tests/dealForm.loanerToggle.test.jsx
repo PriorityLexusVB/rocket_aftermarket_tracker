@@ -1,3 +1,20 @@
+// Ensure import.meta.env exists and set default VITE_DEAL_FORM_V2 before any imports
+if (!import.meta.env) {
+  Object.defineProperty(import.meta, 'env', {
+    value: { VITE_DEAL_FORM_V2: 'true' },
+    writable: true,
+    configurable: true,
+    enumerable: true,
+  });
+} else {
+  Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
+    value: 'true',
+    writable: true,
+    configurable: true,
+    enumerable: true,
+  });
+}
+
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
@@ -51,8 +68,13 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Set V2 flag
-    import.meta.env.VITE_DEAL_FORM_V2 = 'true'
+    // Set V2 flag using Object.defineProperty for compatibility with Vitest
+    Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
+      value: 'true',
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    })
   })
 
   it('Create mode: toggle on shows loaner section, toggle off hides and clears fields', async () => {
@@ -210,8 +232,13 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
   it('Create mode with flag OFF: legacy behavior (no field clearing)', async () => {
     const { BrowserRouter } = await import('react-router-dom')
-    // Disable V2 flag
-    import.meta.env.VITE_DEAL_FORM_V2 = 'false'
+    // Disable V2 flag using Object.defineProperty for compatibility with Vitest
+    Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
+      value: 'false',
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    })
 
     const { container } = render(
       <BrowserRouter>
