@@ -1,7 +1,10 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import DealForm from '../pages/deals/DealForm'
+
+// We'll dynamically import DealForm after setting import.meta.env so the module
+// reads the correct flag value at import time.
+let DealForm
 
 // Mock dependencies
 vi.mock('../services/dropdownService', () => ({
@@ -49,10 +52,18 @@ describe('DealForm V2 - Loaner Toggle', () => {
   const mockOnSave = vi.fn()
   const mockOnCancel = vi.fn()
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
-    // Set V2 flag
-    import.meta.env.VITE_DEAL_FORM_V2 = 'true'
+
+    // Ensure import.meta.env exists and set the V2 flag to 'true' before importing DealForm
+    Object.defineProperty(import.meta, 'env', {
+      value: { ...(import.meta.env || {}), VITE_DEAL_FORM_V2: 'true' },
+      configurable: true,
+    })
+
+    // Import DealForm after setting env so it reads the correct flag
+    const mod = await import('../pages/deals/DealForm')
+    DealForm = mod.default
   })
 
   it('Create mode: toggle on shows loaner section, toggle off hides and clears fields', async () => {
@@ -210,8 +221,14 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
   it('Create mode with flag OFF: legacy behavior (no field clearing)', async () => {
     const { BrowserRouter } = await import('react-router-dom')
-    // Disable V2 flag
-    import.meta.env.VITE_DEAL_FORM_V2 = 'false'
+
+    // Disable V2 flag for this test and re-import DealForm so it reads the disabled flag
+    Object.defineProperty(import.meta, 'env', {
+      value: { ...(import.meta.env || {}), VITE_DEAL_FORM_V2: 'false' },
+      configurable: true,
+    })
+    const mod = await import('../pages/deals/DealForm')
+    DealForm = mod.default
 
     const { container } = render(
       <BrowserRouter>
