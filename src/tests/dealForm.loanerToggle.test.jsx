@@ -1,10 +1,15 @@
+// Ensure VITE_DEAL_FORM_V2 is set before any imports
+Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
+  value: 'true',
+  writable: true,
+  configurable: true,
+  enumerable: true,
+});
+
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-
-// We'll dynamically import DealForm after setting import.meta.env so the module
-// reads the correct flag value at import time.
-let DealForm
+import DealForm from '../pages/deals/DealForm'
 
 // Mock dependencies
 vi.mock('../services/dropdownService', () => ({
@@ -52,18 +57,15 @@ describe('DealForm V2 - Loaner Toggle', () => {
   const mockOnSave = vi.fn()
   const mockOnCancel = vi.fn()
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks()
-
-    // Ensure import.meta.env exists and set the V2 flag to 'true' before importing DealForm
-    Object.defineProperty(import.meta, 'env', {
-      value: { ...(import.meta.env || {}), VITE_DEAL_FORM_V2: 'true' },
+    // Set V2 flag using Object.defineProperty for compatibility with Vitest
+    Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
+      value: 'true',
+      writable: true,
       configurable: true,
+      enumerable: true,
     })
-
-    // Import DealForm after setting env so it reads the correct flag
-    const mod = await import('../pages/deals/DealForm')
-    DealForm = mod.default
   })
 
   it('Create mode: toggle on shows loaner section, toggle off hides and clears fields', async () => {
@@ -221,14 +223,13 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
   it('Create mode with flag OFF: legacy behavior (no field clearing)', async () => {
     const { BrowserRouter } = await import('react-router-dom')
-
-    // Disable V2 flag for this test and re-import DealForm so it reads the disabled flag
-    Object.defineProperty(import.meta, 'env', {
-      value: { ...(import.meta.env || {}), VITE_DEAL_FORM_V2: 'false' },
+    // Disable V2 flag using Object.defineProperty for compatibility with Vitest
+    Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
+      value: 'false',
+      writable: true,
       configurable: true,
+      enumerable: true,
     })
-    const mod = await import('../pages/deals/DealForm')
-    DealForm = mod.default
 
     const { container } = render(
       <BrowserRouter>
