@@ -67,9 +67,15 @@ export async function getOrgContext(label = 'operation') {
 }
 
 /**
- * Get the current user's org_id with email fallback.
- * Attempts to find org_id by user id first, then falls back to email lookup.
- * This handles cases where user_profiles.id != auth.uid() but email matches.
+ * Get the current user's org_id with multiple fallback strategies.
+ * Attempts to find org_id by:
+ * 1. user_profiles.id = auth.uid() (standard case)
+ * 2. user_profiles.auth_user_id = auth.uid() (legacy/alternative linking)
+ * 3. user_profiles.email = user.email (final fallback)
+ * 
+ * This aligns with the database function auth_user_org() which also checks
+ * both id and auth_user_id columns (see migration 20251129231539).
+ * 
  * @param {string} label - Label for logging (e.g., 'create', 'update')
  * @returns {Promise<string|null>} - The org_id or null if not found
  */
@@ -79,7 +85,7 @@ async function getUserOrgIdWithFallback(label = 'operation') {
     const userId = auth?.user?.id
     const userEmail = auth?.user?.email
 
-    // Primary: try to find profile by id
+    // Strategy 1: Try to find profile by id (standard case: user_profiles.id = auth.uid())
     if (userId) {
       const { data: prof, error: profErr } = await supabase
         ?.from('user_profiles')
@@ -91,11 +97,32 @@ async function getUserOrgIdWithFallback(label = 'operation') {
         return prof.org_id
       }
       if (profErr && isRlsError(profErr)) {
-        console.warn(`[dealService:${label}] RLS blocked profile lookup by id, trying email fallback`)
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by id, trying auth_user_id fallback`)
       }
     }
 
-    // Fallback: try to find profile by email if id lookup failed
+    // Strategy 2: Try to find profile by auth_user_id (legacy/alternative linking)
+    // This handles cases where user_profiles.id != auth.uid() but auth_user_id = auth.uid()
+    // Aligns with database function auth_user_org() behavior (migration 20251129231539)
+    if (userId) {
+      const { data: profByAuthUserId, error: authUserIdErr } = await supabase
+        ?.from('user_profiles')
+        ?.select('org_id')
+        ?.eq('auth_user_id', userId)
+        ?.order('created_at', { ascending: false })
+        ?.limit(1)
+        ?.maybeSingle()
+
+      if (profByAuthUserId?.org_id) {
+        console.info(`[dealService:${label}] Found org_id via auth_user_id lookup`)
+        return profByAuthUserId.org_id
+      }
+      if (authUserIdErr && isRlsError(authUserIdErr)) {
+        console.warn(`[dealService:${label}] RLS blocked profile lookup by auth_user_id, trying email fallback`)
+      }
+    }
+
+    // Strategy 3: Try to find profile by email (final fallback)
     if (userEmail) {
       const { data: profByEmail, error: emailErr } = await supabase
         ?.from('user_profiles')
@@ -1933,26 +1960,34 @@ export async function updateDeal(id, formState) {
       }
     }
   } catch (e) {
-    // Enhance error message with context about org_id
+    // Enhance error message with context about org_id for debugging
     if (isRlsError(e)) {
+      // Log detailed info for debugging (won't be shown to user)
       console.error('[dealService:update] RLS violation on transactions table:', {
         error: e?.message,
         job_id: id,
         has_org_id: !!transactionOrgId,
+        org_id_source: transactionOrgId ? 'resolved' : 'missing',
       })
       
-      // Provide more specific guidance based on the scenario
+      // Provide actionable guidance based on the scenario
       let guidance = ''
       if (!transactionOrgId) {
-        guidance = 'Your user profile may not have an organization assigned. Please contact your administrator to ensure your account is properly configured.'
+        // User profile is missing org_id - admin action required
+        guidance = 
+          'Unable to determine your organization. This typically means:\n' +
+          '• Your user profile may not be linked to an organization.\n' +
+          '• Please contact your administrator to verify your account setup.'
       } else {
-        guidance = 'This deal may have been created before organization scoping was enabled. Please contact your administrator if the issue persists.'
+        // org_id exists but RLS still failed - likely a database sync issue
+        guidance = 
+          'The database rejected this update. Please try:\n' +
+          '• Refreshing the page and trying again.\n' +
+          '• If the issue persists, contact your administrator - they may need to run a database sync.'
       }
       
-      // User-facing message without sensitive org_id
-      throw new Error(
-        `Failed to save deal: Transaction access denied. ${guidance}`
-      )
+      // User-facing message - informative but without sensitive technical details
+      throw new Error(`Failed to save deal: Transaction access denied. ${guidance}`)
     }
     throw wrapDbError(e, 'upsert transaction')
   }
