@@ -46,8 +46,6 @@ vi.mock('@/lib/supabase', () => {
   }
 })
 
-import { supabase } from '@/lib/supabase'
-
 describe('dealService.updateDeal - Legacy Data Scenarios', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -249,7 +247,7 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
         '• If the issue persists, contact your administrator - they may need to run a database sync.'
 
       // Actionable
-      expect(errorMessage).toContain('Refresh')
+      expect(errorMessage).toContain('Refreshing')
       expect(errorMessage).toContain('administrator')
       
       // Not scary technical jargon
