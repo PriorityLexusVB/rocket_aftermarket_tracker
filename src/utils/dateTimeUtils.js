@@ -157,10 +157,14 @@ export function combineDateAndTime(dateStr, timeStr) {
   if (typeof dateStr !== 'string' || typeof timeStr !== 'string') return null
   if (!dateStr.trim() || !timeStr.trim()) return null
 
-  // Normalize time to HH:MM format (handle "9:30" -> "09:30")
-  const normalizedTime = timeStr.trim().includes(':')
-    ? timeStr.trim().padStart(5, '0')
-    : null
+  // Normalize time to HH:MM format (handle "9:30" -> "09:30", "9:5" -> "09:05")
+  let normalizedTime = null
+  if (timeStr.trim().includes(':')) {
+    const [hours, minutes] = timeStr.trim().split(':')
+    if (hours && minutes) {
+      normalizedTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`
+    }
+  }
 
   if (!normalizedTime) return null
 
