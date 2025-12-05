@@ -334,6 +334,14 @@ describe('dateTimeUtils', () => {
       expect(isNaN(parsed.getTime())).toBe(false)
     })
 
+    it('should handle time input with no leading zeros on both components', () => {
+      // Input like "9:5" should be normalized to "09:05"
+      const result = combineDateAndTime('2025-12-06', '9:5')
+      expect(result).toBeTruthy()
+      const parsed = new Date(result)
+      expect(isNaN(parsed.getTime())).toBe(false)
+    })
+
     it('should handle midnight correctly', () => {
       const result = combineDateAndTime('2025-12-06', '00:00')
       expect(result).toBeTruthy()

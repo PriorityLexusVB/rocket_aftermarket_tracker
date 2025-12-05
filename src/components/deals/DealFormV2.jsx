@@ -592,7 +592,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             product_id: item?.productId,
             quantity_used: 1,
             unit_price: parseFloat(item?.unitPrice || 0),
-            promised_date: item?.requiresScheduling ? item?.dateScheduled : null,
+            promised_date: item?.requiresScheduling && item?.dateScheduled ? item.dateScheduled : null,
             scheduled_start_time: scheduledStartIso,
             scheduled_end_time: scheduledEndIso,
             requires_scheduling: Boolean(item?.requiresScheduling),
