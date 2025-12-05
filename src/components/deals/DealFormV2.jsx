@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { titleCase } from '../../lib/format'
+import { combineDateAndTime } from '../../utils/dateTimeUtils'
 import {
   getSalesConsultants,
   getDeliveryCoordinators,
@@ -577,18 +578,29 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               notes: customerData?.loanerNotes?.trim() || null,
             }
           : null,
-        lineItems: lineItems.map((item) => ({
-          product_id: item?.productId,
-          quantity_used: 1,
-          unit_price: parseFloat(item?.unitPrice || 0),
-          promised_date: item?.requiresScheduling ? item?.dateScheduled : null,
-          scheduled_start_time: item?.requiresScheduling ? item?.scheduledStartTime || null : null,
-          scheduled_end_time: item?.requiresScheduling ? item?.scheduledEndTime || null : null,
-          requires_scheduling: Boolean(item?.requiresScheduling),
-          no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
-          is_off_site: Boolean(item?.isOffSite),
-          vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
-        })),
+        lineItems: lineItems.map((item) => {
+          // Combine date and time into proper ISO datetime for timestamptz columns
+          // This fixes: "invalid input syntax for type timestamp with time zone: '13:07'"
+          const scheduledStartIso = item?.requiresScheduling
+            ? combineDateAndTime(item?.dateScheduled, item?.scheduledStartTime)
+            : null
+          const scheduledEndIso = item?.requiresScheduling
+            ? combineDateAndTime(item?.dateScheduled, item?.scheduledEndTime)
+            : null
+
+          return {
+            product_id: item?.productId,
+            quantity_used: 1,
+            unit_price: parseFloat(item?.unitPrice || 0),
+            promised_date: item?.requiresScheduling ? item?.dateScheduled : null,
+            scheduled_start_time: scheduledStartIso,
+            scheduled_end_time: scheduledEndIso,
+            requires_scheduling: Boolean(item?.requiresScheduling),
+            no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
+            is_off_site: Boolean(item?.isOffSite),
+            vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
+          }
+        }),
       }
 
       if (import.meta.env.MODE === 'development') {
