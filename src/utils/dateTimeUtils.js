@@ -138,6 +138,36 @@ function isSameDayTZ(a, b, tz) {
   return fmt.format(a) === fmt.format(b)
 }
 
+/**
+ * Combine a date string and time string into an ISO datetime string for timestamptz columns.
+ * Used when the UI collects date and time separately and needs to send a proper datetime to Supabase.
+ *
+ * @param {string} dateStr - Date in YYYY-MM-DD format (e.g., "2025-12-06")
+ * @param {string} timeStr - Time in HH:MM format (e.g., "13:07" or "09:30")
+ * @returns {string|null} - ISO datetime string suitable for timestamptz, or null if inputs are invalid/missing
+ *
+ * @example
+ * combineDateAndTime('2025-12-06', '13:07') // => "2025-12-06T18:07:00.000Z" (when ET is -05:00)
+ * combineDateAndTime('2025-12-06', '') // => null
+ * combineDateAndTime('', '13:07') // => null
+ */
+export function combineDateAndTime(dateStr, timeStr) {
+  // Return null if either value is missing or empty
+  if (!dateStr || !timeStr) return null
+  if (typeof dateStr !== 'string' || typeof timeStr !== 'string') return null
+  if (!dateStr.trim() || !timeStr.trim()) return null
+
+  // Normalize time to HH:MM format (handle "9:30" -> "09:30")
+  const normalizedTime = timeStr.trim().includes(':')
+    ? timeStr.trim().padStart(5, '0')
+    : null
+
+  if (!normalizedTime) return null
+
+  // Use the existing helper which properly handles America/New_York timezone
+  return fromLocalDateTimeFields({ date: dateStr.trim(), time: normalizedTime })
+}
+
 // Validate schedule range.
 export function validateScheduleRange(startIso, endIso) {
   const errors = []
@@ -166,6 +196,7 @@ export function validateScheduleRange(startIso, endIso) {
 export default {
   toLocalDateTimeFields,
   fromLocalDateTimeFields,
+  combineDateAndTime,
   formatScheduleRange,
   validateScheduleRange,
   formatTime,

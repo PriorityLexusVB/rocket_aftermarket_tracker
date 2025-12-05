@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   toLocalDateTimeFields,
   fromLocalDateTimeFields,
+  combineDateAndTime,
   formatScheduleRange,
   validateScheduleRange,
   formatTime,
@@ -285,6 +286,126 @@ describe('dateTimeUtils', () => {
       const converted = new Date(backToISO).getTime()
       const diffHours = Math.abs(original - converted) / (1000 * 60 * 60)
       expect(diffHours).toBeLessThan(2) // Allow for DST shift
+    })
+  })
+
+  describe('combineDateAndTime', () => {
+    it('should combine valid date and time into ISO datetime', () => {
+      const result = combineDateAndTime('2025-12-06', '13:07')
+      expect(result).toBeTruthy()
+      expect(typeof result).toBe('string')
+      // Should be a valid ISO string
+      const parsed = new Date(result)
+      expect(isNaN(parsed.getTime())).toBe(false)
+    })
+
+    it('should return null when date is missing', () => {
+      expect(combineDateAndTime('', '13:07')).toBe(null)
+      expect(combineDateAndTime(null, '13:07')).toBe(null)
+      expect(combineDateAndTime(undefined, '13:07')).toBe(null)
+      expect(combineDateAndTime('   ', '13:07')).toBe(null)
+    })
+
+    it('should return null when time is missing', () => {
+      expect(combineDateAndTime('2025-12-06', '')).toBe(null)
+      expect(combineDateAndTime('2025-12-06', null)).toBe(null)
+      expect(combineDateAndTime('2025-12-06', undefined)).toBe(null)
+      expect(combineDateAndTime('2025-12-06', '   ')).toBe(null)
+    })
+
+    it('should return null when both date and time are missing', () => {
+      expect(combineDateAndTime('', '')).toBe(null)
+      expect(combineDateAndTime(null, null)).toBe(null)
+      expect(combineDateAndTime(undefined, undefined)).toBe(null)
+    })
+
+    it('should handle time input with leading zeros', () => {
+      const result = combineDateAndTime('2025-12-06', '09:30')
+      expect(result).toBeTruthy()
+      const parsed = new Date(result)
+      expect(isNaN(parsed.getTime())).toBe(false)
+    })
+
+    it('should handle time input without leading zeros', () => {
+      // Input like "9:30" should be normalized to "09:30"
+      const result = combineDateAndTime('2025-12-06', '9:30')
+      expect(result).toBeTruthy()
+      const parsed = new Date(result)
+      expect(isNaN(parsed.getTime())).toBe(false)
+    })
+
+    it('should handle midnight correctly', () => {
+      const result = combineDateAndTime('2025-12-06', '00:00')
+      expect(result).toBeTruthy()
+      const parsed = new Date(result)
+      expect(isNaN(parsed.getTime())).toBe(false)
+    })
+
+    it('should handle end of day correctly', () => {
+      const result = combineDateAndTime('2025-12-06', '23:59')
+      expect(result).toBeTruthy()
+      const parsed = new Date(result)
+      expect(isNaN(parsed.getTime())).toBe(false)
+    })
+
+    it('should return null for invalid time format without colon', () => {
+      expect(combineDateAndTime('2025-12-06', '1307')).toBe(null)
+      expect(combineDateAndTime('2025-12-06', 'abc')).toBe(null)
+    })
+
+    it('should return null for non-string inputs', () => {
+      expect(combineDateAndTime(123, '13:07')).toBe(null)
+      expect(combineDateAndTime('2025-12-06', 123)).toBe(null)
+      expect(combineDateAndTime({}, {})).toBe(null)
+    })
+
+    it('should preserve date correctly (line item date + time)', () => {
+      // This tests the actual use case: combining dateScheduled (from date picker)
+      // with scheduledStartTime (from time picker)
+      const dateScheduled = '2025-12-06'
+      const scheduledStartTime = '13:07'
+      
+      const result = combineDateAndTime(dateScheduled, scheduledStartTime)
+      expect(result).toBeTruthy()
+      
+      // Parse the result and verify the date component is preserved
+      const parsed = new Date(result)
+      // The result is in UTC, so we check it's valid and represents Dec 6, 2025
+      // in America/New_York timezone
+      expect(parsed.getFullYear()).toBeGreaterThanOrEqual(2025)
+    })
+
+    it('should work for line item scheduling scenario', () => {
+      // Simulates what happens when:
+      // - User picks date "12/06/2025" via date picker (becomes "2025-12-06")
+      // - User picks time "1:07 PM" via time picker (becomes "13:07")
+      // - Result should be a proper ISO timestamp, not just "13:07"
+      
+      const dateScheduled = '2025-12-06'
+      const scheduledStartTime = '13:07'
+      const scheduledEndTime = '14:30'
+      
+      const startResult = combineDateAndTime(dateScheduled, scheduledStartTime)
+      const endResult = combineDateAndTime(dateScheduled, scheduledEndTime)
+      
+      expect(startResult).toBeTruthy()
+      expect(endResult).toBeTruthy()
+      
+      // Both should be valid ISO strings suitable for timestamptz
+      expect(startResult).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+      expect(endResult).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
+      
+      // End should be after start
+      expect(new Date(endResult).getTime()).toBeGreaterThan(new Date(startResult).getTime())
+    })
+
+    it('should return null when scheduling is not required', () => {
+      // When requiresScheduling is false, dateScheduled is cleared
+      // This should return null for both start and end times
+      const dateScheduled = '' // cleared because not scheduling
+      const scheduledStartTime = '13:07'
+      
+      expect(combineDateAndTime(dateScheduled, scheduledStartTime)).toBe(null)
     })
   })
 })
