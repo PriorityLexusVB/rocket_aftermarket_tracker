@@ -202,7 +202,9 @@ describe('mapDbDealToForm', () => {
     expect(lineItem.scheduledEndTime).toBe('17:45')
   })
 
-  it('handles time-only format (already HH:MM) gracefully', () => {
+  it('handles time-only format (already HH:MM) for backward compatibility', () => {
+    // This tests backward compatibility for scenarios where time data might already
+    // be stored in HH:MM format (e.g., from data migration or legacy imports)
     const dbDeal = {
       id: 'deal-timeonly',
       job_number: 'JOB-007',
@@ -216,7 +218,7 @@ describe('mapDbDealToForm', () => {
           unit_price: 50,
           quantity_used: 1,
           promised_date: '2025-12-25',
-          // Already in HH:MM format (shouldn't happen but handle gracefully)
+          // Already in HH:MM format (backward compatibility scenario)
           scheduled_start_time: '14:30',
           scheduled_end_time: '16:00',
           requires_scheduling: true,
