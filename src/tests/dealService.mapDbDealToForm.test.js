@@ -17,8 +17,11 @@ describe('mapDbDealToForm', () => {
           unit_price: 100,
           quantity_used: 1,
           promised_date: '2025-12-15',
-          scheduled_start_time: '2025-12-15T10:00:00',
-          scheduled_end_time: '2025-12-15T11:30:00',
+          // Database stores times in UTC (Z suffix)
+          // 15:00 UTC = 10:00 ET (when ET is UTC-5)
+          scheduled_start_time: '2025-12-15T15:00:00Z',
+          // 16:30 UTC = 11:30 ET (when ET is UTC-5)
+          scheduled_end_time: '2025-12-15T16:30:00Z',
           requires_scheduling: true,
           no_schedule_reason: null,
           is_off_site: false,
@@ -33,7 +36,8 @@ describe('mapDbDealToForm', () => {
     expect(formData.lineItems).toHaveLength(1)
 
     const lineItem = formData.lineItems[0]
-    // Time fields should be extracted as HH:MM format for time inputs
+    // formatTime() converts UTC to ET (America/New_York)
+    // 15:00 UTC → 10:00 ET, 16:30 UTC → 11:30 ET
     expect(lineItem.scheduled_start_time).toBe('10:00')
     expect(lineItem.scheduledStartTime).toBe('10:00')
     expect(lineItem.scheduled_end_time).toBe('11:30')
@@ -89,8 +93,11 @@ describe('mapDbDealToForm', () => {
           unit_price: 200,
           quantity_used: 2,
           promised_date: '2025-12-12',
-          scheduled_start_time: '2025-12-12T13:30:00',
-          scheduled_end_time: '2025-12-12T15:45:00',
+          // Database stores UTC times
+          // 18:30 UTC = 13:30 ET (when ET is UTC-5)
+          scheduled_start_time: '2025-12-12T18:30:00Z',
+          // 20:45 UTC = 15:45 ET (when ET is UTC-5)
+          scheduled_end_time: '2025-12-12T20:45:00Z',
           requires_scheduling: true,
           no_schedule_reason: null,
           is_off_site: true,
@@ -101,9 +108,10 @@ describe('mapDbDealToForm', () => {
 
     const formData = mapDbDealToForm(dbDeal)
 
-    // Check appointment window - should extract time-only (HH:MM)
+    // Check appointment window - formatTime() converts UTC to ET
     expect(formData.lineItems).toHaveLength(1)
     const lineItem = formData.lineItems[0]
+    // 18:30 UTC → 13:30 ET, 20:45 UTC → 15:45 ET
     expect(lineItem.scheduledStartTime).toBe('13:30')
     expect(lineItem.scheduledEndTime).toBe('15:45')
     expect(lineItem.promisedDate).toBe('2025-12-12')
@@ -168,12 +176,12 @@ describe('mapDbDealToForm', () => {
     expect(formData.loanerForm.eta_return_date).toBe('')
   })
 
-  it('extracts time in HH:MM format from ISO datetime strings', () => {
+  it('extracts time in HH:MM format with timezone conversion', () => {
     const dbDeal = {
       id: 'deal-time',
       job_number: 'JOB-006',
       title: 'Time Test',
-      description: 'Test time extraction',
+      description: 'Test timezone conversion',
       customer_needs_loaner: false,
       job_parts: [
         {
@@ -182,9 +190,11 @@ describe('mapDbDealToForm', () => {
           unit_price: 50,
           quantity_used: 1,
           promised_date: '2025-12-25',
-          // Full ISO datetime with seconds and timezone
-          scheduled_start_time: '2025-12-25T09:15:30.000Z',
-          scheduled_end_time: '2025-12-25T17:45:00Z',
+          // Full ISO datetime with seconds and timezone (UTC)
+          // 14:15 UTC = 09:15 ET (when ET is UTC-5)
+          scheduled_start_time: '2025-12-25T14:15:30.000Z',
+          // 22:45 UTC = 17:45 ET (when ET is UTC-5)
+          scheduled_end_time: '2025-12-25T22:45:00Z',
           requires_scheduling: true,
           no_schedule_reason: null,
           is_off_site: false,
@@ -197,30 +207,29 @@ describe('mapDbDealToForm', () => {
 
     expect(formData.lineItems).toHaveLength(1)
     const lineItem = formData.lineItems[0]
-    // Should extract only HH:MM, ignoring seconds and timezone
+    // formatTime() converts UTC to ET and extracts HH:MM
+    // 14:15 UTC → 09:15 ET, 22:45 UTC → 17:45 ET
     expect(lineItem.scheduledStartTime).toBe('09:15')
     expect(lineItem.scheduledEndTime).toBe('17:45')
   })
 
-  it('handles time-only format (already HH:MM) for backward compatibility', () => {
-    // This tests backward compatibility for scenarios where time data might already
-    // be stored in HH:MM format (e.g., from data migration or legacy imports)
+  it('handles null/empty times gracefully', () => {
     const dbDeal = {
-      id: 'deal-timeonly',
+      id: 'deal-nulltimes',
       job_number: 'JOB-007',
-      title: 'Time Only Test',
+      title: 'Null Times Test',
       description: 'Test',
       customer_needs_loaner: false,
       job_parts: [
         {
-          id: 'part-timeonly',
+          id: 'part-nulltimes',
           product_id: 'prod-1',
           unit_price: 50,
           quantity_used: 1,
           promised_date: '2025-12-25',
-          // Already in HH:MM format (backward compatibility scenario)
-          scheduled_start_time: '14:30',
-          scheduled_end_time: '16:00',
+          // Null/empty time values
+          scheduled_start_time: null,
+          scheduled_end_time: '',
           requires_scheduling: true,
           no_schedule_reason: null,
           is_off_site: false,
@@ -233,8 +242,8 @@ describe('mapDbDealToForm', () => {
 
     expect(formData.lineItems).toHaveLength(1)
     const lineItem = formData.lineItems[0]
-    // Should return as-is when already in HH:MM format
-    expect(lineItem.scheduledStartTime).toBe('14:30')
-    expect(lineItem.scheduledEndTime).toBe('16:00')
+    // formatTime() returns empty string for null/empty input
+    expect(lineItem.scheduledStartTime).toBe('')
+    expect(lineItem.scheduledEndTime).toBe('')
   })
 })
