@@ -33,10 +33,8 @@ public.is_admin_or_manager() -> boolean
 
 | Policy Name | Operation | Expression |
 |-------------|-----------|------------|
-| user_profiles_select_active | SELECT | `is_active = true` |
-| user_profiles_self_read | SELECT | `id = auth.uid() OR auth_user_id = auth.uid()` |
-| user_profiles_self_update | UPDATE | `id = auth.uid() OR auth_user_id = auth.uid()` |
-| user_profiles_self_insert | INSERT | `id = auth.uid()` |
+| user_profiles_read_active | SELECT | `coalesce(is_active, true)` |
+| user_profiles_update_self | UPDATE | `id = auth.uid()` (USING and WITH CHECK) |
 
 **IMPORTANT:** These policies do NOT use `auth_user_org()` to prevent infinite recursion (error 42P17).
 
