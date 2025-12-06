@@ -161,9 +161,27 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
           isMultiDay: false,
         }))
+        
+        // 🔍 DEBUG: Log line items loading
+        if (import.meta.env.MODE === 'development') {
+          console.log('[DealFormV2] Loading line items into state:', {
+            jobId: job.id,
+            fromJobProp: job.lineItems.length,
+            mappedCount: mappedLineItems.length,
+            sample: mappedLineItems[0] ? {
+              id: mappedLineItems[0].id,
+              product_id: mappedLineItems[0].product_id,
+              productId: mappedLineItems[0].productId,
+            } : null,
+          })
+        }
+        
         setLineItems(mappedLineItems)
       } else {
         // No line items or empty array - set to empty
+        if (import.meta.env.MODE === 'development') {
+          console.log('[DealFormV2] Setting lineItems to empty (no items in job prop)')
+        }
         setLineItems([])
       }
     }
@@ -606,6 +624,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           customer_name: payload.customer_name,
           job_number: payload.job_number,
           lineItemsCount: payload.lineItems?.length,
+          lineItemsStateCount: lineItems?.length, // 🔍 DEBUG: Compare state vs payload
+          lineItemsSample: payload.lineItems?.[0] ? {
+            product_id: payload.lineItems[0].product_id,
+            unit_price: payload.lineItems[0].unit_price,
+          } : null,
         })
       }
 

@@ -1731,6 +1731,16 @@ export async function createDeal(formState) {
 
 // UPDATE: deal + replace job_parts - FIXED with proper transaction handling and customer data
 export async function updateDeal(id, formState) {
+  // 🔍 DEBUG: Log incoming formState to trace line item count
+  if (import.meta.env.MODE === 'development') {
+    console.log('[dealService:updateDeal] ENTRY:', {
+      jobId: id,
+      formStateKeys: Object.keys(formState || {}),
+      lineItemsCount: Array.isArray(formState?.lineItems) ? formState.lineItems.length : 0,
+      line_itemsCount: Array.isArray(formState?.line_items) ? formState.line_items.length : 0,
+    })
+  }
+  
   const {
     payload,
     normalizedLineItems,
@@ -1741,6 +1751,17 @@ export async function updateDeal(id, formState) {
     stockNumber,
     vin,
   } = mapFormToDb(formState || {})
+  
+  // 🔍 DEBUG: Log normalized line items count
+  if (import.meta.env.MODE === 'development') {
+    console.log('[dealService:updateDeal] AFTER mapFormToDb:', {
+      normalizedLineItemsCount: normalizedLineItems?.length || 0,
+      normalizedLineItemsSample: normalizedLineItems?.[0] ? {
+        product_id: normalizedLineItems[0].product_id,
+        unit_price: normalizedLineItems[0].unit_price,
+      } : null,
+    })
+  }
 
   // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile (align with createDeal)
   if (!payload?.org_id) {
@@ -2038,8 +2059,31 @@ export async function updateDeal(id, formState) {
     const rows = toJobPartRows(id, normalizedLineItems, {
       includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
     })
+    
+    // 🔍 DEBUG: Log rows before INSERT
+    if (import.meta.env.MODE === 'development') {
+      console.log('[dealService:updateDeal] BEFORE INSERT:', {
+        normalizedLineItemsCount: normalizedLineItems.length,
+        rowsCount: rows?.length || 0,
+        rowsSample: rows?.[0] ? {
+          job_id: rows[0].job_id,
+          product_id: rows[0].product_id,
+          unit_price: rows[0].unit_price,
+        } : null,
+      })
+    }
+    
     if (rows?.length > 0) {
       const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)
+      
+      // 🔍 DEBUG: Log INSERT result
+      if (import.meta.env.MODE === 'development') {
+        console.log('[dealService:updateDeal] AFTER INSERT:', {
+          insertError: insErr ? insErr.message : null,
+          insertedCount: rows.length,
+        })
+      }
+      
       if (insErr) {
         if (isMissingColumnError(insErr)) {
           const errorCode = classifySchemaError(insErr)
