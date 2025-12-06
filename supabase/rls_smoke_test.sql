@@ -150,18 +150,21 @@ FROM public.loaner_assignments;
 SELECT '=== SECTION 5: auth_user_org() Test ===' AS section;
 
 -- This should return your org_id or NULL if not aligned
+-- Using CTE to avoid duplicate function calls
+WITH org_check AS (
+  SELECT 
+    public.auth_user_org() AS auth_org,
+    public.app_current_org_id() AS alias_org
+)
 SELECT 
-  public.auth_user_org() AS my_org_id,
+  auth_org AS my_org_id,
+  alias_org AS my_org_id_via_alias,
   CASE 
-    WHEN public.auth_user_org() IS NOT NULL THEN 'PASS: Org aligned'
+    WHEN auth_org IS NOT NULL THEN 'PASS: Org aligned'
     ELSE 'WARN: No org alignment - fallback policies should still work'
-  END AS status;
-
--- Also test the alias
-SELECT 
-  public.app_current_org_id() AS my_org_id_via_alias,
-  (public.auth_user_org() = public.app_current_org_id() OR 
-   (public.auth_user_org() IS NULL AND public.app_current_org_id() IS NULL)) AS functions_match;
+  END AS status,
+  (auth_org = alias_org OR (auth_org IS NULL AND alias_org IS NULL)) AS functions_match
+FROM org_check;
 
 -- =============================================================================
 -- SECTION 6: Check for Recursion-Causing Policies
