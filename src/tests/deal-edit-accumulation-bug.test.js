@@ -12,7 +12,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { draftToUpdatePayload, normalizeLineItems } from '../components/deals/formAdapters'
-import { toJobPartRows } from '../services/dealService'
+import { toJobPartRows, mapDbDealToForm } from '../services/dealService'
 
 describe('Deal Edit - Job Parts Accumulation Bug', () => {
 
@@ -122,5 +122,82 @@ describe('Deal Edit - Job Parts Accumulation Bug', () => {
       const editedRows = toJobPartRows('job-123', editedAdapted.lineItems, { includeTimes: true })
       expect(editedRows).toHaveLength(1)
     }
+  })
+
+  it('CRITICAL: simulates the full edit cycle that user is experiencing', () => {
+    // This test simulates what happens when user edits a deal multiple times
+    // Expected: Count should stay constant
+    // Bug: Count accumulates (1→2→3→4)
+    
+    // Cycle 1: Start with deal that has 1 item in DB
+    const dbDeal1 = {
+      id: 'job-123',
+      job_number: 'TEST-001',
+      job_parts: [
+        {
+          id: 'part-1',
+          product_id: 'prod-1',
+          unit_price: 100,
+          quantity_used: 1,
+          promised_date: '2025-01-20',
+          requires_scheduling: true,
+          is_off_site: false,
+        }
+      ]
+    }
+    
+    // Load into form
+    const formDeal1 = mapDbDealToForm(dbDeal1)
+    expect(formDeal1.lineItems).toHaveLength(1) // Should load 1 item
+    
+    // User edits and saves (simulate DealFormV2 payload creation)
+    const savePayload1 = {
+      lineItems: formDeal1.lineItems.map(item => ({
+        product_id: item.product_id,
+        unit_price: item.unit_price + 10, // User changed price
+        quantity_used: item.quantity_used,
+        promised_date: item.promised_date,
+        requires_scheduling: item.requires_scheduling,
+        is_off_site: item.is_off_site,
+      }))
+    }
+    expect(savePayload1.lineItems).toHaveLength(1) // Payload should have 1 item
+    
+    // Convert to DB rows (simulate updateDeal)
+    const rows1 = toJobPartRows('job-123', savePayload1.lineItems, { includeTimes: false })
+    expect(rows1).toHaveLength(1) // Should INSERT 1 row
+    
+    // Cycle 2: Assume DB now has the saved items (should be 1 row)
+    // Simulate fetching from DB after save
+    const dbDeal2 = {
+      id: 'job-123',
+      job_number: 'TEST-001',
+      job_parts: rows1.map((row, idx) => ({
+        id: `part-${idx + 1}`,
+        ...row,
+      }))
+    }
+    
+    expect(dbDeal2.job_parts).toHaveLength(1) // DB should have 1 row
+    
+    // Load into form again
+    const formDeal2 = mapDbDealToForm(dbDeal2)
+    expect(formDeal2.lineItems).toHaveLength(1) // Should load 1 item (not 2!)
+    
+    // Save again
+    const savePayload2 = {
+      lineItems: formDeal2.lineItems.map(item => ({
+        product_id: item.product_id,
+        unit_price: item.unit_price + 10,
+        quantity_used: item.quantity_used,
+        promised_date: item.promised_date,
+        requires_scheduling: item.requires_scheduling,
+        is_off_site: item.is_off_site,
+      }))
+    }
+    expect(savePayload2.lineItems).toHaveLength(1) // Should still be 1
+    
+    const rows2 = toJobPartRows('job-123', savePayload2.lineItems, { includeTimes: false })
+    expect(rows2).toHaveLength(1) // Should INSERT 1 row (not 2!)
   })
 })
