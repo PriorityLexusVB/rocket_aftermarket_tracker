@@ -739,21 +739,21 @@ async function upsertLoanerAssignment(jobId, loanerData) {
 
   try {
     // Check for existing active assignment for this job
+    // Use maybeSingle() instead of single() to handle RLS gracefully
+    // The RLS policy on loaner_assignments checks through the jobs table
     const { data: existing, error: selectError } = await supabase
       ?.from('loaner_assignments')
       ?.select('id')
       ?.eq('job_id', jobId)
       ?.is('returned_at', null)
-      ?.single()
+      ?.maybeSingle()
 
     // Handle RLS errors on SELECT gracefully
     if (selectError) {
-      const isNoRows = selectError?.code === 'PGRST116' // No rows found - expected for new assignments
-      
       if (isRlsError(selectError)) {
-        console.warn('[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context')
+        console.warn('[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context:', selectError?.message)
         // Fall through to INSERT path - RLS may allow INSERT even if SELECT is blocked
-      } else if (!isNoRows) {
+      } else {
         console.warn('[dealService:upsertLoanerAssignment] SELECT failed:', selectError?.message)
         // Fall through to INSERT path
       }
@@ -766,7 +766,7 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       notes: loanerData?.notes?.trim() || null,
     }
 
-    if (existing) {
+    if (existing?.id) {
       // Update existing assignment
       const { error } = await supabase
         ?.from('loaner_assignments')
@@ -785,6 +785,23 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       const { error } = await supabase?.from('loaner_assignments')?.insert([assignmentData])
 
       if (error) {
+        // Handle duplicate constraint error specifically
+        if (error?.code === '23505') {
+          // If we get a duplicate error, it means a row exists but we couldn't SELECT it due to RLS
+          // Try to update it using job_id filter
+          console.warn('[dealService:upsertLoanerAssignment] Duplicate detected, attempting UPDATE by job_id')
+          const { error: updateError } = await supabase
+            ?.from('loaner_assignments')
+            ?.update(assignmentData)
+            ?.eq('job_id', jobId)
+            ?.is('returned_at', null)
+
+          if (updateError && !isRlsError(updateError)) {
+            throw updateError
+          }
+          return
+        }
+
         if (isRlsError(error)) {
           console.warn('[dealService:upsertLoanerAssignment] RLS blocked INSERT (non-fatal):', error?.message)
           return // Silently degrade - loaner data won't be saved but deal save continues
@@ -795,6 +812,7 @@ async function upsertLoanerAssignment(jobId, loanerData) {
   } catch (error) {
     // Handle uniqueness constraint error gracefully
     if (error?.code === '23505') {
+      console.warn('[dealService:upsertLoanerAssignment] Loaner number already in use (caught at outer level):', error?.message)
       throw new Error(
         `Loaner ${loanerData?.loaner_number} is already assigned to another active job`
       )

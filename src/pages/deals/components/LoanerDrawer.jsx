@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Button from '../../../components/ui/Button'
 import Icon from '../../../components/ui/Icon'
+import { toDateInputValue } from '../../../utils/dateTimeUtils'
 
 // Lightweight drawer to assign or update a loaner for a deal
 // Props:
@@ -18,21 +19,8 @@ export default function LoanerDrawer({ isOpen, onClose, deal, onSave, loading })
     if (!isOpen) return
     // Prefill from current deal when available
     setLoanerNumber(deal?.loaner_number || '')
-    // Normalize to YYYY-MM-DD if iso present
-    const iso = deal?.loaner_eta_return_date || ''
-    if (iso) {
-      try {
-        const d = new Date(iso)
-        const yyyy = d.getFullYear()
-        const mm = String(d.getMonth() + 1).padStart(2, '0')
-        const dd = String(d.getDate()).padStart(2, '0')
-        setEtaReturnDate(`${yyyy}-${mm}-${dd}`)
-      } catch (_) {
-        setEtaReturnDate('')
-      }
-    } else {
-      setEtaReturnDate('')
-    }
+    // Use toDateInputValue helper to convert ISO to YYYY-MM-DD format
+    setEtaReturnDate(toDateInputValue(deal?.loaner_eta_return_date) || '')
     setNotes('')
   }, [isOpen, deal])
 
