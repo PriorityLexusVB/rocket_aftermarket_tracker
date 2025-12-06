@@ -162,18 +162,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           isMultiDay: false,
         }))
         setLineItems(mappedLineItems)
-        
-        if (import.meta.env.MODE === 'development') {
-          console.log('[DealFormV2] Loaded line items:', {
-            jobId: job.id,
-            count: mappedLineItems.length,
-            sample: mappedLineItems[0] ? {
-              product_id: mappedLineItems[0].product_id,
-              scheduledStartTime: mappedLineItems[0].scheduledStartTime,
-              scheduledEndTime: mappedLineItems[0].scheduledEndTime,
-            } : null
-          })
-        }
       } else {
         // No line items or empty array - set to empty
         setLineItems([])

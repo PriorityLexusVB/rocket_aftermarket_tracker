@@ -218,9 +218,9 @@ describe('Deal Edit - Line Items Duplication Bug', () => {
     const startTime = formDeal.lineItems[0].scheduled_start_time
     const endTime = formDeal.lineItems[0].scheduled_end_time
     
-    // Check it's a reasonable time format (HH:MM or H:MM)
-    expect(startTime).toMatch(/^\d{1,2}:\d{2}$/)
-    expect(endTime).toMatch(/^\d{1,2}:\d{2}$/)
+    // Should be in HH:MM format (two-digit hours)
+    expect(startTime).toMatch(/^\d{2}:\d{2}$/)
+    expect(endTime).toMatch(/^\d{2}:\d{2}$/)
     
     // Step 3: Convert back to DB rows (would happen in save)
     // In the actual save flow, combineDateAndTime would convert HH:MM back to ISO
