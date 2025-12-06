@@ -14,8 +14,12 @@ describe('toDateInputValue', () => {
   })
 
   test('handles already formatted YYYY-MM-DD dates (interprets as midnight UTC)', () => {
-    // Note: A date string without time is interpreted as midnight UTC
-    // which becomes previous day in ET timezone (UTC-5)
+    // Note: A date string without time is interpreted as midnight UTC,
+    // which becomes previous day in ET timezone (UTC-5).
+    // This behavior is expected due to timezone conversion, but typically won't occur in practice because:
+    // - Database DATE columns return values without timezone (e.g., "2025-12-12")
+    // - The function is primarily designed for TIMESTAMPTZ values
+    // This test documents the edge case for clarity.
     const result = toDateInputValue('2025-12-12')
     expect(result).toBe('2025-12-11')
   })

@@ -787,9 +787,25 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       if (error) {
         // Handle duplicate constraint error specifically
         if (error?.code === '23505') {
-          // If we get a duplicate error, it means a row exists but we couldn't SELECT it due to RLS
-          // Try to update it using job_id filter
-          console.warn('[dealService:upsertLoanerAssignment] Duplicate detected, attempting UPDATE by job_id')
+          // 23505 means the UNIQUE constraint ux_loaner_active was violated
+          // This constraint is on (loaner_number) WHERE returned_at IS NULL
+          // Two possible causes:
+          // 1. This loaner_number is already assigned to THIS job (row exists but SELECT was blocked by RLS)
+          // 2. This loaner_number is already assigned to a DIFFERENT job (true conflict)
+          
+          // Check the error message to distinguish between the two cases
+          const errorMsg = error?.message || ''
+          if (errorMsg.includes('ux_loaner_active')) {
+            // This is a true duplicate - the loaner is assigned to another job
+            // Re-throw as a user-friendly error
+            throw new Error(
+              `Loaner ${assignmentData.loaner_number} is already assigned to another active job`
+            )
+          }
+          
+          // If it's not the ux_loaner_active constraint, it might be a different constraint
+          // Try fallback UPDATE in case row exists for this job_id but SELECT was blocked
+          console.warn('[dealService:upsertLoanerAssignment] Duplicate key error, attempting fallback UPDATE by job_id')
           const { error: updateError } = await supabase
             ?.from('loaner_assignments')
             ?.update(assignmentData)
@@ -797,7 +813,8 @@ async function upsertLoanerAssignment(jobId, loanerData) {
             ?.is('returned_at', null)
 
           if (updateError && !isRlsError(updateError)) {
-            throw updateError
+            // If UPDATE also fails, re-throw the original error
+            throw error
           }
           return
         }
