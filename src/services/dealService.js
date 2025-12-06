@@ -2217,6 +2217,8 @@ function mapDbDealToForm(dbDeal) {
     // Loaner data - include both flat fields (legacy) and nested loanerForm (current)
     loaner_number: normalized?.loaner_number || '',
     loanerNumber: normalized?.loaner_number || '',
+    eta_return_date: normalized?.loaner_eta_return_date || '', // ✅ FIX: Add top-level field for DealFormV2 compatibility
+    loaner_notes: normalized?.loaner_notes || '',
     loanerForm: {
       loaner_number: normalized?.loaner_number || '',
       eta_return_date: normalized?.loaner_eta_return_date || '',
