@@ -26,9 +26,9 @@ describe('DealFormV2 - Edit Deal Time Display Fix', () => {
       unit_price: 100,
       quantity_used: 1,
       promised_date: '2025-12-15',
-      // Example: 2:00 PM ET = 7:00 PM UTC (when ET is UTC-5)
+      // Example: 2:00 PM ET = 7:00 PM UTC (assuming EST/UTC-5)
       scheduled_start_time: '2025-12-15T19:00:00Z',
-      // Example: 4:30 PM ET = 9:30 PM UTC (when ET is UTC-5)
+      // Example: 4:30 PM ET = 9:30 PM UTC (assuming EST/UTC-5)
       scheduled_end_time: '2025-12-15T21:30:00Z',
       requires_scheduling: true,
     }
