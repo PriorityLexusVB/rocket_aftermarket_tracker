@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { titleCase } from '../../lib/format'
-import { combineDateAndTime } from '../../utils/dateTimeUtils'
+import { combineDateAndTime, toDateInputValue, toTimeInputValue } from '../../utils/dateTimeUtils'
 import {
   getSalesConsultants,
   getDeliveryCoordinators,
@@ -63,7 +63,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     financeManager: job?.finance_manager_id || null,
     needsLoaner: Boolean(job?.customer_needs_loaner),
     loanerNumber: job?.loaner_number || '',
-    loanerReturnDate: job?.eta_return_date || '',
+    loanerReturnDate: toDateInputValue(job?.eta_return_date) || '',
     loanerNotes: job?.loaner_notes || '',
   })
 
@@ -77,9 +77,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             item?.vendorId ||
             (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
             null,
-          dateScheduled: item?.promised_date || '',
-          scheduledStartTime: item?.scheduled_start_time || '',
-          scheduledEndTime: item?.scheduled_end_time || '',
+          dateScheduled: toDateInputValue(item?.promised_date) || '',
+          scheduledStartTime: toTimeInputValue(item?.scheduled_start_time) || '',
+          scheduledEndTime: toTimeInputValue(item?.scheduled_end_time) || '',
           isMultiDay: false, // Default to false, can be determined from date range if needed
         }))
       : []
@@ -154,7 +154,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         financeManager: job?.finance_manager_id || null,
         needsLoaner: Boolean(job?.customer_needs_loaner),
         loanerNumber: job?.loaner_number || job?.loanerNumber || '',
-        loanerReturnDate: job?.eta_return_date || '',
+        loanerReturnDate: toDateInputValue(job?.eta_return_date) || '',
         loanerNotes: job?.loaner_notes || '',
       })
 
@@ -168,9 +168,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               item?.vendorId ||
               (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
               null,
-            dateScheduled: item?.promised_date || '',
-            scheduledStartTime: item?.scheduled_start_time || '',
-            scheduledEndTime: item?.scheduled_end_time || '',
+            dateScheduled: toDateInputValue(item?.promised_date) || '',
+            scheduledStartTime: toTimeInputValue(item?.scheduled_start_time) || '',
+            scheduledEndTime: toTimeInputValue(item?.scheduled_end_time) || '',
             isMultiDay: false,
           }))
         )
@@ -520,6 +520,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Handle save
   const handleSave = async () => {
+    // Guard against duplicate submits
+    if (isSubmitting) {
+      return
+    }
+
     const step1Valid = await validateStep1()
     if (!step1Valid) {
       return

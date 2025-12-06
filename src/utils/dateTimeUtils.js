@@ -197,6 +197,68 @@ export function validateScheduleRange(startIso, endIso) {
   return { valid: errors.length === 0, errors, error }
 }
 
+/**
+ * Convert an ISO datetime string to a date input value (YYYY-MM-DD).
+ * Handles full ISO strings like "2025-12-12T18:35:00+00:00" and converts them
+ * to the format expected by <input type="date">.
+ * 
+ * @param {string|Date} isoOrDate - ISO datetime string or Date object
+ * @returns {string} - Date string in YYYY-MM-DD format for date inputs
+ * 
+ * @example
+ * toDateInputValue('2025-12-12T18:35:00+00:00') // => "2025-12-12"
+ * toDateInputValue('2025-12-12') // => "2025-12-12"
+ * toDateInputValue(null) // => ""
+ */
+export function toDateInputValue(isoOrDate) {
+  if (!isoOrDate) return ''
+  try {
+    const d = new Date(isoOrDate)
+    if (isNaN(d.getTime())) return ''
+    // Use en-CA locale which formats as YYYY-MM-DD in local timezone
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d)
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Convert an ISO datetime string to a time input value (HH:mm).
+ * Handles full ISO strings like "2025-12-12T18:35:00+00:00" and converts them
+ * to the format expected by <input type="time">.
+ * 
+ * @param {string|Date} isoOrDate - ISO datetime string or Date object
+ * @returns {string} - Time string in HH:mm format for time inputs
+ * 
+ * @example
+ * toTimeInputValue('2025-12-12T18:35:00+00:00') // => "13:35" (when ET is -05:00)
+ * toTimeInputValue('2025-12-12T13:07:00Z') // => "08:07" (when ET is -05:00)
+ * toTimeInputValue(null) // => ""
+ */
+export function toTimeInputValue(isoOrDate) {
+  if (!isoOrDate) return ''
+  try {
+    const d = new Date(isoOrDate)
+    if (isNaN(d.getTime())) return ''
+    // Format as HH:mm in local timezone
+    const raw = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(d)
+    // Normalize to HH:mm format (handles "9:30" -> "09:30")
+    return normalizeTime(raw)
+  } catch {
+    return ''
+  }
+}
+
 export default {
   toLocalDateTimeFields,
   fromLocalDateTimeFields,
@@ -204,4 +266,6 @@ export default {
   formatScheduleRange,
   validateScheduleRange,
   formatTime,
+  toDateInputValue,
+  toTimeInputValue,
 }

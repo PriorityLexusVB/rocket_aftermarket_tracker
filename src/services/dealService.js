@@ -739,21 +739,21 @@ async function upsertLoanerAssignment(jobId, loanerData) {
 
   try {
     // Check for existing active assignment for this job
+    // Use maybeSingle() instead of single() to handle RLS gracefully
+    // The RLS policy on loaner_assignments checks through the jobs table
     const { data: existing, error: selectError } = await supabase
       ?.from('loaner_assignments')
       ?.select('id')
       ?.eq('job_id', jobId)
       ?.is('returned_at', null)
-      ?.single()
+      ?.maybeSingle()
 
     // Handle RLS errors on SELECT gracefully
     if (selectError) {
-      const isNoRows = selectError?.code === 'PGRST116' // No rows found - expected for new assignments
-      
       if (isRlsError(selectError)) {
-        console.warn('[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context')
+        console.warn('[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context:', selectError?.message)
         // Fall through to INSERT path - RLS may allow INSERT even if SELECT is blocked
-      } else if (!isNoRows) {
+      } else {
         console.warn('[dealService:upsertLoanerAssignment] SELECT failed:', selectError?.message)
         // Fall through to INSERT path
       }
@@ -766,7 +766,7 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       notes: loanerData?.notes?.trim() || null,
     }
 
-    if (existing) {
+    if (existing?.id) {
       // Update existing assignment
       const { error } = await supabase
         ?.from('loaner_assignments')
@@ -785,6 +785,40 @@ async function upsertLoanerAssignment(jobId, loanerData) {
       const { error } = await supabase?.from('loaner_assignments')?.insert([assignmentData])
 
       if (error) {
+        // Handle duplicate constraint error specifically
+        if (error?.code === '23505') {
+          // 23505 means the UNIQUE constraint ux_loaner_active was violated
+          // This constraint is on (loaner_number) WHERE returned_at IS NULL
+          // Two possible causes:
+          // 1. This loaner_number is already assigned to THIS job (row exists but SELECT was blocked by RLS)
+          // 2. This loaner_number is already assigned to a DIFFERENT job (true conflict)
+          
+          // Check the error message to distinguish between the two cases
+          const errorMsg = error?.message || ''
+          if (errorMsg.includes('ux_loaner_active')) {
+            // This is a true duplicate - the loaner is assigned to another job
+            // Re-throw as a user-friendly error
+            throw new Error(
+              `Loaner ${assignmentData.loaner_number} is already assigned to another active job`
+            )
+          }
+          
+          // If it's not the ux_loaner_active constraint, it might be a different constraint
+          // Try fallback UPDATE in case row exists for this job_id but SELECT was blocked
+          console.warn('[dealService:upsertLoanerAssignment] Duplicate key error, attempting fallback UPDATE by job_id')
+          const { error: updateError } = await supabase
+            ?.from('loaner_assignments')
+            ?.update(assignmentData)
+            ?.eq('job_id', jobId)
+            ?.is('returned_at', null)
+
+          if (updateError && !isRlsError(updateError)) {
+            // If UPDATE also fails, re-throw the original error
+            throw error
+          }
+          return
+        }
+
         if (isRlsError(error)) {
           console.warn('[dealService:upsertLoanerAssignment] RLS blocked INSERT (non-fatal):', error?.message)
           return // Silently degrade - loaner data won't be saved but deal save continues
@@ -795,6 +829,7 @@ async function upsertLoanerAssignment(jobId, loanerData) {
   } catch (error) {
     // Handle uniqueness constraint error gracefully
     if (error?.code === '23505') {
+      console.warn('[dealService:upsertLoanerAssignment] Loaner number already in use (caught at outer level):', error?.message)
       throw new Error(
         `Loaner ${loanerData?.loaner_number} is already assigned to another active job`
       )
