@@ -78,8 +78,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
             null,
           dateScheduled: toDateInputValue(item?.promised_date) || '',
-          scheduledStartTime: toTimeInputValue(item?.scheduled_start_time) || '',
-          scheduledEndTime: toTimeInputValue(item?.scheduled_end_time) || '',
+          // ✅ FIX: mapDbDealToForm already provides HH:MM format via formatTime()
+          // Don't call toTimeInputValue() again as it expects ISO datetime
+          scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
+          scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
           isMultiDay: false, // Default to false, can be determined from date range if needed
         }))
       : []
@@ -169,8 +171,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
               null,
             dateScheduled: toDateInputValue(item?.promised_date) || '',
-            scheduledStartTime: toTimeInputValue(item?.scheduled_start_time) || '',
-            scheduledEndTime: toTimeInputValue(item?.scheduled_end_time) || '',
+            // ✅ FIX: mapDbDealToForm already provides HH:MM format via formatTime()
+            // Don't call toTimeInputValue() again as it expects ISO datetime
+            scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
+            scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
             isMultiDay: false,
           }))
         )
