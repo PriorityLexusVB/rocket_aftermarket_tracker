@@ -101,8 +101,9 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
       page.getByTestId('save-success').waitFor({ state: 'visible', timeout: 10000 }),
       page.getByTestId('last-saved-timestamp').waitFor({ state: 'visible', timeout: 10000 }),
     ]).catch(() => {
-      // Fallback: just wait a bit if indicators aren't present
+      // Save indicators may not exist in all builds - safe to ignore
     })
+    await page.waitForTimeout(1000) // Give save time to complete
 
     // Reload the page to ensure persistence
     await page.reload()

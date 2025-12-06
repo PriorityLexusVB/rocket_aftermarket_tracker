@@ -14,6 +14,7 @@ import {
   SchemaErrorCode,
   getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
+import { formatTime } from '@/utils/dateTimeUtils'
 
 // --- helpers -------------------------------------------------------------
 
@@ -2159,27 +2160,6 @@ function normalizeDealTimes(dbDeal) {
   return normalized
 }
 
-/**
- * Extract time in HH:MM format from ISO datetime string
- * @param {string} isoDateTime - ISO datetime string like '2025-12-12T13:30:00'
- * @returns {string} - Time in HH:MM format like '13:30', or empty string if invalid
- */
-function extractTimeFromISO(isoDateTime) {
-  if (!isoDateTime || typeof isoDateTime !== 'string') return ''
-  
-  // Check if it's already in HH:MM format (no 'T' separator)
-  if (!isoDateTime.includes('T') && /^\d{2}:\d{2}/.test(isoDateTime)) {
-    return isoDateTime.slice(0, 5) // Return first 5 chars (HH:MM)
-  }
-  
-  // Extract time from ISO datetime
-  const timePart = isoDateTime.split('T')[1]
-  if (!timePart) return ''
-  
-  // Return HH:MM portion (first 5 characters of time part)
-  return timePart.slice(0, 5)
-}
-
 function mapDbDealToForm(dbDeal) {
   if (!dbDeal) return null
 
@@ -2258,11 +2238,11 @@ function mapDbDealToForm(dbDeal) {
       quantity_used: part?.quantity_used || 1,
       promised_date: part?.promised_date || '',
       promisedDate: part?.promised_date || '',
-      // ✅ FIX: Extract time-only (HH:MM) from ISO datetime for time inputs
-      scheduled_start_time: extractTimeFromISO(part?.scheduled_start_time),
-      scheduledStartTime: extractTimeFromISO(part?.scheduled_start_time),
-      scheduled_end_time: extractTimeFromISO(part?.scheduled_end_time),
-      scheduledEndTime: extractTimeFromISO(part?.scheduled_end_time),
+      // ✅ FIX: Use formatTime() for proper timezone conversion (America/New_York)
+      scheduled_start_time: formatTime(part?.scheduled_start_time),
+      scheduledStartTime: formatTime(part?.scheduled_start_time),
+      scheduled_end_time: formatTime(part?.scheduled_end_time),
+      scheduledEndTime: formatTime(part?.scheduled_end_time),
       requires_scheduling: !!part?.requires_scheduling,
       requiresScheduling: !!part?.requires_scheduling,
       no_schedule_reason: part?.no_schedule_reason || '',
