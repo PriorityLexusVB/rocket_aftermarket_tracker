@@ -331,8 +331,9 @@ priority-lexus-vb  ❌
 
 ## Related Files
 
-- `scripts/cleanupOldDeals.cjs` - The main script
-- `scripts/cleanup_test_deals.sql` - Alternative SQL-based cleanup (pattern-based)
+- `scripts/cleanupOldDeals.cjs` - The main Node.js script
+- `scripts/sql/cleanup_old_deals.sql` - Standalone SQL version for Supabase SQL Editor
+- `scripts/QUICK_REFERENCE_CLEANUP.md` - Quick reference card
 - `scripts/bootstrapTestUser.js` - Example of using service role key
 
 ## Support
