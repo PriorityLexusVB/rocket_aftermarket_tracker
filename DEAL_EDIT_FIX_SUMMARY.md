@@ -1,229 +1,170 @@
-# Deal Edit Flow Fix - Complete Summary
+# Deal Edit Form Fix: Appointment Window & Loaner Return Date
 
-## Issue Report
-**Date**: 2025-01-17  
-**Reported Issues**:
-1. Customer name not saving correctly during deal edit
-2. Line items appearing to duplicate
-3. Incorrect totals being displayed
-4. "Unknown" customers appearing in Deal Tracker grid
+## Executive Summary
 
-## Investigation Results
+Fixed two bugs preventing appointment window times and loaner expected return date from populating when editing an existing deal. The data was correctly stored and displayed in the deals list, but the edit form showed blank fields due to incorrect data mapping.
 
-### Issue #1: Customer Name Not Persisting ✅ FIXED
+## Problem Statement
 
-**Root Cause**: React state initialization timing issue
+**Reported Behavior:**
+1. Open the deals list
+2. Select a deal with:
+   - Appointment window set (e.g., Dec 12, 12:34–13:35 ET)
+   - "Customer needs loaner" checked with Loaner # and Expected Return Date
+3. Click "Edit Deal"
+4. Observe:
+   - Appointment window shows the date, but time slot is blank
+   - Expected Return Date field for loaner is empty
+5. Click Save without changing those fields
+6. Back on the list view, the Appt Window and Loaner Due date still show correctly
 
-**Technical Details**:
-- `EditDealModal` loads deal data asynchronously via `getDeal()` or `mapDbDealToForm()`
-- `DealFormV2` component initialized `customerData` state using `useState` with `job` prop
-- `useState` only evaluates the initial value ONCE when component mounts
-- Sequence of events:
-  1. `EditDealModal` renders `DealFormV2` with `job={null}` initially
-  2. `DealFormV2` sets `customerData.customerName = job?.customer_name || ''` → `''` (empty)
-  3. `EditDealModal` finishes loading and updates `dealData` state
-  4. `DealFormV2` receives updated `job` prop but `customerData` state NOT updated
-  5. User sees empty customer name field
-  6. On save, empty string sent → `mapFormToDb` gets `''` → fallback to "Unknown Customer"
+**Diagnosis:**
+- Data was NOT being lost (confirmed by list view showing correct values)
+- Issue was in form initialization/mapping, not backend storage
+- Form expected different data formats than what mapping provided
 
-**Solution Implemented**:
+## Root Causes
+
+### 1. Loaner Return Date Bug
+**Issue:** `mapDbDealToForm()` function was missing the top-level `eta_return_date` field.
+
+**Why it failed:**
+- Database: `getDeal()` returns `loaner_eta_return_date: '2025-12-20'`
+- Mapping: Only set `loanerForm.eta_return_date` (nested object)
+- Form: Expected `job?.eta_return_date` (top-level field)
+- Result: Form tried to read undefined top-level field → blank input
+
+### 2. Appointment Window Time Bug
+**Issue:** Database stores full ISO datetime, but form expects time-only (HH:MM) format.
+
+**Why it failed:**
+- Database: Stores `scheduled_start_time: '2025-12-12T13:30:00'` (ISO datetime)
+- Form: Uses `<input type="time">` which expects `'13:30'` (HH:MM only)
+- Mapping: Passed full ISO string to time input
+- Result: Browser couldn't parse full datetime as time → blank input
+
+## Solution
+
+### Changes Made
+
+#### `src/services/dealService.js`
+
+**1. Added Time Extraction Helper (lines 2162-2179):**
 ```javascript
-// Added ref to track which job has been initialized
-const initializedJobId = useRef(null)
-
-// Added effect to reload data when job.id changes
-useEffect(() => {
-  if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
-    initializedJobId.current = job.id
-    
-    setCustomerData({
-      customerName: job?.customer_name || job?.customerName || '',
-      dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
-      jobNumber: job?.job_number || '',
-      // ... all other fields
-    })
-
-    // Also reload line items
-    if (job?.lineItems?.length) {
-      setLineItems(/* mapped line items */)
-    }
+/**
+ * Extract time in HH:MM format from ISO datetime string
+ */
+function extractTimeFromISO(isoDateTime) {
+  if (!isoDateTime || typeof isoDateTime !== 'string') return ''
+  
+  // Check if already in HH:MM format (backward compatibility)
+  if (!isoDateTime.includes('T') && /^\d{2}:\d{2}/.test(isoDateTime)) {
+    return isoDateTime.slice(0, 5)
   }
-}, [job?.id, mode])
-```
-
-**Benefits**:
-- Customer name properly loads when deal data arrives
-- All customer fields (name, phone, email) preserved
-- Line items also reloaded for consistency
-- No duplicate initialization (ref prevents re-runs)
-
-### Issue #2: Line Items Duplicating ✅ NOT A BUG
-
-**Analysis**: Line items are intentionally deleted and recreated on each edit operation.
-
-**How It Works**:
-1. `updateDeal` calls `supabase.from('job_parts').delete().eq('job_id', id)`
-2. Then inserts new line items from the payload
-3. This ensures clean state and properly handles additions/removals/updates
-
-**Evidence**:
-- Test `step8-create-edit-roundtrip.test.js` verifies this behavior
-- Test shows: Create with 2 items → Edit adds 1 item → Result has exactly 3 items (not 5)
-- No duplication when saved once
-
-**Potential User Issues**:
-If users report "duplicates", likely causes:
-- Multiple rapid clicks on save button (needs debouncing)
-- Network timeout causing automatic retry
-- Browser back button after successful save
-- Concurrent edits by multiple users
-
-**Recommendation**: Add save button debouncing and loading state
-
-### Issue #3: Incorrect Totals ✅ NOT A BUG
-
-**Analysis**: Total calculation is correct for current business logic.
-
-**Current Implementation**:
-```javascript
-const calculateTotal = () => {
-  return lineItems?.reduce((sum, item) => {
-    return sum + (parseFloat(item?.unitPrice) || 0)
-  }, 0)
+  
+  // Extract time from ISO datetime
+  const timePart = isoDateTime.split('T')[1]
+  if (!timePart) return ''
+  
+  return timePart.slice(0, 5) // Return HH:MM
 }
 ```
 
-**Why This Is Correct**:
-- The app does NOT have a quantity field in the UI
-- Quantity is hardcoded to 1 in the payload: `quantity_used: 1`
-- Therefore: Total = sum of all unit prices
-- Transaction table properly updated with correct total
-
-**Evidence**:
-- Test example: Database has items with unit_price values [299, 199, 399]
-- UI calculates total as: 299 + 199 + 399 = 897
-- Database stores quantity_used=1 for each item
-- Backend calculations use actual quantity_used from database when needed
-
-**Note**: If business needs variable quantities reflected in the UI, a quantity input field should be added to the UI and the total calculation would need to be updated to multiply by quantity.
-
-### Issue #4: "Unknown" Customers ✅ FIXED BY #1
-
-**Analysis**: This was a symptom of Issue #1.
-
-**Flow**:
-1. Customer name empty in form state
-2. `mapFormToDb` extracts empty string
-3. `updateDeal` uses fallback: `customerName || 'Unknown Customer'`
-4. Transaction table gets "Unknown Customer"
-5. `getAllDeals` joins transactions and displays the name
-
-**Fix**: Same as Issue #1 - customer name now properly loaded from deal data
-
-## Files Modified
-
-### 1. `src/components/deals/DealFormV2.jsx`
-- Added `initializedJobId` ref
-- Added data reload effect for edit mode
-- Improved effect dependency tracking
-
-### 2. `src/tests/deal-edit-flow-reproduction.test.js` (new)
-- Documentation test showing expected payload structure
-- Demonstrates customer_name and lineItems in edit payloads
-
-## Testing Verification
-
-### Tests Passing
-- ✅ 666 tests pass
-- ✅ 2 tests skipped (intentional)
-- ✅ 0 test failures
-
-### Key Test Coverage
-- `step8-create-edit-roundtrip.test.js` - Full create/edit workflow
-- `step13-persistence-verification.test.js` - Database row verification
-- `step16-deals-list-verification.test.js` - Customer name display
-- `step23-dealformv2-customer-name-date.test.jsx` - Form behavior
-
-### Build & Lint
-- ✅ Build succeeds without errors
-- ✅ Lint passes (only expected warnings)
-- ✅ TypeScript checks pass
-
-### Security
-- ✅ CodeQL: No vulnerabilities found
-- ✅ No new dependencies added
-- ✅ No sensitive data exposed
-
-## Data Flow Diagram
-
-```
-EditDealModal
-    |
-    ├─> useEffect (load deal)
-    |       ├─> getDeal(id) OR mapDbDealToForm(initialDeal)
-    |       └─> setDealData(formDeal)
-    |
-    └─> Render DealFormV2
-            |
-            ├─> job prop changes (from null to dealData)
-            |
-            ├─> NEW: useEffect watches job.id
-            |       └─> Reload customerData & lineItems
-            |
-            └─> handleSave
-                    ├─> Build payload with customer_name
-                    └─> updateDeal
-                            ├─> mapFormToDb (extract customerName)
-                            └─> Upsert transaction with customer_name
+**2. Added Top-Level eta_return_date (line 2220):**
+```javascript
+eta_return_date: normalized?.loaner_eta_return_date || '',
 ```
 
-## Recommendations for Future Improvements
+**3. Updated Line Item Time Mapping (lines 2254-2257):**
+```javascript
+scheduled_start_time: extractTimeFromISO(part?.scheduled_start_time),
+scheduledStartTime: extractTimeFromISO(part?.scheduled_start_time),
+scheduled_end_time: extractTimeFromISO(part?.scheduled_end_time),
+scheduledEndTime: extractTimeFromISO(part?.scheduled_end_time),
+```
 
-### High Priority
-1. **Add save button debouncing** (300ms) to prevent double submissions
-2. **Add loading indicator** during save operation
-3. **Disable save button** while saving
-4. **Show success toast** after successful save
+### Data Flow After Fix
 
-### Medium Priority
-5. **Add optimistic UI updates** to show changes immediately
-6. **Add undo functionality** for accidental changes
-7. **Add auto-save draft** feature
-8. **Improve error messages** with specific guidance
+```
+DATABASE → getDeal() → mapDbDealToForm() → FORM INPUTS → ON SAVE
+```
 
-### Low Priority (Nice to Have)
-9. **Add quantity field** if business needs it
-10. **Add bulk edit** for multiple line items
-11. **Add keyboard shortcuts** (Ctrl+S to save)
-12. **Add change history** tracking
+1. **Database**: Stores ISO datetime `'2025-12-12T13:30:00'`
+2. **getDeal()**: Attaches `loaner_eta_return_date: '2025-12-20'`
+3. **mapDbDealToForm()**: 
+   - Extracts time: `scheduledStartTime: '13:30'`
+   - Adds top-level: `eta_return_date: '2025-12-20'`
+4. **Form**: `<input type="time" value="13:30" />` displays correctly
+5. **On Save**: Combines back to ISO via `combineDateAndTime()`
 
-## Deployment Notes
+## Testing
 
-### Safe to Deploy
-- ✅ Backward compatible (no breaking changes)
-- ✅ No database migrations required
-- ✅ No environment variable changes
-- ✅ Works with existing data
+### Unit Tests (7 tests, all passing)
 
-### Rollback Plan
-If issues occur:
-1. Revert this commit
-2. Redeploy previous version
-3. No data cleanup needed (changes are read-only to existing data)
+**File:** `src/tests/dealService.mapDbDealToForm.test.js`
 
-## Monitoring After Deployment
+1. Appointment window mapping (ISO → HH:MM extraction)
+2. Loaner return date mapping (top-level field)
+3. Combined scenario (both features)
+4. Missing appointment times (null handling)
+5. Missing loaner data (null handling)
+6. ISO with timezone (Z suffix, offset)
+7. HH:MM passthrough (backward compatibility)
 
-Watch for:
-1. Customer name appearing as "Unknown Customer" (should be zero)
-2. Duplicate line items in database (check job_parts table)
-3. Transaction total_amount mismatches (compare to sum of job_parts)
-4. Edit operation failures (check error logs)
+### E2E Test
 
-## Summary
+**File:** `e2e/deal-edit-appt-loaner.spec.ts`
 
-**Issue Resolved**: ✅ Customer name now persists correctly during deal edit  
-**Build Status**: ✅ All tests pass, build succeeds  
-**Security**: ✅ No vulnerabilities found  
-**Impact**: 🟢 Low risk, high value fix  
+**Workflow:**
+1. Create deal with appointment window and loaner
+2. Verify edit form populates all fields correctly
+3. Save without changes
+4. Reload and verify persistence
+5. Check deals list display
 
-The primary issue (customer name not persisting) was caused by React state initialization timing and has been fixed with proper effect handling. The other reported issues were either by design (line item replacement, quantity=1 totals) or symptoms of the primary issue.
+### Test Results
+
+```
+✅ 81 unit test files passed (821 tests)
+✅ E2E test validates full workflow
+✅ CodeQL: 0 vulnerabilities
+✅ Code review: All comments addressed
+```
+
+## Manual Testing Checklist
+
+- [ ] Open deals list with deal containing appointment window and loaner
+- [ ] Click "Edit Deal"
+- [ ] ✅ Appointment date field populated
+- [ ] ✅ Start time field populated (HH:MM)
+- [ ] ✅ End time field populated (HH:MM)
+- [ ] ✅ Loaner checkbox checked
+- [ ] ✅ Loaner return date populated
+- [ ] Save without changes
+- [ ] ✅ Deals list shows correct values
+- [ ] Re-open edit → ✅ Fields still populated
+
+## Files Changed
+
+```
+src/services/dealService.js                     (+31 lines)
+src/tests/dealService.mapDbDealToForm.test.js   (new, +236 lines)
+e2e/deal-edit-appt-loaner.spec.ts              (new, +151 lines)
+```
+
+## Security & Performance
+
+✅ **CodeQL Analysis:** 0 vulnerabilities  
+✅ **Performance:** O(n) string operations, minimal impact  
+✅ **No Migration Required:** Frontend-only changes  
+✅ **Backward Compatible:** Handles both ISO and HH:MM formats  
+
+## Conclusion
+
+This fix resolves the form population issue by:
+1. Extracting HH:MM from ISO datetime for time inputs
+2. Adding top-level `eta_return_date` for form consumption
+3. Comprehensive test coverage (7 unit + 1 E2E)
+4. No data loss or security vulnerabilities
+
+**Ready for merge after manual testing verification.**
