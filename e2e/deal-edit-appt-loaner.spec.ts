@@ -41,13 +41,13 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
     }
 
     // Set appointment date and time for line item
-    const schedDate = page.getByTestId('schedule-date-0')
+    const schedDate = page.getByTestId('date-scheduled-0')
     await schedDate.fill('2025-12-12')
 
-    const schedStart = page.getByTestId('schedule-start-0')
+    const schedStart = page.getByTestId('start-time-0')
     await schedStart.fill('13:30')
 
-    const schedEnd = page.getByTestId('schedule-end-0')
+    const schedEnd = page.getByTestId('end-time-0')
     await schedEnd.fill('15:00')
 
     // Enable loaner
@@ -74,13 +74,13 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
     })
 
     // Verify appointment window time fields are populated in edit form
-    const schedDateAfter = page.getByTestId('schedule-date-0')
+    const schedDateAfter = page.getByTestId('date-scheduled-0')
     await expect(schedDateAfter).toHaveValue('2025-12-12')
 
-    const schedStartAfter = page.getByTestId('schedule-start-0')
+    const schedStartAfter = page.getByTestId('start-time-0')
     await expect(schedStartAfter).toHaveValue('13:30')
 
-    const schedEndAfter = page.getByTestId('schedule-end-0')
+    const schedEndAfter = page.getByTestId('end-time-0')
     await expect(schedEndAfter).toHaveValue('15:00')
 
     // Verify loaner checkbox is checked
@@ -108,9 +108,9 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
     await page.reload()
 
     // Re-verify all fields after reload
-    await expect(page.getByTestId('schedule-date-0')).toHaveValue('2025-12-12')
-    await expect(page.getByTestId('schedule-start-0')).toHaveValue('13:30')
-    await expect(page.getByTestId('schedule-end-0')).toHaveValue('15:00')
+    await expect(page.getByTestId('date-scheduled-0')).toHaveValue('2025-12-12')
+    await expect(page.getByTestId('start-time-0')).toHaveValue('13:30')
+    await expect(page.getByTestId('end-time-0')).toHaveValue('15:00')
     await expect(page.getByTestId('loaner-checkbox')).toBeChecked()
     await expect(page.getByTestId('loaner-number-input')).toHaveValue('LOANER-E2E-123')
     await expect(page.getByTestId('loaner-return-date-input')).toHaveValue('2025-12-18')

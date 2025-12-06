@@ -18,7 +18,7 @@ describe('mapDbDealToForm', () => {
           quantity_used: 1,
           promised_date: '2025-12-15',
           scheduled_start_time: '2025-12-15T10:00:00',
-          scheduled_end_time: '2025-12-15T11:00:00',
+          scheduled_end_time: '2025-12-15T11:30:00',
           requires_scheduling: true,
           no_schedule_reason: null,
           is_off_site: false,
@@ -33,10 +33,11 @@ describe('mapDbDealToForm', () => {
     expect(formData.lineItems).toHaveLength(1)
 
     const lineItem = formData.lineItems[0]
-    expect(lineItem.scheduled_start_time).toBe('2025-12-15T10:00:00')
-    expect(lineItem.scheduledStartTime).toBe('2025-12-15T10:00:00')
-    expect(lineItem.scheduled_end_time).toBe('2025-12-15T11:00:00')
-    expect(lineItem.scheduledEndTime).toBe('2025-12-15T11:00:00')
+    // Time fields should be extracted as HH:MM format for time inputs
+    expect(lineItem.scheduled_start_time).toBe('10:00')
+    expect(lineItem.scheduledStartTime).toBe('10:00')
+    expect(lineItem.scheduled_end_time).toBe('11:30')
+    expect(lineItem.scheduledEndTime).toBe('11:30')
     expect(lineItem.promised_date).toBe('2025-12-15')
     expect(lineItem.promisedDate).toBe('2025-12-15')
   })
@@ -89,7 +90,7 @@ describe('mapDbDealToForm', () => {
           quantity_used: 2,
           promised_date: '2025-12-12',
           scheduled_start_time: '2025-12-12T13:30:00',
-          scheduled_end_time: '2025-12-12T15:00:00',
+          scheduled_end_time: '2025-12-12T15:45:00',
           requires_scheduling: true,
           no_schedule_reason: null,
           is_off_site: true,
@@ -100,11 +101,11 @@ describe('mapDbDealToForm', () => {
 
     const formData = mapDbDealToForm(dbDeal)
 
-    // Check appointment window
+    // Check appointment window - should extract time-only (HH:MM)
     expect(formData.lineItems).toHaveLength(1)
     const lineItem = formData.lineItems[0]
-    expect(lineItem.scheduledStartTime).toBe('2025-12-12T13:30:00')
-    expect(lineItem.scheduledEndTime).toBe('2025-12-12T15:00:00')
+    expect(lineItem.scheduledStartTime).toBe('13:30')
+    expect(lineItem.scheduledEndTime).toBe('15:45')
     expect(lineItem.promisedDate).toBe('2025-12-12')
 
     // Check loaner
@@ -165,5 +166,73 @@ describe('mapDbDealToForm', () => {
     expect(formData.loaner_number).toBe('')
     expect(formData.eta_return_date).toBe('')
     expect(formData.loanerForm.eta_return_date).toBe('')
+  })
+
+  it('extracts time in HH:MM format from ISO datetime strings', () => {
+    const dbDeal = {
+      id: 'deal-time',
+      job_number: 'JOB-006',
+      title: 'Time Test',
+      description: 'Test time extraction',
+      customer_needs_loaner: false,
+      job_parts: [
+        {
+          id: 'part-time',
+          product_id: 'prod-1',
+          unit_price: 50,
+          quantity_used: 1,
+          promised_date: '2025-12-25',
+          // Full ISO datetime with seconds and timezone
+          scheduled_start_time: '2025-12-25T09:15:30.000Z',
+          scheduled_end_time: '2025-12-25T17:45:00Z',
+          requires_scheduling: true,
+          no_schedule_reason: null,
+          is_off_site: false,
+          vendor_id: null,
+        },
+      ],
+    }
+
+    const formData = mapDbDealToForm(dbDeal)
+
+    expect(formData.lineItems).toHaveLength(1)
+    const lineItem = formData.lineItems[0]
+    // Should extract only HH:MM, ignoring seconds and timezone
+    expect(lineItem.scheduledStartTime).toBe('09:15')
+    expect(lineItem.scheduledEndTime).toBe('17:45')
+  })
+
+  it('handles time-only format (already HH:MM) gracefully', () => {
+    const dbDeal = {
+      id: 'deal-timeonly',
+      job_number: 'JOB-007',
+      title: 'Time Only Test',
+      description: 'Test',
+      customer_needs_loaner: false,
+      job_parts: [
+        {
+          id: 'part-timeonly',
+          product_id: 'prod-1',
+          unit_price: 50,
+          quantity_used: 1,
+          promised_date: '2025-12-25',
+          // Already in HH:MM format (shouldn't happen but handle gracefully)
+          scheduled_start_time: '14:30',
+          scheduled_end_time: '16:00',
+          requires_scheduling: true,
+          no_schedule_reason: null,
+          is_off_site: false,
+          vendor_id: null,
+        },
+      ],
+    }
+
+    const formData = mapDbDealToForm(dbDeal)
+
+    expect(formData.lineItems).toHaveLength(1)
+    const lineItem = formData.lineItems[0]
+    // Should return as-is when already in HH:MM format
+    expect(lineItem.scheduledStartTime).toBe('14:30')
+    expect(lineItem.scheduledEndTime).toBe('16:00')
   })
 })
