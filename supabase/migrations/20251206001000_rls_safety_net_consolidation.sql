@@ -85,6 +85,7 @@ Updated: 2025-12-06';
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Drop potentially problematic policies that may cause recursion or conflict
+-- Also drops the policies we're about to create to ensure idempotent execution
 DROP POLICY IF EXISTS "org members read user_profiles" ON public.user_profiles;
 DROP POLICY IF EXISTS "dropdown_access_user_profiles" ON public.user_profiles;
 DROP POLICY IF EXISTS "authenticated_users_read_profiles" ON public.user_profiles;
@@ -93,11 +94,12 @@ DROP POLICY IF EXISTS "user_profiles_select_active" ON public.user_profiles;
 DROP POLICY IF EXISTS "user_profiles_self_read" ON public.user_profiles;
 DROP POLICY IF EXISTS "user_profiles_self_update" ON public.user_profiles;
 DROP POLICY IF EXISTS "user_profiles_self_insert" ON public.user_profiles;
+DROP POLICY IF EXISTS "user_profiles_read_active" ON public.user_profiles;
+DROP POLICY IF EXISTS "user_profiles_update_self" ON public.user_profiles;
 
 -- Policy: user_profiles_read_active - Any authenticated user can SELECT active staff rows
 -- This is the main SELECT policy for dropdowns/staff lists
 -- IMPORTANT: Does NOT call auth_user_org() to avoid recursion
-DROP POLICY IF EXISTS "user_profiles_read_active" ON public.user_profiles;
 CREATE POLICY "user_profiles_read_active"
   ON public.user_profiles
   AS permissive
@@ -107,7 +109,6 @@ CREATE POLICY "user_profiles_read_active"
 
 -- Policy: user_profiles_update_self - Each authenticated user can UPDATE only their own row
 -- Uses auth.uid() directly to avoid recursion
-DROP POLICY IF EXISTS "user_profiles_update_self" ON public.user_profiles;
 CREATE POLICY "user_profiles_update_self"
   ON public.user_profiles
   AS permissive
