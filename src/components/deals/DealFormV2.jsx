@@ -67,25 +67,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     loanerNotes: job?.loaner_notes || '',
   })
 
-  // Line items data - pre-hydrate vendor_id from job level if missing
-  const [lineItems, setLineItems] = useState(
-    job?.lineItems?.length
-      ? job.lineItems.map((item) => ({
-          ...item,
-          vendorId:
-            item?.vendor_id ||
-            item?.vendorId ||
-            (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
-            null,
-          dateScheduled: toDateInputValue(item?.promised_date) || '',
-          // ✅ FIX: mapDbDealToForm already provides HH:MM format via formatTime()
-          // Don't call toTimeInputValue() again as it expects ISO datetime
-          scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
-          scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
-          isMultiDay: false, // Default to false, can be determined from date range if needed
-        }))
-      : []
-  )
+  // Line items data - initialize empty, will be populated by useEffect when job loads
+  // ✅ FIX: Don't initialize from job prop to avoid potential duplication from useState + useEffect
+  const [lineItems, setLineItems] = useState([])
 
   // Load dropdown data
   const loadDropdownData = async () => {
@@ -125,7 +109,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // ✅ FIX: Reload customer data and line items from job prop when it changes in edit mode
   // This ensures that when EditDealModal loads deal data asynchronously, the form picks it up
-  // GUARD: Only rehydrate if user hasn't made intentional edits to avoid data loss
+  // GUARD: Only hydrate once per job to prevent duplication
   useEffect(() => {
     if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
       // If switching to a different job, reset the edit tracking to allow fresh rehydration
@@ -160,24 +144,39 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         loanerNotes: job?.loaner_notes || '',
       })
 
-      // Also reload line items to handle both initial load and prop changes
-      if (Array.isArray(job?.lineItems)) {
-        setLineItems(
-          job.lineItems.map((item) => ({
-            ...item,
-            vendorId:
-              item?.vendor_id ||
-              item?.vendorId ||
-              (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
-              null,
-            dateScheduled: toDateInputValue(item?.promised_date) || '',
-            // ✅ FIX: mapDbDealToForm already provides HH:MM format via formatTime()
-            // Don't call toTimeInputValue() again as it expects ISO datetime
-            scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
-            scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
-            isMultiDay: false,
-          }))
-        )
+      // ✅ FIX: REPLACE line items (not append) to prevent duplication
+      // Ensure we're setting a fresh array from job.lineItems
+      if (Array.isArray(job?.lineItems) && job.lineItems.length > 0) {
+        const mappedLineItems = job.lineItems.map((item) => ({
+          ...item,
+          vendorId:
+            item?.vendor_id ||
+            item?.vendorId ||
+            (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
+            null,
+          dateScheduled: toDateInputValue(item?.promised_date) || '',
+          // ✅ FIX: Time fields should already be in HH:MM format from mapDbDealToForm's formatTime()
+          // Keep them as-is without additional transformation
+          scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
+          scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
+          isMultiDay: false,
+        }))
+        setLineItems(mappedLineItems)
+        
+        if (import.meta.env.MODE === 'development') {
+          console.log('[DealFormV2] Loaded line items:', {
+            jobId: job.id,
+            count: mappedLineItems.length,
+            sample: mappedLineItems[0] ? {
+              product_id: mappedLineItems[0].product_id,
+              scheduledStartTime: mappedLineItems[0].scheduledStartTime,
+              scheduledEndTime: mappedLineItems[0].scheduledEndTime,
+            } : null
+          })
+        }
+      } else {
+        // No line items or empty array - set to empty
+        setLineItems([])
       }
     }
   }, [job?.id, mode])
