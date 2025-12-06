@@ -12,7 +12,7 @@
 --
 -- INSTRUCTIONS:
 -- Replace the following placeholders before running:
---   :ORG_ID - Your organization UUID (e.g., '550e8400-e29b-41d4-a716-446655440000')
+--   :ORG_ID - Your organization UUID (replace with actual UUID, e.g., 550e8400-e29b-41d4-a716-446655440000)
 --   :KEEP_JOB_ID - The ID of the job to keep (obtained from STEP 1)
 --
 
@@ -29,7 +29,7 @@ SELECT
   updated_at,
   org_id
 FROM jobs
-WHERE org_id = ':ORG_ID'
+WHERE org_id = :ORG_ID
 ORDER BY created_at DESC NULLS LAST, updated_at DESC NULLS LAST
 LIMIT 1;
 
@@ -40,8 +40,8 @@ LIMIT 1;
 -- A. Count jobs to delete
 SELECT COUNT(*) as jobs_to_delete
 FROM jobs
-WHERE org_id = ':ORG_ID'
-  AND id != ':KEEP_JOB_ID';
+WHERE org_id = :ORG_ID
+  AND id != :KEEP_JOB_ID;
 
 -- B. Preview jobs to delete
 SELECT 
@@ -50,8 +50,8 @@ SELECT
   title, 
   created_at
 FROM jobs
-WHERE org_id = ':ORG_ID'
-  AND id != ':KEEP_JOB_ID'
+WHERE org_id = :ORG_ID
+  AND id != :KEEP_JOB_ID
 ORDER BY created_at DESC;
 
 -- C. Count related records that will be deleted
@@ -61,7 +61,7 @@ SELECT
 FROM job_parts
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
 )
 UNION ALL
 SELECT 
@@ -70,7 +70,7 @@ SELECT
 FROM loaner_assignments
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
 )
 UNION ALL
 SELECT 
@@ -79,7 +79,7 @@ SELECT
 FROM transactions
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
 );
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -93,27 +93,27 @@ BEGIN;
 DELETE FROM job_parts
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
 );
 
 -- Delete loaner_assignments for old jobs
 DELETE FROM loaner_assignments
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
 );
 
 -- Delete transactions for old jobs
 DELETE FROM transactions
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
 );
 
 -- Delete the old jobs themselves
 DELETE FROM jobs
-WHERE org_id = ':ORG_ID'
-  AND id != ':KEEP_JOB_ID';
+WHERE org_id = :ORG_ID
+  AND id != :KEEP_JOB_ID;
 
 -- ⚠️  IMPORTANT: Review the changes before committing!
 -- If everything looks good, run: COMMIT;
@@ -128,7 +128,7 @@ WHERE org_id = ':ORG_ID'
 -- Should show only 1 job remaining for your org
 SELECT COUNT(*) as remaining_jobs
 FROM jobs
-WHERE org_id = ':ORG_ID';
+WHERE org_id = :ORG_ID;
 
 -- Show the remaining job
 SELECT 
@@ -138,7 +138,7 @@ SELECT
   created_at, 
   updated_at
 FROM jobs
-WHERE org_id = ':ORG_ID';
+WHERE org_id = :ORG_ID;
 
 -- Verify no orphaned records exist
 SELECT 

@@ -246,29 +246,29 @@ WHERE org_id = 'your-org-uuid'
 ORDER BY created_at DESC NULLS LAST
 LIMIT 1;
 
--- Step 2: Delete old jobs and related data (replace :KEEP_JOB_ID)
+-- Step 2: Delete old jobs and related data (replace :KEEP_JOB_ID with actual UUID)
 BEGIN;
 
 DELETE FROM job_parts
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = 'your-org-uuid' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = 'your-org-uuid' AND id != 'keep-job-uuid-here'
 );
 
 DELETE FROM loaner_assignments
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = 'your-org-uuid' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = 'your-org-uuid' AND id != 'keep-job-uuid-here'
 );
 
 DELETE FROM transactions
 WHERE job_id IN (
   SELECT id FROM jobs
-  WHERE org_id = 'your-org-uuid' AND id != ':KEEP_JOB_ID'
+  WHERE org_id = 'your-org-uuid' AND id != 'keep-job-uuid-here'
 );
 
 DELETE FROM jobs
-WHERE org_id = 'your-org-uuid' AND id != ':KEEP_JOB_ID';
+WHERE org_id = 'your-org-uuid' AND id != 'keep-job-uuid-here';
 
 -- Review before committing!
 COMMIT;

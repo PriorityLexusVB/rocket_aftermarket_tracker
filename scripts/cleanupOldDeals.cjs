@@ -244,6 +244,10 @@ async function cleanupOldDeals() {
     }
     
     // Step 5: Perform deletions
+    // NOTE: Supabase JS client doesn't support explicit transactions.
+    // If a deletion fails mid-process, you may end up with partial deletions.
+    // For transactional guarantees, use the SQL version (scripts/sql/cleanup_old_deals.sql).
+    // Each deletion is validated separately; errors will stop execution immediately.
     console.log('═══════════════════════════════════════════════════════════')
     console.log('Step 4: Performing Deletions')
     console.log('═══════════════════════════════════════════════════════════')
@@ -255,6 +259,10 @@ async function cleanupOldDeals() {
       transactions: 0,
       jobs: 0
     }
+    
+    // NOTE: Deletion counts below reflect the count of records found before deletion.
+    // If data changes between count and delete (rare), actual deleted counts may differ.
+    // The Supabase JS client doesn't return affected row counts by default.
     
     // Delete job_parts
     console.log('Deleting job_parts...')
@@ -268,7 +276,7 @@ async function cleanupOldDeals() {
       process.exit(1)
     }
     deletionResults.job_parts = jobPartsCount || 0
-    console.log(`   ✅ Deleted ${deletionResults.job_parts} job_parts records`)
+    console.log(`   ✅ Deleted ${deletionResults.job_parts} job_parts records (pre-count)`)
     
     // Delete loaner_assignments
     console.log('Deleting loaner_assignments...')
@@ -282,7 +290,7 @@ async function cleanupOldDeals() {
       process.exit(1)
     }
     deletionResults.loaner_assignments = loanerCount || 0
-    console.log(`   ✅ Deleted ${deletionResults.loaner_assignments} loaner_assignments records`)
+    console.log(`   ✅ Deleted ${deletionResults.loaner_assignments} loaner_assignments records (pre-count)`)
     
     // Delete transactions
     console.log('Deleting transactions...')
@@ -296,7 +304,7 @@ async function cleanupOldDeals() {
       process.exit(1)
     }
     deletionResults.transactions = transactionsCount || 0
-    console.log(`   ✅ Deleted ${deletionResults.transactions} transactions records`)
+    console.log(`   ✅ Deleted ${deletionResults.transactions} transactions records (pre-count)`)
     
     // Finally, delete the jobs themselves
     console.log('Deleting jobs...')
@@ -408,7 +416,7 @@ cleanupOldDeals()
  * ═══════════════════════════════════════════════════════════════════════════
  * 
  * Replace the following placeholders before running:
- *   :ORG_ID - Your organization UUID
+ *   :ORG_ID - Your organization UUID (e.g., 550e8400-e29b-41d4-a716-446655440000)
  *   :KEEP_JOB_ID - The ID of the job to keep (run the SELECT query first)
  * 
  * -- STEP 1: Find the newest job for your org (run this first)
@@ -420,7 +428,7 @@ cleanupOldDeals()
  *   updated_at,
  *   org_id
  * FROM jobs
- * WHERE org_id = ':ORG_ID'
+ * WHERE org_id = :ORG_ID
  * ORDER BY created_at DESC NULLS LAST, updated_at DESC NULLS LAST
  * LIMIT 1;
  * 
@@ -428,14 +436,14 @@ cleanupOldDeals()
  * -- Count jobs to delete
  * SELECT COUNT(*) as jobs_to_delete
  * FROM jobs
- * WHERE org_id = ':ORG_ID'
- *   AND id != ':KEEP_JOB_ID';
+ * WHERE org_id = :ORG_ID
+ *   AND id != :KEEP_JOB_ID;
  * 
  * -- Preview jobs to delete
  * SELECT id, job_number, title, created_at
  * FROM jobs
- * WHERE org_id = ':ORG_ID'
- *   AND id != ':KEEP_JOB_ID'
+ * WHERE org_id = :ORG_ID
+ *   AND id != :KEEP_JOB_ID
  * ORDER BY created_at DESC;
  * 
  * -- Count related records
@@ -445,7 +453,7 @@ cleanupOldDeals()
  * FROM job_parts
  * WHERE job_id IN (
  *   SELECT id FROM jobs
- *   WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+ *   WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
  * )
  * UNION ALL
  * SELECT 
@@ -454,7 +462,7 @@ cleanupOldDeals()
  * FROM loaner_assignments
  * WHERE job_id IN (
  *   SELECT id FROM jobs
- *   WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+ *   WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
  * )
  * UNION ALL
  * SELECT 
@@ -463,7 +471,7 @@ cleanupOldDeals()
  * FROM transactions
  * WHERE job_id IN (
  *   SELECT id FROM jobs
- *   WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+ *   WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
  * );
  * 
  * -- STEP 3: Perform the deletion (ONLY after reviewing preview)
@@ -474,27 +482,26 @@ cleanupOldDeals()
  * DELETE FROM job_parts
  * WHERE job_id IN (
  *   SELECT id FROM jobs
- *   WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+ *   WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
  * );
  * 
  * -- Delete loaner_assignments for old jobs
  * DELETE FROM loaner_assignments
  * WHERE job_id IN (
  *   SELECT id FROM jobs
- *   WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
+ *   WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
  * );
  * 
  * -- Delete transactions for old jobs
  * DELETE FROM transactions
  * WHERE job_id IN (
  *   SELECT id FROM jobs
- *   WHERE org_id = ':ORG_ID' AND id != ':KEEP_JOB_ID'
- * );
+ *   WHERE org_id = :ORG_ID AND id != :KEEP_JOB_ID
  * 
  * -- Delete the old jobs themselves
  * DELETE FROM jobs
- * WHERE org_id = ':ORG_ID'
- *   AND id != ':KEEP_JOB_ID';
+ * WHERE org_id = :ORG_ID
+ *   AND id != :KEEP_JOB_ID;
  * 
  * -- Review the changes before committing
  * -- If everything looks good, run: COMMIT;
@@ -506,12 +513,12 @@ cleanupOldDeals()
  * -- Should show only 1 job remaining for your org
  * SELECT COUNT(*) as remaining_jobs
  * FROM jobs
- * WHERE org_id = ':ORG_ID';
+ * WHERE org_id = :ORG_ID;
  * 
  * -- Show the remaining job
  * SELECT id, job_number, title, created_at, updated_at
  * FROM jobs
- * WHERE org_id = ':ORG_ID';
+ * WHERE org_id = :ORG_ID;
  * 
  * ═══════════════════════════════════════════════════════════════════════════
  */
