@@ -214,7 +214,7 @@ describe('Deal Edit - Line Items Duplication Bug', () => {
     expect(formDeal.lineItems[0].scheduled_start_time).toBeTruthy()
     expect(formDeal.lineItems[0].scheduled_end_time).toBeTruthy()
     
-    // Should be in HH:MM format (either "09:30" or "9:30" depending on formatTime)
+    // Should be in HH:MM format (always two-digit hours, e.g., "09:30")
     const startTime = formDeal.lineItems[0].scheduled_start_time
     const endTime = formDeal.lineItems[0].scheduled_end_time
     
