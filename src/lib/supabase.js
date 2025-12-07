@@ -42,7 +42,7 @@ if (isTest) {
     import.meta?.env?.VITE_SUPABASE_ANON_KEY || process?.env?.VITE_SUPABASE_ANON_KEY
 
   // Only log environment check in development mode
-  if (import.meta.env.DEV) {
+  if (import.meta?.env?.DEV) {
     console.log('Supabase Environment Check:', {
       url: supabaseUrl ? 'Present' : 'Missing',
       anonKey: supabaseAnonKey ? 'Present' : 'Missing',
@@ -51,7 +51,7 @@ if (isTest) {
     })
   }
   // Validate environment variables & build optional dev stub when missing
-  const isProd = import.meta.env.PROD
+  const isProd = import.meta?.env?.PROD
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error(
       '❌ Supabase env vars missing. Required: VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY'
