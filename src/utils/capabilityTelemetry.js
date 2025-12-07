@@ -17,6 +17,35 @@ export const TelemetryKey = {
   CALENDAR_RENDER_MS: 'telemetry_calendarRenderMs', // Optional: Calendar render time metric
 }
 
+/**
+ * Capability flags for job_parts table columns
+ * These can be dynamically disabled when missing column errors are detected
+ */
+export let JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE = true
+export let JOB_PARTS_HAS_PER_LINE_TIMES = true
+
+/**
+ * Disable the vendor_id column capability for job_parts
+ * Called when a missing column error is detected for vendor_id
+ */
+export function disableJobPartsVendorIdCapability() {
+  JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE = false
+  if (import.meta.env.MODE === 'development') {
+    console.warn('[capabilityTelemetry] Disabled JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE capability')
+  }
+}
+
+/**
+ * Disable the scheduled time columns capability for job_parts
+ * Called when missing column errors are detected for scheduled_start_time or scheduled_end_time
+ */
+export function disableJobPartsTimeCapability() {
+  JOB_PARTS_HAS_PER_LINE_TIMES = false
+  if (import.meta.env.MODE === 'development') {
+    console.warn('[capabilityTelemetry] Disabled JOB_PARTS_HAS_PER_LINE_TIMES capability')
+  }
+}
+
 // Flag to enable calendar render time telemetry (defaults to false)
 const CALENDAR_TELEMETRY_ENABLED =
   String(import.meta.env.VITE_TELEMETRY_CALENDAR_MS || '').toLowerCase() === 'true'
