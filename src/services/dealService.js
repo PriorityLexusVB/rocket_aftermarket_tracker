@@ -15,6 +15,7 @@ import {
   getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
 import { formatTime } from '@/utils/dateTimeUtils'
+import { replaceJobPartsForJob } from './jobPartsService'
 
 // --- helpers -------------------------------------------------------------
 
@@ -1600,56 +1601,11 @@ export async function createDeal(formState) {
       }
     }
 
-    // 2) insert parts (if any) with fallback for missing scheduled_* columns
+    // 2) Insert parts using centralized helper (handles retry logic)
     if ((normalizedLineItems || []).length > 0) {
-      const rows = toJobPartRows(job?.id, normalizedLineItems, {
+      await replaceJobPartsForJob(job?.id, normalizedLineItems, {
         includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
       })
-      if (rows?.length > 0) {
-        const { error: partsErr } = await supabase?.from('job_parts')?.insert(rows)
-        if (partsErr) {
-          if (isMissingColumnError(partsErr)) {
-            const errorCode = classifySchemaError(partsErr)
-            const lower = String(partsErr?.message || '').toLowerCase()
-
-            // Vendor column missing: disable capability and retry omitting vendor_id
-            if (lower.includes('job_parts') && lower.includes('vendor_id')) {
-              if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
-                console.warn(
-                  `[dealService:create] Classified as ${errorCode}; disabling capability and retrying without vendor_id`
-                )
-                disableJobPartsVendorIdCapability()
-                incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
-                const retryRows = toJobPartRows(job?.id, normalizedLineItems, {
-                  includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
-                })
-                const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
-                if (retryErr) throw retryErr
-              } else {
-                throw partsErr
-              }
-            }
-            // Per-line time columns missing: retry without them
-            else if (
-              lower.includes('job_parts') &&
-              (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
-            ) {
-              console.warn(
-                `[dealService:create] Classified as ${errorCode}; retrying without time columns`
-              )
-              disableJobPartsTimeCapability()
-              incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
-              const retryRows = toJobPartRows(job?.id, normalizedLineItems, { includeTimes: false })
-              const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
-              if (retryErr) throw retryErr
-            } else {
-              throw partsErr
-            }
-          } else {
-            throw partsErr
-          }
-        }
-      }
     }
 
     // A3: Handle loaner assignment for new deals
@@ -2065,83 +2021,10 @@ export async function updateDeal(id, formState) {
     throw wrapDbError(e, 'upsert transaction')
   }
 
-  // 3) Replace job_parts with new scheduling fields
-  // Delete existing
-  const { error: delErr } = await supabase?.from('job_parts')?.delete()?.eq('job_id', id)
-  if (delErr) throw wrapDbError(delErr, 'update line items')
-
-  // Insert new (if any) with fallback for missing scheduled_* columns
-  if ((normalizedLineItems || []).length > 0) {
-    const rows = toJobPartRows(id, normalizedLineItems, {
-      includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
-    })
-    
-    // 🔍 DEBUG: Log rows before INSERT
-    if (import.meta.env.MODE === 'development') {
-      console.log('[dealService:updateDeal] BEFORE INSERT:', {
-        normalizedLineItemsCount: normalizedLineItems.length,
-        rowsCount: rows?.length || 0,
-        rowsSample: rows?.[0] ? {
-          job_id: rows[0].job_id,
-          product_id: rows[0].product_id,
-          unit_price: rows[0].unit_price,
-        } : null,
-      })
-    }
-    
-    if (rows?.length > 0) {
-      const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)
-      
-      // 🔍 DEBUG: Log INSERT result
-      if (import.meta.env.MODE === 'development') {
-        console.log('[dealService:updateDeal] AFTER INSERT:', {
-          insertError: insErr ? insErr.message : null,
-          insertedCount: rows.length,
-        })
-      }
-      
-      if (insErr) {
-        if (isMissingColumnError(insErr)) {
-          const errorCode = classifySchemaError(insErr)
-          const lower = String(insErr?.message || '').toLowerCase()
-
-          // If vendor_id missing on job_parts, disable capability and retry without vendor_id
-          if (lower.includes('job_parts') && lower.includes('vendor_id')) {
-            if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
-              console.warn(
-                `[dealService:update] Classified as ${errorCode}; disabling capability and retrying without vendor_id`
-              )
-              disableJobPartsVendorIdCapability()
-              incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
-              const retryRows = toJobPartRows(id, normalizedLineItems, {
-                includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
-              })
-              const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
-              if (retryErr) throw wrapDbError(retryErr, 'update line items')
-            } else {
-              throw wrapDbError(insErr, 'update line items')
-            }
-          } else if (
-            lower.includes('job_parts') &&
-            (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
-          ) {
-            console.warn(
-              `[dealService:update] Classified as ${errorCode}; retrying without time columns`
-            )
-            disableJobPartsTimeCapability()
-            incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
-            const retryRows = toJobPartRows(id, normalizedLineItems, { includeTimes: false })
-            const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
-            if (retryErr) throw wrapDbError(retryErr, 'update line items')
-          } else {
-            throw wrapDbError(insErr, 'update line items')
-          }
-        } else {
-          throw wrapDbError(insErr, 'update line items')
-        }
-      }
-    }
-  }
+  // 3) Replace job_parts with new scheduling fields using centralized helper
+  await replaceJobPartsForJob(id, normalizedLineItems, {
+    includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
+  })
 
   // A3: Handle loaner assignment updates
   if (payload?.customer_needs_loaner && loanerForm) {
