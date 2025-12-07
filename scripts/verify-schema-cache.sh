@@ -25,13 +25,20 @@ VERIFICATION_FAILED=0
 
 # Check if Supabase CLI is available
 echo -e "${BLUE}[Setup]${NC} Checking prerequisites..."
-if ! command -v supabase &> /dev/null; then
-    echo -e "${RED}❌ Supabase CLI not found${NC}"
+if ! command -v npx &> /dev/null; then
+    echo -e "${RED}❌ npx not found${NC}"
+    echo "npx is required to run Supabase CLI"
+    exit 2
+fi
+
+# Check if supabase is available via npx
+if ! npx supabase --version &> /dev/null 2>&1; then
+    echo -e "${RED}❌ Supabase CLI not available${NC}"
     echo "This project includes Supabase CLI as a dependency."
     echo "Run: pnpm install"
     exit 2
 fi
-echo -e "${GREEN}✓${NC} Supabase CLI found"
+echo -e "${GREEN}✓${NC} Supabase CLI found (via npx)"
 
 # Check for curl (needed for REST API tests)
 if ! command -v curl &> /dev/null; then
@@ -42,7 +49,7 @@ echo ""
 
 # Step 1: Check if column exists
 echo "Step 1: Checking if vendor_id column exists in job_parts..."
-COLUMN_CHECK=$(supabase db execute --sql "
+COLUMN_CHECK=$(npx supabase db execute --sql "
 SELECT column_name, data_type 
 FROM information_schema.columns 
 WHERE table_name = 'job_parts' 
@@ -53,7 +60,7 @@ if echo "$COLUMN_CHECK" | grep -q "vendor_id"; then
     echo -e "${GREEN}✓${NC} Column vendor_id exists"
 else
     echo -e "${RED}❌ Column vendor_id NOT found${NC}"
-    echo "Run: supabase db push"
+    echo "Run: npx supabase db push"
     exit 1
 fi
 
@@ -61,7 +68,7 @@ echo ""
 
 # Step 2: Check if foreign key exists
 echo "Step 2: Checking if foreign key constraint exists..."
-FK_CHECK=$(supabase db execute --sql "
+FK_CHECK=$(npx supabase db execute --sql "
 SELECT
     tc.constraint_name,
     kcu.column_name,
@@ -86,7 +93,7 @@ if echo "$FK_CHECK" | grep -q "vendors"; then
     fi
 else
     echo -e "${RED}❌ Foreign key constraint NOT found${NC}"
-    echo "Run: supabase db push"
+    echo "Run: npx supabase db push"
     VERIFICATION_FAILED=1
 fi
 
@@ -94,7 +101,7 @@ echo ""
 
 # Step 2.5: Check if index exists (new check)
 echo "Step 2.5: Checking if index exists on vendor_id..."
-INDEX_CHECK=$(supabase db execute --sql "
+INDEX_CHECK=$(npx supabase db execute --sql "
 SELECT indexname, indexdef
 FROM pg_indexes 
 WHERE schemaname = 'public'
@@ -112,7 +119,7 @@ echo ""
 
 # Step 3: Reload schema cache
 echo "Step 3: Reloading PostgREST schema cache..."
-supabase db execute --sql "NOTIFY pgrst, 'reload schema';" > /dev/null 2>&1
+npx supabase db execute --sql "NOTIFY pgrst, 'reload schema';" > /dev/null 2>&1
 echo -e "${GREEN}✓${NC} Schema cache reload triggered"
 echo "   Waiting 5 seconds for cache to refresh..."
 sleep 5
