@@ -8,19 +8,32 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { replaceJobPartsForJob, toJobPartRows } from '../services/jobPartsService'
 
-// Mock supabase
-vi.mock('../lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      delete: vi.fn(() => ({
-        eq: vi.fn(() => Promise.resolve({ error: null })),
+// Track calls
+let deleteCallCount = 0
+let insertCallCount = 0
+let insertedRows = []
+
+// Mock supabase at module level
+vi.mock('../lib/supabase', () => {
+  return {
+    supabase: {
+      from: vi.fn(() => ({
+        delete: vi.fn(() => {
+          deleteCallCount++
+          return {
+            eq: vi.fn(() => Promise.resolve({ error: null })),
+          }
+        }),
+        insert: vi.fn((rows) => {
+          insertCallCount++
+          insertedRows.push(...(Array.isArray(rows) ? rows : [rows]))
+          return Promise.resolve({ error: null })
+        }),
       })),
-      insert: vi.fn(() => Promise.resolve({ error: null })),
-    })),
-  },
-}))
+    },
+  }
+})
 
 // Mock capabilities
 vi.mock('../utils/capabilityTelemetry', () => ({
@@ -35,35 +48,15 @@ vi.mock('../utils/capabilityTelemetry', () => ({
   },
 }))
 
-describe('jobPartsService - replaceJobPartsForJob', () => {
-  let mockSupabase
-  let deleteCallCount = 0
-  let insertCallCount = 0
-  let insertedRows = []
+// Import after mocks are set up
+import { replaceJobPartsForJob, toJobPartRows } from '../services/jobPartsService'
 
+describe('jobPartsService - replaceJobPartsForJob', () => {
   beforeEach(() => {
+    // Reset tracking
     deleteCallCount = 0
     insertCallCount = 0
     insertedRows = []
-
-    // Get mock supabase
-    const { supabase } = require('../lib/supabase')
-    mockSupabase = supabase
-
-    // Track DELETE calls
-    mockSupabase.from = vi.fn(() => ({
-      delete: vi.fn(() => {
-        deleteCallCount++
-        return {
-          eq: vi.fn(() => Promise.resolve({ error: null })),
-        }
-      }),
-      insert: vi.fn((rows) => {
-        insertCallCount++
-        insertedRows.push(...(Array.isArray(rows) ? rows : [rows]))
-        return Promise.resolve({ error: null })
-      }),
-    }))
   })
 
   afterEach(() => {
@@ -170,11 +163,11 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
   it('toJobPartRows should handle both camelCase and snake_case', () => {
     const jobId = 'job-123'
 
-    // Test with camelCase
+    // Test with camelCase (as used by the form/UI)
     const camelCaseItems = [
       {
-        productId: 'prod-1',
-        unitPrice: 100,
+        product_id: 'prod-1', // product_id is always snake_case
+        price: 100, // Maps to unit_price via 'price' fallback
         requiresScheduling: true,
         isOffSite: false,
       },
@@ -182,10 +175,10 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     const camelRows = toJobPartRows(jobId, camelCaseItems)
     expect(camelRows).toHaveLength(1)
-    expect(camelRows[0].product_id).toBe(null) // productId isn't mapped
+    expect(camelRows[0].product_id).toBe('prod-1')
     expect(camelRows[0].unit_price).toBe(100)
 
-    // Test with snake_case
+    // Test with snake_case (as stored in DB)
     const snakeCaseItems = [
       {
         product_id: 'prod-1',
