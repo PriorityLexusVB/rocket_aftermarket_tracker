@@ -14,6 +14,7 @@ import {
 import { format } from 'date-fns'
 import { supabase } from '../../../lib/supabase'
 import { toUTC } from '../../../lib/time'
+import { replaceJobPartsForJob } from '../../../services/jobPartsService'
 import Checkbox from '../../../components/ui/Checkbox'
 
 const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, onSMSEnqueue }) => {
@@ -583,17 +584,14 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
 
         if (jobError) throw jobError
 
-        // Create job_parts entry for line item
-        const { error: partsError } = await supabase?.from('job_parts')?.insert([
+        // Create job_parts entry for line item using centralized helper
+        await replaceJobPartsForJob(job?.id, [
           {
-            job_id: job?.id,
             product_id: item?.product_id || null,
             unit_price: parseFloat(item?.sold_price),
             quantity_used: 1,
           },
         ])
-
-        if (partsError) throw partsError
 
         return job
       })

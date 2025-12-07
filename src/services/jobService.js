@@ -1,6 +1,7 @@
 // src/services/jobService.js
 import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
+import { replaceJobPartsForJob } from './jobPartsService'
 
 const nowIso = () => new Date()?.toISOString()
 
@@ -245,14 +246,10 @@ export const jobService = {
         ?.single()
       if (jobErr) throw jobErr
 
-      // Replace line items if provided
+      // Replace line items if provided using centralized helper
       if (dealData?.lineItems !== undefined) {
-        // Delete existing first
-        const { error: delErr } = await supabase?.from('job_parts')?.delete()?.eq('job_id', jobId)
-        if (delErr) throw delErr
-
-        if (Array.isArray(dealData?.lineItems) && dealData?.lineItems?.length > 0) {
-          await insertLineItems(jobId, dealData?.lineItems)
+        if (Array.isArray(dealData?.lineItems)) {
+          await replaceJobPartsForJob(jobId, dealData.lineItems)
         }
       }
 
