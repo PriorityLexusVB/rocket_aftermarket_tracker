@@ -92,16 +92,16 @@ export default async function handler(req, res) {
       })
     }
 
-    // Probe 4: Check user_profiles.name column
+    // Probe 4: Check user_profiles.full_name column (correct schema)
     const { error: userProfileNameError } = await supabase
       .from('user_profiles')
-      .select('id, name')
+      .select('id, full_name')
       .limit(1)
 
     if (!userProfileNameError) {
       capabilities.userProfilesName = true
       probeResults.checks.push({
-        name: 'user_profiles_name',
+        name: 'user_profiles_full_name',
         status: 'ok',
       })
     } else {
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
         ? 'Column missing. If recently migrated, trigger Admin > Reload Schema Cache.'
         : undefined
       probeResults.checks.push({
-        name: 'user_profiles_name',
+        name: 'user_profiles_full_name',
         status: 'unavailable',
         error: userProfileNameError.message,
         hint,

@@ -47,6 +47,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           echo "Running schema cache verification..."
+          # Ensure we use npx supabase from node_modules
           if bash scripts/verify-schema-cache.sh; then
             echo "drift_detected=false" >> $GITHUB_OUTPUT
             echo "✅ Schema cache verification passed"
@@ -57,14 +58,36 @@ jobs:
           fi
         continue-on-error: true
 
+      - name: Start Development Server
+        id: start_server
+        if: always()
+        run: |
+          echo "Starting Vite dev server..."
+          pnpm dev &
+          DEV_PID=$!
+          echo "dev_pid=$DEV_PID" >> $GITHUB_OUTPUT
+          echo "Dev server started with PID: $DEV_PID"
+          # Give server time to start
+          sleep 10
+
+      - name: Wait for Server Ready
+        if: always() && steps.start_server.conclusion == 'success'
+        run: |
+          echo "Waiting for server to be ready..."
+          timeout 60 bash -c 'until curl -f http://localhost:5173 > /dev/null 2>&1; do sleep 2; done' || {
+            echo "❌ Server failed to start within timeout"
+            exit 1
+          }
+          echo "✅ Server is ready"
+
       - name: Check Health Endpoint
         id: health_check
-        if: always()
+        if: always() && steps.start_server.conclusion == 'success'
         env:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: |
           echo "Checking /api/health endpoint..."
-          HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "${VITE_SUPABASE_URL}/api/health" || echo "000")
+          HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "http://localhost:5173/api/health" || echo "000")
           HTTP_CODE=$(echo "$HEALTH_RESPONSE" | tail -n1)
           BODY=$(echo "$HEALTH_RESPONSE" | head -n-1)
 
@@ -81,12 +104,12 @@ jobs:
 
       - name: Check Deals Relationship Health Endpoint
         id: deals_rel_check
-        if: always()
+        if: always() && steps.start_server.conclusion == 'success'
         env:
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: |
           echo "Checking /api/health-deals-rel endpoint..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" "${VITE_SUPABASE_URL}/api/health-deals-rel" || echo "000")
+          RESPONSE=$(curl -s -w "\n%{http_code}" "http://localhost:5173/api/health-deals-rel" || echo "000")
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | head -n-1)
 
@@ -106,6 +129,18 @@ jobs:
           else
             echo "deals_rel_ok=false" >> $GITHUB_OUTPUT
             echo "❌ Deals relationship health failed (HTTP $HTTP_CODE)"
+          fi
+
+      - name: Stop Development Server
+        if: always() && steps.start_server.conclusion == 'success'
+        run: |
+          DEV_PID=${{ steps.start_server.outputs.dev_pid }}
+          if [ -n "$DEV_PID" ] && kill -0 "$DEV_PID" 2>/dev/null; then
+            echo "Stopping dev server (PID: $DEV_PID)"
+            kill "$DEV_PID" || true
+            sleep 2
+            # Force kill if still running
+            kill -9 "$DEV_PID" 2>/dev/null || true
           fi
 
       - name: Generate Summary

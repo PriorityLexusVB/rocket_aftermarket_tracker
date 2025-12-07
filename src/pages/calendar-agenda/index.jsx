@@ -69,16 +69,28 @@ export default function CalendarAgenda() {
   const [loading, setLoading] = useState(true)
   const [jobs, setJobs] = useState([])
   const [conflicts, setConflicts] = useState(new Map()) // jobId -> boolean
-  const [q, setQ] = useState(() => new URLSearchParams(location.search).get('q') || '')
-  const [status, setStatus] = useState(
-    () => new URLSearchParams(location.search).get('status') || ''
-  )
-  const [dateRange, setDateRange] = useState(
-    () => new URLSearchParams(location.search).get('dateRange') || 'all'
-  )
-  const [vendorFilter, setVendorFilter] = useState(
-    () => new URLSearchParams(location.search).get('vendor') || ''
-  )
+  
+  // Initialize filters from URL params, with localStorage fallback
+  const [q, setQ] = useState(() => {
+    const urlParam = new URLSearchParams(location.search).get('q')
+    if (urlParam) return urlParam
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_q') || '' : ''
+  })
+  const [status, setStatus] = useState(() => {
+    const urlParam = new URLSearchParams(location.search).get('status')
+    if (urlParam) return urlParam
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_status') || '' : ''
+  })
+  const [dateRange, setDateRange] = useState(() => {
+    const urlParam = new URLSearchParams(location.search).get('dateRange')
+    if (urlParam) return urlParam
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_dateRange') || 'all' : 'all'
+  })
+  const [vendorFilter, setVendorFilter] = useState(() => {
+    const urlParam = new URLSearchParams(location.search).get('vendor')
+    if (urlParam) return urlParam
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_vendor') || '' : ''
+  })
   const focusId = useMemo(
     () => new URLSearchParams(location.search).get('focus'),
     [location.search]
@@ -91,8 +103,23 @@ export default function CalendarAgenda() {
   // Filters toggle state
   const [filtersExpanded, setFiltersExpanded] = useState(false)
 
-  // Sync filters to URL
+  // Sync filters to URL and localStorage
   useEffect(() => {
+    // Persist to localStorage
+    if (typeof localStorage !== 'undefined') {
+      if (q) localStorage.setItem('agendaFilter_q', q)
+      else localStorage.removeItem('agendaFilter_q')
+      
+      if (status) localStorage.setItem('agendaFilter_status', status)
+      else localStorage.removeItem('agendaFilter_status')
+      
+      if (dateRange && dateRange !== 'all') localStorage.setItem('agendaFilter_dateRange', dateRange)
+      else localStorage.removeItem('agendaFilter_dateRange')
+      
+      if (vendorFilter) localStorage.setItem('agendaFilter_vendor', vendorFilter)
+      else localStorage.removeItem('agendaFilter_vendor')
+    }
+    
     const params = new URLSearchParams(location.search)
     if (q) params.set('q', q)
     else params.delete('q')

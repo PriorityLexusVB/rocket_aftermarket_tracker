@@ -707,8 +707,10 @@ export default function DealForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Description</label>
+          <label htmlFor="description-input" className="block text-sm font-medium text-slate-700">Customer Name</label>
           <textarea
+            id="description-input"
+            aria-label="Customer Name"
             data-testid="description-input"
             value={form.description}
             onChange={(e) => handleChange('description', e.target.value)}

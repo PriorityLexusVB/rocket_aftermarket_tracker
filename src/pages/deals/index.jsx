@@ -975,7 +975,7 @@ export default function DealsPage() {
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Deal Tracker</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Deals</h1>
           <div className="flex items-center space-x-3">
             <ExportButton
               exportType="jobs"
