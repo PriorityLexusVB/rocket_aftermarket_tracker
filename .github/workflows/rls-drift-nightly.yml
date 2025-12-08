@@ -61,6 +61,9 @@ jobs:
       - name: Start Development Server
         id: start_server
         if: always()
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           echo "Starting Vite dev server..."
           pnpm dev &

@@ -9,7 +9,8 @@ test.describe('Job Parts No Duplication', () => {
     await page.fill('input[name="email"]', process.env.E2E_EMAIL || 'tester@example.com')
     await page.fill('input[name="password"]', process.env.E2E_PASSWORD || 'your-password')
     await page.click('button:has-text("Sign In")')
-    await page.waitForTimeout(2000)
+    // Wait for successful navigation after login instead of arbitrary timeout
+    await page.waitForURL(/^\/$|\/deals/, { timeout: 10000 })
 
     // Navigate to new deal page
     await page.goto('/deals/new')
@@ -25,8 +26,9 @@ test.describe('Job Parts No Duplication', () => {
     await expect(productSelect).toBeVisible()
     await productSelect.selectOption({ index: 1 })
 
-    // Wait for product selection to populate price
-    await page.waitForTimeout(500)
+    // Wait for unit price field to be populated after product selection
+    const unitPriceInput = page.getByTestId('unit-price-0')
+    await expect(unitPriceInput).not.toHaveValue('0')
 
     // Save the deal
     const saveBtn = page.getByTestId('save-deal-btn')
@@ -43,28 +45,34 @@ test.describe('Job Parts No Duplication', () => {
 
     expect(dealId).not.toBeNull()
 
-    // Wait for any autosave to complete
-    await page.waitForTimeout(2000)
+    // Wait for page to be fully loaded and ready for edits
+    await page.waitForLoadState('networkidle')
+    await expect(saveBtn).toBeEnabled()
 
     // Save again (simulate edit + save)
-    await expect(saveBtn).toBeEnabled()
     await saveBtn.click()
 
-    // Wait for save confirmation
+    // Wait for save confirmation - use explicit UI indicators
     await Promise.race([
       page.getByTestId('save-success').waitFor({ state: 'visible', timeout: 10000 }),
       page.getByTestId('last-saved-timestamp').waitFor({ state: 'visible', timeout: 10000 }),
-    ]).catch(() => page.waitForTimeout(2000))
+    ]).catch(async () => {
+      // Fallback: wait for network to be idle as a sign of save completion
+      await page.waitForLoadState('networkidle')
+    })
+
+    // Ensure save button is ready for next save
+    await expect(saveBtn).toBeEnabled()
 
     // Save one more time to test for duplication
-    await page.waitForTimeout(1000)
-    await expect(saveBtn).toBeEnabled()
     await saveBtn.click()
 
     await Promise.race([
       page.getByTestId('save-success').waitFor({ state: 'visible', timeout: 10000 }),
       page.getByTestId('last-saved-timestamp').waitFor({ state: 'visible', timeout: 10000 }),
-    ]).catch(() => page.waitForTimeout(2000))
+    ]).catch(async () => {
+      await page.waitForLoadState('networkidle')
+    })
 
     // Now verify that there's only ONE job_parts row for this job
     // We can check this via UI: should see only 1 line item row
