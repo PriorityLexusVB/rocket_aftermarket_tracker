@@ -113,7 +113,7 @@ export default function CalendarAgenda() {
       if (status) localStorage.setItem('agendaFilter_status', status)
       else localStorage.removeItem('agendaFilter_status')
       
-      if (dateRange && dateRange !== 'all') localStorage.setItem('agendaFilter_dateRange', dateRange)
+      if (dateRange) localStorage.setItem('agendaFilter_dateRange', dateRange)
       else localStorage.removeItem('agendaFilter_dateRange')
       
       if (vendorFilter) localStorage.setItem('agendaFilter_vendor', vendorFilter)
