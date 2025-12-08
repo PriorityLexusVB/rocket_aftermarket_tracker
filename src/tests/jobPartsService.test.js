@@ -199,4 +199,134 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
       'jobId is required for replaceJobPartsForJob'
     )
   })
+
+  // NEW TESTS FOR DEDUPLICATION GUARDRAIL
+
+  it('should merge identical line items by summing quantity_used', async () => {
+    const jobId = 'job-123'
+    const lineItems = [
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 2 },
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 3 },
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 5 },
+    ]
+
+    await replaceJobPartsForJob(jobId, lineItems)
+
+    // Verify DELETE called once
+    expect(deleteCallCount).toBe(1)
+
+    // Verify INSERT called once
+    expect(insertCallCount).toBe(1)
+
+    // Verify only ONE row inserted (duplicates merged)
+    expect(insertedRows).toHaveLength(1)
+
+    // Verify quantity is the SUM of all three
+    expect(insertedRows[0].quantity_used).toBe(10) // 2 + 3 + 5
+    expect(insertedRows[0].product_id).toBe('prod-1')
+    expect(insertedRows[0].vendor_id).toBe('vend-1')
+  })
+
+  it('should NOT merge line items with different products', async () => {
+    const jobId = 'job-123'
+    const lineItems = [
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 2 },
+      { product_id: 'prod-2', vendor_id: 'vend-1', unit_price: 100, quantity_used: 3 },
+    ]
+
+    await replaceJobPartsForJob(jobId, lineItems)
+
+    // Should have 2 distinct rows (different products)
+    expect(insertedRows).toHaveLength(2)
+    expect(insertedRows[0].product_id).toBe('prod-1')
+    expect(insertedRows[0].quantity_used).toBe(2)
+    expect(insertedRows[1].product_id).toBe('prod-2')
+    expect(insertedRows[1].quantity_used).toBe(3)
+  })
+
+  it('should NOT merge line items with different vendors', async () => {
+    const jobId = 'job-123'
+    const lineItems = [
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 2 },
+      { product_id: 'prod-1', vendor_id: 'vend-2', unit_price: 100, quantity_used: 3 },
+    ]
+
+    await replaceJobPartsForJob(jobId, lineItems)
+
+    // Should have 2 distinct rows (different vendors)
+    expect(insertedRows).toHaveLength(2)
+    expect(insertedRows[0].vendor_id).toBe('vend-1')
+    expect(insertedRows[0].quantity_used).toBe(2)
+    expect(insertedRows[1].vendor_id).toBe('vend-2')
+    expect(insertedRows[1].quantity_used).toBe(3)
+  })
+
+  it('should NOT merge line items with different scheduled times', async () => {
+    const jobId = 'job-123'
+    const lineItems = [
+      {
+        product_id: 'prod-1',
+        vendor_id: 'vend-1',
+        unit_price: 100,
+        quantity_used: 2,
+        scheduledStartTime: '2024-01-01T09:00:00Z',
+        scheduledEndTime: '2024-01-01T10:00:00Z',
+      },
+      {
+        product_id: 'prod-1',
+        vendor_id: 'vend-1',
+        unit_price: 100,
+        quantity_used: 3,
+        scheduledStartTime: '2024-01-01T11:00:00Z',
+        scheduledEndTime: '2024-01-01T12:00:00Z',
+      },
+    ]
+
+    await replaceJobPartsForJob(jobId, lineItems)
+
+    // Should have 2 distinct rows (different times)
+    expect(insertedRows).toHaveLength(2)
+    expect(insertedRows[0].scheduled_start_time).toBe('2024-01-01T09:00:00Z')
+    expect(insertedRows[0].quantity_used).toBe(2)
+    expect(insertedRows[1].scheduled_start_time).toBe('2024-01-01T11:00:00Z')
+    expect(insertedRows[1].quantity_used).toBe(3)
+  })
+
+  it('should prevent accumulation across three consecutive saves', async () => {
+    const jobId = 'job-123'
+    const lineItems = [
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 1 },
+    ]
+
+    // First save
+    await replaceJobPartsForJob(jobId, lineItems)
+    expect(deleteCallCount).toBe(1)
+    expect(insertCallCount).toBe(1)
+    expect(insertedRows).toHaveLength(1)
+
+    // Reset tracking
+    deleteCallCount = 0
+    insertCallCount = 0
+    insertedRows = []
+
+    // Second save
+    await replaceJobPartsForJob(jobId, lineItems)
+    expect(deleteCallCount).toBe(1)
+    expect(insertCallCount).toBe(1)
+    expect(insertedRows).toHaveLength(1) // Still 1, not 2
+
+    // Reset tracking again
+    deleteCallCount = 0
+    insertCallCount = 0
+    insertedRows = []
+
+    // Third save
+    await replaceJobPartsForJob(jobId, lineItems)
+    expect(deleteCallCount).toBe(1)
+    expect(insertCallCount).toBe(1)
+    expect(insertedRows).toHaveLength(1) // Still 1, not 3
+
+    // Verify the quantity hasn't accumulated (still 1, not 3)
+    expect(insertedRows[0].quantity_used).toBe(1)
+  })
 })
