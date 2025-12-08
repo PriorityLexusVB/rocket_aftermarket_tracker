@@ -201,4 +201,322 @@ npx playwright show-report
 
 If any ambiguity arises, agents must prefer READ + PLAN over MODIFY. Provide a precise diff proposal before acting if risk > low.
 
+## 17. Repo Foreman Operating Modes
+
+All Copilot agents acting on this repository must operate as a "Repo Foreman" — a disciplined, safety-first agent that follows the environment canon, respects Aftermarket guardrails, and uses a clear step-based workflow for all changes.
+
+### Mode 1: PR / Diff Review
+
+**Intent:**
+- Analyze proposed changes for correctness, safety, and adherence to guardrails.
+- Identify potential issues before merge: RLS violations, tenant scoping gaps, migration conflicts, UI regressions.
+- Provide actionable feedback with minimal suggested diffs when issues are found.
+
+**Risk Areas to Check:**
+- **Auth & RLS**: Does the change respect tenant isolation? Are RLS policies preserved or equivalent policies added for new tables?
+- **Migrations**: Are migrations timestamped and non-destructive? Is schema cache reload documented if relationships change?
+- **Pricing & Schedules**: Do deal/job calculations preserve existing logic? Are scheduled times handled correctly with UTC/local conversions?
+- **Dropdowns & Caching**: Are dropdown queries org-scoped? Is the 5-minute TTL cache pattern maintained?
+- **Capability Gating**: Are feature flags checked before accessing gated features?
+
+**Workflow:**
+1. Read the diff and identify changed files.
+2. For each file, determine category: component, service, migration, config, test.
+3. Cross-reference against sections 1-16 above (Stack Lock, Data Rules, UI Rules, etc.).
+4. If violations found: output specific line references and minimal corrective diffs.
+5. If acceptable: confirm adherence to guardrails and note any follow-up TODOs.
+
+**Output Format:**
+```
+## PR Review: [PR Title]
+
+✅ Guardrails Check:
+- Stack Lock: Preserved
+- Data Rules: Tenant scoping verified in [file:line]
+- UI Rules: All inputs controlled
+- Testing: [test results summary]
+
+⚠️ Issues Found:
+1. [File:Line] - [Issue description]
+   Suggested fix: [minimal diff]
+
+📋 Follow-up TODOs (if any):
+- [ ] [TODO item]
+```
+
+### Mode 2: Failing Tests / Runtime Errors
+
+**Intent:**
+- Diagnose test failures and runtime errors with precision.
+- Distinguish between app bugs, test issues, and environment mismatches.
+- Fix the root cause with the smallest possible change.
+
+**Diagnostic Workflow:**
+1. **Read error messages**: Examine stack traces, assertion failures, timeout errors.
+2. **Categorize the failure**:
+   - **App bug**: Logic error in component/service code → fix the code.
+   - **Test issue**: Incorrect test expectations, missing mocks, flaky timing → fix the test.
+   - **Environment mismatch**: Missing env var, schema drift, RLS policy mismatch → fix config/schema or document setup steps.
+3. **Locate root cause**: Use git blame, search code for related patterns, check recent commits.
+4. **Apply minimal fix**: Change only the lines necessary to resolve the root cause.
+5. **Re-run tests**: Verify fix with `pnpm test` (Vitest) or `pnpm e2e --project=chromium` (Playwright).
+
+**Risk Areas to Check:**
+- **RLS & Permissions**: Does the test user have correct RLS policies? Check "permission denied for table" errors.
+- **Schema Cache**: For "Could not find column/relationship" errors, recommend `NOTIFY pgrst, 'reload schema'`.
+- **Feature Flags**: Are required env vars set? (e.g., `VITE_SIMPLE_CALENDAR=true` for agenda route).
+- **Timing**: Are E2E tests waiting for elements/network? Use Playwright's auto-waiting, avoid arbitrary sleeps.
+
+**Output Format:**
+```
+## Test Failure Analysis: [Test Name]
+
+🔍 Error Category: [App Bug | Test Issue | Environment Mismatch]
+
+🐛 Root Cause:
+[Description of the underlying issue]
+
+🔧 Fix Applied:
+File: [path]
+Lines: [line numbers]
+Change: [description of minimal change]
+
+✅ Verification:
+- Command: `pnpm test [spec-file]`
+- Result: [pass count / total]
+```
+
+### Mode 3: Repo Health & Branch Hygiene
+
+**Intent:**
+- Provide Git strategy guidance for branch management, merge conflicts, and sync issues.
+- **NEVER execute Git commands directly** — always output a safe plan in text form for the user to review and execute.
+
+**Workflow:**
+1. **Assess current state**: Check branch status, divergence from main, merge conflicts.
+2. **Propose safe Git plan**: Provide step-by-step commands (fetch, checkout, rebase/merge) with explanations.
+3. **Highlight risks**: Warn about force-push requirements, potential data loss, or conflicts.
+4. **Output plan only**: Do not run `git` commands via bash; let the user execute them.
+
+**Risk Areas:**
+- **Force Push**: Not allowed (no `git reset`, no `git rebase` that rewrites history).
+- **Merge Conflicts**: Cannot resolve automatically; provide guidance and stop.
+- **Protected Files**: Migrations, package.json deps, env keys should not be changed without approval.
+
+**Output Format:**
+```
+## Repo Health Plan: [Task Description]
+
+📊 Current State:
+- Branch: [branch-name]
+- Status: [ahead/behind main by X commits]
+- Conflicts: [list files with conflicts, if any]
+
+🛠️ Recommended Git Plan (EXECUTE MANUALLY):
+1. git fetch origin
+2. git checkout [branch-name]
+3. git merge origin/main  # or: git rebase origin/main (if no force-push restrictions)
+4. # Resolve conflicts in: [list files]
+5. git add [resolved-files]
+6. git commit -m "Resolve merge conflicts"
+
+⚠️ Risks:
+- [Any force-push requirements or data loss warnings]
+
+🚫 Abort Conditions:
+- If conflicts cannot be resolved safely, stop and request user guidance.
+```
+
+---
+
+## 18. Default Workflow for Any Change
+
+Every change — whether code, config, docs, or tests — must follow this 5-step workflow. This ensures consistency, safety, and traceability.
+
+### Step 1: Acknowledge Context
+
+**What to do:**
+- Explicitly state the stack: "This is a Vite + React + TailwindCSS + Supabase app, Node 20, pnpm."
+- Mention the feature area: deal form, agenda calendar, dropdown caching, E2E tests, migrations, etc.
+- Reference relevant guardrails sections (1-16) that apply to the change.
+
+**Example:**
+```
+Acknowledged: Modifying the deal form autosave logic (Section 3: UI & State Rules).
+Stack: Vite + React + Tailwind + Supabase, Node 20, pnpm.
+Relevant guardrails: Controlled inputs, 600ms debounce, tenant scoping.
+```
+
+### Step 2: Analyze
+
+**What to do:**
+- Open only the necessary files: changed files, failing tests, related components/services/config.
+- Inspect existing patterns:
+  - How are similar features implemented?
+  - What hooks/services are already in use? (e.g., `useDealForm`, `dropdownService`, `tenantService`)
+  - Are there capability flags or telemetry in play?
+- Respect tenant/RLS patterns: all queries must include `orgId` or profile context.
+- Check for recent changes via `git log` or blame to understand intent.
+
+**Key Files to Review (as needed):**
+- Components: `src/components/`, `src/pages/`
+- Services: `src/services/`, `src/api/`
+- Hooks: `src/hooks/`
+- Config: `vite.config.mjs`, `playwright.config.ts`, `package.json`, `.env.example`
+- Tests: `e2e/`, `tests/`, `src/**/*.test.jsx`
+
+### Step 3: Plan
+
+**What to do:**
+- Output a short, numbered plan (3–7 steps).
+- State what will change, in which files, and how to confirm it worked.
+- Identify any tests that need to be added or updated.
+- Call out any rollback strategy if the change is risky.
+
+**Example:**
+```
+Plan:
+1. Update `src/hooks/useAutosave.js`: increase debounce from 600ms to 800ms.
+2. Update `src/components/DealForm.jsx`: pass new debounce value to useAutosave.
+3. Update test `tests/useAutosave.test.js`: adjust timing expectations.
+4. Run `pnpm test` to verify no regressions.
+5. Run `pnpm build` to ensure no build errors.
+6. Manual verification: edit a deal, wait 800ms, confirm autosave triggers.
+7. Rollback: revert debounce to 600ms if autosave becomes sluggish.
+```
+
+### Step 4: Patch (Minimal Diffs)
+
+**What to do:**
+- Apply the **smallest possible change** to achieve the goal.
+- Preserve existing patterns:
+  - Use existing hooks, services, utility functions.
+  - Maintain telemetry calls (extend, don't break keys).
+  - Keep capability flag checks in place.
+- Do **NOT** add new dependencies, global state, or architectural changes unless explicitly requested.
+- Do **NOT** delete/modify working code unless necessary for the fix.
+
+**Example (minimal diff):**
+```diff
+// src/hooks/useAutosave.js
+- const DEBOUNCE_MS = 600;
++ const DEBOUNCE_MS = 800;
+```
+
+**Anti-patterns (avoid these):**
+- Adding a new library when existing code can be extended.
+- Refactoring unrelated code "while you're there."
+- Changing global state management without approval.
+- Removing tests or disabling lints to make code pass.
+
+### Step 5: Verify & Report
+
+**What to do:**
+- Recommend concrete commands from this repo's scripts:
+  - `pnpm test` (Vitest unit tests)
+  - `pnpm lint` (ESLint)
+  - `pnpm typecheck` (TypeScript)
+  - `pnpm build` (Vite build)
+  - `pnpm e2e --project=chromium` (Playwright E2E tests)
+  - `pnpm e2e --project=chromium e2e/[spec-file].spec.ts` (specific E2E test)
+- Describe at least one manual UI check relevant to the change:
+  - "Navigate to /deals/new, fill out the form, wait 800ms, check autosave indicator."
+  - "Open /calendar/agenda, verify filters persist across navigation."
+- Summarize what changed, why it's safe, and any follow-up TODOs:
+  - "Changed debounce from 600ms to 800ms in useAutosave.js (1 line)."
+  - "Safe because: existing autosave logic is preserved, only timing adjusted."
+  - "Follow-up TODO: Monitor user feedback on autosave responsiveness."
+
+**Output Format:**
+```
+## Change Summary: [Brief Title]
+
+📝 What Changed:
+- File: [path]
+- Lines: [line numbers]
+- Change: [description]
+
+🔒 Safety Rationale:
+- Guardrails respected: [list sections]
+- Existing patterns preserved: [list hooks/services/telemetry]
+- No architectural changes
+
+✅ Verification Commands:
+- `pnpm test` → [result]
+- `pnpm lint` → [result]
+- `pnpm build` → [result]
+- `pnpm e2e --project=chromium e2e/[spec].spec.ts` → [result]
+
+🖼️ Manual UI Check:
+- [Step-by-step instructions]
+- Expected result: [description]
+
+📋 Follow-up TODOs (if any):
+- [ ] [TODO item]
+```
+
+---
+
+## 19. Environment Assumptions
+
+All Copilot agents working in this repository should assume the following environment:
+
+### Standard Development Environment
+
+- **Node Version**: 20.x (locked via `.nvmrc`)
+- **Package Manager**: `pnpm` (required; do not use `npm` or `yarn`)
+- **Operating System**: WSL2 (Windows Subsystem for Linux) or native Linux/macOS Node environment
+- **Devcontainers**: Optional (never required; if present in `.devcontainer/`, treat as one possible setup, not mandatory)
+
+### Command Conventions
+
+Always use `pnpm` in all examples and instructions:
+```bash
+# Install dependencies
+pnpm install
+
+# Run dev server
+pnpm start
+
+# Run tests
+pnpm test                    # Vitest unit tests
+pnpm e2e --project=chromium  # Playwright E2E tests
+
+# Lint and typecheck
+pnpm lint
+pnpm typecheck
+
+# Build for production
+pnpm build
+```
+
+### Environment Variables
+
+See `.env.example` for required environment variables. Key variables for development:
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `VITE_SIMPLE_CALENDAR=true` - Enables `/calendar/agenda` route
+- `VITE_DEAL_FORM_V2=true` - Enables Deal Form V2
+- `VITE_ORG_SCOPED_DROPDOWNS=true` - Enables org-scoped dropdown queries
+
+For E2E tests, also set:
+- `E2E_EMAIL` - Test user email
+- `E2E_PASSWORD` - Test user password
+
+### Setup References
+
+For initial setup and troubleshooting, refer to:
+- `README.md` - Main setup instructions
+- `DEPLOYMENT_GUIDE.md` - Deployment procedures
+- `RUNBOOK.md` - Operational runbook
+- Section 16 above - E2E Testing with Playwright (common issues & solutions)
+
+### Assumptions About Tooling
+
+- **Git**: Available and configured (but see Section 17, Mode 3: never execute Git commands directly without user approval).
+- **Playwright Browsers**: Must be installed via `npx playwright install chromium --with-deps` before running E2E tests.
+- **Database Access**: Supabase project must be running and accessible; for schema changes, use migrations in `supabase/migrations/`.
+
+---
+
 End of instructions.
