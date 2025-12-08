@@ -48,6 +48,65 @@ async function selectJobs(baseQuery) {
   }
 }
 
+// Insert job_parts with multiple safe “shapes” to avoid missing-column errors
+async function insertLineItems(jobId, items = []) {
+  if (!jobId || !Array.isArray(items) || items?.length === 0) return
+
+  // Normalize incoming line items to a minimal format
+  const normalized = items?.map((it) => ({
+    job_id: jobId,
+    product_id: it?.product_id ?? it?.productId ?? null,
+    vendor_id: it?.vendor_id ?? it?.vendorId ?? null, // NEW: per-line vendor support
+    quantity_used: it?.quantity_used ?? it?.quantity ?? 1,
+    unit_price: it?.unit_price ?? it?.price ?? it?.unit_cost ?? null,
+    // description intentionally omitted by default to avoid "does not exist"
+  }))
+
+  // Candidate shapes from richer -> minimal (we try until one works)
+  // This provides fallback for environments that may not have all columns yet
+  const shapes = [
+    // Full shape with vendor_id (preferred)
+    (it) => ({
+      job_id: it?.job_id,
+      product_id: it?.product_id,
+      vendor_id: it?.vendor_id,
+      quantity_used: it?.quantity_used,
+      unit_price: it?.unit_price,
+    }),
+    // Fallback without vendor_id (for pre-migration environments)
+    (it) => ({
+      job_id: it?.job_id,
+      product_id: it?.product_id,
+      quantity_used: it?.quantity_used,
+      unit_price: it?.unit_price,
+    }),
+    (it) => ({
+      job_id: it?.job_id,
+      product_id: it?.product_id,
+      quantity_used: it?.quantity_used,
+    }),
+    (it) => ({
+      job_id: it?.job_id,
+      quantity_used: it?.quantity_used,
+    }),
+  ]
+
+  let lastErr = null
+  for (const shape of shapes) {
+    try {
+      const payload = normalized?.map(shape)
+      const { error } = await supabase?.from('job_parts')?.insert(payload)
+      if (error) throw error
+      // success
+      return
+    } catch (err) {
+      lastErr = err
+      // Try next shape
+    }
+  }
+  // If none of the shapes worked, bubble a concise error
+  throw new Error(`Failed to insert line items: ${lastErr?.message || lastErr || 'unknown error'}`)
+}
 
 export const jobService = {
   /**

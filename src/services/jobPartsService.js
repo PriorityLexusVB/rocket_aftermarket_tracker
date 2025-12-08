@@ -45,6 +45,76 @@ function classifySchemaError(error) {
 }
 
 /**
+ * Normalize and deduplicate job_parts rows
+ * 
+ * Takes raw line items and merges duplicates based on a composite key:
+ * - product_id
+ * - vendor_id (if available)
+ * - scheduled_start_time (if available)
+ * - scheduled_end_time (if available)
+ * 
+ * Duplicates are merged by summing quantity_used and keeping the first occurrence's other fields.
+ * 
+ * @param {Array} rows - Raw job_parts rows (already transformed to DB shape)
+ * @param {Object} opts - Options: { includeTimes: boolean }
+ * @returns {Array} - Deduplicated rows
+ */
+function normalizeAndDedupeJobPartRows(rows = [], opts = {}) {
+  if (!rows || rows.length === 0) return []
+
+  const includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
+  const includeVendor = JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+
+  // Build a map keyed by composite identifier
+  const dedupeMap = new Map()
+
+  for (const row of rows) {
+    // Build composite key from fields that define "the same line"
+    const keyParts = [
+      row.product_id || 'null',
+      includeVendor ? (row.vendor_id || 'null') : '',
+      includeTimes ? (row.scheduled_start_time || 'null') : '',
+      includeTimes ? (row.scheduled_end_time || 'null') : '',
+    ]
+    const compositeKey = keyParts.join('|')
+
+    if (dedupeMap.has(compositeKey)) {
+      // Duplicate found - merge by summing quantity_used
+      const existing = dedupeMap.get(compositeKey)
+      existing.quantity_used = (existing.quantity_used || 0) + (row.quantity_used || 0)
+
+      if (import.meta.env.MODE === 'development') {
+        console.warn(
+          '[normalizeAndDedupeJobPartRows] Merged duplicate line item:',
+          {
+            product_id: row.product_id,
+            vendor_id: row.vendor_id,
+            scheduled_start_time: row.scheduled_start_time,
+            scheduled_end_time: row.scheduled_end_time,
+            old_quantity: existing.quantity_used - (row.quantity_used || 0),
+            added_quantity: row.quantity_used,
+            new_quantity: existing.quantity_used,
+          }
+        )
+      }
+    } else {
+      // First occurrence - add to map
+      dedupeMap.set(compositeKey, { ...row })
+    }
+  }
+
+  const dedupedRows = Array.from(dedupeMap.values())
+
+  if (import.meta.env.MODE === 'development' && rows.length !== dedupedRows.length) {
+    console.log(
+      `[normalizeAndDedupeJobPartRows] Deduplication: ${rows.length} rows → ${dedupedRows.length} rows (${rows.length - dedupedRows.length} duplicates merged)`
+    )
+  }
+
+  return dedupedRows
+}
+
+/**
  * Convert line items to job_parts row format
  * Handles both camelCase and snake_case field names for robustness
  */
@@ -84,19 +154,6 @@ function toJobPartRows(jobId, items = [], opts = {}) {
       return row
     })
     ?.filter((row) => row?.product_id !== null || row?.quantity_used || row?.unit_price)
-
-  // Detect potential duplicates in development
-  if (import.meta.env.MODE === 'development' && rows?.length > 0) {
-    const productIds = rows.map((r) => r.product_id).filter(Boolean)
-    const uniqueProductIds = new Set(productIds)
-    if (productIds.length !== uniqueProductIds.size) {
-      console.warn('[replaceJobPartsForJob] ⚠️ DUPLICATE DETECTION: Multiple rows have the same product_id!', {
-        totalRows: rows.length,
-        uniqueProducts: uniqueProductIds.size,
-        productIds,
-      })
-    }
-  }
 
   return rows
 }
@@ -144,11 +201,21 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     return
   }
 
-  const rows = toJobPartRows(jobId, lineItems, opts)
+  const rawRows = toJobPartRows(jobId, lineItems, opts)
+
+  if (!rawRows || rawRows.length === 0) {
+    if (import.meta.env.MODE === 'development') {
+      console.log('[replaceJobPartsForJob] No valid rows after transformation, done')
+    }
+    return
+  }
+
+  // Apply deduplication guardrail
+  const rows = normalizeAndDedupeJobPartRows(rawRows, opts)
 
   if (!rows || rows.length === 0) {
     if (import.meta.env.MODE === 'development') {
-      console.log('[replaceJobPartsForJob] No valid rows after transformation, done')
+      console.log('[replaceJobPartsForJob] No valid rows after deduplication, done')
     }
     return
   }
@@ -160,6 +227,7 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
         ? {
             product_id: rows[0].product_id,
             unit_price: rows[0].unit_price,
+            quantity_used: rows[0].quantity_used,
           }
         : null,
     })
@@ -183,7 +251,8 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
           disableJobPartsVendorIdCapability()
           incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
 
-          const retryRows = toJobPartRows(jobId, lineItems, opts)
+          const retryRawRows = toJobPartRows(jobId, lineItems, opts)
+          const retryRows = normalizeAndDedupeJobPartRows(retryRawRows, opts)
           const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
           if (retryErr) {
             console.error('[replaceJobPartsForJob] Retry INSERT failed:', retryErr)
@@ -207,7 +276,8 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
         disableJobPartsTimeCapability()
         incrementTelemetry?.(TelemetryKey?.SCHEDULED_TIMES_FALLBACK)
 
-        const retryRows = toJobPartRows(jobId, lineItems, { ...opts, includeTimes: false })
+        const retryRawRows = toJobPartRows(jobId, lineItems, { ...opts, includeTimes: false })
+        const retryRows = normalizeAndDedupeJobPartRows(retryRawRows, { ...opts, includeTimes: false })
         const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
         if (retryErr) {
           console.error('[replaceJobPartsForJob] Retry INSERT failed:', retryErr)
