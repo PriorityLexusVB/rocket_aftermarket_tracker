@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react'
 import { supabase } from '../lib/supabase'
+import { persistOrgId } from '../utils/orgStorage'
 
 export const AuthContext = createContext()
 
@@ -21,7 +22,10 @@ export const AuthProvider = ({ children }) => {
           ?.single()
         if (!error && data) {
           setUserProfile(data)
-          localStorage.setItem('userRole', data?.role)
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('userRole', data?.role)
+          }
+          persistOrgId(data?.org_id ?? null, userId)
         } else {
           // Create basic profile for auth.users with admin role by default
           const {
@@ -44,7 +48,10 @@ export const AuthProvider = ({ children }) => {
 
             if (newProfile) {
               setUserProfile(newProfile)
-              localStorage.setItem('userRole', newProfile?.role)
+              if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('userRole', newProfile?.role)
+              }
+              persistOrgId(newProfile?.org_id ?? null, user?.id || userId)
             }
           }
         }
@@ -64,7 +71,10 @@ export const AuthProvider = ({ children }) => {
     },
     clear() {
       setUserProfile(null)
-      localStorage.removeItem('userRole')
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('userRole')
+      }
+      persistOrgId(null)
     },
   }
 
