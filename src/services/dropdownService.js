@@ -7,6 +7,7 @@ import {
   downgradeCapForErrorMessage,
 } from '@/utils/userProfileName'
 import { incrementTelemetry, TelemetryKey } from '@/utils/capabilityTelemetry'
+import { persistOrgId, readOrgId } from '@/utils/orgStorage'
 
 // ---------------------------------------------------------------------------
 // Capability: user_profiles.vendor_id column (some environments may not have it yet)
@@ -97,10 +98,20 @@ async function getScopedOrgId() {
       const { data: auth } = await supabase?.auth?.getUser?.()
       const userId = auth?.user?.id
       const email = auth?.user?.email
+
+      // Prefer org_id cached for this authenticated user to avoid redundant lookups
+      const stored = readOrgId(userId)
+      if (stored && !_orgIdCacheValid) {
+        _orgIdCache = stored
+        _orgIdCacheValid = true
+        return _orgIdCache
+      }
+
       if (!userId && !email) {
         // User is not authenticated - cache null as valid (no org available)
         _orgIdCache = null
         _orgIdCacheValid = true
+        persistOrgId(null, userId)
         return null
       }
 
@@ -152,6 +163,7 @@ async function getScopedOrgId() {
       if (prof?.org_id) {
         _orgIdCache = prof.org_id
         _orgIdCacheValid = true
+        persistOrgId(_orgIdCache, userId)
         return _orgIdCache
       }
 
@@ -172,6 +184,7 @@ async function getScopedOrgId() {
       // No RLS errors, user just doesn't have org_id - cache null as valid
       _orgIdCache = null
       _orgIdCacheValid = true
+      persistOrgId(null, userId)
       return null
     } catch (e) {
       // Unexpected error - don't cache, allow retry

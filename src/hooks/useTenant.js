@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase'
  * - Uses an alive/ref flag to avoid state updates after unmount.
  */
 function useTenant() {
-  const { user } = useAuth() || {}
+  const { user, userProfile } = useAuth() || {}
   const [orgId, setOrgId] = useState(null)
   const [loading, setLoading] = useState(Boolean(user) && orgId === null)
   const aliveRef = useRef(true)
@@ -34,6 +34,22 @@ function useTenant() {
     const load = async () => {
       // If there's no authenticated user, ensure we surface null and not-loading
       if (!user?.id && !user?.email) {
+        if (aliveRef.current) {
+          setOrgId(null)
+          setLoading(false)
+        }
+        return
+      }
+
+      // If AuthContext already resolved org_id, prefer it and skip extra selects
+      if (userProfile?.org_id != null) {
+        if (aliveRef.current) {
+          setOrgId(userProfile.org_id)
+          setLoading(false)
+        }
+        return
+      }
+      if (userProfile && 'org_id' in userProfile) {
         if (aliveRef.current) {
           setOrgId(null)
           setLoading(false)
@@ -155,7 +171,7 @@ function useTenant() {
     return () => {
       didCancel = true
     }
-  }, [user?.id, user?.email])
+  }, [user?.id, user?.email, userProfile?.org_id])
 
   return { orgId, loading, session: derivedSession }
 }
