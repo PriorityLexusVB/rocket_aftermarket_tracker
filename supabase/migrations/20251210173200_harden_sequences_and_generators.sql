@@ -31,7 +31,9 @@ BEGIN
     
     RAISE NOTICE 'Created job_number_seq starting at 1000';
   ELSE
-    RAISE NOTICE 'job_number_seq already exists';
+    -- Log current value for diagnostic purposes (safe because sequence exists)
+    RAISE NOTICE 'job_number_seq already exists, current value: %', 
+      (SELECT last_value FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'job_number_seq');
   END IF;
 END $$;
 
@@ -48,7 +50,9 @@ BEGIN
     
     RAISE NOTICE 'Created transaction_number_seq starting at 1001';
   ELSE
-    RAISE NOTICE 'transaction_number_seq already exists';
+    -- Log current value for diagnostic purposes (safe because sequence exists)
+    RAISE NOTICE 'transaction_number_seq already exists, current value: %', 
+      (SELECT last_value FROM pg_sequences WHERE schemaname = 'public' AND sequencename = 'transaction_number_seq');
   END IF;
 END $$;
 
@@ -95,8 +99,9 @@ BEGIN
   job_number := 'JOB-' || year_prefix || '-' || LPAD(seq_value::TEXT, 6, '0');
   
   -- Ensure we're returning a non-null value
-  IF job_number IS NULL OR LENGTH(job_number) < 10 THEN
-    RAISE EXCEPTION 'Generated invalid job number: %', job_number;
+  -- Expected format: JOB-YYYY-NNNNNN = 4 + 4 + 6 + 2 hyphens = 16 chars minimum
+  IF job_number IS NULL OR LENGTH(job_number) < 16 THEN
+    RAISE EXCEPTION 'Generated invalid job number: % (expected format: JOB-YYYY-NNNNNN)', job_number;
   END IF;
   
   RETURN job_number;
@@ -154,8 +159,9 @@ BEGIN
   txn_number := 'TXN-' || date_prefix || '-' || LPAD(seq_value::TEXT, 4, '0');
   
   -- Ensure we're returning a non-null value
-  IF txn_number IS NULL OR LENGTH(txn_number) < 10 THEN
-    RAISE EXCEPTION 'Generated invalid transaction number: %', txn_number;
+  -- Expected format: TXN-YYYYMMDD-NNNN = 4 + 8 + 4 + 2 hyphens = 18 chars minimum
+  IF txn_number IS NULL OR LENGTH(txn_number) < 18 THEN
+    RAISE EXCEPTION 'Generated invalid transaction number: % (expected format: TXN-YYYYMMDD-NNNN)', txn_number;
   END IF;
   
   RETURN txn_number;
