@@ -22,7 +22,8 @@ describe('Drizzle + Zod Schema Validation', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.name).toBe('Test Vendor');
-        expect(result.data.rating).toBe('4.5');
+        // Rating is coerced to number
+        expect(result.data.rating).toBe(4.5);
       }
     });
 
@@ -49,6 +50,21 @@ describe('Drizzle + Zod Schema Validation', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues.some(issue => issue.message.includes('Rating must be between 0 and 5'))).toBe(true);
+      }
+    });
+
+    it('should coerce rating from string to number', () => {
+      const vendorWithStringRating = {
+        name: 'Test Vendor',
+        rating: '4.5',
+      };
+
+      const result = vendorInsertSchema.safeParse(vendorWithStringRating);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        // Verify rating is coerced to a number
+        expect(typeof result.data.rating).toBe('number');
+        expect(result.data.rating).toBe(4.5);
       }
     });
   });
@@ -142,7 +158,7 @@ describe('Drizzle + Zod Schema Validation', () => {
       }
     });
 
-    it('should accept unitPrice as string and validate', () => {
+    it('should accept unitPrice as string and coerce to number', () => {
       const jobPartWithStringPrice = {
         jobId: '123e4567-e89b-12d3-a456-426614174000',
         productId: '123e4567-e89b-12d3-a456-426614174001',
@@ -152,6 +168,11 @@ describe('Drizzle + Zod Schema Validation', () => {
 
       const result = jobPartInsertSchema.safeParse(jobPartWithStringPrice);
       expect(result.success).toBe(true);
+      if (result.success) {
+        // Verify the unitPrice is coerced to a number
+        expect(typeof result.data.unitPrice).toBe('number');
+        expect(result.data.unitPrice).toBe(99.99);
+      }
     });
   });
 
@@ -165,7 +186,8 @@ describe('Drizzle + Zod Schema Validation', () => {
       const result = vendorInsertSchema.partial().safeParse(partialUpdate);
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.rating).toBe('5.0');
+        // Rating is coerced to number
+        expect(result.data.rating).toBe(5.0);
         expect(result.data.notes).toBe('Excellent service');
       }
     });

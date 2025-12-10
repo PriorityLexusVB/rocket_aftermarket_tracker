@@ -2,6 +2,7 @@
 import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 import { replaceJobPartsForJob } from './jobPartsService'
+import { z } from 'zod'
 // Typed schemas from Drizzle + Zod (Section 20)
 import { jobInsertSchema } from '@/db/schemas'
 
@@ -347,6 +348,9 @@ export const jobService = {
       // Delegate to existing createJob with validated data
       return await this.createJob(validated)
     } catch (e) {
+      if (e instanceof z.ZodError) {
+        throw new Error('Job validation failed: ' + e.errors.map(err => err.message).join(', '))
+      }
       console.error('jobService.createTyped failed', e)
       throw e
     }
@@ -365,6 +369,9 @@ export const jobService = {
       // Delegate to existing updateJob with validated data
       return await this.updateJob(jobId, validated)
     } catch (e) {
+      if (e instanceof z.ZodError) {
+        throw new Error('Job validation failed: ' + e.errors.map(err => err.message).join(', '))
+      }
       console.error('jobService.updateTyped failed', e)
       throw e
     }

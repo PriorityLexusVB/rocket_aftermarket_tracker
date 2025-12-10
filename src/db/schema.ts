@@ -13,19 +13,19 @@ import {
   pgTable,
   uuid,
   text,
-  varchar,
   integer,
   decimal,
   boolean,
   timestamp,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /**
  * Vendors table
  * Multi-tenant via org_id
  */
 export const vendors = pgTable('vendors', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   name: text('name').notNull(),
   contactPerson: text('contact_person'),
   email: text('email'),
@@ -47,7 +47,7 @@ export const vendors = pgTable('vendors', {
  * Scheduled times are DEPRECATED - use job_parts scheduled times instead
  */
 export const jobs = pgTable('jobs', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   jobNumber: text('job_number').notNull().unique(),
   vehicleId: uuid('vehicle_id'),
   assignedTo: uuid('assigned_to'),
@@ -84,7 +84,7 @@ export const jobs = pgTable('jobs', {
  * Inherits org from parent job (no direct org_id)
  */
 export const jobParts = pgTable('job_parts', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
   jobId: uuid('job_id').notNull(),
   productId: uuid('product_id').notNull(),
   quantityUsed: integer('quantity_used').notNull().default(1),
