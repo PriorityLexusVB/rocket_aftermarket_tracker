@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import { toOptions } from '@/lib/options'
+// Typed schemas from Drizzle + Zod (Section 20)
+// @ts-ignore - using JSDoc for types
+import { vendorInsertSchema } from '@/db/schemas'
 
 export async function listVendorsByOrg(orgId) {
   let q = supabase.from('vendors').select('*').order('name', { ascending: true })
@@ -64,6 +67,68 @@ export const vendorService = {
     } catch (e) {
       console.error('vendorService.getById failed', e)
       return null
+    }
+  },
+
+  /**
+   * Create a new vendor (typed via VendorInsert from drizzle-zod)
+   * @param {import('@/db/schemas').VendorInsert} vendorData - Typed vendor data
+   * @returns {Promise<{data: any, error: any}>}
+   */
+  async create(vendorData) {
+    try {
+      // Validate with Zod schema
+      const validated = vendorInsertSchema.parse(vendorData)
+      const { data, error } = await supabase
+        .from('vendors')
+        .insert([validated])
+        .select()
+        .single()
+      return { data, error }
+    } catch (e) {
+      console.error('vendorService.create failed', e)
+      return { data: null, error: e }
+    }
+  },
+
+  /**
+   * Update an existing vendor (typed via VendorInsert from drizzle-zod)
+   * @param {string} id - Vendor ID
+   * @param {Partial<import('@/db/schemas').VendorInsert>} vendorData - Partial vendor data
+   * @returns {Promise<{data: any, error: any}>}
+   */
+  async update(id, vendorData) {
+    try {
+      // Validate with Zod schema (partial mode)
+      const validated = vendorInsertSchema.partial().parse(vendorData)
+      const { data, error } = await supabase
+        .from('vendors')
+        .update(validated)
+        .eq('id', id)
+        .select()
+        .single()
+      return { data, error }
+    } catch (e) {
+      console.error('vendorService.update failed', e)
+      return { data: null, error: e }
+    }
+  },
+
+  /**
+   * Delete a vendor
+   * @param {string} id - Vendor ID
+   * @returns {Promise<{error: any}>}
+   */
+  async delete(id) {
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .delete()
+        .eq('id', id)
+      return { error }
+    } catch (e) {
+      console.error('vendorService.delete failed', e)
+      return { error: e }
     }
   },
 }

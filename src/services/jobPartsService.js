@@ -305,3 +305,26 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
  * Export helper for testing/compatibility
  */
 export { toJobPartRows }
+
+/**
+ * Typed job parts creation (Section 20 pattern)
+ * @param {import('@/db/schemas').JobPartInsert[]} jobParts - Array of typed job part data
+ * @returns {Promise<{data: any, error: any}>}
+ */
+export async function createJobPartsTyped(jobParts) {
+  try {
+    // Validate each part with Zod schema
+    const { jobPartInsertSchema } = await import('@/db/schemas')
+    const validated = jobParts.map((part) => jobPartInsertSchema.parse(part))
+    
+    const { data, error } = await supabase
+      .from('job_parts')
+      .insert(validated)
+      .select()
+    
+    return { data, error }
+  } catch (e) {
+    console.error('createJobPartsTyped failed', e)
+    return { data: null, error: e }
+  }
+}
