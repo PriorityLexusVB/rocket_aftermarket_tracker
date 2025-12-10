@@ -4,10 +4,17 @@ Authoritative workspace guardrails for any automated coding agent (Copilot Chat,
 
 ## 1. Stack Lock (DO NOT MODIFY)
 
-Frontend: Vite 5 + React 18 + TailwindCSS.
-Backend: Supabase (PostgREST + RLS + pg_trgm) accessed via service modules.
-Testing: Vitest (unit), optional Playwright (e2e), no Jest config changes.
-Package manager: `pnpm` (version pinned in `package.json` + `.nvmrc` Node 20). No dependency removals of critical packages noted under `rocketCritical` key.
+Frontend: Vite 5 + React 18 + TailwindCSS.  
+Backend: Supabase (PostgREST + RLS + pg_trgm) accessed via service modules.  
+Data modeling & validation canon (NEW):  
+- Drizzle ORM for schema & types **only** (no direct runtime DB access in the browser).  
+- drizzle-zod to generate Zod schemas from Drizzle tables.  
+- react-hook-form + zodResolver for all new/rewritten forms.
+
+Testing: Vitest (unit), optional Playwright (e2e), no Jest config changes.  
+Package manager: `pnpm` (version pinned in `package.json` + `.nvmrc` Node 20).  
+No dependency removals of critical packages noted under `rocketCritical` key.
+
 
 ## 2. Data & Access Rules
 
