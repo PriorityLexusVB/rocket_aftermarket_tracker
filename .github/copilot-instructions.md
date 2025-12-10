@@ -64,9 +64,10 @@ Disallowed: Dropping existing primary/foreign keys, renaming columns outside a d
 
 ## 7. MCP Usage Pattern
 
-Supabase MCP: schema introspection (list tables, list policies, list extensions) BEFORE code changes.
-GitHub MCP: search code usages before refactors.
-If any MCP action returns an unknown field error: abort modification & emit TODO.
+- Supabase MCP: schema introspection (list tables, list policies, list extensions) BEFORE code changes.
+- GitHub MCP: search code usages before refactors.
+- Supabase MCP / Supabase AI must never execute destructive SQL directly; all schema or function changes must be expressed as migrations under `supabase/migrations/` and reviewed via PR.
+- If any MCP action returns an unknown field error: abort modification & emit TODO.
 
 ## 8. Error Handling Guardrails
 
