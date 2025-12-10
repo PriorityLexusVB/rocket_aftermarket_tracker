@@ -2121,7 +2121,7 @@ const AdminPage = () => {
                   </p>
                 )}
                 <Input
-                  label="Rating (1-5)"
+                  label="Rating (0-5)"
                   type="number"
                   min="0"
                   max="5"

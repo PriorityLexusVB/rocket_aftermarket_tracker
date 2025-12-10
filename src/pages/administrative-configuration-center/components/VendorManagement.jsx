@@ -46,8 +46,7 @@ const VendorManagement = () => {
     },
   })
 
-  // Watch isActive for checkbox
-  const watchedIsActive = watch('isActive')
+
 
   const specialties = [
     'Engine Components',
@@ -577,14 +576,14 @@ const VendorManagement = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rating (0-5)</label>
                 <Input
                   type="number"
                   min="0"
                   max="5"
                   step="0.1"
                   {...register('rating')}
-                  placeholder="Enter rating"
+                  placeholder="Enter rating (0-5)"
                 />
                 {errors?.rating && (
                   <p className="mt-1 text-sm text-red-600">{errors.rating.message}</p>
