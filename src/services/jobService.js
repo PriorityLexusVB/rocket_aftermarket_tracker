@@ -2,6 +2,9 @@
 import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 import { replaceJobPartsForJob } from './jobPartsService'
+// Typed schemas from Drizzle + Zod (Section 20)
+// @ts-ignore - using JSDoc for types
+import { jobInsertSchema } from '@/db/schemas'
 
 const nowIso = () => new Date()?.toISOString()
 
@@ -330,6 +333,41 @@ export const jobService = {
     } catch (err) {
       console.error('[jobs] updateLineItemSchedules failed:', err?.message || err)
       throw new Error(`Failed to update line item schedules: ${err?.message || err}`)
+    }
+  },
+
+  /**
+   * Create a job with typed input validation (Section 20 pattern)
+   * @param {import('@/db/schemas').JobInsert} jobData - Typed job data
+   * @returns {Promise<any>}
+   */
+  async createTyped(jobData) {
+    try {
+      // Validate with Zod schema
+      const validated = jobInsertSchema.parse(jobData)
+      // Delegate to existing createJob with validated data
+      return await this.createJob(validated)
+    } catch (e) {
+      console.error('jobService.createTyped failed', e)
+      throw e
+    }
+  },
+
+  /**
+   * Update a job with typed input validation (Section 20 pattern)
+   * @param {string} jobId - Job ID
+   * @param {Partial<import('@/db/schemas').JobInsert>} jobData - Partial job data
+   * @returns {Promise<any>}
+   */
+  async updateTyped(jobId, jobData) {
+    try {
+      // Validate with Zod schema (partial mode)
+      const validated = jobInsertSchema.partial().parse(jobData)
+      // Delegate to existing updateJob with validated data
+      return await this.updateJob(jobId, validated)
+    } catch (e) {
+      console.error('jobService.updateTyped failed', e)
+      throw e
     }
   },
 }
