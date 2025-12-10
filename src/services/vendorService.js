@@ -66,6 +66,132 @@ export const vendorService = {
       return null
     }
   },
+
+  /**
+   * Get all vendors (active and inactive) for management UI
+   * Section 20: Typed service layer
+   * @param {string|null} orgId - Optional org filter
+   * @returns {Promise<Array>} Array of vendor records
+   */
+  async getAllVendors(orgId = null) {
+    try {
+      let q = supabase.from('vendors').select('*').order('name', { ascending: true })
+      if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+      const { data, error } = await q
+      if (error) throw error
+      return data || []
+    } catch (e) {
+      console.error('vendorService.getAllVendors failed', e)
+      throw e
+    }
+  },
+
+  /**
+   * Create a new vendor (Section 20: Typed with VendorInsert)
+   * @param {import('../db/schemas').VendorInsert} input - Vendor data
+   * @returns {Promise<Object>} Created vendor record
+   */
+  async createVendor(input) {
+    try {
+      // Convert camelCase to snake_case for database
+      const dbInput = {
+        name: input.name,
+        contact_person: input.contactPerson || null,
+        email: input.email || null,
+        phone: input.phone || null,
+        address: input.address || null,
+        specialty: input.specialty || null,
+        rating: input.rating || null,
+        is_active: input.isActive !== undefined ? input.isActive : true,
+        notes: input.notes || null,
+        org_id: input.orgId || null,
+      }
+
+      const { data, error } = await supabase
+        .from('vendors')
+        .insert(dbInput)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (e) {
+      console.error('vendorService.createVendor failed', e)
+      throw e
+    }
+  },
+
+  /**
+   * Update an existing vendor (Section 20: Typed with VendorInsert)
+   * @param {string} id - Vendor ID
+   * @param {import('../db/schemas').VendorInsert} input - Updated vendor data
+   * @returns {Promise<Object>} Updated vendor record
+   */
+  async updateVendor(id, input) {
+    try {
+      // Convert camelCase to snake_case for database
+      const dbInput = {
+        name: input.name,
+        contact_person: input.contactPerson || null,
+        email: input.email || null,
+        phone: input.phone || null,
+        address: input.address || null,
+        specialty: input.specialty || null,
+        rating: input.rating || null,
+        is_active: input.isActive !== undefined ? input.isActive : true,
+        notes: input.notes || null,
+        org_id: input.orgId || null,
+      }
+
+      const { data, error } = await supabase
+        .from('vendors')
+        .update(dbInput)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return data
+    } catch (e) {
+      console.error('vendorService.updateVendor failed', e)
+      throw e
+    }
+  },
+
+  /**
+   * Delete a vendor
+   * @param {string} id - Vendor ID
+   * @returns {Promise<void>}
+   */
+  async deleteVendor(id) {
+    try {
+      const { error } = await supabase.from('vendors').delete().eq('id', id)
+      if (error) throw error
+    } catch (e) {
+      console.error('vendorService.deleteVendor failed', e)
+      throw e
+    }
+  },
+
+  /**
+   * Bulk update vendors (activate/deactivate)
+   * @param {Array<string>} vendorIds - Array of vendor IDs
+   * @param {Object} updates - Fields to update (e.g., { is_active: true })
+   * @returns {Promise<void>}
+   */
+  async bulkUpdateVendors(vendorIds, updates) {
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .update(updates)
+        .in('id', vendorIds)
+
+      if (error) throw error
+    } catch (e) {
+      console.error('vendorService.bulkUpdateVendors failed', e)
+      throw e
+    }
+  },
 }
 
 export default vendorService
