@@ -20,14 +20,18 @@ import { jobs, jobParts, vendors } from './schema';
 export const vendorInsertSchema = createInsertSchema(vendors, {
   // Custom refinements if needed
   name: z.string().min(1, 'Vendor name is required'),
-  rating: z.string().optional().refine(
-    (val) => {
-      if (!val) return true;
-      const num = parseFloat(val);
-      return !isNaN(num) && num >= 0 && num <= 5;
-    },
-    { message: 'Rating must be between 0 and 5' }
-  ),
+  // Rating as string (to match form inputs) but validate as number range
+  rating: z
+    .union([z.string(), z.number()])
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const num = typeof val === 'string' ? parseFloat(val) : val;
+        return !isNaN(num) && num >= 0 && num <= 5;
+      },
+      { message: 'Rating must be between 0 and 5' }
+    ),
 });
 
 export const vendorSelectSchema = createSelectSchema(vendors);

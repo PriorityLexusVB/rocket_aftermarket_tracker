@@ -2,7 +2,6 @@ import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import { toOptions } from '@/lib/options'
 // Typed schemas from Drizzle + Zod (Section 20)
-// @ts-ignore - using JSDoc for types
 import { vendorInsertSchema } from '@/db/schemas'
 
 export async function listVendorsByOrg(orgId) {
