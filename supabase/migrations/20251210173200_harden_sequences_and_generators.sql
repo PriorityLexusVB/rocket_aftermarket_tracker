@@ -13,6 +13,11 @@
 -- Verify and Create Sequences if Missing
 -- ============================================================================
 
+-- Note: We use DO blocks instead of CREATE SEQUENCE IF NOT EXISTS because:
+-- 1. We want to verify the starting value if sequence exists
+-- 2. We want explicit logging about sequence state
+-- 3. This pattern is idempotent and safe for repeated migrations
+
 -- Ensure job_number_seq exists
 DO $$
 BEGIN

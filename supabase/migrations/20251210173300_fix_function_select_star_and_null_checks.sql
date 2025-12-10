@@ -86,7 +86,8 @@ BEGIN
   
   -- Validate that in-house services have proper classification
   -- Only update if service_type is incorrect
-  IF job_record.vendor_id IS NULL AND job_record.service_type != 'in_house' THEN
+  -- Use IS DISTINCT FROM for NULL-safe comparison
+  IF job_record.vendor_id IS NULL AND job_record.service_type IS DISTINCT FROM 'in_house' THEN
     -- Update jobs table to fix service_type
     UPDATE public.jobs 
     SET service_type = 'in_house' 
@@ -282,7 +283,9 @@ BEGIN
   
   -- Generate calendar event ID for tracking
   -- Only if scheduled_start_time exists and calendar_event_id not already set
-  IF NEW.calendar_event_id IS NULL AND NEW.scheduled_start_time IS NOT NULL THEN
+  -- For INSERT operations, NEW.id is available because it's set by DEFAULT gen_random_uuid()
+  -- For UPDATE operations, NEW.id is always present
+  IF NEW.calendar_event_id IS NULL AND NEW.scheduled_start_time IS NOT NULL AND NEW.id IS NOT NULL THEN
     -- Use EXTRACT instead of calling potentially NULL-unsafe functions
     NEW.calendar_event_id = 'deal_' || NEW.id::TEXT || '_' || 
       EXTRACT(EPOCH FROM NEW.scheduled_start_time)::BIGINT::TEXT;
