@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 import { replaceJobPartsForJob } from './jobPartsService'
 // Typed schemas from Drizzle + Zod (Section 20)
-// @ts-ignore - using JSDoc for types
 import { jobInsertSchema } from '@/db/schemas'
 
 const nowIso = () => new Date()?.toISOString()

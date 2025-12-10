@@ -171,19 +171,15 @@ describe('Drizzle + Zod Schema Validation', () => {
     });
 
     it('should allow partial job updates', () => {
+      // Test partial update with just status field
       const partialUpdate = {
         jobStatus: 'completed',
-        // Note: completedAt uses snake_case in DB schema
-        completedAt: new Date().toISOString(),
       };
 
       const result = jobInsertSchema.partial().safeParse(partialUpdate);
-      // completedAt might not be in the schema, so just test with jobStatus
-      const simpleUpdate = { jobStatus: 'completed' };
-      const simpleResult = jobInsertSchema.partial().safeParse(simpleUpdate);
-      expect(simpleResult.success).toBe(true);
-      if (simpleResult.success) {
-        expect(simpleResult.data.jobStatus).toBe('completed');
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.jobStatus).toBe('completed');
       }
     });
   });
