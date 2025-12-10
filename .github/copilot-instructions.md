@@ -22,6 +22,8 @@ No dependency removals of critical packages noted under `rocketCritical` key.
 - All queries must include tenant scoping (orgId / profile context) where applicable.
 - Relationship errors like: `Could not find a relationship` → run `NOTIFY pgrst, 'reload schema'` then retry (document evidence in PR).
 - RLS: preserve existing policies; when adding new tables ensure equivalent tenant isolation.
+- When adding or updating Supabase calls, prefer the typed service functions introduced in Section 20 (e.g., `vendorService.create`, `jobService.createTyped`, `createJobPartsTyped`) instead of inlining queries or introducing new ad-hoc services.
+
 
 ## 3. UI & State Rules
 
@@ -118,6 +120,8 @@ No UI redesigns; no state management rewrites; no switching test runners; no add
 - Telemetry Logic: `src/utils/capabilityTelemetry.js`
 - Health Endpoints: `api/health-*` & `src/api/health/*`
 - MCP Notes: `docs/MCP-NOTES.md`
+- Drizzle/Zod Canon: `docs/DRIZZLE_ZOD_USAGE.md`
+
 
 ## 15. Phased Execution (See MASTER_EXECUTION_PROMPT.md)
 
