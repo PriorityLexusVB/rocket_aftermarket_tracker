@@ -575,149 +575,221 @@ export const jobs = pgTable("jobs", {
   // ... mirror any other existing Supabase columns
 });
 
-20.3 Zod Schemas via drizzle-zod
+-20.3 Zod Schemas via drizzle-zod
+-
+-Zod schemas are generated from Drizzle tables in src/db/schemas.ts using drizzle-zod.
+-
+-Preferred pattern:
+-
+-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+-import { jobs, jobParts, vendors } from "./schema";
+-
+-export const jobInsertSchema = createInsertSchema(jobs);
+-export const jobSelectSchema = createSelectSchema(jobs);
+-export type JobInsert = typeof jobInsertSchema._type;
+-export type Job = typeof jobSelectSchema._type;
+-
+-// Repeat for job_parts, vendors, and any other core tables
+-
+-Agent rules:
+-
+-Do not hand-write new Zod schemas for entities that already have Drizzle tables.
+-
+-If a field changes in Supabase, update Drizzle in schema.ts, then rely on drizzle-zod for Zod.
+-
+-Existing hand-written Zod may remain temporarily, but any major refactor should migrate to this pattern.
+-
+-20.4 React Forms (react-hook-form + Zod)
+-
+-All new or significantly refactored forms must use:
+-
+-react-hook-form for form state.
+-
+-@hookform/resolvers/zod for validation.
+-
+-The generated Zod schemas from src/db/schemas.ts.
+-
+-Canonical pattern:
+-
+-import { useForm } from "react-hook-form";
+-import { zodResolver } from "@hookform/resolvers/zod";
+-import { jobInsertSchema, JobInsert } from "../db/schemas";
+-
+-export function JobForm(props) {
++### 20.3 Zod Schemas via drizzle-zod
++
++Zod schemas are generated from Drizzle tables in `src/db/schemas.ts` using `drizzle-zod`.
++
++**Preferred pattern:**
++
++```ts
++import { createInsertSchema, createSelectSchema } from "drizzle-zod";
++import { jobs, jobParts, vendors } from "./schema";
++
++export const jobInsertSchema = createInsertSchema(jobs);
++export const jobSelectSchema = createSelectSchema(jobs);
++export type JobInsert = typeof jobInsertSchema._type;
++export type Job = typeof jobSelectSchema._type;
++
++// Repeat for job_parts, vendors, and any other core tables
++```
++
++**Agent rules:**
++
++- Do not hand-write new Zod schemas for entities that already have Drizzle tables.
++- If a field changes in Supabase, update Drizzle in `schema.ts`, then rely on drizzle-zod for Zod.
++- Existing hand-written Zod may remain temporarily, but any major refactor should migrate to this pattern.
++
++### 20.4 React Forms (react-hook-form + Zod)
++
++All new or significantly refactored forms must use:
++
++- `react-hook-form` for form state.
++- `@hookform/resolvers/zod` for validation.
++- The generated Zod schemas from `src/db/schemas.ts`.
++
++**Canonical pattern:**
++
++```tsx
++import { useForm } from "react-hook-form";
++import { zodResolver } from "@hookform/resolvers/zod";
++import { jobInsertSchema, JobInsert } from "../db/schemas";
++
++export function JobForm(props) {
+   const {
+     register,
+     handleSubmit,
+     formState: { errors, isSubmitting },
+   } = useForm<JobInsert>({
+     resolver: zodResolver(jobInsertSchema),
+     defaultValues: {
+       customerNeedsLoaner: false,
+       ...props.initialValues,
+     },
+   });
 
-Zod schemas are generated from Drizzle tables in src/db/schemas.ts using drizzle-zod.
+   const onSubmit = handleSubmit(async (data) => {
+     // Pass typed JobInsert to service layer
+     await props.onSave(data);
+   });
 
-Preferred pattern:
+   return (
+     <form onSubmit={onSubmit}>
+       {/* Controlled inputs required per Section 3 */}
+       <input {...register("title")} />
+       {errors.title && <span>{errors.title.message}</span>}
+       {/* ...other fields */}
+     </form>
+   );
+-}
+-
+-
+-Guardrails:
+-
+-Forms may not introduce custom adhoc TS interfaces when JobInsert / VendorInsert etc. exist.
+-
+-Validation logic must live in the Zod schema, not duplicated in component code.
+-
+-Keep Section 3 rules: controlled inputs only, respect existing debounce/caching patterns.
+-
+-20.5 Supabase Calls & Types
+-
+-Supabase CRUD continues to use the existing service/lib modules.
+-
+-Data flowing into Supabase must be typed via the Drizzle/Zod types:
+-
+-// services/jobsService.ts
+-import type { JobInsert } from "../db/schemas";
+-import { supabaseClient } from "../lib/supabase";
+-
+-export async function createJob(input: JobInsert) {
+-  const { error } = await supabaseClient.from("jobs").insert(input);
+-  if (error) throw error;
+-}
+-
+-
+-Agent rules:
+-
+-Do not import the Supabase client into React components (Section 2 still applies).
+-
+-Do not construct raw objects with stringly-typed fields when a *Insert type exists.
+-
+-Prefer JobInsert, JobPartInsert, VendorInsert, etc. everywhere you pass data into Supabase.
+-
+-20.6 Drizzle CLI Usage
+-
+-Allowed scripts (to be defined in package.json if not already):
+-
+-"drizzle:generate": "drizzle-kit generate"
+-
+-"drizzle:studio": "drizzle-kit studio"
+-
+-drizzle:generate is used to verify schema.ts is syntactically correct and aligned with Supabase.
+-
+-drizzle:push (or any schema-changing Drizzle command) is NOT allowed against production.
+-
+-All real schema changes go through Supabase migrations and follow Sections 5–6.
+-
+-20.7 Migration & Schema Drift Handling
+-
+-Source of truth for real database changes: supabase/migrations/.
+-
+-If Drizzle schema and Supabase drift:
+-
+-Update Drizzle to match the current Supabase schema.
+-
+-Do not retroactively modify historic migrations.
+-
+-Agents must treat any detected drift as an abort-and-TODO condition unless explicitly requested to resolve it as a dedicated migration PR.
++}
++```
++
++**Guardrails:**
++
++- Forms may not introduce custom adhoc TS interfaces when `JobInsert` / `VendorInsert` etc. exist.
++- Validation logic must live in the Zod schema, not duplicated in component code.
++- Keep Section 3 rules: controlled inputs only, respect existing debounce/caching patterns.
++
++### 20.5 Supabase Calls & Types
++
++Supabase CRUD continues to use the existing service/lib modules.
++
++Data flowing into Supabase must be typed via the Drizzle/Zod types:
++
++```ts
++// services/jobsService.ts
++import type { JobInsert } from "../db/schemas";
++import { supabaseClient } from "../lib/supabase";
++
++export async function createJob(input: JobInsert) {
++  const { error } = await supabaseClient.from("jobs").insert(input);
++  if (error) throw error;
++}
++```
++
++**Agent rules:**
++
++- Do not import the Supabase client into React components (Section 2 still applies).
++- Do not construct raw objects with stringly-typed fields when a `*Insert` type exists.
++- Prefer `JobInsert`, `JobPartInsert`, `VendorInsert`, etc. everywhere you pass data into Supabase.
++
++### 20.6 Drizzle CLI Usage
++
++- Allowed scripts (to be defined in `package.json` if not already):
++  - `"drizzle:generate": "drizzle-kit generate"`
++  - `"drizzle:studio": "drizzle-kit studio"`
++- `drizzle:generate` is used to verify `schema.ts` is syntactically correct and aligned with Supabase.
++- `drizzle:push` (or any schema-changing Drizzle command) is **NOT allowed** against production.
++  - All real schema changes go through Supabase migrations and follow Sections 5–6.
++
++### 20.7 Migration & Schema Drift Handling
++
++- Source of truth for real database changes: `supabase/migrations/`.
++- If Drizzle schema and Supabase drift:
++  - Update Drizzle to match the current Supabase schema.
++  - Do not retroactively modify historic migrations.
++- Agents must treat any detected drift as an **abort-and-TODO** condition unless explicitly requested to resolve it as a dedicated migration PR.
 
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { jobs, jobParts, vendors } from "./schema";
-
-export const jobInsertSchema = createInsertSchema(jobs);
-export const jobSelectSchema = createSelectSchema(jobs);
-export type JobInsert = typeof jobInsertSchema._type;
-export type Job = typeof jobSelectSchema._type;
-
-// Repeat for job_parts, vendors, and any other core tables
-
-Agent rules:
-
-Do not hand-write new Zod schemas for entities that already have Drizzle tables.
-
-If a field changes in Supabase, update Drizzle in schema.ts, then rely on drizzle-zod for Zod.
-
-Existing hand-written Zod may remain temporarily, but any major refactor should migrate to this pattern.
-
-20.4 React Forms (react-hook-form + Zod)
-
-All new or significantly refactored forms must use:
-
-react-hook-form for form state.
-
-@hookform/resolvers/zod for validation.
-
-The generated Zod schemas from src/db/schemas.ts.
-
-Canonical pattern:
-
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { jobInsertSchema, JobInsert } from "../db/schemas";
-
-export function JobForm(props) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<JobInsert>({
-    resolver: zodResolver(jobInsertSchema),
-    defaultValues: {
-      customerNeedsLoaner: false,
-      ...props.initialValues,
-    },
-  });
-
-  const onSubmit = handleSubmit(async (data) => {
-    // Pass typed JobInsert to service layer
-    await props.onSave(data);
-  });
-
-  return (
-    <form onSubmit={onSubmit}>
-      {/* Controlled inputs required per Section 3 */}
-      <input {...register("title")} />
-      {errors.title && <span>{errors.title.message}</span>}
-      {/* ...other fields */}
-    </form>
-  );
-}
-
-
-Guardrails:
-
-Forms may not introduce custom adhoc TS interfaces when JobInsert / VendorInsert etc. exist.
-
-Validation logic must live in the Zod schema, not duplicated in component code.
-
-Keep Section 3 rules: controlled inputs only, respect existing debounce/caching patterns.
-
-20.5 Supabase Calls & Types
-
-Supabase CRUD continues to use the existing service/lib modules.
-
-Data flowing into Supabase must be typed via the Drizzle/Zod types:
-
-// services/jobsService.ts
-import type { JobInsert } from "../db/schemas";
-import { supabaseClient } from "../lib/supabase";
-
-export async function createJob(input: JobInsert) {
-  const { error } = await supabaseClient.from("jobs").insert(input);
-  if (error) throw error;
-}
-
-
-Agent rules:
-
-Do not import the Supabase client into React components (Section 2 still applies).
-
-Do not construct raw objects with stringly-typed fields when a *Insert type exists.
-
-Prefer JobInsert, JobPartInsert, VendorInsert, etc. everywhere you pass data into Supabase.
-
-20.6 Drizzle CLI Usage
-
-Allowed scripts (to be defined in package.json if not already):
-
-"drizzle:generate": "drizzle-kit generate"
-
-"drizzle:studio": "drizzle-kit studio"
-
-drizzle:generate is used to verify schema.ts is syntactically correct and aligned with Supabase.
-
-drizzle:push (or any schema-changing Drizzle command) is NOT allowed against production.
-
-All real schema changes go through Supabase migrations and follow Sections 5–6.
-
-20.7 Migration & Schema Drift Handling
-
-Source of truth for real database changes: supabase/migrations/.
-
-If Drizzle schema and Supabase drift:
-
-Update Drizzle to match the current Supabase schema.
-
-Do not retroactively modify historic migrations.
-
-Agents must treat any detected drift as an abort-and-TODO condition unless explicitly requested to resolve it as a dedicated migration PR.
-
-
----
-
-## 4️⃣ What this actually buys you
-
-With these changes:
-
-- Copilot now knows Drizzle/Zod/RHF are **part of the canon**, not just a suggestion.
-- Data/migration safety rules are still anchored on Supabase + your existing migration process.
-- Any agent touching forms or Supabase is pushed toward:
-  - `src/db/schema.ts` → `src/db/schemas.ts` → `react-hook-form + zodResolver` → Supabase service modules.
-
-From here, the “Refactor forms with Drizzle + Zod” issue you assign to Copilot will line up perfectly with these instructions, and you don’t have to manually police every PR.
-
-If you want, next I can also give you a **shorter “Form Refactor” issue template** that explicitly name-drops “Section 20” so Copilot references it in its PR checklist.
-::contentReference[oaicite:0]{index=0}
 ---
 
 End of instructions.
