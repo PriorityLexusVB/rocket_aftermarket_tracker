@@ -20,18 +20,11 @@ import { jobs, jobParts, vendors } from './schema';
 export const vendorInsertSchema = createInsertSchema(vendors, {
   // Custom refinements if needed
   name: z.string().min(1, 'Vendor name is required'),
-  // Rating as string (to match form inputs) but validate as number range
-  rating: z
-    .union([z.string(), z.number()])
-    .optional()
-    .refine(
-      (val) => {
-        if (!val) return true;
-        const num = typeof val === 'string' ? parseFloat(val) : val;
-        return !isNaN(num) && num >= 0 && num <= 5;
-      },
-      { message: 'Rating must be between 0 and 5' }
-    ),
+  // Rating: coerce string/number input to number, validate range
+  rating: z.coerce.number()
+    .min(0, 'Rating must be between 0 and 5')
+    .max(5, 'Rating must be between 0 and 5')
+    .optional(),
 });
 
 export const vendorSelectSchema = createSelectSchema(vendors);
@@ -47,8 +40,8 @@ export const jobInsertSchema = createInsertSchema(jobs, {
   // Custom refinements
   title: z.string().min(1, 'Job title is required'),
   jobNumber: z.string().min(1, 'Job number is required'),
-  scheduledStartTime: z.string().optional(),
-  scheduledEndTime: z.string().optional(),
+  scheduledStartTime: z.string().optional().describe('[DEPRECATED] Use job_parts scheduled times'),
+  scheduledEndTime: z.string().optional().describe('[DEPRECATED] Use job_parts scheduled times'),
 });
 
 export const jobSelectSchema = createSelectSchema(jobs);
@@ -63,16 +56,7 @@ export type Job = z.infer<typeof jobSelectSchema>;
 export const jobPartInsertSchema = createInsertSchema(jobParts, {
   // Custom refinements
   quantityUsed: z.number().int().min(1, 'Quantity must be at least 1'),
-  unitPrice: z.union([
-    z.number().min(0, 'Unit price must be non-negative'),
-    z.string().refine(
-      (val) => {
-        const num = parseFloat(val);
-        return !isNaN(num) && num >= 0;
-      },
-      { message: 'Unit price must be a non-negative number' }
-    ),
-  ]),
+  unitPrice: z.coerce.number().min(0, 'Unit price must be non-negative'),
 });
 
 export const jobPartSelectSchema = createSelectSchema(jobParts);

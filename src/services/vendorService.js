@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import { toOptions } from '@/lib/options'
+import { z } from 'zod'
 // Typed schemas from Drizzle + Zod (Section 20)
 import { vendorInsertSchema } from '@/db/schemas'
 
@@ -85,6 +86,15 @@ export const vendorService = {
         .single()
       return { data, error }
     } catch (e) {
+      if (e instanceof z.ZodError) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Validation failed: ' + e.errors.map(err => err.message).join(', '),
+            details: e.errors 
+          }
+        }
+      }
       console.error('vendorService.create failed', e)
       return { data: null, error: e }
     }
@@ -108,6 +118,15 @@ export const vendorService = {
         .single()
       return { data, error }
     } catch (e) {
+      if (e instanceof z.ZodError) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Validation failed: ' + e.errors.map(err => err.message).join(', '),
+            details: e.errors 
+          }
+        }
+      }
       console.error('vendorService.update failed', e)
       return { data: null, error: e }
     }
