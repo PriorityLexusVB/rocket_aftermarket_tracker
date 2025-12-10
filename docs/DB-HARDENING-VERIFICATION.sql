@@ -11,6 +11,7 @@ SELECT
   pg_catalog.pg_get_function_identity_arguments(p.oid) as arguments,
   p.prosecdef as is_security_definer,
   CASE 
+    WHEN p.proacl IS NULL THEN '❌ HAS DEFAULT PUBLIC ACCESS'
     WHEN EXISTS (
       SELECT 1 FROM pg_proc_acl_explode(p.proacl) pac
       JOIN pg_authid a ON a.oid = pac.grantee
@@ -193,11 +194,12 @@ FROM public.check_sequence_health();
 SELECT 
   'Permission Hardening' as check_category,
   COUNT(*) FILTER (
-    WHERE NOT EXISTS (
-      SELECT 1 FROM pg_proc_acl_explode(p.proacl) pac
-      JOIN pg_authid a ON a.oid = pac.grantee
-      WHERE a.rolname IN ('public', 'anon', 'authenticated')
-    )
+    WHERE p.proacl IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_proc_acl_explode(p.proacl) pac
+        JOIN pg_authid a ON a.oid = pac.grantee
+        WHERE a.rolname IN ('public', 'anon', 'authenticated')
+      )
   )::TEXT || ' / 5 functions restricted' as result
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
