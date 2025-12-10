@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@dhiwise/component-tagger": "^1.0.10",
+    "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-slot": "^1.2.4",
     "@reduxjs/toolkit": "^2.11.1",
     "@supabase/supabase-js": "^2.86.2",
@@ -44,6 +45,8 @@
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^16.0.1",
+    "drizzle-orm": "^0.45.1",
+    "drizzle-zod": "^0.8.3",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.556.0",
     "qrcode": "^1.5.4",
@@ -58,7 +61,8 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-elevation": "^2.0.0",
-    "tailwindcss-fluid-type": "^2.0.7"
+    "tailwindcss-fluid-type": "^2.0.7",
+    "zod": "^4.1.13"
   },
   "scripts": {
     "dev": "vite",
@@ -80,7 +84,9 @@
     "db:audit": "npx supabase@latest db query ./scripts/sql/audit_security_surface.sql",
     "db:seed-org": "npx supabase@latest db query ./scripts/attach_org.sql",
     "db:seed-e2e": "node scripts/seedE2E.js",
-    "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs"
+    "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs",
+    "drizzle:generate": "drizzle-kit generate",
+    "drizzle:studio": "drizzle-kit studio"
   },
   "eslintConfig": {
     "extends": [
@@ -117,6 +123,7 @@
     "@typescript-eslint/parser": "^8.48.1",
     "@vitejs/plugin-react": "4.7.0",
     "autoprefixer": "10.4.22",
+    "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^7.0.1",

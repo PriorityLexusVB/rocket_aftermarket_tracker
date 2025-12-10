@@ -51,6 +51,9 @@ dist/
 dist/
 build-output.log
 
+# Drizzle generated migrations (we use supabase/migrations instead)
+drizzle/
+
 # allow select VS Code files
 !.vscode/extensions.list
 !.vscode/profiles/
