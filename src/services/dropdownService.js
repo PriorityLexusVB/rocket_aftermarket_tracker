@@ -269,7 +269,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
           ? 'full_name'
           : caps.display_name
             ? 'display_name'
-            : null
+            : 'email'
 
       try {
         // 1) exact filter by department/role
@@ -354,7 +354,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
         ? 'full_name'
         : caps2.display_name
           ? 'display_name'
-          : null
+          : 'email'
 
     const fuzzTerms = [...departments, ...roles].map((s) => s.trim()).filter(Boolean)
     // Important: do not use ilike on enum columns (role). Some environments store role as an enum,
@@ -555,7 +555,7 @@ export async function globalSearch(term) {
         ? 'full_name'
         : caps.display_name
           ? 'display_name'
-          : null
+          : 'email'
     const [uData, vData, pData] = await Promise.all([
       (async () => {
         let uq = supabase
