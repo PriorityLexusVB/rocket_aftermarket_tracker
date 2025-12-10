@@ -169,7 +169,7 @@ BEGIN
   -- Build and validate job number
   -- ...
   
-  IF job_number IS NULL OR LENGTH(job_number) < 10 THEN
+  IF job_number IS NULL OR LENGTH(job_number) < 16 THEN
     RAISE EXCEPTION 'Generated invalid job number: %', job_number;
   END IF;
   

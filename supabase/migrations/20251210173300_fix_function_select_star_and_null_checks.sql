@@ -210,12 +210,13 @@ BEGIN
   sms_vars := jsonb_build_object(
     'STOCK', COALESCE(stock_num, 'N/A'),
     'DATE', scheduled_start,
-    'TIME', COALESCE(
-      TO_CHAR(NEW.scheduled_start_time AT TIME ZONE 'America/New_York', 'HH12:MI AM'),
-      'TBD'
-    ),
+    'TIME', CASE
+      WHEN NEW.scheduled_start_time IS NOT NULL THEN
+        TO_CHAR(NEW.scheduled_start_time AT TIME ZONE 'America/New_York', 'HH12:MI AM')
+      ELSE 'TBD'
+    END,
     'ETA', scheduled_end,
-    'PHONE', '555-SHOP'
+    'PHONE', '555-SHOP'  -- TODO: Make configurable via settings table
   );
   
   -- Enqueue SMS notification

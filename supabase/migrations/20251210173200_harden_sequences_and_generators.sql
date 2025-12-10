@@ -226,7 +226,12 @@ $$;
 COMMENT ON FUNCTION public.check_sequence_health() IS
 'Returns health metrics for job and transaction number sequences. Useful for monitoring.';
 
+-- NOTE: This function is SECURITY DEFINER and exposes global sequence metadata.
+-- In multi-tenant systems, granting to 'authenticated' leaks cross-tenant metrics
+-- (approximate counts of all jobs/transactions). Consider restricting to admin/service roles.
+-- 
 -- Grant execute on health check to authenticated users (read-only diagnostic)
+-- CAUTION: This grants all authenticated users access to sequence health data
 GRANT EXECUTE ON FUNCTION public.check_sequence_health() TO authenticated;
 
 -- ============================================================================
