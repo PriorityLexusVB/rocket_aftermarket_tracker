@@ -648,6 +648,7 @@ const AdminPage = () => {
               specialty: item.specialty || '',
               rating: item.rating?.toString() || '',
               orgId: item.org_id || orgId || null,
+              isActive: item.is_active !== undefined ? item.is_active : true,
             }
           : {
               name: '',
@@ -657,6 +658,7 @@ const AdminPage = () => {
               specialty: '',
               rating: '',
               orgId: orgId || null,
+              isActive: true,
             }
       )
     } else if (type === 'product') {
@@ -694,8 +696,9 @@ const AdminPage = () => {
       } else if (modalType === 'staff') {
         await handleStaffSubmit()
       } else if (modalType === 'vendor') {
-        // Section 20: handleSubmit is already wrapped in handleVendorSubmit
-        await handleVendorSubmit(e)
+        // Section 20: handleVendorSubmit is react-hook-form's handleSubmit wrapper
+        // Call it directly to trigger validation and submission
+        await handleVendorSubmit()
       } else if (modalType === 'product') {
         await handleProductSubmit()
       } else if (modalType === 'template') {
@@ -2151,6 +2154,19 @@ const AdminPage = () => {
                   {vendorFormMethods.formState.errors?.orgId && (
                     <p className="mt-1 text-sm text-red-600">
                       {vendorFormMethods.formState.errors.orgId.message}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    {...vendorFormMethods.register('isActive')}
+                    className="rounded"
+                  />
+                  <label className="ml-2 text-sm text-gray-700">Active Vendor</label>
+                  {vendorFormMethods.formState.errors?.isActive && (
+                    <p className="ml-2 text-sm text-red-600">
+                      {vendorFormMethods.formState.errors.isActive.message}
                     </p>
                   )}
                 </div>

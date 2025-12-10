@@ -30,17 +30,14 @@ export const vendorInsertSchema = baseVendorInsertSchema
       .refine(
         (val) => val === null || (val >= 0 && val <= 5),
         'Rating must be between 0 and 5'
-      )
-      .or(z.null())
-      .optional(),
+      ),
     // Name is required
     name: z.string().min(1, 'Vendor name is required'),
     // Email validation (optional but must be valid if provided)
-    email: z
-      .string()
-      .optional()
-      .transform((val) => (val === '' ? undefined : val))
-      .pipe(z.string().email('Invalid email address').optional()),
+    email: z.union([
+      z.literal(''),
+      z.string().email('Invalid email address')
+    ]).optional(),
   })
   .omit({
     // Remove fields that are auto-generated or set by the system

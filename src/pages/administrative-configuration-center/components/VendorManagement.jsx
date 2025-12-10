@@ -27,8 +27,6 @@ const VendorManagement = () => {
     register,
     handleSubmit,
     reset,
-    setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(vendorInsertSchema),
@@ -92,8 +90,6 @@ const VendorManagement = () => {
   // Section 20: react-hook-form handleSubmit wrapper
   const onSubmit = handleSubmit(async (formData) => {
     try {
-      setLoading(true)
-
       if (formMode === 'add') {
         const newVendor = await vendorService?.createVendor(formData)
         setVendors((prev) => [newVendor, ...prev])
@@ -134,8 +130,6 @@ const VendorManagement = () => {
         entityId: formMode === 'edit' ? selectedVendor?.id : 'new',
         formData,
       })
-    } finally {
-      setLoading(false)
     }
   })
 
@@ -619,9 +613,9 @@ const VendorManagement = () => {
                 <UIButton
                   type="submit"
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                  disabled={loading || isSubmitting}
+                  disabled={isSubmitting}
                 >
-                  {loading || isSubmitting
+                  {isSubmitting
                     ? 'Saving...'
                     : formMode === 'add'
                       ? 'Add Vendor'
@@ -635,7 +629,7 @@ const VendorManagement = () => {
                     resetForm()
                   }}
                   className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
-                  disabled={loading || isSubmitting}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </UIButton>
