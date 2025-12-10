@@ -285,6 +285,8 @@ BEGIN
   -- Only if scheduled_start_time exists and calendar_event_id not already set
   -- For INSERT operations, NEW.id is available because it's set by DEFAULT gen_random_uuid()
   -- For UPDATE operations, NEW.id is always present
+  -- The NEW.id NULL check is defensive programming - if somehow NEW.id is NULL (should never
+  -- happen given table structure), we skip calendar_event_id generation rather than crash
   IF NEW.calendar_event_id IS NULL AND NEW.scheduled_start_time IS NOT NULL AND NEW.id IS NOT NULL THEN
     -- Use EXTRACT instead of calling potentially NULL-unsafe functions
     NEW.calendar_event_id = 'deal_' || NEW.id::TEXT || '_' || 
