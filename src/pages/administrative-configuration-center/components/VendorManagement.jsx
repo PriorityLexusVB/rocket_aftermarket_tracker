@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useLogger } from '../../../hooks/useLogger'
 import UIButton from '../../../components/ui/Button'
@@ -6,6 +8,7 @@ import Input from '../../../components/ui/Input'
 import Select from '../../../components/ui/Select'
 import Search from '../../../components/ui/Search'
 import { vendorService } from '../../../services/vendorService'
+import { vendorInsertSchema } from '../../../db/schemas'
 
 const VendorManagement = () => {
   const { userProfile } = useAuth()
@@ -19,18 +22,29 @@ const VendorManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterSpecialty, setFilterSpecialty] = useState('')
 
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    contact_person: '',
-    email: '',
-    phone: '',
-    address: '',
-    specialty: '',
-    rating: '',
-    notes: '',
-    is_active: true,
+  // React Hook Form with Zod validation (Section 20)
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(vendorInsertSchema),
+    defaultValues: {
+      name: '',
+      contactPerson: '',
+      email: '',
+      phone: '',
+      address: '',
+      specialty: '',
+      rating: '',
+      notes: '',
+      isActive: true,
+      orgId: userProfile?.org_id || null,
+    },
   })
+
+
 
   const specialties = [
     'Engine Components',
@@ -73,13 +87,9 @@ const VendorManagement = () => {
     }
   }
 
-  const handleFormSubmit = async (e) => {
-    e?.preventDefault()
-    e?.stopPropagation()
-
+  // Section 20: react-hook-form handleSubmit wrapper
+  const onSubmit = handleSubmit(async (formData) => {
     try {
-      setLoading(true)
-
       if (formMode === 'add') {
         const newVendor = await vendorService?.createVendor(formData)
         setVendors((prev) => [newVendor, ...prev])
@@ -120,26 +130,26 @@ const VendorManagement = () => {
         entityId: formMode === 'edit' ? selectedVendor?.id : 'new',
         formData,
       })
-    } finally {
-      setLoading(false)
     }
-  }
+  })
 
   const handleEditVendor = (vendor) => {
     console.log('Edit button clicked for vendor:', vendor?.name)
 
     try {
       setSelectedVendor(vendor)
-      setFormData({
+      // Section 20: Use react-hook-form reset to populate form
+      reset({
         name: vendor?.name || '',
-        contact_person: vendor?.contact_person || '',
+        contactPerson: vendor?.contact_person || '',
         email: vendor?.email || '',
         phone: vendor?.phone || '',
         address: vendor?.address || '',
         specialty: vendor?.specialty || '',
-        rating: vendor?.rating || '',
+        rating: vendor?.rating?.toString() || '',
         notes: vendor?.notes || '',
-        is_active: vendor?.is_active !== undefined ? vendor?.is_active : true,
+        isActive: vendor?.is_active !== undefined ? vendor?.is_active : true,
+        orgId: vendor?.org_id || userProfile?.org_id || null,
       })
       setFormMode('edit')
       setShowForm(true)
@@ -187,16 +197,18 @@ const VendorManagement = () => {
     try {
       setFormMode('add')
       setSelectedVendor(null)
-      setFormData({
+      // Section 20: Use react-hook-form reset for new form
+      reset({
         name: '',
-        contact_person: '',
+        contactPerson: '',
         email: '',
         phone: '',
         address: '',
         specialty: '',
         rating: '',
         notes: '',
-        is_active: true,
+        isActive: true,
+        orgId: userProfile?.org_id || null,
       })
       setShowForm(true)
     } catch (error) {
@@ -236,16 +248,18 @@ const VendorManagement = () => {
   }
 
   const resetForm = () => {
-    setFormData({
+    // Section 20: Use react-hook-form reset
+    reset({
       name: '',
-      contact_person: '',
+      contactPerson: '',
       email: '',
       phone: '',
       address: '',
       specialty: '',
       rating: '',
       notes: '',
-      is_active: true,
+      isActive: true,
+      orgId: userProfile?.org_id || null,
     })
     setSelectedVendor(null)
     setShowForm(false)
@@ -490,70 +504,59 @@ const VendorManagement = () => {
               </UIButton>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+            <form onSubmit={onSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Vendor Name *
                 </label>
-                <Input
-                  value={formData?.name}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e?.target?.value }))}
-                  required
-                  placeholder="Enter vendor name"
-                />
+                <Input {...register('name')} placeholder="Enter vendor name" />
+                {errors?.name && (
+                  <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Contact Person
                 </label>
-                <Input
-                  value={formData?.contact_person}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, contact_person: e?.target?.value }))
-                  }
-                  placeholder="Enter contact person name"
-                />
+                <Input {...register('contactPerson')} placeholder="Enter contact person name" />
+                {errors?.contactPerson && (
+                  <p className="mt-1 text-sm text-red-600">{errors.contactPerson.message}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <Input
-                  type="email"
-                  value={formData?.email}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e?.target?.value }))}
-                  placeholder="Enter email address"
-                />
+                <Input type="email" {...register('email')} placeholder="Enter email address" />
+                {errors?.email && (
+                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                <Input
-                  value={formData?.phone}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, phone: e?.target?.value }))}
-                  placeholder="Enter phone number"
-                />
+                <Input {...register('phone')} placeholder="Enter phone number" />
+                {errors?.phone && (
+                  <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                 <textarea
-                  value={formData?.address}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, address: e?.target?.value }))}
+                  {...register('address')}
                   placeholder="Enter address"
                   rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors?.address && (
+                  <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
-                <Select
-                  value={formData?.specialty}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, specialty: e?.target?.value }))
-                  }
-                >
+                <Select {...register('specialty')}>
                   <option value="">Select specialty</option>
                   {specialties?.map((specialty) => (
                     <option key={specialty} value={specialty}>
@@ -561,51 +564,62 @@ const VendorManagement = () => {
                     </option>
                   ))}
                 </Select>
+                {errors?.specialty && (
+                  <p className="mt-1 text-sm text-red-600">{errors.specialty.message}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rating (0-5)</label>
                 <Input
                   type="number"
-                  min="1"
+                  min="0"
                   max="5"
                   step="0.1"
-                  value={formData?.rating}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, rating: e?.target?.value }))}
-                  placeholder="Enter rating"
+                  {...register('rating')}
+                  placeholder="Enter rating (0-5)"
                 />
+                {errors?.rating && (
+                  <p className="mt-1 text-sm text-red-600">{errors.rating.message}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
-                  value={formData?.notes}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e?.target?.value }))}
+                  {...register('notes')}
                   placeholder="Enter notes"
                   rows="3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                {errors?.notes && (
+                  <p className="mt-1 text-sm text-red-600">{errors.notes.message}</p>
+                )}
               </div>
 
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData?.is_active}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, is_active: e?.target?.checked }))
-                  }
+                  {...register('isActive')}
                   className="rounded"
                 />
                 <label className="ml-2 text-sm text-gray-700">Active Vendor</label>
+                {errors?.isActive && (
+                  <p className="ml-2 text-sm text-red-600">{errors.isActive.message}</p>
+                )}
               </div>
 
               <div className="flex space-x-3 pt-4">
                 <UIButton
                   type="submit"
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                  disabled={loading}
+                  disabled={isSubmitting}
                 >
-                  {loading ? 'Saving...' : formMode === 'add' ? 'Add Vendor' : 'Update Vendor'}
+                  {isSubmitting
+                    ? 'Saving...'
+                    : formMode === 'add'
+                      ? 'Add Vendor'
+                      : 'Update Vendor'}
                 </UIButton>
                 <UIButton
                   type="button"
@@ -615,7 +629,7 @@ const VendorManagement = () => {
                     resetForm()
                   }}
                   className="px-6 bg-gray-500 hover:bg-gray-600 text-white"
-                  disabled={loading}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </UIButton>

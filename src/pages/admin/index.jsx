@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import useTenant from '../../hooks/useTenant'
@@ -22,6 +24,8 @@ import {
 import Icon from '../../components/AppIcon'
 import { useLogger } from '../../hooks/useLogger'
 import { clearDropdownCache } from '../../services/dropdownService'
+import { vendorService } from '../../services/vendorService'
+import { vendorInsertSchema } from '../../db/schemas'
 
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
@@ -81,14 +85,18 @@ const AdminPage = () => {
     department: '',
   })
 
-  const [vendorForm, setVendorForm] = useState({
-    name: '',
-    contact_person: '',
-    phone: '',
-    email: '',
-    specialty: '',
-    rating: '',
-    org_id: null,
+  // Section 20: React Hook Form for Vendor with Zod validation
+  const vendorFormMethods = useForm({
+    resolver: zodResolver(vendorInsertSchema),
+    defaultValues: {
+      name: '',
+      contactPerson: '',
+      phone: '',
+      email: '',
+      specialty: '',
+      rating: '',
+      orgId: null,
+    },
   })
 
   const [productForm, setProductForm] = useState({
@@ -629,16 +637,29 @@ const AdminPage = () => {
         }
       )
     } else if (type === 'vendor') {
-      setVendorForm(
-        item || {
-          name: '',
-          contact_person: '',
-          phone: '',
-          email: '',
-          specialty: '',
-          rating: '',
-          org_id: orgId || null,
-        }
+      // Section 20: Use react-hook-form reset
+      vendorFormMethods.reset(
+        item
+          ? {
+              name: item.name || '',
+              contactPerson: item.contact_person || '',
+              phone: item.phone || '',
+              email: item.email || '',
+              specialty: item.specialty || '',
+              rating: item.rating?.toString() || '',
+              orgId: item.org_id || orgId || null,
+              isActive: item.is_active !== undefined ? item.is_active : true,
+            }
+          : {
+              name: '',
+              contactPerson: '',
+              phone: '',
+              email: '',
+              specialty: '',
+              rating: '',
+              orgId: orgId || null,
+              isActive: true,
+            }
       )
     } else if (type === 'product') {
       setProductForm(
@@ -675,6 +696,8 @@ const AdminPage = () => {
       } else if (modalType === 'staff') {
         await handleStaffSubmit()
       } else if (modalType === 'vendor') {
+        // Section 20: handleVendorSubmit is react-hook-form's handleSubmit wrapper
+        // Call it directly to trigger validation and submission
         await handleVendorSubmit()
       } else if (modalType === 'product') {
         await handleProductSubmit()
@@ -844,35 +867,19 @@ const AdminPage = () => {
     setTimeout(() => setStaffActionMsg(''), 3000)
   }
 
-  const handleVendorSubmit = async () => {
-    const vendorData = {
-      name: vendorForm?.name,
-      contact_person: vendorForm?.contact_person,
-      phone: vendorForm?.phone,
-      email: vendorForm?.email,
-      specialty: vendorForm?.specialty,
-      rating: vendorForm?.rating ? parseFloat(vendorForm?.rating) : null,
-      org_id: vendorForm?.org_id || orgId || null,
-    }
-
+  // Section 20: Typed vendor submit using vendorService
+  const handleVendorSubmit = vendorFormMethods.handleSubmit(async (formData) => {
     if (editingItem) {
-      const { error } = await supabase
-        ?.from('vendors')
-        ?.update(vendorData)
-        ?.eq('id', editingItem?.id)
-
-      if (error) throw error
+      await vendorService.updateVendor(editingItem?.id, formData)
     } else {
-      const { error } = await supabase?.from('vendors')?.insert([vendorData])
-
-      if (error) throw error
+      await vendorService.createVendor(formData)
     }
 
     await loadVendors()
     try {
       clearDropdownCache()
     } catch {}
-  }
+  })
 
   const handleProductSubmit = async () => {
     const productData = {
@@ -2081,51 +2088,60 @@ const AdminPage = () => {
               <>
                 <Input
                   label="Vendor Name"
-                  value={vendorForm?.name}
-                  onChange={(e) => setVendorForm({ ...vendorForm, name: e?.target?.value })}
+                  {...vendorFormMethods.register('name')}
                   required
                 />
+                {vendorFormMethods.formState.errors?.name && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {vendorFormMethods.formState.errors.name.message}
+                  </p>
+                )}
                 <Input
                   label="Contact Person"
-                  value={vendorForm?.contact_person}
-                  onChange={(e) =>
-                    setVendorForm({ ...vendorForm, contact_person: e?.target?.value })
-                  }
+                  {...vendorFormMethods.register('contactPerson')}
                 />
+                {vendorFormMethods.formState.errors?.contactPerson && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {vendorFormMethods.formState.errors.contactPerson.message}
+                  </p>
+                )}
+                <Input label="Phone" {...vendorFormMethods.register('phone')} />
+                {vendorFormMethods.formState.errors?.phone && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {vendorFormMethods.formState.errors.phone.message}
+                  </p>
+                )}
+                <Input label="Email" type="email" {...vendorFormMethods.register('email')} />
+                {vendorFormMethods.formState.errors?.email && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {vendorFormMethods.formState.errors.email.message}
+                  </p>
+                )}
+                <Input label="Specialty" {...vendorFormMethods.register('specialty')} />
+                {vendorFormMethods.formState.errors?.specialty && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {vendorFormMethods.formState.errors.specialty.message}
+                  </p>
+                )}
                 <Input
-                  label="Phone"
-                  value={vendorForm?.phone}
-                  onChange={(e) => setVendorForm({ ...vendorForm, phone: e?.target?.value })}
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  value={vendorForm?.email}
-                  onChange={(e) => setVendorForm({ ...vendorForm, email: e?.target?.value })}
-                />
-                <Input
-                  label="Specialty"
-                  value={vendorForm?.specialty}
-                  onChange={(e) => setVendorForm({ ...vendorForm, specialty: e?.target?.value })}
-                />
-                <Input
-                  label="Rating (1-5)"
+                  label="Rating (0-5)"
                   type="number"
-                  min="1"
+                  min="0"
                   max="5"
                   step="0.1"
-                  value={vendorForm?.rating}
-                  onChange={(e) => setVendorForm({ ...vendorForm, rating: e?.target?.value })}
+                  {...vendorFormMethods.register('rating')}
                 />
+                {vendorFormMethods.formState.errors?.rating && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {vendorFormMethods.formState.errors.rating.message}
+                  </p>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Organization
                   </label>
                   <select
-                    value={vendorForm?.org_id || ''}
-                    onChange={(e) =>
-                      setVendorForm({ ...vendorForm, org_id: e?.target?.value || null })
-                    }
+                    {...vendorFormMethods.register('orgId')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     <option value="">Unassigned</option>
@@ -2135,6 +2151,24 @@ const AdminPage = () => {
                       </option>
                     ))}
                   </select>
+                  {vendorFormMethods.formState.errors?.orgId && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {vendorFormMethods.formState.errors.orgId.message}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    {...vendorFormMethods.register('isActive')}
+                    className="rounded"
+                  />
+                  <label className="ml-2 text-sm text-gray-700">Active Vendor</label>
+                  {vendorFormMethods.formState.errors?.isActive && (
+                    <p className="ml-2 text-sm text-red-600">
+                      {vendorFormMethods.formState.errors.isActive.message}
+                    </p>
+                  )}
                 </div>
               </>
             )}
