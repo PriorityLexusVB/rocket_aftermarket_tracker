@@ -213,7 +213,7 @@ export const vendorService = {
    */
   async updateVendor(id, input) {
     try {
-      // Validate + normalize via Zod (partial is not needed here; full payload)
+      // Validate + normalize via Zod (full payload)
       const parsed = vendorInsertSchema.parse(input);
       return await doUpdateVendor(id, parsed);
     } catch (e) {
@@ -294,8 +294,6 @@ export const vendorService = {
       // Allow partial payloads in this wrapper
       const partialSchema = vendorInsertSchema.partial();
       const parsed = partialSchema.parse(vendorData);
-      const merged = { id, ...parsed };
-      // Reuse core update; we assume the caller only sends fields they intend to change
       const data = await doUpdateVendor(id, parsed);
       return { data, error: null };
     } catch (e) {
