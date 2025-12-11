@@ -47,6 +47,89 @@ function classifySchemaError(error) {
 }
 
 /**
+ * Normalize, filter, and deduplicate job_parts payload
+ * 
+ * @param {string} jobId
+ * @param {Array} lineItems
+ * @param {{ includeTimes?: boolean, includeVendor?: boolean }} opts
+ * @returns {Array}
+ */
+export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
+  const includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
+  const includeVendor = opts?.includeVendor ?? JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+
+  const records =
+    lineItems
+      ?.filter(Boolean)
+      ?.map((item) => {
+        const productId = item?.product_id ?? item?.productId ?? null
+        if (!productId) return null
+
+        const requiresScheduling = !!(
+          item?.requires_scheduling ??
+          item?.requiresScheduling ??
+          item?.scheduled_start_time ??
+          item?.scheduledStartTime ??
+          item?.scheduled_end_time ??
+          item?.scheduledEndTime
+        )
+        const quantityRaw = Number(item?.quantity_used ?? item?.quantity ?? item?.quantityUsed ?? 1)
+        const unitPriceRaw = Number(item?.unit_price ?? item?.price ?? item?.unitPrice ?? 0)
+
+        const record = {
+          job_id: jobId,
+          product_id: productId,
+          quantity_used: Number.isFinite(quantityRaw) ? quantityRaw : 1,
+          unit_price: Number.isFinite(unitPriceRaw) ? unitPriceRaw : 0,
+          promised_date:
+            item?.promised_date ?? item?.lineItemPromisedDate ?? item?.dateScheduled ?? null,
+          requires_scheduling: requiresScheduling,
+          no_schedule_reason: requiresScheduling
+            ? null
+            : item?.no_schedule_reason ?? item?.noScheduleReason ?? null,
+          is_off_site: !!(item?.is_off_site ?? item?.isOffSite),
+        }
+
+        if (includeVendor) {
+          record.vendor_id = item?.vendor_id ?? item?.vendorId ?? null
+        }
+
+        if (includeTimes) {
+          const start = item?.scheduled_start_time ?? item?.scheduledStartTime ?? null
+          const end = item?.scheduled_end_time ?? item?.scheduledEndTime ?? null
+          record.scheduled_start_time = requiresScheduling ? start : null
+          record.scheduled_end_time = requiresScheduling ? end : null
+        }
+
+        return record
+      })
+      ?.filter(Boolean) || []
+
+  const uniqueRecords = Array.from(
+    new Map(
+      records.map((r) => [
+        JSON.stringify({
+          job_id: r.job_id,
+          product_id: r.product_id,
+          vendor_id: includeVendor ? r.vendor_id ?? null : null,
+          quantity_used: r.quantity_used,
+          unit_price: r.unit_price,
+          promised_date: r.promised_date ?? null,
+          requires_scheduling: r.requires_scheduling,
+          no_schedule_reason: r.no_schedule_reason ?? null,
+          is_off_site: r.is_off_site,
+          scheduled_start_time: includeTimes ? r.scheduled_start_time ?? null : null,
+          scheduled_end_time: includeTimes ? r.scheduled_end_time ?? null : null,
+        }),
+        r,
+      ])
+    ).values()
+  )
+
+  return uniqueRecords
+}
+
+/**
  * Normalize and deduplicate job_parts rows
  * 
  * Takes raw line items and merges duplicates based on a composite key:
@@ -122,15 +205,14 @@ function normalizeAndDedupeJobPartRows(rows = [], opts = {}) {
  */
 function toJobPartRows(jobId, items = [], opts = {}) {
   const includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
+  const includeVendor = opts?.includeVendor ?? JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
 
   const rows = (items || [])
     ?.map((it) => {
       const row = {
         job_id: jobId,
         product_id: it?.product_id ?? null,
-        ...(JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
-          ? { vendor_id: it?.vendor_id ?? it?.vendorId ?? null }
-          : {}),
+        ...(includeVendor ? { vendor_id: it?.vendor_id ?? it?.vendorId ?? null } : {}),
         quantity_used: it?.quantity_used ?? it?.quantity ?? 1,
         unit_price: it?.unit_price ?? it?.price ?? 0,
         promised_date:
@@ -203,40 +285,28 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     return
   }
 
-  const rawRows = toJobPartRows(jobId, lineItems, opts)
+  let includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
+  let includeVendor = opts?.includeVendor ?? JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
 
-  if (!rawRows || rawRows.length === 0) {
-    if (import.meta.env.MODE === 'development') {
-      console.log('[replaceJobPartsForJob] No valid rows after transformation, done')
-    }
-    return
-  }
-
-  // Apply deduplication guardrail
-  const rows = normalizeAndDedupeJobPartRows(rawRows, opts)
+  let rows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
 
   if (!rows || rows.length === 0) {
     if (import.meta.env.MODE === 'development') {
-      console.log('[replaceJobPartsForJob] No valid rows after deduplication, done')
+      console.log('[replaceJobPartsForJob] No valid rows after normalization/deduplication, done')
     }
     return
   }
 
   if (import.meta.env.MODE === 'development') {
-    console.log('[replaceJobPartsForJob] Attempting INSERT:', {
-      rowsCount: rows.length,
-      sample: rows[0]
-        ? {
-            product_id: rows[0].product_id,
-            unit_price: rows[0].unit_price,
-            quantity_used: rows[0].quantity_used,
-          }
-        : null,
+    console.log('🧩 job_parts payload for save', {
+      jobId: jobId.slice(0, 8) + '...',
+      payloadCount: rows.length,
+      jobPartsPayload: rows,
     })
   }
 
   // Try INSERT with retry logic for missing columns
-  const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)
+  const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)?.select()
 
   if (insErr) {
     // Handle missing column errors with retry
@@ -253,9 +323,21 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
           disableJobPartsVendorIdCapability()
           incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
 
-          const retryRawRows = toJobPartRows(jobId, lineItems, opts)
-          const retryRows = normalizeAndDedupeJobPartRows(retryRawRows, opts)
-          const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
+          includeVendor = false
+          const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
+
+          if (import.meta.env.MODE === 'development') {
+            console.log('🧩 job_parts payload retry without vendor_id', {
+              jobId: jobId.slice(0, 8) + '...',
+              payloadCount: retryRows.length,
+              jobPartsPayload: retryRows,
+            })
+          }
+
+          const { error: retryErr } = await supabase
+            ?.from('job_parts')
+            ?.insert(retryRows)
+            ?.select()
           if (retryErr) {
             console.error('[replaceJobPartsForJob] Retry INSERT failed:', retryErr)
             throw new Error(`Failed to insert job_parts (retry): ${retryErr?.message}`)
@@ -278,9 +360,18 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
         disableJobPartsTimeCapability()
         incrementTelemetry?.(TelemetryKey?.SCHEDULED_TIMES_FALLBACK)
 
-        const retryRawRows = toJobPartRows(jobId, lineItems, { ...opts, includeTimes: false })
-        const retryRows = normalizeAndDedupeJobPartRows(retryRawRows, { ...opts, includeTimes: false })
-        const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)
+        includeTimes = false
+        const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
+
+        if (import.meta.env.MODE === 'development') {
+          console.log('🧩 job_parts payload retry without scheduled times', {
+            jobId: jobId.slice(0, 8) + '...',
+            payloadCount: retryRows.length,
+            jobPartsPayload: retryRows,
+          })
+        }
+
+        const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)?.select()
         if (retryErr) {
           console.error('[replaceJobPartsForJob] Retry INSERT failed:', retryErr)
           throw new Error(`Failed to insert job_parts (retry): ${retryErr?.message}`)

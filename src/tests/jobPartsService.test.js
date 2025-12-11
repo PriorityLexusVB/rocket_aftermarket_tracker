@@ -28,7 +28,9 @@ vi.mock('../lib/supabase', () => {
         insert: vi.fn((rows) => {
           insertCallCount++
           insertedRows.push(...(Array.isArray(rows) ? rows : [rows]))
-          return Promise.resolve({ error: null })
+          return {
+            select: vi.fn(() => Promise.resolve({ error: null })),
+          }
         }),
       })),
     },
@@ -202,12 +204,12 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
   // NEW TESTS FOR DEDUPLICATION GUARDRAIL
 
-  it('should merge identical line items by summing quantity_used', async () => {
+  it('should deduplicate identical line items without inserting duplicates', async () => {
     const jobId = 'job-123'
     const lineItems = [
       { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 2 },
-      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 3 },
-      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 5 },
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 2 },
+      { product_id: 'prod-1', vendor_id: 'vend-1', unit_price: 100, quantity_used: 2 },
     ]
 
     await replaceJobPartsForJob(jobId, lineItems)
@@ -218,13 +220,29 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
     // Verify INSERT called once
     expect(insertCallCount).toBe(1)
 
-    // Verify only ONE row inserted (duplicates merged)
+    // Verify only ONE row inserted (duplicates removed)
     expect(insertedRows).toHaveLength(1)
 
-    // Verify quantity is the SUM of all three
-    expect(insertedRows[0].quantity_used).toBe(10) // 2 + 3 + 5
+    // Verify the payload retains a single entry
+    expect(insertedRows[0].quantity_used).toBe(2)
     expect(insertedRows[0].product_id).toBe('prod-1')
     expect(insertedRows[0].vendor_id).toBe('vend-1')
+  })
+
+  it('should ignore blank line items without a product', async () => {
+    const jobId = 'job-123'
+    const lineItems = [
+      { product_id: null, unit_price: 50, quantity_used: 1 },
+      { product_id: undefined, unit_price: 60, quantity_used: 1 },
+      { product_id: 'prod-keep', unit_price: 70, quantity_used: 2 },
+    ]
+
+    await replaceJobPartsForJob(jobId, lineItems)
+
+    expect(insertCallCount).toBe(1)
+    expect(insertedRows).toHaveLength(1)
+    expect(insertedRows[0].product_id).toBe('prod-keep')
+    expect(insertedRows[0].quantity_used).toBe(2)
   })
 
   it('should NOT merge line items with different products', async () => {
