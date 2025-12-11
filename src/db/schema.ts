@@ -1,13 +1,4 @@
 /**
-<<<<<<< HEAD
- * Drizzle ORM Schema Definitions
- * 
- * This file mirrors the Supabase schema for type safety and validation.
- * It is NOT used to modify the database schema directly.
- * All schema changes must go through Supabase migrations.
- * 
- * See Section 20.2 of .github/copilot-instructions.md
-=======
  * Drizzle ORM schema definitions for Supabase tables
  * 
  * IMPORTANT: This file is for TYPE DEFINITIONS ONLY
@@ -16,40 +7,24 @@
  * - These definitions must match the current Supabase schema exactly
  * 
  * Reference: .github/copilot-instructions.md Section 20
->>>>>>> main
  */
 
 import {
   pgTable,
   uuid,
   text,
-<<<<<<< HEAD
-  boolean,
-  decimal,
-  timestamp,
-} from 'drizzle-orm/pg-core'
-
-/**
- * Vendors table definition
- * Mirrors: supabase/migrations/20250922170950_automotive_aftermarket_system.sql
- */
-export const vendors = pgTable('vendors', {
-  id: uuid('id').primaryKey().defaultRandom(),
-=======
   integer,
   decimal,
   boolean,
   timestamp,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 
 /**
  * Vendors table
  * Multi-tenant via org_id
  */
 export const vendors = pgTable('vendors', {
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
->>>>>>> main
+  id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   contactPerson: text('contact_person'),
   email: text('email'),
@@ -59,13 +34,6 @@ export const vendors = pgTable('vendors', {
   rating: decimal('rating', { precision: 3, scale: 2 }),
   isActive: boolean('is_active').default(true),
   notes: text('notes'),
-<<<<<<< HEAD
-  orgId: uuid('org_id'), // Added in migration 20251106120000_add_missing_org_id_columns.sql
-  createdBy: uuid('created_by'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
-=======
   orgId: uuid('org_id'), // Added in migration 20251106120000
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -78,7 +46,7 @@ export const vendors = pgTable('vendors', {
  * Scheduled times are DEPRECATED - use job_parts scheduled times instead
  */
 export const jobs = pgTable('jobs', {
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid('id').primaryKey().defaultRandom(),
   jobNumber: text('job_number').notNull().unique(),
   vehicleId: uuid('vehicle_id'),
   assignedTo: uuid('assigned_to'),
@@ -115,7 +83,7 @@ export const jobs = pgTable('jobs', {
  * Inherits org from parent job (no direct org_id)
  */
 export const jobParts = pgTable('job_parts', {
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid('id').primaryKey().defaultRandom(),
   jobId: uuid('job_id').notNull(),
   productId: uuid('product_id').notNull(),
   quantityUsed: integer('quantity_used').notNull().default(1),
@@ -123,4 +91,3 @@ export const jobParts = pgTable('job_parts', {
   // totalPrice is a GENERATED ALWAYS column in Supabase - not included here as Drizzle doesn't support generated columns well
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
->>>>>>> main

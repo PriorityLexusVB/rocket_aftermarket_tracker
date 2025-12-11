@@ -1,20 +1,12 @@
 lockfileVersion: '9.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 importers:
 
   .:
     dependencies:
       '@dhiwise/component-tagger':
         specifier: ^1.0.10
-<<<<<<< HEAD
-        version: 1.0.10(next@15.5.6(@babel/core@7.28.4)(@playwright/test@1.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.21(@types/node@24.10.1)(terser@5.44.1))(webpack@5.102.1)
-=======
         version: 1.0.10(next@15.5.6(@babel/core@7.28.4)(@playwright/test@1.57.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.21(@types/node@24.10.1)(terser@5.44.1))(webpack@5.102.1(esbuild@0.25.12))
->>>>>>> main
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.68.0(react@18.3.1))
@@ -2098,13 +2090,10 @@ packages:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
 
-<<<<<<< HEAD
-=======
   drizzle-kit@0.31.8:
     resolution: {integrity: sha512-O9EC/miwdnRDY10qRxM8P3Pg8hXe3LyU4ZipReKOgTwn4OqANmftj8XJz1UPUAS6NMHf0E2htjsbQujUTkncCg==}
     hasBin: true
 
->>>>>>> main
   drizzle-orm@0.45.1:
     resolution: {integrity: sha512-Te0FOdKIistGNPMq2jscdqngBRfBpC8uMFVwqjf6gtTVJHIQ/dosgV/CLBU2N4ZJBsXL5savCba9b0YJskKdcA==}
     peerDependencies:
@@ -5828,8 +5817,6 @@ snapshots:
 
   dotenv@16.6.1: {}
 
-<<<<<<< HEAD
-=======
   drizzle-kit@0.31.8:
     dependencies:
       '@drizzle-team/brocli': 0.10.2
@@ -5839,7 +5826,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
->>>>>>> main
   drizzle-orm@0.45.1(pg@8.16.3):
     optionalDependencies:
       pg: 8.16.3
