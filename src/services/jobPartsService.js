@@ -81,6 +81,7 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
           product_id: productId,
           quantity_used: Number.isFinite(quantityRaw) ? quantityRaw : 1,
           unit_price: Number.isFinite(unitPriceRaw) ? unitPriceRaw : 0,
+          // Support legacy dateScheduled/lineItemPromisedDate fallbacks
           promised_date:
             item?.promised_date ?? item?.lineItemPromisedDate ?? item?.dateScheduled ?? null,
           requires_scheduling: requiresScheduling,
@@ -105,26 +106,24 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
       })
       ?.filter(Boolean) || []
 
-  const uniqueRecords = Array.from(
-    new Map(
-      records.map((r) => [
-        JSON.stringify({
-          job_id: r.job_id,
-          product_id: r.product_id,
-          vendor_id: includeVendor ? r.vendor_id ?? null : null,
-          quantity_used: r.quantity_used,
-          unit_price: r.unit_price,
-          promised_date: r.promised_date ?? null,
-          requires_scheduling: r.requires_scheduling,
-          no_schedule_reason: r.no_schedule_reason ?? null,
-          is_off_site: r.is_off_site,
-          scheduled_start_time: includeTimes ? r.scheduled_start_time ?? null : null,
-          scheduled_end_time: includeTimes ? r.scheduled_end_time ?? null : null,
-        }),
-        r,
-      ])
-    ).values()
-  )
+  const uniqueRecords = []
+  const dedupeMap = new Map()
+  const vendorPlaceholder = '00000000-0000-0000-0000-000000000000'
+  const timePlaceholder = '1970-01-01 00:00:00+00' // matches unique index coalesce defaults
+
+  for (const record of records) {
+    const keyParts = [
+      record.job_id,
+      record.product_id,
+      includeVendor ? record.vendor_id ?? vendorPlaceholder : vendorPlaceholder,
+      includeTimes ? record.scheduled_start_time ?? timePlaceholder : timePlaceholder,
+      includeTimes ? record.scheduled_end_time ?? timePlaceholder : timePlaceholder,
+    ]
+    const key = keyParts.join('|')
+    dedupeMap.set(key, record) // last occurrence wins
+  }
+
+  dedupeMap.forEach((value) => uniqueRecords.push(value))
 
   return uniqueRecords
 }

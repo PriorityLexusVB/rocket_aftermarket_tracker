@@ -1,4 +1,5 @@
 -- Prevent exact duplicate job_parts rows for the same job + product + vendor + schedule
+-- Null vendors/times are coalesced to stable sentinels so uniqueness still applies
 create unique index if not exists job_parts_unique_job_product_schedule
 on public.job_parts (
   job_id,
