@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import { toOptions } from '@/lib/options'
+import { z } from 'zod'
+// Typed schemas from Drizzle + Zod (Section 20)
+import { vendorInsertSchema } from '@/db/schemas'
 
 export async function listVendorsByOrg(orgId) {
   let q = supabase.from('vendors').select('*').order('name', { ascending: true })
@@ -68,6 +71,7 @@ export const vendorService = {
   },
 
   /**
+<<<<<<< HEAD
    * Get all vendors (active and inactive) for management UI
    * Section 20: Typed service layer
    * @param {string|null} orgId - Optional org filter
@@ -118,10 +122,39 @@ export const vendorService = {
     } catch (e) {
       console.error('vendorService.createVendor failed', e)
       throw e
+=======
+   * Create a new vendor (typed via VendorInsert from drizzle-zod)
+   * @param {import('@/db/schemas').VendorInsert} vendorData - Typed vendor data
+   * @returns {Promise<{data: any, error: any}>}
+   */
+  async create(vendorData) {
+    try {
+      // Validate with Zod schema
+      const validated = vendorInsertSchema.parse(vendorData)
+      const { data, error } = await supabase
+        .from('vendors')
+        .insert([validated])
+        .select()
+        .single()
+      return { data, error }
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Validation failed: ' + e.errors.map(err => err.message).join(', '),
+            details: e.errors 
+          }
+        }
+      }
+      console.error('vendorService.create failed', e)
+      return { data: null, error: e }
+>>>>>>> main
     }
   },
 
   /**
+<<<<<<< HEAD
    * Update an existing vendor (Section 20: Typed with VendorInsert)
    * @param {string} id - Vendor ID
    * @param {import('../db/schemas').VendorInsert} input - Updated vendor data
@@ -155,12 +188,43 @@ export const vendorService = {
     } catch (e) {
       console.error('vendorService.updateVendor failed', e)
       throw e
+=======
+   * Update an existing vendor (typed via VendorInsert from drizzle-zod)
+   * @param {string} id - Vendor ID
+   * @param {Partial<import('@/db/schemas').VendorInsert>} vendorData - Partial vendor data
+   * @returns {Promise<{data: any, error: any}>}
+   */
+  async update(id, vendorData) {
+    try {
+      // Validate with Zod schema (partial mode)
+      const validated = vendorInsertSchema.partial().parse(vendorData)
+      const { data, error } = await supabase
+        .from('vendors')
+        .update(validated)
+        .eq('id', id)
+        .select()
+        .single()
+      return { data, error }
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Validation failed: ' + e.errors.map(err => err.message).join(', '),
+            details: e.errors 
+          }
+        }
+      }
+      console.error('vendorService.update failed', e)
+      return { data: null, error: e }
+>>>>>>> main
     }
   },
 
   /**
    * Delete a vendor
    * @param {string} id - Vendor ID
+<<<<<<< HEAD
    * @returns {Promise<void>}
    */
   async deleteVendor(id) {
@@ -190,6 +254,20 @@ export const vendorService = {
     } catch (e) {
       console.error('vendorService.bulkUpdateVendors failed', e)
       throw e
+=======
+   * @returns {Promise<{error: any}>}
+   */
+  async delete(id) {
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .delete()
+        .eq('id', id)
+      return { error }
+    } catch (e) {
+      console.error('vendorService.delete failed', e)
+      return { error: e }
+>>>>>>> main
     }
   },
 }

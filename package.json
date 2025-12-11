@@ -84,7 +84,9 @@
     "db:audit": "npx supabase@latest db query ./scripts/sql/audit_security_surface.sql",
     "db:seed-org": "npx supabase@latest db query ./scripts/attach_org.sql",
     "db:seed-e2e": "node scripts/seedE2E.js",
-    "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs"
+    "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs",
+    "drizzle:generate": "drizzle-kit generate",
+    "drizzle:studio": "drizzle-kit studio"
   },
   "eslintConfig": {
     "extends": [
@@ -121,6 +123,7 @@
     "@typescript-eslint/parser": "^8.48.1",
     "@vitejs/plugin-react": "4.7.0",
     "autoprefixer": "10.4.22",
+    "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^7.0.1",

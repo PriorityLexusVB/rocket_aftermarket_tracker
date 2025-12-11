@@ -15,6 +15,8 @@ import {
   incrementTelemetry,
   TelemetryKey,
 } from '../utils/capabilityTelemetry'
+import { z } from 'zod'
+import { jobPartInsertSchema } from '@/db/schemas'
 
 /**
  * Helper to detect missing column errors from Supabase
@@ -305,3 +307,34 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
  * Export helper for testing/compatibility
  */
 export { toJobPartRows }
+
+/**
+ * Typed job parts creation (Section 20 pattern)
+ * @param {import('@/db/schemas').JobPartInsert[]} jobParts - Array of typed job part data
+ * @returns {Promise<{data: any, error: any}>}
+ */
+export async function createJobPartsTyped(jobParts) {
+  try {
+    // Validate each part with Zod schema
+    const validated = jobParts.map((part) => jobPartInsertSchema.parse(part))
+    
+    const { data, error } = await supabase
+      .from('job_parts')
+      .insert(validated)
+      .select()
+    
+    return { data, error }
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return { 
+        data: null, 
+        error: { 
+          message: 'Validation failed: ' + e.errors.map(err => err.message).join(', '),
+          details: e.errors 
+        }
+      }
+    }
+    console.error('createJobPartsTyped failed', e)
+    return { data: null, error: e }
+  }
+}
