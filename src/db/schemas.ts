@@ -96,8 +96,7 @@ export const jobPartInsertSchema = createInsertSchema(jobParts, {
     .int()
     .min(1, 'Quantity must be at least 1'),
   unitPrice: z
-    .coerce
-    .number()
+    .coerce.number()
     .min(0, 'Unit price must be non-negative'),
 });
 
