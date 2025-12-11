@@ -114,3 +114,4 @@ export const jobParts = pgTable('job_parts', {
   // Note: totalPrice is a GENERATED ALWAYS column in Supabase and is not modeled here
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
+  
