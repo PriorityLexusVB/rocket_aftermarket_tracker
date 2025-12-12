@@ -88,6 +88,18 @@ function _isRlsError(error) {
   )
 }
 
+async function requireAuthenticatedUser(label = 'dropdown') {
+  try {
+    const { data } = await supabase?.auth?.getSession?.()
+    const user = data?.session?.user
+    if (!user) return null
+    return user
+  } catch (e) {
+    console.warn(`[dropdownService] auth check failed (${label}):`, e?.message || e)
+    return null
+  }
+}
+
 async function getScopedOrgId() {
   // If we have a valid cached value, return it immediately
   if (_orgIdCacheValid && _orgIdCache !== undefined) return _orgIdCache
@@ -98,6 +110,12 @@ async function getScopedOrgId() {
       const { data: auth } = await supabase?.auth?.getUser?.()
       const userId = auth?.user?.id
       const email = auth?.user?.email
+
+      if (!userId && !email) {
+        _orgIdCache = null
+        _orgIdCacheValid = false
+        return null
+      }
 
       // Prefer org_id cached for this authenticated user to avoid redundant lookups
       const stored = readOrgId(userId)
@@ -243,6 +261,9 @@ function toOptions(list) {
  * Uses user_profiles saved via Admin page (department/role/is_active).
  */
 async function getStaff({ departments = [], roles = [], activeOnly = true } = {}) {
+  const user = await requireAuthenticatedUser('getStaff')
+  if (!user) return []
+
   const orgId = await getScopedOrgId()
   const key = _cacheKey('staff', {
     departments: departments?.join(','),
@@ -465,6 +486,9 @@ export async function getFinanceManagers() {
 /** Vendors → { id, value, label } */
 export async function getVendors({ activeOnly = true } = {}) {
   try {
+    const user = await requireAuthenticatedUser('getVendors')
+    if (!user) return []
+
     const orgId = await getScopedOrgId()
     const key = _cacheKey('vendors', { activeOnly, orgId })
     const cached = _getCache(key)
@@ -499,6 +523,9 @@ export async function getVendors({ activeOnly = true } = {}) {
 /** Products → { id, value, label, unit_price } (label includes brand if present) */
 export async function getProducts({ activeOnly = true } = {}) {
   try {
+    const user = await requireAuthenticatedUser('getProducts')
+    if (!user) return []
+
     const orgId = await getScopedOrgId()
     const key = _cacheKey('products', { activeOnly, orgId })
     const cached = _getCache(key)
@@ -546,6 +573,9 @@ export async function globalSearch(term) {
   if (!term || !String(term).trim()) return { users: [], vendors: [], products: [] }
   const q = `%${String(term).trim()}%`
   try {
+    const user = await requireAuthenticatedUser('globalSearch')
+    if (!user) return { users: [], vendors: [], products: [] }
+
     const orgId = await getScopedOrgId()
     await ensureUserProfileCapsLoaded()
     const caps = getProfileCaps()
@@ -619,6 +649,9 @@ export async function globalSearch(term) {
 // Fire-and-forget prefetch to warm common dropdowns on app load
 export async function prefetchDropdowns() {
   try {
+    const user = await requireAuthenticatedUser('prefetchDropdowns')
+    if (!user) return
+
     await Promise.all([
       getVendors({ activeOnly: true }),
       getProducts({ activeOnly: true }),

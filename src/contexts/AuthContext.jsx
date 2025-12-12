@@ -129,7 +129,18 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data, error } = await supabase?.auth?.signInWithPassword({ email, password })
       if (error) throw error
-      return { success: true, data }
+
+      const { data: sessionResult, error: sessionError } = await supabase?.auth?.getSession()
+      if (sessionError) throw sessionError
+
+      const sessionUser = sessionResult?.session?.user || data?.user
+      if (sessionUser) {
+        setUser(sessionUser)
+        await profileOperations?.load(sessionUser?.id)
+        return { success: true, data: { ...data, session: sessionResult?.session } }
+      }
+
+      return { success: false, error: 'Login succeeded but session is unavailable. Please retry.' }
     } catch (error) {
       const errorMessage = error?.message || 'Login failed'
       if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {

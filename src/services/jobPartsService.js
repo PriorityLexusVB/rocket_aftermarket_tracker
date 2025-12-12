@@ -18,6 +18,16 @@ import {
 import { z } from 'zod'
 import { jobPartInsertSchema } from '@/db/schemas'
 
+const VENDOR_PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000'
+const TIME_PLACEHOLDER = '1970-01-01 00:00:00+00'
+
+function normalizeTime(value) {
+  if (!value) return null
+  if (value instanceof Date) return value.toISOString()
+  const str = typeof value === 'string' ? value.trim() : String(value)
+  return str || null
+}
+
 /**
  * Helper to detect missing column errors from Supabase
  */
@@ -92,12 +102,13 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
         }
 
         if (includeVendor) {
-          record.vendor_id = item?.vendor_id ?? item?.vendorId ?? null
+          const vendorId = item?.vendor_id ?? item?.vendorId ?? null
+          record.vendor_id = vendorId || null
         }
 
         if (includeTimes) {
-          const start = item?.scheduled_start_time ?? item?.scheduledStartTime ?? null
-          const end = item?.scheduled_end_time ?? item?.scheduledEndTime ?? null
+          const start = normalizeTime(item?.scheduled_start_time ?? item?.scheduledStartTime ?? null)
+          const end = normalizeTime(item?.scheduled_end_time ?? item?.scheduledEndTime ?? null)
           record.scheduled_start_time = requiresScheduling ? start : null
           record.scheduled_end_time = requiresScheduling ? end : null
         }
@@ -108,16 +119,14 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
 
   const uniqueRecords = []
   const dedupeMap = new Map()
-  const vendorPlaceholder = '00000000-0000-0000-0000-000000000000'
-  const timePlaceholder = '1970-01-01 00:00:00+00' // matches unique index coalesce defaults
 
   for (const record of records) {
     const keyParts = [
       record.job_id,
       record.product_id,
-      includeVendor ? record.vendor_id ?? vendorPlaceholder : vendorPlaceholder,
-      includeTimes ? record.scheduled_start_time ?? timePlaceholder : timePlaceholder,
-      includeTimes ? record.scheduled_end_time ?? timePlaceholder : timePlaceholder,
+      includeVendor ? record.vendor_id ?? VENDOR_PLACEHOLDER_UUID : VENDOR_PLACEHOLDER_UUID,
+      includeTimes ? record.scheduled_start_time ?? TIME_PLACEHOLDER : TIME_PLACEHOLDER,
+      includeTimes ? record.scheduled_end_time ?? TIME_PLACEHOLDER : TIME_PLACEHOLDER,
     ]
     const key = keyParts.join('|')
     dedupeMap.set(key, record) // last occurrence wins

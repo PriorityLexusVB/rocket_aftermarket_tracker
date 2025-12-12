@@ -58,7 +58,7 @@ const LoginForm = () => {
 
       console.log('Login result:', { success: result?.success, hasError: !!result?.error })
 
-      if (result?.success && result?.data?.user) {
+      if (result?.success && (result?.data?.user || result?.data?.session?.user)) {
         console.log('✅ Login successful - redirecting...')
         localStorage.removeItem('lastAuthError')
         setError('')
