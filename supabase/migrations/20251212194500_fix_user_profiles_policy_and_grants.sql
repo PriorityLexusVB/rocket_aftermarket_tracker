@@ -4,6 +4,7 @@
 drop policy if exists user_profiles_select on public.user_profiles;
 drop policy if exists user_profiles_read on public.user_profiles;
 drop policy if exists user_profiles_read_active on public.user_profiles;
+drop policy if exists user_profiles_select_self_or_same_org on public.user_profiles;
 
 -- Simple non-recursive SELECT policy for authenticated users
 create policy user_profiles_read_active on public.user_profiles
@@ -29,6 +30,7 @@ create or replace function public.auth_user_org()
 returns uuid
 language plpgsql
 security definer
+set row_security = off
 set search_path = public
 as $$
 declare
