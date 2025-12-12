@@ -96,6 +96,9 @@ function handleAuthError(error, label = 'dropdown') {
       sessionStorage.setItem('authRedirectReason', `Please sign in again (${label})`)
     } catch (_) {}
     if (typeof window !== 'undefined') {
+      if (window.location?.pathname?.startsWith('/auth')) {
+        return true
+      }
       window.location.assign('/auth')
     }
     return true
@@ -674,6 +677,9 @@ export async function globalSearch(term) {
 // Fire-and-forget prefetch to warm common dropdowns on app load
 export async function prefetchDropdowns() {
   try {
+    if (typeof window !== 'undefined' && window.location?.pathname?.startsWith('/auth')) {
+      return
+    }
     const user = await requireAuthenticatedUser('prefetchDropdowns')
     if (!user) return
 

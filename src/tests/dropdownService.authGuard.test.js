@@ -47,4 +47,17 @@ describe('dropdownService auth guard', () => {
     await prefetchDropdowns()
     expect(fromSpy).not.toHaveBeenCalled()
   })
+
+  it('does not prefetch on /auth when unauthenticated', async () => {
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', {
+      value: new URL('http://localhost/auth'),
+      writable: true,
+    })
+
+    await prefetchDropdowns()
+    expect(fromSpy).not.toHaveBeenCalled()
+
+    Object.defineProperty(window, 'location', { value: originalLocation })
+  })
 })
