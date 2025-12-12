@@ -34,7 +34,7 @@ export function useDealForm({ mode = 'create', id = null, onSaved, onError }) {
   const handleSubmit = useCallback(
     async (formState) => {
       if (savingRef.current) {
-        return
+        return Promise.resolve()
       }
       savingRef.current = true
       setSaving(true)

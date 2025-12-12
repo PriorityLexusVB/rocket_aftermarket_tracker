@@ -24,8 +24,11 @@ const TIME_PLACEHOLDER = '1970-01-01 00:00:00+00'
 function normalizeTime(value) {
   if (!value) return null
   if (value instanceof Date) return value.toISOString()
-  const str = typeof value === 'string' ? value.trim() : String(value)
-  return str || null
+  if (typeof value === 'string') {
+    const str = value.trim()
+    return str || null
+  }
+  return null
 }
 
 /**
@@ -103,7 +106,7 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
 
         if (includeVendor) {
           const vendorId = item?.vendor_id ?? item?.vendorId ?? null
-          record.vendor_id = vendorId || null
+          record.vendor_id = vendorId && String(vendorId).trim() ? vendorId : null
         }
 
         if (includeTimes) {
