@@ -3,16 +3,11 @@ import { defineConfig, devices } from '@playwright/test'
 import dotenv from 'dotenv'
 import { existsSync } from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
-
-// ESM-compatible __dirname equivalent
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
 
 try {
   const envFiles = ['.env.local', '.env']
   for (const f of envFiles) {
-    const p = path.resolve(__dirname, f)
+    const p = path.resolve(process.cwd(), f)
     if (existsSync(p)) dotenv.config({ path: p })
   }
 } catch {}
@@ -59,5 +54,5 @@ export default defineConfig({
       E2E_PASSWORD: process.env.E2E_PASSWORD || 'Rocket123!',
     },
   },
-  globalSetup: path.resolve(__dirname, 'global.setup.ts'),
+  globalSetup: './global.setup.ts',
 })
