@@ -5,6 +5,7 @@ import { persistOrgId } from '../utils/orgStorage'
 export const AuthContext = createContext()
 
 export const AuthProvider = ({ children }) => {
+  const [session, setSession] = useState(null)
   const [user, setUser] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -80,14 +81,15 @@ export const AuthProvider = ({ children }) => {
 
   const checkUser = useCallback(async () => {
     try {
-      const {
-        data: { session },
-      } = await supabase?.auth?.getSession()
-      if (session?.user) {
-        setUser(session?.user)
-        await profileOperations?.load(session?.user?.id)
+      const { data, error } = await supabase?.auth?.getSession()
+      if (error) throw error
+      const nextSession = data?.session ?? null
+      setSession(nextSession)
+      const authedUser = nextSession?.user || null
+      setUser(authedUser)
+      if (authedUser) {
+        await profileOperations?.load(authedUser?.id)
       } else {
-        setUser(null)
         profileOperations?.clear()
       }
     } catch (error) {
@@ -99,6 +101,7 @@ export const AuthProvider = ({ children }) => {
       } else {
         console.error('Error checking user session:', error)
       }
+      setSession(null)
       setUser(null)
       profileOperations?.clear()
     } finally {
@@ -108,12 +111,14 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     checkUser()
-    const { data: authListener } = supabase?.auth?.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase?.auth?.onAuthStateChange((event, nextSession) => {
       setLoading(true)
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session?.user)
-        profileOperations?.load(session?.user?.id)
+      if (event === 'SIGNED_IN' && nextSession?.user) {
+        setSession(nextSession)
+        setUser(nextSession?.user)
+        profileOperations?.load(nextSession?.user?.id)
       } else if (event === 'SIGNED_OUT') {
+        setSession(null)
         setUser(null)
         profileOperations?.clear()
       }
@@ -133,11 +138,13 @@ export const AuthProvider = ({ children }) => {
       const { data: sessionResult, error: sessionError } = await supabase?.auth?.getSession()
       if (sessionError) throw sessionError
 
-      const sessionUser = sessionResult?.session?.user || data?.user
+      const nextSession = sessionResult?.session || data?.session || null
+      const sessionUser = nextSession?.user || data?.user
       if (sessionUser) {
+        setSession(nextSession)
         setUser(sessionUser)
         await profileOperations?.load(sessionUser?.id)
-        return { success: true, data: { ...data, session: sessionResult?.session } }
+        return { success: true, data: { ...data, session: nextSession } }
       }
 
       return { success: false, error: 'Login succeeded but session is unavailable. Please retry.' }
@@ -157,11 +164,23 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     await supabase?.auth?.signOut()
     setUser(null)
+    setSession(null)
     profileOperations?.clear()
   }
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, profileLoading, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        user,
+        userProfile,
+        loading,
+        profileLoading,
+        isAuthed: !!session?.user,
+        signIn,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

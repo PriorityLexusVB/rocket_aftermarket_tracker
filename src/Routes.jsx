@@ -3,7 +3,6 @@ import { BrowserRouter, Routes as RouterRoutes, Route, Navigate } from 'react-ro
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/ProtectedRoute'
-import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 
 // Import only the 4 consolidated pages
@@ -45,41 +44,37 @@ const Routes = () => {
   return (
     <BrowserRouter>
       <ErrorBoundary>
-        <AuthProvider>
-          <ThemeProvider>
-            <ScrollToTop />
-            <Suspense fallback={<div className="p-6 text-gray-600">Loading…</div>}>
-              <RouterRoutes>
-                {/* 🔓 PUBLIC ROUTES - No authentication required */}
+        <ThemeProvider>
+          <ScrollToTop />
+          <Suspense fallback={<div className="p-6 text-gray-600">Loading…</div>}>
+            <RouterRoutes>
+              {/* 🔓 PUBLIC ROUTES - No authentication required */}
 
-                {/* Guest Claims Form - ONLY public route for external customers */}
-                <Route
-                  path="/guest-claims-submission-form"
-                  element={<GuestClaimsSubmissionForm />}
-                />
+              {/* Guest Claims Form - ONLY public route for external customers */}
+              <Route path="/guest-claims-submission-form" element={<GuestClaimsSubmissionForm />} />
 
-                {/* Authentication Portal */}
-                <Route path="/auth" element={<AuthenticationPortal />} />
+              {/* Authentication Portal */}
+              <Route path="/auth" element={<AuthenticationPortal />} />
 
-                {/* 🔒 PROTECTED ROUTES - Authentication required */}
+              {/* 🔒 PROTECTED ROUTES - Authentication required */}
 
-                {/* Main Application Pages */}
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <DealsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/deals"
-                  element={
-                    <ProtectedRoute>
-                      <DealsPage />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Main Application Pages */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <DealsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/deals"
+                element={
+                  <ProtectedRoute>
+                    <DealsPage />
+                  </ProtectedRoute>
+                }
+              />
                 <Route
                   path="/deals/:id/edit"
                   element={
@@ -351,7 +346,6 @@ const Routes = () => {
               </RouterRoutes>
             </Suspense>
           </ThemeProvider>
-        </AuthProvider>
       </ErrorBoundary>
     </BrowserRouter>
   )

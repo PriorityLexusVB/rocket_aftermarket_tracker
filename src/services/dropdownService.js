@@ -88,6 +88,21 @@ function _isRlsError(error) {
   )
 }
 
+function handleAuthError(error, label = 'dropdown') {
+  const code = Number(error?.status ?? error?.statusCode ?? error?.code)
+  const msg = String(error?.message || '').toLowerCase()
+  if ([401, 403].includes(code) || msg.includes('permission denied')) {
+    try {
+      sessionStorage.setItem('authRedirectReason', `Please sign in again (${label})`)
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      window.location.assign('/auth')
+    }
+    return true
+  }
+  return false
+}
+
 async function requireAuthenticatedUser(label = 'dropdown') {
   try {
     const { data } = await supabase?.auth?.getSession?.()
@@ -96,6 +111,7 @@ async function requireAuthenticatedUser(label = 'dropdown') {
     return user
   } catch (e) {
     console.warn(`[dropdownService] auth check failed (${label}):`, e?.message || e)
+    handleAuthError(e, label)
     return null
   }
 }
@@ -294,11 +310,11 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
       try {
         // 1) exact filter by department/role
-        let q = supabase
-          .from('user_profiles')
-          .select(
-            [
-              'id',
+      let q = supabase
+        .from('user_profiles')
+        .select(
+          [
+            'id',
               nameCol,
               'email',
               'department',
@@ -444,12 +460,15 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
             return opts2
           }
         }
+        handleAuthError(fuzzyErr, 'getStaff')
       }
       const opts = toOptions(fuzzy || [])
       _setCache(key, opts)
       return opts
     } catch (err) {
-      console.error('getStaff fuzzy query failed:', { err, departments, roles })
+      if (!handleAuthError(err, 'getStaff')) {
+        console.error('getStaff fuzzy query failed:', { err, departments, roles })
+      }
       return []
     }
   })()
@@ -515,7 +534,9 @@ export async function getVendors({ activeOnly = true } = {}) {
       _clearPending(key)
     }
   } catch (e) {
-    console.error('getVendors error:', e)
+    if (!handleAuthError(e, 'getVendors')) {
+      console.error('getVendors error:', e)
+    }
     return []
   }
 }
@@ -557,7 +578,9 @@ export async function getProducts({ activeOnly = true } = {}) {
       _clearPending(key)
     }
   } catch (e) {
-    console.error('getProducts error:', e)
+    if (!handleAuthError(e, 'getProducts')) {
+      console.error('getProducts error:', e)
+    }
     return []
   }
 }
@@ -641,7 +664,9 @@ export async function globalSearch(term) {
 
     return { users, vendors, products }
   } catch (e) {
-    console.error('globalSearch error:', e)
+    if (!handleAuthError(e, 'globalSearch')) {
+      console.error('globalSearch error:', e)
+    }
     return { users: [], vendors: [], products: [] }
   }
 }
