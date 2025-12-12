@@ -57,8 +57,18 @@ export function useDropdownData(options = {}) {
 
       // If no user session, prefer global safe fallbacks
       if (!tenant.session?.user) {
-        console.warn('Dropdowns: no authenticated user; some queries may return empty due to RLS')
-        setState((prev) => ({ ...prev, loading: false }))
+        setState((prev) => ({
+          ...prev,
+          dc: [],
+          sales: [],
+          finance: [],
+          users: [],
+          vendors: [],
+          products: [],
+          smsTemplates: [],
+          loading: false,
+          error: null,
+        }))
         return
       }
 
@@ -320,12 +330,19 @@ export function useDropdownData(options = {}) {
 
       if (!mounted) return
       if (!auth?.user) {
-        console.warn(
-          'Dropdowns: no authenticated user; dropdown queries will likely return empty due to RLS'
-        )
-      } else {
-        console.log('Dropdowns: authenticated user', auth?.user?.id)
-        if (auth?.userProfile) console.log('Dropdowns: user profile org', auth.userProfile)
+        setState((prev) => ({
+          ...prev,
+          dc: [],
+          sales: [],
+          finance: [],
+          users: [],
+          vendors: [],
+          products: [],
+          smsTemplates: [],
+          loading: false,
+          error: null,
+        }))
+        return
       }
 
       if (mounted) await loadData()

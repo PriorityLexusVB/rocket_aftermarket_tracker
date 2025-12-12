@@ -114,6 +114,15 @@ supabase secrets set TWILIO_AUTH_TOKEN=your-auth-token
 supabase secrets set TWILIO_FROM=+1234567890
 ```
 
+### Verify Supabase migrations and RLS fixes
+
+1. Confirm GitHub Action **Supabase Migrate Production** succeeded on main.
+2. In Supabase SQL editor (production):
+   - `select * from supabase_migrations.schema_migrations order by version desc;`
+   - `select pg_get_functiondef('public.auth_user_org()'::regprocedure);`
+   - `select policyname, cmd, roles, qual from pg_policies where schemaname='public' and tablename='user_profiles';`
+3. Production migrations require the **supabase-production** environment approval (if configured) before applying.
+
 ### Frontend Deployment (Netlify/Vercel)
 
 1. **Build Application**

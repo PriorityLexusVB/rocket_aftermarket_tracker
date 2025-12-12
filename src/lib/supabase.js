@@ -25,7 +25,17 @@ if (isTest) {
 
   supabaseClient = {
     from: () => chain([]),
-    auth: { getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }) },
+    auth: {
+      getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }),
+      getSession: async () => ({
+        data: { session: { user: { id: 'test-user', email: 'test@example.com' } } },
+        error: null,
+      }),
+      signInWithPassword: async ({ email }) => ({
+        data: { user: { id: 'test-user', email } },
+        error: null,
+      }),
+    },
   }
 
   // Export additional helpers for compatibility

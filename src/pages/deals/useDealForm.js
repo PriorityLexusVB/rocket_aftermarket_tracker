@@ -1,11 +1,12 @@
 // src/pages/deals/useDealForm.js
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { dealService, mapDbDealToForm } from '../../services/dealService'
 
 export function useDealForm({ mode = 'create', id = null, onSaved, onError }) {
   const [initial, setInitial] = useState(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(mode === 'edit')
+  const savingRef = useRef(false)
 
   // Load existing deal for edit
   useEffect(() => {
@@ -32,6 +33,10 @@ export function useDealForm({ mode = 'create', id = null, onSaved, onError }) {
 
   const handleSubmit = useCallback(
     async (formState) => {
+      if (savingRef.current) {
+        return Promise.resolve()
+      }
+      savingRef.current = true
       setSaving(true)
       try {
         if (mode === 'edit' && id) {
@@ -46,6 +51,7 @@ export function useDealForm({ mode = 'create', id = null, onSaved, onError }) {
         onError?.(e)
       } finally {
         setSaving(false)
+        savingRef.current = false
       }
     },
     [mode, id, onSaved, onError]

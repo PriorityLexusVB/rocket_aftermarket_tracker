@@ -88,6 +88,37 @@ function _isRlsError(error) {
   )
 }
 
+function handleAuthError(error, label = 'dropdown') {
+  const code = Number(error?.status ?? error?.statusCode ?? error?.code)
+  const msg = String(error?.message || '').toLowerCase()
+  if ([401, 403].includes(code) || msg.includes('permission denied')) {
+    try {
+      sessionStorage.setItem('authRedirectReason', `Please sign in again (${label})`)
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      if (window.location?.pathname?.startsWith('/auth')) {
+        return true
+      }
+      window.location.assign('/auth')
+    }
+    return true
+  }
+  return false
+}
+
+async function requireAuthenticatedUser(label = 'dropdown') {
+  try {
+    const { data } = await supabase?.auth?.getSession?.()
+    const user = data?.session?.user
+    if (!user) return null
+    return user
+  } catch (e) {
+    console.warn(`[dropdownService] auth check failed (${label}):`, e?.message || e)
+    handleAuthError(e, label)
+    return null
+  }
+}
+
 async function getScopedOrgId() {
   // If we have a valid cached value, return it immediately
   if (_orgIdCacheValid && _orgIdCache !== undefined) return _orgIdCache
@@ -98,6 +129,12 @@ async function getScopedOrgId() {
       const { data: auth } = await supabase?.auth?.getUser?.()
       const userId = auth?.user?.id
       const email = auth?.user?.email
+
+      if (!userId && !email) {
+        _orgIdCache = null
+        _orgIdCacheValid = false
+        return null
+      }
 
       // Prefer org_id cached for this authenticated user to avoid redundant lookups
       const stored = readOrgId(userId)
@@ -243,6 +280,9 @@ function toOptions(list) {
  * Uses user_profiles saved via Admin page (department/role/is_active).
  */
 async function getStaff({ departments = [], roles = [], activeOnly = true } = {}) {
+  const user = await requireAuthenticatedUser('getStaff')
+  if (!user) return []
+
   const orgId = await getScopedOrgId()
   const key = _cacheKey('staff', {
     departments: departments?.join(','),
@@ -273,11 +313,11 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
       try {
         // 1) exact filter by department/role
-        let q = supabase
-          .from('user_profiles')
-          .select(
-            [
-              'id',
+      let q = supabase
+        .from('user_profiles')
+        .select(
+          [
+            'id',
               nameCol,
               'email',
               'department',
@@ -423,12 +463,15 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
             return opts2
           }
         }
+        handleAuthError(fuzzyErr, 'getStaff')
       }
       const opts = toOptions(fuzzy || [])
       _setCache(key, opts)
       return opts
     } catch (err) {
-      console.error('getStaff fuzzy query failed:', { err, departments, roles })
+      if (!handleAuthError(err, 'getStaff')) {
+        console.error('getStaff fuzzy query failed:', { err, departments, roles })
+      }
       return []
     }
   })()
@@ -465,6 +508,9 @@ export async function getFinanceManagers() {
 /** Vendors → { id, value, label } */
 export async function getVendors({ activeOnly = true } = {}) {
   try {
+    const user = await requireAuthenticatedUser('getVendors')
+    if (!user) return []
+
     const orgId = await getScopedOrgId()
     const key = _cacheKey('vendors', { activeOnly, orgId })
     const cached = _getCache(key)
@@ -491,7 +537,9 @@ export async function getVendors({ activeOnly = true } = {}) {
       _clearPending(key)
     }
   } catch (e) {
-    console.error('getVendors error:', e)
+    if (!handleAuthError(e, 'getVendors')) {
+      console.error('getVendors error:', e)
+    }
     return []
   }
 }
@@ -499,6 +547,9 @@ export async function getVendors({ activeOnly = true } = {}) {
 /** Products → { id, value, label, unit_price } (label includes brand if present) */
 export async function getProducts({ activeOnly = true } = {}) {
   try {
+    const user = await requireAuthenticatedUser('getProducts')
+    if (!user) return []
+
     const orgId = await getScopedOrgId()
     const key = _cacheKey('products', { activeOnly, orgId })
     const cached = _getCache(key)
@@ -530,7 +581,9 @@ export async function getProducts({ activeOnly = true } = {}) {
       _clearPending(key)
     }
   } catch (e) {
-    console.error('getProducts error:', e)
+    if (!handleAuthError(e, 'getProducts')) {
+      console.error('getProducts error:', e)
+    }
     return []
   }
 }
@@ -546,6 +599,9 @@ export async function globalSearch(term) {
   if (!term || !String(term).trim()) return { users: [], vendors: [], products: [] }
   const q = `%${String(term).trim()}%`
   try {
+    const user = await requireAuthenticatedUser('globalSearch')
+    if (!user) return { users: [], vendors: [], products: [] }
+
     const orgId = await getScopedOrgId()
     await ensureUserProfileCapsLoaded()
     const caps = getProfileCaps()
@@ -611,7 +667,9 @@ export async function globalSearch(term) {
 
     return { users, vendors, products }
   } catch (e) {
-    console.error('globalSearch error:', e)
+    if (!handleAuthError(e, 'globalSearch')) {
+      console.error('globalSearch error:', e)
+    }
     return { users: [], vendors: [], products: [] }
   }
 }
@@ -619,6 +677,12 @@ export async function globalSearch(term) {
 // Fire-and-forget prefetch to warm common dropdowns on app load
 export async function prefetchDropdowns() {
   try {
+    if (typeof window !== 'undefined' && window.location?.pathname?.startsWith('/auth')) {
+      return
+    }
+    const user = await requireAuthenticatedUser('prefetchDropdowns')
+    if (!user) return
+
     await Promise.all([
       getVendors({ activeOnly: true }),
       getProducts({ activeOnly: true }),

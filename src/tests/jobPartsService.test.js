@@ -51,7 +51,7 @@ vi.mock('../utils/capabilityTelemetry', () => ({
 }))
 
 // Import after mocks are set up
-import { replaceJobPartsForJob, toJobPartRows } from '../services/jobPartsService'
+import { replaceJobPartsForJob, toJobPartRows, buildJobPartsPayload } from '../services/jobPartsService'
 
 describe('jobPartsService - replaceJobPartsForJob', () => {
   beforeEach(() => {
@@ -346,5 +346,36 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     // Verify the quantity hasn't accumulated (still 1, not 3)
     expect(insertedRows[0].quantity_used).toBe(1)
+  })
+
+  it('buildJobPartsPayload dedupes rows with null times and empty vendor', () => {
+    const payload = buildJobPartsPayload(
+      'job-xyz',
+      [
+        { product_id: 'prod-1', vendor_id: null, scheduled_start_time: null, scheduled_end_time: null },
+        { product_id: 'prod-1', vendor_id: '', scheduled_start_time: null, scheduled_end_time: null },
+      ],
+      { includeTimes: true, includeVendor: true }
+    )
+
+    expect(payload).toHaveLength(1)
+    expect(payload[0].vendor_id).toBeNull()
+    expect(payload[0].scheduled_start_time).toBeNull()
+    expect(payload[0].scheduled_end_time).toBeNull()
+  })
+
+  it('buildJobPartsPayload normalizes Date times to ISO strings', () => {
+    const start = new Date('2025-01-01T10:00:00Z')
+    const end = new Date('2025-01-01T12:00:00Z')
+
+    const payload = buildJobPartsPayload(
+      'job-abc',
+      [{ product_id: 'prod-1', scheduled_start_time: start, scheduled_end_time: end }],
+      { includeTimes: true, includeVendor: false }
+    )
+
+    expect(payload).toHaveLength(1)
+    expect(payload[0].scheduled_start_time).toBe(start.toISOString())
+    expect(payload[0].scheduled_end_time).toBe(end.toISOString())
   })
 })
