@@ -37,7 +37,10 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: 2.53.6
+          version: 2.65.5
+
+      - name: Show Supabase CLI version
+        run: supabase --version
 
       - name: Guard: ensure project ref present
         run: |
@@ -51,11 +54,3 @@ jobs:
       - name: Dry-run migrations
         run: |
           supabase db push --dry-run
-
-      - name: Restore config.toml
-        if: always()
-        run: |
-          if [ -f supabase/config.toml.disabled ]; then
-            mv supabase/config.toml.disabled supabase/config.toml
-            echo "Restored config.toml from config.toml.disabled"
-          fi
