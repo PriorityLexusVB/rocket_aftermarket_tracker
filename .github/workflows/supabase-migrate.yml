@@ -28,6 +28,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: supabase/setup-cli@v1
+        with:
+          version: 2.53.6
+
+      - name: Temporarily disable config.toml for CLI compatibility
+        run: |
+          if [ -f supabase/config.toml ]; then
+            mv supabase/config.toml supabase/config.toml.disabled
+            echo "Renamed config.toml to config.toml.disabled"
+          fi
 
       - name: Link Supabase project
         env:
@@ -44,3 +53,11 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           yes | supabase db push
+
+      - name: Restore config.toml
+        if: always()
+        run: |
+          if [ -f supabase/config.toml.disabled ]; then
+            mv supabase/config.toml.disabled supabase/config.toml
+            echo "Restored config.toml from config.toml.disabled"
+          fi

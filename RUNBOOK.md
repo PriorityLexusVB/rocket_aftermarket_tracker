@@ -123,6 +123,10 @@ supabase secrets set TWILIO_FROM=+1234567890
    - `select policyname, cmd, roles, qual from pg_policies where schemaname='public' and tablename='user_profiles';`
 3. Production migrations require the **supabase-production** environment approval (if configured) before applying.
 
+### Note on CI Migration Workflows
+
+The GitHub Actions workflows for Supabase migrations (`supabase-migrate.yml` and `supabase-migrate-dry-run.yml`) temporarily disable `supabase/config.toml` during migration runs. This is necessary because the pinned CLI version (2.53.6) does not support certain configuration keys present in the config file (such as `oauth_server`, `web3`, `email_optional`, `network_restrictions`, and `db.migrations.enabled`). The config file is renamed to `config.toml.disabled` before linking and restored after migrations complete. This workaround ensures migration stability while maintaining the config file for local development.
+
 ### Frontend Deployment (Netlify/Vercel)
 
 1. **Build Application**

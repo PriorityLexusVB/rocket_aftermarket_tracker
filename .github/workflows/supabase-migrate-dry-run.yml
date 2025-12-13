@@ -51,3 +51,11 @@ jobs:
       - name: Dry-run migrations
         run: |
           supabase db push --dry-run
+
+      - name: Restore config.toml
+        if: always()
+        run: |
+          if [ -f supabase/config.toml.disabled ]; then
+            mv supabase/config.toml.disabled supabase/config.toml
+            echo "Restored config.toml from config.toml.disabled"
+          fi
