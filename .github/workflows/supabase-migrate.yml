@@ -62,6 +62,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           echo "=== Migration Status ==="
+          echo "Local migrations detected: $(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l)"
           supabase migration list || echo "Warning: Could not list migrations"
 
       - name: Apply migrations to production
@@ -71,8 +72,13 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           echo "=== Applying Migrations to Production ==="
-          supabase db push --yes
-          echo "✓ Migrations applied successfully"
+          echo "Command: supabase db push --yes"
+          if supabase db push --yes; then
+            echo "✓ Migrations applied successfully"
+          else
+            echo "✗ Migration failed - check logs above for details"
+            exit 1
+          fi
 
       - name: Restore config.toml
         if: always()

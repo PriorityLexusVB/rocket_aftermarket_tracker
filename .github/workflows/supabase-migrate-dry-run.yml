@@ -69,17 +69,23 @@ jobs:
         if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Migration Status ==="
+          echo "Local migrations detected: $(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l)"
           supabase migration list || echo "Warning: Could not list migrations"
 
       - name: "Dry-run migrations"
         if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Dry-Run: Validating Migrations ==="
-          supabase db push --dry-run
-          echo "✓ Dry-run completed successfully - migrations are valid"
+          echo "Command: supabase db push --dry-run"
+          if supabase db push --dry-run; then
+            echo "✓ Dry-run completed successfully - migrations are valid"
+          else
+            echo "✗ Dry-run validation failed - check logs above for details"
+            exit 1
+          fi
 
       - name: Restore config.toml
-        if: always()
+        if: always() && steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Restoring config.toml ==="
           if [ -f "supabase/config.toml.disabled" ]; then
