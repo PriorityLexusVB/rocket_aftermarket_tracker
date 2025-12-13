@@ -76,6 +76,18 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
 
+      - name: Upload test results and traces
+        if: always() && steps.check-secrets.outputs.secrets_available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-smoke
+          path: |
+            test-results/
+            e2e/*.png
+            e2e/*.html
+          if-no-files-found: ignore
+          retention-days: 7
+
   e2e-full:
     name: E2E Full (Main)
     if: github.event_name != 'pull_request'
@@ -106,6 +118,17 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install --with-deps
 
+      - name: Debug Environment Variables
+        run: |
+          echo "::group::Environment Variable Check"
+          echo "Checking for VITE_* environment variables..."
+          env | grep "^VITE_" | sed 's/=.*/=***/' || echo "No VITE_ variables found"
+          echo "Checking for E2E_* environment variables..."
+          env | grep "^E2E_" | sed 's/=.*/=***/' || echo "No E2E_ variables found"
+          echo "Checking for PLAYWRIGHT_* environment variables..."
+          env | grep "^PLAYWRIGHT_" || echo "No PLAYWRIGHT_ variables found"
+          echo "::endgroup::"
+
       - name: Verify required secrets for full E2E (main)
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -113,14 +136,21 @@ jobs:
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
         run: |
+          echo "::group::Secret Validation"
           if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
             echo "::error::Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in repo secrets"
+            echo "VITE_SUPABASE_URL is $([ -n "$VITE_SUPABASE_URL" ] && echo 'SET' || echo 'NOT SET')"
+            echo "VITE_SUPABASE_ANON_KEY is $([ -n "$VITE_SUPABASE_ANON_KEY" ] && echo 'SET' || echo 'NOT SET')"
             exit 1
           fi
           if [ -z "$E2E_EMAIL" ] || [ -z "$E2E_PASSWORD" ]; then
             echo "::error::Missing E2E_EMAIL or E2E_PASSWORD in repo secrets; required for full E2E on main"
+            echo "E2E_EMAIL is $([ -n "$E2E_EMAIL" ] && echo 'SET' || echo 'NOT SET')"
+            echo "E2E_PASSWORD is $([ -n "$E2E_PASSWORD" ] && echo 'SET' || echo 'NOT SET')"
             exit 1
           fi
+          echo "✅ All required secrets are accessible"
+          echo "::endgroup::"
 
       - name: Run E2E tests (full suite)
         env:
@@ -141,3 +171,15 @@ jobs:
           name: playwright-report-full
           path: playwright-report
           if-no-files-found: ignore
+
+      - name: Upload test results and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-full
+          path: |
+            test-results/
+            e2e/*.png
+            e2e/*.html
+          if-no-files-found: ignore
+          retention-days: 7
