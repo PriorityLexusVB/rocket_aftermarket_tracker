@@ -47,7 +47,7 @@ jobs:
       - name: "Guard: ensure project ref present"
         run: |
           test -n "$SUPABASE_PROJECT_REF" || (echo "SUPABASE_PROJECT_REF missing at runtime" && exit 1)
-          echo "✓ Project ref present: ${SUPABASE_PROJECT_REF:0:8}***"
+          echo "✓ Project ref present: ${SUPABASE_PROJECT_REF:0:4}***"
 
       - name: Link Supabase project
         run: |

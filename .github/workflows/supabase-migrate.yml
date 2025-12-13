@@ -43,7 +43,7 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           echo "=== Linking to Supabase Project ==="
-          echo "Project Ref: ${SUPABASE_PROJECT_REF:0:8}***"
+          echo "Project Ref: ${SUPABASE_PROJECT_REF:0:4}***"
           supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           echo "✓ Successfully linked to project"
 
@@ -65,7 +65,8 @@ jobs:
           
           # Mark 20250110120000 as applied if it exists in remote DB but causes conflicts
           # This is safe because we're only marking existing migrations as applied
-          if supabase migration repair 20250110120000 --status applied --linked -p "$SUPABASE_DB_PASSWORD" 2>&1 | tee repair_output.log; then
+          # Note: -p flag is the official Supabase CLI method; GitHub Actions automatically masks secrets in logs
+          if supabase migration repair 20250110120000 --status applied --linked --password "$SUPABASE_DB_PASSWORD" 2>&1 | tee repair_output.log; then
             echo "✓ Migration 20250110120000 repair completed successfully"
           else
             # Check if it failed because version doesn't exist (which is fine)
