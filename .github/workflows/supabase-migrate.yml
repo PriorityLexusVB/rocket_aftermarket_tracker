@@ -2,7 +2,7 @@ name: Supabase Migrate Production
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "supabase/migrations/**"
       - "supabase/config.toml"
@@ -14,9 +14,9 @@ concurrency:
 
 jobs:
   migrate:
-    if: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     environment: supabase-production
+
     steps:
       - name: Check required secrets
         run: |
@@ -29,14 +29,10 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         with:
-          version: 2.53.6
+          version: 2.65.5
 
-      - name: Temporarily disable config.toml for CLI compatibility
-        run: |
-          if [ -f supabase/config.toml ]; then
-            mv supabase/config.toml supabase/config.toml.disabled
-            echo "Renamed config.toml to config.toml.disabled"
-          fi
+      - name: Show Supabase CLI version
+        run: supabase --version
 
       - name: Link Supabase project
         env:
@@ -53,11 +49,3 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           yes | supabase db push
-
-      - name: Restore config.toml
-        if: always()
-        run: |
-          if [ -f supabase/config.toml.disabled ]; then
-            mv supabase/config.toml.disabled supabase/config.toml
-            echo "Restored config.toml from config.toml.disabled"
-          fi
