@@ -29,7 +29,7 @@ async function run() {
   }
   const client = new Client({
     connectionString: finalConn,
-    ssl: { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: true },
   })
   await client.connect()
   try {

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { escapeForRegex } from '../_shared/regex.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -70,7 +71,8 @@ serve(async (req) => {
         if (notification.variables) {
           Object.entries(notification.variables).forEach(([key, value]) => {
             const placeholder = `{${key}}`
-            finalMessage = finalMessage.replace(new RegExp(placeholder, 'g'), String(value))
+            const safePlaceholder = escapeForRegex(placeholder)
+            finalMessage = finalMessage.replace(new RegExp(safePlaceholder, 'g'), String(value))
           })
         }
 

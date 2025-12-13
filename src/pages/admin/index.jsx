@@ -718,17 +718,16 @@ const AdminPage = () => {
   // Generate a decent random password when auto-provisioning staff accounts
   const generateStrongPassword = (length = 16) => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-='
-    let pwd = ''
+    const cryptoSource = globalThis?.crypto
+    if (!cryptoSource?.getRandomValues) {
+      throw new Error('Secure random generator unavailable')
+    }
     const array = new Uint32Array(length)
-    if (typeof window !== 'undefined' && window?.crypto?.getRandomValues) {
-      window.crypto.getRandomValues(array)
-      for (let i = 0; i < length; i++) {
-        pwd += chars[array[i] % chars.length]
-      }
-    } else {
-      for (let i = 0; i < length; i++) {
-        pwd += chars[Math.floor(Math.random() * chars.length)]
-      }
+    cryptoSource.getRandomValues(array)
+
+    let pwd = ''
+    for (let i = 0; i < length; i++) {
+      pwd += chars[array[i] % chars.length]
     }
     return pwd
   }
