@@ -720,7 +720,9 @@ const AdminPage = () => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-='
     const cryptoSource = globalThis?.crypto
     if (!cryptoSource?.getRandomValues) {
-      throw new Error('Secure random generator unavailable')
+      throw new Error(
+        'Secure random generator (crypto.getRandomValues) unavailable. Password generation requires a modern browser or secure execution environment.'
+      )
     }
     const array = new Uint32Array(length)
     cryptoSource.getRandomValues(array)

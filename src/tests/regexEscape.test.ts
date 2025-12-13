@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { escapeForRegex } from '../../supabase/functions/_shared/regex'
+import { escapeForRegex } from '../utils/regex'
 
 describe('escapeForRegex', () => {
   it('escapes regex metacharacters so placeholders are treated literally', () => {
@@ -15,5 +15,21 @@ describe('escapeForRegex', () => {
     const replaced = template.replace(new RegExp(escaped, 'g'), '12345')
 
     expect(replaced).toBe('Value: 12345')
+  })
+
+  it('handles empty strings', () => {
+    expect(escapeForRegex('')).toBe('')
+  })
+
+  it('escapes only metacharacters correctly', () => {
+    expect(escapeForRegex('.*+?^${}()|[]\\')).toBe('\\.\\*\\+\\?\\^\\$\\{\\}\\(\\)\\|\\[\\]\\\\')
+  })
+
+  it('escapes existing backslashes', () => {
+    expect(escapeForRegex('\\path\\to\\file')).toBe('\\\\path\\\\to\\\\file')
+  })
+
+  it('handles consecutive metacharacters without loss', () => {
+    expect(escapeForRegex('}}}}')).toBe('\\}\\}\\}\\}')
   })
 })
