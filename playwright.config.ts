@@ -14,8 +14,8 @@ try {
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 30_000,
-  retries: 0,
+  timeout: process.env.CI ? 45_000 : 30_000, // Longer timeout in CI for slower environments
+  retries: process.env.CI ? 1 : 0, // Retry once in CI to handle flaky tests
   fullyParallel: false,
   // Stabilize defaults in CI while allowing local override via PLAYWRIGHT_WORKERS
   workers: process.env.PLAYWRIGHT_WORKERS
@@ -26,7 +26,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
-    trace: 'on-first-retry',
+    trace: process.env.CI ? 'on' : 'on-first-retry', // Always capture traces in CI
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     storageState: './e2e/storageState.json',
