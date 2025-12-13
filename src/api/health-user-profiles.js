@@ -4,11 +4,14 @@
 
 import { supabase } from '@/lib/supabase'
 
-// Allowed column names to prevent SQL injection
+// Allowed column names to prevent SQL injection.
+// NOTE: Currently column names are hardcoded in the handler (lines 39-41) and only
+// called internally, but this validation provides defense-in-depth for future changes
+// where column names might come from external input or request parameters.
 const ALLOWED_COLUMNS = ['name', 'full_name', 'display_name']
 
 async function checkCol(col) {
-  // Validate column name to prevent SQL injection
+  // Validate column name (defensive programming for future-proofing)
   if (!ALLOWED_COLUMNS.includes(col)) {
     console.warn(`[health-user-profiles] Invalid column name: ${col}`)
     return null
