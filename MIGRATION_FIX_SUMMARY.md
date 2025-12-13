@@ -11,8 +11,10 @@ Key (version)=(20250110120000) already exists.
 ## Root Cause
 
 **Duplicate migration timestamp:** Two migration files had the same timestamp `20250110120000`:
-- `20250110120000_complete_priority_automotive_data_restoration.sql`
-- `20250110120000_user_profiles_relax_email_and_add_auth_user_id.sql`
+- `20250110120000_complete_priority_automotive_data_restoration.sql` (data migration)
+- `20250110120000_user_profiles_relax_email_and_add_auth_user_id.sql` (schema migration)
+
+**Critical Context:** Production database already has version `20250110120000` recorded as `complete_priority_automotive_data_restoration` and fully applied. The `user_profiles_relax_email_and_add_auth_user_id` migration was never applied due to the duplicate timestamp conflict.
 
 When the Supabase CLI attempted to apply migrations, it tried to insert both versions with the same key into `supabase_migrations.schema_migrations`, causing a primary key violation.
 
@@ -20,50 +22,36 @@ When the Supabase CLI attempted to apply migrations, it tried to insert both ver
 
 ### 1. Fixed Duplicate Migration Timestamp ✅
 
-**File renamed:**
+**File renamed (CORRECTED):**
 ```
-supabase/migrations/20250110120000_complete_priority_automotive_data_restoration.sql
-→ supabase/migrations/20250110120001_complete_priority_automotive_data_restoration.sql
+supabase/migrations/20250110120000_user_profiles_relax_email_and_add_auth_user_id.sql
+→ supabase/migrations/20250110120001_user_profiles_relax_email_and_add_auth_user_id.sql
 ```
 
-This ensures unique migration version numbers going forward.
+**IMPORTANT:** We renamed the `user_profiles_relax_email_and_add_auth_user_id` migration (NOT the `complete_priority_automotive_data_restoration` one) because:
+- Production already has `20250110120000` recorded as `complete_priority_automotive_data_restoration`
+- Renaming the data restoration migration would cause it to attempt re-running in production
+- The user profiles migration was never applied, so it can safely be assigned a new timestamp
 
-### 2. Added Migration Repair Step ✅
+This ensures unique migration version numbers and prevents re-running already-applied data restoration SQL.
 
-**Production Workflow** (`.github/workflows/supabase-migrate.yml`):
-
-Added a new step: **"Repair migration history for duplicate timestamps"** that:
-- Runs before `supabase db push --include-all`
-- Marks migration `20250110120000` as already applied if it exists remotely
-- Uses `supabase migration repair` command (available in CLI v2.65.5)
-- Handles cases where the migration doesn't exist (no repair needed)
-- Non-destructive: only marks existing migrations as applied, never modifies schema
-
-**Why it's safe:**
-- `supabase migration repair` only updates the `schema_migrations` tracking table
-- Does NOT execute any SQL statements from the migration file
-- Does NOT modify database schema or data
-- Prevents duplicate key errors by reconciling what's already applied vs. what the CLI thinks needs to be applied
-
-### 3. Enhanced Workflow Logging ✅
+### 2. Enhanced Workflow Logging ✅
 
 Both production and dry-run workflows now include:
 
 **Production workflow improvements:**
 - ✓ Print Supabase CLI version with clear headers
-- ✓ Show masked project ref (first 8 chars + ***)
-- ✓ List pending migrations before applying
-- ✓ Show repair step status and diagnostics
+- ✓ List pending migrations before applying (visibility into what will be applied)
 - ✓ Clear success/failure messages for each step
+- ✓ GitHub Actions automatically masks secrets in logs (no manual masking needed)
 
 **Dry-run workflow improvements:**
 - ✓ Print Supabase CLI version with clear headers
-- ✓ Show masked project ref
 - ✓ List pending migrations
 - ✓ Clear dry-run validation messages
 - ✓ Maintains safe skip when secrets are missing (PR context)
 
-### 4. Verified Workflow Safety ✅
+### 3. Verified Workflow Safety ✅
 
 **Dry-run workflow** (`.github/workflows/supabase-migrate-dry-run.yml`):
 - ✓ Never uses `supabase-production` environment
@@ -75,10 +63,11 @@ Both production and dry-run workflows now include:
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `supabase/migrations/20250110120000_complete_priority_automotive_data_restoration.sql` | Renamed | Moved to `20250110120001_complete_priority_automotive_data_restoration.sql` |
-| `.github/workflows/supabase-migrate.yml` | Modified | Added repair step, enhanced logging |
-| `.github/workflows/supabase-migrate-dry-run.yml` | Modified | Enhanced logging for consistency |
-| `MIGRATION_FIX_SUMMARY.md` | Created | This documentation file |
+| `supabase/migrations/20250110120000_user_profiles_relax_email_and_add_auth_user_id.sql` | Renamed | Moved to `20250110120001_user_profiles_relax_email_and_add_auth_user_id.sql` (the OTHER file, not the data restoration) |
+| `supabase/migrations/20250110120000_complete_priority_automotive_data_restoration.sql` | Kept unchanged | Remains at timestamp 20250110120000 as it's already applied in production |
+| `.github/workflows/supabase-migrate.yml` | Modified | Removed unnecessary repair step, enhanced logging, removed manual secret masking |
+| `.github/workflows/supabase-migrate-dry-run.yml` | Modified | Enhanced logging, removed manual secret masking |
+| `MIGRATION_FIX_SUMMARY.md` | Modified | Updated to reflect correct solution |
 
 ## Verification Performed
 
@@ -94,8 +83,8 @@ python3 -c "import yaml; yaml.safe_load(open('.github/workflows/supabase-migrate
 ls -la supabase/migrations/202501101*
 ```
 **Result:** 
-- `20250110120000_user_profiles_relax_email_and_add_auth_user_id.sql` (kept)
-- `20250110120001_complete_priority_automotive_data_restoration.sql` (renamed, new timestamp)
+- `20250110120000_complete_priority_automotive_data_restoration.sql` (kept - already applied in production)
+- `20250110120001_user_profiles_relax_email_and_add_auth_user_id.sql` (renamed - never applied, safe to use new timestamp)
 
 ### ✅ CLI Version Verification
 **CLI Version:** 2.65.5 (pinned in both workflows)
@@ -108,7 +97,7 @@ ls -la supabase/migrations/202501101*
 - ✅ Requires secrets: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF`
 - ✅ CLI version pinned to 2.65.5
 - ✅ Uses `supabase db push --include-all` (required for ordering drift)
-- ✅ Includes repair step before push
+- ✅ No repair step needed (unique timestamps eliminate conflict)
 
 **Dry-Run Workflow:**
 - ✅ Never uses production environment
@@ -137,8 +126,6 @@ After merging this PR, follow these steps:
 
 Watch for these log messages:
 - ✓ "Successfully linked to project"
-- ✓ "Migration 20250110120000 repair completed successfully" OR "Migration 20250110120000 not found in history - no repair needed"
-- ✓ "Migration history reconciliation complete"
 - ✓ "Migrations applied successfully"
 
 ### 4. Verify in Supabase SQL Editor
@@ -152,17 +139,17 @@ LIMIT 20;
 ```
 
 **Expected results:**
-- ✓ No duplicate `20250110120000` entries
-- ✓ `20250110120000_user_profiles_relax_email_and_add_auth_user_id` present
-- ✓ `20250110120001_complete_priority_automotive_data_restoration` present
-- ✓ `20250117000000_add_job_parts_scheduling_times` present (most recent)
+- ✓ `20250117000000` → `add_job_parts_scheduling_times` (most recent)
+- ✓ `20250110120001` → `user_profiles_relax_email_and_add_auth_user_id` (newly applied with new timestamp)
+- ✓ `20250110120000` → `complete_priority_automotive_data_restoration` (already existed, unchanged)
+- ✓ No duplicate entries for any version
 - ✓ No error messages in workflow logs
 
-### 5. Verify No Schema Corruption
+### 5. Verify New Migration Applied Correctly
 
-Check that recent migrations are applied correctly:
+Check that the user_profiles migration (now at 20250110120001) was applied:
 ```sql
--- Verify user_profiles columns from 20250110120000
+-- Verify user_profiles columns from 20250110120001 (renamed migration)
 SELECT column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_name = 'user_profiles' 
@@ -178,8 +165,8 @@ ORDER BY column_name;
 ```
 
 **Expected results:**
-- `user_profiles.email` should be nullable
-- `user_profiles.auth_user_id` should exist (UUID, nullable)
+- `user_profiles.email` should be nullable (from 20250110120001)
+- `user_profiles.auth_user_id` should exist (UUID, nullable) (from 20250110120001)
 - `job_parts.scheduled_start_time` should exist (TIMESTAMPTZ)
 - `job_parts.scheduled_end_time` should exist (TIMESTAMPTZ)
 
@@ -187,57 +174,22 @@ ORDER BY column_name;
 
 If the migration workflow fails:
 
-### Option 1: If repair step fails but workflow continues
-- Review the repair step logs
-- Migration repair is non-destructive, so failure here won't corrupt data
-- Manual repair: Connect to Supabase SQL editor and run:
-  ```sql
-  INSERT INTO supabase_migrations.schema_migrations (version, name, statements)
-  VALUES ('20250110120000', 'user_profiles_relax_email_and_add_auth_user_id', ARRAY[]::text[])
-  ON CONFLICT (version) DO NOTHING;
-  ```
-
-### Option 2: If push step fails with different error
+### Option 1: If push step fails with migration error
 - Check workflow logs for specific error
 - If schema conflict: review migration SQL for issues
-- Can manually apply specific migrations via Supabase SQL editor
+- Can manually apply the `20250110120001_user_profiles_relax_email_and_add_auth_user_id.sql` migration via Supabase SQL editor
 - Do NOT attempt to delete from `schema_migrations` table
 
-### Option 3: Revert this PR
+### Option 2: Revert this PR
 ```bash
 git revert <commit-hash>
 git push origin main
 ```
 This will:
-- Restore the duplicate timestamp (but won't fix the original problem)
-- Remove the repair step (problem will persist)
+- Restore the duplicate timestamp (original problem returns)
 - **Only use as last resort** - better to fix forward
 
 ## Technical Details
-
-### Supabase CLI `migration repair` Command
-
-**Syntax:**
-```bash
-supabase migration repair [version] --status applied --linked -p <password>
-```
-
-**What it does:**
-- Updates `supabase_migrations.schema_migrations` table
-- Marks specified version as applied or reverted
-- Does NOT execute migration SQL
-- Does NOT modify database schema
-
-**Use cases:**
-- Reconcile when migration was applied manually
-- Fix drift between local and remote migration history
-- Resolve duplicate key errors from out-of-order migrations
-
-**Safety guarantees:**
-- Read-only on actual database schema
-- Only writes to tracking table
-- Idempotent (safe to run multiple times)
-- Includes `--linked` flag to target remote project
 
 ### Why `--include-all` is Required
 
@@ -248,12 +200,24 @@ The problem statement mentions `supabase db push --include-all` is used "because
 - Without it, CLI might skip migrations that appear "older" than latest applied version
 - Required when local migration history diverges from remote
 
+### Why No Repair Step is Needed
+
+Since we renamed the correct migration file (the one that was never applied), there is no conflict with production:
+- Production has: `20250110120000` → `complete_priority_automotive_data_restoration` (already applied)
+- Local now has: `20250110120000` → `complete_priority_automotive_data_restoration` (matches production)
+- Local also has: `20250110120001` → `user_profiles_relax_email_and_add_auth_user_id` (new, will be applied)
+
+No repair/reconciliation is needed because:
+1. The timestamps are now unique
+2. The already-applied migration remains at its original timestamp
+3. The never-applied migration gets a new unique timestamp and will be applied normally
+
 ## Conclusion
 
 ✅ **Root cause identified:** Duplicate migration timestamp  
-✅ **Fix implemented:** Renamed migration + repair step  
-✅ **Safety verified:** Non-destructive, deterministic workflow  
+✅ **Fix implemented:** Renamed the CORRECT migration (user_profiles, not data_restoration)  
+✅ **Safety verified:** Preserves already-applied migrations, prevents re-running data restoration  
 ✅ **Logging enhanced:** Clear diagnostics for troubleshooting  
 ✅ **Workflows validated:** YAML syntax correct, dry-run safe  
 
-The fix is minimal, surgical, and preserves all historical migrations. The repair step ensures production can recover from the current duplicate key error without manual intervention.
+The fix is minimal, surgical, and preserves all historical migrations. By renaming the never-applied migration instead of the already-applied one, we prevent re-running data restoration SQL in production.
