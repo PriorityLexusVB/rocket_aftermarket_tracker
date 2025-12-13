@@ -47,7 +47,6 @@ test.describe('Profile name capability fallback', () => {
       })
     })
 
-    await page.goto('/')
     await page.addInitScript(() => {
       sessionStorage.setItem('cap_userProfilesName', 'false')
       sessionStorage.setItem('cap_userProfilesFullName', 'false')
@@ -73,7 +72,6 @@ test.describe('Profile name capability fallback', () => {
       })
     })
 
-    await page.goto('/')
     await page.addInitScript(() => {
       sessionStorage.setItem('cap_userProfilesName', 'false')
       sessionStorage.setItem('cap_userProfilesFullName', 'false')

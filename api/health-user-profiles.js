@@ -10,8 +10,18 @@ const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession
 async function check(col) {
   try {
     const { error } = await supabase.from('user_profiles').select(`id, ${col}`).limit(1)
-    return !error
-  } catch {
+    // If no error, column exists
+    if (!error) return true
+    // Check if it's a "column does not exist" error
+    const errMsg = String(error?.message || '').toLowerCase()
+    if (errMsg.includes('column') && errMsg.includes('does not exist')) {
+      return false
+    }
+    // Other errors (RLS, network, etc.) - treat as unknown
+    console.warn(`[health-user-profiles] Unexpected error checking ${col}:`, error?.message)
+    return null
+  } catch (err) {
+    console.warn(`[health-user-profiles] Exception checking ${col}:`, err?.message)
     return null
   }
 }
