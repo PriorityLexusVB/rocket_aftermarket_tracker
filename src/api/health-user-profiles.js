@@ -4,7 +4,16 @@
 
 import { supabase } from '@/lib/supabase'
 
+// Allowed column names to prevent SQL injection
+const ALLOWED_COLUMNS = ['name', 'full_name', 'display_name']
+
 async function checkCol(col) {
+  // Validate column name to prevent SQL injection
+  if (!ALLOWED_COLUMNS.includes(col)) {
+    console.warn(`[health-user-profiles] Invalid column name: ${col}`)
+    return null
+  }
+
   try {
     const { error } = await supabase.from('user_profiles').select(`id, ${col}`).limit(1)
     // If no error, column exists
