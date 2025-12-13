@@ -66,11 +66,11 @@ jobs:
           # Mark 20250110120000 as applied if it exists in remote DB but causes conflicts
           # This is safe because we're only marking existing migrations as applied
           # Note: -p flag is the official Supabase CLI method; GitHub Actions automatically masks secrets in logs
-          if supabase migration repair 20250110120000 --status applied --linked --password "$SUPABASE_DB_PASSWORD" 2>&1 | tee repair_output.log; then
+          if supabase migration repair 20250110120000 --status applied --linked -p "$SUPABASE_DB_PASSWORD" 2>&1 | tee repair_output.log; then
             echo "✓ Migration 20250110120000 repair completed successfully"
           else
             # Check if it failed because version doesn't exist (which is fine)
-            if grep -q "migration version .* not found" repair_output.log; then
+            if grep -qE "migration version [0-9]+ not found" repair_output.log; then
               echo "✓ Migration 20250110120000 not found in history - no repair needed"
             else
               echo "Warning: Repair command had unexpected output, but continuing..."
