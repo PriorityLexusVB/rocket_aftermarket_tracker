@@ -36,6 +36,16 @@ jobs:
           echo "=== Supabase CLI Version ==="
           supabase --version
 
+      - name: Disable config.toml temporarily
+        run: |
+          echo "=== Disabling config.toml to avoid parse errors with pinned CLI version ==="
+          if [ -f "supabase/config.toml" ]; then
+            mv supabase/config.toml supabase/config.toml.disabled
+            echo "✓ Renamed config.toml to config.toml.disabled"
+          else
+            echo "✓ config.toml not found, skipping"
+          fi
+
       - name: Link Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -63,3 +73,14 @@ jobs:
           echo "=== Applying Migrations to Production ==="
           yes | supabase db push --include-all
           echo "✓ Migrations applied successfully"
+
+      - name: Restore config.toml
+        if: always()
+        run: |
+          echo "=== Restoring config.toml ==="
+          if [ -f "supabase/config.toml.disabled" ]; then
+            mv supabase/config.toml.disabled supabase/config.toml
+            echo "✓ Restored config.toml from config.toml.disabled"
+          else
+            echo "✓ config.toml.disabled not found, skipping"
+          fi

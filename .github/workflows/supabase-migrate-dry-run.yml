@@ -44,6 +44,16 @@ jobs:
           echo "=== Supabase CLI Version ==="
           supabase --version
 
+      - name: Disable config.toml temporarily
+        run: |
+          echo "=== Disabling config.toml to avoid parse errors with pinned CLI version ==="
+          if [ -f "supabase/config.toml" ]; then
+            mv supabase/config.toml supabase/config.toml.disabled
+            echo "✓ Renamed config.toml to config.toml.disabled"
+          else
+            echo "✓ config.toml not found, skipping"
+          fi
+
       - name: "Guard: ensure project ref present"
         run: |
           test -n "$SUPABASE_PROJECT_REF" || (echo "SUPABASE_PROJECT_REF missing at runtime" && exit 1)
@@ -65,3 +75,14 @@ jobs:
           echo "=== Dry-Run: Validating Migrations ==="
           supabase db push --dry-run
           echo "✓ Dry-run completed successfully - migrations are valid"
+
+      - name: Restore config.toml
+        if: always()
+        run: |
+          echo "=== Restoring config.toml ==="
+          if [ -f "supabase/config.toml.disabled" ]; then
+            mv supabase/config.toml.disabled supabase/config.toml
+            echo "✓ Restored config.toml from config.toml.disabled"
+          else
+            echo "✓ config.toml.disabled not found, skipping"
+          fi
