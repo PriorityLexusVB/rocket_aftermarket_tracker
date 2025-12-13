@@ -40,17 +40,49 @@ jobs:
           version: 2.65.5
 
       - name: Show Supabase CLI version
-        run: supabase --version
+        run: |
+          echo "=== Supabase CLI Version ==="
+          supabase --version
 
-      - name: Guard: ensure project ref present
+      - name: Disable config.toml temporarily
+        run: |
+          echo "=== Disabling config.toml to avoid parse errors with pinned CLI version ==="
+          if [ -f "supabase/config.toml" ]; then
+            mv supabase/config.toml supabase/config.toml.disabled
+            echo "✓ Renamed config.toml to config.toml.disabled"
+          else
+            echo "✓ config.toml not found, skipping"
+          fi
+
+      - name: "Guard: ensure project ref present"
         run: |
           test -n "$SUPABASE_PROJECT_REF" || (echo "SUPABASE_PROJECT_REF missing at runtime" && exit 1)
-          echo "Project ref present"
+          echo "✓ Project ref present"
 
       - name: Link Supabase project
         run: |
+          echo "=== Linking to Supabase Project (Dry-Run) ==="
           supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          echo "✓ Successfully linked to project"
 
-      - name: Dry-run migrations
+      - name: List pending migrations
         run: |
+          echo "=== Migration Status ==="
+          supabase migration list || echo "Warning: Could not list migrations"
+
+      - name: "Dry-run migrations"
+        run: |
+          echo "=== Dry-Run: Validating Migrations ==="
           supabase db push --dry-run
+          echo "✓ Dry-run completed successfully - migrations are valid"
+
+      - name: Restore config.toml
+        if: always()
+        run: |
+          echo "=== Restoring config.toml ==="
+          if [ -f "supabase/config.toml.disabled" ]; then
+            mv supabase/config.toml.disabled supabase/config.toml
+            echo "✓ Restored config.toml from config.toml.disabled"
+          else
+            echo "✓ config.toml.disabled not found, skipping"
+          fi
