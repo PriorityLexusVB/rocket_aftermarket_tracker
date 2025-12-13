@@ -10,19 +10,31 @@
 CREATE SCHEMA IF NOT EXISTS extensions;
 
 -- =============================================================================
--- STEP 2: Drop pg_trgm from public schema and recreate in extensions
--- Note: Dropping extension will remove dependent objects (trigram indexes)
--- They will be recreated automatically when extension is available via search_path
+-- STEP 2: Drop dependent trigram indexes first
 -- =============================================================================
 
--- Drop if exists in public (this is safe - indexes referencing it will be dropped)
+-- Drop existing trigram indexes that depend on pg_trgm extension
+DROP INDEX IF EXISTS idx_user_profiles_department_trgm;
+DROP INDEX IF EXISTS idx_jobs_title_trgm;
+DROP INDEX IF EXISTS idx_jobs_job_number_trgm;
+DROP INDEX IF EXISTS idx_vendors_name_trgm;
+DROP INDEX IF EXISTS idx_vehicles_make_trgm;
+DROP INDEX IF EXISTS idx_vehicles_model_trgm;
+DROP INDEX IF EXISTS idx_vehicles_vin_trgm;
+DROP INDEX IF EXISTS idx_products_name_trgm;
+
+-- =============================================================================
+-- STEP 3: Drop pg_trgm from public schema and recreate in extensions
+-- =============================================================================
+
+-- Drop if exists in public (now safe since dependent indexes are dropped)
 DROP EXTENSION IF EXISTS pg_trgm;
 
 -- Create in extensions schema
 CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
 
 -- =============================================================================
--- STEP 3: Add extensions schema to search_path for future sessions
+-- STEP 4: Add extensions schema to search_path for future sessions
 -- Note: This is typically configured in config.toml api.extra_search_path
 -- but we ensure the extension is accessible via schema prefix if needed
 -- =============================================================================
@@ -30,7 +42,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
 COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching. Relocated to extensions schema per db lint recommendation.';
 
 -- =============================================================================
--- STEP 4: Recreate trigram indexes that were dropped
+-- STEP 5: Recreate trigram indexes that were dropped
 -- These indexes use gin_trgm_ops from the pg_trgm extension
 -- Using extensions.gin_trgm_ops ensures they reference the relocated extension
 -- =============================================================================
@@ -66,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_department_trgm
   ON public.user_profiles USING GIN (department extensions.gin_trgm_ops);
 
 -- =============================================================================
--- STEP 5: Validation
+-- STEP 6: Validation
 -- =============================================================================
 
 DO $$
