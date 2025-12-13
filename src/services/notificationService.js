@@ -92,35 +92,37 @@ export const notificationService = {
     if (!userId || !callback) return null
 
     try {
-      const subscription = supabase
-        ?.channel('notifications')
-        ?.on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'communications',
-          },
-          () => {
-            // Refresh notifications when communications change
-            this.getNotificationCount(userId)?.then(callback)
-          }
-        )
-        ?.on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notification_outbox',
-          },
-          () => {
-            // Refresh notifications when SMS outbox changes
-            this.getNotificationCount(userId)?.then(callback)
-          }
-        )
-        ?.subscribe()
+      const channel = supabase?.channel?.('notifications')
+      if (!channel?.on) return null
 
-      return subscription
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'communications',
+        },
+        () => {
+          // Refresh notifications when communications change
+          this.getNotificationCount(userId)?.then(callback)
+        }
+      )
+
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notification_outbox',
+        },
+        () => {
+          // Refresh notifications when SMS outbox changes
+          this.getNotificationCount(userId)?.then(callback)
+        }
+      )
+
+      channel?.subscribe?.()
+      return channel
     } catch (error) {
       console.warn('Failed to subscribe to notifications:', error)
       return null

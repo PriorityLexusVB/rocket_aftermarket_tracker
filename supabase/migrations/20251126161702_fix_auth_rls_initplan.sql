@@ -375,26 +375,38 @@ END $$;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'claims') THEN
-    -- Drop and recreate claims select policy
+    -- Only apply org-scoped claims policy if the required column exists.
+    -- Some environments may have a legacy `claims` table without `org_id`.
     IF EXISTS (
-      SELECT 1 FROM pg_policies 
-      WHERE schemaname='public' AND tablename='claims' AND policyname='claims_select_policy'
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'claims'
+        AND column_name = 'org_id'
     ) THEN
-      DROP POLICY "claims_select_policy" ON public.claims;
-    END IF;
-    
-    IF NOT EXISTS (
-      SELECT 1 FROM pg_policies 
-      WHERE schemaname='public' AND tablename='claims' AND policyname='claims_select_policy'
-    ) THEN
-      CREATE POLICY "claims_select_policy" ON public.claims
-        FOR SELECT TO authenticated
-        USING (
-          org_id = (SELECT public.auth_user_org())
-          OR (SELECT public.is_admin_or_manager())
-        );
+      -- Drop and recreate claims select policy
+      IF EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname='public' AND tablename='claims' AND policyname='claims_select_policy'
+      ) THEN
+        DROP POLICY "claims_select_policy" ON public.claims;
+      END IF;
       
-      RAISE NOTICE 'Recreated policy: claims_select_policy';
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname='public' AND tablename='claims' AND policyname='claims_select_policy'
+      ) THEN
+        CREATE POLICY "claims_select_policy" ON public.claims
+          FOR SELECT TO authenticated
+          USING (
+            org_id = (SELECT public.auth_user_org())
+            OR (SELECT public.is_admin_or_manager())
+          );
+        
+        RAISE NOTICE 'Recreated policy: claims_select_policy';
+      END IF;
+    ELSE
+      RAISE NOTICE 'Skipped claims_select_policy recreation: public.claims.org_id column not found';
     END IF;
   END IF;
 END $$;
