@@ -31,21 +31,24 @@ jobs:
       - name: Skip when secrets unavailable
         if: steps.secrets_check.outputs.missing_secrets == 'true'
         run: |
-          echo "Skipping supabase db push --dry-run because Supabase secrets are not configured/available for this PR context."
-          exit 0
+          echo "Skipping Supabase dry-run because Supabase secrets are not configured/available for this workflow context."
 
       - uses: actions/checkout@v4
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
 
       - uses: supabase/setup-cli@v1
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         with:
           version: 2.65.5
 
       - name: Show Supabase CLI version
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Supabase CLI Version ==="
           supabase --version
 
       - name: Disable config.toml temporarily
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Disabling config.toml to avoid parse errors with pinned CLI version ==="
           if [ -f "supabase/config.toml" ]; then
@@ -55,23 +58,21 @@ jobs:
             echo "✓ config.toml not found, skipping"
           fi
 
-      - name: "Guard: ensure project ref present"
-        run: |
-          test -n "$SUPABASE_PROJECT_REF" || (echo "SUPABASE_PROJECT_REF missing at runtime" && exit 1)
-          echo "✓ Project ref present"
-
       - name: Link Supabase project
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Linking to Supabase Project (Dry-Run) ==="
           supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           echo "✓ Successfully linked to project"
 
       - name: List pending migrations
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Migration Status ==="
           supabase migration list || echo "Warning: Could not list migrations"
 
       - name: "Dry-run migrations"
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Dry-Run: Validating Migrations ==="
           supabase db push --dry-run
