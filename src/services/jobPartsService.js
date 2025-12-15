@@ -1,6 +1,6 @@
 /**
  * Centralized service for managing job_parts table writes
- * 
+ *
  * This module provides a single source of truth for writing job_parts data,
  * preventing duplication bugs by ensuring DELETE + INSERT happens exactly once
  * per save operation.
@@ -23,10 +23,43 @@ const TIME_PLACEHOLDER = '1970-01-01 00:00:00+00'
 
 function normalizeTime(value) {
   if (!value) return null
-  if (value instanceof Date) return value.toISOString()
+  const stripZeroMs = (iso) => (typeof iso === 'string' ? iso.replace(/\.000Z$/, 'Z') : iso)
+
+  if (value instanceof Date) return stripZeroMs(value.toISOString())
   if (typeof value === 'string') {
     const str = value.trim()
-    return str || null
+    if (!str) return null
+
+    // Canonicalize common timestamp formats so dedupe keys match Postgres casting.
+    // Examples seen in the wild:
+    // - 2025-12-15T15:04:00.000Z
+    // - 2025-12-15T10:04:00-05:00
+    // - 2025-12-15 15:04:00+00
+    let candidate = str
+
+    // Convert Postgres-style "YYYY-MM-DD HH:MM:SS" to ISO-ish "YYYY-MM-DDTHH:MM:SS"
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(candidate)) {
+      candidate = candidate.replace(' ', 'T')
+    }
+
+    // Normalize timezone offsets:
+    // - +HH   -> +HH:00
+    // - +HHMM -> +HH:MM
+    // - -HH   -> -HH:00
+    // - -HHMM -> -HH:MM
+    if (/([+-]\d{2})$/.test(candidate)) {
+      candidate = `${candidate}:00`
+    } else if (/([+-]\d{4})$/.test(candidate)) {
+      candidate = candidate.replace(/([+-]\d{2})(\d{2})$/, '$1:$2')
+    }
+
+    const parsed = Date.parse(candidate)
+    if (!Number.isNaN(parsed)) {
+      return stripZeroMs(new Date(parsed).toISOString())
+    }
+
+    // Fallback: keep original string if we can't parse reliably
+    return str
   }
   return null
 }
@@ -39,9 +72,7 @@ function isMissingColumnError(error) {
   const msg = String(error?.message || '').toLowerCase()
   return (
     msg.includes('column') &&
-    (msg.includes('does not exist') ||
-      msg.includes('not found') ||
-      msg.includes('could not find'))
+    (msg.includes('does not exist') || msg.includes('not found') || msg.includes('could not find'))
   )
 }
 
@@ -61,7 +92,7 @@ function classifySchemaError(error) {
 
 /**
  * Normalize, filter, and deduplicate job_parts payload
- * 
+ *
  * @param {string} jobId
  * @param {Array} lineItems
  * @param {{ includeTimes?: boolean, includeVendor?: boolean }} opts
@@ -100,7 +131,7 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
           requires_scheduling: requiresScheduling,
           no_schedule_reason: requiresScheduling
             ? null
-            : item?.no_schedule_reason ?? item?.noScheduleReason ?? null,
+            : (item?.no_schedule_reason ?? item?.noScheduleReason ?? null),
           is_off_site: !!(item?.is_off_site ?? item?.isOffSite),
         }
 
@@ -110,7 +141,9 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
         }
 
         if (includeTimes) {
-          const start = normalizeTime(item?.scheduled_start_time ?? item?.scheduledStartTime ?? null)
+          const start = normalizeTime(
+            item?.scheduled_start_time ?? item?.scheduledStartTime ?? null
+          )
           const end = normalizeTime(item?.scheduled_end_time ?? item?.scheduledEndTime ?? null)
           record.scheduled_start_time = requiresScheduling ? start : null
           record.scheduled_end_time = requiresScheduling ? end : null
@@ -127,12 +160,41 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
     const keyParts = [
       record.job_id,
       record.product_id,
-      includeVendor ? record.vendor_id ?? VENDOR_PLACEHOLDER_UUID : VENDOR_PLACEHOLDER_UUID,
-      includeTimes ? record.scheduled_start_time ?? TIME_PLACEHOLDER : TIME_PLACEHOLDER,
-      includeTimes ? record.scheduled_end_time ?? TIME_PLACEHOLDER : TIME_PLACEHOLDER,
+      includeVendor ? (record.vendor_id ?? VENDOR_PLACEHOLDER_UUID) : VENDOR_PLACEHOLDER_UUID,
+      includeTimes ? (record.scheduled_start_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
+      includeTimes ? (record.scheduled_end_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
     ]
     const key = keyParts.join('|')
-    dedupeMap.set(key, record) // last occurrence wins
+
+    const existing = dedupeMap.get(key)
+    if (existing) {
+      // Merge duplicate rows that would violate DB uniqueness constraints.
+      // Preserve latest non-key fields (promised_date, flags) while summing quantity.
+      const mergedQuantity = Number(existing.quantity_used || 0) + Number(record.quantity_used || 0)
+      const next = {
+        ...existing,
+        ...record,
+        quantity_used: mergedQuantity,
+      }
+
+      if (
+        import.meta.env.MODE === 'development' &&
+        Number(existing.unit_price || 0) !== Number(record.unit_price || 0)
+      ) {
+        console.warn('[buildJobPartsPayload] Merged duplicates with differing unit_price:', {
+          product_id: record.product_id,
+          vendor_id: record.vendor_id,
+          scheduled_start_time: record.scheduled_start_time,
+          scheduled_end_time: record.scheduled_end_time,
+          existing_unit_price: existing.unit_price,
+          incoming_unit_price: record.unit_price,
+        })
+      }
+
+      dedupeMap.set(key, next)
+    } else {
+      dedupeMap.set(key, record)
+    }
   }
 
   dedupeMap.forEach((value) => uniqueRecords.push(value))
@@ -142,15 +204,15 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
 
 /**
  * Normalize and deduplicate job_parts rows
- * 
+ *
  * Takes raw line items and merges duplicates based on a composite key:
  * - product_id
  * - vendor_id (if available)
  * - scheduled_start_time (if available)
  * - scheduled_end_time (if available)
- * 
+ *
  * Duplicates are merged by summing quantity_used and keeping the first occurrence's other fields.
- * 
+ *
  * @param {Array} rows - Raw job_parts rows (already transformed to DB shape)
  * @param {Object} opts - Options: { includeTimes: boolean }
  * @returns {Array} - Deduplicated rows
@@ -168,9 +230,9 @@ function normalizeAndDedupeJobPartRows(rows = [], opts = {}) {
     // Build composite key from fields that define "the same line"
     const keyParts = [
       row.product_id || 'null',
-      includeVendor ? (row.vendor_id || 'null') : '',
-      includeTimes ? (row.scheduled_start_time || 'null') : '',
-      includeTimes ? (row.scheduled_end_time || 'null') : '',
+      includeVendor ? row.vendor_id || 'null' : '',
+      includeTimes ? row.scheduled_start_time || 'null' : '',
+      includeTimes ? row.scheduled_end_time || 'null' : '',
     ]
     const compositeKey = keyParts.join('|')
 
@@ -180,18 +242,15 @@ function normalizeAndDedupeJobPartRows(rows = [], opts = {}) {
       existing.quantity_used = (existing.quantity_used || 0) + (row.quantity_used || 0)
 
       if (import.meta.env.MODE === 'development') {
-        console.warn(
-          '[normalizeAndDedupeJobPartRows] Merged duplicate line item:',
-          {
-            product_id: row.product_id,
-            vendor_id: row.vendor_id,
-            scheduled_start_time: row.scheduled_start_time,
-            scheduled_end_time: row.scheduled_end_time,
-            old_quantity: existing.quantity_used - (row.quantity_used || 0),
-            added_quantity: row.quantity_used,
-            new_quantity: existing.quantity_used,
-          }
-        )
+        console.warn('[normalizeAndDedupeJobPartRows] Merged duplicate line item:', {
+          product_id: row.product_id,
+          vendor_id: row.vendor_id,
+          scheduled_start_time: row.scheduled_start_time,
+          scheduled_end_time: row.scheduled_end_time,
+          old_quantity: existing.quantity_used - (row.quantity_used || 0),
+          added_quantity: row.quantity_used,
+          new_quantity: existing.quantity_used,
+        })
       }
     } else {
       // First occurrence - add to map
@@ -234,15 +293,14 @@ function toJobPartRows(jobId, items = [], opts = {}) {
             : null),
         requires_scheduling: !!(it?.requiresScheduling ?? it?.requires_scheduling),
         no_schedule_reason:
-          it?.requiresScheduling ?? it?.requires_scheduling
+          (it?.requiresScheduling ?? it?.requires_scheduling)
             ? null
             : it?.noScheduleReason || it?.no_schedule_reason || null,
         is_off_site: !!(it?.isOffSite ?? it?.is_off_site),
       }
 
       if (includeTimes) {
-        row.scheduled_start_time =
-          it?.scheduledStartTime || it?.scheduled_start_time || null
+        row.scheduled_start_time = it?.scheduledStartTime || it?.scheduled_start_time || null
         row.scheduled_end_time = it?.scheduledEndTime || it?.scheduled_end_time || null
       }
 
@@ -255,10 +313,10 @@ function toJobPartRows(jobId, items = [], opts = {}) {
 
 /**
  * Replace all job_parts for a given job with new parts
- * 
+ *
  * This is the ONLY function that should directly write to job_parts table.
  * It ensures atomicity: DELETE all existing parts, then INSERT new ones.
- * 
+ *
  * @param {string} jobId - The job ID to update parts for
  * @param {Array} lineItems - Array of line item objects to convert to job_parts
  * @param {Object} opts - Options: { includeTimes: boolean }
@@ -345,10 +403,7 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
             })
           }
 
-          const { error: retryErr } = await supabase
-            ?.from('job_parts')
-            ?.insert(retryRows)
-            ?.select()
+          const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)?.select()
           if (retryErr) {
             console.error('[replaceJobPartsForJob] Retry INSERT failed:', retryErr)
             throw new Error(`Failed to insert job_parts (retry): ${retryErr?.message}`)
@@ -419,21 +474,18 @@ export async function createJobPartsTyped(jobParts) {
   try {
     // Validate each part with Zod schema
     const validated = jobParts.map((part) => jobPartInsertSchema.parse(part))
-    
-    const { data, error } = await supabase
-      .from('job_parts')
-      .insert(validated)
-      .select()
-    
+
+    const { data, error } = await supabase.from('job_parts').insert(validated).select()
+
     return { data, error }
   } catch (e) {
     if (e instanceof z.ZodError) {
-      return { 
-        data: null, 
-        error: { 
-          message: 'Validation failed: ' + e.errors.map(err => err.message).join(', '),
-          details: e.errors 
-        }
+      return {
+        data: null,
+        error: {
+          message: 'Validation failed: ' + e.errors.map((err) => err.message).join(', '),
+          details: e.errors,
+        },
       }
     }
     console.error('createJobPartsTyped failed', e)

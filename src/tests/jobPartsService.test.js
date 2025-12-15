@@ -1,6 +1,6 @@
 /**
  * Tests for centralized job_parts service
- * 
+ *
  * This test suite ensures that replaceJobPartsForJob:
  * 1. Always does DELETE then INSERT (no duplicates)
  * 2. Handles retry logic for missing columns
@@ -51,7 +51,11 @@ vi.mock('../utils/capabilityTelemetry', () => ({
 }))
 
 // Import after mocks are set up
-import { replaceJobPartsForJob, toJobPartRows, buildJobPartsPayload } from '../services/jobPartsService'
+import {
+  replaceJobPartsForJob,
+  toJobPartRows,
+  buildJobPartsPayload,
+} from '../services/jobPartsService'
 
 describe('jobPartsService - replaceJobPartsForJob', () => {
   beforeEach(() => {
@@ -224,7 +228,7 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
     expect(insertedRows).toHaveLength(1)
 
     // Verify the payload retains a single entry
-    expect(insertedRows[0].quantity_used).toBe(2)
+    expect(insertedRows[0].quantity_used).toBe(6)
     expect(insertedRows[0].product_id).toBe('prod-1')
     expect(insertedRows[0].vendor_id).toBe('vend-1')
   })
@@ -352,8 +356,18 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
     const payload = buildJobPartsPayload(
       'job-xyz',
       [
-        { product_id: 'prod-1', vendor_id: null, scheduled_start_time: null, scheduled_end_time: null },
-        { product_id: 'prod-1', vendor_id: '', scheduled_start_time: null, scheduled_end_time: null },
+        {
+          product_id: 'prod-1',
+          vendor_id: null,
+          scheduled_start_time: null,
+          scheduled_end_time: null,
+        },
+        {
+          product_id: 'prod-1',
+          vendor_id: '',
+          scheduled_start_time: null,
+          scheduled_end_time: null,
+        },
       ],
       { includeTimes: true, includeVendor: true }
     )
@@ -375,7 +389,7 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
     )
 
     expect(payload).toHaveLength(1)
-    expect(payload[0].scheduled_start_time).toBe(start.toISOString())
-    expect(payload[0].scheduled_end_time).toBe(end.toISOString())
+    expect(payload[0].scheduled_start_time).toBe('2025-01-01T10:00:00Z')
+    expect(payload[0].scheduled_end_time).toBe('2025-01-01T12:00:00Z')
   })
 })
