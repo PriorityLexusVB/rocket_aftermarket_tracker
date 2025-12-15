@@ -3,7 +3,8 @@
 ## Issue
 GitHub Actions workflow "Nightly RLS Drift & Health Check" was failing at Step 1 of the schema verification script.
 
-**Workflow Run**: https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/actions/runs/20220018851/job/58040195133
+**Workflow Run**: Actions run #20220018851  
+**Reference**: `.github/workflows/rls-drift-nightly.yml`
 
 **Error**:
 ```

@@ -182,15 +182,22 @@ if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
 elif ! command -v curl &> /dev/null; then
     echo -e "${YELLOW}⚠${NC}  curl not available, skipping API test"
 else
+    # Capture curl output and HTTP code, suppressing errors to handle them gracefully
+    # set -e is active, so we use || true to prevent script exit on curl failure
+    CURL_EXIT=0
     HTTP_CODE=$(curl -s -o /tmp/rest_response.json -w "%{http_code}" -X GET \
         "${VITE_SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,name)&limit=1" \
         -H "apikey: ${VITE_SUPABASE_ANON_KEY}" \
-        -H "Authorization: Bearer ${VITE_SUPABASE_ANON_KEY}" 2>&1 || true)
+        -H "Authorization: Bearer ${VITE_SUPABASE_ANON_KEY}" 2>&1) || CURL_EXIT=$?
     
+    # Read response if file was created
     if [ -f /tmp/rest_response.json ]; then
-        RESPONSE=$(cat /tmp/rest_response.json 2>&1 || echo "")
+        RESPONSE=$(cat /tmp/rest_response.json 2>/dev/null || echo "")
     else
         RESPONSE=""
+        if [ $CURL_EXIT -ne 0 ]; then
+            echo -e "${YELLOW}⚠${NC}  curl command failed (exit code: $CURL_EXIT)"
+        fi
     fi
     
     if [ "$HTTP_CODE" = "200" ]; then
