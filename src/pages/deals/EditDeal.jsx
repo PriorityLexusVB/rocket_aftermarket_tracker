@@ -35,6 +35,14 @@ export default function EditDeal() {
   async function onSubmit(formState) {
     setSaving(true)
     try {
+      if (import.meta.env.MODE === 'development') {
+        console.log('[EditDeal:onSubmit] submitting', {
+          id,
+          description: formState?.description,
+          updated_at: formState?.updated_at,
+          lineItemsCount: Array.isArray(formState?.lineItems) ? formState.lineItems.length : 0,
+        })
+      }
       // Update then re-fetch latest persisted values; stay on Edit
       await dealService?.updateDeal(id, formState)
       const fresh = await dealService?.getDeal(id)

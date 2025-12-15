@@ -658,8 +658,12 @@ function mapFormToDb(formState = {}) {
   }
 
   // customer fields normalization - apply Title Case to customer name
+  // Canonical source: explicit customerName/customer_name when provided.
+  // Back-compat: DealForm v1 uses `description` as the editable Customer Name field.
   const rawCustomerName = (formState?.customerName || formState?.customer_name || '').trim()
-  const customerName = rawCustomerName ? titleCase(rawCustomerName) : ''
+  const rawCustomerNameFromDescription = (formState?.description || '').trim()
+  const effectiveCustomerName = rawCustomerName || rawCustomerNameFromDescription
+  const customerName = effectiveCustomerName ? titleCase(effectiveCustomerName) : ''
 
   // Normalize phone to E.164 format for storage
   const rawPhone = (
@@ -1818,6 +1822,15 @@ export async function updateDeal(id, formState) {
     if (desc) payload.description = desc
   }
 
+  if (import.meta.env.MODE === 'development') {
+    console.log('[dealService:updateDeal] computed payload (job)', {
+      id,
+      payloadDescription: payload?.description,
+      payloadTitle: payload?.title,
+      hasOrgId: !!payload?.org_id,
+    })
+  }
+
   // Calculate total deal value for transactions
   const totalDealValue =
     (normalizedLineItems || []).reduce((sum, item) => {
@@ -1921,6 +1934,14 @@ export async function updateDeal(id, formState) {
     customer_phone: customerPhone || null,
     customer_email: customerEmail || null,
     transaction_status: 'pending',
+  }
+
+  if (import.meta.env.MODE === 'development') {
+    console.log('[dealService:updateDeal] computed transaction customer_name', {
+      id,
+      customerName,
+      transactionCustomerName: baseTransactionData.customer_name,
+    })
   }
 
   // Upsert without relying on a DB unique constraint (some envs lack a unique index on job_id)
@@ -2232,6 +2253,11 @@ function mapDbDealToForm(dbDeal) {
     normalized?.vehicle_description ||
     deriveVehicleDescription(normalized?.title, normalized?.vehicle)
 
+  // DealForm v1 labels `description` as "Customer Name".
+  // Prefer transaction-derived customer_name when available; fall back to jobs.description for legacy records.
+  const customerNameForForm = (normalized?.customer_name || '').trim()
+  const legacyDescription = normalized?.description || ''
+
   return {
     id: normalized?.id,
     updated_at: normalized?.updated_at,
@@ -2243,11 +2269,12 @@ function mapDbDealToForm(dbDeal) {
       new Date().toISOString().slice(0, 10),
     job_number: normalized?.job_number || '',
     title: normalized?.title || '',
-    // Legacy: description kept for backward compatibility with old code
-    description: normalized?.description || '',
+    // DealForm v1: description input is treated as Customer Name.
+    // Hydrate from transaction customer_name first for consistency across list/detail.
+    description: customerNameForForm || legacyDescription,
     // Map DB description to UI notes field (no jobs.notes column exists)
     // The UI displays "Notes" which reads/writes jobs.description
-    notes: normalized?.description || '',
+    notes: legacyDescription,
     vehicle_description: vehicleDescription,
     vehicleDescription: vehicleDescription,
     stock_number: normalized?.stock_number || normalized?.vehicle?.stock_number || '',

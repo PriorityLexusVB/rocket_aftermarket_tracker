@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"typescript.tsdk": "node_modules/typescript/lib",
+		"testing.defaultGutterClickAction": "run",
+		"github.copilot.chat.codeGeneration.useInstructionFiles": true,
+		"chat.mcp.access": "all",
+		"chat.mcp.gallery.enabled": true
+	}
+}
