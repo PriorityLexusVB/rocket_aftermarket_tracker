@@ -12,15 +12,17 @@ test.describe('Deal create redirect', () => {
     await expect(description).toBeVisible()
     await description.fill('E2E Deal ' + Date.now())
 
-    // Vendor
-    const vendor = page.getByTestId('vendor-select')
-    await expect(vendor).toBeVisible()
-    await vendor.selectOption({ index: 1 })
-
     // First product line
     const product = page.getByTestId('product-select-0')
     await expect(product).toBeVisible()
     await product.selectOption({ index: 1 })
+
+    // Vendor jobs require a scheduled date
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const tomorrowDate = tomorrow.toISOString().slice(0, 10)
+    const promisedDate = page.getByTestId('promised-date-0')
+    await expect(promisedDate).toBeVisible()
+    await promisedDate.fill(tomorrowDate)
 
     // Save
     const save = page.getByTestId('save-deal-btn')

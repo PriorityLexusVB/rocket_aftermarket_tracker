@@ -46,13 +46,13 @@ function isRlsError(error) {
  * Get the complete org context (org_id, user_id, user_email) for tenant scoping.
  * This helper provides all fields needed for proper RLS compliance in DB operations.
  * Uses id-based lookup with email fallback for maximum compatibility with legacy profiles.
- * 
+ *
  * @param {string} label - Label for logging (e.g., 'create', 'update', 'save')
- * @returns {Promise<{org_id: string|null, user_id: string|null, user_email: string|null}>} 
+ * @returns {Promise<{org_id: string|null, user_id: string|null, user_email: string|null}>}
  */
 export async function getOrgContext(label = 'operation') {
   const context = { org_id: null, user_id: null, user_email: null }
-  
+
   try {
     const { data: auth } = await supabase?.auth?.getUser?.()
     context.user_id = auth?.user?.id || null
@@ -60,7 +60,7 @@ export async function getOrgContext(label = 'operation') {
 
     // Attempt to resolve org_id using the fallback helper
     context.org_id = await getUserOrgIdWithFallback(label)
-    
+
     return context
   } catch (e) {
     console.warn(`[dealService:getOrgContext:${label}] Unable to get org context:`, e?.message)
@@ -74,10 +74,10 @@ export async function getOrgContext(label = 'operation') {
  * 1. user_profiles.id = auth.uid() (standard case)
  * 2. user_profiles.auth_user_id = auth.uid() (legacy/alternative linking)
  * 3. user_profiles.email = user.email (final fallback)
- * 
+ *
  * This aligns with the database function auth_user_org() which also checks
  * both id and auth_user_id columns (see migration 20251129231539).
- * 
+ *
  * @param {string} label - Label for logging (e.g., 'create', 'update')
  * @returns {Promise<string|null>} - The org_id or null if not found
  */
@@ -99,7 +99,9 @@ async function getUserOrgIdWithFallback(label = 'operation') {
         return prof.org_id
       }
       if (profErr && isRlsError(profErr)) {
-        console.warn(`[dealService:${label}] RLS blocked profile lookup by id, trying auth_user_id fallback`)
+        console.warn(
+          `[dealService:${label}] RLS blocked profile lookup by id, trying auth_user_id fallback`
+        )
       }
     }
 
@@ -120,7 +122,9 @@ async function getUserOrgIdWithFallback(label = 'operation') {
         return profByAuthUserId.org_id
       }
       if (authUserIdErr && isRlsError(authUserIdErr)) {
-        console.warn(`[dealService:${label}] RLS blocked profile lookup by auth_user_id, trying email fallback`)
+        console.warn(
+          `[dealService:${label}] RLS blocked profile lookup by auth_user_id, trying email fallback`
+        )
       }
     }
 
@@ -139,7 +143,10 @@ async function getUserOrgIdWithFallback(label = 'operation') {
         return profByEmail.org_id
       }
       if (emailErr && isRlsError(emailErr)) {
-        console.warn(`[dealService:${label}] RLS blocked profile lookup by email:`, emailErr?.message)
+        console.warn(
+          `[dealService:${label}] RLS blocked profile lookup by email:`,
+          emailErr?.message
+        )
       }
     }
 
@@ -556,8 +563,11 @@ function mapFormToDb(formState = {}) {
   // Map UI "Notes" field to jobs.description (no jobs.notes column exists)
   // This intentionally overwrites any legacy description value since the UI only shows "Notes"
   {
+    const desc = (formState?.description || '').trim()
     const notes = (formState?.notes || '').trim()
-    if (notes) {
+    // Only fall back to notes when no explicit description is provided.
+    // DealForm V2 uses `description` as the editable Customer Name field.
+    if (!desc && notes) {
       payload.description = notes
     }
   }
@@ -690,7 +700,7 @@ function mapFormToDb(formState = {}) {
 export function toJobPartRows(jobId, items = [], opts = {}) {
   const includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
 
-  const rows = (
+  const rows =
     // drop null-only rows
     (items || [])
       ?.map((it) => {
@@ -713,9 +723,14 @@ export function toJobPartRows(jobId, items = [], opts = {}) {
             it?.lineItemPromisedDate ||
             it?.promised_date ||
             // If requires scheduling and no date provided, default to today to satisfy DB constraint
-            (it?.requiresScheduling || it?.requires_scheduling ? new Date().toISOString().slice(0, 10) : null),
+            (it?.requiresScheduling || it?.requires_scheduling
+              ? new Date().toISOString().slice(0, 10)
+              : null),
           requires_scheduling: !!(it?.requiresScheduling ?? it?.requires_scheduling),
-          no_schedule_reason: (it?.requiresScheduling ?? it?.requires_scheduling) ? null : (it?.noScheduleReason || it?.no_schedule_reason || null),
+          no_schedule_reason:
+            (it?.requiresScheduling ?? it?.requires_scheduling)
+              ? null
+              : it?.noScheduleReason || it?.no_schedule_reason || null,
           is_off_site: !!(it?.isOffSite ?? it?.is_off_site),
           // ✅ REMOVED: total_price as it's auto-generated by database
           // ✅ REMOVED: description field as it doesn't exist in schema
@@ -730,21 +745,23 @@ export function toJobPartRows(jobId, items = [], opts = {}) {
         return row
       })
       ?.filter((row) => row?.product_id !== null || row?.quantity_used || row?.unit_price)
-  )
-  
+
   // 🔍 DEBUG: Detect potential duplicates based on product_id
   if (import.meta.env.MODE === 'development' && rows?.length > 0) {
-    const productIds = rows.map(r => r.product_id).filter(Boolean)
+    const productIds = rows.map((r) => r.product_id).filter(Boolean)
     const uniqueProductIds = new Set(productIds)
     if (productIds.length !== uniqueProductIds.size) {
-      console.warn('[toJobPartRows] ⚠️ DUPLICATE DETECTION: Multiple rows have the same product_id!', {
-        totalRows: rows.length,
-        uniqueProducts: uniqueProductIds.size,
-        productIds,
-      })
+      console.warn(
+        '[toJobPartRows] ⚠️ DUPLICATE DETECTION: Multiple rows have the same product_id!',
+        {
+          totalRows: rows.length,
+          uniqueProducts: uniqueProductIds.size,
+          productIds,
+        }
+      )
     }
   }
-  
+
   return rows
 }
 
@@ -768,7 +785,10 @@ async function upsertLoanerAssignment(jobId, loanerData) {
     // Handle RLS errors on SELECT gracefully
     if (selectError) {
       if (isRlsError(selectError)) {
-        console.warn('[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context:', selectError?.message)
+        console.warn(
+          '[dealService:upsertLoanerAssignment] RLS blocked SELECT - attempting INSERT with job context:',
+          selectError?.message
+        )
         // Fall through to INSERT path - RLS may allow INSERT even if SELECT is blocked
       } else {
         console.warn('[dealService:upsertLoanerAssignment] SELECT failed:', selectError?.message)
@@ -792,7 +812,10 @@ async function upsertLoanerAssignment(jobId, loanerData) {
 
       if (error) {
         if (isRlsError(error)) {
-          console.warn('[dealService:upsertLoanerAssignment] RLS blocked UPDATE (non-fatal):', error?.message)
+          console.warn(
+            '[dealService:upsertLoanerAssignment] RLS blocked UPDATE (non-fatal):',
+            error?.message
+          )
           return // Silently degrade - loaner data won't be saved but deal save continues
         }
         throw error
@@ -809,7 +832,7 @@ async function upsertLoanerAssignment(jobId, loanerData) {
           // Two possible causes:
           // 1. This loaner_number is already assigned to THIS job (row exists but SELECT was blocked by RLS)
           // 2. This loaner_number is already assigned to a DIFFERENT job (true conflict)
-          
+
           // Check the error message to distinguish between the two cases
           const errorMsg = error?.message || ''
           if (errorMsg.includes('ux_loaner_active')) {
@@ -819,10 +842,12 @@ async function upsertLoanerAssignment(jobId, loanerData) {
               `Loaner ${assignmentData.loaner_number} is already assigned to another active job`
             )
           }
-          
+
           // If it's not the ux_loaner_active constraint, it might be a different constraint
           // Try fallback UPDATE in case row exists for this job_id but SELECT was blocked
-          console.warn('[dealService:upsertLoanerAssignment] Duplicate key error, attempting fallback UPDATE by job_id')
+          console.warn(
+            '[dealService:upsertLoanerAssignment] Duplicate key error, attempting fallback UPDATE by job_id'
+          )
           const { error: updateError } = await supabase
             ?.from('loaner_assignments')
             ?.update(assignmentData)
@@ -837,7 +862,10 @@ async function upsertLoanerAssignment(jobId, loanerData) {
         }
 
         if (isRlsError(error)) {
-          console.warn('[dealService:upsertLoanerAssignment] RLS blocked INSERT (non-fatal):', error?.message)
+          console.warn(
+            '[dealService:upsertLoanerAssignment] RLS blocked INSERT (non-fatal):',
+            error?.message
+          )
           return // Silently degrade - loaner data won't be saved but deal save continues
         }
         throw error
@@ -846,7 +874,10 @@ async function upsertLoanerAssignment(jobId, loanerData) {
   } catch (error) {
     // Handle uniqueness constraint error gracefully
     if (error?.code === '23505') {
-      console.warn('[dealService:upsertLoanerAssignment] Loaner number already in use (caught at outer level):', error?.message)
+      console.warn(
+        '[dealService:upsertLoanerAssignment] Loaner number already in use (caught at outer level):',
+        error?.message
+      )
       throw new Error(
         `Loaner ${loanerData?.loaner_number} is already assigned to another active job`
       )
@@ -899,7 +930,12 @@ function computeEarliestTimeWindow(normalizedLineItems) {
 }
 
 // Helper: Attach or create vehicle by stock number when vehicle_id is missing
-async function attachOrCreateVehicleByStockNumber(stockNumber, customerPhone, orgId = null, vin = null) {
+async function attachOrCreateVehicleByStockNumber(
+  stockNumber,
+  customerPhone,
+  orgId = null,
+  vin = null
+) {
   if (!stockNumber?.trim()) {
     return null // No stock number provided
   }
@@ -1157,16 +1193,22 @@ export async function getAllDeals() {
     ])
 
     const transactions = transactionsResult?.data || []
-    
+
     // Handle loaner_assignments RLS errors gracefully
     // 403 errors can occur when jobs have missing org_id or user lacks access
     let loaners = []
     if (loanersResult?.error) {
       if (isRlsError(loanersResult.error)) {
-        console.warn('[dealService:getAllDeals] RLS blocked loaner_assignments query (non-fatal):', loanersResult.error?.message)
+        console.warn(
+          '[dealService:getAllDeals] RLS blocked loaner_assignments query (non-fatal):',
+          loanersResult.error?.message
+        )
         // Silently degrade - deals will show without loaner info for inaccessible jobs
       } else {
-        console.warn('[dealService:getAllDeals] loaner_assignments query failed (non-fatal):', loanersResult.error?.message)
+        console.warn(
+          '[dealService:getAllDeals] loaner_assignments query failed (non-fatal):',
+          loanersResult.error?.message
+        )
       }
     } else {
       loaners = loanersResult?.data || []
@@ -1342,16 +1384,22 @@ export async function getDeal(id) {
     ])
 
     const transaction = transactionResult?.data
-    
+
     // Handle loaner_assignments RLS errors gracefully
     // 403 errors can occur when jobs have missing org_id or user lacks access
     let loaner = null
     if (loanerResult?.error) {
       if (isRlsError(loanerResult.error)) {
-        console.warn('[dealService:getDeal] RLS blocked loaner_assignments query (non-fatal):', loanerResult.error?.message)
+        console.warn(
+          '[dealService:getDeal] RLS blocked loaner_assignments query (non-fatal):',
+          loanerResult.error?.message
+        )
         // Silently degrade - deal will show without loaner info
       } else {
-        console.warn('[dealService:getDeal] loaner_assignments query failed (non-fatal):', loanerResult.error?.message)
+        console.warn(
+          '[dealService:getDeal] loaner_assignments query failed (non-fatal):',
+          loanerResult.error?.message
+        )
       }
     } else {
       loaner = loanerResult?.data || null
@@ -1650,15 +1698,23 @@ export async function createDeal(formState) {
       // Transaction likely exists but is inaccessible; updateDeal will handle fixing it
       if (selectErr) {
         if (isRlsError(selectErr)) {
-          console.warn('[dealService:create] RLS blocked transaction SELECT; skipping INSERT to avoid duplicates')
+          console.warn(
+            '[dealService:create] RLS blocked transaction SELECT; skipping INSERT to avoid duplicates'
+          )
         } else {
-          console.warn('[dealService:create] Transaction SELECT failed (non-fatal):', selectErr?.message)
+          console.warn(
+            '[dealService:create] Transaction SELECT failed (non-fatal):',
+            selectErr?.message
+          )
         }
       } else if (!existingTxn?.id) {
         // Only INSERT if SELECT succeeded and found no transaction
         const { error: insErr } = await supabase?.from('transactions')?.insert([baseTransaction])
         if (insErr) {
-          console.warn('[dealService:create] Transaction INSERT failed (non-fatal):', insErr?.message)
+          console.warn(
+            '[dealService:create] Transaction INSERT failed (non-fatal):',
+            insErr?.message
+          )
         }
       }
     } catch (e) {
@@ -1692,7 +1748,7 @@ export async function createDeal(formState) {
       throw new Error(
         'Failed to create deal: permission denied while evaluating RLS policies. ' +
           'This may indicate a database schema cache issue. ' +
-          'Try reloading the schema with: NOTIFY pgrst, \'reload schema\'; ' +
+          "Try reloading the schema with: NOTIFY pgrst, 'reload schema'; " +
           'If the issue persists, verify that all RLS policies use public.user_profiles instead of auth.users. ' +
           'See migrations 20251104221500 and 20251115222458 for reference.'
       )
@@ -1712,7 +1768,7 @@ export async function updateDeal(id, formState) {
       line_itemsCount: Array.isArray(formState?.line_items) ? formState.line_items.length : 0,
     })
   }
-  
+
   const {
     payload,
     normalizedLineItems,
@@ -1723,15 +1779,17 @@ export async function updateDeal(id, formState) {
     stockNumber,
     vin,
   } = mapFormToDb(formState || {})
-  
+
   // 🔍 DEBUG: Log normalized line items count
   if (import.meta.env.MODE === 'development') {
     console.log('[dealService:updateDeal] AFTER mapFormToDb:', {
       normalizedLineItemsCount: normalizedLineItems?.length || 0,
-      normalizedLineItemsSample: normalizedLineItems?.[0] ? {
-        product_id: normalizedLineItems[0].product_id,
-        unit_price: normalizedLineItems[0].unit_price,
-      } : null,
+      normalizedLineItemsSample: normalizedLineItems?.[0]
+        ? {
+            product_id: normalizedLineItems[0].product_id,
+            unit_price: normalizedLineItems[0].unit_price,
+          }
+        : null,
     })
   }
 
@@ -1842,7 +1900,10 @@ export async function updateDeal(id, formState) {
         ?.single()
       if (!jobFetchErr && jobData?.org_id) {
         transactionOrgId = jobData.org_id
-        console.info('[dealService:update] Retrieved org_id from job:', transactionOrgId ? transactionOrgId.slice(0, 8) + '...' : 'N/A')
+        console.info(
+          '[dealService:update] Retrieved org_id from job:',
+          transactionOrgId ? transactionOrgId.slice(0, 8) + '...' : 'N/A'
+        )
       } else {
         console.error('[dealService:update] Failed to fetch org_id from job:', jobFetchErr?.message)
       }
@@ -1877,11 +1938,13 @@ export async function updateDeal(id, formState) {
     let rlsRecoveryAttempted = false
     if (selectErr) {
       if (isRlsError(selectErr)) {
-        console.warn('[dealService:update] RLS blocked transaction SELECT, attempting UPDATE by job_id')
-        
+        console.warn(
+          '[dealService:update] RLS blocked transaction SELECT, attempting UPDATE by job_id'
+        )
+
         // Track RLS recovery attempt in telemetry
         incrementTelemetry(TelemetryKey.RLS_TRANSACTION_RECOVERY)
-        
+
         // Get the job's org_id to use for the transaction
         let jobOrgId = baseTransactionData.org_id
         if (!jobOrgId) {
@@ -1890,7 +1953,7 @@ export async function updateDeal(id, formState) {
             ?.select('org_id')
             ?.eq('id', id)
             ?.single()
-          
+
           if (jobErr) {
             console.error('[dealService:update] Failed to fetch job org_id:', jobErr?.message)
             throw jobErr
@@ -1901,11 +1964,13 @@ export async function updateDeal(id, formState) {
         // If job has no org_id (legacy data), try to get user's org_id and set it on both job and transaction
         // This is a graceful recovery for legacy deals created before org scoping was implemented
         if (!jobOrgId) {
-          console.warn('[dealService:update] Job has no org_id - attempting to set from user profile')
-          
+          console.warn(
+            '[dealService:update] Job has no org_id - attempting to set from user profile'
+          )
+
           // Use the shared helper function to get org_id with email fallback
           const profileOrgId = await getUserOrgIdWithFallback('update:rls-recovery')
-          
+
           if (profileOrgId) {
             jobOrgId = profileOrgId
             // Set org_id on the job to fix the legacy data
@@ -1913,9 +1978,12 @@ export async function updateDeal(id, formState) {
               .from('jobs')
               .update({ org_id: jobOrgId })
               .eq('id', id)
-            
+
             if (jobUpdateResult.error) {
-              console.warn('[dealService:update] Failed to set job org_id:', jobUpdateResult.error.message)
+              console.warn(
+                '[dealService:update] Failed to set job org_id:',
+                jobUpdateResult.error.message
+              )
             } else {
               console.info('[dealService:update] Successfully set job org_id from user profile')
             }
@@ -1923,13 +1991,15 @@ export async function updateDeal(id, formState) {
         }
 
         if (!jobOrgId) {
-          throw new Error('Cannot recover from RLS error: job has no org_id and unable to get user org_id')
+          throw new Error(
+            'Cannot recover from RLS error: job has no org_id and unable to get user org_id'
+          )
         }
 
         // Set the transaction's org_id to match the job's org_id (or user's org_id)
         // The RLS UPDATE policy allows: org_id matches user's org OR job.org_id matches user's org
         baseTransactionData.org_id = jobOrgId
-        
+
         // Attempt UPDATE by job_id (RLS policy allows this via job relationship)
         // This will update the existing transaction's org_id and other fields
         const { data: updateResult, error: updErr } = await supabase
@@ -1945,8 +2015,14 @@ export async function updateDeal(id, formState) {
           // We suppress this RLS error and let the code fall through to the INSERT path below,
           // where a new transaction will be created with the correct org_id.
           const updErrMsg = String(updErr?.message || '').toLowerCase()
-          if (updErrMsg.includes('policy') || updErrMsg.includes('permission') || updErrMsg.includes('rls')) {
-            console.warn('[dealService:update] RLS recovery UPDATE failed (likely no existing transaction) - will attempt INSERT')
+          if (
+            updErrMsg.includes('policy') ||
+            updErrMsg.includes('permission') ||
+            updErrMsg.includes('rls')
+          ) {
+            console.warn(
+              '[dealService:update] RLS recovery UPDATE failed (likely no existing transaction) - will attempt INSERT'
+            )
             // rlsRecoveryAttempted stays false, allowing INSERT path at line ~1830
           } else {
             throw updErr
@@ -1957,7 +2033,10 @@ export async function updateDeal(id, formState) {
         if (updateResult?.length > 0) {
           // Log truncated org_id for debugging while maintaining security
           const orgIdPrefix = jobOrgId ? jobOrgId.slice(0, 8) + '...' : 'N/A'
-          console.info('[dealService:update] Successfully updated transaction via RLS recovery, org:', orgIdPrefix)
+          console.info(
+            '[dealService:update] Successfully updated transaction via RLS recovery, org:',
+            orgIdPrefix
+          )
           rlsRecoveryAttempted = true
         }
         // If UPDATE affected 0 rows or failed with RLS, rlsRecoveryAttempted stays false
@@ -1975,7 +2054,7 @@ export async function updateDeal(id, formState) {
         if (!baseTransactionData.org_id && existingTxn.org_id) {
           baseTransactionData.org_id = existingTxn.org_id
         }
-        
+
         const { error: updErr } = await supabase
           ?.from('transactions')
           ?.update(baseTransactionData) // don't overwrite transaction_number on update
@@ -1983,7 +2062,10 @@ export async function updateDeal(id, formState) {
         if (updErr) throw updErr
       } else {
         // No transaction exists - create one
-        const insertData = { ...baseTransactionData, transaction_number: generateTransactionNumber() }
+        const insertData = {
+          ...baseTransactionData,
+          transaction_number: generateTransactionNumber(),
+        }
         const { error: insErr } = await supabase?.from('transactions')?.insert([insertData])
         if (insErr) throw insErr
       }
@@ -1998,23 +2080,23 @@ export async function updateDeal(id, formState) {
         has_org_id: !!transactionOrgId,
         org_id_source: transactionOrgId ? 'resolved' : 'missing',
       })
-      
+
       // Provide actionable guidance based on the scenario
       let guidance = ''
       if (!transactionOrgId) {
         // User profile is missing org_id - admin action required
-        guidance = 
+        guidance =
           'Unable to determine your organization. This typically means:\n' +
           '• Your user profile may not be linked to an organization.\n' +
           '• Please contact your administrator to verify your account setup.'
       } else {
         // org_id exists but RLS still failed - likely a database sync issue
-        guidance = 
+        guidance =
           'The database rejected this update. Please try:\n' +
           '• Refreshing the page and trying again.\n' +
           '• If the issue persists, contact your administrator - they may need to run a database sync.'
       }
-      
+
       // User-facing message - informative but without sensitive technical details
       throw new Error(`Failed to save deal: Transaction access denied. ${guidance}`)
     }
@@ -2310,10 +2392,4 @@ export const dealService = {
 
 export default dealService
 
-export {
-  mapDbDealToForm,
-  mapFormToDb,
-  mapPermissionError,
-  normalizeDealTimes,
-  isRlsError,
-}
+export { mapDbDealToForm, mapFormToDb, mapPermissionError, normalizeDealTimes, isRlsError }

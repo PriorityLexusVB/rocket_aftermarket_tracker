@@ -90,6 +90,65 @@ function classifySchemaError(error) {
   return 'UNKNOWN_SCHEMA_ERROR'
 }
 
+function isUniqueViolationError(error) {
+  if (!error) return false
+  const code = String(error?.code || '')
+  const msg = String(error?.message || '').toLowerCase()
+  return (
+    code === '23505' ||
+    msg.includes('duplicate key value') ||
+    msg.includes('unique constraint') ||
+    msg.includes('violates unique')
+  )
+}
+
+async function updateExistingJobParts(jobId, rows = [], opts = {}) {
+  const includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
+  const includeVendor = opts?.includeVendor ?? JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+
+  for (const row of rows) {
+    let query = supabase?.from('job_parts')?.update({
+      quantity_used: row.quantity_used,
+      unit_price: row.unit_price,
+      promised_date: row.promised_date,
+      requires_scheduling: row.requires_scheduling,
+      no_schedule_reason: row.no_schedule_reason,
+      is_off_site: row.is_off_site,
+      ...(includeTimes
+        ? {
+            scheduled_start_time: row.scheduled_start_time,
+            scheduled_end_time: row.scheduled_end_time,
+          }
+        : {}),
+      ...(includeVendor ? { vendor_id: row.vendor_id } : {}),
+    })
+
+    query = query.eq('job_id', jobId).eq('product_id', row.product_id)
+
+    if (includeVendor) {
+      query = row.vendor_id ? query.eq('vendor_id', row.vendor_id) : query.is('vendor_id', null)
+    }
+
+    if (includeTimes) {
+      query = row.scheduled_start_time
+        ? query.eq('scheduled_start_time', row.scheduled_start_time)
+        : query.is('scheduled_start_time', null)
+      query = row.scheduled_end_time
+        ? query.eq('scheduled_end_time', row.scheduled_end_time)
+        : query.is('scheduled_end_time', null)
+    }
+
+    const { data, error } = await query.select('id')
+    if (error) throw error
+    if (!data || data.length === 0) {
+      // If we couldn't match a row to update, fall back to inserting just this row.
+      // This should be rare; it also ensures we don't silently drop a line item.
+      const { error: insErr } = await supabase?.from('job_parts')?.insert([row])
+      if (insErr) throw insErr
+    }
+  }
+}
+
 /**
  * Normalize, filter, and deduplicate job_parts payload
  *
@@ -120,14 +179,18 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
         const quantityRaw = Number(item?.quantity_used ?? item?.quantity ?? item?.quantityUsed ?? 1)
         const unitPriceRaw = Number(item?.unit_price ?? item?.price ?? item?.unitPrice ?? 0)
 
+        const promisedDateRaw =
+          item?.promised_date ?? item?.lineItemPromisedDate ?? item?.dateScheduled ?? null
+        const promisedDateNorm =
+          promisedDateRaw || (requiresScheduling ? new Date().toISOString().slice(0, 10) : null)
+
         const record = {
           job_id: jobId,
           product_id: productId,
           quantity_used: Number.isFinite(quantityRaw) ? quantityRaw : 1,
           unit_price: Number.isFinite(unitPriceRaw) ? unitPriceRaw : 0,
           // Support legacy dateScheduled/lineItemPromisedDate fallbacks
-          promised_date:
-            item?.promised_date ?? item?.lineItemPromisedDate ?? item?.dateScheduled ?? null,
+          promised_date: promisedDateNorm,
           requires_scheduling: requiresScheduling,
           no_schedule_reason: requiresScheduling
             ? null
@@ -378,6 +441,18 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
   const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)?.select()
 
   if (insErr) {
+    // Unique constraint violations can happen if DELETE was ineffective (e.g., due to RLS).
+    // Fallback: update existing rows in-place instead of crashing the save.
+    if (isUniqueViolationError(insErr)) {
+      try {
+        await updateExistingJobParts(jobId, rows, { includeTimes, includeVendor })
+        return
+      } catch (updateErr) {
+        console.error('[replaceJobPartsForJob] Unique violation recovery failed:', updateErr)
+        // fall through to existing error handling
+      }
+    }
+
     // Handle missing column errors with retry
     if (isMissingColumnError(insErr)) {
       const errorCode = classifySchemaError(insErr)

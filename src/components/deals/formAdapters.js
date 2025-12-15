@@ -62,8 +62,12 @@ export function normalizeLineItems(draft = {}) {
       if (it.is_off_site !== undefined || it.isOffSite !== undefined) {
         result.isOffSite = it.isOffSite ?? it.is_off_site ?? false
       }
-      if (it.promised_date !== undefined) {
-        result.promisedDate = it.promised_date
+      // Preserve promised date in service-friendly shapes.
+      // dealService primarily reads `promised_date` or `lineItemPromisedDate`.
+      const promised = it.promised_date ?? it.promisedDate
+      if (promised !== undefined) {
+        result.promised_date = promised
+        result.lineItemPromisedDate = promised
       }
 
       // Remove redundant fields for clean output
@@ -73,7 +77,7 @@ export function normalizeLineItems(draft = {}) {
       delete result.quantity_used
       delete result.requires_scheduling
       delete result.is_off_site
-      delete result.promised_date
+      // Keep promised_date for dealService compatibility
 
       return result
     })

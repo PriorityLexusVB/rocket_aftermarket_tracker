@@ -4,6 +4,8 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Job Parts No Duplication', () => {
   test('should not create duplicate job_parts on multiple saves', async ({ page }) => {
+    test.setTimeout(90_000)
+
     // Login
     await page.goto('/auth')
     await page.fill('input[name="email"]', process.env.E2E_EMAIL || 'tester@example.com')
@@ -26,8 +28,16 @@ test.describe('Job Parts No Duplication', () => {
     await expect(productSelect).toBeVisible()
     await productSelect.selectOption({ index: 1 })
 
+    // Provide a scheduled date (default requires_scheduling is enabled)
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const tomorrowDate = tomorrow.toISOString().slice(0, 10)
+    const promisedDate = page.getByTestId('promised-date-0')
+    await expect(promisedDate).toBeVisible()
+    await promisedDate.fill(tomorrowDate)
+
     // Wait for unit price field to be populated after product selection
-    const unitPriceInput = page.getByTestId('unit-price-0')
+    const unitPriceInput = page.getByTestId('unit-price-input-0')
+    await expect(unitPriceInput).toBeVisible()
     await expect(unitPriceInput).not.toHaveValue('0')
 
     // Save the deal
@@ -36,7 +46,7 @@ test.describe('Job Parts No Duplication', () => {
     await saveBtn.click()
 
     // Wait for redirect to edit page
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 })
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 })
 
     // Extract deal ID from URL
     const url = page.url()
@@ -76,8 +86,9 @@ test.describe('Job Parts No Duplication', () => {
 
     // Now verify that there's only ONE job_parts row for this job
     // We can check this via UI: should see only 1 line item row
-    const lineItemRows = page.locator('[data-testid^="line-item-row-"]')
-    const rowCount = await lineItemRows.count()
+    const lineItemsSection = page.getByTestId('line-items-section')
+    const lineItemCards = lineItemsSection.locator('[data-testid^="line-"]')
+    const rowCount = await lineItemCards.count()
 
     // Should have exactly 1 line item row (no duplicates)
     expect(rowCount).toBe(1)

@@ -83,7 +83,7 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
       renderWithRouter(<DealsPage />)
 
       await waitFor(() => {
-        expect(screen?.getByText('Deal Tracker'))?.toBeInTheDocument()
+        expect(screen?.getByText('Deals'))?.toBeInTheDocument()
       })
 
       // Verify main page structure test IDs would be present
