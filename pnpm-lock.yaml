@@ -1,5 +1,9 @@
 lockfileVersion: '9.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -134,9 +138,6 @@ importers:
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
-      '@types/testing-library__jest-dom':
-        specifier: ^6.0.0
-        version: 6.0.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.48.1
         version: 8.48.1(@typescript-eslint/parser@8.48.1(eslint@9.39.1(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.1(jiti@1.21.7))(typescript@5.9.3)
@@ -1400,10 +1401,6 @@ packages:
 
   '@types/phoenix@1.6.6':
     resolution: {integrity: sha512-PIzZZlEppgrpoT2QgbnDU+MMzuR6BbCjllj0bM70lWoejMeNJAxCchxnv7J3XFkI8MpygtRpzXrIlmWUBclP5A==}
-
-  '@types/testing-library__jest-dom@6.0.0':
-    resolution: {integrity: sha512-bnreXCgus6IIadyHNlN/oI5FfX4dWgvGhOPvpr7zzCYDGAPIfvyIoAozMBINmhmsVuqV0cncejF2y5KC7ScqOg==}
-    deprecated: This is a stub types definition. @testing-library/jest-dom provides its own type definitions, so you do not need this installed.
 
   '@types/use-sync-external-store@0.0.6':
     resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
@@ -2946,7 +2943,6 @@ packages:
   next@15.5.6:
     resolution: {integrity: sha512-zTxsnI3LQo3c9HSdSf91O1jMNsEzIXDShXd4wVdg9y5shwLqBXi4ZtUUJyB86KGVSJLZx0PFONvO54aheGX8QQ==}
     engines: {node: ^18.18.0 || ^19.8.0 || >= 20.0.0}
-    deprecated: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
@@ -5021,10 +5017,6 @@ snapshots:
       undici-types: 7.16.0
 
   '@types/phoenix@1.6.6': {}
-
-  '@types/testing-library__jest-dom@6.0.0':
-    dependencies:
-      '@testing-library/jest-dom': 6.9.1
 
   '@types/use-sync-external-store@0.0.6': {}
 

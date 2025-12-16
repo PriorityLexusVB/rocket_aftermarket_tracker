@@ -7,6 +7,22 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import DealForm from '../pages/deals/DealForm'
 
+// DealForm loads dropdown data on mount; mock these to make tests deterministic.
+vi.mock('../services/dropdownService', () => ({
+  getVendors: vi.fn(async () => []),
+  getProducts: vi.fn(async () => []),
+  getSalesConsultants: vi.fn(async () => []),
+  getFinanceManagers: vi.fn(async () => []),
+  getDeliveryCoordinators: vi.fn(async () => []),
+  getUserProfiles: vi.fn(async () => []),
+}))
+
+vi.mock('../services/tenantService', () => ({
+  listVendorsByOrg: vi.fn(async () => []),
+  listProductsByOrg: vi.fn(async () => []),
+  listStaffByOrg: vi.fn(async () => []),
+}))
+
 // Mock the navigate function
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
@@ -23,21 +39,6 @@ Object.defineProperty(window, 'open', {
   value: mockWindowOpen,
   writable: true,
 })
-
-// Mock supabase module
-vi.mock('../../lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => ({
-            limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          })),
-        })),
-      })),
-    })),
-  },
-}))
 
 describe('DealForm Loaner Management Integration', () => {
   beforeEach(() => {
@@ -56,7 +57,7 @@ describe('DealForm Loaner Management Integration', () => {
     renderDealForm()
 
     // Find and check the loaner checkbox
-    const loanerCheckbox = screen.getByTestId('loaner-checkbox')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section to appear
@@ -75,7 +76,7 @@ describe('DealForm Loaner Management Integration', () => {
     renderDealForm()
 
     // Enable loaner section
-    const loanerCheckbox = screen.getByTestId('loaner-checkbox')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section and click Manage button
@@ -96,7 +97,7 @@ describe('DealForm Loaner Management Integration', () => {
     renderDealForm()
 
     // Enable loaner section
-    const loanerCheckbox = screen.getByTestId('loaner-checkbox')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section and click Manage button
@@ -115,7 +116,7 @@ describe('DealForm Loaner Management Integration', () => {
     renderDealForm()
 
     // Enable loaner section
-    const loanerCheckbox = screen.getByTestId('loaner-checkbox')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section
@@ -131,8 +132,11 @@ describe('DealForm Loaner Management Integration', () => {
     expect(loanerInput.value).toBe('62')
   })
 
-  it('hides loaner section when customer does not need loaner', () => {
+  it('hides loaner section when customer does not need loaner', async () => {
     renderDealForm()
+
+    // Wait for initial form render (DealForm has an async loading gate)
+    await screen.findByTestId('loaner-checkbox')
 
     // Loaner section should not be visible by default
     expect(screen.queryByTestId('loaner-section')).not.toBeInTheDocument()
