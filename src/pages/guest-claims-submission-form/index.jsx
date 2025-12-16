@@ -13,6 +13,9 @@ import {
   X,
 } from 'lucide-react'
 
+// Import centralized schema for validating guest warranty claims
+import { guestClaimSchema } from '../../utils/claimSchemas'
+
 const GuestClaimsSubmissionForm = () => {
   // Form state
   const [formData, setFormData] = useState({
@@ -85,48 +88,25 @@ const GuestClaimsSubmissionForm = () => {
   }
 
   const validateForm = () => {
-    const newErrors = {}
+    // Use the centralized Zod schema to validate the form data.  This
+    // returns a result object containing parsed data on success or an
+    // error with issue details on failure.
+    const result = guestClaimSchema.safeParse(formData)
 
-    // Required fields
-    if (!formData?.customer_name?.trim()) newErrors.customer_name = 'Customer name is required'
-    if (!formData?.customer_email?.trim()) newErrors.customer_email = 'Email is required'
-    if (!formData?.customer_phone?.trim()) newErrors.customer_phone = 'Phone number is required'
-    if (!formData?.vehicle_year?.trim()) newErrors.vehicle_year = 'Vehicle year is required'
-    if (!formData?.vehicle_make?.trim()) newErrors.vehicle_make = 'Vehicle make is required'
-    if (!formData?.vehicle_model?.trim()) newErrors.vehicle_model = 'Vehicle model is required'
-    if (!formData?.vehicle_vin?.trim()) newErrors.vehicle_vin = 'VIN is required'
-    if (!formData?.product_selection?.trim())
-      newErrors.product_selection = 'Product selection is required'
-    if (!formData?.issue_description?.trim())
-      newErrors.issue_description = 'Issue description is required'
-    if (!formData?.preferred_resolution?.trim())
-      newErrors.preferred_resolution = 'Preferred resolution is required'
-
-    // Validate other product description if "other" is selected
-    if (formData?.product_selection === 'other' && !formData?.other_product_description?.trim()) {
-      newErrors.other_product_description = 'Please describe the other product'
+    if (!result?.success) {
+      const newErrors = {}
+      result.error?.issues?.forEach((issue) => {
+        // The path array contains the key of the field that failed.
+        const pathKey = issue?.path?.[0]
+        newErrors[pathKey] = issue?.message
+      })
+      setErrors(newErrors)
+      return false
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (formData?.customer_email && !emailRegex?.test(formData?.customer_email)) {
-      newErrors.customer_email = 'Please enter a valid email address'
-    }
-
-    // Validate VIN length (basic validation)
-    if (formData?.vehicle_vin && formData?.vehicle_vin?.length !== 17) {
-      newErrors.vehicle_vin = 'VIN must be exactly 17 characters'
-    }
-
-    // Validate vehicle year
-    const currentYear = new Date()?.getFullYear()
-    const year = parseInt(formData?.vehicle_year)
-    if (formData?.vehicle_year && (isNaN(year) || year < 1900 || year > currentYear + 1)) {
-      newErrors.vehicle_year = `Year must be between 1900 and ${currentYear + 1}`
-    }
-
-    setErrors(newErrors)
-    return Object?.keys(newErrors)?.length === 0
+    // Clear any previous errors if validation passes
+    setErrors({})
+    return true
   }
 
   const handleFileUpload = async (event) => {

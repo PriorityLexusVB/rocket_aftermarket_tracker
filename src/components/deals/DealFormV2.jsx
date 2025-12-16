@@ -19,6 +19,9 @@ import {
   getProducts,
 } from '../../services/dropdownService'
 
+// Centralized VIN validation schema
+import { vinSchema } from '../../utils/claimSchemas'
+
 // Guard flag for auto-earliest-window feature (disabled by default to avoid test conflicts)
 const ENABLE_AUTO_EARLIEST_WINDOW = false
 
@@ -347,16 +350,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     if (customerData?.vin?.trim()) {
       const vinTrimmed = customerData.vin.trim().toUpperCase()
 
-      // VIN must be exactly 17 characters
-      if (vinTrimmed.length !== 17) {
-        setError('VIN must be exactly 17 characters')
-        return false
-      }
-
-      // VIN must be alphanumeric excluding I, O, Q (to avoid confusion with 1, 0)
-      const vinRegex = /^[A-HJ-NPR-Z0-9]{17}$/i
-      if (!vinRegex.test(vinTrimmed)) {
-        setError('Invalid VIN format (cannot contain I, O, or Q)')
+      // Use the shared schema to validate length and character set
+      const vinResult = vinSchema.safeParse(vinTrimmed)
+      if (!vinResult?.success) {
+        setError(vinResult?.error?.issues?.[0]?.message ?? 'Invalid VIN')
         return false
       }
 
