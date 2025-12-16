@@ -40,6 +40,21 @@ Object.defineProperty(window, 'open', {
   writable: true,
 })
 
+// Mock Supabase client for loaner status checking
+vi.mock('../../lib/supabase', () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          order: vi.fn(() => ({
+            limit: vi.fn(() => Promise.resolve({ data: [], error: null }))
+          }))
+        }))
+      }))
+    }))
+  }
+}))
+
 describe('DealForm Loaner Management Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
