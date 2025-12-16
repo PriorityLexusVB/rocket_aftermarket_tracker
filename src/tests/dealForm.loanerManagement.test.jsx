@@ -24,8 +24,64 @@ Object.defineProperty(window, 'open', {
   writable: true,
 })
 
+// Mock dropdown services
+vi.mock('../services/dropdownService', () => ({
+  getVendors: vi.fn(() => Promise.resolve([])),
+  getProducts: vi.fn(() => Promise.resolve([])),
+  getSalesConsultants: vi.fn(() => Promise.resolve([])),
+  getFinanceManagers: vi.fn(() => Promise.resolve([])),
+  getDeliveryCoordinators: vi.fn(() => Promise.resolve([])),
+  getUserProfiles: vi.fn(() => Promise.resolve([])),
+}))
+
+// Mock tenant service
+vi.mock('../services/tenantService', () => ({
+  listVendorsByOrg: vi.fn(() => Promise.resolve([])),
+  listProductsByOrg: vi.fn(() => Promise.resolve([])),
+  listStaffByOrg: vi.fn(() => Promise.resolve([])),
+}))
+
+// Mock AuthContext
+vi.mock('../contexts/AuthContext', () => ({
+  useAuth: () => ({ 
+    user: { id: 'test-user-123', email: 'test@example.com' },
+    userProfile: { org_id: 'test-org-123' }
+  }),
+}))
+
+// Mock useTenant hook
+vi.mock('../hooks/useTenant', () => ({
+  default: vi.fn(() => ({ orgId: 'test-org-123', loading: false })),
+}))
+
+// Mock useLogger hook
+vi.mock('../hooks/useLogger', () => ({
+  useLogger: vi.fn(() => ({
+    logFormSubmission: vi.fn(),
+    logError: vi.fn(),
+  })),
+}))
+
+// Mock ToastProvider
+vi.mock('../components/ui/ToastProvider', () => ({
+  useToast: vi.fn(() => ({
+    success: vi.fn(),
+    error: vi.fn(),
+  })),
+}))
+
+// Mock UnsavedChangesGuard
+vi.mock('../components/common/UnsavedChangesGuard', () => ({
+  default: () => null,
+}))
+
+// Mock UI config
+vi.mock('../config/ui', () => ({
+  UI_FLAGS: {},
+}))
+
 // Mock supabase module
-vi.mock('../../lib/supabase', () => ({
+vi.mock('../lib/supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
       select: vi.fn(() => ({
@@ -55,6 +111,11 @@ describe('DealForm Loaner Management Integration', () => {
   it('shows Manage Loaners button when customer needs loaner', async () => {
     renderDealForm()
 
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByTestId('loaner-checkbox')).toBeInTheDocument()
+    })
+
     // Find and check the loaner checkbox
     const loanerCheckbox = screen.getByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
@@ -73,6 +134,11 @@ describe('DealForm Loaner Management Integration', () => {
     mockWindowOpen.mockReturnValue({}) // Mock successful tab opening
 
     renderDealForm()
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByTestId('loaner-checkbox')).toBeInTheDocument()
+    })
 
     // Enable loaner section
     const loanerCheckbox = screen.getByTestId('loaner-checkbox')
@@ -95,6 +161,11 @@ describe('DealForm Loaner Management Integration', () => {
 
     renderDealForm()
 
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByTestId('loaner-checkbox')).toBeInTheDocument()
+    })
+
     // Enable loaner section
     const loanerCheckbox = screen.getByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
@@ -113,6 +184,11 @@ describe('DealForm Loaner Management Integration', () => {
 
   it('shows loaner number input with status checking', async () => {
     renderDealForm()
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByTestId('loaner-checkbox')).toBeInTheDocument()
+    })
 
     // Enable loaner section
     const loanerCheckbox = screen.getByTestId('loaner-checkbox')
