@@ -43,6 +43,7 @@ const Navbar = () => {
     },
     { name: 'Claims', href: '/claims-management-center', icon: FileText },
     { name: 'Deals', href: '/deals', icon: Package },
+    { name: 'Loaners', href: '/loaner-management-drawer', icon: Car, shortName: 'Loaners' },
     { name: 'Analytics', href: '/advanced-business-intelligence-analytics', icon: BarChart3 },
     { name: 'Admin', href: '/admin', icon: Settings },
   ]
@@ -145,11 +146,11 @@ const Navbar = () => {
 
   return (
     <>
-      {/* Mobile Bottom Navigation - Updated for 5 items with better spacing */}
+      {/* Mobile Bottom Navigation - Updated for 6 items with better spacing */}
       {!isTest && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
-          <div className="grid grid-cols-5 h-16">
-            {navigationLinks?.slice(0, 5)?.map((link) => {
+          <div className="grid grid-cols-6 h-16">
+            {navigationLinks?.slice(0, 6)?.map((link) => {
               const Icon = link?.icon
               const isActive = isActivePath(link?.href)
               const displayName = link?.shortName || link?.name
