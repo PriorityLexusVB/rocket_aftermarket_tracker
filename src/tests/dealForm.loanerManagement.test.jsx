@@ -41,17 +41,9 @@ vi.mock('../services/tenantService', () => ({
   listStaffByOrg: vi.fn(() => Promise.resolve([])),
 }))
 
-// Mock AuthContext
-vi.mock('../contexts/AuthContext', () => ({
-  useAuth: () => ({ 
-    user: { id: 'test-user-123', email: 'test@example.com' },
-    userProfile: { org_id: 'test-org-123' }
-  }),
-}))
-
 // Mock useTenant hook
 vi.mock('../hooks/useTenant', () => ({
-  default: vi.fn(() => ({ orgId: 'test-org-123', loading: false })),
+  default: vi.fn(() => ({ orgId: 'test-org-123' })),
 }))
 
 // Mock useLogger hook
@@ -80,77 +72,45 @@ vi.mock('../config/ui', () => ({
   UI_FLAGS: {},
 }))
 
-// Mock supabase module
-vi.mock('../lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => ({
-            limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
-          })),
-        })),
-      })),
-    })),
-  },
-}))
-
 describe('DealForm Loaner Management Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   const renderDealForm = (props = {}) => {
-    const result = render(
+    return render(
       <BrowserRouter>
         <DealForm mode="create" onCancel={vi.fn()} onSave={vi.fn()} {...props} />
       </BrowserRouter>
     )
-    return result
   }
 
   it('shows Manage Loaners button when customer needs loaner', async () => {
-    const { container } = renderDealForm()
+    renderDealForm()
 
     // Wait for component to load
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-checkbox"]')).toBeTruthy()
-    })
-
-    // Find and check the loaner checkbox
-    const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section to appear
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
-    })
+    await screen.findByTestId('loaner-section')
 
     // Check that Manage button is present
-    expect(container.querySelector('[data-testid="manage-loaners-btn"]')).toBeTruthy()
+    expect(screen.getByTestId('manage-loaners-btn')).toBeInTheDocument()
     expect(screen.getByText('Manage')).toBeInTheDocument()
   })
 
   it('opens loaner management page when Manage button is clicked', async () => {
     mockWindowOpen.mockReturnValue({}) // Mock successful tab opening
 
-    const { container } = renderDealForm()
+    renderDealForm()
 
     // Wait for component to load
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-checkbox"]')).toBeTruthy()
-    })
-
-    // Enable loaner section
-    const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section and click Manage button
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="manage-loaners-btn"]')).toBeTruthy()
-    })
-
-    const manageBtn = container.querySelector('[data-testid="manage-loaners-btn"]')
+    const manageBtn = await screen.findByTestId('manage-loaners-btn')
     fireEvent.click(manageBtn)
 
     // Verify window.open was called with correct URL
@@ -160,23 +120,14 @@ describe('DealForm Loaner Management Integration', () => {
   it('falls back to navigation when popup blocker prevents new tab', async () => {
     mockWindowOpen.mockReturnValue(null) // Simulate popup blocker
 
-    const { container } = renderDealForm()
+    renderDealForm()
 
     // Wait for component to load
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-checkbox"]')).toBeTruthy()
-    })
-
-    // Enable loaner section
-    const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section and click Manage button
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="manage-loaners-btn"]')).toBeTruthy()
-    })
-
-    const manageBtn = container.querySelector('[data-testid="manage-loaners-btn"]')
+    const manageBtn = await screen.findByTestId('manage-loaners-btn')
     fireEvent.click(manageBtn)
 
     // Verify fallback navigation was called
@@ -184,23 +135,14 @@ describe('DealForm Loaner Management Integration', () => {
   })
 
   it('shows loaner number input with status checking', async () => {
-    const { container } = renderDealForm()
+    renderDealForm()
 
     // Wait for component to load
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-checkbox"]')).toBeTruthy()
-    })
-
-    // Enable loaner section
-    const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
+    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
     // Wait for loaner section
-    await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeTruthy()
-    })
-
-    const loanerInput = container.querySelector('[data-testid="loaner-number-input"]')
+    const loanerInput = await screen.findByTestId('loaner-number-input')
     expect(loanerInput).toHaveAttribute('placeholder', 'e.g. L-1024')
 
     // Type loaner number
