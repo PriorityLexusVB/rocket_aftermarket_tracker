@@ -152,7 +152,7 @@ const CustomerClaimsSubmissionPortal = () => {
 
   const validateStep = (step) => {
     // Choose the correct schema based on the current step.  Each schema
-    // validates only the fields present on that step, providing step‑specific
+    // validates only the fields present on that step, providing step-specific
     // error messages.  If there is no schema for the given step, validation
     // passes by default (e.g. review/confirmation screens).
     let schema = null

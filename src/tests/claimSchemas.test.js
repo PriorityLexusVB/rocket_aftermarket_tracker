@@ -1,4 +1,4 @@
-// tests/unit/claimSchemas.test.js
+// src/tests/claimSchemas.test.js
 import { describe, it, expect } from 'vitest'
 import {
   vinSchema,
@@ -6,7 +6,7 @@ import {
   customerClaimStep1Schema,
   customerClaimStep2Schema,
   customerClaimStep3Schema,
-} from '../../src/utils/claimSchemas'
+} from '../utils/claimSchemas'
 
 describe('vinSchema', () => {
   it('should validate a valid VIN', () => {
