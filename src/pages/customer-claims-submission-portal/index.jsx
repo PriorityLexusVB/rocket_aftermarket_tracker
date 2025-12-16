@@ -16,6 +16,13 @@ import {
 } from 'lucide-react'
 import Icon from '../../components/AppIcon'
 
+// Import step schemas for validating the multi‑step claim wizard
+import {
+  customerClaimStep1Schema,
+  customerClaimStep2Schema,
+  customerClaimStep3Schema,
+} from '../../utils/claimSchemas'
+
 const CustomerClaimsSubmissionPortal = () => {
   // Form state
   const [formData, setFormData] = useState({
@@ -144,28 +151,32 @@ const CustomerClaimsSubmissionPortal = () => {
   }
 
   const validateStep = (step) => {
-    const newErrors = {}
+    // Choose the correct schema based on the current step.  Each schema
+    // validates only the fields present on that step, providing step‑specific
+    // error messages.  If there is no schema for the given step, validation
+    // passes by default (e.g. review/confirmation screens).
+    let schema = null
+    if (step === 1) schema = customerClaimStep1Schema
+    else if (step === 2) schema = customerClaimStep2Schema
+    else if (step === 3) schema = customerClaimStep3Schema
 
-    if (step === 1) {
-      if (!formData?.customer_name?.trim()) newErrors.customer_name = 'Customer name is required'
-      if (!formData?.customer_email?.trim()) newErrors.customer_email = 'Customer email is required'
-      if (!formData?.customer_phone?.trim()) newErrors.customer_phone = 'Customer phone is required'
+    if (schema) {
+      const result = schema.safeParse(formData)
+      if (!result?.success) {
+        const newErrors = {}
+        result.error?.issues?.forEach((issue) => {
+          const key = issue?.path?.[0]
+          newErrors[key] = issue?.message
+        })
+        setErrors(newErrors)
+        return false
+      }
+      setErrors({})
+      return true
     }
 
-    if (step === 2) {
-      if (!formData?.vehicle_id) newErrors.vehicle_id = 'Please select a vehicle'
-      if (!formData?.product_id) newErrors.product_id = 'Please select a product/service'
-    }
-
-    if (step === 3) {
-      if (!formData?.issue_description?.trim())
-        newErrors.issue_description = 'Issue description is required'
-      if (!formData?.preferred_resolution?.trim())
-        newErrors.preferred_resolution = 'Preferred resolution is required'
-    }
-
-    setErrors(newErrors)
-    return Object?.keys(newErrors)?.length === 0
+    // No validation required for this step
+    return true
   }
 
   const nextStep = () => {
