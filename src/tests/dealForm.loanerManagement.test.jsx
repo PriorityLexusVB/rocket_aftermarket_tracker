@@ -141,7 +141,7 @@ describe('DealForm Loaner Management Integration', () => {
 
   it('shows loaner management link in navigation', () => {
     renderDealForm()
-    
+
     // The navigation should include the Loaners link
     // Note: This may depend on how the Navbar component is structured
     // We're testing that the component doesn't crash with the new navigation

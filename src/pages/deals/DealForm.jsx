@@ -356,7 +356,7 @@ export default function DealForm({
 
   const handleLoanerChange = (key, val) => {
     setForm((prev) => ({ ...prev, loanerForm: { ...(prev.loanerForm || {}), [key]: val } }))
-    
+
     // Check loaner status when loaner number changes
     if (key === 'loaner_number' && val?.trim()) {
       checkLoanerStatus(val.trim())
@@ -368,14 +368,14 @@ export default function DealForm({
   // Function to check loaner availability
   const checkLoanerStatus = async (loanerNumber) => {
     if (!loanerNumber) return
-    
+
     setLoanerCheckLoading(true)
     setLoanerStatus(null)
-    
+
     try {
       // Import Supabase client dynamically to avoid breaking SSR
       const { supabase } = await import('../../lib/supabase')
-      
+
       // Check if loaner exists and get its current assignment status
       const { data: assignments, error } = await supabase
         .from('loaner_assignments')
@@ -383,30 +383,29 @@ export default function DealForm({
         .eq('loaner_number', loanerNumber)
         .order('created_at', { ascending: false })
         .limit(1)
-      
+
       if (error) {
         console.warn('Error checking loaner status:', error)
         setLoanerStatus('invalid')
         return
       }
-      
+
       // If no assignments found, loaner might be new or available
       if (!assignments || assignments.length === 0) {
         setLoanerStatus('available')
         return
       }
-      
+
       const latestAssignment = assignments[0]
-      
+
       // If latest assignment has returned_at, loaner is available
       if (latestAssignment.returned_at) {
         setLoanerStatus('available')
         return
       }
-      
+
       // If no returned_at, loaner is currently in use
       setLoanerStatus('in-use')
-      
     } catch (err) {
       console.warn('Failed to check loaner status:', err)
       setLoanerStatus('invalid')
@@ -769,7 +768,9 @@ export default function DealForm({
         </div>
 
         <div>
-          <label htmlFor="description-input" className="block text-sm font-medium text-slate-700">Customer Name</label>
+          <label htmlFor="description-input" className="block text-sm font-medium text-slate-700">
+            Customer Name
+          </label>
           <textarea
             id="description-input"
             aria-label="Customer Name"
@@ -935,8 +936,11 @@ export default function DealForm({
                   value={form?.loanerForm?.loaner_number || ''}
                   onChange={(e) => handleLoanerChange('loaner_number', e.target.value)}
                   className={`mt-1 input-mobile w-full ${
-                    loanerStatus === 'in-use' ? 'border-red-300' : 
-                    loanerStatus === 'available' ? 'border-green-300' : ''
+                    loanerStatus === 'in-use'
+                      ? 'border-red-300'
+                      : loanerStatus === 'available'
+                        ? 'border-green-300'
+                        : ''
                   }`}
                   placeholder="e.g. L-1024"
                 />
@@ -973,11 +977,15 @@ export default function DealForm({
             </div>
             {/* Status message */}
             {form?.loanerForm?.loaner_number && loanerStatus && (
-              <div className={`mt-1 text-xs ${
-                loanerStatus === 'available' ? 'text-green-700' :
-                loanerStatus === 'in-use' ? 'text-red-700' :
-                'text-gray-600'
-              }`}>
+              <div
+                className={`mt-1 text-xs ${
+                  loanerStatus === 'available'
+                    ? 'text-green-700'
+                    : loanerStatus === 'in-use'
+                      ? 'text-red-700'
+                      : 'text-gray-600'
+                }`}
+              >
                 {loanerStatus === 'available' && '✓ Available'}
                 {loanerStatus === 'in-use' && '⚠ Currently in use by another customer'}
                 {loanerStatus === 'invalid' && 'ⓘ Unable to verify status'}
