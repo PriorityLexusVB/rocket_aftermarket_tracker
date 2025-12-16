@@ -77,6 +77,10 @@ export default function DealForm({
     calendar_notes: initial.calendar_notes || '',
   })
 
+  // Loaner validation state
+  const [loanerStatus, setLoanerStatus] = useState(null) // null, 'available', 'in-use', 'invalid'
+  const [loanerCheckLoading, setLoanerCheckLoading] = useState(false)
+
   // Server-truth: Do not override description from localStorage; rely on props/DB values
 
   // Keep local form state in sync when parent provides a new initial (e.g., after save/refetch or route change)
@@ -350,8 +354,65 @@ export default function DealForm({
     return setForm((prev) => ({ ...prev, [key]: val }))
   }
 
-  const handleLoanerChange = (key, val) =>
+  const handleLoanerChange = (key, val) => {
     setForm((prev) => ({ ...prev, loanerForm: { ...(prev.loanerForm || {}), [key]: val } }))
+
+    // Check loaner status when loaner number changes
+    if (key === 'loaner_number' && val?.trim()) {
+      checkLoanerStatus(val.trim())
+    } else if (key === 'loaner_number' && !val?.trim()) {
+      setLoanerStatus(null)
+    }
+  }
+
+  // Function to check loaner availability
+  const checkLoanerStatus = async (loanerNumber) => {
+    if (!loanerNumber) return
+
+    setLoanerCheckLoading(true)
+    setLoanerStatus(null)
+
+    try {
+      // Import Supabase client dynamically to avoid breaking SSR
+      const { supabase } = await import('../../lib/supabase')
+
+      // Check if loaner exists and get its current assignment status
+      const { data: assignments, error } = await supabase
+        .from('loaner_assignments')
+        .select('id, returned_at, eta_return_date, jobs(id, title)')
+        .eq('loaner_number', loanerNumber)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (error) {
+        console.warn('Error checking loaner status:', error)
+        setLoanerStatus('invalid')
+        return
+      }
+
+      // If no assignments found, loaner might be new or available
+      if (!assignments || assignments.length === 0) {
+        setLoanerStatus('available')
+        return
+      }
+
+      const latestAssignment = assignments[0]
+
+      // If latest assignment has returned_at, loaner is available
+      if (latestAssignment.returned_at) {
+        setLoanerStatus('available')
+        return
+      }
+
+      // If no returned_at, loaner is currently in use
+      setLoanerStatus('in-use')
+    } catch (err) {
+      console.warn('Failed to check loaner status:', err)
+      setLoanerStatus('invalid')
+    } finally {
+      setLoanerCheckLoading(false)
+    }
+  }
 
   const handleLineChange = (idx, key, val) =>
     setForm((prev) => {
@@ -707,7 +768,9 @@ export default function DealForm({
         </div>
 
         <div>
-          <label htmlFor="description-input" className="block text-sm font-medium text-slate-700">Customer Name</label>
+          <label htmlFor="description-input" className="block text-sm font-medium text-slate-700">
+            Customer Name
+          </label>
           <textarea
             id="description-input"
             aria-label="Customer Name"
@@ -865,14 +928,69 @@ export default function DealForm({
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="loaner-section">
           <div>
             <label className="block text-sm font-medium text-slate-700">Loaner Number</label>
-            <input
-              data-testid="loaner-number-input"
-              type="text"
-              value={form?.loanerForm?.loaner_number || ''}
-              onChange={(e) => handleLoanerChange('loaner_number', e.target.value)}
-              className="mt-1 input-mobile w-full"
-              placeholder="e.g. L-1024"
-            />
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <input
+                  data-testid="loaner-number-input"
+                  type="text"
+                  value={form?.loanerForm?.loaner_number || ''}
+                  onChange={(e) => handleLoanerChange('loaner_number', e.target.value)}
+                  className={`mt-1 input-mobile w-full ${
+                    loanerStatus === 'in-use'
+                      ? 'border-red-300'
+                      : loanerStatus === 'available'
+                        ? 'border-green-300'
+                        : ''
+                  }`}
+                  placeholder="e.g. L-1024"
+                />
+                {/* Loaner status indicator */}
+                {form?.loanerForm?.loaner_number && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
+                    {loanerCheckLoading ? (
+                      <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                    ) : loanerStatus === 'available' ? (
+                      <div className="w-3 h-3 bg-green-500 rounded-full" title="Available" />
+                    ) : loanerStatus === 'in-use' ? (
+                      <div className="w-3 h-3 bg-red-500 rounded-full" title="Currently in use" />
+                    ) : loanerStatus === 'invalid' ? (
+                      <div className="w-3 h-3 bg-gray-400 rounded-full" title="Status unknown" />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const newTab = window.open('/loaner-management-drawer', '_blank')
+                  if (!newTab) {
+                    // Fallback if popup blocker
+                    navigate('/loaner-management-drawer')
+                  }
+                }}
+                className="mt-1 px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                title="Manage Loaners"
+                data-testid="manage-loaners-btn"
+              >
+                Manage
+              </button>
+            </div>
+            {/* Status message */}
+            {form?.loanerForm?.loaner_number && loanerStatus && (
+              <div
+                className={`mt-1 text-xs ${
+                  loanerStatus === 'available'
+                    ? 'text-green-700'
+                    : loanerStatus === 'in-use'
+                      ? 'text-red-700'
+                      : 'text-gray-600'
+                }`}
+              >
+                {loanerStatus === 'available' && '✓ Available'}
+                {loanerStatus === 'in-use' && '⚠ Currently in use by another customer'}
+                {loanerStatus === 'invalid' && 'ⓘ Unable to verify status'}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700">ETA Return Date</label>
