@@ -33,7 +33,8 @@ const TEST_CUSTOMER_PATTERNS = [
 ]
 
 function isTestLikeValue(value) {
-  return TEST_CUSTOMER_PATTERNS.some((pattern) => pattern.test(String(value || '')))
+  const str = value ? String(value) : ''
+  return TEST_CUSTOMER_PATTERNS.some((pattern) => pattern.test(str))
 }
 
 export function filterTestCustomersKeepFirst(deals = []) {
