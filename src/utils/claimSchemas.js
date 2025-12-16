@@ -40,7 +40,7 @@ export const guestClaimSchema = z
           const currentYear = new Date().getFullYear()
           return !isNaN(year) && year >= 1900 && year <= currentYear + 1
         },
-        (val) => {
+        () => {
           const currentYear = new Date().getFullYear()
           return { message: `Year must be between 1900 and ${currentYear + 1}` }
         },
@@ -53,9 +53,7 @@ export const guestClaimSchema = z
       .string()
       .min(1, 'Vehicle model is required')
       .transform((val) => val.trim()),
-    vehicle_vin: vinSchema.refine((val) => val.length === 17, {
-      message: 'VIN is required',
-    }),
+    vehicle_vin: vinSchema,
     product_selection: z
       .string()
       .min(1, 'Product selection is required')
@@ -106,12 +104,12 @@ export const customerClaimStep1Schema = z.object({
     .min(1, 'Customer phone is required')
     .transform((val) => val.trim()),
   // Allow other fields to pass through without validation
-  vehicle_id: z.any().optional(),
-  product_id: z.any().optional(),
+  vehicle_id: z.unknown().optional(),
+  product_id: z.unknown().optional(),
   issue_description: z.string().optional(),
   preferred_resolution: z.string().optional(),
-  claim_amount: z.any().optional(),
-  priority: z.any().optional(),
+  claim_amount: z.unknown().optional(),
+  priority: z.unknown().optional(),
 })
 
 /**
@@ -127,8 +125,8 @@ export const customerClaimStep2Schema = z.object({
   customer_phone: z.string().optional(),
   issue_description: z.string().optional(),
   preferred_resolution: z.string().optional(),
-  claim_amount: z.any().optional(),
-  priority: z.any().optional(),
+  claim_amount: z.unknown().optional(),
+  priority: z.unknown().optional(),
 })
 
 /**
@@ -148,8 +146,8 @@ export const customerClaimStep3Schema = z.object({
   customer_name: z.string().optional(),
   customer_email: z.string().optional(),
   customer_phone: z.string().optional(),
-  vehicle_id: z.any().optional(),
-  product_id: z.any().optional(),
-  claim_amount: z.any().optional(),
-  priority: z.any().optional(),
+  vehicle_id: z.unknown().optional(),
+  product_id: z.unknown().optional(),
+  claim_amount: z.unknown().optional(),
+  priority: z.unknown().optional(),
 })

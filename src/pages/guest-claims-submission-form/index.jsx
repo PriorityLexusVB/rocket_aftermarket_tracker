@@ -88,9 +88,7 @@ const GuestClaimsSubmissionForm = () => {
   }
 
   const validateForm = () => {
-    // Use the centralized Zod schema to validate the form data.  This
-    // returns a result object containing parsed data on success or an
-    // error with issue details on failure.
+    // Validate form data using centralized Zod schema
     const result = guestClaimSchema.safeParse(formData)
 
     if (!result?.success) {
