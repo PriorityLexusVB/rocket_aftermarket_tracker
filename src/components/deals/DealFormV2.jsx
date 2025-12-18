@@ -31,6 +31,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
   const userHasEdited = useRef(false) // Track if user has made intentional edits
+  const savingRef = useRef(false) // Synchronous in-flight guard to prevent double-submit
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -526,18 +527,28 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Handle save
   const handleSave = async () => {
-    // Guard against duplicate submits
+    // Synchronous in-flight guard: prevent double-submit before state updates
+    if (savingRef.current) {
+      return
+    }
+    
+    // Guard against duplicate submits (async state check)
     if (isSubmitting) {
       return
     }
 
+    // Set synchronous guard immediately
+    savingRef.current = true
+
     const step1Valid = await validateStep1()
     if (!step1Valid) {
+      savingRef.current = false
       return
     }
 
     const step2Valid = validateStep2WithErrors()
     if (!step2Valid) {
+      savingRef.current = false
       return
     }
 
@@ -652,6 +663,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       setError(parseError(err))
     } finally {
       setIsSubmitting(false)
+      savingRef.current = false
     }
   }
 
@@ -1283,6 +1295,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
           {currentStep === 2 && (
             <Button
+              type="button"
               onClick={handleSave}
               disabled={!hasRequiredFields() || !validateStep2() || isSubmitting}
               className="bg-green-600 hover:bg-green-700 text-white"
