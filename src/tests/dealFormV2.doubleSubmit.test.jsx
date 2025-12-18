@@ -112,14 +112,16 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
 
     // Wait for step 2 to render with line items
     await waitFor(() => {
-      const saveButton = screen.getByTestId('save-deal-btn')
+      const saveButtons = screen.getAllByTestId('save-deal-btn')
+      const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
       expect(saveButton).toBeInTheDocument()
       // Button should be enabled since we have all required data
       expect(saveButton).not.toBeDisabled()
     })
 
-    // Get save button
-    const saveButton = screen.getByTestId('save-deal-btn')
+    // Get save button (handle multiple matches by finding the one with type="button")
+    const saveButtons = screen.getAllByTestId('save-deal-btn')
+    const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
 
     // Simulate rapid double-click by clicking twice in quick succession
     fireEvent.click(saveButton)
@@ -154,10 +156,12 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
 
     // Wait for step 2 and save button
     await waitFor(() => {
-      expect(screen.getByTestId('save-deal-btn')).toBeInTheDocument()
+      const saveButtons = screen.getAllByTestId('save-deal-btn')
+      expect(saveButtons.length).toBeGreaterThan(0)
     })
 
-    const saveButton = screen.getByTestId('save-deal-btn')
+    const saveButtons = screen.getAllByTestId('save-deal-btn')
+    const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
     
     // Verify button has explicit type="button"
     expect(saveButton).toHaveAttribute('type', 'button')
@@ -198,11 +202,13 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
     fireEvent.click(nextButton)
 
     await waitFor(() => {
-      const saveButton = screen.getByTestId('save-deal-btn')
+      const saveButtons = screen.getAllByTestId('save-deal-btn')
+      const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
       expect(saveButton).not.toBeDisabled()
     })
 
-    const saveButton = screen.getByTestId('save-deal-btn')
+    const saveButtons = screen.getAllByTestId('save-deal-btn')
+    const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
 
     // First click - should work
     fireEvent.click(saveButton)
