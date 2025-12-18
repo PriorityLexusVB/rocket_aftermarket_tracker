@@ -909,23 +909,24 @@ export default function DealForm({
         </div>
       </section>
 
-      {/* Customer needs loaner */}
-      <section className="flex items-center gap-3">
-        <input
-          data-testid="loaner-checkbox"
-          id="needsLoaner"
-          type="checkbox"
-          checked={!!form.customer_needs_loaner}
-          onChange={(e) => handleChange('customer_needs_loaner', e.target.checked)}
-          className="h-5 w-5 accent-blue-600 appearance-auto"
-        />
-        <label htmlFor="needsLoaner" className="text-sm text-slate-800">
-          Customer needs loaner
-        </label>
-      </section>
+      {/* Loaner section - wrapper always rendered for test stability */}
+      <div data-testid="loaner-section">
+        <section className="flex items-center gap-3">
+          <input
+            data-testid="loaner-checkbox"
+            id="needsLoaner"
+            type="checkbox"
+            checked={!!form.customer_needs_loaner}
+            onChange={(e) => handleChange('customer_needs_loaner', e.target.checked)}
+            className="h-5 w-5 accent-blue-600 appearance-auto"
+          />
+          <label htmlFor="needsLoaner" className="text-sm text-slate-800">
+            Customer needs loaner
+          </label>
+        </section>
 
-      {form.customer_needs_loaner ? (
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="loaner-section">
+        {form.customer_needs_loaner && (
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">Loaner Number</label>
             <div className="flex gap-2">
@@ -1014,7 +1015,8 @@ export default function DealForm({
             />
           </div>
         </section>
-      ) : null}
+        )}
+      </div>
 
       {/* Line Items */}
       <section className="space-y-4" data-testid="line-items-section">

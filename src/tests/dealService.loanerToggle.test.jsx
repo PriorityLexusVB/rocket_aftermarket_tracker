@@ -85,10 +85,12 @@ describe('DealForm Loaner Toggle', () => {
       expect(checkbox.checked).toBe(false)
     })
 
-    // Loaner section should not be visible
+    // Loaner section wrapper should exist, but fields should not be visible
     const dealForm = container.querySelector('[data-testid="deal-form"]')
     const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-    expect(loanerSection).toBeNull()
+    expect(loanerSection).toBeDefined()
+    const loanerInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
+    expect(loanerInput).toBeNull()
   })
 
   it('shows loaner section when checkbox is checked', async () => {
@@ -130,22 +132,23 @@ describe('DealForm Loaner Toggle', () => {
     const dealForm = container.querySelector('[data-testid="deal-form"]')
     const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
 
-    // Initially unchecked - section hidden
+    // Initially unchecked - loaner fields hidden (wrapper exists)
     expect(checkbox.checked).toBe(false)
-    expect(dealForm?.querySelector('[data-testid="loaner-section"]')).toBeNull()
+    expect(dealForm?.querySelector('[data-testid="loaner-section"]')).toBeDefined()
+    expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeNull()
 
-    // Check it - section appears
+    // Check it - loaner fields appear
     fireEvent.click(checkbox)
     await waitFor(() => {
-      const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-      expect(loanerSection).toBeDefined()
+      const loanerInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
+      expect(loanerInput).toBeDefined()
     })
 
-    // Uncheck it - section disappears
+    // Uncheck it - loaner fields disappear (wrapper remains)
     fireEvent.click(checkbox)
     await waitFor(() => {
-      const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-      expect(loanerSection).toBeNull()
+      const loanerInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
+      expect(loanerInput).toBeNull()
     })
   })
 

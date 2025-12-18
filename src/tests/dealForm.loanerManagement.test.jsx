@@ -153,9 +153,12 @@ describe('DealForm Loaner Management Integration', () => {
     // Wait for initial form render (DealForm has an async loading gate)
     await screen.findByTestId('loaner-checkbox')
 
-    // Loaner section should not be visible by default
-    expect(screen.queryByTestId('loaner-section')).not.toBeInTheDocument()
+    // Loaner section wrapper should exist (for test stability)
+    expect(screen.getByTestId('loaner-section')).toBeInTheDocument()
+    
+    // But loaner fields should not be visible by default
     expect(screen.queryByTestId('manage-loaners-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('loaner-number-input')).not.toBeInTheDocument()
   })
 
   it('shows loaner management link in navigation', () => {

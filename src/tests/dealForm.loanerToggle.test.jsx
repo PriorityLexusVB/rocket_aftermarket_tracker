@@ -88,16 +88,17 @@ describe('DealForm V2 - Loaner Toggle', () => {
     const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
     expect(loanerCheckbox.checked).toBe(false)
 
-    // Loaner section should not be visible
-    expect(container.querySelector('[data-testid="loaner-section"]')).toBeNull()
+    // Loaner section wrapper should exist, but fields should not be visible
+    expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
+    expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeNull()
 
     // Toggle loaner checkbox ON
     fireEvent.click(loanerCheckbox)
     expect(loanerCheckbox.checked).toBe(true)
 
-    // Loaner section should now be visible
+    // Loaner fields should now be visible
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeTruthy()
     })
 
     // Fill in some loaner data
@@ -117,9 +118,9 @@ describe('DealForm V2 - Loaner Toggle', () => {
     fireEvent.click(loanerCheckbox)
     expect(loanerCheckbox.checked).toBe(false)
 
-    // Loaner section should be hidden
+    // Loaner fields should be hidden (but wrapper still exists)
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeNull()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeNull()
     })
 
     // Toggle back ON to verify fields were cleared
@@ -127,7 +128,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
     expect(loanerCheckbox.checked).toBe(true)
 
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeTruthy()
     })
 
     // Fields should be empty now (V2 behavior)
@@ -195,9 +196,9 @@ describe('DealForm V2 - Loaner Toggle', () => {
     fireEvent.click(loanerCheckbox)
     expect(loanerCheckbox.checked).toBe(false)
 
-    // Loaner section should be hidden
+    // Loaner fields should be hidden (but wrapper still exists)
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeNull()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeNull()
     })
 
     // Submit the form and verify loaner data is cleared in payload
@@ -250,7 +251,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
     fireEvent.click(loanerCheckbox)
 
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeTruthy()
     })
 
     // Fill in data
@@ -262,14 +263,14 @@ describe('DealForm V2 - Loaner Toggle', () => {
     fireEvent.click(loanerCheckbox)
 
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeNull()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeNull()
     })
 
     // Toggle back ON
     fireEvent.click(loanerCheckbox)
 
     await waitFor(() => {
-      expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeTruthy()
     })
 
     // Legacy behavior: field should still have the value (not cleared)
