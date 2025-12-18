@@ -958,73 +958,75 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             />
           </div>
 
-          {/* Loaner checkbox */}
-          <section className="flex items-center gap-3">
-            <input
-              id="needsLoaner"
-              data-testid="loaner-checkbox"
-              className="h-5 w-5 accent-blue-600 appearance-auto"
-              type="checkbox"
-              checked={customerData?.needsLoaner}
-              onChange={(e) => {
-                setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))
-                if (e.target.checked) {
-                  setTimeout(() => loanerRef?.current?.focus?.(), 0)
-                }
-              }}
-            />
-            <label htmlFor="needsLoaner" className="text-sm text-slate-800">
-              Customer needs loaner
-            </label>
-          </section>
-
-          {customerData?.needsLoaner && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Loaner #</label>
-                <input
-                  ref={loanerRef}
-                  data-testid="loaner-number-input"
-                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
-                  placeholder="Enter loaner vehicle number"
-                  value={customerData?.loanerNumber ?? ''}
-                  onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
+          {/* Loaner section - wrapper always rendered for test stability */}
+          <div data-testid="loaner-section">
+            <section className="flex items-center gap-3">
+              <input
+                id="needsLoaner"
+                data-testid="loaner-checkbox"
+                className="h-5 w-5 accent-blue-600 appearance-auto"
+                type="checkbox"
+                checked={customerData?.needsLoaner}
+                onChange={(e) => {
+                  setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))
+                  if (e.target.checked) {
+                    setTimeout(() => loanerRef?.current?.focus?.(), 0)
                   }
-                  required
-                />
-              </div>
+                }}
+              />
+              <label htmlFor="needsLoaner" className="text-sm text-slate-800">
+                Customer needs loaner
+              </label>
+            </section>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Expected Return Date
-                </label>
-                <input
-                  type="date"
-                  data-testid="loaner-return-date-input"
-                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
-                  value={customerData?.loanerReturnDate ?? ''}
-                  onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
-                  }
-                />
-              </div>
+            {customerData?.needsLoaner && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Loaner #</label>
+                  <input
+                    ref={loanerRef}
+                    data-testid="loaner-number-input"
+                    className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                    placeholder="Enter loaner vehicle number"
+                    value={customerData?.loanerNumber ?? ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
+                    }
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Loaner Notes</label>
-                <input
-                  type="text"
-                  data-testid="loaner-notes-input"
-                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
-                  placeholder="Any special instructions"
-                  value={customerData?.loanerNotes ?? ''}
-                  onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
-                  }
-                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Expected Return Date
+                  </label>
+                  <input
+                    type="date"
+                    data-testid="loaner-return-date-input"
+                    className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                    value={customerData?.loanerReturnDate ?? ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Loaner Notes</label>
+                  <input
+                    type="text"
+                    data-testid="loaner-notes-input"
+                    className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                    placeholder="Any special instructions"
+                    value={customerData?.loanerNotes ?? ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
+                    }
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
