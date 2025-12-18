@@ -156,9 +156,14 @@ describe('DealForm Loaner Management Integration', () => {
     // Loaner section wrapper should exist (for test stability)
     expect(screen.getByTestId('loaner-section')).toBeInTheDocument()
     
-    // But loaner fields should not be visible by default
-    expect(screen.queryByTestId('manage-loaners-btn')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('loaner-number-input')).not.toBeInTheDocument()
+    // Loaner fields now exist in DOM but are disabled by default
+    const manageBtn = screen.getByTestId('manage-loaners-btn')
+    const loanerInput = screen.getByTestId('loaner-number-input')
+    
+    expect(manageBtn).toBeInTheDocument()
+    expect(manageBtn).toBeDisabled()
+    expect(loanerInput).toBeInTheDocument()
+    expect(loanerInput).toBeDisabled()
   })
 
   it('shows loaner management link in navigation', () => {

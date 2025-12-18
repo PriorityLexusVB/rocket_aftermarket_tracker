@@ -85,12 +85,13 @@ describe('DealForm Loaner Toggle', () => {
       expect(checkbox.checked).toBe(false)
     })
 
-    // Loaner section wrapper should exist, but fields should not be visible
+    // Loaner section wrapper should exist, fields exist but are disabled
     const dealForm = container.querySelector('[data-testid="deal-form"]')
     const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
     expect(loanerSection).toBeDefined()
     const loanerInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
-    expect(loanerInput).toBeNull()
+    expect(loanerInput).toBeTruthy()
+    expect(loanerInput.disabled).toBe(true)
   })
 
   it('shows loaner section when checkbox is checked', async () => {
@@ -132,23 +133,25 @@ describe('DealForm Loaner Toggle', () => {
     const dealForm = container.querySelector('[data-testid="deal-form"]')
     const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
 
-    // Initially unchecked - loaner fields hidden (wrapper exists)
+    // Initially unchecked - loaner fields exist but disabled (wrapper exists)
     expect(checkbox.checked).toBe(false)
     expect(dealForm?.querySelector('[data-testid="loaner-section"]')).toBeDefined()
-    expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeNull()
+    const initialInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
+    expect(initialInput).toBeTruthy()
+    expect(initialInput.disabled).toBe(true)
 
-    // Check it - loaner fields appear
+    // Check it - loaner fields become enabled
     fireEvent.click(checkbox)
     await waitFor(() => {
       const loanerInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
-      expect(loanerInput).toBeDefined()
+      expect(loanerInput.disabled).toBe(false)
     })
 
-    // Uncheck it - loaner fields disappear (wrapper remains)
+    // Uncheck it - loaner fields become disabled again (wrapper remains)
     fireEvent.click(checkbox)
     await waitFor(() => {
       const loanerInput = dealForm?.querySelector('[data-testid="loaner-number-input"]')
-      expect(loanerInput).toBeNull()
+      expect(loanerInput.disabled).toBe(true)
     })
   })
 

@@ -925,8 +925,7 @@ export default function DealForm({
           </label>
         </section>
 
-        {form.customer_needs_loaner && (
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">Loaner Number</label>
             <div className="flex gap-2">
@@ -936,17 +935,18 @@ export default function DealForm({
                   type="text"
                   value={form?.loanerForm?.loaner_number || ''}
                   onChange={(e) => handleLoanerChange('loaner_number', e.target.value)}
+                  disabled={!form.customer_needs_loaner}
                   className={`mt-1 input-mobile w-full ${
                     loanerStatus === 'in-use'
                       ? 'border-red-300'
                       : loanerStatus === 'available'
                         ? 'border-green-300'
                         : ''
-                  }`}
+                  } ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="e.g. L-1024"
                 />
                 {/* Loaner status indicator */}
-                {form?.loanerForm?.loaner_number && (
+                {form?.loanerForm?.loaner_number && form.customer_needs_loaner && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
                     {loanerCheckLoading ? (
                       <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
@@ -969,7 +969,12 @@ export default function DealForm({
                     navigate('/loaner-management-drawer')
                   }
                 }}
-                className="mt-1 px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                disabled={!form.customer_needs_loaner}
+                className={`mt-1 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  form.customer_needs_loaner
+                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
                 title="Manage Loaners"
                 data-testid="manage-loaners-btn"
               >
@@ -977,7 +982,7 @@ export default function DealForm({
               </button>
             </div>
             {/* Status message */}
-            {form?.loanerForm?.loaner_number && loanerStatus && (
+            {form?.loanerForm?.loaner_number && loanerStatus && form.customer_needs_loaner && (
               <div
                 className={`mt-1 text-xs ${
                   loanerStatus === 'available'
@@ -1000,7 +1005,8 @@ export default function DealForm({
               type="date"
               value={form?.loanerForm?.eta_return_date || ''}
               onChange={(e) => handleLoanerChange('eta_return_date', e.target.value || '')}
-              className="mt-1 input-mobile w-full"
+              disabled={!form.customer_needs_loaner}
+              className={`mt-1 input-mobile w-full ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             />
           </div>
           <div>
@@ -1010,12 +1016,12 @@ export default function DealForm({
               type="text"
               value={form?.loanerForm?.notes || ''}
               onChange={(e) => handleLoanerChange('notes', e.target.value)}
-              className="mt-1 input-mobile w-full"
+              disabled={!form.customer_needs_loaner}
+              className={`mt-1 input-mobile w-full ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               placeholder="Optional"
             />
           </div>
         </section>
-        )}
       </div>
 
       {/* Line Items */}

@@ -979,53 +979,82 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               </label>
             </section>
 
-            {customerData?.needsLoaner && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">Loaner #</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Loaner #</label>
+                <div className="flex gap-2">
                   <input
                     ref={loanerRef}
                     data-testid="loaner-number-input"
-                    className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                    className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                      !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
                     placeholder="Enter loaner vehicle number"
                     value={customerData?.loanerNumber ?? ''}
                     onChange={(e) =>
                       setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
                     }
-                    required
+                    disabled={!customerData?.needsLoaner}
+                    required={customerData?.needsLoaner}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">
-                    Expected Return Date
-                  </label>
-                  <input
-                    type="date"
-                    data-testid="loaner-return-date-input"
-                    className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
-                    value={customerData?.loanerReturnDate ?? ''}
-                    onChange={(e) =>
-                      setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700">Loaner Notes</label>
-                  <input
-                    type="text"
-                    data-testid="loaner-notes-input"
-                    className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
-                    placeholder="Any special instructions"
-                    value={customerData?.loanerNotes ?? ''}
-                    onChange={(e) =>
-                      setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
-                    }
-                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newTab = window.open('/loaner-management-drawer', '_blank')
+                      if (!newTab) {
+                        // Fallback if popup blocker
+                        window.location.assign('/loaner-management-drawer')
+                      }
+                    }}
+                    disabled={!customerData?.needsLoaner}
+                    className={`mt-1 px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
+                      customerData?.needsLoaner
+                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Manage Loaners"
+                    data-testid="manage-loaners-btn"
+                  >
+                    Manage
+                  </button>
                 </div>
               </div>
-            )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Expected Return Date
+                </label>
+                <input
+                  type="date"
+                  data-testid="loaner-return-date-input"
+                  className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                    !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
+                  value={customerData?.loanerReturnDate ?? ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
+                  }
+                  disabled={!customerData?.needsLoaner}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Loaner Notes</label>
+                <input
+                  type="text"
+                  data-testid="loaner-notes-input"
+                  className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                    !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
+                  placeholder="Any special instructions"
+                  value={customerData?.loanerNotes ?? ''}
+                  onChange={(e) =>
+                    setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
+                  }
+                  disabled={!customerData?.needsLoaner}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
