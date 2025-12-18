@@ -2,7 +2,11 @@
 // Verify the job_parts unique constraint migration
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
-import { resolve } from 'path'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 describe('Migration: job_parts unique constraint (20251218042008)', () => {
   const migrationsPath = resolve(__dirname, '../../supabase/migrations')

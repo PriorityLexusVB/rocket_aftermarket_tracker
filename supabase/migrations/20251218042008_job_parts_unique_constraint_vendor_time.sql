@@ -37,9 +37,9 @@ BEGIN
           job_id,
           product_id,
           COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid),
-          promised_date,
-          scheduled_start_time,
-          scheduled_end_time
+          COALESCE(promised_date, '1970-01-01'::date),
+          COALESCE(scheduled_start_time, '1970-01-01 00:00:00+00'::timestamptz),
+          COALESCE(scheduled_end_time, '1970-01-01 00:00:00+00'::timestamptz)
         ORDER BY 
           created_at DESC,  -- Keep newest
           id ASC            -- Break ties by lowest id
@@ -86,34 +86,26 @@ BEGIN
     WHERE schemaname = 'public'
       AND indexname = 'job_parts_unique_job_product_vendor_time'
   ) THEN
-    DROP INDEX public.job_parts_unique_job_product_vendor_time;
+    EXECUTE 'DROP INDEX public.job_parts_unique_job_product_vendor_time';
     RAISE NOTICE '✓ Dropped existing index job_parts_unique_job_product_vendor_time';
   END IF;
 
   -- Create unique index with appropriate NULL handling
   IF supports_nulls_not_distinct THEN
     -- PostgreSQL 15+: Use NULLS NOT DISTINCT for cleaner NULL handling
-    CREATE UNIQUE INDEX job_parts_unique_job_product_vendor_time
-      ON public.job_parts (
-        job_id,
-        product_id,
-        vendor_id,
-        promised_date,
-        scheduled_start_time,
-        scheduled_end_time
-      ) NULLS NOT DISTINCT;
+    EXECUTE 'CREATE UNIQUE INDEX job_parts_unique_job_product_vendor_time ' ||
+            'ON public.job_parts (job_id, product_id, vendor_id, promised_date, ' ||
+            'scheduled_start_time, scheduled_end_time) NULLS NOT DISTINCT';
     RAISE NOTICE '✓ Created unique index with NULLS NOT DISTINCT (PostgreSQL 15+)';
   ELSE
     -- PostgreSQL <15: Use COALESCE with sentinel values for NULL handling
-    CREATE UNIQUE INDEX job_parts_unique_job_product_vendor_time
-      ON public.job_parts (
-        job_id,
-        product_id,
-        COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid),
-        COALESCE(promised_date, '1970-01-01'::date),
-        COALESCE(scheduled_start_time, '1970-01-01 00:00:00+00'::timestamptz),
-        COALESCE(scheduled_end_time, '1970-01-01 00:00:00+00'::timestamptz)
-      );
+    EXECUTE 'CREATE UNIQUE INDEX job_parts_unique_job_product_vendor_time ' ||
+            'ON public.job_parts (' ||
+            'job_id, product_id, ' ||
+            'COALESCE(vendor_id, ''00000000-0000-0000-0000-000000000000''::uuid), ' ||
+            'COALESCE(promised_date, ''1970-01-01''::date), ' ||
+            'COALESCE(scheduled_start_time, ''1970-01-01 00:00:00+00''::timestamptz), ' ||
+            'COALESCE(scheduled_end_time, ''1970-01-01 00:00:00+00''::timestamptz))';
     RAISE NOTICE '✓ Created unique index with COALESCE sentinel values (PostgreSQL <15)';
   END IF;
 END$$;
@@ -144,18 +136,18 @@ BEGIN
       job_id,
       product_id,
       COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid) AS vendor_id_norm,
-      promised_date,
-      scheduled_start_time,
-      scheduled_end_time,
+      COALESCE(promised_date, '1970-01-01'::date) AS promised_date_norm,
+      COALESCE(scheduled_start_time, '1970-01-01 00:00:00+00'::timestamptz) AS start_time_norm,
+      COALESCE(scheduled_end_time, '1970-01-01 00:00:00+00'::timestamptz) AS end_time_norm,
       COUNT(*) AS dup_count
     FROM public.job_parts
     GROUP BY 
       job_id,
       product_id,
       COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid),
-      promised_date,
-      scheduled_start_time,
-      scheduled_end_time
+      COALESCE(promised_date, '1970-01-01'::date),
+      COALESCE(scheduled_start_time, '1970-01-01 00:00:00+00'::timestamptz),
+      COALESCE(scheduled_end_time, '1970-01-01 00:00:00+00'::timestamptz)
     HAVING COUNT(*) > 1
   )
   SELECT COUNT(*) INTO duplicate_count FROM duplicate_check;
