@@ -26,8 +26,14 @@ describe('dealService - relationship error handling', () => {
       "Could not find a relationship between 'job_parts' and 'vendors' in the schema cache"
     )
 
-    // Setup mock to return error
+    // Setup mock to return error with proper chaining including .limit()
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    })
+
     const mockSelect = vi.fn().mockReturnValue({
+      limit: mockLimit,
       in: vi.fn().mockReturnValue({
         order: vi.fn().mockReturnValue({
           data: null,
@@ -49,8 +55,14 @@ describe('dealService - relationship error handling', () => {
     // Mock a generic error (not relationship-related)
     const mockError = new Error('Network timeout')
 
-    // Setup mock to return error
+    // Setup mock to return error with proper chaining including .limit()
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    })
+
     const mockSelect = vi.fn().mockReturnValue({
+      limit: mockLimit,
       in: vi.fn().mockReturnValue({
         order: vi.fn().mockReturnValue({
           data: null,
@@ -72,8 +84,14 @@ describe('dealService - relationship error handling', () => {
     // Mock a missing column error
     const mockError = new Error('column "nonexistent_field" does not exist')
 
-    // Setup mock to return error
+    // Setup mock to return error with proper chaining including .limit()
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: null,
+      error: null,
+    })
+
     const mockSelect = vi.fn().mockReturnValue({
+      limit: mockLimit,
       in: vi.fn().mockReturnValue({
         order: vi.fn().mockReturnValue({
           data: null,
