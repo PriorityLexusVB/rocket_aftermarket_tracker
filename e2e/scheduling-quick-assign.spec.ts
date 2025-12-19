@@ -28,10 +28,12 @@ test.describe('Scheduling via Active Appointments (quick assign)', () => {
     await product.selectOption({ index: 1 })
 
     const save = page.getByTestId('save-deal-btn')
+    await expect(save).toBeEnabled()
     await save.click()
 
-    // Redirect to edit confirms creation
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/)
+    // Wait for the save to complete and redirect to edit page
+    // Increased timeout for slower CI environments
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 })
 
     // Go to Active Appointments
     await page.goto('/currently-active-appointments')

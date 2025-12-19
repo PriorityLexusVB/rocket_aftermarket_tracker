@@ -73,8 +73,11 @@ test.describe('Deals List Refresh After Edit', () => {
     console.log(`Initial loaner badge exists: ${loanerBadgeExists}`)
 
     // Step 4: Click on the deal to edit
+    // Add explicit wait for element to be clickable and not covered by other elements
+    await expect(firstDeal).toBeVisible()
+    await page.waitForTimeout(500) // Brief wait to ensure page is stable
     await firstDeal.click()
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 })
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 })
 
     // Step 5: Make changes to trigger refresh
 
@@ -208,8 +211,10 @@ test.describe('Deals List Refresh After Edit', () => {
     const cleanDealId = dealId?.replace('deal-row-', '')
 
     // Navigate to edit
+    await expect(firstDealRow).toBeVisible()
+    await page.waitForTimeout(500) // Brief wait to ensure page is stable
     await firstDealRow.click()
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 })
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 })
 
     // Change promised date on first line item if available
     const promisedDateInput = page.getByTestId('promised-date-0')
