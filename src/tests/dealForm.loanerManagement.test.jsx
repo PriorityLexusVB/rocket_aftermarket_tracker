@@ -143,7 +143,6 @@ describe('DealForm Loaner Management Integration', () => {
 
   it('shows disabled loaner controls when customer does not need loaner', async () => {
     renderDealForm()
-
     const form = await getForm()
     expect(await form.findByTestId('loaner-section')).toBeInTheDocument()
     expect(await form.findByTestId('manage-loaners-btn')).toBeDisabled()

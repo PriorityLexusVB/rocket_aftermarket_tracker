@@ -87,6 +87,7 @@ test.describe('Admin CRUD - Vendors and Products', () => {
     const unique = Date.now()
     const productName = `E2E Product ${unique}`
     const productNameUpdated = `${productName} Updated`
+    const partNumber = `PN-${unique}`
 
     await gotoAdmin(page)
     // Switch to Products tab explicitly
@@ -100,7 +101,7 @@ test.describe('Admin CRUD - Vendors and Products', () => {
     await page.getByLabel('Op Code').fill('EN3')
     await page.getByLabel('Cost').fill('10.00')
     await page.getByLabel('Unit Price').fill('25.00')
-    await page.getByLabel('Part Number').fill('PN-TEST')
+    await page.getByLabel('Part Number').fill(partNumber)
     // The Description field is a textarea without an explicit htmlFor/id linkage; target it within the modal container
     await page
       .locator('.fixed.inset-0')

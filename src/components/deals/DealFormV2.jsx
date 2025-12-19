@@ -31,6 +31,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
   const userHasEdited = useRef(false) // Track if user has made intentional edits
+  const savingRef = useRef(false) // Synchronous in-flight guard to prevent double-submit
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -526,18 +527,28 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Handle save
   const handleSave = async () => {
-    // Guard against duplicate submits
+    // Synchronous in-flight guard: prevent double-submit before state updates
+    if (savingRef.current) {
+      return
+    }
+    
+    // Guard against duplicate submits (async state check)
     if (isSubmitting) {
       return
     }
 
+    // Set synchronous guard immediately
+    savingRef.current = true
+
     const step1Valid = await validateStep1()
     if (!step1Valid) {
+      savingRef.current = false
       return
     }
 
     const step2Valid = validateStep2WithErrors()
     if (!step2Valid) {
+      savingRef.current = false
       return
     }
 
@@ -652,6 +663,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       setError(parseError(err))
     } finally {
       setIsSubmitting(false)
+      savingRef.current = false
     }
   }
 
@@ -946,41 +958,66 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             />
           </div>
 
-          {/* Loaner checkbox */}
-          <section className="flex items-center gap-3">
-            <input
-              id="needsLoaner"
-              data-testid="loaner-checkbox"
-              className="h-5 w-5 accent-blue-600 appearance-auto"
-              type="checkbox"
-              checked={customerData?.needsLoaner}
-              onChange={(e) => {
-                setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))
-                if (e.target.checked) {
-                  setTimeout(() => loanerRef?.current?.focus?.(), 0)
-                }
-              }}
-            />
-            <label htmlFor="needsLoaner" className="text-sm text-slate-800">
-              Customer needs loaner
-            </label>
-          </section>
+          {/* Loaner section - wrapper always rendered for test stability */}
+          <div data-testid="loaner-section">
+            <section className="flex items-center gap-3">
+              <input
+                id="needsLoaner"
+                data-testid="loaner-checkbox"
+                className="h-5 w-5 accent-blue-600 appearance-auto"
+                type="checkbox"
+                checked={customerData?.needsLoaner}
+                onChange={(e) => {
+                  setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))
+                  if (e.target.checked) {
+                    setTimeout(() => loanerRef?.current?.focus?.(), 0)
+                  }
+                }}
+              />
+              <label htmlFor="needsLoaner" className="text-sm text-slate-800">
+                Customer needs loaner
+              </label>
+            </section>
 
-          {customerData?.needsLoaner && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700">Loaner #</label>
-                <input
-                  ref={loanerRef}
-                  data-testid="loaner-number-input"
-                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
-                  placeholder="Enter loaner vehicle number"
-                  value={customerData?.loanerNumber ?? ''}
-                  onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
-                  }
-                  required
-                />
+                <div className="flex gap-2">
+                  <input
+                    ref={loanerRef}
+                    data-testid="loaner-number-input"
+                    className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                      !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
+                    placeholder="Enter loaner vehicle number"
+                    value={customerData?.loanerNumber ?? ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
+                    }
+                    disabled={!customerData?.needsLoaner}
+                    required={customerData?.needsLoaner}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newTab = window.open('/loaner-management-drawer', '_blank')
+                      if (!newTab) {
+                        // Fallback if popup blocker
+                        window.location.assign('/loaner-management-drawer')
+                      }
+                    }}
+                    disabled={!customerData?.needsLoaner}
+                    className={`mt-1 px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
+                      customerData?.needsLoaner
+                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Manage Loaners"
+                    data-testid="manage-loaners-btn"
+                  >
+                    Manage
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -990,11 +1027,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 <input
                   type="date"
                   data-testid="loaner-return-date-input"
-                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                  className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                    !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
                   value={customerData?.loanerReturnDate ?? ''}
                   onChange={(e) =>
                     setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
                   }
+                  disabled={!customerData?.needsLoaner}
                 />
               </div>
 
@@ -1003,16 +1043,19 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 <input
                   type="text"
                   data-testid="loaner-notes-input"
-                  className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+                  className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                    !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                  }`}
                   placeholder="Any special instructions"
                   value={customerData?.loanerNotes ?? ''}
                   onChange={(e) =>
                     setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
                   }
+                  disabled={!customerData?.needsLoaner}
                 />
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -1283,6 +1326,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
           {currentStep === 2 && (
             <Button
+              type="button"
               onClick={handleSave}
               disabled={!hasRequiredFields() || !validateStep2() || isSubmitting}
               className="bg-green-600 hover:bg-green-700 text-white"

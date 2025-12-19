@@ -909,117 +909,118 @@ export default function DealForm({
         </div>
       </section>
 
-      {/* Customer needs loaner */}
-      <section className="flex items-center gap-3">
-        <input
-          data-testid="loaner-checkbox"
-          id="needsLoaner"
-          type="checkbox"
-          checked={!!form.customer_needs_loaner}
-          onChange={(e) => handleChange('customer_needs_loaner', e.target.checked)}
-          className="h-5 w-5 accent-blue-600 appearance-auto"
-        />
-        <label htmlFor="needsLoaner" className="text-sm text-slate-800">
-          Customer needs loaner
-        </label>
-      </section>
-
+      {/* Loaner section */}
       <section
-        className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${!form.customer_needs_loaner ? 'opacity-60' : ''}`}
         data-testid="loaner-section"
-        aria-disabled={!form.customer_needs_loaner}
+        className={!form.customer_needs_loaner ? 'opacity-60 space-y-4' : 'space-y-4'}
       >
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Loaner Number</label>
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <input
-                data-testid="loaner-number-input"
-                type="text"
-                value={form?.loanerForm?.loaner_number || ''}
-                onChange={(e) => handleLoanerChange('loaner_number', e.target.value)}
-                className={`mt-1 input-mobile w-full ${
-                  loanerStatus === 'in-use'
-                    ? 'border-red-300'
-                    : loanerStatus === 'available'
-                      ? 'border-green-300'
-                      : ''
-                }`}
-                placeholder="e.g. L-1024"
+        <div className="flex items-center gap-3">
+          <input
+            data-testid="loaner-checkbox"
+            id="needsLoaner"
+            type="checkbox"
+            checked={!!form.customer_needs_loaner}
+            onChange={(e) => handleChange('customer_needs_loaner', e.target.checked)}
+            className="h-5 w-5 accent-blue-600 appearance-auto"
+          />
+          <label htmlFor="needsLoaner" className="text-sm text-slate-800">
+            Customer needs loaner
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Loaner Number</label>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <input
+                  data-testid="loaner-number-input"
+                  type="text"
+                  value={form?.loanerForm?.loaner_number || ''}
+                  onChange={(e) => handleLoanerChange('loaner_number', e.target.value)}
+                  disabled={!form.customer_needs_loaner}
+                  className={`mt-1 input-mobile w-full ${
+                    loanerStatus === 'in-use'
+                      ? 'border-red-300'
+                      : loanerStatus === 'available'
+                        ? 'border-green-300'
+                        : ''
+                  } ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  placeholder="e.g. L-1024"
+                />
+                {/* Loaner status indicator */}
+                {form?.loanerForm?.loaner_number && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
+                    {loanerCheckLoading ? (
+                      <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                    ) : loanerStatus === 'available' ? (
+                      <div className="w-3 h-3 bg-green-500 rounded-full" title="Available" />
+                    ) : loanerStatus === 'in-use' ? (
+                      <div className="w-3 h-3 bg-red-500 rounded-full" title="Currently in use" />
+                    ) : loanerStatus === 'invalid' ? (
+                      <div className="w-3 h-3 bg-gray-400 rounded-full" title="Status unknown" />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!form.customer_needs_loaner) return
+                  const newTab = window.open('/loaner-management-drawer', '_blank')
+                  if (!newTab) {
+                    // Fallback if popup blocker
+                    navigate('/loaner-management-drawer')
+                  }
+                }}
                 disabled={!form.customer_needs_loaner}
-              />
-              {/* Loaner status indicator */}
-              {form?.loanerForm?.loaner_number && (
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
-                  {loanerCheckLoading ? (
-                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
-                  ) : loanerStatus === 'available' ? (
-                    <div className="w-3 h-3 bg-green-500 rounded-full" title="Available" />
-                  ) : loanerStatus === 'in-use' ? (
-                    <div className="w-3 h-3 bg-red-500 rounded-full" title="Currently in use" />
-                  ) : loanerStatus === 'invalid' ? (
-                    <div className="w-3 h-3 bg-gray-400 rounded-full" title="Status unknown" />
-                  ) : null}
-                </div>
-              )}
+                className="mt-1 px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                title="Manage Loaners"
+                data-testid="manage-loaners-btn"
+              >
+                Manage
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (!form.customer_needs_loaner) return
-                const newTab = window.open('/loaner-management-drawer', '_blank')
-                if (!newTab) {
-                  // Fallback if popup blocker
-                  navigate('/loaner-management-drawer')
-                }
-              }}
-              className="mt-1 px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-              title="Manage Loaners"
-              data-testid="manage-loaners-btn"
-              disabled={!form.customer_needs_loaner}
-            >
-              Manage
-            </button>
+            {/* Status message */}
+            {form?.loanerForm?.loaner_number && loanerStatus && (
+              <div
+                className={`mt-1 text-xs ${
+                  loanerStatus === 'available'
+                    ? 'text-green-700'
+                    : loanerStatus === 'in-use'
+                      ? 'text-red-700'
+                      : 'text-gray-600'
+                }`}
+              >
+                {loanerStatus === 'available' && '✓ Available'}
+                {loanerStatus === 'in-use' && '⚠ Currently in use by another customer'}
+                {loanerStatus === 'invalid' && 'ⓘ Unable to verify status'}
+              </div>
+            )}
           </div>
-          {/* Status message */}
-          {form?.loanerForm?.loaner_number && loanerStatus && (
-            <div
-              className={`mt-1 text-xs ${
-                loanerStatus === 'available'
-                  ? 'text-green-700'
-                  : loanerStatus === 'in-use'
-                    ? 'text-red-700'
-                    : 'text-gray-600'
-              }`}
-            >
-              {loanerStatus === 'available' && '✓ Available'}
-              {loanerStatus === 'in-use' && '⚠ Currently in use by another customer'}
-              {loanerStatus === 'invalid' && 'ⓘ Unable to verify status'}
-            </div>
-          )}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">ETA Return Date</label>
-          <input
-            data-testid="loaner-eta-input"
-            type="date"
-            value={form?.loanerForm?.eta_return_date || ''}
-            onChange={(e) => handleLoanerChange('eta_return_date', e.target.value || '')}
-            className="mt-1 input-mobile w-full"
-            disabled={!form.customer_needs_loaner}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700">Notes</label>
-          <input
-            data-testid="loaner-notes-input"
-            type="text"
-            value={form?.loanerForm?.notes || ''}
-            onChange={(e) => handleLoanerChange('notes', e.target.value)}
-            className="mt-1 input-mobile w-full"
-            placeholder="Optional"
-            disabled={!form.customer_needs_loaner}
-          />
+          <div>
+            <label className="block text-sm font-medium text-slate-700">ETA Return Date</label>
+            <input
+              data-testid="loaner-eta-input"
+              type="date"
+              value={form?.loanerForm?.eta_return_date || ''}
+              onChange={(e) => handleLoanerChange('eta_return_date', e.target.value || '')}
+              disabled={!form.customer_needs_loaner}
+              className={`mt-1 input-mobile w-full ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Notes</label>
+            <input
+              data-testid="loaner-notes-input"
+              type="text"
+              value={form?.loanerForm?.notes || ''}
+              onChange={(e) => handleLoanerChange('notes', e.target.value)}
+              disabled={!form.customer_needs_loaner}
+              className={`mt-1 input-mobile w-full ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              placeholder="Optional"
+            />
+          </div>
         </div>
       </section>
 
