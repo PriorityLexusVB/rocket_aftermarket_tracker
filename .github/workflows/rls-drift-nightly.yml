@@ -120,8 +120,8 @@ jobs:
           echo "Response: $BODY"
 
           if [ "$HTTP_CODE" = "200" ]; then
-            # Check if relationship is OK in response
-            if echo "$BODY" | grep -q '"relationship":true'; then
+            # Consider OK when the health endpoint reports ok:true (classification ok)
+            if echo "$BODY" | grep -q '"ok":true'; then
               echo "deals_rel_ok=true" >> $GITHUB_OUTPUT
               echo "✅ Deals relationship health OK"
             else
