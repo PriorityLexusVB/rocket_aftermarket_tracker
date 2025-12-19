@@ -11,8 +11,6 @@
  * - Exit codes for CI/CD integration
  */
 
-import fs from 'node:fs'
-import path from 'node:path'
 import process from 'node:process'
 
 const base = process.env.VERIFY_BASE_URL || 'http://localhost:5173'
@@ -176,11 +174,4 @@ async function main() {
 
   process.exit(overallPass ? 0 : 1)
 }
-
-function pathToFileUrl(p) {
-  const abs = path.resolve(p)
-  const url = new URL('file://' + abs)
-  return url.href
-}
-
 main()

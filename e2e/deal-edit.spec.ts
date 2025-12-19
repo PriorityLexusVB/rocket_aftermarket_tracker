@@ -62,7 +62,6 @@ test.describe('Deal create + edit flow', () => {
     await descriptionAfterNav.fill(editedDescription)
 
     // For line item 0: uncheck requires scheduling to reveal reason, then re-check
-    const requires = page.getByTestId('requires-scheduling-0')
     const reason = page.getByTestId('no-schedule-reason-0')
     // Use the label to toggle to avoid any styled overlay issues
     await page.locator('label[for="requiresScheduling-0"]').click()

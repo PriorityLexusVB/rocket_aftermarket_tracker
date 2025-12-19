@@ -38,6 +38,7 @@ test.describe('Capability Fallbacks', () => {
       return sessionStorage.getItem('cap_jobPartsVendorRel')
     })
     expect(capFlag).toBe('false')
+    expect(vendorRelFallback).toBeGreaterThanOrEqual(0)
   })
 
   test('should handle scheduled times column missing', async ({ page }) => {

@@ -1,14 +1,7 @@
-// Ensure VITE_DEAL_FORM_V2 is set before any imports
-Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
-  value: 'true',
-  writable: true,
-  configurable: true,
-  enumerable: true,
-});
-
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, fireEvent, waitFor } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import DealForm from '../pages/deals/DealForm'
 
 // Mock dependencies
@@ -59,7 +52,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    // Set V2 flag using Object.defineProperty for compatibility with Vitest
+    // Default to V2 enabled for each test
     Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
       value: 'true',
       writable: true,
@@ -68,15 +61,16 @@ describe('DealForm V2 - Loaner Toggle', () => {
     })
   })
 
-  it('Create mode: toggle on shows loaner section, toggle off hides and clears fields', async () => {
-    const { BrowserRouter } = await import('react-router-dom')
-    const { container } = render(
+  const renderCreateForm = (props = {}) =>
+    render(
       <BrowserRouter>
-        <DealForm mode="create" onSave={mockOnSave} onCancel={mockOnCancel} />
+        <DealForm mode="create" onSave={mockOnSave} onCancel={mockOnCancel} {...props} />
       </BrowserRouter>
     )
 
-    // Wait for component to load
+  it('Create mode: loaner section toggles enabled state and clears when off (V2)', async () => {
+    const { container } = renderCreateForm()
+
     await waitFor(
       () => {
         expect(container.querySelector('[data-testid="loaner-checkbox"]')).toBeTruthy()
@@ -84,27 +78,22 @@ describe('DealForm V2 - Loaner Toggle', () => {
       { timeout: 2000 }
     )
 
-    // Initially, loaner checkbox should be unchecked
     const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
+    const loanerSection = container.querySelector('[data-testid="loaner-section"]')
+
     expect(loanerCheckbox.checked).toBe(false)
+    expect(loanerSection?.getAttribute('aria-disabled')).toBe('true')
+    expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
+    expect(container.querySelector('[data-testid="loaner-eta-input"]')).toBeDisabled()
+    expect(container.querySelector('[data-testid="loaner-notes-input"]')).toBeDisabled()
 
-    // Loaner section wrapper should exist, fields exist but are disabled
-    expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
-    const loanerInput = container.querySelector('[data-testid="loaner-number-input"]')
-    expect(loanerInput).toBeTruthy()
-    expect(loanerInput.disabled).toBe(true)
-
-    // Toggle loaner checkbox ON
     fireEvent.click(loanerCheckbox)
-    expect(loanerCheckbox.checked).toBe(true)
 
-    // Loaner fields should now be enabled
     await waitFor(() => {
-      const enabledInput = container.querySelector('[data-testid="loaner-number-input"]')
-      expect(enabledInput.disabled).toBe(false)
+      const enabledSection = container.querySelector('[data-testid="loaner-section"]')
+      expect(enabledSection?.getAttribute('aria-disabled')).toBe('false')
     })
 
-    // Fill in some loaner data
     const loanerNumberInput = container.querySelector('[data-testid="loaner-number-input"]')
     const loanerEtaInput = container.querySelector('[data-testid="loaner-eta-input"]')
     const loanerNotesInput = container.querySelector('[data-testid="loaner-notes-input"]')
@@ -113,41 +102,21 @@ describe('DealForm V2 - Loaner Toggle', () => {
     fireEvent.change(loanerEtaInput, { target: { value: '2025-11-15' } })
     fireEvent.change(loanerNotesInput, { target: { value: 'Test notes' } })
 
-    expect(loanerNumberInput.value).toBe('L-1024')
-    expect(loanerEtaInput.value).toBe('2025-11-15')
-    expect(loanerNotesInput.value).toBe('Test notes')
-
-    // Toggle loaner checkbox OFF
     fireEvent.click(loanerCheckbox)
-    expect(loanerCheckbox.checked).toBe(false)
-
-    // Loaner fields should be disabled (but still in DOM)
-    await waitFor(() => {
-      const disabledInput = container.querySelector('[data-testid="loaner-number-input"]')
-      expect(disabledInput.disabled).toBe(true)
-    })
-
-    // Toggle back ON to verify fields were cleared
-    fireEvent.click(loanerCheckbox)
-    expect(loanerCheckbox.checked).toBe(true)
 
     await waitFor(() => {
-      const enabledInput = container.querySelector('[data-testid="loaner-number-input"]')
-      expect(enabledInput.disabled).toBe(false)
+      const disabledSection = container.querySelector('[data-testid="loaner-section"]')
+      expect(disabledSection?.getAttribute('aria-disabled')).toBe('true')
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
+      expect(container.querySelector('[data-testid="loaner-eta-input"]')).toBeDisabled()
+      expect(container.querySelector('[data-testid="loaner-notes-input"]')).toBeDisabled()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')?.value).toBe('')
+      expect(container.querySelector('[data-testid="loaner-eta-input"]')?.value).toBe('')
+      expect(container.querySelector('[data-testid="loaner-notes-input"]')?.value).toBe('')
     })
-
-    // Fields should be empty now (V2 behavior)
-    const clearedLoanerNumber = container.querySelector('[data-testid="loaner-number-input"]')
-    const clearedLoanerEta = container.querySelector('[data-testid="loaner-eta-input"]')
-    const clearedLoanerNotes = container.querySelector('[data-testid="loaner-notes-input"]')
-
-    expect(clearedLoanerNumber.value).toBe('')
-    expect(clearedLoanerEta.value).toBe('')
-    expect(clearedLoanerNotes.value).toBe('')
   })
 
   it('Edit mode: toggle off with existing loaner data hides section and clears payload', async () => {
-    const { BrowserRouter } = await import('react-router-dom')
     const initialData = {
       id: 'deal-123',
       updated_at: '2025-10-30T12:00:00Z',
@@ -177,7 +146,6 @@ describe('DealForm V2 - Loaner Toggle', () => {
       </BrowserRouter>
     )
 
-    // Wait for component to load
     await waitFor(
       () => {
         expect(container.querySelector('[data-testid="loaner-checkbox"]')).toBeTruthy()
@@ -185,30 +153,27 @@ describe('DealForm V2 - Loaner Toggle', () => {
       { timeout: 2000 }
     )
 
-    // Loaner checkbox should be checked
     const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
     expect(loanerCheckbox.checked).toBe(true)
 
-    // Loaner section should be visible with existing data
     expect(container.querySelector('[data-testid="loaner-section"]')).toBeTruthy()
-    expect(container.querySelector('[data-testid="loaner-number-input"]').value).toBe('L-9999')
-    expect(container.querySelector('[data-testid="loaner-eta-input"]').value).toBe('2025-11-20')
-    expect(container.querySelector('[data-testid="loaner-notes-input"]').value).toBe(
+    expect(container.querySelector('[data-testid="loaner-number-input"]')?.value).toBe('L-9999')
+    expect(container.querySelector('[data-testid="loaner-eta-input"]')?.value).toBe('2025-11-20')
+    expect(container.querySelector('[data-testid="loaner-notes-input"]')?.value).toBe(
       'Existing loaner'
     )
 
-    // Toggle loaner checkbox OFF
     fireEvent.click(loanerCheckbox)
-    expect(loanerCheckbox.checked).toBe(false)
 
-    // Loaner fields should be disabled (but still in DOM)
     await waitFor(() => {
-      const disabledInput = container.querySelector('[data-testid="loaner-number-input"]')
-      expect(disabledInput).toBeTruthy()
-      expect(disabledInput.disabled).toBe(true)
+      const disabledSection = container.querySelector('[data-testid="loaner-section"]')
+      expect(disabledSection?.getAttribute('aria-disabled')).toBe('true')
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
+      expect(container.querySelector('[data-testid="loaner-number-input"]')?.value).toBe('')
+      expect(container.querySelector('[data-testid="loaner-eta-input"]')?.value).toBe('')
+      expect(container.querySelector('[data-testid="loaner-notes-input"]')?.value).toBe('')
     })
 
-    // Submit the form and verify loaner data is cleared in payload
     const saveButton = container.querySelector('[data-testid="save-deal-btn"]')
     fireEvent.click(saveButton)
 
@@ -217,11 +182,8 @@ describe('DealForm V2 - Loaner Toggle', () => {
     })
 
     const savedPayload = mockOnSave.mock.calls[0][0]
-
-    // V2 behavior: customer_needs_loaner should be false
     expect(savedPayload.customer_needs_loaner).toBe(false)
 
-    // Loaner form should either be null or have empty fields
     if (savedPayload.loanerForm) {
       expect(savedPayload.loanerForm.loaner_number).toBe('')
       expect(savedPayload.loanerForm.eta_return_date).toBeFalsy()
@@ -229,9 +191,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
     }
   })
 
-  it('Create mode with flag OFF: legacy behavior (no field clearing)', async () => {
-    const { BrowserRouter } = await import('react-router-dom')
-    // Disable V2 flag using Object.defineProperty for compatibility with Vitest
+  it('Create mode with flag OFF: legacy behavior keeps values even when disabled', async () => {
     Object.defineProperty(import.meta.env, 'VITE_DEAL_FORM_V2', {
       value: 'false',
       writable: true,
@@ -239,11 +199,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
       enumerable: true,
     })
 
-    const { container } = render(
-      <BrowserRouter>
-        <DealForm mode="create" onSave={mockOnSave} onCancel={mockOnCancel} />
-      </BrowserRouter>
-    )
+    const { container } = renderCreateForm()
 
     await waitFor(
       () => {
@@ -254,37 +210,32 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
     const loanerCheckbox = container.querySelector('[data-testid="loaner-checkbox"]')
 
-    // Toggle ON
     fireEvent.click(loanerCheckbox)
 
     await waitFor(() => {
       const enabledInput = container.querySelector('[data-testid="loaner-number-input"]')
-      expect(enabledInput.disabled).toBe(false)
+      expect(enabledInput).not.toBeDisabled()
     })
 
-    // Fill in data
     const loanerNumberInput = container.querySelector('[data-testid="loaner-number-input"]')
     fireEvent.change(loanerNumberInput, { target: { value: 'L-5555' } })
     expect(loanerNumberInput.value).toBe('L-5555')
 
-    // Toggle OFF
     fireEvent.click(loanerCheckbox)
 
     await waitFor(() => {
-      const disabledInput = container.querySelector('[data-testid="loaner-number-input"]')
-      expect(disabledInput.disabled).toBe(true)
+      const disabledSection = container.querySelector('[data-testid="loaner-section"]')
+      expect(disabledSection?.getAttribute('aria-disabled')).toBe('true')
+      expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
     })
 
-    // Toggle back ON
     fireEvent.click(loanerCheckbox)
 
     await waitFor(() => {
       const enabledInput = container.querySelector('[data-testid="loaner-number-input"]')
-      expect(enabledInput.disabled).toBe(false)
+      expect(enabledInput).not.toBeDisabled()
     })
 
-    // Legacy behavior: field should still have the value (not cleared)
-    const persistedLoanerNumber = container.querySelector('[data-testid="loaner-number-input"]')
-    expect(persistedLoanerNumber.value).toBe('L-5555')
+    expect(container.querySelector('[data-testid="loaner-number-input"]')?.value).toBe('L-5555')
   })
 })

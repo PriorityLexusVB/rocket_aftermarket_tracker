@@ -34,7 +34,7 @@ async function checkColumnExists() {
 async function checkFkExists() {
   try {
     // Query the foreign key - if it exists, this should work
-    const { data, error } = await supabase.from('job_parts').select('vendor_id').limit(0)
+    const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
     return !error
   } catch {
     return null // Unknown

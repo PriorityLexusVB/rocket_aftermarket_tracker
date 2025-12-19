@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import React from 'react'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { BrowserRouter } from 'react-router-dom'
 import DealForm from '../pages/deals/DealForm'
@@ -47,12 +47,12 @@ vi.mock('../../lib/supabase', () => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({
           order: vi.fn(() => ({
-            limit: vi.fn(() => Promise.resolve({ data: [], error: null }))
-          }))
-        }))
-      }))
-    }))
-  }
+            limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
+          })),
+        })),
+      })),
+    })),
+  },
 }))
 
 describe('DealForm Loaner Management Integration', () => {
@@ -68,21 +68,26 @@ describe('DealForm Loaner Management Integration', () => {
     )
   }
 
-  it('shows Manage Loaners button when customer needs loaner', async () => {
+  const getForm = async () => {
+    const form = await screen.findByTestId('deal-form')
+    return within(form)
+  }
+
+  it('renders loaner controls disabled by default and enables after checking', async () => {
     renderDealForm()
 
-    // Find and check the loaner checkbox
-    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
+    const form = await getForm()
+    const loanerCheckbox = await form.findByTestId('loaner-checkbox')
+    const manageBtn = await form.findByTestId('manage-loaners-btn')
+    const loanerInput = await form.findByTestId('loaner-number-input')
+
+    expect(manageBtn).toBeDisabled()
+    expect(loanerInput).toBeDisabled()
+
     fireEvent.click(loanerCheckbox)
 
-    // Wait for loaner section to appear
-    await waitFor(() => {
-      expect(screen.getByTestId('loaner-section')).toBeInTheDocument()
-    })
-
-    // Check that Manage button is present
-    expect(screen.getByTestId('manage-loaners-btn')).toBeInTheDocument()
-    expect(screen.getByText('Manage')).toBeInTheDocument()
+    expect(manageBtn).toBeEnabled()
+    expect(loanerInput).toBeEnabled()
   })
 
   it('opens loaner management page when Manage button is clicked', async () => {
@@ -90,20 +95,17 @@ describe('DealForm Loaner Management Integration', () => {
 
     renderDealForm()
 
-    // Enable loaner section
-    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
+    const form = await getForm()
+    const loanerCheckbox = await form.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
-    // Wait for loaner section and click Manage button
-    await waitFor(() => {
-      expect(screen.getByTestId('manage-loaners-btn')).toBeInTheDocument()
-    })
-
-    const manageBtn = screen.getByTestId('manage-loaners-btn')
+    const manageBtn = await form.findByTestId('manage-loaners-btn')
+    expect(manageBtn).toBeEnabled()
     fireEvent.click(manageBtn)
 
     // Verify window.open was called with correct URL
     expect(mockWindowOpen).toHaveBeenCalledWith('/loaner-management-drawer', '_blank')
+    expect(mockNavigate).not.toHaveBeenCalled()
   })
 
   it('falls back to navigation when popup blocker prevents new tab', async () => {
@@ -111,16 +113,12 @@ describe('DealForm Loaner Management Integration', () => {
 
     renderDealForm()
 
-    // Enable loaner section
-    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
+    const form = await getForm()
+    const loanerCheckbox = await form.findByTestId('loaner-checkbox')
     fireEvent.click(loanerCheckbox)
 
-    // Wait for loaner section and click Manage button
-    await waitFor(() => {
-      expect(screen.getByTestId('manage-loaners-btn')).toBeInTheDocument()
-    })
-
-    const manageBtn = screen.getByTestId('manage-loaners-btn')
+    const manageBtn = await form.findByTestId('manage-loaners-btn')
+    expect(manageBtn).toBeEnabled()
     fireEvent.click(manageBtn)
 
     // Verify fallback navigation was called
@@ -130,40 +128,25 @@ describe('DealForm Loaner Management Integration', () => {
   it('shows loaner number input with status checking', async () => {
     renderDealForm()
 
-    // Enable loaner section
-    const loanerCheckbox = await screen.findByTestId('loaner-checkbox')
-    fireEvent.click(loanerCheckbox)
-
-    // Wait for loaner section
-    await waitFor(() => {
-      expect(screen.getByTestId('loaner-number-input')).toBeInTheDocument()
-    })
-
-    const loanerInput = screen.getByTestId('loaner-number-input')
+    const form = await getForm()
+    const loanerInput = await form.findByTestId('loaner-number-input')
+    expect(loanerInput).toBeDisabled()
     expect(loanerInput).toHaveAttribute('placeholder', 'e.g. L-1024')
 
-    // Type loaner number
+    const loanerCheckbox = await form.findByTestId('loaner-checkbox')
+    fireEvent.click(loanerCheckbox)
+
+    expect(loanerInput).toBeEnabled()
     fireEvent.change(loanerInput, { target: { value: '62' } })
     expect(loanerInput.value).toBe('62')
   })
 
-  it('hides loaner section when customer does not need loaner', async () => {
+  it('shows disabled loaner controls when customer does not need loaner', async () => {
     renderDealForm()
-
-    // Wait for initial form render (DealForm has an async loading gate)
-    await screen.findByTestId('loaner-checkbox')
-
-    // Loaner section wrapper should exist (for test stability)
-    expect(screen.getByTestId('loaner-section')).toBeInTheDocument()
-    
-    // Loaner fields now exist in DOM but are disabled by default
-    const manageBtn = screen.getByTestId('manage-loaners-btn')
-    const loanerInput = screen.getByTestId('loaner-number-input')
-    
-    expect(manageBtn).toBeInTheDocument()
-    expect(manageBtn).toBeDisabled()
-    expect(loanerInput).toBeInTheDocument()
-    expect(loanerInput).toBeDisabled()
+    const form = await getForm()
+    expect(await form.findByTestId('loaner-section')).toBeInTheDocument()
+    expect(await form.findByTestId('manage-loaners-btn')).toBeDisabled()
+    expect(await form.findByTestId('loaner-number-input')).toBeDisabled()
   })
 
   it('shows loaner management link in navigation', () => {

@@ -11,7 +11,6 @@ import AuthenticationPortal from './pages/authentication-portal'
 
 // 4 Main Pages - Updated with Currently Active Appointments
 const DealsPage = lazy(() => import('./pages/deals'))
-const DealForm = lazy(() => import('./pages/deals/DealForm'))
 const NewDeal = lazy(() => import('./pages/deals/NewDeal'))
 const EditDeal = lazy(() => import('./pages/deals/EditDeal'))
 const CurrentlyActiveAppointments = lazy(() => import('./pages/currently-active-appointments'))
@@ -75,277 +74,277 @@ const Routes = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/deals/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <EditDeal />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/deals/new"
+                element={
+                  <ProtectedRoute>
+                    <NewDeal />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Debug route only in dev */}
+              {import.meta.env.DEV && (
                 <Route
-                  path="/deals/:id/edit"
+                  path="/debug-auth"
                   element={
                     <ProtectedRoute>
-                      <EditDeal />
+                      <DebugAuthPage />
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/deals/new"
-                  element={
-                    <ProtectedRoute>
-                      <NewDeal />
-                    </ProtectedRoute>
-                  }
-                />
-                {/* Debug route only in dev */}
-                {import.meta.env.DEV && (
-                  <Route
-                    path="/debug-auth"
-                    element={
-                      <ProtectedRoute>
-                        <DebugAuthPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                )}
+              )}
 
-                {/* Advanced Management Centers */}
+              {/* Advanced Management Centers */}
+              <Route
+                path="/calendar-flow-management-center"
+                element={
+                  <ProtectedRoute>
+                    <CalendarFlowManagementCenter />
+                  </ProtectedRoute>
+                }
+              />
+              {SimpleAgendaEnabled && (
                 <Route
-                  path="/calendar-flow-management-center"
+                  path="/calendar/agenda"
                   element={
                     <ProtectedRoute>
-                      <CalendarFlowManagementCenter />
+                      <CalendarAgenda />
                     </ProtectedRoute>
                   }
                 />
-                {SimpleAgendaEnabled && (
-                  <Route
-                    path="/calendar/agenda"
-                    element={
-                      <ProtectedRoute>
-                        <CalendarAgenda />
-                      </ProtectedRoute>
-                    }
-                  />
-                )}
-                <Route
-                  path="/currently-active-appointments"
-                  element={
-                    <ProtectedRoute>
-                      <CurrentlyActiveAppointments />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/advanced-business-intelligence-analytics"
-                  element={
-                    <ProtectedRoute>
-                      <AdvancedBusinessIntelligenceAnalytics />
-                    </ProtectedRoute>
-                  }
-                />
+              )}
+              <Route
+                path="/currently-active-appointments"
+                element={
+                  <ProtectedRoute>
+                    <CurrentlyActiveAppointments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/advanced-business-intelligence-analytics"
+                element={
+                  <ProtectedRoute>
+                    <AdvancedBusinessIntelligenceAnalytics />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Admin route with proper component loading */}
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute>
-                      <AdminPage />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Admin route with proper component loading */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminPage />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Admin Capabilities Diagnostics */}
-                <Route
-                  path="/admin/capabilities"
-                  element={
-                    <ProtectedRoute>
-                      <AdminCapabilities />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Admin Capabilities Diagnostics */}
+              <Route
+                path="/admin/capabilities"
+                element={
+                  <ProtectedRoute>
+                    <AdminCapabilities />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Communications Center */}
-                <Route
-                  path="/communications"
-                  element={
-                    <ProtectedRoute>
-                      <CommunicationsCenter />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Communications Center */}
+              <Route
+                path="/communications"
+                element={
+                  <ProtectedRoute>
+                    <CommunicationsCenter />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Profile Settings */}
-                <Route
-                  path="/profile"
-                  element={
-                    <ProtectedRoute>
-                      <ProfileSettings />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Profile Settings */}
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfileSettings />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Calendar route - redirect to new calendar flow center */}
-                <Route
-                  path="/calendar"
-                  element={<Navigate to="/calendar-flow-management-center" replace />}
-                />
+              {/* Calendar route - redirect to new calendar flow center */}
+              <Route
+                path="/calendar"
+                element={<Navigate to="/calendar-flow-management-center" replace />}
+              />
 
-                {/* Loaner Management */}
-                <Route
-                  path="/loaner-management-drawer"
-                  element={
-                    <ProtectedRoute>
-                      <LoanerManagementDrawer />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Loaner Management */}
+              <Route
+                path="/loaner-management-drawer"
+                element={
+                  <ProtectedRoute>
+                    <LoanerManagementDrawer />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Claims Management - Internal only */}
-                <Route
-                  path="/claims-management-center"
-                  element={
-                    <ProtectedRoute>
-                      <ClaimsManagementCenter />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Claims Management - Internal only */}
+              <Route
+                path="/claims-management-center"
+                element={
+                  <ProtectedRoute>
+                    <ClaimsManagementCenter />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Protected Legacy Route Redirects */}
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/deals" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/executive-analytics-dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/advanced-business-intelligence-analytics" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/business-intelligence-reports"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/advanced-business-intelligence-analytics" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/calendar-scheduling-center"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/calendar-flow-management-center" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/kanban-status-board"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/deals" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/sales-tracker"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/deals" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/sales-transaction-interface"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/deals" replace />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Protected Legacy Route Redirects */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/deals" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/executive-analytics-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/advanced-business-intelligence-analytics" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/business-intelligence-reports"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/advanced-business-intelligence-analytics" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/calendar-scheduling-center"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/calendar-flow-management-center" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/kanban-status-board"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/deals" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/sales-tracker"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/deals" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/sales-transaction-interface"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/deals" replace />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Vehicle Management Redirects */}
-                <Route
-                  path="/vehicles"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/currently-active-appointments" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vehicle-management-hub"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/currently-active-appointments" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vehicle-detail-workstation"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/currently-active-appointments" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/photo-documentation-center"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/deals" replace />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Vehicle Management Redirects */}
+              <Route
+                path="/vehicles"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/currently-active-appointments" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/vehicle-management-hub"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/currently-active-appointments" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/vehicle-detail-workstation"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/currently-active-appointments" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/photo-documentation-center"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/deals" replace />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Admin Area Redirects */}
-                <Route
-                  path="/vendor-operations-center"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/admin" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/vendor-job-dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/admin" replace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/administrative-configuration-center"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/admin" replace />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Admin Area Redirects */}
+              <Route
+                path="/vendor-operations-center"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/admin" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/vendor-job-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/admin" replace />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/administrative-configuration-center"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/admin" replace />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* Claims System - Redirect duplicate/unnecessary pages */}
-                <Route
-                  path="/customer-claims-portal"
-                  element={<Navigate to="/guest-claims-submission-form" replace />}
-                />
-                <Route
-                  path="/customer-claims-submission-portal"
-                  element={<Navigate to="/guest-claims-submission-form" replace />}
-                />
-                <Route
-                  path="/claims-analytics-dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Navigate to="/claims-management-center" replace />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Claims System - Redirect duplicate/unnecessary pages */}
+              <Route
+                path="/customer-claims-portal"
+                element={<Navigate to="/guest-claims-submission-form" replace />}
+              />
+              <Route
+                path="/customer-claims-submission-portal"
+                element={<Navigate to="/guest-claims-submission-form" replace />}
+              />
+              <Route
+                path="/claims-analytics-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/claims-management-center" replace />
+                  </ProtectedRoute>
+                }
+              />
 
-                {/* 404 Not Found */}
-                <Route path="*" element={<NotFound />} />
-              </RouterRoutes>
-            </Suspense>
-          </ThemeProvider>
+              {/* 404 Not Found */}
+              <Route path="*" element={<NotFound />} />
+            </RouterRoutes>
+          </Suspense>
+        </ThemeProvider>
       </ErrorBoundary>
     </BrowserRouter>
   )

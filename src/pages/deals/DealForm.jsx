@@ -909,9 +909,13 @@ export default function DealForm({
         </div>
       </section>
 
-      {/* Loaner section - wrapper always rendered for test stability */}
-      <div data-testid="loaner-section">
-        <section className="flex items-center gap-3">
+      {/* Loaner section */}
+      <section
+        data-testid="loaner-section"
+        aria-disabled={!form.customer_needs_loaner}
+        className={!form.customer_needs_loaner ? 'opacity-60 space-y-4' : 'space-y-4'}
+      >
+        <div className="flex items-center gap-3">
           <input
             data-testid="loaner-checkbox"
             id="needsLoaner"
@@ -923,9 +927,9 @@ export default function DealForm({
           <label htmlFor="needsLoaner" className="text-sm text-slate-800">
             Customer needs loaner
           </label>
-        </section>
+        </div>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">Loaner Number</label>
             <div className="flex gap-2">
@@ -946,7 +950,7 @@ export default function DealForm({
                   placeholder="e.g. L-1024"
                 />
                 {/* Loaner status indicator */}
-                {form?.loanerForm?.loaner_number && form.customer_needs_loaner && (
+                {form?.loanerForm?.loaner_number && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
                     {loanerCheckLoading ? (
                       <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
@@ -963,6 +967,7 @@ export default function DealForm({
               <button
                 type="button"
                 onClick={() => {
+                  if (!form.customer_needs_loaner) return
                   const newTab = window.open('/loaner-management-drawer', '_blank')
                   if (!newTab) {
                     // Fallback if popup blocker
@@ -970,11 +975,7 @@ export default function DealForm({
                   }
                 }}
                 disabled={!form.customer_needs_loaner}
-                className={`mt-1 px-3 py-2 text-sm rounded-lg transition-colors ${
-                  form.customer_needs_loaner
-                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
+                className="mt-1 px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 title="Manage Loaners"
                 data-testid="manage-loaners-btn"
               >
@@ -982,7 +983,7 @@ export default function DealForm({
               </button>
             </div>
             {/* Status message */}
-            {form?.loanerForm?.loaner_number && loanerStatus && form.customer_needs_loaner && (
+            {form?.loanerForm?.loaner_number && loanerStatus && (
               <div
                 className={`mt-1 text-xs ${
                   loanerStatus === 'available'
@@ -1021,8 +1022,8 @@ export default function DealForm({
               placeholder="Optional"
             />
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
       {/* Line Items */}
       <section className="space-y-4" data-testid="line-items-section">

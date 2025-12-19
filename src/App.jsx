@@ -16,7 +16,8 @@ function App() {
   const { orgId } = useTenant()
   const { user, loading: authLoading } = useAuth()
   const toast = useToast()
-  const isAuthRoute = typeof window !== 'undefined' && window.location?.pathname?.startsWith('/auth')
+  const isAuthRoute =
+    typeof window !== 'undefined' && window.location?.pathname?.startsWith('/auth')
   // Lightweight ResizeObserver error suppression
   useEffect(() => {
     // Initialize basic error suppression
@@ -53,7 +54,7 @@ function App() {
         toast.error(reason)
         sessionStorage.removeItem('authRedirectReason')
       }
-    } catch (_) {}
+    } catch {}
   }, [toast])
 
   return (

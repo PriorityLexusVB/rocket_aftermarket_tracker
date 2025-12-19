@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock supabase client to return total_amount as string (as PostgREST does for DECIMAL types)
-vi.mock('@/lib/supabase', () => {
+vi.mock('../lib/supabase', () => {
   const mockJobs = [
     {
       id: 'job-1',
