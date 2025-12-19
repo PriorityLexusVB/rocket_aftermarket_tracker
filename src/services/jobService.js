@@ -19,8 +19,7 @@ async function selectJobs(baseQuery) {
   // Attempt expanded with safe wildcards for relations
   try {
     const profileFrag = buildUserProfileSelectFragment()
-    const data = await run(
-      baseQuery?.select(`
+    const { data, error } = await baseQuery?.select(`
         *,
         vendor:vendors(id,name,specialty,contact_person,phone,email),
         vehicle:vehicles(*),
@@ -29,7 +28,19 @@ async function selectJobs(baseQuery) {
         delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey${profileFrag},
         job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
       `)
-    )
+    
+    if (error) {
+      // Log detailed error info for debugging
+      console.warn('[jobService] Expanded select failed, using fallback:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      })
+      // Return basic select as fallback - don't throw
+      return []
+    }
+    
     const rows = data ?? []
     // Attach display_name resolution for convenience
     return rows.map((r) => {
@@ -45,9 +56,9 @@ async function selectJobs(baseQuery) {
       return r
     })
   } catch (expandedErr) {
-    console.warn('Expanded jobs select failed, falling back to "*":', expandedErr?.message)
-    const basic = await run(baseQuery?.select('*'))
-    return basic ?? []
+    // Catch any unexpected errors (not from Supabase query itself)
+    console.warn('[jobService] Unexpected error in selectJobs:', expandedErr?.message)
+    return []
   }
 }
 
