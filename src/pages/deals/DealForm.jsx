@@ -1,4 +1,3 @@
-// src/pages/deals/DealForm.jsx
 import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -85,8 +84,6 @@ export default function DealForm({
 
   // Keep local form state in sync when parent provides a new initial (e.g., after save/refetch or route change)
   useEffect(() => {
-    // Only sync when a meaningful initial is provided (e.g., edit mode or refetch),
-    // not for an empty default object which would clear user input on every render.
     const hasMeaningfulInitial =
       initial &&
       (initial.id ||
@@ -118,9 +115,6 @@ export default function DealForm({
       scheduled_end_time: initial.scheduled_end_time || '',
       calendar_notes: initial.calendar_notes || '',
     })
-    // We intentionally do not update initialSnapshot here to preserve dirty tracking vs the very first load.
-    // The UnsavedChangesGuard still works because isDirty compares to the original initialSnapshot.
-    // For edit-after-save UX, the toast/success banner is shown and the new values render from props.
   }, [initial])
 
   const { orgId } = useTenant()
@@ -164,7 +158,6 @@ export default function DealForm({
         const productsPromise =
           orgId && !ignoreOrg ? listProductsByOrg(orgId, { activeOnly: true }) : getProducts()
 
-        // Prefer tenant-aware staff lists when orgId is available
         const salesPromise =
           orgId && !ignoreOrg
             ? listStaffByOrg(orgId, {
@@ -198,9 +191,7 @@ export default function DealForm({
           deliveryPromise,
         ])
 
-        // Fallbacks
         if (orgId && !ignoreOrg) {
-          // Vendors/products: if org-scoped is empty, fall back to global lists
           if (!Array.isArray(vOpts) || vOpts.length === 0) {
             vOpts = await getVendors().catch(() => [])
           }
@@ -208,8 +199,6 @@ export default function DealForm({
             pOpts = await getProducts().catch(() => [])
           }
 
-          // Staff: avoid showing admins/managers when department-scoped list is empty.
-          // Prefer global department-specific list first, then a strict staff-only org list.
           if (!Array.isArray(sOpts) || sOpts.length === 0) {
             sOpts = (await getSalesConsultants().catch(() => [])) || []
             if (!sOpts?.length)
@@ -232,14 +221,12 @@ export default function DealForm({
               )
           }
         } else {
-          // No orgId: at minimum ensure products/vendors load globally
           if (!Array.isArray(vOpts) || vOpts.length === 0)
             vOpts = await getVendors().catch(() => [])
           if (!Array.isArray(pOpts) || pOpts.length === 0)
             pOpts = await getProducts().catch(() => [])
         }
 
-        // Last resort: if staff lists are still empty, use all active users to keep UI functional
         if (!Array.isArray(sOpts) || sOpts.length === 0) {
           sOpts = (await getUserProfiles({ activeOnly: true }).catch(() => [])) || []
         }
@@ -250,7 +237,6 @@ export default function DealForm({
           dOpts = (await getUserProfiles({ activeOnly: true }).catch(() => [])) || []
         }
         if (!mounted) return
-        // Extra safety: filter to role==='staff' if role is present
         const onlyStaff = (arr) =>
           Array.isArray(arr) ? arr.filter((u) => u?.role === 'staff' || u?.role === undefined) : []
         setVendors(vOpts || [])
@@ -274,21 +260,17 @@ export default function DealForm({
 
   // Synthetic option reconciliation so selected values render immediately
   useEffect(() => {
-    // Vendors
     if (!vendors?.length && form?.vendor_id) {
       setVendors([{ id: form.vendor_id, value: form.vendor_id, label: 'Selected vendor' }])
     }
-    // Sales
     if (!sales?.length && form?.assigned_to) {
       setSales([{ id: form.assigned_to, value: form.assigned_to, label: 'Selected sales' }])
     }
-    // Finance
     if (!finance?.length && form?.finance_manager_id) {
       setFinance([
         { id: form.finance_manager_id, value: form.finance_manager_id, label: 'Selected finance' },
       ])
     }
-    // Delivery
     if (!delivery?.length && form?.delivery_coordinator_id) {
       setDelivery([
         {
@@ -298,7 +280,6 @@ export default function DealForm({
         },
       ])
     }
-    // Products – seed any selected product ids from line items with their current unit_price
     const selectedProductIds = new Set(
       (form?.lineItems || [])
         .map((li) => (li?.product_id ? String(li.product_id) : null))
@@ -321,14 +302,11 @@ export default function DealForm({
       })
       if (synthetic.length) setProducts(synthetic)
     }
-    // We intentionally do not include vendors/products/sales/... in deps to avoid loops when real data loads
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form])
+  }, [form, vendors, products, sales, finance, delivery])
 
   const productMap = useMemo(() => {
     const m = new Map()
     ;(products || []).forEach((p) => {
-      // options come as { id, value, label, unit_price }
       const key = p.id ?? p.value
       if (key != null) m.set(String(key), p)
     })
@@ -336,7 +314,6 @@ export default function DealForm({
   }, [products])
 
   const handleChange = (key, val) => {
-    // V2 behavior: when turning loaner off, clear its fields so UI re-opens empty
     if (key === 'customer_needs_loaner' && !val) {
       const isV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
       if (isV2) {
@@ -357,7 +334,6 @@ export default function DealForm({
   const handleLoanerChange = (key, val) => {
     setForm((prev) => ({ ...prev, loanerForm: { ...(prev.loanerForm || {}), [key]: val } }))
 
-    // Check loaner status when loaner number changes
     if (key === 'loaner_number' && val?.trim()) {
       checkLoanerStatus(val.trim())
     } else if (key === 'loaner_number' && !val?.trim()) {
@@ -365,7 +341,6 @@ export default function DealForm({
     }
   }
 
-  // Function to check loaner availability
   const checkLoanerStatus = async (loanerNumber) => {
     if (!loanerNumber) return
 
@@ -373,10 +348,8 @@ export default function DealForm({
     setLoanerStatus(null)
 
     try {
-      // Import Supabase client dynamically to avoid breaking SSR
       const { supabase } = await import('../../lib/supabase')
 
-      // Check if loaner exists and get its current assignment status
       const { data: assignments, error } = await supabase
         .from('loaner_assignments')
         .select('id, returned_at, eta_return_date, jobs(id, title)')
@@ -390,7 +363,6 @@ export default function DealForm({
         return
       }
 
-      // If no assignments found, loaner might be new or available
       if (!assignments || assignments.length === 0) {
         setLoanerStatus('available')
         return
@@ -398,13 +370,11 @@ export default function DealForm({
 
       const latestAssignment = assignments[0]
 
-      // If latest assignment has returned_at, loaner is available
       if (latestAssignment.returned_at) {
         setLoanerStatus('available')
         return
       }
 
-      // If no returned_at, loaner is currently in use
       setLoanerStatus('in-use')
     } catch (err) {
       console.warn('Failed to check loaner status:', err)
@@ -421,13 +391,11 @@ export default function DealForm({
       const li = { ...(lineItems[idx] || {}) }
       li[key] = val
       if (key === 'product_id') {
-        // ensure we look up by the option value string
         const prod = productMap.get(String(val))
         if (prod && prod.unit_price !== undefined) {
           li.unit_price = Number(prod.unit_price || 0)
         }
       }
-      // Clear validation error when user fixes the issue
       if (key === 'no_schedule_reason' && String(val || '').trim()) {
         setLineErrors((errs) => {
           if (!errs || !errs[idx]?.noScheduleReason) return errs
@@ -440,7 +408,6 @@ export default function DealForm({
         })
       }
       if (key === 'requires_scheduling' && !!val) {
-        // if user now requires scheduling, clear the previous missing-reason error
         setLineErrors((errs) => {
           if (!errs || !errs[idx]?.noScheduleReason) return errs
           const copy = { ...errs }
@@ -460,7 +427,6 @@ export default function DealForm({
   const removeLineItem = (idx) =>
     setForm((p) => ({ ...p, lineItems: p.lineItems.filter((_, i) => i !== idx) }))
 
-  // Dirty tracking for unsaved-changes guard
   const isDirty = useMemo(() => {
     try {
       return JSON.stringify(form) !== initialSnapshot
@@ -489,7 +455,6 @@ export default function DealForm({
     onCancel?.()
   }
 
-  // Totals bar calculation (qty is always 1, but keep quantity_used support)
   const dealSubtotal = useMemo(() => {
     try {
       return (form.lineItems || []).reduce((sum, li) => {
@@ -509,12 +474,10 @@ export default function DealForm({
 
   const submit = async (e) => {
     e?.preventDefault?.()
-    // Prevent duplicate submits
     if (saving) return
     setSaving(true)
     setErrorMsg('')
     try {
-      // Guard: require at least one valid product selection
       const validProductIdxs = (form.lineItems || []).reduce((arr, li, idx) => {
         if (li?.product_id) arr.push(idx)
         return arr
@@ -522,7 +485,6 @@ export default function DealForm({
       if (validProductIdxs.length === 0) {
         setSaving(false)
         setErrorMsg('Please add at least one product to the deal.')
-        // Focus first product dropdown
         try {
           const el = document.querySelector('[data-testid="product-select-0"]')
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -531,7 +493,6 @@ export default function DealForm({
         return
       }
 
-      // Guard: If requires_scheduling === false, no_schedule_reason is required
       const missingReasonIndexes = (form.lineItems || []).reduce((arr, li, idx) => {
         const requires = !!li?.requires_scheduling
         const reason = String(li?.no_schedule_reason || '').trim()
@@ -545,7 +506,6 @@ export default function DealForm({
         })
         setLineErrors(errs)
         setSaving(false)
-        // Focus first offending field for quicker correction
         try {
           const first = missingReasonIndexes[0]
           const el = document.querySelector(`[data-testid="no-schedule-reason-${first}"]`)
@@ -557,7 +517,6 @@ export default function DealForm({
         setLineErrors({})
       }
 
-      // Light phone normalization (digits only; prefix +1 for 10-digit US)
       const normalizePhone = (s) => {
         try {
           const digits = String(s || '').replace(/\D+/g, '')
@@ -569,17 +528,14 @@ export default function DealForm({
         }
       }
 
-      // Build payload that includes both snake_case (UI) and camelCase (service) fields
       const normalizedLineItems = (form.lineItems || []).map((li) => ({
         product_id: li.product_id || null,
         quantity_used: Number(li.quantity_used || 1),
         unit_price: Number(li.unit_price || 0),
-        // snake_case (UI)
         promised_date: li.promised_date || li.lineItemPromisedDate || null,
         requires_scheduling: !!li.requires_scheduling || !!li.requiresScheduling,
         no_schedule_reason: li.no_schedule_reason || li.noScheduleReason || null,
         is_off_site: !!li.is_off_site || !!li.isOffSite,
-        // camelCase (service compatibility)
         lineItemPromisedDate: li.lineItemPromisedDate || li.promised_date || null,
         requiresScheduling: !!li.requiresScheduling || !!li.requires_scheduling,
         noScheduleReason: li.noScheduleReason || li.no_schedule_reason || null,
@@ -588,10 +544,8 @@ export default function DealForm({
 
       const payload = {
         ...form,
-        // attach tenant org for write policies when available
         org_id: form.org_id || orgId || undefined,
         customer_needs_loaner: !!form.customer_needs_loaner,
-        // pass loaner details to the service (service gracefully ignores when number is empty)
         loanerForm: form.customer_needs_loaner
           ? {
               loaner_number: form?.loanerForm?.loaner_number?.trim() || '',
@@ -599,7 +553,6 @@ export default function DealForm({
               notes: form?.loanerForm?.notes || '',
             }
           : null,
-        // mirror phone fields for downstream services
         customer_phone: normalizePhone(form.customer_phone || form.customer_mobile || ''),
         customerPhone: normalizePhone(
           form.customerPhone || form.customer_mobile || form.customer_phone || ''
@@ -608,7 +561,6 @@ export default function DealForm({
       }
 
       if (onSave) {
-        // parent-provided save handler is authoritative (handles navigation/closing)
         await onSave(payload)
         await logFormSubmission?.(
           'DealForm',
@@ -622,7 +574,6 @@ export default function DealForm({
       } else if (dealServicePromise) {
         const mod = await dealServicePromise
         const dealService = mod?.default ?? mod
-        // Use service directly and reflect the saved record in the form (do not auto-close)
         let savedRecord = null
         if (mode === 'edit' && payload.id) {
           savedRecord = await dealService.updateDeal(payload.id, payload)
@@ -631,7 +582,6 @@ export default function DealForm({
         }
 
         if (savedRecord) {
-          // map DB shape to form if helper exists
           try {
             const mapped = dealService.mapDbDealToForm
               ? dealService.mapDbDealToForm(savedRecord)
@@ -639,10 +589,8 @@ export default function DealForm({
             if (mapped)
               setForm((prev) => ({ ...prev, ...mapped, lineItems: mapped.lineItems || [] }))
           } catch (e) {
-            // fallback: do nothing if mapping fails
             console.warn('Failed to map saved record to form:', e)
           }
-          // Optional: redirect to Agenda when feature flag enabled and scheduling set
           try {
             const agendaOn =
               String(import.meta.env?.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -665,7 +613,6 @@ export default function DealForm({
         } catch {}
       }
     } catch (err) {
-      // V2: friendly handling for optimistic concurrency conflicts
       const isV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
       const isConflict =
         err?.code === 'VERSION_CONFLICT' ||
@@ -673,12 +620,11 @@ export default function DealForm({
         (err?.message || '').startsWith('Conflict:')
 
       if (isV2 && isConflict) {
-        // Non-blocking conflict message - user can see the error and reload
         setErrorMsg(
           err?.message || 'This deal was updated by someone else. Please reload and try again.'
         )
         console.warn('Version conflict detected:', err)
-        return // Early return - don't overwrite data
+        return
       }
 
       const msg = err?.message || String(err)
@@ -738,6 +684,20 @@ export default function DealForm({
       {/* Primary Info */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
+          <label htmlFor="description-input" className="block text-sm font-medium text-slate-700">
+            Customer Name
+          </label>
+          <textarea
+            id="description-input"
+            aria-label="Customer Name"
+            data-testid="description-input"
+            value={form.description}
+            onChange={(e) => handleChange('description', e.target.value)}
+            className="mt-1 input-mobile w-full"
+            rows={3}
+          />
+        </div>
+        <div>
           <label className="block text-sm font-medium text-slate-700">Vendor</label>
           <select
             data-testid="vendor-select"
@@ -765,21 +725,6 @@ export default function DealForm({
               </button>
             </p>
           )}
-        </div>
-
-        <div>
-          <label htmlFor="description-input" className="block text-sm font-medium text-slate-700">
-            Customer Name
-          </label>
-          <textarea
-            id="description-input"
-            aria-label="Customer Name"
-            data-testid="description-input"
-            value={form.description}
-            onChange={(e) => handleChange('description', e.target.value)}
-            className="mt-1 input-mobile w-full"
-            rows={3}
-          />
         </div>
       </section>
 
@@ -912,6 +857,7 @@ export default function DealForm({
       {/* Loaner section */}
       <section
         data-testid="loaner-section"
+        aria-disabled={(!form.customer_needs_loaner).toString()}
         className={!form.customer_needs_loaner ? 'opacity-60 space-y-4' : 'space-y-4'}
       >
         <div className="flex items-center gap-3">
@@ -948,7 +894,6 @@ export default function DealForm({
                   } ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="e.g. L-1024"
                 />
-                {/* Loaner status indicator */}
                 {form?.loanerForm?.loaner_number && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
                     {loanerCheckLoading ? (
@@ -969,7 +914,6 @@ export default function DealForm({
                   if (!form.customer_needs_loaner) return
                   const newTab = window.open('/loaner-management-drawer', '_blank')
                   if (!newTab) {
-                    // Fallback if popup blocker
                     navigate('/loaner-management-drawer')
                   }
                 }}
@@ -981,7 +925,6 @@ export default function DealForm({
                 Manage
               </button>
             </div>
-            {/* Status message */}
             {form?.loanerForm?.loaner_number && loanerStatus && (
               <div
                 className={`mt-1 text-xs ${
@@ -1006,7 +949,9 @@ export default function DealForm({
               value={form?.loanerForm?.eta_return_date || ''}
               onChange={(e) => handleLoanerChange('eta_return_date', e.target.value || '')}
               disabled={!form.customer_needs_loaner}
-              className={`mt-1 input-mobile w-full ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              className={`mt-1 input-mobile w-full ${
+                !form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
             />
           </div>
           <div>
@@ -1017,7 +962,9 @@ export default function DealForm({
               value={form?.loanerForm?.notes || ''}
               onChange={(e) => handleLoanerChange('notes', e.target.value)}
               disabled={!form.customer_needs_loaner}
-              className={`mt-1 input-mobile w-full ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              className={`mt-1 input-mobile w-full ${
+                !form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''
+              }`}
               placeholder="Optional"
             />
           </div>
@@ -1057,7 +1004,6 @@ export default function DealForm({
           const onSiteSelected = !item.is_off_site
           return (
             <div key={itemKey} className="card-mobile space-y-3" data-testid={`line-${idx}`}>
-              {/* Product + price */}
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-slate-700">Product</label>
@@ -1103,9 +1049,7 @@ export default function DealForm({
                 </div>
               </div>
 
-              {/* Service location tiles (On-Site vs Off-Site) */}
               <div className="flex gap-3">
-                {/* On-Site */}
                 <label
                   className={`inline-flex items-center gap-2 cursor-pointer border rounded px-3 py-2
                     ${!item.is_off_site ? 'ring-2 ring-blue-400 bg-blue-50 border-blue-300' : 'border-gray-300'}`}
@@ -1121,7 +1065,6 @@ export default function DealForm({
                   <span className="text-sm">On-Site</span>
                 </label>
 
-                {/* Off-Site */}
                 <label
                   className={`inline-flex items-center gap-2 cursor-pointer border rounded px-3 py-2
                     ${item.is_off_site ? 'ring-2 ring-blue-400 bg-blue-50 border-blue-300' : 'border-gray-300'}`}
@@ -1138,7 +1081,6 @@ export default function DealForm({
                 </label>
               </div>
 
-              {/* Scheduling controls */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-slate-700">Date Scheduled</label>
@@ -1192,7 +1134,6 @@ export default function DealForm({
         })}
       </section>
 
-      {/* Calendar notes (optional) */}
       <section>
         <label className="block text-sm font-medium text-slate-700">Calendar Notes</label>
         <textarea
@@ -1204,7 +1145,6 @@ export default function DealForm({
         />
       </section>
 
-      {/* Sticky actions + total (mobile-safe) */}
       <section
         className="sticky bottom-20 md:bottom-0 z-40 -mx-4 px-4 py-3 bg-white/90 backdrop-blur border-t shadow-sm"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}

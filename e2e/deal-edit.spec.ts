@@ -148,6 +148,9 @@ test.describe('Deal create + edit flow', () => {
       }
     }
 
+    // Wait for save to fully complete before reloading
+    await page.waitForTimeout(1000)
+    
     // Stay on edit page and ensure the title persisted after reload
     await page.waitForTimeout(1000)
     await page.reload()

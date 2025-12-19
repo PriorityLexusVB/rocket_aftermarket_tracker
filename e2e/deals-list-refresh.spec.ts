@@ -103,7 +103,6 @@ test.describe('Deals List Refresh After Edit', () => {
 
     const firstDeal = page.locator('[data-testid^="deal-row-"]').first()
     await expect(firstDeal).toBeVisible({ timeout: 10_000 })
-    await page.waitForTimeout(500)
 
     const dealId = await firstDeal.getAttribute('data-testid')
     const cleanDealId = dealId?.replace('deal-row-', '')

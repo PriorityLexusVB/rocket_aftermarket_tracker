@@ -5,6 +5,7 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Snapshot View (Currently Active Appointments)', () => {
   test('snapshot view loads successfully', async ({ page }) => {
+    // Collect console errors BEFORE navigating
     const errors: string[] = []
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
