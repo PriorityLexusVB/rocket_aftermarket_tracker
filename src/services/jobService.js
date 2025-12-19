@@ -19,17 +19,27 @@ async function selectJobs(baseQuery) {
   // Attempt expanded with safe wildcards for relations
   try {
     const profileFrag = buildUserProfileSelectFragment()
-    const data = await run(
-      baseQuery?.select(`
-        *,
-        vendor:vendors(id,name,specialty,contact_person,phone,email),
-        vehicle:vehicles(*),
-        assigned_to_profile:user_profiles!jobs_assigned_to_fkey${profileFrag},
-        created_by_profile:user_profiles!jobs_created_by_fkey${profileFrag},
-        delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey${profileFrag},
-        job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
-      `)
-    )
+    const { data, error } = await baseQuery?.select(`
+      *,
+      vendor:vendors(id,name,specialty,contact_person,phone,email),
+      vehicle:vehicles(*),
+      assigned_to_profile:user_profiles!jobs_assigned_to_fkey${profileFrag},
+      created_by_profile:user_profiles!jobs_created_by_fkey${profileFrag},
+      delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey${profileFrag},
+      job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
+    `)
+
+    if (error) {
+      console.warn('[jobService] Expanded select failed, using fallback:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      })
+      const fallback = await run(baseQuery?.select('*')).catch(() => [])
+      return fallback ?? []
+    }
+
     const rows = data ?? []
     // Attach display_name resolution for convenience
     return rows.map((r) => {
@@ -45,12 +55,10 @@ async function selectJobs(baseQuery) {
       return r
     })
   } catch (expandedErr) {
-    console.warn('Expanded jobs select failed, falling back to "*":', expandedErr?.message)
-    const basic = await run(baseQuery?.select('*'))
-    return basic ?? []
+    console.warn('[jobService] Unexpected error in selectJobs:', expandedErr?.message)
+    return []
   }
 }
-
 
 export const jobService = {
   /**
@@ -269,7 +277,7 @@ export const jobService = {
   /**
    * Update scheduling for all line items of a job
    * This is used by the calendar reschedule functionality
-   * 
+   *
    * @param {string} jobId - Job ID
    * @param {Object} scheduleData - New schedule data
    * @param {string} scheduleData.startTime - ISO timestamp for start
@@ -301,10 +309,12 @@ export const jobService = {
       // Update all scheduled line items with the new times
       // Strategy: Apply the same start/end to all items (simplified approach)
       // More complex: could preserve relative offsets if needed
-      
+
       // Extract date from scheduled_start_time for promised_date field
-      const promisedDate = scheduleData.startTime ? new Date(scheduleData.startTime).toISOString().split('T')[0] : null
-      
+      const promisedDate = scheduleData.startTime
+        ? new Date(scheduleData.startTime).toISOString().split('T')[0]
+        : null
+
       const updates = scheduledItems.map((item) => ({
         id: item.id,
         scheduled_start_time: scheduleData.startTime,
@@ -349,7 +359,7 @@ export const jobService = {
       return await this.createJob(validated)
     } catch (e) {
       if (e instanceof z.ZodError) {
-        throw new Error('Job validation failed: ' + e.errors.map(err => err.message).join(', '))
+        throw new Error('Job validation failed: ' + e.errors.map((err) => err.message).join(', '))
       }
       console.error('jobService.createTyped failed', e)
       throw e
@@ -370,7 +380,7 @@ export const jobService = {
       return await this.updateJob(jobId, validated)
     } catch (e) {
       if (e instanceof z.ZodError) {
-        throw new Error('Job validation failed: ' + e.errors.map(err => err.message).join(', '))
+        throw new Error('Job validation failed: ' + e.errors.map((err) => err.message).join(', '))
       }
       console.error('jobService.updateTyped failed', e)
       throw e

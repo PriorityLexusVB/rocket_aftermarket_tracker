@@ -135,6 +135,7 @@ test.describe('Scheduling via Active Appointments (quick assign)', () => {
     if (dateFilled) {
       await fillSchedulingTime(page, 0)
     }
+    await expect(save).toBeEnabled({ timeout: 10_000 })
     await save.click()
 
     const awaitSaveResult = async () =>

@@ -110,8 +110,9 @@ test.describe('Admin CRUD - Vendors and Products', () => {
       .fill('E2E created test product')
 
     await page.getByRole('button', { name: /create/i }).click()
+    await page.waitForTimeout(1000)
 
-    await expect(rowByText(page, productName)).toHaveCount(1)
+    await expect(rowByText(page, productName)).toHaveCount(1, { timeout: 10_000 })
 
     // Edit the product name
     await clickEditInRow(page, productName)

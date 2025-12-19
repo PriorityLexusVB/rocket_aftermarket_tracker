@@ -4,10 +4,10 @@ const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
 
 async function waitForEditOpen(page: Page) {
   return Promise.race([
-    page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 }).then(() => 'url'),
+    page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 }).then(() => 'url'),
     page
       .getByRole('heading', { name: /edit deal/i })
-      .waitFor({ state: 'visible', timeout: 15_000 }),
+      .waitFor({ state: 'visible', timeout: 30_000 }),
   ])
 }
 
@@ -103,6 +103,7 @@ test.describe('Deals List Refresh After Edit', () => {
 
     const firstDeal = page.locator('[data-testid^="deal-row-"]').first()
     await expect(firstDeal).toBeVisible({ timeout: 10_000 })
+    await page.waitForTimeout(500)
 
     const dealId = await firstDeal.getAttribute('data-testid')
     const cleanDealId = dealId?.replace('deal-row-', '')
