@@ -22,7 +22,7 @@ test.describe('DealForm Unsaved Changes Guard', () => {
       const original = window.confirm
       // @ts-ignore
       window.__origConfirm = original
-      window.confirm = (msg) => {
+      window.confirm = () => {
         // @ts-ignore
         window.__confirmCalls = (window.__confirmCalls || 0) + 1
         return false

@@ -23,7 +23,7 @@ const sessionStorageMock = (() => {
 global.sessionStorage = sessionStorageMock
 
 // Mock supabase
-vi.mock('@/lib/supabase', () => ({
+vi.mock('../lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
     auth: {
@@ -39,7 +39,7 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     sessionStorageMock.clear()
     vi.resetModules()
 
-    const module = await import('@/lib/supabase')
+    const module = await import('../lib/supabase')
     mockSupabase = module.supabase
   })
 
@@ -48,8 +48,8 @@ describe('dealService - loaner_assignments RLS degradation', () => {
   })
 
   it('should gracefully handle 403 RLS errors on loaner_assignments query in getAllDeals', async () => {
-    const { getAllDeals } = await import('@/services/dealService')
-    
+    const { getAllDeals } = await import('../services/dealService')
+
     const mockRlsError = {
       message: 'permission denied for table loaner_assignments',
       code: '42501',
@@ -73,7 +73,15 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     // Mock transactions query to succeed
     const mockTransactionsSelect = vi.fn().mockReturnValue({
       in: vi.fn().mockResolvedValue({
-        data: [{ job_id: 'job-1', customer_name: 'Test', customer_phone: '123', customer_email: 'test@test.com', total_amount: 100 }],
+        data: [
+          {
+            job_id: 'job-1',
+            customer_name: 'Test',
+            customer_phone: '123',
+            customer_email: 'test@test.com',
+            total_amount: 100,
+          },
+        ],
         error: null,
       }),
     })
@@ -101,17 +109,17 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     // Should not throw despite RLS error
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const deals = await getAllDeals()
-    
+
     // Should return deals even without loaner data
     expect(deals).toBeDefined()
     expect(Array.isArray(deals)).toBe(true)
-    
+
     // Should log warning about RLS block
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('[dealService:getAllDeals] RLS blocked loaner_assignments query'),
       expect.any(String)
     )
-    
+
     warnSpy.mockRestore()
   })
 })
@@ -164,7 +172,11 @@ describe('dealService - isRlsError classification', () => {
   })
 
   it('should recognize error messages containing "rls"', () => {
-    const messages = ['RLS violation detected', 'rls policy prevented access', 'Row-level security (RLS)']
+    const messages = [
+      'RLS violation detected',
+      'rls policy prevented access',
+      'Row-level security (RLS)',
+    ]
     messages.forEach((msg) => {
       expect(msg.toLowerCase().includes('rls')).toBe(true)
     })

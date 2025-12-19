@@ -76,7 +76,7 @@ describe('DealForm Loaner Toggle', () => {
     })
   })
 
-  it('hides loaner section when checkbox is unchecked', async () => {
+  it('renders loaner section disabled when checkbox is unchecked', async () => {
     const { container } = renderForm()
 
     await waitFor(() => {
@@ -85,10 +85,11 @@ describe('DealForm Loaner Toggle', () => {
       expect(checkbox.checked).toBe(false)
     })
 
-    // Loaner section should not be visible
     const dealForm = container.querySelector('[data-testid="deal-form"]')
     const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-    expect(loanerSection).toBeNull()
+    expect(loanerSection).toBeDefined()
+    expect(loanerSection?.getAttribute('aria-disabled')).toBe('true')
+    expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
   })
 
   it('shows loaner section when checkbox is checked', async () => {
@@ -100,11 +101,12 @@ describe('DealForm Loaner Toggle', () => {
       fireEvent.click(checkbox)
     })
 
-    // Loaner section should now be visible
+    // Loaner section should now be enabled
     await waitFor(() => {
       const dealForm = container.querySelector('[data-testid="deal-form"]')
       const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
       expect(loanerSection).toBeDefined()
+      expect(loanerSection?.getAttribute('aria-disabled')).toBe('false')
     })
 
     // Check that loaner fields are present
@@ -118,7 +120,7 @@ describe('DealForm Loaner Toggle', () => {
     expect(loanerNotesInput).toBeDefined()
   })
 
-  it('toggles loaner section visibility', async () => {
+  it('toggles loaner section enabled state', async () => {
     const { container } = renderForm()
 
     await waitFor(() => {
@@ -130,22 +132,26 @@ describe('DealForm Loaner Toggle', () => {
     const dealForm = container.querySelector('[data-testid="deal-form"]')
     const checkbox = dealForm?.querySelector('[data-testid="loaner-checkbox"]')
 
-    // Initially unchecked - section hidden
+    // Initially unchecked - section disabled
     expect(checkbox.checked).toBe(false)
-    expect(dealForm?.querySelector('[data-testid="loaner-section"]')).toBeNull()
+    const initialSection = dealForm?.querySelector('[data-testid="loaner-section"]')
+    expect(initialSection?.getAttribute('aria-disabled')).toBe('true')
+    expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
 
-    // Check it - section appears
+    // Check it - section becomes enabled
     fireEvent.click(checkbox)
     await waitFor(() => {
       const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-      expect(loanerSection).toBeDefined()
+      expect(loanerSection?.getAttribute('aria-disabled')).toBe('false')
+      expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).not.toBeDisabled()
     })
 
-    // Uncheck it - section disappears
+    // Uncheck it - section remains rendered but disabled
     fireEvent.click(checkbox)
     await waitFor(() => {
       const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-      expect(loanerSection).toBeNull()
+      expect(loanerSection?.getAttribute('aria-disabled')).toBe('true')
+      expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
     })
   })
 
