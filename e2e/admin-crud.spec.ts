@@ -110,11 +110,8 @@ test.describe('Admin CRUD - Vendors and Products', () => {
       .fill('E2E created test product')
 
     await page.getByRole('button', { name: /create/i }).click()
-
-    // Wait for modal to close (indicates creation completed)
     await page.waitForTimeout(1000)
-    
-    // Wait for the row to appear in the table (with increased timeout for DB write + RLS check)
+
     await expect(rowByText(page, productName)).toHaveCount(1, { timeout: 10_000 })
 
     // Edit the product name

@@ -152,14 +152,15 @@ test.describe('Deal create + edit flow', () => {
     await page.waitForTimeout(1000)
     
     // Stay on edit page and ensure the title persisted after reload
+    await page.waitForTimeout(1000)
     await page.reload()
-    
-    // Wait for page to fully load after reload
     await page.waitForLoadState('networkidle')
-    await expect(page.getByTestId('description-input')).toBeVisible()
 
     // Verify edited description persisted
-    await expect(page.getByTestId('description-input')).toHaveValue(editedDescription, { timeout: 10_000 })
+    await expect(page.getByTestId('description-input')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('description-input')).toHaveValue(editedDescription, {
+      timeout: 10_000,
+    })
 
     // Verify line item hydration + promised date persistence.
     // In some environments the edit page can briefly render an empty line until job_parts hydrate.

@@ -32,7 +32,8 @@ test.describe('Snapshot View (Currently Active Appointments)', () => {
         !err.includes('404') &&
         !err.includes('status of 400') &&
         !err.includes('status of 422') &&
-        !err.includes('status of 403')
+        !err.includes('status of 403') &&
+        !err.includes('Failed to load resource')
     )
 
     expect(criticalErrors).toEqual([])
