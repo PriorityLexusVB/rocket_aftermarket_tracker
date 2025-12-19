@@ -1,8 +1,8 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
 
-async function waitForEditOpen(page) {
+async function waitForEditOpen(page: Page) {
   return Promise.race([
     page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15_000 }).then(() => 'url'),
     page
@@ -11,7 +11,7 @@ async function waitForEditOpen(page) {
   ])
 }
 
-async function goToLineItems(page) {
+async function goToLineItems(page: Page) {
   const nextBtn = page.getByTestId('next-to-line-items-btn')
   if (await nextBtn.isVisible().catch(() => false)) {
     await expect(nextBtn).toBeEnabled({ timeout: 10_000 })
@@ -23,7 +23,7 @@ async function goToLineItems(page) {
   return saveBtn
 }
 
-async function fillStepOneRequiredFields(page) {
+async function fillStepOneRequiredFields(page: Page) {
   const description = page.getByTestId('description-input')
   if (await description.isVisible().catch(() => false)) {
     await description.fill(`E2E Refresh ${Date.now()}`)
@@ -40,7 +40,7 @@ async function fillStepOneRequiredFields(page) {
   }
 }
 
-async function fillPromisedDate(page, idx = 0) {
+async function fillPromisedDate(page: Page, idx = 0) {
   const promised = page.getByTestId(`promised-date-${idx}`)
   if (await promised.isVisible().catch(() => false)) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)

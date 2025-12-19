@@ -912,7 +912,6 @@ export default function DealForm({
       {/* Loaner section */}
       <section
         data-testid="loaner-section"
-        aria-disabled={!form.customer_needs_loaner}
         className={!form.customer_needs_loaner ? 'opacity-60 space-y-4' : 'space-y-4'}
       >
         <div className="flex items-center gap-3">

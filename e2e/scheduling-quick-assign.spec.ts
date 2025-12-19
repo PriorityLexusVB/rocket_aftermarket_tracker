@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 // This test is lightweight and resilient: it creates a pending job via Deal form,
 // then visits Active Appointments, switches filter to include pending/unassigned,
@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test'
 
 const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
 
-async function waitForEditOpen(page) {
+async function waitForEditOpen(page: Page) {
   return Promise.race([
     page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 }).then(() => 'url'),
     page
@@ -16,7 +16,7 @@ async function waitForEditOpen(page) {
   ])
 }
 
-async function goToLineItems(page) {
+async function goToLineItems(page: Page) {
   const nextBtn = page.getByTestId('next-to-line-items-btn')
   if (await nextBtn.isVisible().catch(() => false)) {
     await nextBtn.click()
@@ -27,7 +27,7 @@ async function goToLineItems(page) {
   return saveBtn
 }
 
-async function fillSchedulingDate(page, idx = 0) {
+async function fillSchedulingDate(page: Page, idx = 0) {
   const dateScheduled = page.getByTestId(`date-scheduled-${idx}`)
   if (await dateScheduled.isVisible().catch(() => false)) {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
@@ -45,7 +45,7 @@ async function fillSchedulingDate(page, idx = 0) {
   return false
 }
 
-async function fillSchedulingTime(page, idx = 0) {
+async function fillSchedulingTime(page: Page, idx = 0) {
   const startCandidates = [
     page.getByTestId(`scheduled-start-time-${idx}`),
     page.getByTestId(`start-time-${idx}`),
@@ -70,7 +70,7 @@ async function fillSchedulingTime(page, idx = 0) {
   }
 }
 
-async function setLineItemVendor(page, idx = 0) {
+async function setLineItemVendor(page: Page, idx = 0) {
   const offsite = page.getByTestId(`is-off-site-${idx}`)
   if (await offsite.isVisible().catch(() => false)) {
     await offsite.setChecked(true)
