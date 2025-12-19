@@ -121,13 +121,13 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       if (initializedJobId.current !== null) {
         userHasEdited.current = false
       }
-      
+
       initializedJobId.current = job.id
-      
+
       // Apply titleCase normalization immediately when loading job data in edit mode
       const customerName = job?.customer_name || job?.customerName || ''
       const vehicleDescription = job?.vehicle_description || job?.vehicleDescription || ''
-      
+
       setCustomerData({
         customerName: customerName ? titleCase(customerName) : '',
         dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
@@ -165,21 +165,23 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
           isMultiDay: false,
         }))
-        
+
         // 🔍 DEBUG: Log line items loading
         if (import.meta.env.MODE === 'development') {
           console.log('[DealFormV2] Loading line items into state:', {
             jobId: job.id,
             fromJobProp: job.lineItems.length,
             mappedCount: mappedLineItems.length,
-            sample: mappedLineItems[0] ? {
-              id: mappedLineItems[0].id,
-              product_id: mappedLineItems[0].product_id,
-              productId: mappedLineItems[0].productId,
-            } : null,
+            sample: mappedLineItems[0]
+              ? {
+                  id: mappedLineItems[0].id,
+                  product_id: mappedLineItems[0].product_id,
+                  productId: mappedLineItems[0].productId,
+                }
+              : null,
           })
         }
-        
+
         setLineItems(mappedLineItems)
       } else {
         // No line items or empty array - set to empty
@@ -342,7 +344,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       // Length between 3-20 characters
       const stockRegex = /^[A-Z0-9][A-Z0-9\-_]{2,19}$/i
       if (!stockRegex.test(stockNo)) {
-        setError('Stock number must be 3-20 alphanumeric characters (hyphens and underscores allowed)')
+        setError(
+          'Stock number must be 3-20 alphanumeric characters (hyphens and underscores allowed)'
+        )
         return false
       }
     }
@@ -522,7 +526,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Quick synchronous check for basic required fields (for disabled state)
   const hasRequiredFields = () => {
-    return customerData?.customerName?.trim()?.length > 0 && customerData?.jobNumber?.trim()?.length > 0
+    return (
+      customerData?.customerName?.trim()?.length > 0 && customerData?.jobNumber?.trim()?.length > 0
+    )
   }
 
   // Handle save
@@ -531,7 +537,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     if (savingRef.current) {
       return
     }
-    
+
     // Guard against duplicate submits (async state check)
     if (isSubmitting) {
       return
@@ -614,7 +620,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
             product_id: item?.productId,
             quantity_used: 1,
             unit_price: parseFloat(item?.unitPrice || 0),
-            promised_date: item?.requiresScheduling && item?.dateScheduled ? item.dateScheduled : null,
+            promised_date:
+              item?.requiresScheduling && item?.dateScheduled ? item.dateScheduled : null,
             scheduled_start_time: scheduledStartIso,
             scheduled_end_time: scheduledEndIso,
             requires_scheduling: Boolean(item?.requiresScheduling),
@@ -633,10 +640,12 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           job_number: payload.job_number,
           lineItemsCount: payload.lineItems?.length,
           lineItemsStateCount: lineItems?.length, // 🔍 DEBUG: Compare state vs payload
-          lineItemsSample: payload.lineItems?.[0] ? {
-            product_id: payload.lineItems[0].product_id,
-            unit_price: payload.lineItems[0].unit_price,
-          } : null,
+          lineItemsSample: payload.lineItems?.[0]
+            ? {
+                product_id: payload.lineItems[0].product_id,
+                unit_price: payload.lineItems[0].unit_price,
+              }
+            : null,
         })
       }
 
@@ -692,651 +701,658 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         <>
           {/* Progress indicator */}
           <div className="mb-6 flex items-center space-x-4">
-        <div
-          className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}
-        >
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-              currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-            }`}
-          >
-            1
-          </div>
-          <span className="font-medium">Customer</span>
-        </div>
-        <div className="flex-1 h-px bg-gray-300"></div>
-        <div
-          className={`flex items-center space-x-2 ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}
-        >
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-              currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-            }`}
-          >
-            2
-          </div>
-          <span className="font-medium">Line Items</span>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {tenantLoading && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
-          <strong>Loading:</strong> Initializing organization context...
-        </div>
-      )}
-
-      {/* Step 1: Customer */}
-      {currentStep === 1 && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Deal Date</label>
-              <input
-                type="date"
-                value={customerData?.dealDate || ''}
-                onChange={(e) =>
-                  setCustomerData((prev) => ({ ...prev, dealDate: e?.target?.value }))
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                data-testid="deal-date-input"
-              />
+            <div
+              className={`flex items-center space-x-2 ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                1
+              </div>
+              <span className="font-medium">Customer</span>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Customer Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={customerData?.customerName || ''}
-                onChange={(e) => {
-                  setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
-                }}
-                onBlur={(e) => {
-                  setCustomerData((prev) => ({
-                    ...prev,
-                    customerName: titleCase(e?.target?.value),
-                  }))
-                }}
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter customer name"
-                required
-                data-testid="customer-name-input"
-                autoComplete="off"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Deal # <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={customerData?.jobNumber || ''}
-                onChange={(e) =>
-                  setCustomerData((prev) => ({ ...prev, jobNumber: e?.target?.value }))
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter deal number"
-                required
-                data-testid="deal-number-input"
-              />
+            <div className="flex-1 h-px bg-gray-300"></div>
+            <div
+              className={`flex items-center space-x-2 ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+                }`}
+              >
+                2
+              </div>
+              <span className="font-medium">Line Items</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Vehicle Description
-              </label>
-              <input
-                type="text"
-                value={customerData?.vehicleDescription || ''}
-                onChange={(e) =>
-                  setCustomerData((prev) => ({ ...prev, vehicleDescription: e?.target?.value }))
-                }
-                onBlur={(e) =>
-                  setCustomerData((prev) => ({
-                    ...prev,
-                    vehicleDescription: titleCase(e?.target?.value),
-                  }))
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="2025 Lexus RX350"
-                data-testid="vehicle-description-input"
-              />
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+              <strong>Error:</strong> {error}
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Stock #</label>
-              <input
-                type="text"
-                value={customerData?.stockNumber || ''}
-                onChange={(e) =>
-                  setCustomerData((prev) => ({ ...prev, stockNumber: e?.target?.value }))
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter stock number"
-                data-testid="stock-number-display"
-              />
+          {tenantLoading && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+              <strong>Loading:</strong> Initializing organization context...
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">VIN</label>
-              <input
-                type="text"
-                value={customerData?.vin || ''}
-                onChange={(e) => {
-                  const value = e?.target?.value?.toUpperCase() || ''
-                  setCustomerData((prev) => ({ ...prev, vin: value }))
-                }}
-                maxLength={17}
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
-                placeholder="17-character VIN"
-                data-testid="vin-input"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Optional. Must be 17 characters (excludes I, O, Q)
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Customer Mobile
-              </label>
-              <input
-                type="tel"
-                value={customerData?.customerMobile || ''}
-                onChange={(e) =>
-                  setCustomerData((prev) => ({ ...prev, customerMobile: e?.target?.value }))
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter phone"
-                data-testid="customer-mobile-input"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Customer Email
-              </label>
-              <input
-                type="email"
-                value={customerData?.customerEmail || ''}
-                onChange={(e) =>
-                  setCustomerData((prev) => ({ ...prev, customerEmail: e?.target?.value }))
-                }
-                className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter email"
-                data-testid="customer-email-input"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-            <textarea
-              rows={3}
-              value={customerData?.notes || ''}
-              onChange={(e) => setCustomerData((prev) => ({ ...prev, notes: e?.target?.value }))}
-              className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter notes"
-              data-testid="notes-input"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MobileSelect
-              label="Sales"
-              options={dropdownData?.salesConsultants}
-              value={customerData?.assignedTo || ''}
-              onChange={(value) => setCustomerData((prev) => ({ ...prev, assignedTo: value }))}
-              placeholder="Select sales consultant"
-              testId="sales-select"
-              helpLink={
-                <span>
-                  Need to edit sales staff?{' '}
-                  <a
-                    data-testid="admin-link-sales"
-                    className="underline"
-                    href="/admin/staff"
-                  >
-                    Open Admin
-                  </a>
-                </span>
-              }
-            />
-
-            <MobileSelect
-              label="Finance"
-              options={dropdownData?.financeManagers}
-              value={customerData?.financeManager || ''}
-              onChange={(value) => setCustomerData((prev) => ({ ...prev, financeManager: value }))}
-              placeholder="Select finance manager"
-              testId="finance-select"
-              helpLink={
-                <span>
-                  Need to edit finance managers?{' '}
-                  <a
-                    data-testid="admin-link-finance"
-                    className="underline"
-                    href="/admin/staff"
-                  >
-                    Open Admin
-                  </a>
-                </span>
-              }
-            />
-
-            <MobileSelect
-              label="Delivery Coordinator"
-              options={dropdownData?.deliveryCoordinators}
-              value={customerData?.deliveryCoordinator || ''}
-              onChange={(value) =>
-                setCustomerData((prev) => ({ ...prev, deliveryCoordinator: value }))
-              }
-              placeholder="Select delivery coordinator"
-              testId="delivery-select"
-              helpLink={
-                <span>
-                  Need to edit coordinators?{' '}
-                  <a
-                    data-testid="admin-link-delivery"
-                    className="underline"
-                    href="/admin/staff"
-                  >
-                    Open Admin
-                  </a>
-                </span>
-              }
-            />
-          </div>
-
-          {/* Loaner section - wrapper always rendered for test stability */}
-          <div data-testid="loaner-section">
-            <section className="flex items-center gap-3">
-              <input
-                id="needsLoaner"
-                data-testid="loaner-checkbox"
-                className="h-5 w-5 accent-blue-600 appearance-auto"
-                type="checkbox"
-                checked={customerData?.needsLoaner}
-                onChange={(e) => {
-                  setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))
-                  if (e.target.checked) {
-                    setTimeout(() => loanerRef?.current?.focus?.(), 0)
-                  }
-                }}
-              />
-              <label htmlFor="needsLoaner" className="text-sm text-slate-800">
-                Customer needs loaner
-              </label>
-            </section>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Loaner #</label>
-                <div className="flex gap-2">
+          {/* Step 1: Customer */}
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Deal Date</label>
                   <input
-                    ref={loanerRef}
-                    data-testid="loaner-number-input"
-                    className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
-                      !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
-                    }`}
-                    placeholder="Enter loaner vehicle number"
-                    value={customerData?.loanerNumber ?? ''}
+                    type="date"
+                    value={customerData?.dealDate || ''}
                     onChange={(e) =>
-                      setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
+                      setCustomerData((prev) => ({ ...prev, dealDate: e?.target?.value }))
                     }
-                    disabled={!customerData?.needsLoaner}
-                    required={customerData?.needsLoaner}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    data-testid="deal-date-input"
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newTab = window.open('/loaner-management-drawer', '_blank')
-                      if (!newTab) {
-                        // Fallback if popup blocker
-                        window.location.assign('/loaner-management-drawer')
-                      }
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Customer Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customerData?.customerName || ''}
+                    onChange={(e) => {
+                      setCustomerData((prev) => ({ ...prev, customerName: e?.target?.value }))
                     }}
-                    disabled={!customerData?.needsLoaner}
-                    className={`mt-1 px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
-                      customerData?.needsLoaner
-                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
-                    title="Manage Loaners"
-                    data-testid="manage-loaners-btn"
-                  >
-                    Manage
-                  </button>
+                    onBlur={(e) => {
+                      setCustomerData((prev) => ({
+                        ...prev,
+                        customerName: titleCase(e?.target?.value),
+                      }))
+                    }}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter customer name"
+                    required
+                    data-testid="customer-name-input"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Deal # <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customerData?.jobNumber || ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, jobNumber: e?.target?.value }))
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter deal number"
+                    required
+                    data-testid="deal-number-input"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Vehicle Description
+                  </label>
+                  <input
+                    type="text"
+                    value={customerData?.vehicleDescription || ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, vehicleDescription: e?.target?.value }))
+                    }
+                    onBlur={(e) =>
+                      setCustomerData((prev) => ({
+                        ...prev,
+                        vehicleDescription: titleCase(e?.target?.value),
+                      }))
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="2025 Lexus RX350"
+                    data-testid="vehicle-description-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Stock #</label>
+                  <input
+                    type="text"
+                    value={customerData?.stockNumber || ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, stockNumber: e?.target?.value }))
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter stock number"
+                    data-testid="stock-number-display"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">VIN</label>
+                  <input
+                    type="text"
+                    value={customerData?.vin || ''}
+                    onChange={(e) => {
+                      const value = e?.target?.value?.toUpperCase() || ''
+                      setCustomerData((prev) => ({ ...prev, vin: value }))
+                    }}
+                    maxLength={17}
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                    placeholder="17-character VIN"
+                    data-testid="vin-input"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Optional. Must be 17 characters (excludes I, O, Q)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Customer Mobile
+                  </label>
+                  <input
+                    type="tel"
+                    value={customerData?.customerMobile || ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, customerMobile: e?.target?.value }))
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter phone"
+                    data-testid="customer-mobile-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Customer Email
+                  </label>
+                  <input
+                    type="email"
+                    value={customerData?.customerEmail || ''}
+                    onChange={(e) =>
+                      setCustomerData((prev) => ({ ...prev, customerEmail: e?.target?.value }))
+                    }
+                    className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter email"
+                    data-testid="customer-email-input"
+                  />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700">
-                  Expected Return Date
-                </label>
-                <input
-                  type="date"
-                  data-testid="loaner-return-date-input"
-                  className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
-                    !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                  value={customerData?.loanerReturnDate ?? ''}
+                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  value={customerData?.notes || ''}
                   onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
+                    setCustomerData((prev) => ({ ...prev, notes: e?.target?.value }))
                   }
-                  disabled={!customerData?.needsLoaner}
+                  className="w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter notes"
+                  data-testid="notes-input"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Loaner Notes</label>
-                <input
-                  type="text"
-                  data-testid="loaner-notes-input"
-                  className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
-                    !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
-                  }`}
-                  placeholder="Any special instructions"
-                  value={customerData?.loanerNotes ?? ''}
-                  onChange={(e) =>
-                    setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <MobileSelect
+                  label="Sales"
+                  options={dropdownData?.salesConsultants}
+                  value={customerData?.assignedTo || ''}
+                  onChange={(value) => setCustomerData((prev) => ({ ...prev, assignedTo: value }))}
+                  placeholder="Select sales consultant"
+                  testId="sales-select"
+                  helpLink={
+                    <span>
+                      Need to edit sales staff?{' '}
+                      <a data-testid="admin-link-sales" className="underline" href="/admin/staff">
+                        Open Admin
+                      </a>
+                    </span>
                   }
-                  disabled={!customerData?.needsLoaner}
+                />
+
+                <MobileSelect
+                  label="Finance"
+                  options={dropdownData?.financeManagers}
+                  value={customerData?.financeManager || ''}
+                  onChange={(value) =>
+                    setCustomerData((prev) => ({ ...prev, financeManager: value }))
+                  }
+                  placeholder="Select finance manager"
+                  testId="finance-select"
+                  helpLink={
+                    <span>
+                      Need to edit finance managers?{' '}
+                      <a data-testid="admin-link-finance" className="underline" href="/admin/staff">
+                        Open Admin
+                      </a>
+                    </span>
+                  }
+                />
+
+                <MobileSelect
+                  label="Delivery Coordinator"
+                  options={dropdownData?.deliveryCoordinators}
+                  value={customerData?.deliveryCoordinator || ''}
+                  onChange={(value) =>
+                    setCustomerData((prev) => ({ ...prev, deliveryCoordinator: value }))
+                  }
+                  placeholder="Select delivery coordinator"
+                  testId="delivery-select"
+                  helpLink={
+                    <span>
+                      Need to edit coordinators?{' '}
+                      <a
+                        data-testid="admin-link-delivery"
+                        className="underline"
+                        href="/admin/staff"
+                      >
+                        Open Admin
+                      </a>
+                    </span>
+                  }
                 />
               </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Step 2: Line Items */}
-      {currentStep === 2 && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-gray-900">Line Items</h3>
-            <Button
-              onClick={addLineItem}
-              variant="outline"
-              size="sm"
-              className="flex items-center space-x-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 h-11"
-            >
-              <Icon name="Plus" size={16} />
-              <span>Add Item</span>
-            </Button>
-          </div>
+              {/* Loaner section - wrapper always rendered for test stability */}
+              <div data-testid="loaner-section">
+                <section className="flex items-center gap-3">
+                  <input
+                    id="needsLoaner"
+                    data-testid="loaner-checkbox"
+                    className="h-5 w-5 accent-blue-600 appearance-auto"
+                    type="checkbox"
+                    checked={customerData?.needsLoaner}
+                    onChange={(e) => {
+                      setCustomerData((prev) => ({ ...prev, needsLoaner: e.target.checked }))
+                      if (e.target.checked) {
+                        setTimeout(() => loanerRef?.current?.focus?.(), 0)
+                      }
+                    }}
+                  />
+                  <label htmlFor="needsLoaner" className="text-sm text-slate-800">
+                    Customer needs loaner
+                  </label>
+                </section>
 
-          {/* Capability notice: per-line time windows not supported */}
-          {!getCapabilities().jobPartsHasTimes && (
-            <div
-              className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg"
-              data-testid="capability-notice-job-parts-times"
-            >
-              <Icon name="Info" size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-900">
-                <strong>Note:</strong> This environment doesn't store per-line time windows yet.
-                Promised dates will save; time windows are ignored.
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">Loaner #</label>
+                    <div className="flex gap-2">
+                      <input
+                        ref={loanerRef}
+                        data-testid="loaner-number-input"
+                        className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                          !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
+                        placeholder="e.g. L-1024"
+                        value={customerData?.loanerNumber ?? ''}
+                        onChange={(e) =>
+                          setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
+                        }
+                        disabled={!customerData?.needsLoaner}
+                        required={customerData?.needsLoaner}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newTab = window.open('/loaner-management-drawer', '_blank')
+                          if (!newTab) {
+                            // Fallback if popup blocker
+                            window.location.assign('/loaner-management-drawer')
+                          }
+                        }}
+                        disabled={!customerData?.needsLoaner}
+                        className={`mt-1 px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
+                          customerData?.needsLoaner
+                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                        title="Manage Loaners"
+                        data-testid="manage-loaners-btn"
+                      >
+                        Manage
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">
+                      Expected Return Date
+                    </label>
+                    <input
+                      type="date"
+                      data-testid="loaner-return-date-input"
+                      className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                        !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
+                      value={customerData?.loanerReturnDate ?? ''}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, loanerReturnDate: e.target.value }))
+                      }
+                      disabled={!customerData?.needsLoaner}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700">Loaner Notes</label>
+                    <input
+                      type="text"
+                      data-testid="loaner-notes-input"
+                      className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
+                        !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
+                      placeholder="Any special instructions"
+                      value={customerData?.loanerNotes ?? ''}
+                      onChange={(e) =>
+                        setCustomerData((prev) => ({ ...prev, loanerNotes: e.target.value }))
+                      }
+                      disabled={!customerData?.needsLoaner}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {lineItems?.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 bg-slate-50 rounded-lg border-2 border-dashed border-gray-300">
-              <Icon name="Package" size={48} className="mx-auto mb-4 text-gray-300" />
-              <p>No line items added yet</p>
-              <p className="text-sm">Click "Add Item" to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {lineItems?.map((item, index) => (
-                <div key={item?.id} className="border rounded-xl p-4 bg-slate-50 border-slate-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
-                    <button
-                      onClick={() => removeLineItem(item?.id)}
-                      className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg"
+          {/* Step 2: Line Items */}
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Line Items</h3>
+                <Button
+                  onClick={addLineItem}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 h-11"
+                >
+                  <Icon name="Plus" size={16} />
+                  <span>Add Item</span>
+                </Button>
+              </div>
+
+              {/* Capability notice: per-line time windows not supported */}
+              {!getCapabilities().jobPartsHasTimes && (
+                <div
+                  className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                  data-testid="capability-notice-job-parts-times"
+                >
+                  <Icon name="Info" size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-900">
+                    <strong>Note:</strong> This environment doesn't store per-line time windows yet.
+                    Promised dates will save; time windows are ignored.
+                  </div>
+                </div>
+              )}
+
+              {lineItems?.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 bg-slate-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <Icon name="Package" size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p>No line items added yet</p>
+                  <p className="text-sm">Click "Add Item" to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {lineItems?.map((item, index) => (
+                    <div
+                      key={item?.id}
+                      className="border rounded-xl p-4 bg-slate-50 border-slate-200"
                     >
-                      <Icon name="Trash2" size={16} />
-                    </button>
-                  </div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
+                        <button
+                          onClick={() => removeLineItem(item?.id)}
+                          className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </button>
+                      </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Product <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={item?.productId || ''}
-                        onChange={(e) => updateLineItem(item?.id, 'productId', e?.target?.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg text-base"
-                        data-testid={`product-select-${index}`}
-                      >
-                        <option value="">Select product</option>
-                        {dropdownData?.products?.map((product) => (
-                          <option key={product?.id} value={product?.id}>
-                            {product?.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Unit Price <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={item?.unitPrice}
-                        onChange={(e) => updateLineItem(item?.id, 'unitPrice', e?.target?.value)}
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={item?.isOffSite}
-                        onChange={(e) => updateLineItem(item?.id, 'isOffSite', e?.target?.checked)}
-                        className="h-5 w-5 accent-blue-600"
-                        data-testid={`is-off-site-${index}`}
-                      />
-                      <span className="text-sm">Off-Site (Vendor)</span>
-                    </label>
-
-                    {item?.isOffSite && (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700">Vendor</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Product <span className="text-red-500">*</span>
+                          </label>
                           <select
-                            data-testid={`line-vendor-${index}`}
-                            value={item?.vendorId || ''}
+                            value={item?.productId || ''}
                             onChange={(e) =>
-                              updateLineItem(item?.id, 'vendorId', e?.target?.value || null)
+                              updateLineItem(item?.id, 'productId', e?.target?.value)
                             }
-                            className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full p-3 border border-gray-300 rounded-lg text-base"
+                            data-testid={`product-select-${index}`}
                           >
-                            <option value="">— Select Vendor —</option>
-                            {dropdownData?.vendors?.map((v) => (
-                              <option key={v?.id} value={v?.id}>
-                                {v?.full_name || v?.label || v?.name}
+                            <option value="">Select product</option>
+                            {dropdownData?.products?.map((product) => (
+                              <option key={product?.id} value={product?.id}>
+                                {product?.label}
                               </option>
                             ))}
                           </select>
-                          {dropdownData?.vendors?.length === 0 && (
-                            <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
-                              No vendors available. Check{' '}
-                              <a className="underline" href="/admin?section=vendors">
-                                Admin → Vendors
-                              </a>{' '}
-                              to add or attach vendors.
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    )}
 
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={item?.requiresScheduling}
-                        onChange={(e) =>
-                          updateLineItem(item?.id, 'requiresScheduling', e?.target?.checked)
-                        }
-                        className="h-5 w-5 accent-blue-600"
-                        data-testid={`requires-scheduling-${index}`}
-                      />
-                      <span className="text-sm">Requires Scheduling</span>
-                    </label>
-
-                    {item?.requiresScheduling ? (
-                      <div className="space-y-3">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Date Scheduled <span className="text-red-500">*</span>
+                            Unit Price <span className="text-red-500">*</span>
                           </label>
                           <input
-                            type="date"
-                            value={item?.dateScheduled}
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item?.unitPrice}
                             onChange={(e) =>
-                              updateLineItem(item?.id, 'dateScheduled', e?.target?.value)
+                              updateLineItem(item?.id, 'unitPrice', e?.target?.value)
                             }
-                            min={new Date()?.toISOString()?.split('T')?.[0]}
                             className="w-full p-3 border border-gray-300 rounded-lg"
-                            data-testid={`date-scheduled-${index}`}
+                            placeholder="0.00"
                           />
                         </div>
-                        <div>
-                          <label className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={item?.isMultiDay}
-                              onChange={(e) =>
-                                updateLineItem(item?.id, 'isMultiDay', e?.target?.checked)
-                              }
-                              className="h-5 w-5 accent-blue-600"
-                              data-testid={`multi-day-${index}`}
-                            />
-                            <span className="text-sm">Multi-Day Scheduling</span>
-                          </label>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Start Time
-                            </label>
-                            <input
-                              type="time"
-                              value={item?.scheduledStartTime}
-                              onChange={(e) =>
-                                updateLineItem(item?.id, 'scheduledStartTime', e?.target?.value)
-                              }
-                              className="w-full p-3 border border-gray-300 rounded-lg"
-                              data-testid={`start-time-${index}`}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              End Time
-                            </label>
-                            <input
-                              type="time"
-                              value={item?.scheduledEndTime}
-                              onChange={(e) =>
-                                updateLineItem(item?.id, 'scheduledEndTime', e?.target?.value)
-                              }
-                              className="w-full p-3 border border-gray-300 rounded-lg"
-                              data-testid={`end-time-${index}`}
-                            />
-                          </div>
-                        </div>
                       </div>
-                    ) : (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Reason for No Schedule <span className="text-red-500">*</span>
+
+                      <div className="space-y-3">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={item?.isOffSite}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'isOffSite', e?.target?.checked)
+                            }
+                            className="h-5 w-5 accent-blue-600"
+                            data-testid={`is-off-site-${index}`}
+                          />
+                          <span className="text-sm">Off-Site (Vendor)</span>
                         </label>
-                        <input
-                          type="text"
-                          value={item?.noScheduleReason}
-                          onChange={(e) =>
-                            updateLineItem(item?.id, 'noScheduleReason', e?.target?.value)
-                          }
-                          className="w-full p-3 border border-gray-300 rounded-lg"
-                          placeholder="e.g., installed at delivery"
-                        />
+
+                        {item?.isOffSite && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700">
+                                Vendor
+                              </label>
+                              <select
+                                data-testid={`line-vendor-${index}`}
+                                value={item?.vendorId || ''}
+                                onChange={(e) =>
+                                  updateLineItem(item?.id, 'vendorId', e?.target?.value || null)
+                                }
+                                className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              >
+                                <option value="">— Select Vendor —</option>
+                                {dropdownData?.vendors?.map((v) => (
+                                  <option key={v?.id} value={v?.id}>
+                                    {v?.full_name || v?.label || v?.name}
+                                  </option>
+                                ))}
+                              </select>
+                              {dropdownData?.vendors?.length === 0 && (
+                                <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded px-2 py-1">
+                                  No vendors available. Check{' '}
+                                  <a className="underline" href="/admin?section=vendors">
+                                    Admin → Vendors
+                                  </a>{' '}
+                                  to add or attach vendors.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={item?.requiresScheduling}
+                            onChange={(e) =>
+                              updateLineItem(item?.id, 'requiresScheduling', e?.target?.checked)
+                            }
+                            className="h-5 w-5 accent-blue-600"
+                            data-testid={`requires-scheduling-${index}`}
+                          />
+                          <span className="text-sm">Requires Scheduling</span>
+                        </label>
+
+                        {item?.requiresScheduling ? (
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Date Scheduled <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="date"
+                                value={item?.dateScheduled}
+                                onChange={(e) =>
+                                  updateLineItem(item?.id, 'dateScheduled', e?.target?.value)
+                                }
+                                min={new Date()?.toISOString()?.split('T')?.[0]}
+                                className="w-full p-3 border border-gray-300 rounded-lg"
+                                data-testid={`date-scheduled-${index}`}
+                              />
+                            </div>
+                            <div>
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={item?.isMultiDay}
+                                  onChange={(e) =>
+                                    updateLineItem(item?.id, 'isMultiDay', e?.target?.checked)
+                                  }
+                                  className="h-5 w-5 accent-blue-600"
+                                  data-testid={`multi-day-${index}`}
+                                />
+                                <span className="text-sm">Multi-Day Scheduling</span>
+                              </label>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Start Time
+                                </label>
+                                <input
+                                  type="time"
+                                  value={item?.scheduledStartTime}
+                                  onChange={(e) =>
+                                    updateLineItem(item?.id, 'scheduledStartTime', e?.target?.value)
+                                  }
+                                  className="w-full p-3 border border-gray-300 rounded-lg"
+                                  data-testid={`start-time-${index}`}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  End Time
+                                </label>
+                                <input
+                                  type="time"
+                                  value={item?.scheduledEndTime}
+                                  onChange={(e) =>
+                                    updateLineItem(item?.id, 'scheduledEndTime', e?.target?.value)
+                                  }
+                                  className="w-full p-3 border border-gray-300 rounded-lg"
+                                  data-testid={`end-time-${index}`}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Reason for No Schedule <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={item?.noScheduleReason}
+                              onChange={(e) =>
+                                updateLineItem(item?.id, 'noScheduleReason', e?.target?.value)
+                              }
+                              className="w-full p-3 border border-gray-300 rounded-lg"
+                              placeholder="e.g., installed at delivery"
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+                  ))}
+
+                  {/* Total */}
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-medium text-gray-900">Total:</span>
+                      <span className="text-xl font-bold text-green-700">
+                        ${calculateTotal()?.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              ))}
-
-              {/* Total */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-medium text-gray-900">Total:</span>
-                  <span className="text-xl font-bold text-green-700">
-                    ${calculateTotal()?.toFixed(2)}
-                  </span>
-                </div>
-              </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {/* Footer */}
-      <div className="mt-6 flex justify-between">
-        <div className="flex space-x-3">
-          {currentStep === 2 && (
-            <Button onClick={() => setCurrentStep(1)} variant="outline" disabled={isSubmitting}>
-              ← Back
-            </Button>
-          )}
-        </div>
+          {/* Footer */}
+          <div className="mt-6 flex justify-between">
+            <div className="flex space-x-3">
+              {currentStep === 2 && (
+                <Button onClick={() => setCurrentStep(1)} variant="outline" disabled={isSubmitting}>
+                  ← Back
+                </Button>
+              )}
+            </div>
 
-        <div className="flex space-x-3">
-          <Button onClick={onCancel} variant="outline" disabled={isSubmitting}>
-            Cancel
-          </Button>
+            <div className="flex space-x-3">
+              <Button onClick={onCancel} variant="outline" disabled={isSubmitting}>
+                Cancel
+              </Button>
 
-          {currentStep === 1 && (
-            <Button
-              onClick={handleNext}
-              disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              data-testid="next-to-line-items-btn"
-            >
-              Next → Line Items
-            </Button>
-          )}
+              {currentStep === 1 && (
+                <Button
+                  onClick={handleNext}
+                  disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  data-testid="next-to-line-items-btn"
+                >
+                  Next → Line Items
+                </Button>
+              )}
 
-          {currentStep === 2 && (
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={!hasRequiredFields() || !validateStep2() || isSubmitting}
-              className="bg-green-600 hover:bg-green-700 text-white"
-              data-testid="save-deal-btn"
-            >
-              {isSubmitting ? 'Saving...' : mode === 'edit' ? 'Update Deal' : 'Create Deal'}
-            </Button>
-          )}
-        </div>
-      </div>
+              {currentStep === 2 && (
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={!hasRequiredFields() || !validateStep2() || isSubmitting}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  data-testid="save-deal-btn"
+                >
+                  {isSubmitting ? 'Saving...' : mode === 'edit' ? 'Update Deal' : 'Create Deal'}
+                </Button>
+              )}
+            </div>
+          </div>
         </>
       )}
     </div>

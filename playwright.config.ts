@@ -52,7 +52,7 @@ export default defineConfig({
     // Launch a fresh Vite dev server with explicit env vars so no .env.local is required in CI/agent
     command: 'pnpm start -- --port 5173',
     port: 5173,
-    reuseExistingServer: true, // Reuse an already running dev server to avoid port conflicts during local runs
+    reuseExistingServer: !process.env.CI, // Avoid stale state in CI but allow reuse locally
     env: {
       // Supabase client for the SPA
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
