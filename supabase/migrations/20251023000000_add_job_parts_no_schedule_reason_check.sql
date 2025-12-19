@@ -35,18 +35,11 @@ BEGIN
     RETURN;
   END IF;
 
-  EXECUTE $$
-    ALTER TABLE public.job_parts
-    ADD CONSTRAINT job_parts_no_schedule_reason_chk
-    CHECK (
-      requires_scheduling
-      OR (
-        NOT requires_scheduling
-        AND COALESCE(NULLIF(trim(no_schedule_reason), ''), NULL) IS NOT NULL
-      )
-    ) NOT VALID
-  $$;
-END $$;
+  EXECUTE format(
+    'ALTER TABLE public.job_parts ADD CONSTRAINT job_parts_no_schedule_reason_chk CHECK (requires_scheduling OR (NOT requires_scheduling AND COALESCE(NULLIF(trim(no_schedule_reason), '''''' ), NULL) IS NOT NULL)) NOT VALID'
+  );
+END;
+$$ LANGUAGE plpgsql;
 
 -- To validate later (optional, may fail if existing rows violate):
 -- ALTER TABLE public.job_parts VALIDATE CONSTRAINT job_parts_no_schedule_reason_chk;
