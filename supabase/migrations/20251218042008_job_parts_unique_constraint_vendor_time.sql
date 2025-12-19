@@ -113,6 +113,7 @@ END$$;
 -- =============================================================================
 -- STEP 3: Verification
 -- =============================================================================
+-- VERIFICATION: Ensure uniqueness constraints are enforced and migration completes
 DO $$
 DECLARE
   index_exists BOOLEAN;
@@ -157,6 +158,7 @@ BEGIN
   END IF;
 
   -- Success
+  RAISE NOTICE 'VERIFICATION: job_parts_unique constraint enforced and verified';
   RAISE NOTICE '========================================';
   RAISE NOTICE '✅ MIGRATION COMPLETE';
   RAISE NOTICE '========================================';
