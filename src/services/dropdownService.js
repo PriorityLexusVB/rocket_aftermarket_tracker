@@ -183,7 +183,7 @@ async function getScopedOrgId() {
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle()
-        
+
         emailError = emailErr
 
         if (profByEmail?.org_id) {
@@ -313,11 +313,11 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
 
       try {
         // 1) exact filter by department/role
-      let q = supabase
-        .from('user_profiles')
-        .select(
-          [
-            'id',
+        let q = supabase
+          .from('user_profiles')
+          .select(
+            [
+              'id',
               nameCol,
               'email',
               'department',
@@ -349,13 +349,21 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
         // Break out of retry loop if successful (no errors)
         break
       } catch (err) {
-        console.error(`getStaff exact query failed (attempt ${attempt}):`, {
+        const msg = String(err?.message || '').toLowerCase()
+
+        // Downgrade noisy schema errors to warnings so we don't trip console error listeners
+        const isSchemaMissing =
+          msg.includes('does not exist') ||
+          (msg.includes('user_profiles') && msg.includes('column')) ||
+          (msg.includes('user_profiles') && msg.includes('name'))
+
+        const logFn = isSchemaMissing ? console.warn : console.error
+        logFn(`getStaff exact query failed (attempt ${attempt}):`, {
           err,
           departments,
           roles,
         })
         // Downgrade capability flags if the error references missing columns
-        const msg = String(err?.message || '').toLowerCase()
         let degraded = false
 
         // Detect and handle vendor_id missing column

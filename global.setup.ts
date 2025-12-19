@@ -160,6 +160,13 @@ export default async function globalSetup() {
     }
   }
 
+  // Ensure elevated role for admin-only flows in tests
+  try {
+    await page.evaluate(() => {
+      localStorage.setItem('userRole', 'admin')
+    })
+  } catch {}
+
   await fs.mkdir(storageDir, { recursive: true })
   await context.storageState({ path: storagePath })
   await browser.close()
