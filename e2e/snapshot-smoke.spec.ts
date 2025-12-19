@@ -30,7 +30,9 @@ test.describe('Snapshot View (Currently Active Appointments)', () => {
         !err.includes('favicon') &&
         !err.includes('ResizeObserver') &&
         !err.includes('404') &&
-        !err.includes('Failed to load resource')  // Allow transient resource failures
+        !err.includes('status of 400') &&
+        !err.includes('status of 422') &&
+        !err.includes('status of 403')
     )
 
     expect(criticalErrors).toEqual([])
