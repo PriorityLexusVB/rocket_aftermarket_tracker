@@ -108,8 +108,6 @@ test.describe('Deals List Refresh After Edit', () => {
     const dealId = await firstDeal.getAttribute('data-testid')
     const cleanDealId = dealId?.replace('deal-row-', '')
     if (!cleanDealId) test.skip(true, 'No deal id available to inspect')
-
-    console.log(`Deal row present for id ${cleanDealId}`)
   })
 
   test('should update promised date/window in deals list after edit', async ({ page }) => {
@@ -144,7 +142,6 @@ test.describe('Deals List Refresh After Edit', () => {
       tomorrow.setDate(tomorrow.getDate() + 1)
       newPromisedDate = tomorrow.toISOString().split('T')[0]
       await promisedDateInput.fill(newPromisedDate)
-      console.log(`Updated promised date to: ${newPromisedDate}`)
     } else {
       const dateScheduled = page.getByTestId('date-scheduled-0')
       if (await dateScheduled.isVisible().catch(() => false)) {
@@ -152,7 +149,6 @@ test.describe('Deals List Refresh After Edit', () => {
         tomorrow.setDate(tomorrow.getDate() + 1)
         newPromisedDate = tomorrow.toISOString().split('T')[0]
         await dateScheduled.fill(newPromisedDate)
-        console.log(`Updated date scheduled to: ${newPromisedDate}`)
       }
     }
 
@@ -191,7 +187,5 @@ test.describe('Deals List Refresh After Edit', () => {
 
     // We just verify a date field exists - exact matching depends on list column design
     expect(hasDateInRow || true).toBeTruthy() // Soft assertion - list may not show promised dates
-
-    console.log('✓ Promised date field check completed')
   })
 })

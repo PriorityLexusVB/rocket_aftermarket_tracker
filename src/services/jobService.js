@@ -36,7 +36,8 @@ async function selectJobs(baseQuery) {
         details: error?.details,
         hint: error?.hint,
       })
-      const fallback = await run(baseQuery?.select('*')).catch(() => [])
+      // Try basic fallback, but surface errors if both fail
+      const fallback = await run(baseQuery?.select('*'))
       return fallback ?? []
     }
 
@@ -55,8 +56,8 @@ async function selectJobs(baseQuery) {
       return r
     })
   } catch (expandedErr) {
-    console.warn('[jobService] Unexpected error in selectJobs:', expandedErr?.message)
-    return []
+    console.error('[jobService] selectJobs failed:', expandedErr?.message)
+    throw expandedErr
   }
 }
 

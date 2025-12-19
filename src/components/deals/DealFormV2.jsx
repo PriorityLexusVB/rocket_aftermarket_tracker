@@ -989,7 +989,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     className={`mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg ${
                       !customerData?.needsLoaner ? 'bg-gray-100 cursor-not-allowed' : ''
                     }`}
-                    placeholder="Enter loaner vehicle number"
+                    placeholder="e.g. L-1024"
                     value={customerData?.loanerNumber ?? ''}
                     onChange={(e) =>
                       setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
