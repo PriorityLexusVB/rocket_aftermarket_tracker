@@ -85,5 +85,13 @@
     "GIN",
     "tsvector",
     "tsquery"
-  ]
+  ],
+  "chat.mcp.serverSampling": {
+    "rocket_aftermarket_tracker/.vscode/mcp.json: supabase": {
+      "allowedModels": ["copilot/gpt-5.1-codex-max", "copilot/gpt-5.2"]
+    },
+    "rocket_aftermarket_tracker/.vscode/mcp.json: github": {
+      "allowedModels": ["copilot/gpt-5.1-codex-max", "copilot/gpt-5.2"]
+    }
+  }
 }
