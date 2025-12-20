@@ -20,6 +20,7 @@ import { jobPartInsertSchema } from '@/db/schemas'
 
 const VENDOR_PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000'
 const TIME_PLACEHOLDER = '1970-01-01 00:00:00+00'
+const DATE_PLACEHOLDER = '1970-01-01'
 
 function normalizeTime(value) {
   if (!value) return null
@@ -125,6 +126,12 @@ async function updateExistingJobParts(jobId, rows = [], opts = {}) {
 
     query = query.eq('job_id', jobId).eq('product_id', row.product_id)
 
+    if (row.promised_date) {
+      query = query.eq('promised_date', row.promised_date)
+    } else {
+      query = query.is('promised_date', null)
+    }
+
     if (includeVendor) {
       query = row.vendor_id ? query.eq('vendor_id', row.vendor_id) : query.is('vendor_id', null)
     }
@@ -223,6 +230,7 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
     const keyParts = [
       record.job_id,
       record.product_id,
+      record.promised_date ?? DATE_PLACEHOLDER,
       includeVendor ? (record.vendor_id ?? VENDOR_PLACEHOLDER_UUID) : VENDOR_PLACEHOLDER_UUID,
       includeTimes ? (record.scheduled_start_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
       includeTimes ? (record.scheduled_end_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
@@ -293,6 +301,7 @@ function normalizeAndDedupeJobPartRows(rows = [], opts = {}) {
     // Build composite key from fields that define "the same line"
     const keyParts = [
       row.product_id || 'null',
+      row.promised_date || DATE_PLACEHOLDER,
       includeVendor ? row.vendor_id || 'null' : '',
       includeTimes ? row.scheduled_start_time || 'null' : '',
       includeTimes ? row.scheduled_end_time || 'null' : '',
@@ -378,7 +387,7 @@ function toJobPartRows(jobId, items = [], opts = {}) {
  * Replace all job_parts for a given job with new parts
  *
  * This is the ONLY function that should directly write to job_parts table.
- * It ensures atomicity: DELETE all existing parts, then INSERT new ones.
+ * It uses an upsert on the logical key so saves are idempotent and avoid duplicates.
  *
  * @param {string} jobId - The job ID to update parts for
  * @param {Array} lineItems - Array of line item objects to convert to job_parts
@@ -398,7 +407,7 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     })
   }
 
-  // Step 1: DELETE all existing job_parts for this job
+  // Remove existing rows so deletions are honored before upsert
   const { error: delErr } = await supabase?.from('job_parts')?.delete()?.eq('job_id', jobId)
   if (delErr) {
     console.error('[replaceJobPartsForJob] DELETE failed:', delErr)
@@ -409,10 +418,9 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     console.log('[replaceJobPartsForJob] DELETE successful')
   }
 
-  // Step 2: INSERT new job_parts if any
   if ((lineItems || []).length === 0) {
     if (import.meta.env.MODE === 'development') {
-      console.log('[replaceJobPartsForJob] No line items to insert, done')
+      console.log('[replaceJobPartsForJob] No line items to upsert, done')
     }
     return
   }
@@ -429,36 +437,34 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     return
   }
 
+  const conflictColumns = ['job_id', 'product_id']
+  if (includeVendor) conflictColumns.push('vendor_id')
+  conflictColumns.push('promised_date')
+  if (includeTimes) {
+    conflictColumns.push('scheduled_start_time', 'scheduled_end_time')
+  }
+  const onConflict = conflictColumns.join(',')
+
   if (import.meta.env.MODE === 'development') {
     console.log('🧩 job_parts payload for save', {
       jobId: jobId.slice(0, 8) + '...',
       payloadCount: rows.length,
       jobPartsPayload: rows,
+      onConflict,
     })
   }
 
-  // Try INSERT with retry logic for missing columns
-  const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)?.select()
+  const { error: upsertErr } = await supabase
+    ?.from('job_parts')
+    ?.upsert(rows, { onConflict, ignoreDuplicates: false })
+    ?.select()
 
-  if (insErr) {
-    // Unique constraint violations can happen if DELETE was ineffective (e.g., due to RLS).
-    // Fallback: update existing rows in-place instead of crashing the save.
-    if (isUniqueViolationError(insErr)) {
-      try {
-        await updateExistingJobParts(jobId, rows, { includeTimes, includeVendor })
-        return
-      } catch (updateErr) {
-        console.error('[replaceJobPartsForJob] Unique violation recovery failed:', updateErr)
-        // fall through to existing error handling
-      }
-    }
-
+  if (upsertErr) {
     // Handle missing column errors with retry
-    if (isMissingColumnError(insErr)) {
-      const errorCode = classifySchemaError(insErr)
-      const lower = String(insErr?.message || '').toLowerCase()
+    if (isMissingColumnError(upsertErr)) {
+      const errorCode = classifySchemaError(upsertErr)
+      const lower = String(upsertErr?.message || '').toLowerCase()
 
-      // Missing vendor_id column - retry without it
       if (lower.includes('job_parts') && lower.includes('vendor_id')) {
         if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
           console.warn(
@@ -469,29 +475,28 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
 
           includeVendor = false
           const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
-
-          if (import.meta.env.MODE === 'development') {
-            console.log('🧩 job_parts payload retry without vendor_id', {
-              jobId: jobId.slice(0, 8) + '...',
-              payloadCount: retryRows.length,
-              jobPartsPayload: retryRows,
-            })
+          const retryConflict = ['job_id', 'product_id']
+          retryConflict.push('promised_date')
+          if (includeTimes) {
+            retryConflict.push('scheduled_start_time', 'scheduled_end_time')
           }
+          const retryOnConflict = retryConflict.join(',')
 
-          const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)?.select()
+          const { error: retryErr } = await supabase
+            ?.from('job_parts')
+            ?.upsert(retryRows, { onConflict: retryOnConflict, ignoreDuplicates: false })
+            ?.select()
           if (retryErr) {
-            console.error('[replaceJobPartsForJob] Retry INSERT failed:', retryErr)
-            throw new Error(`Failed to insert job_parts (retry): ${retryErr?.message}`)
+            console.error('[replaceJobPartsForJob] Retry UPSERT failed:', retryErr)
+            throw new Error(`Failed to upsert job_parts (retry): ${retryErr?.message}`)
           }
 
           if (import.meta.env.MODE === 'development') {
-            console.log('[replaceJobPartsForJob] Retry INSERT successful')
+            console.log('[replaceJobPartsForJob] Retry UPSERT successful')
           }
           return
         }
-      }
-      // Missing scheduled time columns - retry without them
-      else if (
+      } else if (
         lower.includes('job_parts') &&
         (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
       ) {
@@ -503,35 +508,43 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
 
         includeTimes = false
         const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
+        const retryConflict = ['job_id', 'product_id']
+        if (includeVendor) retryConflict.push('vendor_id')
+        retryConflict.push('promised_date')
+        const retryOnConflict = retryConflict.join(',')
 
-        if (import.meta.env.MODE === 'development') {
-          console.log('🧩 job_parts payload retry without scheduled times', {
-            jobId: jobId.slice(0, 8) + '...',
-            payloadCount: retryRows.length,
-            jobPartsPayload: retryRows,
-          })
-        }
-
-        const { error: retryErr } = await supabase?.from('job_parts')?.insert(retryRows)?.select()
+        const { error: retryErr } = await supabase
+          ?.from('job_parts')
+          ?.upsert(retryRows, { onConflict: retryOnConflict, ignoreDuplicates: false })
+          ?.select()
         if (retryErr) {
-          console.error('[replaceJobPartsForJob] Retry INSERT failed:', retryErr)
-          throw new Error(`Failed to insert job_parts (retry): ${retryErr?.message}`)
+          console.error('[replaceJobPartsForJob] Retry UPSERT failed:', retryErr)
+          throw new Error(`Failed to upsert job_parts (retry): ${retryErr?.message}`)
         }
 
         if (import.meta.env.MODE === 'development') {
-          console.log('[replaceJobPartsForJob] Retry INSERT successful')
+          console.log('[replaceJobPartsForJob] Retry UPSERT successful')
         }
         return
       }
     }
 
-    // Other errors - throw immediately
-    console.error('[replaceJobPartsForJob] INSERT failed:', insErr)
-    throw new Error(`Failed to insert job_parts: ${insErr?.message}`)
+    // Unique violation should not happen with upsert, but recover by updating in place if it does
+    if (isUniqueViolationError(upsertErr)) {
+      try {
+        await updateExistingJobParts(jobId, rows, { includeTimes, includeVendor })
+        return
+      } catch (updateErr) {
+        console.error('[replaceJobPartsForJob] Unique violation recovery failed:', updateErr)
+      }
+    }
+
+    console.error('[replaceJobPartsForJob] UPSERT failed:', upsertErr)
+    throw new Error(`Failed to upsert job_parts: ${upsertErr?.message}`)
   }
 
   if (import.meta.env.MODE === 'development') {
-    console.log('[replaceJobPartsForJob] INSERT successful, completed')
+    console.log('[replaceJobPartsForJob] UPSERT successful, completed')
   }
 }
 

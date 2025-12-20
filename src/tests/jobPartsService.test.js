@@ -10,23 +10,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Track calls
-let deleteCallCount = 0
-let insertCallCount = 0
+let upsertCallCount = 0
 let insertedRows = []
+let lastOnConflict = null
 
 // Mock supabase at module level
 vi.mock('../lib/supabase', () => {
   return {
     supabase: {
       from: vi.fn(() => ({
-        delete: vi.fn(() => {
-          deleteCallCount++
-          return {
-            eq: vi.fn(() => Promise.resolve({ error: null })),
-          }
-        }),
-        insert: vi.fn((rows) => {
-          insertCallCount++
+        delete: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ error: null })),
+        })),
+        upsert: vi.fn((rows, opts) => {
+          upsertCallCount++
+          lastOnConflict = opts?.onConflict || null
           insertedRows.push(...(Array.isArray(rows) ? rows : [rows]))
           return {
             select: vi.fn(() => Promise.resolve({ error: null })),
@@ -60,16 +58,16 @@ import {
 describe('jobPartsService - replaceJobPartsForJob', () => {
   beforeEach(() => {
     // Reset tracking
-    deleteCallCount = 0
-    insertCallCount = 0
+    upsertCallCount = 0
     insertedRows = []
+    lastOnConflict = null
   })
 
   afterEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should DELETE then INSERT for new parts', async () => {
+  it('should upsert new parts once', async () => {
     const jobId = 'job-123'
     const lineItems = [
       {
@@ -81,11 +79,8 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     await replaceJobPartsForJob(jobId, lineItems)
 
-    // Verify DELETE was called once
-    expect(deleteCallCount).toBe(1)
-
-    // Verify INSERT was called once
-    expect(insertCallCount).toBe(1)
+    // Verify UPSERT was called once
+    expect(upsertCallCount).toBe(1)
 
     // Verify exactly 1 row was inserted
     expect(insertedRows).toHaveLength(1)
@@ -93,7 +88,7 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
     expect(insertedRows[0].product_id).toBe('prod-1')
   })
 
-  it('should DELETE then INSERT on second save without accumulation', async () => {
+  it('should upsert on repeat saves without accumulation', async () => {
     const jobId = 'job-123'
     const lineItems = [
       {
@@ -105,27 +100,21 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     // First save
     await replaceJobPartsForJob(jobId, lineItems)
-    const firstDeleteCount = deleteCallCount
-    const firstInsertCount = insertCallCount
+    const firstUpsertCount = upsertCallCount
     const firstInsertedCount = insertedRows.length
 
-    expect(firstDeleteCount).toBe(1)
-    expect(firstInsertCount).toBe(1)
+    expect(firstUpsertCount).toBe(1)
     expect(firstInsertedCount).toBe(1)
 
     // Reset tracking
-    deleteCallCount = 0
-    insertCallCount = 0
+    upsertCallCount = 0
     insertedRows = []
 
     // Second save (simulating edit)
     await replaceJobPartsForJob(jobId, lineItems)
 
-    // Verify DELETE called again
-    expect(deleteCallCount).toBe(1)
-
-    // Verify INSERT called again
-    expect(insertCallCount).toBe(1)
+    // Verify UPSERT called again
+    expect(upsertCallCount).toBe(1)
 
     // Verify still exactly 1 row (not accumulated)
     expect(insertedRows).toHaveLength(1)
@@ -136,11 +125,8 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     await replaceJobPartsForJob(jobId, [])
 
-    // DELETE should still be called
-    expect(deleteCallCount).toBe(1)
-
-    // INSERT should NOT be called for empty array
-    expect(insertCallCount).toBe(0)
+    // UPSERT should NOT be called for empty array
+    expect(upsertCallCount).toBe(0)
   })
 
   it('should handle multiple line items', async () => {
@@ -153,11 +139,8 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     await replaceJobPartsForJob(jobId, lineItems)
 
-    // Verify DELETE called once
-    expect(deleteCallCount).toBe(1)
-
-    // Verify INSERT called once
-    expect(insertCallCount).toBe(1)
+    // Verify UPSERT called once
+    expect(upsertCallCount).toBe(1)
 
     // Verify exactly 3 rows inserted
     expect(insertedRows).toHaveLength(3)
@@ -218,11 +201,8 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     await replaceJobPartsForJob(jobId, lineItems)
 
-    // Verify DELETE called once
-    expect(deleteCallCount).toBe(1)
-
-    // Verify INSERT called once
-    expect(insertCallCount).toBe(1)
+    // Verify UPSERT called once
+    expect(upsertCallCount).toBe(1)
 
     // Verify only ONE row inserted (duplicates removed)
     expect(insertedRows).toHaveLength(1)
@@ -243,7 +223,7 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     await replaceJobPartsForJob(jobId, lineItems)
 
-    expect(insertCallCount).toBe(1)
+    expect(upsertCallCount).toBe(1)
     expect(insertedRows).toHaveLength(1)
     expect(insertedRows[0].product_id).toBe('prod-keep')
     expect(insertedRows[0].quantity_used).toBe(2)
@@ -314,6 +294,33 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
     expect(insertedRows[1].quantity_used).toBe(3)
   })
 
+  it('buildJobPartsPayload keeps rows distinct when promised_date differs', () => {
+    const payload = buildJobPartsPayload(
+      'job-abc',
+      [
+        {
+          product_id: 'prod-1',
+          vendor_id: 'vend-1',
+          promised_date: '2025-01-01',
+          scheduled_start_time: '2025-01-02T10:00:00Z',
+          scheduled_end_time: '2025-01-02T11:00:00Z',
+        },
+        {
+          product_id: 'prod-1',
+          vendor_id: 'vend-1',
+          promised_date: '2025-01-03',
+          scheduled_start_time: '2025-01-02T10:00:00Z',
+          scheduled_end_time: '2025-01-02T11:00:00Z',
+        },
+      ],
+      { includeTimes: true, includeVendor: true }
+    )
+
+    expect(payload).toHaveLength(2)
+    expect(payload[0].promised_date).toBe('2025-01-01')
+    expect(payload[1].promised_date).toBe('2025-01-03')
+  })
+
   it('should prevent accumulation across three consecutive saves', async () => {
     const jobId = 'job-123'
     const lineItems = [
@@ -322,30 +329,25 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     // First save
     await replaceJobPartsForJob(jobId, lineItems)
-    expect(deleteCallCount).toBe(1)
-    expect(insertCallCount).toBe(1)
+    expect(upsertCallCount).toBe(1)
     expect(insertedRows).toHaveLength(1)
 
     // Reset tracking
-    deleteCallCount = 0
-    insertCallCount = 0
+    upsertCallCount = 0
     insertedRows = []
 
     // Second save
     await replaceJobPartsForJob(jobId, lineItems)
-    expect(deleteCallCount).toBe(1)
-    expect(insertCallCount).toBe(1)
+    expect(upsertCallCount).toBe(1)
     expect(insertedRows).toHaveLength(1) // Still 1, not 2
 
     // Reset tracking again
-    deleteCallCount = 0
-    insertCallCount = 0
+    upsertCallCount = 0
     insertedRows = []
 
     // Third save
     await replaceJobPartsForJob(jobId, lineItems)
-    expect(deleteCallCount).toBe(1)
-    expect(insertCallCount).toBe(1)
+    expect(upsertCallCount).toBe(1)
     expect(insertedRows).toHaveLength(1) // Still 1, not 3
 
     // Verify the quantity hasn't accumulated (still 1, not 3)
@@ -391,5 +393,38 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
     expect(payload).toHaveLength(1)
     expect(payload[0].scheduled_start_time).toBe('2025-01-01T10:00:00Z')
     expect(payload[0].scheduled_end_time).toBe('2025-01-01T12:00:00Z')
+  })
+
+  it('uses conflict key with vendor and times when available', async () => {
+    const jobId = 'job-999'
+    const lineItems = [
+      {
+        product_id: 'prod-1',
+        vendor_id: 'vend-1',
+        promised_date: '2025-02-01',
+        scheduledStartTime: '2025-02-02T10:00:00Z',
+        scheduledEndTime: '2025-02-02T11:00:00Z',
+      },
+    ]
+
+    await replaceJobPartsForJob(jobId, lineItems)
+
+    expect(lastOnConflict).toBe(
+      'job_id,product_id,vendor_id,promised_date,scheduled_start_time,scheduled_end_time'
+    )
+  })
+
+  it('uses conflict key without vendor/time when capabilities are disabled', async () => {
+    const jobId = 'job-888'
+    const lineItems = [
+      {
+        product_id: 'prod-1',
+        promised_date: '2025-03-01',
+      },
+    ]
+
+    await replaceJobPartsForJob(jobId, lineItems, { includeVendor: false, includeTimes: false })
+
+    expect(lastOnConflict).toBe('job_id,product_id,promised_date')
   })
 })
