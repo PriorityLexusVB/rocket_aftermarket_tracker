@@ -580,6 +580,57 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         }
       }
 
+      const lineItemsPayload = lineItems.map((item) => {
+        // Combine date and time into proper ISO datetime for timestamptz columns
+        // This fixes: "invalid input syntax for type timestamp with time zone: '13:07'"
+        const scheduledStartIso = item?.requiresScheduling
+          ? combineDateAndTime(item?.dateScheduled, item?.scheduledStartTime)
+          : null
+        const scheduledEndIso = item?.requiresScheduling
+          ? combineDateAndTime(item?.dateScheduled, item?.scheduledEndTime)
+          : null
+
+        return {
+          product_id: item?.productId,
+          quantity_used: 1,
+          unit_price: parseFloat(item?.unitPrice || 0),
+          promised_date:
+            item?.requiresScheduling && item?.dateScheduled ? item.dateScheduled : null,
+          scheduled_start_time: scheduledStartIso,
+          scheduled_end_time: scheduledEndIso,
+          requires_scheduling: Boolean(item?.requiresScheduling),
+          no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
+          is_off_site: Boolean(item?.isOffSite),
+          vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
+        }
+      })
+
+      // For vendor deals, ensure at least one scheduled line item with a start time exists
+      const scheduledLineItems = lineItemsPayload
+        ?.filter((li) => li?.requires_scheduling)
+        ?.filter((li) => li?.scheduled_start_time)
+
+      if (customerData?.vendorId && (!scheduledLineItems || scheduledLineItems.length === 0)) {
+        setError('Vendor jobs require at least one scheduled line item with a start time')
+        setIsSubmitting(false)
+        savingRef.current = false
+        return
+      }
+
+      // Derive job-level schedule from earliest scheduled line item to satisfy DB constraint
+      let jobScheduledStartTime = null
+      let jobScheduledEndTime = null
+      if (scheduledLineItems && scheduledLineItems.length > 0) {
+        const earliest = scheduledLineItems.reduce((acc, curr) => {
+          if (!acc) return curr
+          return new Date(curr.scheduled_start_time) < new Date(acc.scheduled_start_time)
+            ? curr
+            : acc
+        }, null)
+        jobScheduledStartTime = earliest?.scheduled_start_time || null
+        jobScheduledEndTime = earliest?.scheduled_end_time || null
+      }
+
       const payload = {
         customer_name: customerData?.customerName?.trim(),
         deal_date: customerData?.dealDate,
@@ -603,30 +654,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               notes: customerData?.loanerNotes?.trim() || null,
             }
           : null,
-        lineItems: lineItems.map((item) => {
-          // Combine date and time into proper ISO datetime for timestamptz columns
-          // This fixes: "invalid input syntax for type timestamp with time zone: '13:07'"
-          const scheduledStartIso = item?.requiresScheduling
-            ? combineDateAndTime(item?.dateScheduled, item?.scheduledStartTime)
-            : null
-          const scheduledEndIso = item?.requiresScheduling
-            ? combineDateAndTime(item?.dateScheduled, item?.scheduledEndTime)
-            : null
-
-          return {
-            product_id: item?.productId,
-            quantity_used: 1,
-            unit_price: parseFloat(item?.unitPrice || 0),
-            promised_date:
-              item?.requiresScheduling && item?.dateScheduled ? item.dateScheduled : null,
-            scheduled_start_time: scheduledStartIso,
-            scheduled_end_time: scheduledEndIso,
-            requires_scheduling: Boolean(item?.requiresScheduling),
-            no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
-            is_off_site: Boolean(item?.isOffSite),
-            vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
-          }
-        }),
+        lineItems: lineItemsPayload,
+        scheduled_start_time: jobScheduledStartTime,
+        scheduled_end_time: jobScheduledEndTime,
       }
 
       if (import.meta.env.MODE === 'development') {
