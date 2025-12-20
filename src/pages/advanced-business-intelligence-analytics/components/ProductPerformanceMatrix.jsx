@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import { Package, TrendingUp, TrendingDown, DollarSign, ShoppingCart } from 'lucide-react'
 
 const ProductPerformanceMatrix = ({ data, selectedCategory }) => {

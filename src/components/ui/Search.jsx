@@ -1,8 +1,7 @@
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 
 const Search = () => {
-  React.useEffect(() => {
-    // eslint-disable-next-line no-console
+  useEffect(() => {
     console.warn('Placeholder: Search is not implemented yet.')
   }, [])
   return <>{/*Search */}</>

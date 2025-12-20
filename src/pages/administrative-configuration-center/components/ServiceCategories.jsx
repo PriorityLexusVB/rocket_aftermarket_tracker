@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
 import { useLogger } from '../../../hooks/useLogger'
 import Button from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
@@ -50,10 +49,8 @@ const SERVICE_CATEGORIES = {
 }
 
 const ServiceCategories = () => {
-  const { userProfile } = useAuth()
   const logger = useLogger()
   const [categories, setCategories] = useState(SERVICE_CATEGORIES)
-  const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [formMode, setFormMode] = useState('add') // 'add', 'edit', 'add-category'
   const [selectedCategory, setSelectedCategory] = useState('')

@@ -27,7 +27,7 @@ export default function UnsavedChangesGuard({ isDirty, isSubmitting }) {
       }
     }
 
-    const onPopState = (e) => {
+    const onPopState = () => {
       // Prompt on back/forward
       const ok = window.confirm('You have unsaved changes. Discard them?')
       if (!ok) {

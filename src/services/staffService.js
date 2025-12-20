@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import {
-  buildUserProfileSelectFragment,
   resolveUserProfileName,
   ensureUserProfileCapsLoaded,
   getProfileCaps,

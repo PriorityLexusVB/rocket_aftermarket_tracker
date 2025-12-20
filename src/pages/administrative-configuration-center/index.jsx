@@ -9,22 +9,14 @@ import ServiceCategories from './components/ServiceCategories'
 import UserManagement from './components/UserManagement'
 import SmsTemplateManager from './components/SmsTemplateManager'
 
-const TABS = [
-  { id: 'vendors', label: 'Vendor Management', icon: '👥' },
-  { id: 'products', label: 'Product Catalog', icon: '📦' },
-  { id: 'services', label: 'Service Categories', icon: '🔧' },
-  { id: 'users', label: 'User Management', icon: '👤' },
-]
-
 const AdministrativeConfigurationCenter = () => {
   const { userProfile, isManager } = useAuth()
   const { logInfo, logError, logWarning } = useLogger()
-  const [activeTab, setActiveTab] = useState('vendors')
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [totalUsers, setTotalUsers] = useState(0)
-  const [totalProducts, setTotalProducts] = useState(0)
-  const [totalVendors, setTotalVendors] = useState(0)
+  const [totalUsers] = useState(0)
+  const [totalProducts] = useState(0)
+  const [totalVendors] = useState(0)
 
   useEffect(() => {
     const initializeConfigCenter = async () => {
@@ -69,32 +61,6 @@ const AdministrativeConfigurationCenter = () => {
 
     initializeConfigCenter()
   }, [userProfile, isManager, logInfo, logWarning, logError])
-
-  const handleTabChange = async (tabId) => {
-    try {
-      await logInfo('tab_changed', 'USER', userProfile?.id, `Tab changed to ${tabId}`, {
-        fromTab: activeTab,
-        toTab: tabId,
-        timestamp: new Date()?.toISOString(),
-      })
-
-      setActiveTab(tabId)
-    } catch (error) {
-      console.error('Error changing tab:', error)
-      await logError(error, {
-        context: 'tab-change',
-        userId: userProfile?.id,
-      })
-    }
-  }
-
-  const handleMenuToggle = () => {
-    setSidebarOpen(!sidebarOpen)
-  }
-
-  const handleSidebarClose = () => {
-    setSidebarOpen(false)
-  }
 
   if (loading) {
     return (

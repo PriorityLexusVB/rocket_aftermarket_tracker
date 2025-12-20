@@ -64,7 +64,7 @@ class SalesTrackerService {
         try {
           const { data: jobs } = await jQuery.throwOnError()
           jobsData = jobs || []
-        } catch (_) {
+        } catch {
           // leave jobsData empty on failure
         }
       }
@@ -81,7 +81,7 @@ class SalesTrackerService {
         try {
           const { data: vehicles } = await vQuery.throwOnError()
           vehiclesData = vehicles || []
-        } catch (_) {
+        } catch {
           // leave vehiclesData empty on failure
         }
       }

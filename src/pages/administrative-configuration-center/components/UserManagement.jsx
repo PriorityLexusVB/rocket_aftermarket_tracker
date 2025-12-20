@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../../contexts/AuthContext'
 import { supabase } from '../../../lib/supabase'
 import Button from '../../../components/ui/Button'
@@ -44,11 +44,7 @@ const UserManagement = () => {
     'Detailer',
   ]
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -92,7 +88,11 @@ const UserManagement = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [userProfile?.org_id])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleFormChange = (field, value) => {
     setFormData((prev) => ({

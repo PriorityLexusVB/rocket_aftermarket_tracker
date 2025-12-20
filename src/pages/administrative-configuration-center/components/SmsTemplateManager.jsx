@@ -131,7 +131,7 @@ const SmsTemplateManager = ({ className = '' }) => {
       } else {
         await loadTemplates()
       }
-    } catch (err) {
+    } catch {
       setError('Failed to delete template')
     }
   }

@@ -20,7 +20,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
         const ok = await testSupabaseConnection?.(1)
         if (!mounted) return
         setSbStatus(ok ? 'ok' : 'error')
-      } catch (_) {
+      } catch {
         if (!mounted) return
         setSbStatus('error')
       } finally {
@@ -219,7 +219,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
                   setSbChecking(true)
                   const ok = await testSupabaseConnection?.(1)
                   setSbStatus(ok ? 'ok' : 'error')
-                } catch (_) {
+                } catch {
                   setSbStatus('error')
                 } finally {
                   setSbChecking(false)

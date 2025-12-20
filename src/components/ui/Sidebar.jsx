@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Calendar, BarChart3, Clock, Settings, X, ChevronRight, Package } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 

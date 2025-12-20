@@ -39,7 +39,7 @@ const CurrentlyActiveAppointments = () => {
   }
   /* eslint-disable react-hooks/rules-of-hooks */
   // Legacy: All hooks after conditional return. Refactor to split components when snapshot becomes default.
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- Legacy: Hooks after conditional return. Refactor to split components when snapshot becomes default.
+   
   const [appointments, setAppointments] = useState([])
   const [originalAppointments, setOriginalAppointments] = useState([])
   const [loading, setLoading] = useState(true)

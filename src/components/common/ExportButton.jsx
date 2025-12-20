@@ -4,7 +4,6 @@ import Button from '../ui/Button'
 import Select from '../ui/Select'
 import { advancedFeaturesService } from '../../services/advancedFeaturesService'
 import { useAuth } from '../../contexts/AuthContext'
-import { getCapabilities } from '../../services/dealService'
 
 const ExportButton = ({
   exportType, // 'jobs', 'vehicles', 'vendors', 'transactions'
@@ -23,7 +22,7 @@ const ExportButton = ({
   const [showOptions, setShowOptions] = useState(false)
   const [exportFormat, setExportFormat] = useState('csv')
   const [exportScope, setExportScope] = useState('filtered')
-  const { user, userProfile } = useAuth()
+  const { userProfile } = useAuth()
 
   const exportOptions = [
     { value: 'csv', label: 'CSV File' },
@@ -42,195 +41,6 @@ const ExportButton = ({
     const timestamp = new Date()?.toISOString()?.split('T')?.[0]
     const scope = exportScope === 'selected' ? 'selected' : exportScope
     return `${exportType}-${scope}-${timestamp}.${exportFormat}`
-  }
-
-  const exportData = async () => {
-    try {
-      setIsExporting(true)
-
-      // Check capabilities for conditional field inclusion
-      const capabilities = getCapabilities()
-
-      // Get data from service instead of undefined generateExportData
-      const result = await advancedFeaturesService?.exportData(
-        exportType,
-        filters,
-        userProfile?.role || 'staff'
-      )
-
-      if (result?.error) {
-        onExportError?.(result?.error?.message || 'Export failed')
-        return
-      }
-
-      const data = result?.data
-
-      if (!data || data?.length === 0) {
-        onExportError?.('No data available for export')
-        return
-      }
-
-      // Enhanced CSV columns with proper guards
-      const csvData = data?.map((row) => {
-        // Helper function to guard against NaN/undefined values
-        const safeValue = (value, fallback = '') => {
-          if (
-            value === null ||
-            value === undefined ||
-            value === '' ||
-            (typeof value === 'number' && (isNaN(value) || !isFinite(value)))
-          ) {
-            return fallback
-          }
-          return value
-        }
-
-        const safeNumber = (value, fallback = 0) => {
-          const num = parseFloat(value)
-          return isNaN(num) || !isFinite(num) ? fallback : num
-        }
-
-        const safeCurrency = (value) => {
-          const num = safeNumber(value, 0)
-          return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-          })?.format(num)
-        }
-
-        const baseExport = {
-          // Core identification
-          Stock: safeValue(row?.vehicle?.stock_number),
-          Customer: safeValue(row?.customer_name),
-          Phone: safeValue(row?.customer_phone),
-
-          // Vehicle information
-          Vehicle: row?.vehicle
-            ? `${safeValue(row?.vehicle?.year)} ${safeValue(row?.vehicle?.make)} ${safeValue(row?.vehicle?.model)}`?.trim()
-            : '',
-
-          // Staff assignments
-          Sales: safeValue(row?.assigned_to_name),
-          Status: safeValue(row?.job_status, 'unknown')?.replace('_', ' ')?.toUpperCase(),
-
-          // Service details
-          ServiceType: row?.service_type === 'vendor' ? 'Off-Site' : 'On-Site',
-
-          // Loaner information with proper boolean check
-          Loaner: row?.customer_needs_loaner === true ? 'Yes' : 'No',
-
-          // Next promised date with safe formatting
-          NextPromised: (() => {
-            if (!row?.job_parts || row?.job_parts?.length === 0) return ''
-
-            const schedulingItems = row?.job_parts?.filter(
-              (part) => part?.requires_scheduling && part?.promised_date
-            )
-
-            if (schedulingItems?.length === 0) return ''
-
-            const earliestPromise = schedulingItems?.sort(
-              (a, b) => new Date(a.promised_date) - new Date(b.promised_date)
-            )?.[0]
-
-            if (!earliestPromise?.promised_date) return ''
-
-            try {
-              return new Date(earliestPromise.promised_date)?.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-              })
-            } catch {
-              return ''
-            }
-          })(),
-
-          // Financial information with currency formatting
-          Value: safeCurrency(row?.total_amount),
-
-          // Vendor information
-          Vendor: safeValue(row?.vendor?.name),
-        }
-
-        // Conditionally add scheduled times fields if capability available
-        if (capabilities.jobPartsHasTimes && exportType === 'jobs') {
-          baseExport.ScheduledStart = safeValue(row?.scheduled_start_time)
-          baseExport.ScheduledEnd = safeValue(row?.scheduled_end_time)
-        }
-
-        return baseExport
-      })
-
-      // Generate filename with timestamp
-      const timestamp = new Date()?.toISOString()?.slice(0, 19)?.replace(/:/g, '-')
-      const filename = `${exportType}_export_${timestamp}.csv`
-
-      // Convert to CSV
-      const csvContent = convertToCSV(csvData)
-
-      // Download CSV
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      const url = URL.createObjectURL(blob)
-
-      link?.setAttribute('href', url)
-      link?.setAttribute('download', filename)
-      link.style.visibility = 'hidden'
-      document.body?.appendChild(link)
-      link?.click()
-      document.body?.removeChild(link)
-
-      onExportComplete?.(data?.length, filename)
-    } catch (error) {
-      console.error('Export error:', error)
-      onExportError?.(error?.message || 'Export failed')
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  // Helper function to convert data to CSV with proper escaping
-  const convertToCSV = (data) => {
-    if (!data || data?.length === 0) return ''
-    const headers = Object.keys(data?.[0])
-
-    // Build metadata row (prefixed with # to allow easy ignoring by parsers)
-    const capabilities = getCapabilities()
-    const omitted = []
-    if (!capabilities.jobPartsHasTimes && exportType === 'jobs')
-      omitted.push('scheduled_start_time, scheduled_end_time')
-    if (!capabilities.jobPartsVendorRel) omitted.push('vendor relationship join')
-    if (!capabilities.jobPartsVendorId) omitted.push('vendor_id column')
-
-    const metadata = {
-      version: (typeof import.meta !== 'undefined' && import.meta.env?.APP_VERSION) || '0.1.0',
-      generated_at: new Date().toISOString(),
-      export_type: exportType,
-      scope: exportScope,
-      total_rows: data.length,
-      omitted_capabilities: omitted.join('; ') || 'none',
-    }
-
-    const metadataLine = `# metadata: ${Object.entries(metadata)
-      .map(([k, v]) => `${k}=${String(v).replace(/,/g, ';')}`)
-      .join(',')}`
-
-    const csvRows = [
-      metadataLine,
-      headers?.map((header) => `"${header}"`)?.join(','),
-      ...data?.map((row) =>
-        headers
-          ?.map((header) => {
-            const value = row?.[header]
-            const escapedValue = String(value || '')?.replace(/"/g, '""')
-            return `"${escapedValue}"`
-          })
-          ?.join(',')
-      ),
-    ]
-
-    return csvRows?.join('\n')
   }
 
   const handleExport = async () => {

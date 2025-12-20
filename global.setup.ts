@@ -37,7 +37,7 @@ export default async function globalSetup() {
       // Trim noisy logs
       const text = msg.text()
       if (/vite\b|favicon|dev server/i.test(text)) return
-      // eslint-disable-next-line no-console
+       
       console.log(`[setup:console:${msg.type()}]`, text)
     } catch {}
   })
@@ -45,7 +45,7 @@ export default async function globalSetup() {
     try {
       const url = res.url()
       if (/(auth|supabase)\//i.test(url)) {
-        // eslint-disable-next-line no-console
+         
         console.log(`[setup:response] ${res.status()} ${url}`)
       }
     } catch {}

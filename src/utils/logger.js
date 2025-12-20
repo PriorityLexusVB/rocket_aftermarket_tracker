@@ -76,9 +76,9 @@ class AppLogger {
     try {
       // Vite exposes import.meta.env.DEV in the browser
       // Guard in case import.meta is not available (older tooling)
-      // eslint-disable-next-line no-undef
+
       isDev = Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV)
-    } catch (_) {
+    } catch {
       // no-op
     }
     if (!isDev && typeof process !== 'undefined') {

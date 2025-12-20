@@ -36,7 +36,7 @@ export function initDropdownCacheRealtime(orgId) {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        // eslint-disable-next-line no-console
+         
         console.debug('[realtime] dropdown-cache subscribed', { orgId })
       }
     })

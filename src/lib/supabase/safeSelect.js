@@ -14,7 +14,6 @@ export async function safeSelect(q, label, opts = {}) {
     // q.throwOnError() usually returns { data, error, count }
     return res.data ?? res
   } catch (e) {
-    const msg = String(e?.message || '').toLowerCase()
     const errorType = classifyError(e)
 
     // Handle RLS/permission errors gracefully if allowed
@@ -27,7 +26,7 @@ export async function safeSelect(q, label, opts = {}) {
     }
 
     // Keep an informative, searchable log for other errors
-    // eslint-disable-next-line no-console
+
     console.error(`[safeSelect] ${label ?? 'query'} failed (${errorType}):`, e)
 
     // Return structured error info for capability toggles

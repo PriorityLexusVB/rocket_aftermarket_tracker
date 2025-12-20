@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import { Users, Star, DollarSign, Package, CheckCircle, AlertCircle } from 'lucide-react'
 
 const VendorPerformanceTable = ({ data }) => {

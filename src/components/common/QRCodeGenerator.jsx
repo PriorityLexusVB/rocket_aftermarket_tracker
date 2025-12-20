@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { QrCode, Download, Copy, Share, CheckCircle, AlertCircle } from 'lucide-react'
 import Button from '../ui/Button'
@@ -16,7 +16,6 @@ const QRCodeGenerator = ({
   const [copied, setCopied] = useState(false)
   const [customSize, setCustomSize] = useState(size)
   const [customUrl, setCustomUrl] = useState(url || '')
-  const canvasRef = useRef(null)
 
   // Generate QR code whenever URL or size changes
   useEffect(() => {
@@ -104,7 +103,7 @@ const QRCodeGenerator = ({
         await navigator?.clipboard?.writeText(customUrl)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
-      } catch (fallbackError) {
+      } catch {
         setError('Failed to copy to clipboard')
       }
     }

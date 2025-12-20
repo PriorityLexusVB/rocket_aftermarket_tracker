@@ -17,7 +17,6 @@ export default function AdminCapabilities() {
   const [logs, setLogs] = useState([])
   const [logStats, setLogStats] = useState({})
   const [reloadStatus, setReloadStatus] = useState(null)
-  const [importing, setImporting] = useState(false)
 
   useEffect(() => {
     loadData()

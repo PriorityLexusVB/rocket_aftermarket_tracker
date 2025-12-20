@@ -41,10 +41,10 @@ export async function preflightCapabilities() {
       ) {
         try {
           sessionStorage?.setItem('cap_jobPartsVendorRel', 'false')
-        } catch (_) {}
+        } catch {}
       }
     }
-  } catch (_) {
+  } catch {
     // ignore network errors
   }
 
@@ -61,7 +61,7 @@ export async function preflightCapabilities() {
         })
       }
     }
-  } catch (_) {
+  } catch {
     // ignore
   }
 }

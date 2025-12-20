@@ -9,12 +9,15 @@ const Button = React.forwardRef(
       size = 'default',
       disabled,
       children,
-      iconName,
-      iconPosition,
+      iconName: _iconName,
+      iconPosition: _iconPosition,
       ...props
     },
     ref
   ) => {
+    // Explicitly consume icon props to prevent lint warnings while omitting them from the DOM
+    void _iconName
+    void _iconPosition
     // Destructure iconName and iconPosition to prevent them from being forwarded to the DOM
     // These props are used internally but should not appear as attributes on the <button> element
     return (

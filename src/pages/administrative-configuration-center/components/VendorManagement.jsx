@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -44,8 +44,6 @@ const VendorManagement = () => {
     },
   })
 
-
-
   const specialties = [
     'Engine Components',
     'Braking Systems',
@@ -59,11 +57,7 @@ const VendorManagement = () => {
     'Performance Parts',
   ]
 
-  useEffect(() => {
-    loadVendors()
-  }, [])
-
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       setLoading(true)
       const vendorData = await vendorService?.getAllVendors()
@@ -85,7 +79,11 @@ const VendorManagement = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [logger])
+
+  useEffect(() => {
+    loadVendors()
+  }, [loadVendors])
 
   // Section 20: react-hook-form handleSubmit wrapper
   const onSubmit = handleSubmit(async (formData) => {
@@ -510,9 +508,7 @@ const VendorManagement = () => {
                   Vendor Name *
                 </label>
                 <Input {...register('name')} placeholder="Enter vendor name" />
-                {errors?.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
-                )}
+                {errors?.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
               </div>
 
               <div>
@@ -598,11 +594,7 @@ const VendorManagement = () => {
               </div>
 
               <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  {...register('isActive')}
-                  className="rounded"
-                />
+                <input type="checkbox" {...register('isActive')} className="rounded" />
                 <label className="ml-2 text-sm text-gray-700">Active Vendor</label>
                 {errors?.isActive && (
                   <p className="ml-2 text-sm text-red-600">{errors.isActive.message}</p>
@@ -615,11 +607,7 @@ const VendorManagement = () => {
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting
-                    ? 'Saving...'
-                    : formMode === 'add'
-                      ? 'Add Vendor'
-                      : 'Update Vendor'}
+                  {isSubmitting ? 'Saving...' : formMode === 'add' ? 'Add Vendor' : 'Update Vendor'}
                 </UIButton>
                 <UIButton
                   type="button"

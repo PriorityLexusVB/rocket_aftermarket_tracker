@@ -1,13 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getCapabilities } from '@/services/dealService'
-
-// Utility functions for safe data handling
-const safeNumber = (value, defaultValue = 0) => {
-  if (value === null || value === undefined || value === '') return defaultValue
-  const parsed = parseFloat(value)
-  return isNaN(parsed) ? defaultValue : parsed
-}
 
 const safeString = (value, defaultValue = '') => {
   return value === null || value === undefined ? defaultValue : String(value)
@@ -242,7 +235,7 @@ export const advancedFeaturesService = {
           `# metadata: ${Object.entries(metadata)
             .map(([k, v]) => `${k}=${String(v).replace(/,/g, ';')}`)
             .join(',')}` + '\n'
-      } catch (_e) {
+      } catch {
         // Non-fatal if capabilities or env not available
       }
 

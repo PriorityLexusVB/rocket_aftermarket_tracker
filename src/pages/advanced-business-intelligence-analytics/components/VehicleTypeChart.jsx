@@ -70,7 +70,7 @@ const VehicleTypeChart = ({ data }) => {
   const pieData = processVehicleTypeData()
   const popularModels = getPopularModels()
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload?.length) {
       const data = payload?.[0]?.payload
       return (
@@ -84,7 +84,7 @@ const VehicleTypeChart = ({ data }) => {
     return null
   }
 
-  const BarTooltip = ({ active, payload, label }) => {
+  const BarTooltip = ({ active, payload }) => {
     if (active && payload && payload?.length) {
       const data = payload?.[0]?.payload
       return (
@@ -127,7 +127,7 @@ const VehicleTypeChart = ({ data }) => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value, percent }) => `${name}: ${(percent * 100)?.toFixed(1)}%`}
+                  label={({ name, percent }) => `${name}: ${(percent * 100)?.toFixed(1)}%`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"

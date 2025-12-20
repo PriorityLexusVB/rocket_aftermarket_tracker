@@ -18,7 +18,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import QuickNavigation from '../common/QuickNavigation'
 import ThemeSelector from '../common/ThemeSelector'
-import Icon from '../AppIcon'
 import { isTest } from '../../lib/env'
 
 const Navbar = () => {
@@ -139,7 +138,7 @@ const Navbar = () => {
         const diffInDays = Math.floor(diffInHours / 24)
         return `${diffInDays}d ago`
       }
-    } catch (error) {
+    } catch {
       return ''
     }
   }

@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useLogger } from '../../../hooks/useLogger'
 import UIButton from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
@@ -8,7 +7,6 @@ import { productService } from '../../../services/productService'
 import { vendorService } from '../../../services/vendorService'
 
 const ProductCatalog = () => {
-  const { userProfile } = useAuth()
   const logger = useLogger()
   const [products, setProducts] = useState([])
   const [vendors, setVendors] = useState([])
@@ -47,11 +45,7 @@ const ProductCatalog = () => {
     'Maintenance Items',
   ]
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       const [productData, vendorData] = await Promise.all([
@@ -81,7 +75,11 @@ const ProductCatalog = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [logger])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleFormSubmit = async (e) => {
     e?.preventDefault()

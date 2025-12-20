@@ -94,7 +94,9 @@ function handleAuthError(error, label = 'dropdown') {
   if ([401, 403].includes(code) || msg.includes('permission denied')) {
     try {
       sessionStorage.setItem('authRedirectReason', `Please sign in again (${label})`)
-    } catch (_) {}
+    } catch {
+      // ignore storage errors
+    }
     if (typeof window !== 'undefined') {
       if (window.location?.pathname?.startsWith('/auth')) {
         return true
