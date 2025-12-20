@@ -14,7 +14,7 @@ const VehicleDetailWorkstation = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [userRole] = useState('manager') // Mock user role
+  const userRole = 'manager' // Mock user role
   const [vehicleData, setVehicleData] = useState(null)
   const [workItems, setWorkItems] = useState([])
   const [actionHistory, setActionHistory] = useState([])

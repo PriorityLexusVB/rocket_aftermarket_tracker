@@ -15,14 +15,15 @@ const EnhancedVehicleTable = ({
   onSelectionChange,
   onVehicleUpdate,
   userRole = 'staff',
-  searchQuery,
   filters,
+  onFilterChange,
 }) => {
   const navigate = useNavigate()
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
   const [isLoading, setIsLoading] = useState(false)
   const [showBulkActions, setShowBulkActions] = useState(false)
   const { overdueJobs } = useOverdueJobs()
+  const safeOnFilterChange = onFilterChange || (() => {})
 
   const handleSort = (key) => {
     let direction = 'asc'
@@ -203,8 +204,8 @@ const EnhancedVehicleTable = ({
       {/* Advanced Filters */}
       <AdvancedFilters
         filters={filters}
-        onFiltersChange={onFilterChange}
-        onClearFilters={() => onFilterChange({})}
+        onFiltersChange={safeOnFilterChange}
+        onClearFilters={() => safeOnFilterChange({})}
         pageType="vehicles"
         filterConfig={filterConfig}
       />
