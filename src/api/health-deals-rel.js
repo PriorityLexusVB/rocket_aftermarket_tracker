@@ -12,17 +12,17 @@ import { classifySchemaError, SchemaErrorCode } from '@/utils/schemaErrorClassif
  */
 async function checkColumnExists() {
   try {
-    const { data, error } = await supabase.rpc('check_column_exists', {
-      p_table: 'job_parts',
-      p_column: 'vendor_id',
-    })
-    // If RPC doesn't exist, fall back to a query that would fail on missing column
-    if (error?.code === '42883') {
-      // Function doesn't exist, try direct query
-      const { error: queryError } = await supabase.from('job_parts').select('vendor_id').limit(0)
-      return !queryError
+    // Try to select the column - if it doesn't exist, we'll get a PGRST error
+    const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
+    
+    if (!error) return true
+    
+    // Check if it's a column not found error
+    if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('vendor_id')) {
+      return false
     }
-    return !!data
+    
+    return null // Unknown - other error
   } catch {
     return null // Unknown
   }
@@ -33,9 +33,20 @@ async function checkColumnExists() {
  */
 async function checkFkExists() {
   try {
-    // Query the foreign key - if it exists, this should work
-    const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
-    return !error
+    // Try to use the FK relationship - if FK doesn't exist, this will fail
+    const { error } = await supabase
+      .from('job_parts')
+      .select('vendor:vendor_id(id)')
+      .limit(0)
+    
+    if (!error) return true
+    
+    // Check if it's a relationship/FK error
+    if (error.message?.includes('relationship') || error.message?.includes('foreign key') || error.message?.includes('vendor_id')) {
+      return false
+    }
+    
+    return null // Unknown - other error
   } catch {
     return null // Unknown
   }
