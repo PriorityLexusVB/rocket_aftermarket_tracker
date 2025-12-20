@@ -637,6 +637,12 @@ vi.mock('@/lib/supabase', () => ({
     },
     auth: {
       getUser: async () => ({ data: { user: currentUser }, error: null }),
+      getSession: async () => ({ 
+        data: { 
+          session: currentUser ? { user: currentUser } : null 
+        }, 
+        error: null 
+      }),
       admin: {
         generateLink: async ({ email }: { email: string }) => {
           // Simulate a session for the given email
