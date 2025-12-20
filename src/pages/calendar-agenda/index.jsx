@@ -69,7 +69,7 @@ export default function CalendarAgenda() {
   const [loading, setLoading] = useState(true)
   const [jobs, setJobs] = useState([])
   const [conflicts, setConflicts] = useState(new Map()) // jobId -> boolean
-  
+
   // Initialize filters from URL params, with localStorage fallback
   const [q, setQ] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('q')
@@ -79,17 +79,23 @@ export default function CalendarAgenda() {
   const [status, setStatus] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('status')
     if (urlParam) return urlParam
-    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_status') || '' : ''
+    return typeof localStorage !== 'undefined'
+      ? localStorage.getItem('agendaFilter_status') || ''
+      : ''
   })
   const [dateRange, setDateRange] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('dateRange')
     if (urlParam) return urlParam
-    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_dateRange') || 'all' : 'all'
+    return typeof localStorage !== 'undefined'
+      ? localStorage.getItem('agendaFilter_dateRange') || 'all'
+      : 'all'
   })
-  const [vendorFilter, setVendorFilter] = useState(() => {
+  const [vendorFilter] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('vendor')
     if (urlParam) return urlParam
-    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_vendor') || '' : ''
+    return typeof localStorage !== 'undefined'
+      ? localStorage.getItem('agendaFilter_vendor') || ''
+      : ''
   })
   const focusId = useMemo(
     () => new URLSearchParams(location.search).get('focus'),
@@ -109,17 +115,17 @@ export default function CalendarAgenda() {
     if (typeof localStorage !== 'undefined') {
       if (q) localStorage.setItem('agendaFilter_q', q)
       else localStorage.removeItem('agendaFilter_q')
-      
+
       if (status) localStorage.setItem('agendaFilter_status', status)
       else localStorage.removeItem('agendaFilter_status')
-      
+
       if (dateRange) localStorage.setItem('agendaFilter_dateRange', dateRange)
       else localStorage.removeItem('agendaFilter_dateRange')
-      
+
       if (vendorFilter) localStorage.setItem('agendaFilter_vendor', vendorFilter)
       else localStorage.removeItem('agendaFilter_vendor')
     }
-    
+
     const params = new URLSearchParams(location.search)
     if (q) params.set('q', q)
     else params.delete('q')
@@ -145,7 +151,6 @@ export default function CalendarAgenda() {
       console.warn('[agenda] load failed', e)
     }
     // Filter to those with a start time in the future OR today
-    const now = Date.now()
     const upcoming = (all || []).filter((j) => j.scheduled_start_time)
     // Sort ascending by start time
     upcoming.sort((a, b) => new Date(a.scheduled_start_time) - new Date(b.scheduled_start_time))
@@ -176,8 +181,8 @@ export default function CalendarAgenda() {
             job.id
           )
           conflictMap.set(job.id, hasConflict)
-        } catch (e) {
-          // Silent failure for conflict checking
+        } catch (err) {
+          console.debug('[agenda] conflict check skipped', err)
         }
       }
       setConflicts(conflictMap)
@@ -235,10 +240,10 @@ export default function CalendarAgenda() {
     try {
       // Update line item schedules using the new service method
       await jobService.updateLineItemSchedules(rescheduleModal.job.id, scheduleData)
-      
+
       // Show success message
       toast?.success?.('Schedule updated successfully')
-      
+
       // Close modal and refresh
       setRescheduleModal({ open: false, job: null })
       await load()
@@ -263,7 +268,8 @@ export default function CalendarAgenda() {
             })
             toast.success('Undo successful')
             await load()
-          } catch (e) {
+          } catch (err) {
+            console.error('[agenda] undo failed', err)
             toast.error('Undo failed')
           }
         }
@@ -276,7 +282,8 @@ export default function CalendarAgenda() {
       }
 
       await load()
-    } catch (e) {
+    } catch (err) {
+      console.error('[agenda] complete failed', err)
       toast?.error?.('Complete failed')
     }
   }
@@ -287,7 +294,7 @@ export default function CalendarAgenda() {
     <div className="p-4 space-y-4" aria-label="Scheduled Appointments Agenda">
       {/* Aria-live region for screen reader announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
-      
+
       {/* Header with always-visible search and date range */}
       <header className="space-y-3" aria-label="Agenda controls">
         <div className="flex items-center gap-4 flex-wrap">
@@ -309,7 +316,7 @@ export default function CalendarAgenda() {
             <option value="today">Today</option>
             <option value="next7days">Next 7 Days</option>
           </select>
-          
+
           {/* Filter toggle button */}
           <button
             onClick={() => setFiltersExpanded((prev) => !prev)}
@@ -339,7 +346,7 @@ export default function CalendarAgenda() {
           </div>
         )}
       </header>
-      
+
       {groups.length === 0 && (
         <div role="status" aria-live="polite">
           No upcoming appointments.
@@ -353,7 +360,7 @@ export default function CalendarAgenda() {
               const focused = r.id === focusId
               const hasConflict = conflicts.get(r.id)
               const timeRange = formatScheduleRange(r.scheduled_start_time, r.scheduled_end_time)
-              
+
               return (
                 <li
                   key={r.id}
@@ -362,9 +369,7 @@ export default function CalendarAgenda() {
                   aria-label={`Appointment ${r.title || r.job_number}`}
                   className={`flex items-center gap-3 px-3 py-2 text-sm ${focused ? 'bg-yellow-50' : ''}`}
                 >
-                  <div className="w-40 text-gray-700 font-mono text-xs">
-                    {timeRange}
-                  </div>
+                  <div className="w-40 text-gray-700 font-mono text-xs">{timeRange}</div>
                   <div className="flex-1">
                     <div className="font-medium truncate flex items-center gap-2">
                       {r.title || r.job_number}

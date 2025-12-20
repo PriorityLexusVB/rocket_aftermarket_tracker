@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   X,
   Clock,
   User,
   Building2,
-  Phone,
   MessageCircle,
   FileText,
   Edit3,
@@ -30,11 +29,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
   const StatusIcon = appointment?.statusConfig?.icon
   const isOverdue = appointment?.isOverdue
 
-  useEffect(() => {
-    loadAppointmentDetails()
-  }, [appointment?.id])
-
-  const loadAppointmentDetails = async () => {
+  const loadAppointmentDetails = useCallback(async () => {
     if (!appointment?.id) return
 
     try {
@@ -73,7 +68,11 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [appointment?.id])
+
+  useEffect(() => {
+    loadAppointmentDetails()
+  }, [appointment?.id, loadAppointmentDetails])
 
   const handleSaveNotes = async () => {
     try {

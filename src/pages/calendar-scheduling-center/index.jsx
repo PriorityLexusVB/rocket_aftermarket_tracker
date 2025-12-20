@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
 const CalendarSchedulingCenter = () => {
   // State management
-  const { user } = useAuth()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewType, setViewType] = useState('week') // 'day', 'week', 'month'
   const [jobs, setJobs] = useState([])
@@ -45,7 +43,7 @@ const CalendarSchedulingCenter = () => {
   }, [currentDate, viewType])
 
   // Simplified data loading with better error handling
-  const loadCalendarData = async () => {
+  const loadCalendarData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -123,9 +121,9 @@ const CalendarSchedulingCenter = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [dateRange, selectedVendors])
 
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         ?.from('vendors')
@@ -140,13 +138,13 @@ const CalendarSchedulingCenter = () => {
       console.error('Error loading vendors:', error)
       setVendors([])
     }
-  }
+  }, [])
 
   // Load data on component mount and date range changes
   useEffect(() => {
     loadCalendarData()
     loadVendors()
-  }, [dateRange, selectedVendors])
+  }, [loadCalendarData, loadVendors])
 
   // Navigation handlers
   const navigateDate = (direction) => {

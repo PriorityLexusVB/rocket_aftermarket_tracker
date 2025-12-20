@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   PieChart,
   Pie,
@@ -40,6 +40,7 @@ const ClaimsDistributionChart = ({ data = [], title }) => {
       const data = payload?.[0]?.payload
       return (
         <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-lg">
+          <p className="text-xs text-gray-500 mb-1">{label}</p>
           <p className="font-medium text-gray-900">{data?.name}</p>
           <p className="text-sm text-blue-600">Claims: {data?.value}</p>
           <p className="text-sm text-green-600">Cost: ${data?.cost?.toLocaleString()}</p>

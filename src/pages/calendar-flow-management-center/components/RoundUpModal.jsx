@@ -16,90 +16,86 @@ import {
 } from 'lucide-react'
 import { formatTime, getStatusBadge } from '../../../lib/time'
 
+const groupByVendor = (jobList) => {
+  return jobList?.reduce((acc, job) => {
+    const vendorName = job?.vendor_name || 'Unassigned'
+    if (!acc?.[vendorName]) {
+      acc[vendorName] = []
+    }
+    acc?.[vendorName]?.push(job)
+    return acc
+  }, {})
+}
+
+const groupJobsByDay = (jobList) => {
+  const today = new Date()
+  today?.setHours(0, 0, 0, 0)
+
+  const todayJobs = jobList?.filter((job) => {
+    const jobDate = new Date(job?.scheduled_start_time)
+    return jobDate?.toDateString() === today?.toDateString()
+  })
+
+  return {
+    Today: {
+      onSite: todayJobs?.filter((job) => !job?.vendor_id),
+      vendors: groupByVendor(todayJobs?.filter((job) => job?.vendor_id)),
+    },
+  }
+}
+
+const groupJobsByWeek = (jobList) => {
+  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const result = {}
+
+  weekDays?.forEach((day) => {
+    const dayJobs = jobList?.filter((job) => {
+      const jobDate = new Date(job?.scheduled_start_time)
+      const dayOfWeek = jobDate?.getDay()
+      const dayIndex = weekDays?.indexOf(day)
+      return dayOfWeek === (dayIndex + 1) % 7 // Adjust for Monday start
+    })
+
+    if (dayJobs?.length > 0) {
+      result[day] = {
+        onSite: dayJobs?.filter((job) => !job?.vendor_id),
+        vendors: groupByVendor(dayJobs?.filter((job) => job?.vendor_id)),
+      }
+    }
+  })
+
+  return result
+}
+
+const groupJobsByMonth = (jobList) => {
+  const weeks = {}
+  jobList?.forEach((job) => {
+    const jobDate = new Date(job?.scheduled_start_time)
+    const weekNumber = Math.ceil(jobDate?.getDate() / 7)
+    const weekKey = `Week ${weekNumber}`
+
+    if (!weeks?.[weekKey]) {
+      weeks[weekKey] = {
+        onSite: [],
+        vendors: {},
+      }
+    }
+
+    if (job?.vendor_id) {
+      if (!weeks?.[weekKey]?.vendors?.[job?.vendor_name]) {
+        weeks[weekKey].vendors[job?.vendor_name] = []
+      }
+      weeks?.[weekKey]?.vendors?.[job?.vendor_name]?.push(job)
+    } else {
+      weeks?.[weekKey]?.onSite?.push(job)
+    }
+  })
+
+  return weeks
+}
+
 const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set())
-
-  // Helper function to group jobs by vendor
-  const groupByVendor = (jobList) => {
-    return jobList?.reduce((acc, job) => {
-      const vendorName = job?.vendor_name || 'Unassigned'
-      if (!acc?.[vendorName]) {
-        acc[vendorName] = []
-      }
-      acc?.[vendorName]?.push(job)
-      return acc
-    }, {})
-  }
-
-  // Helper function to group jobs by day
-  const groupJobsByDay = (jobList) => {
-    const today = new Date()
-    today?.setHours(0, 0, 0, 0)
-
-    const todayJobs = jobList?.filter((job) => {
-      const jobDate = new Date(job?.scheduled_start_time)
-      return jobDate?.toDateString() === today?.toDateString()
-    })
-
-    return {
-      Today: {
-        onSite: todayJobs?.filter((job) => !job?.vendor_id),
-        vendors: groupByVendor(todayJobs?.filter((job) => job?.vendor_id)),
-      },
-    }
-  }
-
-  // Helper function to group jobs by week
-  const groupJobsByWeek = (jobList) => {
-    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-    const result = {}
-
-    weekDays?.forEach((day) => {
-      const dayJobs = jobList?.filter((job) => {
-        const jobDate = new Date(job?.scheduled_start_time)
-        const dayOfWeek = jobDate?.getDay()
-        const dayIndex = weekDays?.indexOf(day)
-        return dayOfWeek === (dayIndex + 1) % 7 // Adjust for Monday start
-      })
-
-      if (dayJobs?.length > 0) {
-        result[day] = {
-          onSite: dayJobs?.filter((job) => !job?.vendor_id),
-          vendors: groupByVendor(dayJobs?.filter((job) => job?.vendor_id)),
-        }
-      }
-    })
-
-    return result
-  }
-
-  // Helper function to group jobs by month
-  const groupJobsByMonth = (jobList) => {
-    const weeks = {}
-    jobList?.forEach((job) => {
-      const jobDate = new Date(job?.scheduled_start_time)
-      const weekNumber = Math.ceil(jobDate?.getDate() / 7)
-      const weekKey = `Week ${weekNumber}`
-
-      if (!weeks?.[weekKey]) {
-        weeks[weekKey] = {
-          onSite: [],
-          vendors: {},
-        }
-      }
-
-      if (job?.vendor_id) {
-        if (!weeks?.[weekKey]?.vendors?.[job?.vendor_name]) {
-          weeks[weekKey].vendors[job?.vendor_name] = []
-        }
-        weeks?.[weekKey]?.vendors?.[job?.vendor_name]?.push(job)
-      } else {
-        weeks?.[weekKey]?.onSite?.push(job)
-      }
-    })
-
-    return weeks
-  }
 
   const groupedJobs = useMemo(() => {
     if (!jobs?.length) return {}

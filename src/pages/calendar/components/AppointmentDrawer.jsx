@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 
 import { estLabel } from '../../../lib/time'
-import Icon from '../../../components/AppIcon'
 
 const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }) => {
   const [activeTab, setActiveTab] = useState('details')

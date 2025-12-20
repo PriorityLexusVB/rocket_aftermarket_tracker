@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Calendar,
   Clock,
@@ -52,20 +52,59 @@ const CalendarFlowManagementCenter = () => {
 
   // Drag and drop
   const [draggedJob, setDraggedJob] = useState(null)
-  const [dropZoneActive, setDropZoneActive] = useState(null)
 
   // Load initial data
   useEffect(() => {
     loadCalendarData()
     loadVendors()
-  }, [currentDate, viewMode])
+  }, [loadCalendarData, loadVendors])
 
   // Apply filters whenever filters or original data change
   useEffect(() => {
     applyFilters()
-  }, [filters, originalJobs, originalUnassignedJobs])
+  }, [applyFilters])
 
-  const loadCalendarData = async () => {
+  const getViewStartDate = useCallback(() => {
+    const date = new Date(currentDate)
+    switch (viewMode) {
+      case 'day':
+        date?.setHours(0, 0, 0, 0)
+        return date
+      case 'week':
+        const dayOfWeek = date?.getDay()
+        date?.setDate(date?.getDate() - dayOfWeek + 1) // Monday start
+        date?.setHours(0, 0, 0, 0)
+        return date
+      case 'month':
+        date?.setDate(1) // First day of the month
+        date?.setHours(0, 0, 0, 0)
+        return date
+      default:
+        date?.setHours(0, 0, 0, 0)
+        return date
+    }
+  }, [currentDate, viewMode])
+
+  const getViewEndDate = useCallback(() => {
+    const date = getViewStartDate()
+    switch (viewMode) {
+      case 'day':
+        date?.setDate(date?.getDate() + 1)
+        return date
+      case 'week':
+        date?.setDate(date?.getDate() + 6) // Monday to Saturday
+        return date
+      case 'month':
+        date?.setMonth(date?.getMonth() + 1) // Next month
+        date?.setDate(0) // Last day of current month
+        return date
+      default:
+        date?.setDate(date?.getDate() + 1)
+        return date
+    }
+  }, [getViewStartDate, viewMode])
+
+  const loadCalendarData = useCallback(async () => {
     setLoading(true)
     try {
       const startDate = getViewStartDate()
@@ -94,10 +133,10 @@ const CalendarFlowManagementCenter = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, getViewEndDate, getViewStartDate])
 
   // New centralized filter application function
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     // Apply filters to assigned jobs
     const filteredAssigned = applyFiltersToJobList(originalJobs)
     setFilteredJobs(filteredAssigned)
@@ -105,57 +144,60 @@ const CalendarFlowManagementCenter = () => {
     // Apply filters to unassigned jobs
     const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs)
     setFilteredUnassignedJobs(filteredUnassigned)
-  }
+  }, [applyFiltersToJobList, originalJobs, originalUnassignedJobs])
 
   // Enhanced filter application function
-  const applyFiltersToJobList = (jobList) => {
-    if (!jobList || jobList?.length === 0) return []
+  const applyFiltersToJobList = useCallback(
+    (jobList) => {
+      if (!jobList || jobList?.length === 0) return []
 
-    let filteredJobs = [...jobList]
+      let filteredJobs = [...jobList]
 
-    // Apply search filter
-    if (filters?.searchQuery) {
-      const query = filters?.searchQuery?.toLowerCase()
-      filteredJobs = filteredJobs?.filter(
-        (job) =>
-          job?.job_number?.toLowerCase()?.includes(query) ||
-          job?.title?.toLowerCase()?.includes(query) ||
-          job?.vehicle_info?.toLowerCase()?.includes(query) ||
-          job?.customer_name?.toLowerCase()?.includes(query) ||
-          job?.customer_phone?.toLowerCase()?.includes(query)
-      )
-    }
+      // Apply search filter
+      if (filters?.searchQuery) {
+        const query = filters?.searchQuery?.toLowerCase()
+        filteredJobs = filteredJobs?.filter(
+          (job) =>
+            job?.job_number?.toLowerCase()?.includes(query) ||
+            job?.title?.toLowerCase()?.includes(query) ||
+            job?.vehicle_info?.toLowerCase()?.includes(query) ||
+            job?.customer_name?.toLowerCase()?.includes(query) ||
+            job?.customer_phone?.toLowerCase()?.includes(query)
+        )
+      }
 
-    // Apply status filters (multiple statuses)
-    if (filters?.statuses?.length > 0) {
-      filteredJobs = filteredJobs?.filter((job) => {
-        // Map filter IDs to actual job status values
-        const statusMapping = {
-          today: () => {
-            const jobDate = new Date(job?.scheduled_start_time)
-            const today = new Date()
-            return jobDate?.toDateString() === today?.toDateString()
-          },
-          in_progress: () => job?.job_status === 'in_progress',
-          overdue: () => isOverdue(job?.promised_date),
-          no_show: () => job?.job_status === 'no_show',
-          completed: () => job?.job_status === 'completed',
-        }
+      // Apply status filters (multiple statuses)
+      if (filters?.statuses?.length > 0) {
+        filteredJobs = filteredJobs?.filter((job) => {
+          // Map filter IDs to actual job status values
+          const statusMapping = {
+            today: () => {
+              const jobDate = new Date(job?.scheduled_start_time)
+              const today = new Date()
+              return jobDate?.toDateString() === today?.toDateString()
+            },
+            in_progress: () => job?.job_status === 'in_progress',
+            overdue: () => isOverdue(job?.promised_date),
+            no_show: () => job?.job_status === 'no_show',
+            completed: () => job?.job_status === 'completed',
+          }
 
-        // Check if job matches any of the selected statuses
-        return filters?.statuses?.some((statusId) => statusMapping?.[statusId]?.())
-      })
-    }
+          // Check if job matches any of the selected statuses
+          return filters?.statuses?.some((statusId) => statusMapping?.[statusId]?.())
+        })
+      }
 
-    // Apply vendor filters
-    if (filters?.vendors?.length > 0) {
-      filteredJobs = filteredJobs?.filter((job) => filters?.vendors?.includes(job?.vendor_id))
-    }
+      // Apply vendor filters
+      if (filters?.vendors?.length > 0) {
+        filteredJobs = filteredJobs?.filter((job) => filters?.vendors?.includes(job?.vendor_id))
+      }
 
-    return filteredJobs
-  }
+      return filteredJobs
+    },
+    [filters]
+  )
 
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data: vendorsData } = await vendorService?.getVendors({ is_active: true })
       if (vendorsData) {
@@ -164,47 +206,7 @@ const CalendarFlowManagementCenter = () => {
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
-  }
-
-  const getViewStartDate = () => {
-    const date = new Date(currentDate)
-    switch (viewMode) {
-      case 'day':
-        date?.setHours(0, 0, 0, 0)
-        return date
-      case 'week':
-        const dayOfWeek = date?.getDay()
-        date?.setDate(date?.getDate() - dayOfWeek + 1) // Monday start
-        date?.setHours(0, 0, 0, 0)
-        return date
-      case 'month':
-        date?.setDate(1) // First day of the month
-        date?.setHours(0, 0, 0, 0)
-        return date
-      default:
-        date?.setHours(0, 0, 0, 0)
-        return date
-    }
-  }
-
-  const getViewEndDate = () => {
-    const date = getViewStartDate()
-    switch (viewMode) {
-      case 'day':
-        date?.setDate(date?.getDate() + 1)
-        return date
-      case 'week':
-        date?.setDate(date?.getDate() + 6) // Monday to Saturday
-        return date
-      case 'month':
-        date?.setMonth(date?.getMonth() + 1) // Next month
-        date?.setDate(0) // Last day of current month
-        return date
-      default:
-        date?.setDate(date?.getDate() + 1)
-        return date
-    }
-  }
+  }, [])
 
   const handleJobClick = (job) => {
     setSelectedJob(job)
@@ -227,7 +229,6 @@ const CalendarFlowManagementCenter = () => {
 
   const handleDragEnd = () => {
     setDraggedJob(null)
-    setDropZoneActive(null)
   }
 
   const handleDrop = async (vendorId, timeSlot) => {
@@ -493,8 +494,6 @@ const CalendarFlowManagementCenter = () => {
   }
 
   const renderVendorLanes = () => {
-    const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i)
-
     return (
       <div className="space-y-4">
         {/* On-Site Lane */}

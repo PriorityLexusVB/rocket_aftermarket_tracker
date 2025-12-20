@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
@@ -24,6 +24,64 @@ const BusinessIntelligenceReports = () => {
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
   const [activeView, setActiveView] = useState('builder') // 'builder', 'preview', 'quick'
+
+  const handleFilterChange = useCallback((newFilters) => {
+    setCurrentFilters(newFilters)
+    setActiveView('preview')
+  }, [])
+
+  const handleExport = useCallback(
+    async (format) => {
+      setIsExporting(true)
+      setExportProgress(0)
+
+      // Simulate export progress
+      const progressInterval = setInterval(() => {
+        setExportProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(progressInterval)
+            setIsExporting(false)
+
+            // Simulate download
+            const fileName = `${currentFilters?.reportType}_${new Date()?.toISOString()?.split('T')?.[0]}.${format}`
+            console.log(`Downloading ${fileName}`)
+
+            // Show success notification (in real app, this would be a toast)
+            setTimeout(() => {
+              alert(`Report exported successfully as ${format?.toUpperCase()}`)
+            }, 500)
+
+            return 100
+          }
+          return prev + Math.random() * 15
+        })
+      }, 200)
+    },
+    [currentFilters]
+  )
+
+  const handleQuickReport = useCallback(
+    (filters, reportName) => {
+      setCurrentFilters({ ...currentFilters, ...filters })
+      setActiveView('preview')
+      console.log(`Generating quick report: ${reportName}`)
+    },
+    [currentFilters]
+  )
+
+  const handleResetFilters = useCallback(() => {
+    const defaultFilters = {
+      dateRange: 'last30days',
+      startDate: '',
+      endDate: '',
+      vendors: [],
+      products: [],
+      profitThreshold: '',
+      status: [],
+      reportType: 'sales_summary',
+    }
+    setCurrentFilters(defaultFilters)
+  }, [])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -60,59 +118,7 @@ const BusinessIntelligenceReports = () => {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isExporting])
-
-  const handleFilterChange = (newFilters) => {
-    setCurrentFilters(newFilters)
-    setActiveView('preview')
-  }
-
-  const handleExport = async (format) => {
-    setIsExporting(true)
-    setExportProgress(0)
-
-    // Simulate export progress
-    const progressInterval = setInterval(() => {
-      setExportProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(progressInterval)
-          setIsExporting(false)
-
-          // Simulate download
-          const fileName = `${currentFilters?.reportType}_${new Date()?.toISOString()?.split('T')?.[0]}.${format}`
-          console.log(`Downloading ${fileName}`)
-
-          // Show success notification (in real app, this would be a toast)
-          setTimeout(() => {
-            alert(`Report exported successfully as ${format?.toUpperCase()}`)
-          }, 500)
-
-          return 100
-        }
-        return prev + Math.random() * 15
-      })
-    }, 200)
-  }
-
-  const handleQuickReport = (filters, reportName) => {
-    setCurrentFilters({ ...currentFilters, ...filters })
-    setActiveView('preview')
-    console.log(`Generating quick report: ${reportName}`)
-  }
-
-  const handleResetFilters = () => {
-    const defaultFilters = {
-      dateRange: 'last30days',
-      startDate: '',
-      endDate: '',
-      vendors: [],
-      products: [],
-      profitThreshold: '',
-      status: [],
-      reportType: 'sales_summary',
-    }
-    setCurrentFilters(defaultFilters)
-  }
+  }, [handleQuickReport, handleExport, handleResetFilters, isExporting])
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen)

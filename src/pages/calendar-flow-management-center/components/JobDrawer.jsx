@@ -19,7 +19,6 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
-import Icon from '../../../components/AppIcon'
 
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { X, Clock, User, Calendar, MapPin, AlertTriangle, Save, Trash2 } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { X, Clock, User, MapPin, AlertTriangle, Save, Trash2 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 
 const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
@@ -110,13 +110,7 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
   }, [formData?.vendor_id, vendors, job?.vendor_id])
 
   // Enhanced conflict checking with detailed conflict information
-  useEffect(() => {
-    if (formData?.vendor_id && formData?.scheduled_start_time && formData?.scheduled_end_time) {
-      checkSchedulingConflict()
-    }
-  }, [formData?.vendor_id, formData?.scheduled_start_time, formData?.scheduled_end_time])
-
-  const checkSchedulingConflict = async () => {
+  const checkSchedulingConflict = useCallback(async () => {
     if (!formData?.vendor_id || !formData?.scheduled_start_time || !formData?.scheduled_end_time) {
       setHasConflict(false)
       setConflictDetails(null)
@@ -183,7 +177,11 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
     } catch (error) {
       console.error('Error in conflict check:', error)
     }
-  }
+  }, [formData?.vendor_id, formData?.scheduled_start_time, formData?.scheduled_end_time, job?.id])
+
+  useEffect(() => {
+    checkSchedulingConflict()
+  }, [checkSchedulingConflict])
 
   const validateForm = () => {
     const newErrors = {}

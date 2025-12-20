@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React from 'react'
 import { Star, Clock, DollarSign, Award } from 'lucide-react'
 
 const VendorPerformanceMatrix = ({ data = [], title }) => {

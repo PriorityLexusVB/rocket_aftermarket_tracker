@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
-import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -64,8 +64,6 @@ const CalendarSchedulingCenter = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewType, setViewType] = useState('week') // 'day', 'week', 'month'
   const [jobs, setJobs] = useState([])
-  const [vendors, setVendors] = useState([])
-  const [selectedVendors, setSelectedVendors] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [debugInfo, setDebugInfo] = useState('')
@@ -110,7 +108,7 @@ const CalendarSchedulingCenter = () => {
   }, [currentDate, viewType])
 
   // Load calendar data with safe date operations
-  const loadCalendarData = async () => {
+  const loadCalendarData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -144,48 +142,12 @@ const CalendarSchedulingCenter = () => {
     } finally {
       setLoading(false)
     }
-  }
-
-  // Load vendors with safe date operations
-  const loadVendors = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const { data, error } = await supabase
-        ?.from('vendors')
-        ?.select('*')
-        ?.eq('user_id', user?.id)
-        ?.order('name')
-
-      if (error) {
-        console.error('Error loading vendors:', error)
-        setError('Failed to load vendors')
-        return
-      }
-
-      const vendorsData = data?.map((vendor) => ({
-        ...vendor,
-        specialty: vendor?.specialty || 'General Service',
-      }))
-
-      setVendors(vendorsData)
-
-      // Update debug info
-      setDebugInfo(`Loaded ${vendorsData?.length} vendors`)
-    } catch (error) {
-      console.error('Error loading vendors:', error)
-      setError('Failed to load vendors')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [user?.id])
 
   // Load data on component mount and date range changes
   useEffect(() => {
     loadCalendarData()
-    loadVendors()
-  }, [dateRange, selectedVendors])
+  }, [dateRange, loadCalendarData])
 
   // Navigation handlers with safe date operations
   const navigateDate = (direction) => {
@@ -226,7 +188,6 @@ const CalendarSchedulingCenter = () => {
       setError(null)
 
       await loadCalendarData()
-      await loadVendors()
 
       // Update debug info
       setDebugInfo('Data refreshed successfully')

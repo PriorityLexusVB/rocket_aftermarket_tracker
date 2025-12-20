@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   X,
   Search,
@@ -17,12 +17,11 @@ import { toUTC } from '../../../lib/time'
 import { replaceJobPartsForJob } from '../../../services/jobPartsService'
 import Checkbox from '../../../components/ui/Checkbox'
 
-const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, onSMSEnqueue }) => {
+const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue }) => {
   // Omnibox search state
   const [omniboxQuery, setOmniboxQuery] = useState('')
   const [dealSuggestions, setDealSuggestions] = useState([])
   const [showDealSuggestions, setShowDealSuggestions] = useState(false)
-  const [selectedDeal, setSelectedDeal] = useState(null)
   const omniboxInputRef = useRef(null)
 
   // Customer Section
@@ -258,7 +257,6 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
 
   // Handle deal selection from omnibox
   const handleDealSelect = async (deal) => {
-    setSelectedDeal(deal)
     setOmniboxQuery(
       `${deal?.stock_number || 'N/A'} • ${deal?.transactions?.[0]?.customer_name || deal?.owner_name} • ${deal?.year} ${deal?.make} ${deal?.model}`
     )
@@ -346,55 +344,8 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
     }
   }
 
-  // Stock-first vehicle search with exact match priority (fallback if omnibox not used)
-  const handleStockSearch = async (query) => {
-    if (!query?.trim() || query?.length < 2) {
-      setVehicleSuggestions([])
-      setShowSuggestions(false)
-      return
-    }
-
-    try {
-      // First try exact stock match
-      const { data: exactMatch } = await supabase
-        ?.from('vehicles')
-        ?.select('*')
-        ?.ilike('stock_number', query)
-        ?.limit(1)
-
-      if (exactMatch && exactMatch?.length > 0) {
-        const vehicle = exactMatch?.[0]
-        handleVehicleSelect(vehicle)
-        return
-      }
-
-      // Fallback to partial search (stock-first ordering)
-      const { data: partialMatches } = await supabase
-        ?.from('vehicles')
-        ?.select('*')
-        ?.or(`stock_number.ilike.%${query}%,vin.ilike.%${query}%,owner_name.ilike.%${query}%`)
-        ?.order('stock_number')
-        ?.limit(20)
-
-      setVehicleSuggestions(partialMatches || [])
-      setShowSuggestions(true)
-    } catch (error) {
-      console.error('Vehicle search error:', error)
-      setError('Failed to search vehicles')
-    }
-  }
-
-  // Debounced stock search
-  useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      handleStockSearch(vehicleData?.stock_number)
-    }, 300)
-
-    return () => clearTimeout(debounceTimer)
-  }, [vehicleData?.stock_number])
-
   // Handle vehicle selection
-  const handleVehicleSelect = (vehicle) => {
+  const handleVehicleSelect = useCallback((vehicle) => {
     setSelectedVehicle(vehicle)
     setVehicleData((prev) => ({
       ...prev,
@@ -412,7 +363,57 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
     })
 
     setShowSuggestions(false)
-  }
+  }, [])
+
+  // Stock-first vehicle search with exact match priority (fallback if omnibox not used)
+  const handleStockSearch = useCallback(
+    async (query) => {
+      if (!query?.trim() || query?.length < 2) {
+        setVehicleSuggestions([])
+        setShowSuggestions(false)
+        return
+      }
+
+      try {
+        // First try exact stock match
+        const { data: exactMatch } = await supabase
+          ?.from('vehicles')
+          ?.select('*')
+          ?.ilike('stock_number', query)
+          ?.limit(1)
+
+        if (exactMatch && exactMatch?.length > 0) {
+          const vehicle = exactMatch?.[0]
+          handleVehicleSelect(vehicle)
+          return
+        }
+
+        // Fallback to partial search (stock-first ordering)
+        const { data: partialMatches } = await supabase
+          ?.from('vehicles')
+          ?.select('*')
+          ?.or(`stock_number.ilike.%${query}%,vin.ilike.%${query}%,owner_name.ilike.%${query}%`)
+          ?.order('stock_number')
+          ?.limit(20)
+
+        setVehicleSuggestions(partialMatches || [])
+        setShowSuggestions(true)
+      } catch (error) {
+        console.error('Vehicle search error:', error)
+        setError('Failed to search vehicles')
+      }
+    },
+    [handleVehicleSelect]
+  )
+
+  // Debounced stock search
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      handleStockSearch(vehicleData?.stock_number)
+    }, 300)
+
+    return () => clearTimeout(debounceTimer)
+  }, [handleStockSearch, vehicleData?.stock_number])
 
   // Calculate profit for line item
   const calculateProfit = (soldPrice, cost) => {
@@ -541,7 +542,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
       }
 
       // Create jobs for each line item
-      const jobPromises = lineItems?.map(async (item, index) => {
+      const jobPromises = lineItems?.map(async (item) => {
         // Create separate job for off-site work
         const isOffSite = item?.off_site_work
 
@@ -706,9 +707,6 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onStockSearch, 
                       value={omniboxQuery}
                       onChange={(e) => {
                         setOmniboxQuery(e?.target?.value)
-                        if (!e?.target?.value) {
-                          setSelectedDeal(null)
-                        }
                       }}
                       className="pl-10 w-full px-3 py-3 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
                       placeholder="Enter stock #, phone number, customer name, or deal #..."

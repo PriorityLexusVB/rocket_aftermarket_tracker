@@ -143,11 +143,12 @@ const CalendarGrid = ({
   const renderWeekView = () => {
     const weekStart = startOfWeek(safeCurrentDate, { weekStartsOn: 1 }) // Monday
     const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i)) // Mon-Sat
-    const hours = Array.from({ length: 11 }, (_, i) => i + 8) // 8 AM - 6 PM
 
     if (showVendorLanes) {
-      return renderVendorLaneView(days, hours)
+      return renderVendorLaneView(days)
     }
+
+    const hours = Array.from({ length: 11 }, (_, i) => i + 8) // 8 AM - 6 PM
 
     return (
       <div className="bg-white rounded-lg shadow flex flex-col h-full">
@@ -294,7 +295,7 @@ const CalendarGrid = ({
   }
 
   // Vendor Lane View with mobile optimization
-  const renderVendorLaneView = (days, hours) => {
+  const renderVendorLaneView = (days) => {
     return (
       <div className="bg-white rounded-lg shadow flex flex-col h-full">
         <div className="p-3 md:p-4 border-b border-gray-200">

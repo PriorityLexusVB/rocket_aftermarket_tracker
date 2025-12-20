@@ -3,19 +3,23 @@
 // Uses America/New_York timezone for all datetime-local fields
 // Updated: Reads and aggregates scheduling from line items (job_parts)
 import React, { useEffect, useRef, useState } from 'react'
-import { toLocalDateTimeFields, fromLocalDateTimeFields, validateScheduleRange } from '../../utils/dateTimeUtils'
+import {
+  toLocalDateTimeFields,
+  fromLocalDateTimeFields,
+  validateScheduleRange,
+} from '../../utils/dateTimeUtils'
 
-export default function RescheduleModal({ 
-  open, 
-  onClose, 
-  onSubmit, 
-  initialStart, 
+export default function RescheduleModal({
+  open,
+  onClose,
+  onSubmit,
+  initialStart,
   initialEnd,
-  job 
+  job,
 }) {
   const dialogRef = useRef(null)
   const startInputRef = useRef(null)
-  
+
   // Local state for form fields
   const [startLocal, setStartLocal] = useState('')
   const [endLocal, setEndLocal] = useState('')
@@ -28,14 +32,14 @@ export default function RescheduleModal({
       // Compute aggregated schedule from line items (new line-item scheduling model)
       let start = initialStart
       let end = initialEnd
-      
+
       // If no explicit start AND end provided, compute from job's line items
       if (!start && !end) {
         const lineItems = job?.job_parts || []
         const scheduledItems = lineItems.filter(
           (item) => item?.scheduled_start_time && item?.scheduled_end_time
         )
-        
+
         if (scheduledItems.length > 0) {
           // Aggregate: earliest start, latest end
           const starts = scheduledItems.map((item) => new Date(item.scheduled_start_time))
@@ -48,20 +52,22 @@ export default function RescheduleModal({
           end = end || job?.scheduled_end_time
         }
       }
-      
+
       // Convert ISO to datetime-local format (YYYY-MM-DDTHH:MM)
       const startFields = start ? toLocalDateTimeFields(start) : null
       const endFields = end ? toLocalDateTimeFields(end) : null
-      
-      setStartLocal(startFields && startFields.date && startFields.time 
-        ? `${startFields.date}T${startFields.time}` 
-        : '')
-      setEndLocal(endFields && endFields.date && endFields.time 
-        ? `${endFields.date}T${endFields.time}` 
-        : '')
+
+      setStartLocal(
+        startFields && startFields.date && startFields.time
+          ? `${startFields.date}T${startFields.time}`
+          : ''
+      )
+      setEndLocal(
+        endFields && endFields.date && endFields.time ? `${endFields.date}T${endFields.time}` : ''
+      )
       setError('')
       setSubmitting(false)
-      
+
       // Focus start input when modal opens
       setTimeout(() => {
         startInputRef.current?.focus()
@@ -87,7 +93,7 @@ export default function RescheduleModal({
       setError('Start time is required')
       return false
     }
-    
+
     if (!endLocal) {
       setError('End time is required')
       return false
@@ -96,10 +102,10 @@ export default function RescheduleModal({
     // Convert datetime-local format (YYYY-MM-DDTHH:MM) to fields object
     const [startDate, startTime] = startLocal.split('T')
     const [endDate, endTime] = endLocal.split('T')
-    
+
     const startISO = fromLocalDateTimeFields({ date: startDate, time: startTime })
     const endISO = fromLocalDateTimeFields({ date: endDate, time: endTime })
-    
+
     if (!startISO || !endISO) {
       setError('Invalid date/time format')
       return false
@@ -107,7 +113,11 @@ export default function RescheduleModal({
 
     const validation = validateScheduleRange(startISO, endISO)
     if (!validation.valid) {
-      setError(validation.errors[0] === 'end_not_after_start' ? 'End time must be after start time' : 'Invalid schedule')
+      setError(
+        validation.errors[0] === 'end_not_after_start'
+          ? 'End time must be after start time'
+          : 'Invalid schedule'
+      )
       return false
     }
 
@@ -117,26 +127,26 @@ export default function RescheduleModal({
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
-    
+
     if (!validate()) {
       return
     }
 
     setSubmitting(true)
-    
+
     try {
       // Convert datetime-local format to ISO
       const [startDate, startTime] = startLocal.split('T')
       const [endDate, endTime] = endLocal.split('T')
-      
+
       const startISO = fromLocalDateTimeFields({ date: startDate, time: startTime })
       const endISO = fromLocalDateTimeFields({ date: endDate, time: endTime })
-      
+
       await onSubmit?.({
         startTime: startISO,
         endTime: endISO,
       })
-      
+
       // Don't close here - let parent handle closing after successful submit
     } catch (err) {
       console.error('[RescheduleModal] submit failed:', err)
@@ -153,8 +163,7 @@ export default function RescheduleModal({
   if (!open) return null
 
   const jobTitle = job?.title || job?.job_number || 'Appointment'
-  const isValid = !error && startLocal && endLocal && !submitting
-  
+
   // Handle button click - validate even if fields are empty
   const handleSaveClick = (e) => {
     if (!startLocal || !endLocal) {
@@ -176,24 +185,19 @@ export default function RescheduleModal({
         }
       }}
     >
-      <div 
-        ref={dialogRef} 
-        className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"
-      >
+      <div ref={dialogRef} className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         <h2 id="reschedule-title" className="text-xl font-semibold mb-4">
           Reschedule Appointment
         </h2>
-        
-        <p className="text-sm text-gray-600 mb-4">
-          {jobTitle}
-        </p>
+
+        <p className="text-sm text-gray-600 mb-4">{jobTitle}</p>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Start Time */}
             <div>
-              <label 
-                htmlFor="reschedule-start" 
+              <label
+                htmlFor="reschedule-start"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
                 Start Time <span className="text-red-500">*</span>
@@ -215,8 +219,8 @@ export default function RescheduleModal({
 
             {/* End Time */}
             <div>
-              <label 
-                htmlFor="reschedule-end" 
+              <label
+                htmlFor="reschedule-end"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
                 End Time <span className="text-red-500">*</span>
@@ -236,13 +240,11 @@ export default function RescheduleModal({
             </div>
 
             {/* Timezone Note */}
-            <p className="text-xs text-gray-500">
-              All times are in America/New_York timezone
-            </p>
+            <p className="text-xs text-gray-500">All times are in America/New_York timezone</p>
 
             {/* Error Display */}
             {error && (
-              <div 
+              <div
                 className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700"
                 role="alert"
               >

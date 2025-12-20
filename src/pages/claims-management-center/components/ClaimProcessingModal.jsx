@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   X,
   Save,
@@ -31,13 +31,7 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    if (claim?.id) {
-      loadAttachments()
-    }
-  }, [claim?.id])
-
-  const loadAttachments = async () => {
+  const loadAttachments = useCallback(async () => {
     try {
       setLoadingAttachments(true)
       const attachmentsData = await claimsService?.getClaimAttachments(claim?.id)
@@ -47,7 +41,13 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
     } finally {
       setLoadingAttachments(false)
     }
-  }
+  }, [claim?.id])
+
+  useEffect(() => {
+    if (claim?.id) {
+      loadAttachments()
+    }
+  }, [claim?.id, loadAttachments])
 
   const handleInputChange = (e) => {
     const { name, value } = e?.target
@@ -128,11 +128,6 @@ const ClaimProcessingModal = ({ claim, staff, onClose, onUpdate }) => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
     return new Date(dateString)?.toLocaleString()
-  }
-
-  const formatCurrency = (amount) => {
-    if (!amount) return 'N/A'
-    return `$${parseFloat(amount)?.toFixed(2)}`
   }
 
   return (

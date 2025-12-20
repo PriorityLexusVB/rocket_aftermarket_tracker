@@ -1,6 +1,5 @@
 import React from 'react'
 import { Calendar, Clock, AlertTriangle, UserX, CheckCircle, Filter, Check } from 'lucide-react'
-import Icon from '../../../components/AppIcon'
 
 const QuickFilters = ({ filters, onFiltersChange, jobCounts }) => {
   const filterChips = [

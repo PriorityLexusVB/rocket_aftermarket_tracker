@@ -1,10 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { User, AlertCircle, Wrench } from 'lucide-react'
 
 const CalendarGrid = ({ jobs = [], currentDate, viewType, onJobClick, onJobDragDrop, loading }) => {
   const [draggedJob, setDraggedJob] = useState(null)
-  const [dragPosition, setDragPosition] = useState(null)
-  const [dropZone, setDropZone] = useState(null)
   const gridRef = useRef(null)
 
   // Time slots for day/week view (9 AM to 6 PM)
@@ -125,7 +123,6 @@ const CalendarGrid = ({ jobs = [], currentDate, viewType, onJobClick, onJobDragD
   const handleDragEnd = (e) => {
     e.target.style.opacity = '1'
     setDraggedJob(null)
-    setDropZone(null)
   }
 
   const handleDragOver = (e) => {
