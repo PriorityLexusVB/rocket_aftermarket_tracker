@@ -17,8 +17,15 @@ async function checkColumnExists() {
     
     if (!error) return true
     
-    // Check if it's a column not found error
-    if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('vendor_id')) {
+    // Check if it's a column not found error.
+    // Prefer the structured PostgREST error code and only fall back to message inspection.
+    // Relies on PostgREST v11+ error code PGRST204 ("Column not found").
+    if (error.code === 'PGRST204') {
+      return false
+    }
+    
+    // Fallback: Check message only if code is not specific
+    if (error.message && (error.message.includes('column') || error.message.includes('vendor_id'))) {
       return false
     }
     
@@ -41,8 +48,21 @@ async function checkFkExists() {
     
     if (!error) return true
     
-    // Check if it's a relationship/FK error
-    if (error.message?.includes('relationship') || error.message?.includes('foreign key') || error.message?.includes('vendor_id')) {
+    // Prefer structured PostgREST error codes over brittle message matching.
+    // Based on PostgREST v11+ error codes, a missing relationship or FK can surface
+    // as a PGRST2xx error. We treat known relationship/FK-related codes here first
+    // and only fall back to message inspection if the code is missing or unknown.
+    if (error.code === 'PGRST201') {
+      // Relationship not found between tables (e.g., could not find relationship job_parts -> vendors)
+      return false
+    }
+    
+    // Fallback: Check if it's a relationship/FK error by message when code is not specific.
+    if (
+      error.message?.includes('relationship') ||
+      error.message?.includes('foreign key') ||
+      error.message?.includes('vendor_id')
+    ) {
       return false
     }
     

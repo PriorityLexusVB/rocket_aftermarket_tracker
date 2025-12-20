@@ -12,8 +12,23 @@ export function apiPlugin() {
           return next()
         }
 
-        // Map /api/health-deals-rel to the handler
-        const apiPath = req.url.replace('/api/', '')
+        // Extract pathname without query parameters
+        const url = new URL(req.url, 'http://localhost')
+        const pathname = url.pathname
+        
+        // Remove /api/ prefix and sanitize path to prevent directory traversal
+        let apiPath = pathname.replace('/api/', '')
+        
+        // Security: Prevent path traversal attacks by blocking '..' segments and multiple slashes
+        // Note: Most web servers normalize paths before they reach middleware, but we check as defense-in-depth
+        if (apiPath.includes('..') || apiPath.includes('//') || apiPath.includes('\\')) {
+          console.warn(`[vite-plugin-api] Blocked suspicious path: ${apiPath}`)
+          res.statusCode = 400
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ error: 'Bad Request', message: 'Invalid API path' }))
+          return
+        }
+        
         let handlerPath
 
         try {
