@@ -11,16 +11,41 @@ const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession
 
 async function checkColumnExists() {
   try {
+    // Try to select the column - if it doesn't exist, we'll get a PGRST error
     const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
-    return !error
+    
+    if (!error) return true
+    
+    // Check if it's a column not found error
+    if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('vendor_id')) {
+      return false
+    }
+    
+    return null // Unknown - other error
   } catch {
     return null
   }
 }
 
 async function checkFkExists() {
-  // Heuristic: if selecting vendor_id succeeds, assume FK present or at least column exists.
-  return await checkColumnExists()
+  try {
+    // Try to use the FK relationship - if FK doesn't exist, this will fail
+    const { error } = await supabase
+      .from('job_parts')
+      .select('vendor:vendor_id(id)')
+      .limit(0)
+    
+    if (!error) return true
+    
+    // Check if it's a relationship/FK error
+    if (error.message?.includes('relationship') || error.message?.includes('foreign key') || error.message?.includes('vendor_id')) {
+      return false
+    }
+    
+    return null // Unknown - other error
+  } catch {
+    return null
+  }
 }
 
 export default async function handler(req, res) {
