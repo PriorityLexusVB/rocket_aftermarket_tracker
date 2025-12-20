@@ -14,26 +14,32 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
   useEffect(() => {
     if (!isOpen) return
 
+    let alive = true
+
     const loadDeal = async () => {
       try {
         setLoading(true)
         setError('')
 
-        // Use preloaded deal if available
-        if (initialDeal && initialDeal?.id) {
-          const formDeal = mapDbDealToForm(initialDeal)
-          setDealData(formDeal)
-          setLoading(false)
-        } else if (dealId) {
-          const fetchedDeal = await getDeal(dealId)
-          const formDeal = mapDbDealToForm(fetchedDeal)
-          setDealData(formDeal)
-          setLoading(false)
-        } else {
+        // Optimistically hydrate from preloaded deal for instant render
+        if (initialDeal?.id) {
+          setDealData(mapDbDealToForm(initialDeal))
+        }
+
+        const targetId = dealId || initialDeal?.id
+        if (!targetId) {
           setError('No deal selected to edit.')
           setLoading(false)
+          return
         }
+
+        // Always refetch latest state to avoid stale line items reappearing
+        const fetchedDeal = await getDeal(targetId)
+        if (!alive) return
+        setDealData(mapDbDealToForm(fetchedDeal))
+        setLoading(false)
       } catch (err) {
+        if (!alive) return
         console.error('Failed to load deal:', err)
         setError(`Failed to load deal: ${err?.message}`)
         setLoading(false)
@@ -41,12 +47,17 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
     }
 
     loadDeal()
+
+    return () => {
+      alive = false
+    }
   }, [isOpen, dealId, initialDeal?.id])
 
   // Handle save
   const handleSave = async (payload) => {
     try {
       const savedDeal = await updateDeal(dealId || initialDeal?.id, payload)
+      setDealData(mapDbDealToForm(savedDeal))
       // Pass the saved deal back to parent for in-place update
       if (onSuccess) onSuccess(savedDeal)
     } catch (err) {

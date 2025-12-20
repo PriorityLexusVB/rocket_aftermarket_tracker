@@ -151,53 +151,6 @@ const AdminPage = () => {
     { value: 'completion_notice', label: 'Completion Notice' },
   ]
 
-  // Initialize admin panel - check auth and load data
-  useEffect(() => {
-    const initializeAdmin = async () => {
-      try {
-        console.log('Admin panel initializing...', {
-          authLoading,
-          user: !!user,
-          userProfile: !!userProfile,
-        })
-
-        // First check if Supabase is available
-        if (!supabase) {
-          setError('Database connection unavailable. Please refresh the page.')
-          setLoading(false)
-          return
-        }
-
-        // Test database connection
-        const { error: connectionError } = await supabase
-          ?.from('user_profiles')
-          ?.select('id')
-          ?.limit(1)
-
-        if (connectionError) {
-          console.error('Database connection failed:', connectionError)
-          setError('Unable to connect to database. Please check your Supabase configuration.')
-          setLoading(false)
-          return
-        }
-
-        // Load admin data regardless of auth status (for demo purposes)
-        await loadAllData()
-
-        setLoading(false)
-      } catch (error) {
-        console.error('Admin initialization failed:', error)
-        setError('Failed to initialize admin panel: ' + error?.message)
-        setLoading(false)
-      }
-    }
-
-    // Wait for auth to complete initialization, then proceed
-    if (!authLoading) {
-      initializeAdmin()
-    }
-  }, [authLoading, loadAllData, user, userProfile])
-
   // Debug function to check current user status
   const debugAuthState = async () => {
     console.log('=== ADMIN ACCESS DEBUG ===')
@@ -385,6 +338,53 @@ const AdminPage = () => {
     loadVendors,
   ])
 
+  // Initialize admin panel - check auth and load data
+  useEffect(() => {
+    const initializeAdmin = async () => {
+      try {
+        console.log('Admin panel initializing...', {
+          authLoading,
+          user: !!user,
+          userProfile: !!userProfile,
+        })
+
+        // First check if Supabase is available
+        if (!supabase) {
+          setError('Database connection unavailable. Please refresh the page.')
+          setLoading(false)
+          return
+        }
+
+        // Test database connection
+        const { error: connectionError } = await supabase
+          ?.from('user_profiles')
+          ?.select('id')
+          ?.limit(1)
+
+        if (connectionError) {
+          console.error('Database connection failed:', connectionError)
+          setError('Unable to connect to database. Please check your Supabase configuration.')
+          setLoading(false)
+          return
+        }
+
+        // Load admin data regardless of auth status (for demo purposes)
+        await loadAllData()
+
+        setLoading(false)
+      } catch (error) {
+        console.error('Admin initialization failed:', error)
+        setError('Failed to initialize admin panel: ' + error?.message)
+        setLoading(false)
+      }
+    }
+
+    // Wait for auth to complete initialization, then proceed
+    if (!authLoading) {
+      initializeAdmin()
+    }
+  }, [authLoading, loadAllData, user, userProfile])
+
   // Attach/assign a single profile to current org
   const attachProfileToMyOrg = async (profileId) => {
     if (!orgId) {
@@ -481,14 +481,6 @@ const AdminPage = () => {
     }
   }
 
-  useEffect(() => {
-    // Refresh staff and accounts when org/toggle changes
-    loadStaffRecords()
-    loadUserAccounts()
-    loadVendors()
-    loadProducts()
-  }, [loadProducts, loadStaffRecords, loadUserAccounts, loadVendors])
-
   const loadVendors = useCallback(async () => {
     try {
       console.log('Loading vendors...')
@@ -532,6 +524,14 @@ const AdminPage = () => {
       console.error('Error loading products:', error)
     }
   }, [onlyMyOrg, orgId])
+
+  useEffect(() => {
+    // Refresh dependent data whenever org or org-scope toggle changes
+    loadStaffRecords()
+    loadUserAccounts()
+    loadVendors()
+    loadProducts()
+  }, [loadProducts, loadStaffRecords, loadUserAccounts, loadVendors])
 
   // Assign current org to vendors with null org
   const assignOrgToVendors = async () => {
