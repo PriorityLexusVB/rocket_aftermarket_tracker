@@ -1,5 +1,5 @@
 // src/pages/deals/index.jsx
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { parseISO, format } from 'date-fns'
 import { getAllDeals, markLoanerReturned } from '../../services/dealService'
@@ -19,7 +19,8 @@ import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 
 // Feature flag for Simple Agenda
-const SIMPLE_AGENDA_ENABLED = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
+const SIMPLE_AGENDA_ENABLED =
+  String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
 // ✅ UPDATED: StatusPill with enhanced styling
 const StatusPill = ({ status }) => {
@@ -74,7 +75,7 @@ const formatStaffName = (fullName) => {
 }
 
 // ✅ UPDATED: Next promised chip with <24h amber and overdue red; accepts ISO datetime
-const NextPromisedChip = ({ nextPromisedAt, jobId }) => {
+const NextPromisedChip = ({ nextPromisedAt }) => {
   if (!nextPromisedAt) {
     return <span className="text-xs text-gray-500">—</span>
   }
@@ -109,7 +110,7 @@ const CustomerDisplay = ({ deal }) => {
   if (!deal) return <span className="text-sm text-slate-700">—</span>
 
   const rawName = deal?.customer_name || deal?.customerEmail || '—'
-  const name = rawName  // Already titleCased in database
+  const name = rawName // Already titleCased in database
   const email = deal?.customer_email || ''
   const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
   const title = [name, email, tags.length ? `Tags: ${tags.join(', ')}` : null]
@@ -194,7 +195,7 @@ const ValueDisplay = ({ amount }) => {
 }
 
 // ✅ UPDATED: Service Location Tag with color styling per requirements
-const ServiceLocationTag = ({ serviceType, jobParts }) => {
+const ServiceLocationTag = ({ jobParts }) => {
   // Check if any line items are off-site to determine vendor status
   const hasOffSiteItems = jobParts?.some((part) => part?.is_off_site)
   const hasOnSiteItems = jobParts?.some((part) => !part?.is_off_site)
@@ -350,17 +351,11 @@ export default function DealsPage() {
     getUserOptions,
     getVendorOptions,
     clearSearch,
-    loading: dropdownLoading,
     error: dropdownError,
-    refresh: refreshDropdowns,
   } = useDropdownData({ loadOnMount: true })
 
   const navigate = useNavigate()
   const { user } = useAuth()
-
-  // ✅ ADDED: Saved views state (localStorage persistence)
-  const [savedViews, setSavedViews] = useState([])
-  const [selectedSavedView, setSelectedSavedView] = useState('')
 
   // ✅ FIXED: Replace direct function calls with hook-based calls
   const getSalesConsultants = () => {
@@ -448,7 +443,7 @@ export default function DealsPage() {
           ?.is('returned_at', null)
           ?.limit(1)
         existing = Array.isArray(rows) ? rows[0] : rows
-      } catch (_) {}
+      } catch {}
 
       if (existing?.id) {
         const { error: updErr } = await supabase
@@ -504,7 +499,7 @@ export default function DealsPage() {
   // ✅ ADDED: Handle schedule chip click
   const handleScheduleClick = (deal) => {
     if (!deal?.id) return
-    
+
     // If Simple Agenda is enabled, navigate to agenda with focus parameter
     if (SIMPLE_AGENDA_ENABLED) {
       navigate(`/calendar/agenda?focus=${deal.id}`)
@@ -515,7 +510,7 @@ export default function DealsPage() {
   }
 
   // ✅ FIXED: Enhanced load deals with better error handling and retry logic
-  const loadDeals = async (retryCount = 0) => {
+  const loadDeals = useCallback(async (retryCount = 0) => {
     try {
       setLoading(true)
       setError('') // Clear previous errors
@@ -537,7 +532,7 @@ export default function DealsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   // ✅ ADDED: Initialize status from URL parameter on mount
   useEffect(() => {
@@ -551,23 +546,7 @@ export default function DealsPage() {
 
   useEffect(() => {
     loadDeals()
-  }, [])
-
-  // ✅ ADDED: Load saved views from localStorage on mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('dealsSavedViews')
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed)) setSavedViews(parsed)
-      }
-    } catch (_) {}
-  }, [])
-
-  // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
-  const loadDropdownData = async () => {
-    await refreshDropdowns()
-  }
+  }, [loadDeals])
 
   // ✅ FIXED: Move handleManageLoaner function to proper location inside component
   const handleManageLoaner = (deal) => {
@@ -897,34 +876,6 @@ export default function DealsPage() {
   const financeOptions = getFinanceManagers()
 
   // ✅ ADDED: Saved views helpers
-  const saveCurrentView = () => {
-    try {
-      const name = window.prompt('Save view as:')
-      if (!name || !name.trim()) return
-      const view = { name: name.trim(), filters }
-      const next = [...savedViews.filter((v) => v.name !== view.name), view]
-      setSavedViews(next)
-      localStorage.setItem('dealsSavedViews', JSON.stringify(next))
-      setSelectedSavedView(view.name)
-    } catch (e) {
-      console.error('saveCurrentView failed', e)
-    }
-  }
-
-  const applySavedView = (name) => {
-    setSelectedSavedView(name)
-    const view = savedViews.find((v) => v.name === name)
-    if (view?.filters) setFilters(view.filters)
-  }
-
-  const deleteSavedView = () => {
-    if (!selectedSavedView) return
-    const next = savedViews.filter((v) => v.name !== selectedSavedView)
-    setSavedViews(next)
-    localStorage.setItem('dealsSavedViews', JSON.stringify(next))
-    setSelectedSavedView('')
-  }
-
   const handleEditDeal = (dealId) => {
     setEditingDealId(dealId)
     // Preload full deal object from current list for instant modal render
@@ -932,7 +883,7 @@ export default function DealsPage() {
       const found = (filteredDeals?.length ? filteredDeals : deals)?.find((d) => d?.id === dealId)
       if (found) setEditingDeal(found)
       else setEditingDeal(null)
-    } catch (_) {
+    } catch {
       setEditingDeal(null)
     }
     setShowEditDealModal(true)
@@ -981,7 +932,7 @@ export default function DealsPage() {
               exportType="jobs"
               filters={{ status: filters?.status }}
               onExportStart={() => console.log('Starting export...')}
-              onExportComplete={(recordCount, filename) =>
+              onExportComplete={(recordCount) =>
                 console.log(`Export complete: ${recordCount} records`)
               }
               onExportError={(errorMessage) => setError(`Export failed: ${errorMessage}`)}
@@ -1493,8 +1444,8 @@ export default function DealsPage() {
                       })()}
                     </td>
                     <td className="px-4 py-3 w-[180px]">
-                      <ScheduleChip 
-                        deal={deal} 
+                      <ScheduleChip
+                        deal={deal}
                         onClick={handleScheduleClick}
                         showIcon={true}
                         Icon={Icon}
@@ -1756,8 +1707,8 @@ export default function DealsPage() {
                             )
                           })()}
                         </span>
-                        <ScheduleChip 
-                          deal={deal} 
+                        <ScheduleChip
+                          deal={deal}
                           onClick={handleScheduleClick}
                           showIcon={true}
                           Icon={Icon}

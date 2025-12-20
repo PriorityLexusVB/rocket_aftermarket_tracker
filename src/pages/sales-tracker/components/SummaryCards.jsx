@@ -1,7 +1,7 @@
 import React from 'react'
 import { DollarSign, TrendingUp, Receipt, Users, CalendarDays } from 'lucide-react'
 
-const SummaryCards = ({ data, stats, onCardClick }) => {
+const SummaryCards = ({ data, onCardClick }) => {
   // Calculate stats from data
   const calculateStats = (salesData) => {
     if (!salesData || salesData?.length === 0) {

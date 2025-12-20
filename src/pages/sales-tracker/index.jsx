@@ -10,23 +10,9 @@ import { vendorService } from '../../services/vendorService'
 
 const SalesTracker = () => {
   const [salesData, setSalesData] = useState([])
-  const [filteredData, setFilteredData] = useState([])
-  const [summaryStats, setSummaryStats] = useState({
-    totalRevenue: 0,
-    totalCost: 0,
-    totalProfit: 0,
-    transactionCount: 0,
-  })
   const [loading, setLoading] = useState(true)
-  const [showNewSaleModal, setShowNewSaleModal] = useState(false)
   const [staffMembers, setStaffMembers] = useState([])
   const [vendors, setVendors] = useState([])
-  const [filters, setFilters] = useState({
-    salesperson: '',
-    dateFrom: '',
-    dateTo: '',
-    search: '',
-  })
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSale, setEditingSale] = useState(null)
 
@@ -274,7 +260,6 @@ const SalesTracker = () => {
         {/* Summary Cards with enhanced data */}
         <SummaryCards
           data={salesData}
-          stats={summaryStats}
           onCardClick={async (cardType) => {
             await logUserInteraction(`summary-card-${cardType}`, 'card_clicked', {
               cardType,

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getVendors,
@@ -19,7 +19,7 @@ import { UI_FLAGS } from '../../config/ui'
 let dealServicePromise
 try {
   dealServicePromise = import('../../services/dealService.js')
-} catch (_) {
+} catch {
   // ignore if not present or already injected via props
 }
 
@@ -600,7 +600,7 @@ export default function DealForm({
             if (agendaOn && hasSchedule && savedRecord?.id) {
               navigate(`/calendar/agenda?focus=${encodeURIComponent(savedRecord.id)}`)
             }
-          } catch (_) {}
+          } catch {}
         }
         await logFormSubmission?.(
           'DealForm',
@@ -632,7 +632,7 @@ export default function DealForm({
       setErrorMsg(msg)
       try {
         await logError?.(err, { where: 'DealForm.submit', orgId })
-      } catch (_) {}
+      } catch {}
     } finally {
       setSaving(false)
     }
@@ -1001,7 +1001,6 @@ export default function DealForm({
 
         {form.lineItems.map((item, idx) => {
           const itemKey = `li-${idx}`
-          const onSiteSelected = !item.is_off_site
           return (
             <div key={itemKey} className="card-mobile space-y-3" data-testid={`line-${idx}`}>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">

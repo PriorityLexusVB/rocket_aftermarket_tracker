@@ -26,7 +26,7 @@ const CustomerClaimsPortal = () => {
   const [error, setError] = useState(null)
   const [showNewClaimForm, setShowNewClaimForm] = useState(false)
   const [selectedClaim, setSelectedClaim] = useState(null)
-  const [customerEmail, setCustomerEmail] = useState('john.smith@email.com') // Demo customer
+  const customerEmail = 'john.smith@email.com' // Demo customer
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 

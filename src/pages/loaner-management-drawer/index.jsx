@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/ui/Navbar'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 
 export default function LoanerManagementDrawer() {
-  const { user } = useAuth()
   const [loaners, setLoaners] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

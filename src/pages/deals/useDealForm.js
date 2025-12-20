@@ -29,7 +29,7 @@ export function useDealForm({ mode = 'create', id = null, onSaved, onError }) {
     return () => {
       alive = false
     }
-  }, [mode, id])
+  }, [mode, id, onError])
 
   const handleSubmit = useCallback(
     async (formState) => {

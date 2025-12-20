@@ -79,7 +79,7 @@ const SalesTransactionInterface = () => {
     setIsSaving(true)
 
     try {
-      const { totalCost, totalPrice, totalProfit } = calculateTotals()
+      const { totalPrice, totalProfit } = calculateTotals()
 
       // Find off-site services that require scheduling
       const offSiteServices = selectedServices?.filter((s) => s?.isOffsite && s?.requiresSchedule)

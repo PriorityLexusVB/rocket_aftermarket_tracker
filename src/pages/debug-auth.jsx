@@ -1,12 +1,6 @@
 // src/pages/debug-auth.jsx
 import React, { useEffect, useState } from 'react'
 import useTenant from '../hooks/useTenant'
-import {
-  listVendorsByOrg,
-  listProductsByOrg,
-  listStaffByOrg,
-  listSmsTemplatesByOrg,
-} from '../services/tenantService'
 import { listSmsTemplatesGlobal } from '../services/smsTemplateService'
 import {
   getVendors as getVendorsGlobal,
@@ -112,7 +106,7 @@ export default function DebugAuthPage() {
               try {
                 const ok = await testSupabaseConnection?.(2)
                 setConn({ configured: !!isSupabaseConfigured?.(), ok, last: new Date() })
-              } catch (_) {
+              } catch {
                 setConn({ configured: !!isSupabaseConfigured?.(), ok: false, last: new Date() })
               }
             }}

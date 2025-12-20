@@ -399,7 +399,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
             </span>
           </div>
 
-          {selectedProducts?.map((service, index) => {
+          {selectedProducts?.map((service) => {
             const isOffsite = !!service?.vendorId || service?.isOffsite
 
             return (

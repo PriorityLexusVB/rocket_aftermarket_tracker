@@ -5,7 +5,6 @@ import {
   CheckCircle,
   AlertCircle,
   User,
-  Phone,
   Calendar,
   Package,
   MessageSquare,
@@ -171,21 +170,6 @@ const GuestClaimsSubmissionForm = () => {
     try {
       setSubmitLoading(true)
       setErrors({})
-
-      // First, check if we need to create a vehicle record
-      let vehicleId = null
-
-      // Create a temporary vehicle record for the claim
-      const tempVehicle = {
-        make: formData?.vehicle_make?.trim(),
-        model: formData?.vehicle_model?.trim(),
-        year: parseInt(formData?.vehicle_year),
-        vin: formData?.vehicle_vin?.trim()?.toUpperCase(),
-        owner_name: formData?.customer_name?.trim(),
-        owner_email: formData?.customer_email?.trim(),
-        owner_phone: formData?.customer_phone?.trim(),
-        vehicle_status: 'active',
-      }
 
       // Get product ID if a specific product was selected
       let productId = null

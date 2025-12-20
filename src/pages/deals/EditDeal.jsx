@@ -9,7 +9,7 @@ export default function EditDeal() {
   const navigate = useNavigate()
   const [initial, setInitial] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [, setSaving] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState(null)
 
   useEffect(() => {

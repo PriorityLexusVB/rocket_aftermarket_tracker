@@ -125,7 +125,7 @@ const ProductPerformanceTable = ({ data }) => {
             </tr>
           </thead>
           <tbody>
-            {sortedData?.map((product, index) => (
+            {sortedData?.map((product) => (
               <tr
                 key={product?.id}
                 className="border-b border-border hover:bg-muted/30 transition-colors"

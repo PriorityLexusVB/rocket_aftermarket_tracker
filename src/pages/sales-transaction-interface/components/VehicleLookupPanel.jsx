@@ -1,8 +1,67 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Icon from '../../../components/AppIcon'
 import Input from '../../../components/ui/Input'
 import Button from '../../../components/ui/Button'
 import Select from '../../../components/ui/Select'
+
+const mockVehicles = [
+  {
+    id: 1,
+    vin: '1HGBH41JXMN109186',
+    stockNumber: 'ST2024001',
+    year: 2024,
+    make: 'Honda',
+    model: 'Civic',
+    trim: 'LX',
+    color: 'Silver',
+    mileage: 15420,
+    status: 'Available',
+    ownerName: 'John Smith',
+    ownerPhone: '(555) 123-4567',
+  },
+  {
+    id: 2,
+    vin: '2T1BURHE0JC123456',
+    stockNumber: 'ST2024002',
+    year: 2023,
+    make: 'Toyota',
+    model: 'Corolla',
+    trim: 'LE',
+    color: 'White',
+    mileage: 22100,
+    status: 'Available',
+    ownerName: 'Sarah Johnson',
+    ownerPhone: '(555) 987-6543',
+  },
+  {
+    id: 3,
+    vin: '3VW2B7AJ8KM123789',
+    stockNumber: 'ST2024003',
+    year: 2024,
+    make: 'Volkswagen',
+    model: 'Jetta',
+    trim: 'S',
+    color: 'Black',
+    mileage: 8900,
+    status: 'Available',
+    ownerName: 'Michael Brown',
+    ownerPhone: '(555) 456-7890',
+  },
+  {
+    id: 4,
+    vin: '1FA6P8TH5J5123456',
+    stockNumber: 'ST2024004',
+    year: 2023,
+    make: 'Ford',
+    model: 'Mustang',
+    trim: 'GT',
+    color: 'Red',
+    mileage: 12500,
+    status: 'Available',
+    ownerName: 'Lisa Davis',
+    ownerPhone: '(555) 321-9876',
+  },
+]
 
 const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
   const [searchType, setSearchType] = useState('stock')
@@ -28,65 +87,6 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
   })
 
   // Mock vehicle data
-  const mockVehicles = [
-    {
-      id: 1,
-      vin: '1HGBH41JXMN109186',
-      stockNumber: 'ST2024001',
-      year: 2024,
-      make: 'Honda',
-      model: 'Civic',
-      trim: 'LX',
-      color: 'Silver',
-      mileage: 15420,
-      status: 'Available',
-      ownerName: 'John Smith',
-      ownerPhone: '(555) 123-4567',
-    },
-    {
-      id: 2,
-      vin: '2T1BURHE0JC123456',
-      stockNumber: 'ST2024002',
-      year: 2023,
-      make: 'Toyota',
-      model: 'Corolla',
-      trim: 'LE',
-      color: 'White',
-      mileage: 22100,
-      status: 'Available',
-      ownerName: 'Sarah Johnson',
-      ownerPhone: '(555) 987-6543',
-    },
-    {
-      id: 3,
-      vin: '3VW2B7AJ8KM123789',
-      stockNumber: 'ST2024003',
-      year: 2024,
-      make: 'Volkswagen',
-      model: 'Jetta',
-      trim: 'S',
-      color: 'Black',
-      mileage: 8900,
-      status: 'Available',
-      ownerName: 'Michael Brown',
-      ownerPhone: '(555) 456-7890',
-    },
-    {
-      id: 4,
-      vin: '1FA6P8TH5J5123456',
-      stockNumber: 'ST2024004',
-      year: 2023,
-      make: 'Ford',
-      model: 'Mustang',
-      trim: 'GT',
-      color: 'Red',
-      mileage: 12500,
-      status: 'Available',
-      ownerName: 'Lisa Davis',
-      ownerPhone: '(555) 321-9876',
-    },
-  ]
-
   const searchTypeOptions = [
     { value: 'stock', label: 'Stock Number' },
     { value: 'make_model', label: 'Make/Model' },
@@ -109,7 +109,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
     { value: '2021', label: '2021' },
   ]
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     setIsSearching(true)
 
     setTimeout(() => {
@@ -136,7 +136,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
       setSearchResults(results)
       setIsSearching(false)
     }, 800)
-  }
+  }, [makeFilter, modelFilter, searchQuery, searchType, yearFilter])
 
   const handleVehicleSelect = (vehicle) => {
     onVehicleSelect(vehicle)
@@ -199,7 +199,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
     if (searchType === 'make_model') {
       handleSearch()
     }
-  }, [makeFilter, modelFilter, yearFilter])
+  }, [handleSearch, searchType])
 
   return (
     <div className="bg-card border border-border rounded-lg p-6">

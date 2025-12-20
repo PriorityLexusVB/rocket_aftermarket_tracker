@@ -5,7 +5,6 @@ const KanbanColumn = ({
   column,
   jobs = [],
   stats = { total: 0, overdue: 0, urgent: 0 },
-  onJobClick,
   onDragOver,
   onDrop,
   draggedJob,

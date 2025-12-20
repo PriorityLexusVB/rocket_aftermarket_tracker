@@ -51,7 +51,7 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
     return () => {
       alive = false
     }
-  }, [isOpen, dealId, initialDeal?.id])
+  }, [isOpen, dealId, initialDeal])
 
   // Handle save
   const handleSave = async (payload) => {

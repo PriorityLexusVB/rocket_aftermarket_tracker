@@ -14,7 +14,6 @@ import {
   Package,
   X,
 } from 'lucide-react'
-import Icon from '../../components/AppIcon'
 
 // Import step schemas for validating the multi‑step claim wizard
 import {
@@ -48,13 +47,11 @@ const CustomerClaimsSubmissionPortal = () => {
   // Data state
   const [customerVehicles, setCustomerVehicles] = useState([])
   const [products, setProducts] = useState([])
-  const [searchResults, setSearchResults] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [searchType, setSearchType] = useState('stock_number')
 
   // File upload state
   const [uploadedFiles, setUploadedFiles] = useState([])
-  const [uploadProgress, setUploadProgress] = useState({})
 
   // Load products on component mount
   useEffect(() => {
@@ -126,9 +123,8 @@ const CustomerClaimsSubmissionPortal = () => {
         customer_phone: mockCustomer?.customer_phone,
         vehicle_id: mockCustomer?.vehicle?.id,
       }))
-
-      setSearchResults([mockCustomer])
     } catch (error) {
+      console.error('Error searching customer records:', error)
       setErrors({ search: 'Error searching customer records' })
     } finally {
       setLoading(false)
@@ -313,7 +309,6 @@ const CustomerClaimsSubmissionPortal = () => {
     setSubmittedClaim(null)
     setUploadedFiles([])
     setErrors({})
-    setSearchResults([])
     setSearchTerm('')
   }
 

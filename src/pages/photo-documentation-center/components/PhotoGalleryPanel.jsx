@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Image as ImageIcon, Search, Calendar, Eye, Download, User, Clock } from 'lucide-react'
-import Icon from '../../../components/AppIcon'
 
 const PhotoGalleryPanel = ({ photos = [], loading, filters = {}, onFiltersChange }) => {
   const [selectedPhoto, setSelectedPhoto] = useState(null)

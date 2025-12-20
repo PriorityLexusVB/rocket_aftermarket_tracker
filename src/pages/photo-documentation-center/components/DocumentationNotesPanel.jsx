@@ -1,9 +1,7 @@
 import React, { useState } from 'react'
 import { FileText, Search, Clock, User, MessageSquare } from 'lucide-react'
-import Icon from '../../../components/AppIcon'
 
 const DocumentationNotesPanel = ({ notes = [], loading, filters = {}, onFiltersChange }) => {
-  const [selectedNote, setSelectedNote] = useState(null)
   const [expandedNotes, setExpandedNotes] = useState(new Set())
 
   const handleFilterChange = (key, value) => {

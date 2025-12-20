@@ -29,7 +29,7 @@ export default function DealDetailDrawer({ isOpen, onClose, deal }) {
       await navigator.clipboard.writeText(text)
       setCopied('Copied!')
       setTimeout(() => setCopied(''), 1500)
-    } catch (_) {
+    } catch {
       setCopied('Copy failed')
       setTimeout(() => setCopied(''), 1500)
     }

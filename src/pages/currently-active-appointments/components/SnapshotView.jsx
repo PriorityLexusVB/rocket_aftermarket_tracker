@@ -1,5 +1,5 @@
 // src/pages/currently-active-appointments/components/SnapshotView.jsx
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { jobService } from '@/services/jobService'
@@ -79,7 +79,7 @@ export default function SnapshotView() {
   const rows = useMemo(() => filterAndSort(rawJobs), [rawJobs])
   const conflictIds = useMemo(() => detectConflicts(rows), [rows])
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
       const jobs = await jobService.getAllJobs({ orgId })
@@ -90,11 +90,11 @@ export default function SnapshotView() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [orgId])
 
   useEffect(() => {
     load()
-  }, [orgId])
+  }, [load])
 
   async function handleComplete(job) {
     const prevStatus = job?.job_status || 'scheduled'
@@ -120,6 +120,7 @@ export default function SnapshotView() {
         return copy
       })
     } catch (e) {
+      console.warn('[SnapshotView] complete failed', e)
       const errorMsg = 'Complete failed'
       toast?.error?.(errorMsg)
       setStatusMessage(errorMsg)
@@ -136,6 +137,7 @@ export default function SnapshotView() {
       toast?.success?.(message)
       setStatusMessage(message)
     } catch (e) {
+      console.warn('[SnapshotView] undo failed', e)
       const errorMsg = 'Undo failed'
       toast?.error?.(errorMsg)
       setStatusMessage(errorMsg)
@@ -184,7 +186,6 @@ export default function SnapshotView() {
           const vehicle = j?.vehicle
           const vendorName = j?.vendor?.name || 'Unassigned'
           const customer = vehicle?.owner_name || ''
-          const undoInfo = undoMap.get(j.id)
           return (
             <li
               key={j.id}

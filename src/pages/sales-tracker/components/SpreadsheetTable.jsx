@@ -61,10 +61,6 @@ const SERVICE_CATEGORIES = {
 }
 
 const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
-  const [editingCell, setEditingCell] = useState(null)
-  const [tempValue, setTempValue] = useState('')
-  const [viewMode, setViewMode] = useState('checkboxes')
-  const [collapsedCategories, setCollapsedCategories] = useState(new Set())
   const [filters, setFilters] = useState({
     status: '',
     coordinator: '',
@@ -152,42 +148,6 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
     [data, onDelete, logSalesAction, logError]
   )
 
-  // Enhanced service toggle with detailed logging
-  const handleServiceToggle = useCallback(
-    async (saleId, service, isEnabled) => {
-      try {
-        const sale = filteredData?.find((s) => s?.id === saleId)
-        const serviceAction = isEnabled ? 'service_enabled' : 'service_disabled'
-
-        await logSalesAction(
-          serviceAction,
-          saleId,
-          `${service} ${isEnabled ? 'enabled' : 'disabled'} for ${sale?.stockNumber || saleId}`,
-          {
-            service,
-            isEnabled,
-            saleData: {
-              stockNumber: sale?.stockNumber,
-              customerName: sale?.customer?.name,
-              vehicleInfo: `${sale?.year} ${sale?.make} ${sale?.model}`,
-            },
-          }
-        )
-
-        // Call parent update function if it exists
-        onEdit?.({ ...sale, services: { ...sale?.services, [service]: isEnabled } })
-      } catch (error) {
-        await logError(error, {
-          action: 'service_toggle',
-          saleId,
-          service,
-          isEnabled,
-        })
-      }
-    },
-    [filteredData, onEdit, logSalesAction, logError]
-  )
-
   // Log component mount and data changes
   useEffect(() => {
     const logDataLoad = async () => {
@@ -266,7 +226,7 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
       return <span className="text-gray-500 text-sm">No services</span>
     }
 
-    const activeServices = Object.entries(services)?.filter(([_, enabled]) => enabled)
+    const activeServices = Object.entries(services)?.filter(([, enabled]) => enabled)
 
     if (activeServices?.length === 0) {
       return <span className="text-gray-500 text-sm">No services</span>

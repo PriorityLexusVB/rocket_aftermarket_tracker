@@ -48,7 +48,8 @@ const NoteCreationModal = ({ isOpen, onClose, onSave, jobInfo, vehicleInfo }) =>
       } else {
         setError(result?.error || 'Failed to save note. Please try again.')
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to save note:', err)
       setError('Failed to save note. Please try again.')
     } finally {
       setSaving(false)

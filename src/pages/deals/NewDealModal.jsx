@@ -1,7 +1,6 @@
 // src/pages/deals/NewDealModal.jsx
 // Simplified New Deal Modal using DealFormV2 for wizard parity with Edit
 import React, { useState } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
 import dealService from '../../services/dealService'
 import { draftToCreatePayload } from '../../components/deals/formAdapters'
@@ -9,7 +8,6 @@ import DealFormV2 from '../../components/deals/DealFormV2'
 import Icon from '../../components/ui/Icon'
 
 export default function NewDealModal({ isOpen, onClose, onSuccess }) {
-  const { user } = useAuth()
   const { orgId } = useTenant() || {}
   const [error, setError] = useState('')
 

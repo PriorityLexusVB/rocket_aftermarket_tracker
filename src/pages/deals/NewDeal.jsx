@@ -6,7 +6,7 @@ import * as dealService from '../../services/dealService'
 
 export default function NewDeal() {
   const navigate = useNavigate()
-  const [saving, setSaving] = React.useState(false)
+  const [, setSaving] = React.useState(false)
 
   // Handler passed into DealForm as onSave
   async function onSave(formState) {

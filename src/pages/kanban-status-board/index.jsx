@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Activity, Filter, Search, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../contexts/AuthContext'
 
 // Kanban components
 import KanbanColumn from './components/KanbanColumn'
@@ -10,8 +9,6 @@ import StatusUpdateModal from './components/StatusUpdateModal'
 import FilterPanel from './components/FilterPanel'
 
 const KanbanStatusBoard = () => {
-  const { user } = useAuth()
-
   // State management
   const [jobs, setJobs] = useState([])
   const [vendors, setVendors] = useState([])
@@ -88,60 +85,7 @@ const KanbanStatusBoard = () => {
   }, [])
 
   // Apply filters whenever jobs, searchTerm, or filters change
-  useEffect(() => {
-    applyFilters()
-  }, [jobs, searchTerm, filters])
-
-  const loadJobs = async () => {
-    try {
-      setLoading(true)
-
-      const { data, error } = await supabase
-        ?.from('jobs')
-        ?.select(
-          `
-          *,
-          vendor:vendors(id, name, specialty),
-          vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
-          job_parts:job_parts(id, is_off_site, requires_scheduling, promised_date)
-        `
-        )
-        ?.order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error loading jobs:', error)
-        return
-      }
-
-      setJobs(data || [])
-    } catch (error) {
-      console.error('Error in loadJobs:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadVendors = async () => {
-    try {
-      const { data, error } = await supabase
-        ?.from('vendors')
-        ?.select('id, name, specialty')
-        ?.eq('is_active', true)
-        ?.order('name')
-
-      if (error) {
-        console.error('Error loading vendors:', error)
-        return
-      }
-
-      setVendors(data || [])
-    } catch (error) {
-      console.error('Error in loadVendors:', error)
-    }
-  }
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...jobs]
 
     // Search filter
@@ -196,12 +140,70 @@ const KanbanStatusBoard = () => {
         case 'month':
           startDate?.setMonth(now?.getMonth() - 1)
           break
+        default:
+          break
       }
 
-      filtered = filtered?.filter((job) => job?.created_at && new Date(job.created_at) >= startDate)
+      filtered = filtered?.filter((job) => {
+        const created = job?.created_at ? new Date(job.created_at) : null
+        return created && created >= startDate
+      })
     }
 
     setFilteredJobs(filtered)
+  }, [jobs, searchTerm, filters])
+
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
+
+  const loadJobs = async () => {
+    try {
+      setLoading(true)
+
+      const { data, error } = await supabase
+        ?.from('jobs')
+        ?.select(
+          `
+          *,
+          vendor:vendors(id, name, specialty),
+          vehicle:vehicles(id, make, model, year, owner_name, stock_number),
+          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
+          job_parts:job_parts(id, is_off_site, requires_scheduling, promised_date)
+        `
+        )
+        ?.order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error loading jobs:', error)
+        return
+      }
+
+      setJobs(data || [])
+      setFilteredJobs(data || [])
+    } catch (err) {
+      console.error('Error in loadJobs:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadVendors = async () => {
+    try {
+      const { data, error } = await supabase
+        ?.from('vendors')
+        ?.select('id, name, specialty')
+        ?.order('name', { ascending: true })
+
+      if (error) {
+        console.error('Error loading vendors:', error)
+        return
+      }
+
+      setVendors(data || [])
+    } catch (err) {
+      console.error('Error in loadVendors:', err)
+    }
   }
 
   const getJobsForColumn = (columnStatuses) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   X,
   Calendar,
@@ -16,23 +16,23 @@ const ClaimDetailsModal = ({ claim, onClose }) => {
   const [attachments, setAttachments] = useState([])
   const [loadingAttachments, setLoadingAttachments] = useState(true)
 
-  useEffect(() => {
-    if (claim?.id) {
-      loadAttachments()
-    }
-  }, [claim?.id])
-
-  const loadAttachments = async () => {
+  const loadAttachments = useCallback(async (claimId) => {
     try {
       setLoadingAttachments(true)
-      const attachmentsData = await claimsService?.getClaimAttachments(claim?.id)
+      const attachmentsData = await claimsService?.getClaimAttachments(claimId)
       setAttachments(attachmentsData || [])
     } catch (error) {
       console.error('Error loading attachments:', error)
     } finally {
       setLoadingAttachments(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (claim?.id) {
+      loadAttachments(claim.id)
+    }
+  }, [claim?.id, loadAttachments])
 
   const getStatusColor = (status) => {
     switch (status) {

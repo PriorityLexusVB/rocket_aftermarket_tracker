@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Clock,
   Calendar,
-  Filter,
   Search,
   AlertTriangle,
   CheckCircle,
@@ -39,7 +38,7 @@ const CurrentlyActiveAppointments = () => {
   }
   /* eslint-disable react-hooks/rules-of-hooks */
   // Legacy: All hooks after conditional return. Refactor to split components when snapshot becomes default.
-   
+
   const [appointments, setAppointments] = useState([])
   const [originalAppointments, setOriginalAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -83,13 +82,13 @@ const CurrentlyActiveAppointments = () => {
     return () => {
       subscription?.unsubscribe()
     }
-  }, [])
+  }, [loadAppointments, loadPerformanceMetrics, loadStaffMembers, loadUnassignedJobs, loadVendors])
 
   useEffect(() => {
     applyFilters()
-  }, [searchQuery, statusFilter, vendorFilter, priorityFilter, originalAppointments])
+  }, [applyFilters])
 
-  const loadStaffMembers = async () => {
+  const loadStaffMembers = useCallback(async () => {
     try {
       const { data, error } = await supabase
         ?.from('user_profiles')
@@ -102,9 +101,9 @@ const CurrentlyActiveAppointments = () => {
     } catch (error) {
       console.error('Error loading staff members:', error)
     }
-  }
+  }, [])
 
-  const loadUnassignedJobs = async () => {
+  const loadUnassignedJobs = useCallback(async () => {
     try {
       const { data, error } = await supabase
         ?.from('jobs')
@@ -129,9 +128,9 @@ const CurrentlyActiveAppointments = () => {
     } catch (error) {
       console.error('Error loading unassigned jobs:', error)
     }
-  }
+  }, [])
 
-  const loadPerformanceMetrics = async () => {
+  const loadPerformanceMetrics = useCallback(async () => {
     try {
       // Get today's metrics
       const today = new Date()?.toISOString()?.split('T')?.[0]
@@ -188,9 +187,9 @@ const CurrentlyActiveAppointments = () => {
     } catch (error) {
       console.error('Error loading performance metrics:', error)
     }
-  }
+  }, [])
 
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       const { data, error } = await supabase
         ?.from('vendors')
@@ -203,9 +202,9 @@ const CurrentlyActiveAppointments = () => {
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
-  }
+  }, [])
 
-  const loadAppointments = async () => {
+  const loadAppointments = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -261,9 +260,9 @@ const CurrentlyActiveAppointments = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = [...originalAppointments]
 
     // Status filter
@@ -302,7 +301,7 @@ const CurrentlyActiveAppointments = () => {
     }
 
     setAppointments(filtered)
-  }
+  }, [originalAppointments, priorityFilter, searchQuery, statusFilter, vendorFilter])
 
   const getStatusConfig = (status) => {
     const configs = {

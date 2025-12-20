@@ -120,7 +120,8 @@ const PhotoUploadModal = ({ isOpen, onClose, onUpload, jobInfo, vehicleInfo }) =
       } else {
         setError(result?.error || 'Upload failed. Please try again.')
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Upload failed:', err)
       setError('Upload failed. Please try again.')
     } finally {
       setUploading(false)

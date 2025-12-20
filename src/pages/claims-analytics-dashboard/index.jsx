@@ -39,6 +39,7 @@ const ClaimsAnalyticsDashboard = () => {
       setDashboardData(data)
       setLastUpdated(new Date())
     } catch (err) {
+      console.error('Claims analytics dashboard load failed:', err)
       setError('Failed to load claims analytics dashboard. Please try again.')
     } finally {
       setLoading(false)

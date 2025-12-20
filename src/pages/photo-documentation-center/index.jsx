@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Camera, Upload, FileText, Plus, Image as ImageIcon } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
 import photoDocumentationService from '../../services/photoDocumentationService'
 import { jobService } from '../../services/jobService'
 import { vehicleService } from '../../services/vehicleService'
@@ -10,7 +9,6 @@ import PhotoUploadModal from './components/PhotoUploadModal'
 import NoteCreationModal from './components/NoteCreationModal'
 
 const PhotoDocumentationCenter = () => {
-  const { user } = useAuth()
   const [selectedJob, setSelectedJob] = useState(null)
   const [documentation, setDocumentation] = useState({
     photos: [],
@@ -34,7 +32,7 @@ const PhotoDocumentationCenter = () => {
   useEffect(() => {
     loadJobs()
     loadVehicles()
-  }, [])
+  }, [loadJobs, loadVehicles])
 
   // Load documentation when job is selected
   useEffect(() => {
@@ -43,7 +41,7 @@ const PhotoDocumentationCenter = () => {
     }
   }, [selectedJob])
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     const result = await jobService?.getAllJobs()
     if (result?.success) {
       setJobs(result?.data || [])
@@ -52,14 +50,14 @@ const PhotoDocumentationCenter = () => {
         setSelectedJob(result?.data?.[0])
       }
     }
-  }
+  }, [selectedJob])
 
-  const loadVehicles = async () => {
+  const loadVehicles = useCallback(async () => {
     const result = await vehicleService?.getAllVehicles()
     if (result?.success) {
       setVehicles(result?.data || [])
     }
-  }
+  }, [])
 
   const loadJobDocumentation = async (jobId) => {
     if (!jobId) return

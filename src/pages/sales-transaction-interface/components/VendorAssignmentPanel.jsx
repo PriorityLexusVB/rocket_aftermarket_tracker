@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Icon from '../../../components/AppIcon'
 import Select from '../../../components/ui/Select'
 import Button from '../../../components/ui/Button'
@@ -136,7 +136,7 @@ const VendorAssignmentPanel = ({
     }
   }
 
-  const calculateEstimatedCompletion = () => {
+  const calculateEstimatedCompletion = useCallback(() => {
     const now = new Date()
     const totalHours = selectedProducts?.reduce((total, product) => {
       const vendor = vendorAssignments?.[product?.id]
@@ -155,7 +155,7 @@ const VendorAssignmentPanel = ({
       hour: '2-digit',
       minute: '2-digit',
     })
-  }
+  }, [selectedProducts, vendorAssignments])
 
   const getWorkloadColor = (current, max) => {
     const percentage = (current / max) * 100
@@ -177,7 +177,7 @@ const VendorAssignmentPanel = ({
     if (Object.keys(vendorAssignments)?.length > 0) {
       setEstimatedCompletion(calculateEstimatedCompletion())
     }
-  }, [vendorAssignments, selectedProducts])
+  }, [calculateEstimatedCompletion, vendorAssignments])
 
   if (selectedProducts?.length === 0) {
     return (

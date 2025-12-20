@@ -5,10 +5,7 @@ const FilterPanel = ({
   vendors = [],
   filters = { vendors: [], priorities: [], overdue: false, dateRange: 'all' },
   onFiltersChange,
-  onFilterChange,
   onClearFilters,
-  onSavePreset,
-  onLoadPreset,
   className = '',
 }) => {
   const priorities = ['low', 'medium', 'high', 'urgent']
