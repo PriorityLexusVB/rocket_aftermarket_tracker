@@ -4,7 +4,6 @@
  * and that KPI cards render without NaN/undefined values
  */
 
-import React, { useState, useEffect } from 'react'
 import { getAllDeals } from '../services/dealService'
 import { advancedFeaturesService } from '../services/advancedFeaturesService'
 

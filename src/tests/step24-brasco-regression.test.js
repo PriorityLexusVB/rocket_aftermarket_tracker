@@ -1,11 +1,11 @@
 /**
  * Step 24: Brasco-style regression test - Multi-edit with many line items
- * 
+ *
  * Goal: Verify that multiple edits to a deal with many line items do not:
  * - Duplicate line items in the database
  * - Show incorrect totals in the deals list
  * - Lose loaner numbers
- * 
+ *
  * This test creates a deal similar to Rob Brasco's real scenario with multiple
  * line items, performs multiple updates, and verifies data integrity.
  */
@@ -40,16 +40,12 @@ vi.mock('../lib/supabase', () => ({
 }))
 
 describe('Step 24: Brasco-style regression - Multi-edit deal with many line items', () => {
-  let testJobId
   let testVehicleId
   let testProductIds
-  let insertedJobPartIds
 
   beforeEach(() => {
-    testJobId = 'test-job-brasco-001'
     testVehicleId = 'test-vehicle-001'
     testProductIds = Array.from({ length: 10 }, (_, i) => `prod-${i + 1}`)
-    insertedJobPartIds = []
 
     // Reset mock call history
     vi.clearAllMocks()

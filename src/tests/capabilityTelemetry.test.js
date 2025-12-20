@@ -1,6 +1,6 @@
 // src/tests/capabilityTelemetry.test.js
 // Tests for capability telemetry utility
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   incrementTelemetry,
   getTelemetry,

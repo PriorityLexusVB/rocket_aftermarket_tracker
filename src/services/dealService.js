@@ -11,7 +11,6 @@ import {
   classifySchemaError,
   isMissingColumnError,
   isMissingRelationshipError,
-  SchemaErrorCode,
   getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
 import { formatTime } from '@/utils/dateTimeUtils'
@@ -501,6 +500,7 @@ async function selectJoinedDealById(id) {
           '[dealService:selectJoinedDealById] user_profiles column missing; degrading caps'
         )
         downgradeCapForErrorMessage(msg)
+        disableUserProfilesNameCapability()
         continue
       }
 
@@ -529,12 +529,12 @@ async function selectJoinedDealById(id) {
       lastError = fallbackErr
       if (/user_profiles/i.test(fallbackErr?.message || '')) {
         downgradeCapForErrorMessage(fallbackErr?.message || '')
+        disableUserProfilesNameCapability()
         continue
       }
     }
     if (isMissingRelationshipError(jobError)) {
       const msg = jobError?.message || ''
-      const errorCode = classifySchemaError(jobError)
 
       // Detect vendor relationship issues and degrade
       if (/vendor/i.test(msg) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
@@ -1405,7 +1405,6 @@ export async function getAllDeals() {
     console.error('Failed to load deals:', error)
     // Provide specific guidance for missing relationship errors using classifier
     if (isMissingRelationshipError(error)) {
-      const errorCode = classifySchemaError(error)
       const remediation = getRemediationGuidance(error)
       const guidance = remediation.migrationFile
         ? `Please run migration: ${remediation.migrationFile}`
@@ -2478,10 +2477,4 @@ export const dealService = {
 
 export default dealService
 
-export {
-  mapDbDealToForm,
-  mapFormToDb,
-  mapPermissionError,
-  normalizeDealTimes,
-  isRlsError,
-}
+export { mapDbDealToForm, mapFormToDb, mapPermissionError, normalizeDealTimes, isRlsError }

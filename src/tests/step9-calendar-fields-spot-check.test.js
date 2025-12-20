@@ -30,7 +30,7 @@ describe('Step 9: Calendar Fields Spot-Check Test', () => {
   // Setup test data before running tests
   beforeAll(async () => {
     // Create test user
-    const { data: user, error: userError } = await supabase
+    const { error: userError } = await supabase
       ?.from('user_profiles')
       ?.insert([
         {

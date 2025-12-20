@@ -5,7 +5,6 @@ import {
   TelemetryKey,
   incrementTelemetry,
   getTelemetry,
-  resetTelemetry,
   resetAllTelemetry,
   exportTelemetry,
   importTelemetry,

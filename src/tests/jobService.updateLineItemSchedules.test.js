@@ -48,7 +48,6 @@ describe('jobService.updateLineItemSchedules', () => {
     })
 
     // Mock the select query for line items
-    const selectMock = vi.fn().mockReturnThis()
     const eqSelectMock = vi.fn().mockResolvedValue({
       data: mockLineItems,
       error: null,
@@ -94,18 +93,24 @@ describe('jobService.updateLineItemSchedules', () => {
   })
 
   it('should throw error when jobId is missing', async () => {
-    await expect(jobService.updateLineItemSchedules(null, { startTime: '2025-11-15T09:00:00Z', endTime: '2025-11-15T11:00:00Z' }))
-      .rejects.toThrow('Job ID is required')
+    await expect(
+      jobService.updateLineItemSchedules(null, {
+        startTime: '2025-11-15T09:00:00Z',
+        endTime: '2025-11-15T11:00:00Z',
+      })
+    ).rejects.toThrow('Job ID is required')
   })
 
   it('should throw error when startTime is missing', async () => {
-    await expect(jobService.updateLineItemSchedules('job-123', { endTime: '2025-11-15T11:00:00Z' }))
-      .rejects.toThrow('Start time and end time are required')
+    await expect(
+      jobService.updateLineItemSchedules('job-123', { endTime: '2025-11-15T11:00:00Z' })
+    ).rejects.toThrow('Start time and end time are required')
   })
 
   it('should throw error when endTime is missing', async () => {
-    await expect(jobService.updateLineItemSchedules('job-123', { startTime: '2025-11-15T09:00:00Z' }))
-      .rejects.toThrow('Start time and end time are required')
+    await expect(
+      jobService.updateLineItemSchedules('job-123', { startTime: '2025-11-15T09:00:00Z' })
+    ).rejects.toThrow('Start time and end time are required')
   })
 
   it('should throw error when no line items require scheduling', async () => {
@@ -136,13 +141,14 @@ describe('jobService.updateLineItemSchedules', () => {
       return {}
     })
 
-    await expect(jobService.updateLineItemSchedules(mockJobId, mockScheduleData))
-      .rejects.toThrow('No line items require scheduling for this job')
+    await expect(jobService.updateLineItemSchedules(mockJobId, mockScheduleData)).rejects.toThrow(
+      'No line items require scheduling for this job'
+    )
   })
 
   it('should extract date correctly from ISO timestamp for promised_date', async () => {
     const mockJobId = 'job-789'
-    
+
     // Test with different times on the same day
     const testCases = [
       { startTime: '2025-11-15T00:00:00Z', expectedDate: '2025-11-15' },

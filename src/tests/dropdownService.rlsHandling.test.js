@@ -1,11 +1,11 @@
 /**
  * Test suite for dropdownService RLS error handling
- * 
+ *
  * Validates that dropdown services gracefully degrade when RLS errors occur
  * without breaking the UI or showing cryptic error messages.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Document the expected RLS handling behavior
 describe('dropdownService - RLS Error Handling Documentation', () => {
@@ -15,7 +15,7 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
       // 1. Not cache the null result (allow retry on next call)
       // 2. Log a warning but not throw
       // 3. Return null to allow queries to proceed without org filtering
-      
+
       const expectedBehavior = {
         onRlsError: {
           shouldCache: false, // Don't cache error states
@@ -28,7 +28,7 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
           returnValue: 'org-id-uuid', // Return the org_id
         },
       }
-      
+
       expect(expectedBehavior.onRlsError.shouldCache).toBe(false)
       expect(expectedBehavior.onRlsError.shouldThrow).toBe(false)
       expect(expectedBehavior.onRlsError.returnValue).toBeNull()
@@ -39,12 +39,15 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
       // 1. Try lookup by email
       // 2. Order by updated_at DESC to get most recent profile
       // 3. Log success if email fallback works
-      
+
       const fallbackStrategy = {
         primary: { method: 'eq("id", userId)', priority: 1 },
-        fallback: { method: 'eq("email", email).order("updated_at", { ascending: false })', priority: 2 },
+        fallback: {
+          method: 'eq("email", email).order("updated_at", { ascending: false })',
+          priority: 2,
+        },
       }
-      
+
       expect(fallbackStrategy.primary.priority).toBeLessThan(fallbackStrategy.fallback.priority)
       expect(fallbackStrategy.fallback.method).toContain('email')
       expect(fallbackStrategy.fallback.method).toContain('updated_at')
@@ -57,13 +60,13 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
       // 1. Catch the error
       // 2. Log it with context
       // 3. Return empty array instead of throwing
-      
+
       const errorHandling = {
         catchError: true,
         logWithContext: true,
         returnValue: [], // Empty array, not null or throwing
       }
-      
+
       expect(errorHandling.returnValue).toEqual([])
       expect(Array.isArray(errorHandling.returnValue)).toBe(true)
     })
@@ -71,12 +74,12 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
     it('documents org-scoped query pattern for vendors', () => {
       // Vendor queries should include both org-scoped and global (NULL org_id) records
       // This ensures shared/system vendors are available across orgs
-      
+
       const queryPattern = {
         filter: 'org_id.eq.{userOrgId},org_id.is.null',
         description: 'Include both org-specific and global vendors',
       }
-      
+
       expect(queryPattern.filter).toContain('org_id.eq.')
       expect(queryPattern.filter).toContain('org_id.is.null')
     })
@@ -90,7 +93,7 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
         logWithContext: true,
         returnValue: [],
       }
-      
+
       expect(errorHandling.returnValue).toEqual([])
     })
 
@@ -102,7 +105,7 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
         label: 'Product Name - Brand',
         unit_price: 99.99, // Must be preserved
       }
-      
+
       expect(productOption.unit_price).toBeDefined()
       expect(typeof productOption.unit_price).toBe('number')
     })
@@ -114,7 +117,7 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
       // 1. Detect if vendor_id column exists
       // 2. Detect which name column exists (name, full_name, display_name)
       // 3. Degrade gracefully when columns are missing
-      
+
       const capabilities = {
         vendorId: { column: 'vendor_id', fallback: 'omit from query' },
         nameColumn: {
@@ -122,7 +125,7 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
           fallback: 'email',
         },
       }
-      
+
       expect(capabilities.nameColumn.priority).toContain('name')
       expect(capabilities.nameColumn.fallback).toBe('email')
     })
@@ -132,15 +135,15 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
       // 1. Detect the error
       // 2. Disable the capability
       // 3. Retry without that column
-      
+
       const retryBehavior = {
         maxAttempts: 3,
         onMissingColumn: {
-          detectPattern: "column \"column_name\" does not exist",
+          detectPattern: 'column "column_name" does not exist',
           action: 'disable capability and retry',
         },
       }
-      
+
       expect(retryBehavior.maxAttempts).toBe(3)
       expect(retryBehavior.onMissingColumn.action).toContain('retry')
     })
@@ -156,9 +159,9 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
           .join('|')
         return suffix ? `${base}?${suffix}` : base
       }
-      
+
       const key = cacheKey('vendors', { activeOnly: true, orgId: 'org-123' })
-      
+
       expect(key).toContain('vendors')
       expect(key).toContain('orgId:org-123')
     })
@@ -167,13 +170,13 @@ describe('dropdownService - RLS Error Handling Documentation', () => {
       // When org_id changes (e.g., user logs out/in as different org):
       // 1. Cache should be cleared
       // 2. org_id lookup should be re-fetched
-      
+
       const clearCacheBehavior = {
         clearsDropdownCache: true,
         clearsOrgIdCache: true,
         clearsPendingRequests: true,
       }
-      
+
       expect(clearCacheBehavior.clearsOrgIdCache).toBe(true)
     })
   })
@@ -188,12 +191,12 @@ describe('dropdownService - Error Message Quality', () => {
     // - Full org_id values
     // - User credentials
     // - Internal error details
-    
+
     const loggedInfo = {
       safe: ['operation name', 'error classification', 'retry count'],
       sensitive: ['full org_id', 'user email', 'internal stack'],
     }
-    
+
     expect(loggedInfo.safe).toContain('error classification')
     expect(loggedInfo.sensitive).toContain('full org_id')
   })
@@ -205,8 +208,8 @@ describe('dropdownService - Error Message Quality', () => {
       '[dropdownService] getScopedOrgId: No org_id found due to RLS - will retry on next call',
       '[dropdownService:getStaff] vendor_id column missing on user_profiles; degrading capability',
     ]
-    
-    exampleWarnings.forEach(warning => {
+
+    exampleWarnings.forEach((warning) => {
       expect(warning).toMatch(/\[dropdownService.*\]/)
       expect(warning).not.toContain('undefined')
     })
@@ -218,16 +221,16 @@ describe('dropdownService - RLS Policy Requirements', () => {
     // Each dropdown table should have SELECT policies that allow:
     // 1. Org-scoped reads (records matching user's org_id)
     // 2. Global reads (records with NULL org_id)
-    
+
     const dropdownTables = [
       { table: 'vendors', policy: 'org members read vendors' },
       { table: 'products', policy: 'org members read products' },
       { table: 'user_profiles', policy: 'own profile read' },
       { table: 'sms_templates', policy: 'org read sms templates' },
     ]
-    
+
     expect(dropdownTables.length).toBe(4)
-    dropdownTables.forEach(t => {
+    dropdownTables.forEach((t) => {
       expect(t.policy).toBeTruthy()
     })
   })
@@ -237,13 +240,13 @@ describe('dropdownService - RLS Policy Requirements', () => {
     // 1. RLS is evaluated first
     // 2. Then is_active filter is applied
     // 3. Result includes only active records user can see
-    
+
     const filterOrder = {
       step1: 'RLS policy evaluation (org_id match)',
       step2: 'Application filter (is_active = true)',
       step3: 'Result set',
     }
-    
+
     expect(Object.keys(filterOrder)).toHaveLength(3)
     expect(filterOrder.step1).toContain('RLS')
     expect(filterOrder.step2).toContain('is_active')

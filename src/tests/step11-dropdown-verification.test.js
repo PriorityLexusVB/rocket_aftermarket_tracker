@@ -63,7 +63,7 @@ describe('Step 11: Dropdowns Verification', () => {
     test('should verify salesperson dropdown sources and filters', async () => {
       console.log('\n  Checking Sales Consultants dropdown data...')
 
-      const { data, error } = await supabase?.rpc('get_sample_rows', {
+      const { error } = await supabase?.rpc('get_sample_rows', {
         table_name: 'user_profiles',
       })
 
@@ -367,7 +367,7 @@ describe('Step 11: Dropdowns Verification', () => {
           count: salesData?.length || 0,
           sample: salesData?.[0]?.full_name || 'None',
         }
-      } catch (e) {
+      } catch {
         results.salesConsultants = { count: 0, sample: 'Error' }
       }
 
@@ -383,7 +383,7 @@ describe('Step 11: Dropdowns Verification', () => {
           count: coordData?.length || 0,
           sample: coordData?.[0]?.full_name || 'None',
         }
-      } catch (e) {
+      } catch {
         results.deliveryCoordinators = { count: 0, sample: 'Error' }
       }
 
@@ -397,7 +397,7 @@ describe('Step 11: Dropdowns Verification', () => {
           count: vendorData?.length || 0,
           sample: vendorData?.[0]?.name || 'None',
         }
-      } catch (e) {
+      } catch {
         results.activeVendors = { count: 0, sample: 'Error' }
       }
 
@@ -411,7 +411,7 @@ describe('Step 11: Dropdowns Verification', () => {
           count: productData?.length || 0,
           sample: productData?.[0]?.name || 'None',
         }
-      } catch (e) {
+      } catch {
         results.activeProducts = { count: 0, sample: 'Error' }
       }
 

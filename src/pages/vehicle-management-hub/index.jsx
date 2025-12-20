@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
@@ -43,8 +43,6 @@ const VehicleManagementHub = () => {
     { id: 3, name: 'In Work Items', filters: { status: 'in-work', hasAftermarket: 'yes' } },
   ])
   const [lastUpdated, setLastUpdated] = useState(new Date())
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [vehicles, setVehicles] = useState([])
 
   // Mock stats data
@@ -122,8 +120,6 @@ const VehicleManagementHub = () => {
   useEffect(() => {
     const initializeVehicleManagement = async () => {
       try {
-        setLoading(true)
-
         // Load vehicles based on user role
         let vehicleData
         if (isVendor && vendorId) {
@@ -138,11 +134,8 @@ const VehicleManagementHub = () => {
         }
 
         setVehicles(vehicleData || [])
-        setLoading(false)
       } catch (error) {
         console.error('Error loading vehicles:', error)
-        setError('Failed to load vehicle data')
-        setLoading(false)
       }
     }
 
@@ -210,7 +203,7 @@ const VehicleManagementHub = () => {
       console.log('Adding new vehicle with aftermarket products:', vehicleData)
 
       // Use the new service method that handles products
-      const newVehicle = await createVehicleWithProducts(vehicleData)
+      await createVehicleWithProducts(vehicleData)
 
       // Show enhanced success message
       const productsCount = vehicleData?.initial_products?.length || 0

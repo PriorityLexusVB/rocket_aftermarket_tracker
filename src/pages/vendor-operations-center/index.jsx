@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
 import VendorListTable from './components/VendorListTable'
@@ -12,13 +11,12 @@ import { getVendorVehicles, getVendorJobs, getVendors } from '../../services/ven
 
 const VendorOperationsCenter = () => {
   const { userProfile, isManager, isVendor, vendorId } = useAuth()
-  const navigate = useNavigate()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [selectedVendor, setSelectedVendor] = useState(null)
   const [activeView, setActiveView] = useState('vendors') // 'vendors' or 'dashboard'
   const [userRole] = useState('manager') // Mock user role
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [, setLoading] = useState(false)
+  const [, setError] = useState('')
 
   // Mock vendor data
   const [vendors, setVendors] = useState([

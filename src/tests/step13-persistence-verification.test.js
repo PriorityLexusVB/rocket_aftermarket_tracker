@@ -3,8 +3,6 @@
  * Goal: Creating a deal writes the correct rows/columns.
  */
 
-import React from 'react'
-
 // Add Jest testing framework globals
 const describe =
   globalThis.describe ||

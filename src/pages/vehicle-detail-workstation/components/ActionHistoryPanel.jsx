@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 
-const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
+const ActionHistoryPanel = ({ actionHistory }) => {
   const [isExpanded, setIsExpanded] = useState(false)
   const [filter, setFilter] = useState('all')
 
@@ -90,7 +90,7 @@ const ActionHistoryPanel = ({ vehicleId, actionHistory }) => {
       <div className="max-h-96 overflow-y-auto">
         {displayedHistory?.length > 0 ? (
           <div className="p-4 space-y-3">
-            {displayedHistory?.map((action, index) => (
+            {displayedHistory?.map((action) => (
               <div key={action?.id} className="flex items-start space-x-3">
                 <div
                   className={`flex items-center justify-center w-6 h-6 rounded-full bg-muted ${getActionColor(action)}`}

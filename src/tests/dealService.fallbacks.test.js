@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toJobPartRows, getCapabilities } from '@/services/dealService'
+import { toJobPartRows } from '@/services/dealService'
 
 /**
  * Unit tests for dealService fallback behaviors:

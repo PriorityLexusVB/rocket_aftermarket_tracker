@@ -13,7 +13,7 @@
 
 import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DealsPage from '../pages/deals/index.jsx'
 import * as dealService from '../services/dealService'

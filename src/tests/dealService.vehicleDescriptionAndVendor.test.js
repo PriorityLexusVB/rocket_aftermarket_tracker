@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { getAllDeals, getDeal, mapDbDealToForm } from '../services/dealService'
+import { getAllDeals, mapDbDealToForm } from '../services/dealService'
 import { supabase } from '../lib/supabase'
 
 // Mock Supabase

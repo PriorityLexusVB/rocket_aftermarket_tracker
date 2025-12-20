@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import ScheduleChip from '@/components/deals/ScheduleChip'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -27,7 +27,7 @@ describe('ScheduleChip', () => {
     const deal = {
       id: 'deal-1',
       scheduled_start_time: '2025-11-13T09:00:00Z',
-      scheduled_end_time: '2025-11-13T17:00:00Z'
+      scheduled_end_time: '2025-11-13T17:00:00Z',
     }
     const { container } = render(
       <MemoryRouter>
@@ -44,13 +44,13 @@ describe('ScheduleChip', () => {
       job_parts: [
         {
           scheduled_start_time: '2025-11-13T10:00:00Z',
-          scheduled_end_time: '2025-11-13T12:00:00Z'
+          scheduled_end_time: '2025-11-13T12:00:00Z',
         },
         {
           scheduled_start_time: '2025-11-13T09:00:00Z',
-          scheduled_end_time: '2025-11-13T11:00:00Z'
-        }
-      ]
+          scheduled_end_time: '2025-11-13T11:00:00Z',
+        },
+      ],
     }
     const { container } = render(
       <MemoryRouter>
@@ -66,7 +66,7 @@ describe('ScheduleChip', () => {
     const deal = {
       id: 'deal-3',
       appt_start: '2025-11-13T14:00:00Z',
-      appt_end: '2025-11-13T15:00:00Z'
+      appt_end: '2025-11-13T15:00:00Z',
     }
     const { container } = render(
       <MemoryRouter>

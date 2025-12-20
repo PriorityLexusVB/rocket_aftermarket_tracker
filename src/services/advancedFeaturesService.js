@@ -373,7 +373,7 @@ export const advancedFeaturesService = {
     try {
       const subscription = supabase
         ?.channel('overdue-jobs')
-        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
+        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
           // Refetch overdue jobs when any job changes
           this.getOverdueJobs()?.then((result) => {
             if (result?.data) {

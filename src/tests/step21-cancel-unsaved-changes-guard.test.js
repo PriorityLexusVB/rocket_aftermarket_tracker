@@ -37,14 +37,33 @@ const expect =
   global.expect ||
   function (value) {
     return {
-      toBeNull: () => {},
-      toBeTruthy: () => {},
-      toBe: (expected) => {},
-      toBeGreaterThan: (expected) => {},
-      toEqual: (expected) => {},
+      toBeNull: () => {
+        void value
+      },
+      toBeTruthy: () => {
+        void value
+      },
+      toBe: (expected) => {
+        void value
+        void expected
+      },
+      toBeGreaterThan: (expected) => {
+        void value
+        void expected
+      },
+      toEqual: (expected) => {
+        void value
+        void expected
+      },
       not: {
-        toBe: (expected) => {},
-        toEqual: (expected) => {},
+        toBe: (expected) => {
+          void value
+          void expected
+        },
+        toEqual: (expected) => {
+          void value
+          void expected
+        },
       },
     }
   }

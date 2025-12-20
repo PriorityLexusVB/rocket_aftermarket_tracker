@@ -3,7 +3,7 @@ process.env.TZ = 'America/New_York'
 
 import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
-import { vi, expect as vitestExpect, beforeEach as vitestBeforeEach, afterEach } from 'vitest'
+import { vi, expect as vitestExpect, afterEach } from 'vitest'
 
 // Force consistent timezone for date formatting stability in tests
 process.env.TZ = 'America/New_York'
@@ -189,7 +189,8 @@ const genId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(
 
 function tableApi(table: string) {
   let rows: Row[] = db[table] ?? (db[table] = [])
-  let filters: Array<(r: Row) => boolean> = []
+  // eslint-disable-next-line no-unused-vars
+  let filters: Array<(row: Row) => boolean> = []
   let orderBy: string | null = null
   let asc = true
   let limitN: number | null = null
@@ -579,7 +580,7 @@ function tableApi(table: string) {
       filters.push((r) => (v === null ? r?.[c] == null : r?.[c] === v))
       return chain
     },
-    or(filter: string) {
+    or() {
       // Simple OR filter support - just return chain for now
       return chain
     },
@@ -637,11 +638,11 @@ vi.mock('@/lib/supabase', () => ({
     },
     auth: {
       getUser: async () => ({ data: { user: currentUser }, error: null }),
-      getSession: async () => ({ 
-        data: { 
-          session: currentUser ? { user: currentUser } : null 
-        }, 
-        error: null 
+      getSession: async () => ({
+        data: {
+          session: currentUser ? { user: currentUser } : null,
+        },
+        error: null,
       }),
       admin: {
         generateLink: async ({ email }: { email: string }) => {
@@ -718,7 +719,8 @@ vi.mock('@/contexts/ThemeContext.jsx', () => {
 // --- Expect enhancements for a few custom matcher patterns used in tests ---
 try {
   // Always derive from Vitest's expect to avoid timing issues
-  const originalExpect = vitestExpect as unknown as (actual: any) => any
+  // eslint-disable-next-line no-unused-vars
+  const originalExpect = vitestExpect as unknown as (value: any) => any
   if (typeof originalExpect === 'function') {
     // @ts-ignore
     globalThis.expect = (actual: any) => {

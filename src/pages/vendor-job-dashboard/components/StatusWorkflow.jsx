@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 
-const StatusWorkflow = ({ jobs, onStatusUpdate, onBulkUpdate }) => {
+const StatusWorkflow = ({ jobs, onStatusUpdate }) => {
   const [draggedJob, setDraggedJob] = useState(null)
   const [dragOverColumn, setDragOverColumn] = useState(null)
 

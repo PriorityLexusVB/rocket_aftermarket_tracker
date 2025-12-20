@@ -29,7 +29,7 @@ describe('Step 8: Create → Edit Round-trip Test', () => {
   // Setup test data before running tests
   beforeAll(async () => {
     // Create test user
-    const { data: user, error: userError } = await supabase
+    const { error: userError } = await supabase
       ?.from('user_profiles')
       ?.insert([
         {

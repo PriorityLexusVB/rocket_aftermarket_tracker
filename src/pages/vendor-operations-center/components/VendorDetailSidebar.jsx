@@ -4,7 +4,7 @@ import Button from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
 import Select from '../../../components/ui/Select'
 
-const VendorDetailSidebar = ({ vendor, onClose, onSendSMS, onAssignJob, userRole = 'staff' }) => {
+const VendorDetailSidebar = ({ vendor, onClose, onSendSMS, onAssignJob }) => {
   const [smsMessage, setSmsMessage] = useState('')
   const [jobAssignment, setJobAssignment] = useState({
     vehicleId: '',

@@ -14,7 +14,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import React from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { AuthContext } from '../contexts/AuthContext'
 
 // Import components to test
 import DealsPage from '../pages/deals/index'
@@ -313,7 +312,7 @@ describe('Step 18: Test IDs Verification - UI Element Identification', () => {
         { type: 'submit', testId: 'button-submit' },
       ]
 
-      buttonStates?.forEach(({ disabled, loading, type, testId }) => {
+      buttonStates?.forEach(({ testId }) => {
         expect(testId)?.toMatch(/^button-[a-z]+$/)
       })
 

@@ -71,18 +71,19 @@ export async function ensureUserProfileCapsLoaded() {
   if (CAPS_LOADED) return
   // Initialize from storage first
   readCapsFromStorage()
-  
+
   // Check if we already have caps from storage
-  const hasStoredCaps = typeof sessionStorage !== 'undefined' && 
+  const hasStoredCaps =
+    typeof sessionStorage !== 'undefined' &&
     (sessionStorage.getItem(SS_KEYS.name) !== null ||
-     sessionStorage.getItem(SS_KEYS.full) !== null ||
-     sessionStorage.getItem(SS_KEYS.display) !== null)
-  
+      sessionStorage.getItem(SS_KEYS.full) !== null ||
+      sessionStorage.getItem(SS_KEYS.display) !== null)
+
   if (hasStoredCaps) {
     CAPS_LOADED = true
     return
   }
-  
+
   // Try probing the serverless health endpoint (best-effort)
   if (typeof fetch === 'function' && typeof window !== 'undefined') {
     try {
@@ -98,7 +99,7 @@ export async function ensureUserProfileCapsLoaded() {
           return
         }
       }
-    } catch (_) {
+    } catch {
       // Health endpoint not available (e.g., local dev without Vercel)
       // Capabilities remain at their default (false) values, meaning queries will only use id+email.
       // When columns are detected to exist, they'll be enabled via the health endpoint on subsequent loads.

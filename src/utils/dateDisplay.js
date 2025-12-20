@@ -30,7 +30,7 @@ export function formatPromiseDate(promiseDate) {
 
     // Stable formatting independent of environment timezone
     return formatDate(date, 'MMM d, yyyy')
-  } catch (err) {
+  } catch {
     return 'No promise date'
   }
 }
@@ -68,7 +68,7 @@ export function formatTimeWindow(startTime, endTime) {
     })
 
     return `${startStr} - ${endStr}`
-  } catch (err) {
+  } catch {
     return 'Not scheduled'
   }
 }

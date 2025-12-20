@@ -33,7 +33,8 @@ vi.mock('@/lib/supabase', () => {
   }
   return {
     supabase: {
-      from(table) {
+      from(_table) {
+        void _table
         return chain()
       },
     },

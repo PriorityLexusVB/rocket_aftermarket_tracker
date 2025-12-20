@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { supabase } from '@/lib/supabase'
+import { describe, it, expect } from 'vitest'
 
 /**
  * Task 7: sms_templates Column Usage Verification

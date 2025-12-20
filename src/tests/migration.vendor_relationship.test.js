@@ -18,7 +18,7 @@ describe('Migration: 20251106000000_add_job_parts_vendor_id.sql', () => {
 
   try {
     migrationSQL = readFileSync(migrationPath, 'utf8')
-  } catch (err) {
+  } catch {
     // Migration file doesn't exist - test will fail below
   }
 

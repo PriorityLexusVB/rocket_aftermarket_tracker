@@ -39,7 +39,7 @@ const jest = globalThis.jest || {
 }
 
 describe('Step 12: Interactive Controls & Disabled/Enabled Logic', () => {
-  let form, newDealBtn, addLineItemBtn, saveBtn, customerNameField, titleField, productSelect
+  let form, newDealBtn, addLineItemBtn, saveBtn, customerNameField, titleField
 
   beforeEach(() => {
     // Simulate DOM setup
@@ -117,7 +117,6 @@ describe('Step 12: Interactive Controls & Disabled/Enabled Logic', () => {
     saveBtn = document.querySelector('[data-testid="save-deal-btn"]')
     customerNameField = document.querySelector('[data-testid="customer-name"]')
     titleField = document.querySelector('[data-testid="title"]')
-    productSelect = document.querySelector('[data-testid="product-select"]')
 
     // Provide global handlers referenced by inline onClick attributes so jsdom can invoke them
     globalThis.openNewDealModal = jest?.fn(() => {
