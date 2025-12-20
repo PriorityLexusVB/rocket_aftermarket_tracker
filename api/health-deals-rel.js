@@ -78,7 +78,7 @@ export default async function handler(req, res) {
               ? 'stale_cache'
               : 'other'
 
-      return res.status(200).json({
+      const response = {
         ok: false,
         classification,
         ...diagnostics,
@@ -92,18 +92,37 @@ export default async function handler(req, res) {
                 ? 'NOTIFY pgrst, "reload schema"'
                 : 'Inspect error message',
         ms: Date.now() - started,
-      })
+      }
+
+      // Handle both Express-like and Node.js http response objects
+      if (typeof res.status === 'function') {
+        return res.status(200).json(response)
+      } else {
+        res.statusCode = 200
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(response))
+      }
     }
 
     diagnostics.restQueryOk = true
     diagnostics.cacheRecognized = true
-    return res.status(200).json({
+    
+    const response = {
       ok: true,
       classification: 'ok',
       ...diagnostics,
       rowsChecked: data?.length || 0,
       ms: Date.now() - started,
-    })
+    }
+
+    // Handle both Express-like and Node.js http response objects
+    if (typeof res.status === 'function') {
+      return res.status(200).json(response)
+    } else {
+      res.statusCode = 200
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify(response))
+    }
   } catch (e) {
     const code = classifySchemaError(e)
     const classification =
@@ -114,12 +133,22 @@ export default async function handler(req, res) {
           : code === SchemaErrorCode.STALE_CACHE
             ? 'stale_cache'
             : 'other'
-    return res.status(500).json({
+    
+    const response = {
       ok: false,
       classification,
       ...diagnostics,
       error: e.message,
       ms: Date.now() - started,
-    })
+    }
+
+    // Handle both Express-like and Node.js http response objects
+    if (typeof res.status === 'function') {
+      return res.status(500).json(response)
+    } else {
+      res.statusCode = 500
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify(response))
+    }
   }
 }
