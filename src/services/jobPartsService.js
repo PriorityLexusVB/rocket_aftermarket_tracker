@@ -20,7 +20,6 @@ import { jobPartInsertSchema } from '@/db/schemas'
 
 const VENDOR_PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000'
 const TIME_PLACEHOLDER = '1970-01-01 00:00:00+00'
-const DATE_PLACEHOLDER = '1970-01-01'
 
 function normalizeTime(value) {
   if (!value) return null
