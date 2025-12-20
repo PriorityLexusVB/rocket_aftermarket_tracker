@@ -132,8 +132,13 @@ export const notificationService = {
   // Unsubscribe from notifications
   unsubscribeFromNotifications(subscription) {
     try {
-      if (subscription) {
-        subscription?.unsubscribe()
+      if (!subscription) return
+
+      // Prefer channel.unsubscribe when available; fallback to removeChannel for non-channel objects
+      if (typeof subscription?.unsubscribe === 'function') {
+        subscription.unsubscribe()
+      } else if (typeof supabase?.removeChannel === 'function') {
+        supabase.removeChannel(subscription)
       }
     } catch (error) {
       console.warn('Failed to unsubscribe from notifications:', error)
