@@ -230,7 +230,6 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
     const keyParts = [
       record.job_id,
       record.product_id,
-      record.promised_date ?? DATE_PLACEHOLDER,
       includeVendor ? (record.vendor_id ?? VENDOR_PLACEHOLDER_UUID) : VENDOR_PLACEHOLDER_UUID,
       includeTimes ? (record.scheduled_start_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
       includeTimes ? (record.scheduled_end_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
@@ -369,9 +368,10 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     return
   }
 
+  // Align with DB unique index job_parts_unique_job_product_schedule
+  // (job_id, product_id, coalesce(vendor_id,...), coalesce(scheduled_start_time,...), coalesce(scheduled_end_time,...))
   const conflictColumns = ['job_id', 'product_id']
   if (includeVendor) conflictColumns.push('vendor_id')
-  conflictColumns.push('promised_date')
   if (includeTimes) {
     conflictColumns.push('scheduled_start_time', 'scheduled_end_time')
   }
