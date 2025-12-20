@@ -1,7 +1,7 @@
 // /api/health/job-parts-times (server route)
 // Health check endpoint to verify job_parts scheduling time columns
 import { supabase } from '@/lib/supabase'
-import { getRemediationGuidance, SchemaErrorCode } from '@/utils/schemaErrorClassifier'
+import { getRemediationGuidance } from '@/utils/schemaErrorClassifier'
 
 export default async function handler(req, res) {
   const timestamp = new Date().toISOString()
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     })
 
     // Test 2: Check scheduled_start_time column
-    const { data: startTimeTest, error: startTimeError } = await supabase
+    const { error: startTimeError } = await supabase
       .from('job_parts')
       .select('id, scheduled_start_time')
       .limit(1)
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     })
 
     // Test 3: Check scheduled_end_time column
-    const { data: endTimeTest, error: endTimeError } = await supabase
+    const { error: endTimeError } = await supabase
       .from('job_parts')
       .select('id, scheduled_end_time')
       .limit(1)

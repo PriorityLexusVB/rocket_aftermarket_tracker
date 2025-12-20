@@ -34,7 +34,14 @@ const SearchableSelect = ({
 
   const containerRef = useRef(null)
   const searchInputRef = useRef(null)
+  // Props retained for API compatibility; unused in current implementation
+  void groupBy
+  void renderOption
+  void label
+  void helperText
+
   const listRef = useRef(null)
+  void listRef
 
   // Detect mobile device
   useEffect(() => {

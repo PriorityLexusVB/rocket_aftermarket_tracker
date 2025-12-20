@@ -37,7 +37,7 @@ export default async function globalSetup() {
       // Trim noisy logs
       const text = msg.text()
       if (/vite\b|favicon|dev server/i.test(text)) return
-       
+
       console.log(`[setup:console:${msg.type()}]`, text)
     } catch {}
   })
@@ -45,7 +45,6 @@ export default async function globalSetup() {
     try {
       const url = res.url()
       if (/(auth|supabase)\//i.test(url)) {
-         
         console.log(`[setup:response] ${res.status()} ${url}`)
       }
     } catch {}
@@ -60,7 +59,7 @@ export default async function globalSetup() {
       try {
         await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 5000 })
         return true
-      } catch (e) {
+      } catch {
         // Small backoff then retry
         await new Promise((r) => setTimeout(r, Math.min(500 + attempt * 250, 2000)))
       }
@@ -135,7 +134,7 @@ export default async function globalSetup() {
         await page.getByTestId('session-user-id').waitFor({ state: 'visible', timeout: 15000 })
         await page.getByTestId('profile-org-id').waitFor({ state: 'visible', timeout: 15000 })
         verified = true
-      } catch (e) {
+      } catch {
         // If still redirected to /auth, wait a bit and retry
         if (page.url().includes('/auth')) {
           await page.waitForTimeout(2000)

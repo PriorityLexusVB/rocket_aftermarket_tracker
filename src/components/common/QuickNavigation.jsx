@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Calendar, Car, BarChart3, Settings, Package } from 'lucide-react'
-import Icon from '../AppIcon'
 
 const QuickNavigation = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -10,44 +9,54 @@ const QuickNavigation = () => {
   const navigate = useNavigate()
   const inputRef = useRef()
 
-  const navigationItems = [
-    {
-      name: 'Calendar & Scheduling',
-      path: '/calendar',
-      icon: Calendar,
-      description: 'Manage appointments and scheduling',
-      keywords: ['calendar', 'appointments', 'schedule', 'time'],
-    },
-    {
-      name: 'Vehicle Management',
-      path: '/vehicles',
-      icon: Car,
-      description: 'Vehicle inventory and tracking',
-      keywords: ['vehicles', 'inventory', 'stock', 'cars'],
-    },
-    {
-      name: 'Active Deals',
-      path: '/deals',
-      icon: Package,
-      description: 'Track deals and installations',
-      keywords: ['deals', 'sales', 'transactions', 'money'],
-    },
-    {
-      name: 'Administration',
-      path: '/admin',
-      icon: Settings,
-      description: 'Vendor management and system config',
-      keywords: ['vendors', 'partners', 'suppliers', 'admin', 'settings', 'configuration', 'users'],
-    },
-    {
-      name: 'Analytics Dashboard',
-      path: '/calendar',
-      icon: BarChart3,
-      description: 'Business intelligence and reports',
-      keywords: ['analytics', 'reports', 'dashboard', 'insights'],
-    },
-  ]
-
+  const navigationItems = useMemo(
+    () => [
+      {
+        name: 'Calendar & Scheduling',
+        path: '/calendar',
+        icon: Calendar,
+        description: 'Manage appointments and scheduling',
+        keywords: ['calendar', 'appointments', 'schedule', 'time'],
+      },
+      {
+        name: 'Vehicle Management',
+        path: '/vehicles',
+        icon: Car,
+        description: 'Vehicle inventory and tracking',
+        keywords: ['vehicles', 'inventory', 'stock', 'cars'],
+      },
+      {
+        name: 'Active Deals',
+        path: '/deals',
+        icon: Package,
+        description: 'Track deals and installations',
+        keywords: ['deals', 'sales', 'transactions', 'money'],
+      },
+      {
+        name: 'Administration',
+        path: '/admin',
+        icon: Settings,
+        description: 'Vendor management and system config',
+        keywords: [
+          'vendors',
+          'partners',
+          'suppliers',
+          'admin',
+          'settings',
+          'configuration',
+          'users',
+        ],
+      },
+      {
+        name: 'Analytics Dashboard',
+        path: '/calendar',
+        icon: BarChart3,
+        description: 'Business intelligence and reports',
+        keywords: ['analytics', 'reports', 'dashboard', 'insights'],
+      },
+    ],
+    []
+  )
   useEffect(() => {
     if (query?.length > 1) {
       const filtered = navigationItems?.filter(
@@ -60,7 +69,7 @@ const QuickNavigation = () => {
     } else {
       setResults(navigationItems?.slice(0, 6))
     }
-  }, [query])
+  }, [navigationItems, query])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -131,7 +140,7 @@ const QuickNavigation = () => {
         </div>
 
         <div className="max-h-96 overflow-y-auto">
-          {results?.map((item, index) => {
+          {results?.map((item) => {
             const Icon = item?.icon
             return (
               <button

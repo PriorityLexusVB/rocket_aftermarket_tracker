@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { titleCase } from '../../lib/format'
-import { combineDateAndTime, toDateInputValue, toTimeInputValue } from '../../utils/dateTimeUtils'
+import { combineDateAndTime, toDateInputValue } from '../../utils/dateTimeUtils'
 import {
   getSalesConsultants,
   getDeliveryCoordinators,
@@ -21,9 +21,6 @@ import {
 
 // Centralized VIN validation schema
 import { vinSchema } from '../../utils/claimSchemas'
-
-// Guard flag for auto-earliest-window feature (disabled by default to avoid test conflicts)
-const ENABLE_AUTO_EARLIEST_WINDOW = false
 
 export default function DealFormV2({ mode = 'create', job = null, onSave, onCancel }) {
   const { user } = useAuth()
@@ -191,7 +188,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         setLineItems([])
       }
     }
-  }, [job?.id, mode])
+  }, [job, job?.id, mode])
 
   // Track unsaved changes and mark user edits
   useEffect(() => {

@@ -171,7 +171,7 @@ function useTenant() {
     return () => {
       didCancel = true
     }
-  }, [user?.id, user?.email, userProfile?.org_id])
+  }, [user?.id, user?.email, userProfile, userProfile?.org_id])
 
   return { orgId, loading, session: derivedSession }
 }

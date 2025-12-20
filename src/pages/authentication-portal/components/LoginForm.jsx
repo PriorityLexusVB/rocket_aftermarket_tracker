@@ -7,7 +7,6 @@ const LoginForm = () => {
   const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isRetrying, setIsRetrying] = useState(false)
 
   const { signIn } = useContext(AuthContext)
   const navigate = useNavigate()
@@ -38,7 +37,6 @@ const LoginForm = () => {
 
     setIsLoading(true)
     setError('')
-    setIsRetrying(false)
 
     if (!formData?.email?.trim() || !formData?.password?.trim()) {
       setError('Please enter both email and password.')
@@ -70,10 +68,6 @@ const LoginForm = () => {
         const errorMsg = result?.error || 'Login failed. Please try again.'
         console.error('❌ Login failed:', errorMsg)
         setError(errorMsg)
-
-        if (errorMsg?.includes('timeout') || errorMsg?.includes('connection')) {
-          setIsRetrying(true)
-        }
       }
     } catch (err) {
       console.error('Login submission error:', err)

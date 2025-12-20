@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import useTenant from './useTenant'
 import {
@@ -44,18 +44,12 @@ export function useDropdownData(options = {}) {
   const tenant = useTenant()
   const auth = useAuth()
 
-  // Enhanced load data with tenant-aware services and better error handling
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      // If tenant is still loading, skip without toggling the loading flag here.
-      // The effect below re-invokes loadData when tenant.loading flips to false.
-      if (tenant.loading) {
-        return
-      }
+      if (tenant.loading) return
 
       setState((prev) => ({ ...prev, loading: true, error: null }))
 
-      // If no user session, prefer global safe fallbacks
       if (!tenant.session?.user) {
         setState((prev) => ({
           ...prev,
@@ -72,7 +66,6 @@ export function useDropdownData(options = {}) {
         return
       }
 
-      // If org is not present, fallback to global dropdownService calls
       const useTenantLists = Boolean(tenant.orgId)
 
       const promises = [
@@ -177,7 +170,7 @@ export function useDropdownData(options = {}) {
       })
       console.error('[dropdowns] Dropdown data load failed:', err)
     }
-  }
+  }, [tenant.loading, tenant.session?.user, tenant.orgId])
 
   // Optimistic cached-first hydrate to avoid initial loading UI where possible
   useEffect(() => {
@@ -351,7 +344,15 @@ export function useDropdownData(options = {}) {
     return () => {
       mounted = false
     }
-  }, [loadOnMount, auth?.loading, auth?.user?.id, tenant?.loading, tenant?.orgId])
+  }, [
+    loadOnMount,
+    auth?.loading,
+    auth?.user,
+    auth?.user?.id,
+    tenant?.loading,
+    tenant?.orgId,
+    loadData,
+  ])
 
   return {
     // Original data arrays

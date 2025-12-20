@@ -21,7 +21,6 @@ export default function CalendarLegend({ showStatuses = false, compact = false }
     return (
       <div className="flex items-center gap-4 text-xs">
         {serviceLegend.map((item, index) => {
-          const Icon = iconMap[item.icon]
           return (
             <div key={index} className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded ${item.bg} ${item.border} border`} />

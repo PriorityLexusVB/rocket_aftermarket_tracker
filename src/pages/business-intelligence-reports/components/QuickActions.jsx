@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 
-const QuickActions = ({ onQuickReport, isExporting }) => {
-  const [recentReports, setRecentReports] = useState([
+const QuickActions = ({ onQuickReport }) => {
+  const [recentReports] = useState([
     {
       id: 1,
       name: 'Weekly Sales Summary',

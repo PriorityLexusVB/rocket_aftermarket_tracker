@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     })
 
     // Test 2: Check vendor_id column exists in job_parts
-    const { data: vendorIdTest, error: vendorIdError } = await supabase
+    const { error: vendorIdError } = await supabase
       .from('job_parts')
       .select('id, vendor_id')
       .limit(1)

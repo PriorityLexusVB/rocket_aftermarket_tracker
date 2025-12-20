@@ -327,7 +327,7 @@ const MultiSelect = ({
                   <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
                     {groupName}
                   </div>
-                  {groupOptions?.map((option, index) => {
+                  {groupOptions?.map((option) => {
                     const globalIndex = filteredOptions?.indexOf(option)
                     const isSelected = value?.includes(option?.id)
                     return (

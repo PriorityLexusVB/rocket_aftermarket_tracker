@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback, useContext } from 'react'
+import React, { createContext, useState, useEffect, useCallback, useContext, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { persistOrgId } from '../utils/orgStorage'
 
@@ -11,73 +11,76 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [profileLoading, setProfileLoading] = useState(false)
 
-  const profileOperations = {
-    async load(userId) {
-      if (!userId) return
-      setProfileLoading(true)
-      try {
-        const { data, error } = await supabase
-          ?.from('user_profiles')
-          ?.select('*')
-          ?.eq('id', userId)
-          ?.single()
-        if (!error && data) {
-          setUserProfile(data)
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('userRole', data?.role)
-          }
-          persistOrgId(data?.org_id ?? null, userId)
-        } else {
-          // Create basic profile for auth.users with admin role by default
-          const {
-            data: { user },
-          } = await supabase?.auth?.getUser()
-          if (user) {
-            const basicProfile = {
-              id: user?.id,
-              email: user?.email,
-              full_name: user?.email?.split('@')?.[0] || 'User',
-              role: 'admin', // Updated to default to admin role
-              is_active: true,
+  const profileOperations = useMemo(
+    () => ({
+      async load(userId) {
+        if (!userId) return
+        setProfileLoading(true)
+        try {
+          const { data, error } = await supabase
+            ?.from('user_profiles')
+            ?.select('*')
+            ?.eq('id', userId)
+            ?.single()
+          if (!error && data) {
+            setUserProfile(data)
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('userRole', data?.role)
             }
-
-            const { data: newProfile } = await supabase
-              ?.from('user_profiles')
-              ?.insert(basicProfile)
-              ?.select()
-              ?.single()
-
-            if (newProfile) {
-              setUserProfile(newProfile)
-              if (typeof localStorage !== 'undefined') {
-                localStorage.setItem('userRole', newProfile?.role)
+            persistOrgId(data?.org_id ?? null, userId)
+          } else {
+            // Create basic profile for auth.users with admin role by default
+            const {
+              data: { user },
+            } = await supabase?.auth?.getUser()
+            if (user) {
+              const basicProfile = {
+                id: user?.id,
+                email: user?.email,
+                full_name: user?.email?.split('@')?.[0] || 'User',
+                role: 'admin', // Updated to default to admin role
+                is_active: true,
               }
-              persistOrgId(newProfile?.org_id ?? null, user?.id || userId)
+
+              const { data: newProfile } = await supabase
+                ?.from('user_profiles')
+                ?.insert(basicProfile)
+                ?.select()
+                ?.single()
+
+              if (newProfile) {
+                setUserProfile(newProfile)
+                if (typeof localStorage !== 'undefined') {
+                  localStorage.setItem('userRole', newProfile?.role)
+                }
+                persistOrgId(newProfile?.org_id ?? null, user?.id || userId)
+              }
             }
           }
+        } catch (error) {
+          // Show user-friendly error but don't block loading
+          const errorMessage = error?.message || 'Authentication service error'
+          if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
+            console.warn(
+              'Cannot connect to authentication service. Your Supabase project may be paused or inactive.'
+            )
+          } else {
+            console.error('Error loading user profile:', error)
+          }
+        } finally {
+          setProfileLoading(false)
         }
-      } catch (error) {
-        // Show user-friendly error but don't block loading
-        const errorMessage = error?.message || 'Authentication service error'
-        if (errorMessage?.includes('Failed to fetch') || errorMessage?.includes('NetworkError')) {
-          console.warn(
-            'Cannot connect to authentication service. Your Supabase project may be paused or inactive.'
-          )
-        } else {
-          console.error('Error loading user profile:', error)
+      },
+      clear() {
+        setUserProfile(null)
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('userRole')
         }
-      } finally {
-        setProfileLoading(false)
-      }
-    },
-    clear() {
-      setUserProfile(null)
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem('userRole')
-      }
-      persistOrgId(null)
-    },
-  }
+        persistOrgId(null)
+      },
+    }),
+    []
+  )
 
   const checkUser = useCallback(async () => {
     try {
@@ -107,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [profileOperations])
 
   useEffect(() => {
     checkUser()
@@ -128,7 +131,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       authListener?.subscription?.unsubscribe()
     }
-  }, [checkUser])
+  }, [checkUser, profileOperations])
 
   const signIn = async (email, password) => {
     try {

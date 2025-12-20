@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../../contexts/AuthContext'
@@ -21,7 +21,6 @@ import {
   Plus,
   QrCode,
 } from 'lucide-react'
-import Icon from '../../components/AppIcon'
 import { useLogger } from '../../hooks/useLogger'
 import { clearDropdownCache } from '../../services/dropdownService'
 import { vendorService } from '../../services/vendorService'
@@ -197,7 +196,7 @@ const AdminPage = () => {
     if (!authLoading) {
       initializeAdmin()
     }
-  }, [authLoading])
+  }, [authLoading, loadAllData, user, userProfile])
 
   // Debug function to check current user status
   const debugAuthState = async () => {
@@ -275,8 +274,77 @@ const AdminPage = () => {
     }
   }
 
+  const loadUserAccounts = useCallback(async () => {
+    try {
+      console.log('Loading user accounts...')
+
+      let q = supabase
+        ?.from('user_profiles')
+        ?.select('*', { count: 'exact' })
+        ?.in('role', ['admin', 'manager'])
+      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      q = q?.order('created_at', { ascending: false })
+
+      const { data, error } = await q
+
+      if (error) {
+        console.error('User accounts query error:', error)
+        throw error
+      }
+
+      console.log(`User accounts: ${data?.length || 0} records`)
+      setUserAccounts(data || [])
+    } catch (error) {
+      console.error('Error loading user accounts:', error)
+    }
+  }, [onlyMyOrg, orgId])
+
+  const loadStaffRecords = useCallback(async () => {
+    try {
+      console.log('Loading staff records...')
+
+      let q = supabase?.from('user_profiles')?.select('*', { count: 'exact' })?.eq('role', 'staff')
+      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      q = q?.order('created_at', { ascending: false })
+
+      const { data, error } = await q
+
+      if (error) {
+        console.error('Staff records query error:', error)
+        throw error
+      }
+
+      console.log(`Staff records: ${data?.length || 0} staff members found`)
+      setStaffRecords(data || [])
+    } catch (error) {
+      console.error('Error loading staff records:', error)
+    }
+  }, [onlyMyOrg, orgId])
+
+  const loadOrganizations = useCallback(async () => {
+    try {
+      console.log('Loading organizations...')
+
+      let q = supabase?.from('organizations')?.select('*', { count: 'exact' })
+      if (onlyMyOrg && orgId) q = q?.eq('id', orgId)
+      q = q?.order('created_at', { ascending: false })
+
+      const { data, error } = await q
+
+      if (error) {
+        console.error('Organizations query error:', error)
+        throw error
+      }
+
+      console.log(`Organizations: ${data?.length || 0} records`)
+      setOrganizations(data || [])
+    } catch (error) {
+      console.error('Error loading organizations:', error)
+    }
+  }, [onlyMyOrg, orgId])
+
   // Enhanced data loading with better error handling
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     console.log('Loading admin data...')
 
     try {
@@ -290,7 +358,14 @@ const AdminPage = () => {
       ])
 
       results?.forEach((result, index) => {
-        const sections = ['User Accounts', 'Staff Records', 'Vendors', 'Products', 'SMS Templates']
+        const sections = [
+          'User Accounts',
+          'Staff Records',
+          'Vendors',
+          'Products',
+          'SMS Templates',
+          'Organizations',
+        ]
         if (result?.status === 'rejected') {
           console.error(`Failed to load ${sections?.[index]}:`, result?.reason)
         } else {
@@ -301,72 +376,14 @@ const AdminPage = () => {
       console.error('Error loading admin data:', error)
       setError('Failed to load some admin data. Please try refreshing the page.')
     }
-  }
-
-  const loadOrganizations = async () => {
-    try {
-      const { data, error } = await supabase
-        ?.from('organizations')
-        ?.select('id, name')
-        ?.order('name')
-      if (error) throw error
-      setOrganizations(data || [])
-    } catch (e) {
-      console.warn('Failed to load organizations (optional):', e?.message)
-      setOrganizations([])
-    }
-  }
-
-  const loadUserAccounts = async () => {
-    try {
-      console.log('Loading user accounts...')
-
-      // Admin & Manager accounts; optionally scoped by org
-      let q = supabase
-        ?.from('user_profiles')
-        ?.select('*', { count: 'exact' })
-        ?.in('role', ['admin', 'manager'])
-
-      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
-      q = q?.order('created_at', { ascending: false })
-
-      const { data, error, count } = await q
-
-      if (error) {
-        console.error('User accounts query error:', error)
-        throw error
-      }
-
-      console.log(`User accounts query result: ${data?.length || 0} records`)
-      setUserAccounts(data || [])
-    } catch (error) {
-      console.error('Error loading user accounts:', error)
-      // Don't throw - allow other sections to load
-    }
-  }
-
-  const loadStaffRecords = async () => {
-    try {
-      console.log('Loading staff records...')
-      // Staff records scoped by org when toggled
-      let q = supabase?.from('user_profiles')?.select('*', { count: 'exact' })?.eq('role', 'staff')
-
-      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
-      q = q?.order('created_at', { ascending: false })
-
-      const { data: allStaff, error: staffError } = await q
-
-      if (staffError) {
-        console.error('Staff records query error:', staffError)
-        throw staffError
-      }
-
-      console.log(`Staff records: ${allStaff?.length} staff members found`)
-      setStaffRecords(allStaff || [])
-    } catch (error) {
-      console.error('Error loading staff records:', error)
-    }
-  }
+  }, [
+    loadOrganizations,
+    loadProducts,
+    loadSmsTemplates,
+    loadStaffRecords,
+    loadUserAccounts,
+    loadVendors,
+  ])
 
   // Attach/assign a single profile to current org
   const attachProfileToMyOrg = async (profileId) => {
@@ -390,13 +407,13 @@ const AdminPage = () => {
           'Attached user profile to current org',
           { orgId }
         )
-      } catch (_) {}
+      } catch {}
     } catch (e) {
       console.error('attachProfileToMyOrg error:', e)
       alert('Failed to attach to org: ' + (e?.message || 'Unknown error'))
       try {
         await logErr?.(e, { where: 'attachProfileToMyOrg', orgId, profileId })
-      } catch (_) {}
+      } catch {}
     } finally {
       setSubmitting(false)
     }
@@ -427,13 +444,13 @@ const AdminPage = () => {
           'Assigned org to staff without org',
           { orgId }
         )
-      } catch (_) {}
+      } catch {}
     } catch (e) {
       console.error('assignOrgToActiveStaff error:', e)
       setStaffActionMsg(e?.message || 'Failed to assign org to staff')
       try {
         await logErr?.(e, { where: 'assignOrgToActiveStaff', orgId })
-      } catch (_) {}
+      } catch {}
     } finally {
       setSubmitting(false)
     }
@@ -470,10 +487,9 @@ const AdminPage = () => {
     loadUserAccounts()
     loadVendors()
     loadProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlyMyOrg, orgId])
+  }, [loadProducts, loadStaffRecords, loadUserAccounts, loadVendors])
 
-  const loadVendors = async () => {
+  const loadVendors = useCallback(async () => {
     try {
       console.log('Loading vendors...')
 
@@ -481,7 +497,7 @@ const AdminPage = () => {
       if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
       q = q?.order('created_at', { ascending: false })
 
-      const { data, error, count } = await q
+      const { data, error } = await q
 
       if (error) {
         console.error('Vendors query error:', error)
@@ -493,9 +509,9 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
-  }
+  }, [onlyMyOrg, orgId])
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
       console.log('Loading products...')
 
@@ -503,7 +519,7 @@ const AdminPage = () => {
       if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
       q = q?.order('created_at', { ascending: false })
 
-      const { data, error, count } = await q
+      const { data, error } = await q
 
       if (error) {
         console.error('Products query error:', error)
@@ -515,7 +531,7 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading products:', error)
     }
-  }
+  }, [onlyMyOrg, orgId])
 
   // Assign current org to vendors with null org
   const assignOrgToVendors = async () => {
@@ -541,13 +557,13 @@ const AdminPage = () => {
           'Assigned org to vendors without org',
           { orgId }
         )
-      } catch (_) {}
+      } catch {}
     } catch (e) {
       console.error('assignOrgToVendors error:', e)
       setVendorsActionMsg(e?.message || 'Failed to assign org to vendors')
       try {
         await logErr?.(e, { where: 'assignOrgToVendors', orgId })
-      } catch (_) {}
+      } catch {}
     } finally {
       setSubmitting(false)
     }
@@ -577,23 +593,23 @@ const AdminPage = () => {
           'Assigned org to products without org',
           { orgId }
         )
-      } catch (_) {}
+      } catch {}
     } catch (e) {
       console.error('assignOrgToProducts error:', e)
       setProductsActionMsg(e?.message || 'Failed to assign org to products')
       try {
         await logErr?.(e, { where: 'assignOrgToProducts', orgId })
-      } catch (_) {}
+      } catch {}
     } finally {
       setSubmitting(false)
     }
   }
 
-  const loadSmsTemplates = async () => {
+  const loadSmsTemplates = useCallback(async () => {
     try {
       console.log('Loading SMS templates...')
 
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         ?.from('sms_templates')
         ?.select('*', { count: 'exact' })
         ?.order('created_at', { ascending: false })
@@ -608,7 +624,7 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading SMS templates:', error)
     }
-  }
+  }, [])
 
   const openModal = (type, item = null) => {
     setModalType(type)
@@ -769,7 +785,7 @@ const AdminPage = () => {
         throw new Error('Password is required for new users')
       }
 
-      const { data: authData, error: authError } = await supabase?.auth?.signUp({
+      const { error: authError } = await supabase?.auth?.signUp({
         email: userAccountForm?.email,
         password: userAccountForm?.password,
         options: {
@@ -2087,20 +2103,13 @@ const AdminPage = () => {
 
             {modalType === 'vendor' && (
               <>
-                <Input
-                  label="Vendor Name"
-                  {...vendorFormMethods.register('name')}
-                  required
-                />
+                <Input label="Vendor Name" {...vendorFormMethods.register('name')} required />
                 {vendorFormMethods.formState.errors?.name && (
                   <p className="mt-1 text-sm text-red-600">
                     {vendorFormMethods.formState.errors.name.message}
                   </p>
                 )}
-                <Input
-                  label="Contact Person"
-                  {...vendorFormMethods.register('contactPerson')}
-                />
+                <Input label="Contact Person" {...vendorFormMethods.register('contactPerson')} />
                 {vendorFormMethods.formState.errors?.contactPerson && (
                   <p className="mt-1 text-sm text-red-600">
                     {vendorFormMethods.formState.errors.contactPerson.message}
