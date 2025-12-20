@@ -57,8 +57,10 @@ describe('Schema Drift Detection', () => {
 
     // Should always include diagnostics
     expect(data.fkName).toBe('job_parts_vendor_id_fkey')
-    expect(typeof data.hasColumn).toBe('boolean')
-    expect(typeof data.hasFk).toBe('boolean')
+    
+    // These fields can be boolean or null (when state is unknown)
+    expect(data.hasColumn === null || typeof data.hasColumn === 'boolean').toBe(true)
+    expect(data.hasFk === null || typeof data.hasFk === 'boolean').toBe(true)
     expect(typeof data.restQueryOk).toBe('boolean')
     expect(typeof data.ms).toBe('number')
   })
