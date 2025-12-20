@@ -47,10 +47,14 @@ export function normalizeLineItems(draft = {}) {
   return raw
     .filter(Boolean)
     .map((it) => {
+      const productId = it.product_id ?? it.productId ?? ''
       const unitPrice = Number(it.unitPrice ?? it.unit_price ?? it.price ?? 0)
       const quantity = Number(it.quantity ?? it.qty ?? it.quantity_used ?? 1)
       const result = {
         ...it,
+        // Ensure both shapes are populated so downstream mappers see product_id
+        product_id: productId,
+        productId,
         unitPrice,
         quantity,
       }
