@@ -25,6 +25,7 @@ if (isTest) {
 
   supabaseClient = {
     from: () => chain([]),
+    removeChannel: async () => ({ data: null, error: null }),
     auth: {
       getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }),
       getSession: async () => ({
@@ -99,6 +100,7 @@ if (isTest) {
           subscribe: async () => ({ data: { subscription: { state: 'SUBSCRIBED' } }, error: null }),
           unsubscribe() {},
         }),
+        removeChannel: async () => ({ data: null, error: null }),
         auth: {
           getUser: async () => ({
             data: { user: null },

@@ -95,6 +95,10 @@ export const notificationService = {
       const channel = supabase?.channel?.('notifications')
       if (!channel?.on) return null
 
+      const refreshCount = () => {
+        notificationService.getNotificationCount(userId)?.then(callback)
+      }
+
       channel.on(
         'postgres_changes',
         {
@@ -102,10 +106,7 @@ export const notificationService = {
           schema: 'public',
           table: 'communications',
         },
-        () => {
-          // Refresh notifications when communications change
-          this.getNotificationCount(userId)?.then(callback)
-        }
+        refreshCount
       )
 
       channel.on(
@@ -115,14 +116,23 @@ export const notificationService = {
           schema: 'public',
           table: 'notification_outbox',
         },
-        () => {
-          // Refresh notifications when SMS outbox changes
-          this.getNotificationCount(userId)?.then(callback)
-        }
+        refreshCount
       )
 
       channel?.subscribe?.()
-      return channel
+
+      return async () => {
+        try {
+          if (typeof channel?.unsubscribe === 'function') {
+            await channel.unsubscribe()
+          }
+          if (typeof supabase?.removeChannel === 'function') {
+            await supabase.removeChannel(channel)
+          }
+        } catch (error) {
+          console.warn('Failed to unsubscribe from notifications:', error)
+        }
+      }
     } catch (error) {
       console.warn('Failed to subscribe to notifications:', error)
       return null
@@ -130,10 +140,21 @@ export const notificationService = {
   },
 
   // Unsubscribe from notifications
-  unsubscribeFromNotifications(subscription) {
+  async unsubscribeFromNotifications(subscription) {
     try {
-      if (subscription) {
-        subscription?.unsubscribe()
+      if (!subscription) return
+
+      if (typeof subscription === 'function') {
+        return await subscription()
+      }
+
+      const maybeUnsubscribe = subscription?.unsubscribe
+      if (typeof maybeUnsubscribe === 'function') {
+        return await maybeUnsubscribe()
+      }
+
+      if (typeof supabase?.removeChannel === 'function') {
+        return await supabase.removeChannel(subscription)
       }
     } catch (error) {
       console.warn('Failed to unsubscribe from notifications:', error)

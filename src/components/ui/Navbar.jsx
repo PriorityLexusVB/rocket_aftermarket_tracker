@@ -49,7 +49,7 @@ const Navbar = () => {
 
   // Load notifications on component mount and when user changes
   useEffect(() => {
-    let subscription = null
+    let unsubscribe = null
 
     const loadNotifications = async () => {
       if (!user?.id) {
@@ -82,7 +82,7 @@ const Navbar = () => {
         }
 
         // Set up real-time subscription
-        subscription = notificationService?.subscribeToNotifications(user?.id, (result) => {
+        unsubscribe = notificationService?.subscribeToNotifications(user?.id, (result) => {
           if (result?.error) {
             console.warn('Real-time notification error:', result?.error)
           } else {
@@ -102,9 +102,7 @@ const Navbar = () => {
 
     // Cleanup subscription on unmount or user change
     return () => {
-      if (subscription) {
-        notificationService?.unsubscribeFromNotifications(subscription)
-      }
+      notificationService?.unsubscribeFromNotifications(unsubscribe)
     }
   }, [user?.id])
 
