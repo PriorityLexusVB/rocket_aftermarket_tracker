@@ -110,8 +110,8 @@ function handleAuthError(error, label = 'dropdown') {
 
 async function requireAuthenticatedUser(label = 'dropdown') {
   try {
-    const { data } = await supabase?.auth?.getSession?.()
-    const user = data?.session?.user
+    const sessionResult = await supabase?.auth?.getSession?.()
+    const user = sessionResult?.data?.session?.user
     if (!user) return null
     return user
   } catch (e) {
@@ -128,9 +128,9 @@ async function getScopedOrgId() {
 
   _orgIdPending = (async () => {
     try {
-      const { data: auth } = await supabase?.auth?.getUser?.()
-      const userId = auth?.user?.id
-      const email = auth?.user?.email
+      const authResult = await supabase?.auth?.getUser?.()
+      const userId = authResult?.data?.user?.id
+      const email = authResult?.data?.user?.email
 
       if (!userId && !email) {
         _orgIdCache = null
