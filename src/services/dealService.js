@@ -83,6 +83,15 @@ function isRlsError(error) {
   )
 }
 
+// Safely sum job_parts when transactions are unavailable (e.g., RLS blocks read)
+function sumJobParts(parts = []) {
+  return (parts || []).reduce((sum, part) => {
+    const qty = Number(part?.quantity_used ?? part?.quantity ?? 0) || 0
+    const price = Number(part?.unit_price ?? part?.price ?? 0) || 0
+    return sum + qty * price
+  }, 0)
+}
+
 /**
  * Get the complete org context (org_id, user_id, user_email) for tenant scoping.
  * This helper provides all fields needed for proper RLS compliance in DB operations.
@@ -1345,6 +1354,10 @@ export async function getAllDeals() {
         const deliveryCoordinatorName = resolveUserProfileName(job?.delivery_coordinator)
         const financeManagerName = resolveUserProfileName(job?.finance_manager)
 
+        const transactionTotal = parseFloat(transaction?.total_amount)
+        const partsTotal = sumJobParts(job?.job_parts)
+        const totalAmount = Number.isFinite(transactionTotal) ? transactionTotal : partsTotal
+
         return {
           ...job,
           customer_name: transaction?.customer_name || '',
@@ -1352,7 +1365,7 @@ export async function getAllDeals() {
           customer_phone_e164: phoneE164,
           customer_phone_last4: phoneLast4,
           customer_email: transaction?.customer_email || '',
-          total_amount: parseFloat(transaction?.total_amount) || 0,
+          total_amount: totalAmount,
           has_active_loaner: !!loaner?.id,
           next_promised_iso: nextPromisedDate || null,
           loaner_id: loaner?.id || null,
@@ -1534,6 +1547,10 @@ export async function getDeal(id) {
       })),
     }
 
+    const transactionTotal = parseFloat(transaction?.total_amount)
+    const partsTotal = sumJobParts(job?.job_parts)
+    const totalAmount = Number.isFinite(transactionTotal) ? transactionTotal : partsTotal
+
     return {
       ...jobForUi,
       customer_name: transaction?.customer_name || '',
@@ -1541,7 +1558,7 @@ export async function getDeal(id) {
       customer_phone_e164: phoneE164,
       customer_phone_last4: phoneLast4,
       customer_email: transaction?.customer_email || '',
-      total_amount: parseFloat(transaction?.total_amount) || 0,
+      total_amount: totalAmount,
       has_active_loaner: !!loaner?.id,
       next_promised_iso: nextPromisedDate || null,
       loaner_number: loaner?.loaner_number || '',
