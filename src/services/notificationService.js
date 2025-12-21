@@ -122,7 +122,10 @@ export const notificationService = {
       )
 
       channel?.subscribe?.()
-      return channel
+      // Return a cleanup function (awaitable) to avoid leaking realtime subscriptions.
+      return async () => {
+        await this.unsubscribeFromNotifications(channel)
+      }
     } catch (error) {
       console.warn('Failed to subscribe to notifications:', error)
       return null
@@ -130,15 +133,24 @@ export const notificationService = {
   },
 
   // Unsubscribe from notifications
-  unsubscribeFromNotifications(subscription) {
+  async unsubscribeFromNotifications(subscription) {
     try {
       if (!subscription) return
 
-      // Prefer channel.unsubscribe when available; fallback to removeChannel for non-channel objects
+      // New contract: subscription may be a cleanup function
+      if (typeof subscription === 'function') {
+        await subscription()
+        return
+      }
+
+      // Prefer channel.unsubscribe when available
       if (typeof subscription?.unsubscribe === 'function') {
-        subscription.unsubscribe()
-      } else if (typeof supabase?.removeChannel === 'function') {
-        supabase.removeChannel(subscription)
+        await subscription.unsubscribe()
+      }
+
+      // For Supabase Realtime v2 channels, removing the channel is the canonical teardown.
+      if (typeof supabase?.removeChannel === 'function') {
+        await supabase.removeChannel(subscription)
       }
     } catch (error) {
       console.warn('Failed to unsubscribe from notifications:', error)

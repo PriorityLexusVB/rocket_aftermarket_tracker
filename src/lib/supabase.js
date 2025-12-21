@@ -13,6 +13,14 @@ if (isTest) {
   // Minimal in-memory stub with method chaining for tests
   const ok = (data = []) => ({ data, error: null })
 
+  const noopChannel = () => ({
+    on() {
+      return this
+    },
+    subscribe: async () => ({ data: { subscription: { state: 'SUBSCRIBED' } }, error: null }),
+    unsubscribe: async () => ({ data: null, error: null }),
+  })
+
   const chain = (rows = []) => ({
     select: () => ok(rows),
     insert: (payload) => ok(Array.isArray(payload) ? payload : [payload]),
@@ -25,6 +33,8 @@ if (isTest) {
 
   supabaseClient = {
     from: () => chain([]),
+    channel: () => noopChannel(),
+    removeChannel: async () => ({ data: null, error: null }),
     auth: {
       getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }),
       getSession: async () => ({

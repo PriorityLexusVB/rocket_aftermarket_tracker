@@ -35,6 +35,17 @@ async function checkCol(col) {
   }
 }
 
+function sendJson(res, status, body) {
+  if (res && typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(status).json(body)
+  }
+
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 export default async function handler(req, res) {
   const started = Date.now()
   const result = { name: null, full_name: null, display_name: null }
@@ -46,14 +57,14 @@ export default async function handler(req, res) {
     const ok = !!(result.name || result.full_name || result.display_name)
     const classification = ok ? 'ok' : 'missing_all'
 
-    return res?.status(200)?.json({
+    return sendJson(res, 200, {
       ok,
       classification,
       columns: result,
       ms: Date.now() - started,
     })
   } catch (error) {
-    return res?.status(500)?.json({
+    return sendJson(res, 500, {
       ok: false,
       classification: 'error',
       columns: result,

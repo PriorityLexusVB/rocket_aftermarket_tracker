@@ -38,6 +38,17 @@ async function check(col) {
   }
 }
 
+function sendJson(res, status, body) {
+  if (res && typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(status).json(body)
+  }
+
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 export default async function handler(req, res) {
   const started = Date.now()
   const columns = { name: null, full_name: null, display_name: null }
@@ -47,13 +58,13 @@ export default async function handler(req, res) {
     columns.display_name = await check('display_name')
     const ok = !!(columns.name || columns.full_name || columns.display_name)
     const classification = ok ? 'ok' : 'missing_all'
-    return res.status(200).json({ ok, classification, columns, ms: Date.now() - started })
+    return sendJson(res, 200, { ok, classification, columns, ms: Date.now() - started })
   } catch (e) {
-    return res.status(500).json({
+    return sendJson(res, 500, {
       ok: false,
       classification: 'error',
       columns,
-      error: e.message,
+      error: e?.message,
       ms: Date.now() - started,
     })
   }
