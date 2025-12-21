@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 
 const shouldReportHandles = process.env.VITEST_DEBUG_OPEN_HANDLES === 'true'
 
-describe('open handle diagnostics', () => {
+describe('open handles debug', () => {
   it('reports active handles when explicitly enabled', () => {
     if (!shouldReportHandles) {
       return
@@ -25,6 +25,7 @@ describe('open handle diagnostics', () => {
       realtimeLike: maybeRealtimeHandles,
     })
 
-    expect(Array.isArray(handles)).toBe(true)
+    expect(handleTypes.length).toBe(handles.length)
+    expect(requests.length).toBeGreaterThanOrEqual(0)
   })
 })

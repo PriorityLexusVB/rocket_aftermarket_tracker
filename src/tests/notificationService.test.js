@@ -43,8 +43,8 @@ describe('notificationService subscriptions', () => {
 
     await cleanup()
 
-    expect(mocks.mockChannelUnsubscribe).toHaveBeenCalledTimes(1)
     expect(mocks.mockRemoveChannel).toHaveBeenCalledWith(mocks.mockChannel)
+    expect(mocks.mockChannelUnsubscribe).not.toHaveBeenCalled()
   })
 
   it('unsubscribeFromNotifications handles functions and channel-like objects without throwing', async () => {

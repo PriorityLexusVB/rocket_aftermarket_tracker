@@ -123,11 +123,10 @@ export const notificationService = {
 
       return async () => {
         try {
-          if (typeof channel?.unsubscribe === 'function') {
-            await channel.unsubscribe()
-          }
           if (typeof supabase?.removeChannel === 'function') {
             await supabase.removeChannel(channel)
+          } else if (typeof channel?.unsubscribe === 'function') {
+            await channel.unsubscribe()
           }
         } catch (error) {
           console.warn('Failed to unsubscribe from notifications:', error)
