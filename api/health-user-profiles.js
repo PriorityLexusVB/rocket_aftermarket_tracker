@@ -13,6 +13,14 @@ const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession
 // where column names might come from external input or request parameters.
 const ALLOWED_COLUMNS = ['name', 'full_name', 'display_name']
 
+const WARNED_KEYS = new Set()
+
+function logOnce(key, message) {
+  if (WARNED_KEYS.has(key)) return
+  WARNED_KEYS.add(key)
+  console.warn(message)
+}
+
 async function check(col) {
   // Validate column name (defensive programming for future-proofing)
   if (!ALLOWED_COLUMNS.includes(col)) {
@@ -29,11 +37,15 @@ async function check(col) {
     if (errMsg.includes('column') && errMsg.includes('does not exist')) {
       return false
     }
+    if (errMsg.includes('permission denied') || errMsg.includes('not authorized')) {
+      logOnce(`perm-${col}`, `[health-user-profiles] Permission denied checking ${col}; treating as unavailable`)
+      return null
+    }
     // Other errors (RLS, network, etc.) - treat as unknown
-    console.warn(`[health-user-profiles] Unexpected error checking ${col}:`, error?.message)
+    logOnce(`unexpected-${col}`, `[health-user-profiles] Unexpected error checking ${col}: ${error?.message}`)
     return null
   } catch (err) {
-    console.warn(`[health-user-profiles] Exception checking ${col}:`, err?.message)
+    logOnce(`exception-${col}`, `[health-user-profiles] Exception checking ${col}: ${err?.message}`)
     return null
   }
 }
