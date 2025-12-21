@@ -146,75 +146,75 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     initializedJobId.current = job.id
     initializedJobSig.current = nextSig
 
-      // Apply titleCase normalization immediately when loading job data in edit mode
-      const customerName = job?.customer_name || job?.customerName || ''
-      const vehicleDescription = job?.vehicle_description || job?.vehicleDescription || ''
+    // Apply titleCase normalization immediately when loading job data in edit mode
+    const customerName = job?.customer_name || job?.customerName || ''
+    const vehicleDescription = job?.vehicle_description || job?.vehicleDescription || ''
 
-      setCustomerData({
-        customerName: customerName ? titleCase(customerName) : '',
-        dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
-        jobNumber: job?.job_number || '',
-        stockNumber: job?.stock_number || job?.stockNumber || '',
-        vin: job?.vehicle?.vin || '',
-        customerMobile: job?.customer_phone || job?.customerMobile || '',
-        customerEmail: job?.customer_email || '',
-        vendorId: job?.vendor_id || null,
-        notes: job?.notes || job?.description || '',
-        vehicleDescription: vehicleDescription ? titleCase(vehicleDescription) : '',
-        assignedTo: job?.assigned_to || null,
-        deliveryCoordinator: job?.delivery_coordinator_id || null,
-        financeManager: job?.finance_manager_id || null,
-        needsLoaner: Boolean(job?.customer_needs_loaner),
-        loanerNumber: job?.loaner_number || job?.loanerNumber || '',
-        loanerReturnDate: toDateInputValue(job?.eta_return_date) || '',
-        loanerNotes: job?.loaner_notes || '',
-      })
+    setCustomerData({
+      customerName: customerName ? titleCase(customerName) : '',
+      dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
+      jobNumber: job?.job_number || '',
+      stockNumber: job?.stock_number || job?.stockNumber || '',
+      vin: job?.vehicle?.vin || '',
+      customerMobile: job?.customer_phone || job?.customerMobile || '',
+      customerEmail: job?.customer_email || '',
+      vendorId: job?.vendor_id || null,
+      notes: job?.notes || job?.description || '',
+      vehicleDescription: vehicleDescription ? titleCase(vehicleDescription) : '',
+      assignedTo: job?.assigned_to || null,
+      deliveryCoordinator: job?.delivery_coordinator_id || null,
+      financeManager: job?.finance_manager_id || null,
+      needsLoaner: Boolean(job?.customer_needs_loaner),
+      loanerNumber: job?.loaner_number || job?.loanerNumber || '',
+      loanerReturnDate: toDateInputValue(job?.eta_return_date) || '',
+      loanerNotes: job?.loaner_notes || '',
+    })
 
-      // ✅ FIX: REPLACE line items (not append) to prevent duplication
-      // Ensure we're setting a fresh array from job.lineItems
-      if (Array.isArray(job?.lineItems) && job.lineItems.length > 0) {
-        const mappedLineItems = job.lineItems.map((item) => ({
-          ...item,
-          vendorId:
-            item?.vendor_id ||
-            item?.vendorId ||
-            (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
-            null,
-          dateScheduled: toDateInputValue(item?.promised_date) || '',
-          // ✅ FIX: Time fields should already be in HH:MM format from mapDbDealToForm's formatTime()
-          // Keep them as-is without additional transformation
-          scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
-          scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
-          isMultiDay: false,
-        }))
+    // ✅ FIX: REPLACE line items (not append) to prevent duplication
+    // Ensure we're setting a fresh array from job.lineItems
+    if (Array.isArray(job?.lineItems) && job.lineItems.length > 0) {
+      const mappedLineItems = job.lineItems.map((item) => ({
+        ...item,
+        vendorId:
+          item?.vendor_id ||
+          item?.vendorId ||
+          (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
+          null,
+        dateScheduled: toDateInputValue(item?.promised_date) || '',
+        // ✅ FIX: Time fields should already be in HH:MM format from mapDbDealToForm's formatTime()
+        // Keep them as-is without additional transformation
+        scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
+        scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
+        isMultiDay: false,
+      }))
 
-        // 🔍 DEBUG: Log line items loading
-        if (import.meta.env.MODE === 'development') {
-          console.log('[DealFormV2] Loading line items into state:', {
-            jobId: job.id,
-            fromJobProp: job.lineItems.length,
-            mappedCount: mappedLineItems.length,
-            sample: mappedLineItems[0]
-              ? {
-                  id: mappedLineItems[0].id,
-                  product_id: mappedLineItems[0].product_id,
-                  productId: mappedLineItems[0].productId,
-                }
-              : null,
-          })
-        }
-
-        setLineItems(mappedLineItems)
-      } else {
-        // No line items or empty array - set to empty
-        if (import.meta.env.MODE === 'development') {
-          console.log('[DealFormV2] Setting lineItems to empty (no items in job prop)')
-        }
-        setLineItems([])
+      // 🔍 DEBUG: Log line items loading
+      if (import.meta.env.MODE === 'development') {
+        console.log('[DealFormV2] Loading line items into state:', {
+          jobId: job.id,
+          fromJobProp: job.lineItems.length,
+          mappedCount: mappedLineItems.length,
+          sample: mappedLineItems[0]
+            ? {
+                id: mappedLineItems[0].id,
+                product_id: mappedLineItems[0].product_id,
+                productId: mappedLineItems[0].productId,
+              }
+            : null,
+        })
       }
 
-      // Initial hydration/refetch should not mark the form as dirty.
-      setHasUnsavedChanges(false)
+      setLineItems(mappedLineItems)
+    } else {
+      // No line items or empty array - set to empty
+      if (import.meta.env.MODE === 'development') {
+        console.log('[DealFormV2] Setting lineItems to empty (no items in job prop)')
+      }
+      setLineItems([])
+    }
+
+    // Initial hydration/refetch should not mark the form as dirty.
+    setHasUnsavedChanges(false)
   }, [job, job?.id, mode])
 
   // Track unsaved changes and mark user edits

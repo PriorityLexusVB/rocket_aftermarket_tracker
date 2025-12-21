@@ -632,7 +632,11 @@ function mapFormToDb(formState = {}) {
   const normalizedLineItems = (lineItemsInput || []).map((li) => {
     const productIdRaw = li?.product_id ?? li?.productId ?? null
     const productIdNorm =
-      typeof productIdRaw === 'string' ? (productIdRaw.trim() ? productIdRaw.trim() : null) : productIdRaw
+      typeof productIdRaw === 'string'
+        ? productIdRaw.trim()
+          ? productIdRaw.trim()
+          : null
+        : productIdRaw
     const requiresSchedulingNorm =
       li?.requires_scheduling ?? li?.requiresScheduling ?? true /* default to true */
     const noScheduleReasonNorm = li?.no_schedule_reason || li?.noScheduleReason || null
