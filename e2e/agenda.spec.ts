@@ -4,7 +4,13 @@ import { test, expect } from '@playwright/test'
 
 // Assumes environment has VITE_SIMPLE_CALENDAR=true
 
+const email = process.env.E2E_EMAIL
+const password = process.env.E2E_PASSWORD
+const missingAuthEnv = !email || !password
+
 test.describe('Agenda View', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test.skip('redirect after create focuses new appointment', async () => {
     // Note: This test requires a full deal creation flow which involves multiple steps:
     // 1. Create deal with customer/vehicle
@@ -18,8 +24,8 @@ test.describe('Agenda View', () => {
   test('agenda view renders with flag enabled', async ({ page }) => {
     // Login
     await page.goto('/auth')
-    await page.fill('input[name="email"]', process.env.E2E_EMAIL || 'tester@example.com')
-    await page.fill('input[name="password"]', process.env.E2E_PASSWORD || 'your-password')
+    await page.fill('input[name="email"]', email!)
+    await page.fill('input[name="password"]', password!)
     await page.click('button:has-text("Sign In")')
 
     // Wait for auth
@@ -47,8 +53,8 @@ test.describe('Agenda View', () => {
   test('agenda view handles focus parameter', async ({ page }) => {
     // Login first
     await page.goto('/auth')
-    await page.fill('input[name="email"]', process.env.E2E_EMAIL || 'tester@example.com')
-    await page.fill('input[name="password"]', process.env.E2E_PASSWORD || 'your-password')
+    await page.fill('input[name="email"]', email!)
+    await page.fill('input[name="password"]', password!)
     await page.click('button:has-text("Sign In")')
     await page.waitForTimeout(2000)
 
@@ -71,8 +77,8 @@ test.describe('Agenda View', () => {
   test('agenda filters persist across navigation', async ({ page }) => {
     // Login
     await page.goto('/auth')
-    await page.fill('input[name="email"]', process.env.E2E_EMAIL || 'tester@example.com')
-    await page.fill('input[name="password"]', process.env.E2E_PASSWORD || 'your-password')
+    await page.fill('input[name="email"]', email!)
+    await page.fill('input[name="password"]', password!)
     await page.click('button:has-text("Sign In")')
     await page.waitForTimeout(2000)
 

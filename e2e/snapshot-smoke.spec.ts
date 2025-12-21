@@ -3,7 +3,11 @@
 // Added as part of closure task verification (Nov 16, 2025)
 import { test, expect } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 test.describe('Snapshot View (Currently Active Appointments)', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('snapshot view loads successfully', async ({ page }) => {
     // Collect console errors BEFORE navigating
     const errors: string[] = []

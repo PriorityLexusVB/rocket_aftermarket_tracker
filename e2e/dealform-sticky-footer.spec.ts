@@ -4,6 +4,9 @@ import { test, expect } from '@playwright/test'
 // and are not overlapped by the mobile bottom navbar.
 
 test.describe('DealForm sticky footer - mobile', () => {
+  const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('save button is visible and clickable at 390x844', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
 
@@ -18,6 +21,9 @@ test.describe('DealForm sticky footer - mobile', () => {
     const saveBtn = page.getByTestId('save-deal-btn')
     await saveBtn.scrollIntoViewIfNeeded()
     await expect(saveBtn).toBeVisible()
+
+    // The button may be disabled briefly while the form finishes loading dropdowns.
+    await expect(saveBtn).toBeEnabled({ timeout: 15_000 })
 
     // Click Save without adding products to trigger validation,
     // which also proves the click landed (not intercepted by navbar)
