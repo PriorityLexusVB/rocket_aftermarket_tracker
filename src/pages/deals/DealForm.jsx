@@ -638,10 +638,13 @@ export default function DealForm({
     }
   }
 
-  if (loading) return <div className="p-4">Loading…</div>
-
   return (
     <form className="space-y-6 p-4" onSubmit={submit} data-testid="deal-form">
+      {loading ? (
+        <div className="text-sm text-slate-600" aria-live="polite">
+          Loading…
+        </div>
+      ) : null}
       {/* Quick Identifiers */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
@@ -1165,7 +1168,7 @@ export default function DealForm({
             </button>
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || loading}
               className="btn-mobile button-enhanced"
               data-testid="save-deal-btn"
             >

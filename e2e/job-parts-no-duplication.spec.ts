@@ -2,14 +2,20 @@
 // Test to verify job_parts are not duplicated on multiple saves
 import { test, expect } from '@playwright/test'
 
+const email = process.env.E2E_EMAIL
+const password = process.env.E2E_PASSWORD
+const missingAuthEnv = !email || !password
+
 test.describe('Job Parts No Duplication', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('should not create duplicate job_parts on multiple saves', async ({ page }) => {
     test.setTimeout(90_000)
 
     // Login
     await page.goto('/auth')
-    await page.fill('input[name="email"]', process.env.E2E_EMAIL || 'tester@example.com')
-    await page.fill('input[name="password"]', process.env.E2E_PASSWORD || 'your-password')
+    await page.fill('input[name="email"]', email!)
+    await page.fill('input[name="password"]', password!)
     await page.click('button:has-text("Sign In")')
     // Wait for successful navigation after login instead of arbitrary timeout
     await page.waitForURL(/^\/$|\/deals/, { timeout: 10000 })

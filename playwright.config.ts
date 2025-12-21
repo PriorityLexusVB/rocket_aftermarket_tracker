@@ -18,14 +18,14 @@ const DEFAULT_SUPABASE_URL = 'https://ogjtmtndgiqqdtwatsue.supabase.co'
 const DEFAULT_SUPABASE_ANON_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nanRtdG5kZ2lxcWR0d2F0c3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTE5OTcsImV4cCI6MjA3NDEyNzk5N30.n17KiM5c08XuKY-W9fL667VsVWABwzGmJpxVieSgcX4'
 const DEFAULT_BASE_URL = 'http://localhost:5173'
-const DEFAULT_E2E_EMAIL = 'rob.brasco@priorityautomotive.com'
-const DEFAULT_E2E_PASSWORD = 'Rocket123!'
 
 process.env.VITE_SUPABASE_URL ||= DEFAULT_SUPABASE_URL
 process.env.VITE_SUPABASE_ANON_KEY ||= DEFAULT_SUPABASE_ANON_KEY
 process.env.PLAYWRIGHT_BASE_URL ||= DEFAULT_BASE_URL
-process.env.E2E_EMAIL ||= DEFAULT_E2E_EMAIL
-process.env.E2E_PASSWORD ||= DEFAULT_E2E_PASSWORD
+// Do not set default E2E credentials here.
+// In CI (especially for forked PRs), secrets are not available; using hardcoded
+// credentials causes E2E to attempt login and fail. When E2E_EMAIL/E2E_PASSWORD
+// are not explicitly set, globalSetup and tests will skip auth-dependent flows.
 
 export default defineConfig({
   testDir: './e2e',
