@@ -44,13 +44,20 @@ export function useDropdownData(options = {}) {
   const tenant = useTenant()
   const auth = useAuth()
 
+  // Use scalar identifiers for hook deps to avoid object-identity churn causing re-run loops.
+  const tenantLoading = Boolean(tenant?.loading)
+  const tenantUserId = tenant?.session?.user?.id ?? null
+  const tenantOrgId = tenant?.orgId ?? null
+  const authLoading = Boolean(auth?.loading)
+  const authUserId = auth?.user?.id ?? null
+
   const loadData = useCallback(async () => {
     try {
-      if (tenant.loading) return
+      if (tenantLoading) return
 
       setState((prev) => ({ ...prev, loading: true, error: null }))
 
-      if (!tenant.session?.user) {
+      if (!tenantUserId) {
         setState((prev) => ({
           ...prev,
           dc: [],
@@ -66,7 +73,7 @@ export function useDropdownData(options = {}) {
         return
       }
 
-      const useTenantLists = Boolean(tenant.orgId)
+      const useTenantLists = Boolean(tenantOrgId)
 
       const promises = [
         getDeliveryCoordinators()?.catch((err) => {
@@ -82,7 +89,7 @@ export function useDropdownData(options = {}) {
           return []
         }),
         useTenantLists
-          ? listStaffByOrg(tenant.orgId).catch((err) => {
+          ? listStaffByOrg(tenantOrgId).catch((err) => {
               console.error('[dropdowns:users] tenant staff failed:', err)
               return []
             })
@@ -91,7 +98,7 @@ export function useDropdownData(options = {}) {
               return []
             }),
         useTenantLists
-          ? listVendorsByOrg(tenant.orgId).catch((err) => {
+          ? listVendorsByOrg(tenantOrgId).catch((err) => {
               console.error('[dropdowns:vendors] tenant vendors failed:', err)
               return []
             })
@@ -100,7 +107,7 @@ export function useDropdownData(options = {}) {
               return []
             }),
         useTenantLists
-          ? listProductsByOrg(tenant.orgId).catch((err) => {
+          ? listProductsByOrg(tenantOrgId).catch((err) => {
               console.error('[dropdowns:products] tenant products failed:', err)
               return []
             })
@@ -109,7 +116,7 @@ export function useDropdownData(options = {}) {
               return []
             }),
         useTenantLists
-          ? listSmsTemplatesByOrg(tenant.orgId).catch((err) => {
+          ? listSmsTemplatesByOrg(tenantOrgId).catch((err) => {
               console.error('[dropdowns:smsTemplates] tenant SMS templates failed:', err)
               return []
             })
@@ -170,7 +177,7 @@ export function useDropdownData(options = {}) {
       })
       console.error('[dropdowns] Dropdown data load failed:', err)
     }
-  }, [tenant.loading, tenant.session?.user, tenant.orgId])
+  }, [tenantLoading, tenantUserId, tenantOrgId])
 
   // Optimistic cached-first hydrate to avoid initial loading UI where possible
   useEffect(() => {
@@ -316,13 +323,13 @@ export function useDropdownData(options = {}) {
 
       // wait until auth.loading === false (or timeout after a few tries)
       const start = Date.now()
-      while (mounted && auth?.loading && Date.now() - start < 5000) {
+      while (mounted && authLoading && Date.now() - start < 5000) {
         // small sleep
         await new Promise((r) => setTimeout(r, 200))
       }
 
       if (!mounted) return
-      if (!auth?.user) {
+      if (!authUserId) {
         setState((prev) => ({
           ...prev,
           dc: [],
@@ -344,15 +351,7 @@ export function useDropdownData(options = {}) {
     return () => {
       mounted = false
     }
-  }, [
-    loadOnMount,
-    auth?.loading,
-    auth?.user,
-    auth?.user?.id,
-    tenant?.loading,
-    tenant?.orgId,
-    loadData,
-  ])
+  }, [loadOnMount, authLoading, authUserId, tenantLoading, tenantOrgId, loadData])
 
   return {
     // Original data arrays

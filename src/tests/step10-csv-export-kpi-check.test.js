@@ -133,7 +133,11 @@ export const testCSVExportFunctionality = async () => {
       console.log('✅ CSV Export: Successfully generated CSV with table columns')
       console.log(`✓ Expected columns: ${expectedColumns?.join(', ')}`)
     } else {
-      console.error('❌ CSV Export: Failed to generate CSV', csvResult?.error)
+      if (csvResult?.error?.message === 'No data to export') {
+        console.log('ℹ️ CSV Export: Skipped (no data to export)')
+      } else {
+        console.error('❌ CSV Export: Failed to generate CSV', csvResult?.error)
+      }
     }
 
     // 2. Test KPI Cards with NaN/Undefined Protection

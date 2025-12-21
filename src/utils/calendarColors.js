@@ -160,7 +160,9 @@ export function getStatusLegend() {
  */
 export function generateEventId(job) {
   if (!job || !job.id) {
-    console.warn('generateEventId: Invalid job object', job)
+    if (import.meta?.env?.MODE !== 'test') {
+      console.warn('generateEventId: Invalid job object', job)
+    }
     return `event-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }
 

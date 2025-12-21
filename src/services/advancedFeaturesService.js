@@ -291,7 +291,10 @@ export const advancedFeaturesService = {
 
       return { success: true, error: null }
     } catch (error) {
-      console.error('Export to CSV error:', error)
+      // Avoid noisy stderr during tests; callers receive the structured error.
+      if (import.meta?.env?.MODE !== 'test') {
+        console.error('Export to CSV error:', error)
+      }
       return { success: false, error: { message: error?.message || 'Failed to export CSV' } }
     }
   },

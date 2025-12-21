@@ -28,6 +28,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
   const initializedJobSig = useRef(null)
+  const currentLineItemsSig = useRef('')
   const isHydrating = useRef(false)
   const userHasEdited = useRef(false) // Track if user has made intentional edits
   const savingRef = useRef(false) // Synchronous in-flight guard to prevent double-submit
@@ -85,6 +86,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // ✅ FIX: Don't initialize from job prop to avoid potential duplication from useState + useEffect
   const [lineItems, setLineItems] = useState([])
 
+  // Track current line item identity signature without causing rehydrate effect churn.
+  useEffect(() => {
+    currentLineItemsSig.current = computeLineItemsSignature(lineItems)
+  }, [lineItems])
+
   // Load dropdown data
   const loadDropdownData = async () => {
     try {
@@ -131,8 +137,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     const isNewJob = initializedJobId.current !== job.id
     const isNewVersion = !isNewJob && nextSig !== initializedJobSig.current
 
-    // If user has begun editing, never overwrite their work.
-    if (!isNewJob && userHasEdited.current) return
+    // If user has begun editing, don't overwrite actual line-item identity changes.
+    // Allow rehydration if the user hasn't changed the line-item identity (id/product),
+    // even if other state (e.g., dropdown-driven autofill) marked the form as edited.
+    if (!isNewJob && userHasEdited.current) {
+      const currentSig = currentLineItemsSig.current
+      const hydratedSig = initializedJobSig.current
+      if (currentSig && hydratedSig && currentSig !== hydratedSig) return
+    }
 
     if (!isNewJob && !isNewVersion) return
 

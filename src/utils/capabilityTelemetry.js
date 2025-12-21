@@ -231,7 +231,10 @@ export function importTelemetry(jsonString) {
     }
     return false
   } catch (error) {
-    console.error('[capabilityTelemetry] Failed to import telemetry:', error)
+    // Avoid noisy stderr during tests; callers get a boolean result either way.
+    if (import.meta?.env?.MODE !== 'test') {
+      console.error('[capabilityTelemetry] Failed to import telemetry:', error)
+    }
     return false
   }
 }
