@@ -62,8 +62,8 @@ export default defineConfig({
       VITE_DEAL_FORM_V2: process.env.VITE_DEAL_FORM_V2 || 'true',
       // E2E config for global.setup
       PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL,
-      E2E_EMAIL: process.env.E2E_EMAIL,
-      E2E_PASSWORD: process.env.E2E_PASSWORD,
+      E2E_EMAIL: process.env.E2E_EMAIL || '',
+      E2E_PASSWORD: process.env.E2E_PASSWORD || '',
     },
   },
   globalSetup: './global.setup.ts',
