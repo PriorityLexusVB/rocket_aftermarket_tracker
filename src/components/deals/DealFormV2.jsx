@@ -27,12 +27,25 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const { orgId, loading: tenantLoading } = useTenant()
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
+  const initializedJobSig = useRef(null)
+  const isHydrating = useRef(false)
   const userHasEdited = useRef(false) // Track if user has made intentional edits
   const savingRef = useRef(false) // Synchronous in-flight guard to prevent double-submit
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  const computeLineItemsSignature = (items) => {
+    if (!Array.isArray(items) || items.length === 0) return ''
+    return items
+      .map((it) => {
+        const id = it?.id ?? ''
+        const productId = it?.product_id ?? it?.productId ?? ''
+        return `${id}:${productId}`
+      })
+      .join('|')
+  }
 
   // Dropdown state
   const [dropdownData, setDropdownData] = useState({
@@ -110,16 +123,28 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // ✅ FIX: Reload customer data and line items from job prop when it changes in edit mode
   // This ensures that when EditDealModal loads deal data asynchronously, the form picks it up
-  // GUARD: Only hydrate once per job to prevent duplication
+  // GUARD: Only hydrate once per job *version* to prevent duplication
   useEffect(() => {
-    if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
-      // If switching to a different job, reset the edit tracking to allow fresh rehydration
-      // This handles the case where user navigates between different deals
-      if (initializedJobId.current !== null) {
-        userHasEdited.current = false
-      }
+    if (!job || mode !== 'edit' || !job.id) return
 
-      initializedJobId.current = job.id
+    const nextSig = computeLineItemsSignature(job?.lineItems)
+    const isNewJob = initializedJobId.current !== job.id
+    const isNewVersion = !isNewJob && nextSig !== initializedJobSig.current
+
+    // If user has begun editing, never overwrite their work.
+    if (!isNewJob && userHasEdited.current) return
+
+    if (!isNewJob && !isNewVersion) return
+
+    // Switching jobs or receiving a newer snapshot for same job (e.g. refetch) should rehydrate.
+    if (isNewJob) {
+      userHasEdited.current = false
+    }
+
+    isHydrating.current = true
+
+    initializedJobId.current = job.id
+    initializedJobSig.current = nextSig
 
       // Apply titleCase normalization immediately when loading job data in edit mode
       const customerName = job?.customer_name || job?.customerName || ''
@@ -187,11 +212,20 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         }
         setLineItems([])
       }
-    }
+
+      // Initial hydration/refetch should not mark the form as dirty.
+      setHasUnsavedChanges(false)
   }, [job, job?.id, mode])
 
   // Track unsaved changes and mark user edits
   useEffect(() => {
+    if (isHydrating.current) {
+      // One-tick guard: clear hydration flag after state is applied.
+      // This prevents initial hydration/refetch from marking the form as dirty,
+      // without leaving pending timers that can keep tests open.
+      isHydrating.current = false
+      return
+    }
     // Mark as changed when user modifies form (skip for initial load in edit mode)
     if (mode === 'create' || (mode === 'edit' && initializedJobId.current)) {
       setHasUnsavedChanges(true)

@@ -630,6 +630,9 @@ function mapFormToDb(formState = {}) {
       : []
 
   const normalizedLineItems = (lineItemsInput || []).map((li) => {
+    const productIdRaw = li?.product_id ?? li?.productId ?? null
+    const productIdNorm =
+      typeof productIdRaw === 'string' ? (productIdRaw.trim() ? productIdRaw.trim() : null) : productIdRaw
     const requiresSchedulingNorm =
       li?.requires_scheduling ?? li?.requiresScheduling ?? true /* default to true */
     const noScheduleReasonNorm = li?.no_schedule_reason || li?.noScheduleReason || null
@@ -641,7 +644,7 @@ function mapFormToDb(formState = {}) {
     // NEW: Extract vendor_id for per-line vendor support
     const vendorIdNorm = li?.vendor_id ?? li?.vendorId ?? null
     return {
-      product_id: li.product_id ?? null,
+      product_id: productIdNorm ?? null,
       vendor_id: vendorIdNorm, // NEW: per-line vendor support
       quantity_used: Number(li.quantity_used ?? li.quantity ?? 1),
       unit_price: Number(li.unit_price ?? li.price ?? 0),
