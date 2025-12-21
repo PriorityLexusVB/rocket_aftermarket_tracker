@@ -3,8 +3,6 @@
  * Goal: Editing an existing deal works end-to-end.
  */
 
-import React from 'react'
-
 // Add Jest testing framework globals
 const describe =
   globalThis.describe ||
@@ -245,34 +243,6 @@ describe('Step 14: Edit flow - Test add/update/delete line items and verify DB p
     console.log('🔘 Edit Flow Test: Opening existing deal for edit')
 
     // Simulate opening Edit modal for existing deal
-    const existingDealData = {
-      id: existingJobId,
-      title: '2025 LEXUS RX350',
-      customer_name: 'Sarah Johnson',
-      vehicle_id: testVehicleId,
-      lineItems: [
-        {
-          id: existingPartIds?.[0],
-          product_id: '853457b5-e825-46d9-b64d-1364277ce442',
-          unit_price: 499,
-          quantity_used: 1, // Original quantity
-          promised_date: '2025-10-20',
-          requires_scheduling: true,
-        },
-        {
-          id: existingPartIds?.[1],
-          product_id: 'd1662a13-1387-4567-8d9d-e873b014bc03',
-          unit_price: 699,
-          quantity_used: 1,
-          promised_date: null,
-          requires_scheduling: false,
-          no_schedule_reason: 'Customer preferred no appointment',
-        },
-      ],
-    }
-
-    console.log('   - Existing deal loaded with 2 line items ✓')
-
     // Simulate user changing first item's product/price/quantity and promised date
     const updatedFirstItem = {
       id: existingPartIds?.[0],
@@ -444,13 +414,11 @@ describe('Step 14: Edit flow - Test add/update/delete line items and verify DB p
     console.log('   - User sets quantity to 3 in edit modal')
     const userQuantity = 3
 
-    // Simulate form submission where quantity gets normalized to 1 for DB
-    const dbQuantity = 1 // Always 1 per Step 14 requirements
-
     // Mock the quantity normalization logic
     const normalizedQuantity = Math.max(1, Math.floor(Number(userQuantity) || 1))
     const finalDbQuantity = 1 // Step 14: quantity_used remains 1 in DB
 
+    expect(normalizedQuantity)?.toBe(userQuantity)
     expect(finalDbQuantity)?.toBe(1)
     console.log(`   - User input: ${userQuantity}, DB saved: ${finalDbQuantity} ✓`)
 

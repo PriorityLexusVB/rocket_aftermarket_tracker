@@ -11,7 +11,6 @@ import {
   classifySchemaError,
   isMissingColumnError,
   isMissingRelationshipError,
-  SchemaErrorCode,
   getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
 import { formatTime } from '@/utils/dateTimeUtils'
@@ -501,6 +500,7 @@ async function selectJoinedDealById(id) {
           '[dealService:selectJoinedDealById] user_profiles column missing; degrading caps'
         )
         downgradeCapForErrorMessage(msg)
+        disableUserProfilesNameCapability()
         continue
       }
 
@@ -529,12 +529,12 @@ async function selectJoinedDealById(id) {
       lastError = fallbackErr
       if (/user_profiles/i.test(fallbackErr?.message || '')) {
         downgradeCapForErrorMessage(fallbackErr?.message || '')
+        disableUserProfilesNameCapability()
         continue
       }
     }
     if (isMissingRelationshipError(jobError)) {
       const msg = jobError?.message || ''
-      const errorCode = classifySchemaError(jobError)
 
       // Detect vendor relationship issues and degrade
       if (/vendor/i.test(msg) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
@@ -630,6 +630,13 @@ function mapFormToDb(formState = {}) {
       : []
 
   const normalizedLineItems = (lineItemsInput || []).map((li) => {
+    const productIdRaw = li?.product_id ?? li?.productId ?? null
+    const productIdNorm =
+      typeof productIdRaw === 'string'
+        ? productIdRaw.trim()
+          ? productIdRaw.trim()
+          : null
+        : productIdRaw
     const requiresSchedulingNorm =
       li?.requires_scheduling ?? li?.requiresScheduling ?? true /* default to true */
     const noScheduleReasonNorm = li?.no_schedule_reason || li?.noScheduleReason || null
@@ -641,7 +648,7 @@ function mapFormToDb(formState = {}) {
     // NEW: Extract vendor_id for per-line vendor support
     const vendorIdNorm = li?.vendor_id ?? li?.vendorId ?? null
     return {
-      product_id: li.product_id ?? null,
+      product_id: productIdNorm ?? null,
       vendor_id: vendorIdNorm, // NEW: per-line vendor support
       quantity_used: Number(li.quantity_used ?? li.quantity ?? 1),
       unit_price: Number(li.unit_price ?? li.price ?? 0),
@@ -1405,7 +1412,6 @@ export async function getAllDeals() {
     console.error('Failed to load deals:', error)
     // Provide specific guidance for missing relationship errors using classifier
     if (isMissingRelationshipError(error)) {
-      const errorCode = classifySchemaError(error)
       const remediation = getRemediationGuidance(error)
       const guidance = remediation.migrationFile
         ? `Please run migration: ${remediation.migrationFile}`
@@ -1613,10 +1619,12 @@ export async function createDeal(formState) {
   // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
   // In test environments, this is logged but doesn't block operation
   if (!payload?.org_id) {
-    console.warn(
-      '[dealService:create] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
-        'Ensure UI passes org_id or user is properly authenticated.'
-    )
+    if (import.meta?.env?.MODE !== 'test') {
+      console.warn(
+        '[dealService:create] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
+          'Ensure UI passes org_id or user is properly authenticated.'
+      )
+    }
     // Note: We don't throw here to preserve backward compatibility with tests
     // In production, RLS policies will enforce tenant isolation at the database level
   }
@@ -1867,10 +1875,12 @@ export async function updateDeal(id, formState) {
   // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
   // In test environments, this is logged but doesn't block operation
   if (!payload?.org_id) {
-    console.warn(
-      '[dealService:update] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
-        'Ensure UI passes org_id or user is properly authenticated.'
-    )
+    if (import.meta?.env?.MODE !== 'test') {
+      console.warn(
+        '[dealService:update] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
+          'Ensure UI passes org_id or user is properly authenticated.'
+      )
+    }
     // Note: We don't throw here to preserve backward compatibility with tests
     // In production, RLS policies will enforce tenant isolation at the database level
   }
@@ -2478,10 +2488,4 @@ export const dealService = {
 
 export default dealService
 
-export {
-  mapDbDealToForm,
-  mapFormToDb,
-  mapPermissionError,
-  normalizeDealTimes,
-  isRlsError,
-}
+export { mapDbDealToForm, mapFormToDb, mapPermissionError, normalizeDealTimes, isRlsError }

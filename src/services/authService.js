@@ -213,7 +213,7 @@ export const authService = {
         try {
           await recoverSession()
           return { user: null, error: { message: 'Session was refreshed. Please try again.' } }
-        } catch (recoveryError) {
+        } catch {
           return {
             user: null,
             error: { message: 'Session recovery failed. Please sign in again.' },
@@ -236,7 +236,7 @@ export const authService = {
       }
 
       return { data, error: null }
-    } catch (error) {
+    } catch {
       return { data: null, error: { message: 'Network error. Please try again.' } }
     }
   },
@@ -251,7 +251,7 @@ export const authService = {
       }
 
       return { data, error: null }
-    } catch (error) {
+    } catch {
       return { data: null, error: { message: 'Network error. Please try again.' } }
     }
   },

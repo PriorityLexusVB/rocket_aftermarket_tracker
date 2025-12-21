@@ -117,7 +117,7 @@ export const jobService = {
     try {
       const { data: num, error: numErr } = await supabase?.rpc('generate_job_number')
       if (!numErr) jobNumber = num
-    } catch (_) {
+    } catch {
       // ignore if missing
     }
 
@@ -127,7 +127,7 @@ export const jobService = {
       try {
         const { data: userRes, error: userErr } = await supabase?.auth?.getUser()
         if (!userErr && userRes?.user) createdBy = userRes?.user?.id ?? null
-      } catch (_) {}
+      } catch {}
 
       const payload = {
         title: dealData?.title ?? '',

@@ -92,7 +92,7 @@ export function log(level, category, message, context = {}) {
         }
         localStorage.setItem(persistKey, JSON.stringify(existing))
       }
-    } catch (e) {
+    } catch {
       // Ignore persistence errors
     }
   }

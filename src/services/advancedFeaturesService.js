@@ -291,7 +291,10 @@ export const advancedFeaturesService = {
 
       return { success: true, error: null }
     } catch (error) {
-      console.error('Export to CSV error:', error)
+      // Avoid noisy stderr during tests; callers receive the structured error.
+      if (import.meta?.env?.MODE !== 'test') {
+        console.error('Export to CSV error:', error)
+      }
       return { success: false, error: { message: error?.message || 'Failed to export CSV' } }
     }
   },
@@ -373,7 +376,7 @@ export const advancedFeaturesService = {
     try {
       const subscription = supabase
         ?.channel('overdue-jobs')
-        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
+        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
           // Refetch overdue jobs when any job changes
           this.getOverdueJobs()?.then((result) => {
             if (result?.data) {

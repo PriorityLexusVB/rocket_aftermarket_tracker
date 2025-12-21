@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 import Select from '../../../components/ui/Select'
@@ -6,6 +6,15 @@ import Select from '../../../components/ui/Select'
 const JobQueueTable = ({ jobs, onStatusUpdate, onBulkUpdate, selectedJobs, onJobSelect }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'dueDate', direction: 'asc' })
   const [filterStatus, setFilterStatus] = useState('all')
+
+  const handleBulkStatusUpdate = useCallback(
+    (newStatus) => {
+      if (selectedJobs?.length > 0) {
+        onBulkUpdate(selectedJobs, newStatus)
+      }
+    },
+    [onBulkUpdate, selectedJobs]
+  )
 
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -20,13 +29,15 @@ const JobQueueTable = ({ jobs, onStatusUpdate, onBulkUpdate, selectedJobs, onJob
           case '3':
             handleBulkStatusUpdate('Complete')
             break
+          default:
+            break
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [selectedJobs])
+  }, [handleBulkStatusUpdate, selectedJobs])
 
   const handleSort = (key) => {
     let direction = 'asc'
@@ -34,12 +45,6 @@ const JobQueueTable = ({ jobs, onStatusUpdate, onBulkUpdate, selectedJobs, onJob
       direction = 'desc'
     }
     setSortConfig({ key, direction })
-  }
-
-  const handleBulkStatusUpdate = (newStatus) => {
-    if (selectedJobs?.length > 0) {
-      onBulkUpdate(selectedJobs, newStatus)
-    }
   }
 
   const getStatusColor = (status) => {

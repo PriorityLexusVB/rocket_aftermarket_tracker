@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
@@ -11,9 +11,6 @@ const VehicleTable = ({
   onVehicleUpdate,
   userRole = 'staff',
   searchQuery,
-  onSearchChange,
-  filters,
-  onFilterChange,
 }) => {
   const navigate = useNavigate()
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })

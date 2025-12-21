@@ -17,8 +17,6 @@ serve(async (req) => {
     const formData = await req.formData()
     const from = formData.get('From')?.toString()
     const body = formData.get('Body')?.toString()?.trim().toLowerCase()
-    const messageSid = formData.get('MessageSid')?.toString()
-
     if (!from || !body) {
       return new Response(
         '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Invalid message format.</Message></Response>',

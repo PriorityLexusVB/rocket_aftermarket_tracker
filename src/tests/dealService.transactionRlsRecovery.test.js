@@ -1,11 +1,11 @@
 /**
  * Test suite for transaction RLS recovery in dealService.updateDeal
- * 
+ *
  * This tests the robust handling of RLS errors during transaction upsert,
  * especially for legacy deals that were created before org_id scoping.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // Mock supabase for testing
 vi.mock('../lib/supabase', () => {
@@ -23,24 +23,28 @@ vi.mock('../lib/supabase', () => {
     order: vi.fn(() => mockChain()),
     throwOnError: vi.fn(() => Promise.resolve({ data: [], error: null })),
   })
-  
+
   return {
     supabase: {
       from: vi.fn(() => mockChain()),
       auth: {
-        getUser: vi.fn(() => Promise.resolve({ 
-          data: { user: { id: 'user-123', email: 'test@example.com' } }, 
-          error: null 
-        })),
+        getUser: vi.fn(() =>
+          Promise.resolve({
+            data: { user: { id: 'user-123', email: 'test@example.com' } },
+            error: null,
+          })
+        ),
       },
     },
     default: {
       from: vi.fn(() => mockChain()),
       auth: {
-        getUser: vi.fn(() => Promise.resolve({ 
-          data: { user: { id: 'user-123', email: 'test@example.com' } }, 
-          error: null 
-        })),
+        getUser: vi.fn(() =>
+          Promise.resolve({
+            data: { user: { id: 'user-123', email: 'test@example.com' } },
+            error: null,
+          })
+        ),
       },
     },
   }
@@ -112,7 +116,7 @@ describe('dealService - Transaction RLS Recovery Documentation', () => {
         { code: '23503', message: 'foreign_key_violation' },
       ]
 
-      nonRlsErrors.forEach(error => {
+      nonRlsErrors.forEach((error) => {
         expect(isRlsError(error)).toBe(false)
       })
     })
@@ -170,7 +174,8 @@ describe('dealService - Transaction RLS Recovery Documentation', () => {
       const errorScenarios = [
         {
           scenario: 'User profile has no org_id',
-          error: 'Cannot recover from RLS error: job has no org_id and unable to get user org_id (user profile has no org_id)',
+          error:
+            'Cannot recover from RLS error: job has no org_id and unable to get user org_id (user profile has no org_id)',
           guidance: 'Contact administrator to assign organization to user profile',
         },
         {
@@ -180,17 +185,19 @@ describe('dealService - Transaction RLS Recovery Documentation', () => {
         },
         {
           scenario: 'Profile fetch failed during recovery',
-          error: 'Cannot recover from RLS error: job has no org_id and unable to get user org_id (profile fetch failed: {error})',
+          error:
+            'Cannot recover from RLS error: job has no org_id and unable to get user org_id (profile fetch failed: {error})',
           guidance: 'Contact administrator if profile access is blocked',
         },
         {
           scenario: 'Transaction update fails after recovery',
-          error: 'Failed to save deal: Transaction access denied. This deal may have been created before organization scoping was enabled.',
+          error:
+            'Failed to save deal: Transaction access denied. This deal may have been created before organization scoping was enabled.',
           guidance: 'Contact administrator to fix organization assignment',
         },
       ]
 
-      errorScenarios.forEach(scenario => {
+      errorScenarios.forEach((scenario) => {
         expect(scenario.error).toBeTruthy()
         expect(scenario.guidance).toBeTruthy()
       })
@@ -212,12 +219,6 @@ describe('dealService - Transaction RLS Recovery Documentation', () => {
         transaction_status: 'transaction_status ENUM - Default: "pending"',
       }
 
-      const optionalTransactionFields = {
-        vehicle_id: 'UUID - Links to vehicles table',
-        customer_phone: 'TEXT - Customer phone number (E.164 format)',
-        customer_email: 'TEXT - Customer email address',
-      }
-
       // Verify required fields
       expect(Object.keys(requiredTransactionFields)).toContain('job_id')
       expect(Object.keys(requiredTransactionFields)).toContain('org_id')
@@ -225,6 +226,16 @@ describe('dealService - Transaction RLS Recovery Documentation', () => {
 
       // Document that org_id is critical
       expect(requiredTransactionFields.org_id).toContain('RLS policy compliance')
+      const optionalTransactionFields = {
+        vehicle_id: 'UUID - Links to vehicles table',
+        customer_phone: 'TEXT - Customer phone number',
+        customer_email: 'TEXT - Customer email address',
+      }
+
+      // Verify optional fields presence
+      expect(Object.keys(optionalTransactionFields)).toContain('vehicle_id')
+      expect(Object.keys(optionalTransactionFields)).toContain('customer_phone')
+      expect(Object.keys(optionalTransactionFields)).toContain('customer_email')
     })
 
     it('documents transaction_number generation pattern', () => {
@@ -236,7 +247,7 @@ describe('dealService - Transaction RLS Recovery Documentation', () => {
       }
 
       const txnNumber = generateTransactionNumber()
-      
+
       expect(txnNumber).toMatch(/^TXN-\d+-\d+$/)
       expect(txnNumber.split('-')).toHaveLength(3)
     })
@@ -323,7 +334,7 @@ describe('dealService - Transaction Upsert Behavior', () => {
     // 1. SELECT succeeds (or fails with RLS -> recovery)
     // 2. UPDATE existing transaction
     // 3. DO NOT generate new transaction_number
-    
+
     const existingTransaction = {
       id: 'txn-existing-123',
       transaction_number: 'TXN-1699999999999-1234',
@@ -351,7 +362,7 @@ describe('dealService - Transaction Upsert Behavior', () => {
     // 1. SELECT returns null
     // 2. INSERT new transaction
     // 3. Generate new transaction_number
-    
+
     const insertData = {
       job_id: 'job-new-123',
       org_id: 'org-abc',
@@ -372,18 +383,18 @@ describe('dealService - Transaction Upsert Behavior', () => {
     // 1. If payload has org_id, use it
     // 2. Else if existing transaction has org_id, preserve it
     // 3. Never set org_id to null if it was previously set
-    
+
     const existingOrgId = 'org-existing-123'
     const payloadOrgId = 'org-from-payload'
-    
+
     // Case 1: Payload has org_id
     const case1 = { org_id: payloadOrgId }
     expect(case1.org_id).toBe(payloadOrgId)
-    
+
     // Case 2: Payload org_id is null but existing has it
     const preservedOrgId = payloadOrgId || existingOrgId
     expect(preservedOrgId).toBeTruthy()
-    
+
     // Document the preservation logic
     const updateWithPreservation = (existing, payload) => {
       return {
@@ -391,7 +402,7 @@ describe('dealService - Transaction Upsert Behavior', () => {
         org_id: payload.org_id || existing?.org_id,
       }
     }
-    
+
     const result = updateWithPreservation(
       { org_id: existingOrgId },
       { org_id: null, customer_name: 'Test' }
@@ -402,8 +413,9 @@ describe('dealService - Transaction Upsert Behavior', () => {
 
 describe('dealService - Error Message Quality', () => {
   it('provides clear guidance for user profile without org_id', () => {
-    const errorMessage = 'Your user profile may not have an organization assigned. Please contact your administrator to ensure your account is properly configured.'
-    
+    const errorMessage =
+      'Your user profile may not have an organization assigned. Please contact your administrator to ensure your account is properly configured.'
+
     expect(errorMessage).toContain('user profile')
     expect(errorMessage).toContain('organization')
     expect(errorMessage).toContain('administrator')
@@ -411,8 +423,9 @@ describe('dealService - Error Message Quality', () => {
   })
 
   it('provides clear guidance for legacy deals', () => {
-    const errorMessage = 'This deal may have been created before organization scoping was enabled. Please contact your administrator if the issue persists.'
-    
+    const errorMessage =
+      'This deal may have been created before organization scoping was enabled. Please contact your administrator if the issue persists.'
+
     expect(errorMessage).toContain('before organization scoping')
     expect(errorMessage).toContain('administrator')
     expect(errorMessage).not.toContain('RLS') // Don't expose technical terms

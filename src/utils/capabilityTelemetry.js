@@ -64,7 +64,7 @@ function getAvailableStorage() {
       sessionStorage.removeItem('__test__')
       return sessionStorage
     }
-  } catch (_e) {
+  } catch {
     // sessionStorage not available or blocked
   }
 
@@ -74,7 +74,7 @@ function getAvailableStorage() {
       localStorage.removeItem('__test__')
       return localStorage
     }
-  } catch (_e) {
+  } catch {
     // localStorage not available or blocked
   }
 
@@ -161,7 +161,7 @@ export function resetAllTelemetry() {
   const storage = getAvailableStorage()
   try {
     storage?.setItem(LAST_RESET_AT_KEY, new Date().toISOString())
-  } catch (e) {
+  } catch {
     // non-fatal
   }
 }
@@ -175,7 +175,7 @@ export function getTelemetrySummary() {
   let lastResetAt = null
   try {
     lastResetAt = storage?.getItem(LAST_RESET_AT_KEY) || null
-  } catch (_e) {
+  } catch {
     lastResetAt = null
   }
   const now = new Date()
@@ -231,7 +231,10 @@ export function importTelemetry(jsonString) {
     }
     return false
   } catch (error) {
-    console.error('[capabilityTelemetry] Failed to import telemetry:', error)
+    // Avoid noisy stderr during tests; callers get a boolean result either way.
+    if (import.meta?.env?.MODE !== 'test') {
+      console.error('[capabilityTelemetry] Failed to import telemetry:', error)
+    }
     return false
   }
 }

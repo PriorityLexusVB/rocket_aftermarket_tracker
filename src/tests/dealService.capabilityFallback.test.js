@@ -105,7 +105,7 @@ describe('dealService - capability flag and retry logic', () => {
 
     try {
       await getAllDeals()
-    } catch (e) {
+    } catch {
       // May throw, we just care about the flag
     }
 
@@ -132,7 +132,7 @@ describe('dealService - capability flag and retry logic', () => {
 
     try {
       await getAllDeals()
-    } catch (e) {
+    } catch {
       // Ignore errors, we're testing the flag
     }
 

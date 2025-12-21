@@ -27,12 +27,26 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const { orgId, loading: tenantLoading } = useTenant()
   const loanerRef = useRef(null)
   const initializedJobId = useRef(null)
+  const initializedJobSig = useRef(null)
+  const currentLineItemsSig = useRef('')
+  const isHydrating = useRef(false)
   const userHasEdited = useRef(false) // Track if user has made intentional edits
   const savingRef = useRef(false) // Synchronous in-flight guard to prevent double-submit
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  const computeLineItemsSignature = (items) => {
+    if (!Array.isArray(items) || items.length === 0) return ''
+    return items
+      .map((it) => {
+        const id = it?.id ?? ''
+        const productId = it?.product_id ?? it?.productId ?? ''
+        return `${id}:${productId}`
+      })
+      .join('|')
+  }
 
   // Dropdown state
   const [dropdownData, setDropdownData] = useState({
@@ -72,6 +86,11 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // ✅ FIX: Don't initialize from job prop to avoid potential duplication from useState + useEffect
   const [lineItems, setLineItems] = useState([])
 
+  // Track current line item identity signature without causing rehydrate effect churn.
+  useEffect(() => {
+    currentLineItemsSig.current = computeLineItemsSignature(lineItems)
+  }, [lineItems])
+
   // Load dropdown data
   const loadDropdownData = async () => {
     try {
@@ -110,88 +129,115 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // ✅ FIX: Reload customer data and line items from job prop when it changes in edit mode
   // This ensures that when EditDealModal loads deal data asynchronously, the form picks it up
-  // GUARD: Only hydrate once per job to prevent duplication
+  // GUARD: Only hydrate once per job *version* to prevent duplication
   useEffect(() => {
-    if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
-      // If switching to a different job, reset the edit tracking to allow fresh rehydration
-      // This handles the case where user navigates between different deals
-      if (initializedJobId.current !== null) {
-        userHasEdited.current = false
-      }
+    if (!job || mode !== 'edit' || !job.id) return
 
-      initializedJobId.current = job.id
+    const nextSig = computeLineItemsSignature(job?.lineItems)
+    const isNewJob = initializedJobId.current !== job.id
+    const isNewVersion = !isNewJob && nextSig !== initializedJobSig.current
 
-      // Apply titleCase normalization immediately when loading job data in edit mode
-      const customerName = job?.customer_name || job?.customerName || ''
-      const vehicleDescription = job?.vehicle_description || job?.vehicleDescription || ''
-
-      setCustomerData({
-        customerName: customerName ? titleCase(customerName) : '',
-        dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
-        jobNumber: job?.job_number || '',
-        stockNumber: job?.stock_number || job?.stockNumber || '',
-        vin: job?.vehicle?.vin || '',
-        customerMobile: job?.customer_phone || job?.customerMobile || '',
-        customerEmail: job?.customer_email || '',
-        vendorId: job?.vendor_id || null,
-        notes: job?.notes || job?.description || '',
-        vehicleDescription: vehicleDescription ? titleCase(vehicleDescription) : '',
-        assignedTo: job?.assigned_to || null,
-        deliveryCoordinator: job?.delivery_coordinator_id || null,
-        financeManager: job?.finance_manager_id || null,
-        needsLoaner: Boolean(job?.customer_needs_loaner),
-        loanerNumber: job?.loaner_number || job?.loanerNumber || '',
-        loanerReturnDate: toDateInputValue(job?.eta_return_date) || '',
-        loanerNotes: job?.loaner_notes || '',
-      })
-
-      // ✅ FIX: REPLACE line items (not append) to prevent duplication
-      // Ensure we're setting a fresh array from job.lineItems
-      if (Array.isArray(job?.lineItems) && job.lineItems.length > 0) {
-        const mappedLineItems = job.lineItems.map((item) => ({
-          ...item,
-          vendorId:
-            item?.vendor_id ||
-            item?.vendorId ||
-            (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
-            null,
-          dateScheduled: toDateInputValue(item?.promised_date) || '',
-          // ✅ FIX: Time fields should already be in HH:MM format from mapDbDealToForm's formatTime()
-          // Keep them as-is without additional transformation
-          scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
-          scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
-          isMultiDay: false,
-        }))
-
-        // 🔍 DEBUG: Log line items loading
-        if (import.meta.env.MODE === 'development') {
-          console.log('[DealFormV2] Loading line items into state:', {
-            jobId: job.id,
-            fromJobProp: job.lineItems.length,
-            mappedCount: mappedLineItems.length,
-            sample: mappedLineItems[0]
-              ? {
-                  id: mappedLineItems[0].id,
-                  product_id: mappedLineItems[0].product_id,
-                  productId: mappedLineItems[0].productId,
-                }
-              : null,
-          })
-        }
-
-        setLineItems(mappedLineItems)
-      } else {
-        // No line items or empty array - set to empty
-        if (import.meta.env.MODE === 'development') {
-          console.log('[DealFormV2] Setting lineItems to empty (no items in job prop)')
-        }
-        setLineItems([])
-      }
+    // If user has begun editing, don't overwrite actual line-item identity changes.
+    // Allow rehydration if the user hasn't changed the line-item identity (id/product),
+    // even if other state (e.g., dropdown-driven autofill) marked the form as edited.
+    if (!isNewJob && userHasEdited.current) {
+      const currentSig = currentLineItemsSig.current
+      const hydratedSig = initializedJobSig.current
+      if (currentSig && hydratedSig && currentSig !== hydratedSig) return
     }
+
+    if (!isNewJob && !isNewVersion) return
+
+    // Switching jobs or receiving a newer snapshot for same job (e.g. refetch) should rehydrate.
+    if (isNewJob) {
+      userHasEdited.current = false
+    }
+
+    isHydrating.current = true
+
+    initializedJobId.current = job.id
+    initializedJobSig.current = nextSig
+
+    // Apply titleCase normalization immediately when loading job data in edit mode
+    const customerName = job?.customer_name || job?.customerName || ''
+    const vehicleDescription = job?.vehicle_description || job?.vehicleDescription || ''
+
+    setCustomerData({
+      customerName: customerName ? titleCase(customerName) : '',
+      dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
+      jobNumber: job?.job_number || '',
+      stockNumber: job?.stock_number || job?.stockNumber || '',
+      vin: job?.vehicle?.vin || '',
+      customerMobile: job?.customer_phone || job?.customerMobile || '',
+      customerEmail: job?.customer_email || '',
+      vendorId: job?.vendor_id || null,
+      notes: job?.notes || job?.description || '',
+      vehicleDescription: vehicleDescription ? titleCase(vehicleDescription) : '',
+      assignedTo: job?.assigned_to || null,
+      deliveryCoordinator: job?.delivery_coordinator_id || null,
+      financeManager: job?.finance_manager_id || null,
+      needsLoaner: Boolean(job?.customer_needs_loaner),
+      loanerNumber: job?.loaner_number || job?.loanerNumber || '',
+      loanerReturnDate: toDateInputValue(job?.eta_return_date) || '',
+      loanerNotes: job?.loaner_notes || '',
+    })
+
+    // ✅ FIX: REPLACE line items (not append) to prevent duplication
+    // Ensure we're setting a fresh array from job.lineItems
+    if (Array.isArray(job?.lineItems) && job.lineItems.length > 0) {
+      const mappedLineItems = job.lineItems.map((item) => ({
+        ...item,
+        vendorId:
+          item?.vendor_id ||
+          item?.vendorId ||
+          (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
+          null,
+        dateScheduled: toDateInputValue(item?.promised_date) || '',
+        // ✅ FIX: Time fields should already be in HH:MM format from mapDbDealToForm's formatTime()
+        // Keep them as-is without additional transformation
+        scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
+        scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
+        isMultiDay: false,
+      }))
+
+      // 🔍 DEBUG: Log line items loading
+      if (import.meta.env.MODE === 'development') {
+        console.log('[DealFormV2] Loading line items into state:', {
+          jobId: job.id,
+          fromJobProp: job.lineItems.length,
+          mappedCount: mappedLineItems.length,
+          sample: mappedLineItems[0]
+            ? {
+                id: mappedLineItems[0].id,
+                product_id: mappedLineItems[0].product_id,
+                productId: mappedLineItems[0].productId,
+              }
+            : null,
+        })
+      }
+
+      setLineItems(mappedLineItems)
+    } else {
+      // No line items or empty array - set to empty
+      if (import.meta.env.MODE === 'development') {
+        console.log('[DealFormV2] Setting lineItems to empty (no items in job prop)')
+      }
+      setLineItems([])
+    }
+
+    // Initial hydration/refetch should not mark the form as dirty.
+    setHasUnsavedChanges(false)
   }, [job, job?.id, mode])
 
   // Track unsaved changes and mark user edits
   useEffect(() => {
+    if (isHydrating.current) {
+      // One-tick guard: clear hydration flag after state is applied.
+      // This prevents initial hydration/refetch from marking the form as dirty,
+      // without leaving pending timers that can keep tests open.
+      isHydrating.current = false
+      return
+    }
     // Mark as changed when user modifies form (skip for initial load in edit mode)
     if (mode === 'create' || (mode === 'edit' && initializedJobId.current)) {
       setHasUnsavedChanges(true)
@@ -580,6 +626,57 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         }
       }
 
+      const lineItemsPayload = lineItems.map((item) => {
+        // Combine date and time into proper ISO datetime for timestamptz columns
+        // This fixes: "invalid input syntax for type timestamp with time zone: '13:07'"
+        const scheduledStartIso = item?.requiresScheduling
+          ? combineDateAndTime(item?.dateScheduled, item?.scheduledStartTime)
+          : null
+        const scheduledEndIso = item?.requiresScheduling
+          ? combineDateAndTime(item?.dateScheduled, item?.scheduledEndTime)
+          : null
+
+        return {
+          product_id: item?.productId,
+          quantity_used: 1,
+          unit_price: parseFloat(item?.unitPrice || 0),
+          promised_date:
+            item?.requiresScheduling && item?.dateScheduled ? item.dateScheduled : null,
+          scheduled_start_time: scheduledStartIso,
+          scheduled_end_time: scheduledEndIso,
+          requires_scheduling: Boolean(item?.requiresScheduling),
+          no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
+          is_off_site: Boolean(item?.isOffSite),
+          vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
+        }
+      })
+
+      // For vendor deals, ensure at least one scheduled line item with a start time exists
+      const scheduledLineItems = lineItemsPayload
+        ?.filter((li) => li?.requires_scheduling)
+        ?.filter((li) => li?.scheduled_start_time)
+
+      if (customerData?.vendorId && (!scheduledLineItems || scheduledLineItems.length === 0)) {
+        setError('Vendor jobs require at least one scheduled line item with a start time')
+        setIsSubmitting(false)
+        savingRef.current = false
+        return
+      }
+
+      // Derive job-level schedule from earliest scheduled line item to satisfy DB constraint
+      let jobScheduledStartTime = null
+      let jobScheduledEndTime = null
+      if (scheduledLineItems && scheduledLineItems.length > 0) {
+        const earliest = scheduledLineItems.reduce((acc, curr) => {
+          if (!acc) return curr
+          return new Date(curr.scheduled_start_time) < new Date(acc.scheduled_start_time)
+            ? curr
+            : acc
+        }, null)
+        jobScheduledStartTime = earliest?.scheduled_start_time || null
+        jobScheduledEndTime = earliest?.scheduled_end_time || null
+      }
+
       const payload = {
         customer_name: customerData?.customerName?.trim(),
         deal_date: customerData?.dealDate,
@@ -603,30 +700,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
               notes: customerData?.loanerNotes?.trim() || null,
             }
           : null,
-        lineItems: lineItems.map((item) => {
-          // Combine date and time into proper ISO datetime for timestamptz columns
-          // This fixes: "invalid input syntax for type timestamp with time zone: '13:07'"
-          const scheduledStartIso = item?.requiresScheduling
-            ? combineDateAndTime(item?.dateScheduled, item?.scheduledStartTime)
-            : null
-          const scheduledEndIso = item?.requiresScheduling
-            ? combineDateAndTime(item?.dateScheduled, item?.scheduledEndTime)
-            : null
-
-          return {
-            product_id: item?.productId,
-            quantity_used: 1,
-            unit_price: parseFloat(item?.unitPrice || 0),
-            promised_date:
-              item?.requiresScheduling && item?.dateScheduled ? item.dateScheduled : null,
-            scheduled_start_time: scheduledStartIso,
-            scheduled_end_time: scheduledEndIso,
-            requires_scheduling: Boolean(item?.requiresScheduling),
-            no_schedule_reason: !item?.requiresScheduling ? item?.noScheduleReason : null,
-            is_off_site: Boolean(item?.isOffSite),
-            vendor_id: item?.vendorId || customerData?.vendorId || null, // Inherit job vendor if line item vendor not specified
-          }
-        }),
+        lineItems: lineItemsPayload,
+        scheduled_start_time: jobScheduledStartTime,
+        scheduled_end_time: jobScheduledEndTime,
       }
 
       if (import.meta.env.MODE === 'development') {

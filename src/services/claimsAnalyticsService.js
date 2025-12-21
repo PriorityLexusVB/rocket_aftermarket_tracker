@@ -102,7 +102,7 @@ class ClaimsAnalyticsService {
         previous_month_claims: previousMonthClaims,
         month_over_month_change: parseFloat(monthOverMonthChange),
       }
-    } catch (error) {
+    } catch {
       this.setError('Unable to load claims metrics. Please check your connection.')
       return {}
     }
@@ -199,7 +199,7 @@ class ClaimsAnalyticsService {
           }
         })
         ?.sort((a, b) => b?.total_claims - a?.total_claims)
-    } catch (error) {
+    } catch {
       this.setError('Error loading product claims data.')
       return []
     }
@@ -306,7 +306,7 @@ class ClaimsAnalyticsService {
             : 0,
         total_cost: month?.total_cost?.toFixed(2),
       }))
-    } catch (error) {
+    } catch {
       this.setError('Failed to load trend data.')
       return []
     }
@@ -402,7 +402,7 @@ class ClaimsAnalyticsService {
         ?.sort((a, b) => b?.efficiency_score - a?.efficiency_score)
 
       return vendorAnalysis
-    } catch (error) {
+    } catch {
       this.setError('Error loading vendor claims analysis.')
       return []
     }
@@ -496,7 +496,7 @@ class ClaimsAnalyticsService {
       }))
 
       return { monthly, seasonal }
-    } catch (error) {
+    } catch {
       this.setError('Error loading seasonal patterns.')
       return { monthly: [], seasonal: [] }
     }
@@ -593,7 +593,7 @@ class ClaimsAnalyticsService {
           (a, b) => parseFloat(b?.total_cost) - parseFloat(a?.total_cost)
         ),
       }
-    } catch (error) {
+    } catch {
       this.setError('Error calculating financial impact.')
       return {}
     }
@@ -627,7 +627,7 @@ class ClaimsAnalyticsService {
         financial_impact: financialImpact,
         last_updated: new Date()?.toISOString(),
       }
-    } catch (error) {
+    } catch {
       this.setError('Unable to load complete dashboard data.')
       return {}
     }

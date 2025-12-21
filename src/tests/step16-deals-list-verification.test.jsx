@@ -12,11 +12,38 @@
  */
 
 import React from 'react'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, waitFor, cleanup } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DealsPage from '../pages/deals/index.jsx'
 import * as dealService from '../services/dealService'
+
+// Mock notification service to avoid Supabase channels during tests
+vi?.mock('../services/notificationService', () => ({
+  notificationService: {
+    getNotificationCount: vi.fn().mockResolvedValue({ count: 0, error: null }),
+    getNotifications: vi.fn().mockResolvedValue({ data: [], error: null, count: 0 }),
+    subscribeToNotifications: vi.fn().mockReturnValue(null),
+    unsubscribeFromNotifications: vi.fn(),
+  },
+}))
+
+// Mock Navbar to avoid extra effects during rendering
+vi?.mock('../components/ui/Navbar', () => ({
+  default: () => null,
+}))
+
+// Mock dropdown hook to prevent network calls
+vi?.mock('../hooks/useDropdownData', () => ({
+  useDropdownData: () => ({
+    vendors: [],
+    salesConsultants: [],
+    deliveryCoordinators: [],
+    financeManagers: [],
+    refetchDropdowns: vi.fn(),
+    isLoading: false,
+  }),
+}))
 
 // Mock deal service
 vi?.mock('../services/dealService')
@@ -178,6 +205,11 @@ describe('Step 16: Deals List Screen Verification', () => {
     dealService?.getAllDeals?.mockResolvedValue(mockDealsData)
   })
 
+  afterEach(() => {
+    // Ensure we don't accumulate mounted components/timers across tests
+    cleanup()
+  })
+
   const renderComponent = () => {
     return render(
       <BrowserRouter>
@@ -305,7 +337,7 @@ describe('Step 16: Deals List Screen Verification', () => {
   })
 
   it('should handle filter toggles without errors', async () => {
-    renderComponent()
+    const { unmount } = renderComponent()
 
     await waitFor(() => {
       // Currently no filter controls visible, but data loads successfully
@@ -315,6 +347,7 @@ describe('Step 16: Deals List Screen Verification', () => {
 
     // Test that component doesn't crash with different data states
     dealService?.getAllDeals?.mockResolvedValueOnce([])
+    unmount()
     renderComponent()
 
     await waitFor(() => {

@@ -72,6 +72,7 @@ export const claimsService = {
         ?.select('id, make, model, year, vin')
         ?.eq('owner_email', customerEmail)
         ?.eq('vehicle_status', 'active')
+      if (orgId) q = q?.eq('org_id', orgId)
       const { data } = await q.throwOnError()
       return data || []
     } catch (error) {
@@ -150,7 +151,7 @@ export const claimsService = {
       const filePath = `claim-${claimId}/${fileName}`
 
       // Upload to storage
-      const { data: uploadData, error: uploadError } = await supabase?.storage
+      const { error: uploadError } = await supabase?.storage
         ?.from('claim-photos')
         ?.upload(filePath, file)
 

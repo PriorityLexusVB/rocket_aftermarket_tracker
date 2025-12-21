@@ -13,15 +13,6 @@ const BulkActionsBar = ({
   const [bulkAction, setBulkAction] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const bulkActionOptions = [
-    { value: '', label: 'Choose action...' },
-    { value: 'update-status', label: 'Update Status' },
-    { value: 'export-selected', label: 'Export Selected' },
-    { value: 'assign-vendor', label: 'Assign Vendor' },
-    { value: 'mark-priority', label: 'Mark Priority' },
-    { value: 'delete', label: 'Delete Selected' },
-  ]
-
   const statusOptions = [
     { value: 'available', label: 'Available' },
     { value: 'in-work', label: 'In Work' },

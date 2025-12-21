@@ -1,7 +1,7 @@
 // src/tests/dealService.rlsLoanerTelemetry.test.js
 // Tests for RLS loaner denied telemetry tracking
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { getTelemetry, TelemetryKey, resetTelemetry } from '../utils/capabilityTelemetry'
 
 describe('RLS Loaner Telemetry', () => {

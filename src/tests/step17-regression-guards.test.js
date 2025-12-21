@@ -10,11 +10,6 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { supabase } from '@/lib/supabase'
-import * as dealService from '../services/dealService'
-import * as vehicleService from '../services/vehicleService'
-import * as productService from '../services/productService'
-import * as claimsService from '../services/claimsService'
 
 // Mock supabase client
 vi?.mock('../lib/supabase', () => ({
@@ -615,6 +610,7 @@ describe('Step 17: Regression Guards - Database Schema Validation', () => {
       const sampleCurrency = '1200.50'
 
       currencyFields?.forEach((field) => {
+        void field
         const numValue = parseFloat(sampleCurrency)
         expect(numValue)?.toBeGreaterThanOrEqual(0)
         expect(sampleCurrency)?.toMatch(/^\d+(\.\d{1,2})?$/) // Up to 2 decimal places

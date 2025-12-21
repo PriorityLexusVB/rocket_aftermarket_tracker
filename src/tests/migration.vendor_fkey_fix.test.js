@@ -19,7 +19,7 @@ describe('Migration: 20251107000000_fix_job_parts_vendor_fkey.sql', () => {
 
   try {
     migrationSQL = readFileSync(migrationPath, 'utf8')
-  } catch (err) {
+  } catch {
     // Migration file doesn't exist - test will fail below
   }
 
@@ -224,7 +224,7 @@ describe('Migration Production Readiness', () => {
 
   try {
     migrationSQL = readFileSync(migrationPath, 'utf8')
-  } catch (err) {
+  } catch {
     migrationSQL = ''
   }
 

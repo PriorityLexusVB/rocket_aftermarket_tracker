@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
@@ -15,8 +15,6 @@ const EnhancedVehicleTable = ({
   onSelectionChange,
   onVehicleUpdate,
   userRole = 'staff',
-  searchQuery,
-  onSearchChange,
   filters,
   onFilterChange,
 }) => {
@@ -25,6 +23,7 @@ const EnhancedVehicleTable = ({
   const [isLoading, setIsLoading] = useState(false)
   const [showBulkActions, setShowBulkActions] = useState(false)
   const { overdueJobs } = useOverdueJobs()
+  const safeOnFilterChange = onFilterChange || (() => {})
 
   const handleSort = (key) => {
     let direction = 'asc'
@@ -205,8 +204,8 @@ const EnhancedVehicleTable = ({
       {/* Advanced Filters */}
       <AdvancedFilters
         filters={filters}
-        onFiltersChange={onFilterChange}
-        onClearFilters={() => onFilterChange({})}
+        onFiltersChange={safeOnFilterChange}
+        onClearFilters={() => safeOnFilterChange({})}
         pageType="vehicles"
         filterConfig={filterConfig}
       />

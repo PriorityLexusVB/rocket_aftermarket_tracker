@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Car,
   Search,
@@ -29,18 +29,7 @@ const VehiclesPage = () => {
   const [viewMode, setViewMode] = useState('cards') // 'cards' or 'table'
   const navigate = useNavigate()
 
-  useEffect(() => {
-    loadVehicles()
-  }, [searchQuery, statusFilter])
-
-  useEffect(() => {
-    const searchInput = document.getElementById('vehicle-search')
-    if (searchInput) {
-      searchInput?.focus()
-    }
-  }, [])
-
-  const loadVehicles = async () => {
+  const loadVehicles = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -87,7 +76,18 @@ const VehiclesPage = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [searchQuery, statusFilter])
+
+  useEffect(() => {
+    loadVehicles()
+  }, [loadVehicles])
+
+  useEffect(() => {
+    const searchInput = document.getElementById('vehicle-search')
+    if (searchInput) {
+      searchInput?.focus()
+    }
+  }, [])
 
   const loadVehicleHistory = async (vehicleId) => {
     try {
@@ -464,7 +464,7 @@ const VehiclesPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {vehicles?.map((vehicle, index) => {
+                    {vehicles?.map((vehicle) => {
                       const statusConfig = getStatusConfig(vehicle?.vehicle_status)
                       const StatusIcon = statusConfig?.icon
 

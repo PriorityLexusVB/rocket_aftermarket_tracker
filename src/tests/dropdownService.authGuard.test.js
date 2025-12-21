@@ -49,15 +49,16 @@ describe('dropdownService auth guard', () => {
   })
 
   it('does not prefetch on /auth when unauthenticated', async () => {
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      value: new URL('http://localhost/auth'),
-      writable: true,
-    })
+    const originalUrl = window.location.pathname + window.location.search + window.location.hash
 
-    await prefetchDropdowns()
-    expect(fromSpy).not.toHaveBeenCalled()
+    // Simulate being on /auth without redefining window.location (which can pollute other tests)
+    window.history.pushState({}, '', '/auth')
 
-    Object.defineProperty(window, 'location', { value: originalLocation })
+    try {
+      await prefetchDropdowns()
+      expect(fromSpy).not.toHaveBeenCalled()
+    } finally {
+      window.history.pushState({}, '', originalUrl || '/')
+    }
   })
 })

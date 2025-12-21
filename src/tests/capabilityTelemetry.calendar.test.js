@@ -1,6 +1,6 @@
 // src/tests/capabilityTelemetry.calendar.test.js
 // Tests for optional calendar render time telemetry
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   recordCalendarRenderTime,
   isCalendarTelemetryEnabled,
@@ -47,7 +47,6 @@ describe('Calendar Telemetry (VITE_TELEMETRY_CALENDAR_MS)', () => {
 
     it('should round decimal values when storing', () => {
       // Mock environment where flag is enabled
-      const originalEnv = import.meta.env.VITE_TELEMETRY_CALENDAR_MS
       try {
         // Note: This test demonstrates the expected behavior
         // Actual behavior depends on the env var at module load time

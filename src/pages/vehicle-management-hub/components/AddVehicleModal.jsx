@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
@@ -12,7 +12,6 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
   const [vendors, setVendors] = useState([])
   const [products, setProducts] = useState([])
   const [selectedProducts, setSelectedProducts] = useState([])
-  const [loadingVendors, setLoadingVendors] = useState(true)
   const [loadingProducts, setLoadingProducts] = useState(true)
 
   const {
@@ -21,7 +20,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
     reset,
     watch,
     setValue,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm({
     mode: 'onChange',
     defaultValues: {
@@ -70,11 +69,9 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
 
         setVendors(mockVendors)
         setProducts(mockProducts)
-        setLoadingVendors(false)
         setLoadingProducts(false)
       } catch (error) {
         console.error('Error loading vendors and products:', error)
-        setLoadingVendors(false)
         setLoadingProducts(false)
       }
     }
@@ -239,14 +236,14 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (!isSubmitting) {
       reset()
       setSelectedProducts([])
       setSubmitError('')
       onClose()
     }
-  }
+  }, [isSubmitting, onClose, reset])
 
   // Close modal on Escape key
   useEffect(() => {
@@ -265,7 +262,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen, isSubmitting])
+  }, [handleClose, isOpen, isSubmitting])
 
   if (!isOpen) return null
 

@@ -20,7 +20,6 @@ import { jobPartInsertSchema } from '@/db/schemas'
 
 const VENDOR_PLACEHOLDER_UUID = '00000000-0000-0000-0000-000000000000'
 const TIME_PLACEHOLDER = '1970-01-01 00:00:00+00'
-const DATE_PLACEHOLDER = '1970-01-01'
 
 function normalizeTime(value) {
   if (!value) return null
@@ -126,12 +125,6 @@ async function updateExistingJobParts(jobId, rows = [], opts = {}) {
 
     query = query.eq('job_id', jobId).eq('product_id', row.product_id)
 
-    if (row.promised_date) {
-      query = query.eq('promised_date', row.promised_date)
-    } else {
-      query = query.is('promised_date', null)
-    }
-
     if (includeVendor) {
       query = row.vendor_id ? query.eq('vendor_id', row.vendor_id) : query.is('vendor_id', null)
     }
@@ -230,7 +223,6 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
     const keyParts = [
       record.job_id,
       record.product_id,
-      record.promised_date ?? DATE_PLACEHOLDER,
       includeVendor ? (record.vendor_id ?? VENDOR_PLACEHOLDER_UUID) : VENDOR_PLACEHOLDER_UUID,
       includeTimes ? (record.scheduled_start_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
       includeTimes ? (record.scheduled_end_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
@@ -369,9 +361,10 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     return
   }
 
+  // Align with DB unique index job_parts_unique_job_product_schedule
+  // (job_id, product_id, coalesce(vendor_id,...), coalesce(scheduled_start_time,...), coalesce(scheduled_end_time,...))
   const conflictColumns = ['job_id', 'product_id']
   if (includeVendor) conflictColumns.push('vendor_id')
-  conflictColumns.push('promised_date')
   if (includeTimes) {
     conflictColumns.push('scheduled_start_time', 'scheduled_end_time')
   }
@@ -408,7 +401,6 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
           includeVendor = false
           const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
           const retryConflict = ['job_id', 'product_id']
-          retryConflict.push('promised_date')
           if (includeTimes) {
             retryConflict.push('scheduled_start_time', 'scheduled_end_time')
           }
@@ -442,7 +434,6 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
         const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
         const retryConflict = ['job_id', 'product_id']
         if (includeVendor) retryConflict.push('vendor_id')
-        retryConflict.push('promised_date')
         const retryOnConflict = retryConflict.join(',')
 
         const { error: retryErr } = await supabase
