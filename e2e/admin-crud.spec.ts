@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import type { Page, Dialog } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 // Helper to locate a table row by its text content
 const rowByText = (page: Page, text: string) => page.locator('tbody tr').filter({ hasText: text })
 
@@ -44,6 +46,8 @@ const gotoAdmin = async (page: Page) => {
 }
 
 test.describe('Admin CRUD - Vendors and Products', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('create, edit, and delete a Vendor', async ({ page }) => {
     const unique = Date.now()
     const vendorName = `E2E Vendor ${unique}`
