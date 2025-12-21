@@ -143,14 +143,15 @@ export const notificationService = {
         return
       }
 
-      // Prefer channel.unsubscribe when available
-      if (typeof subscription?.unsubscribe === 'function') {
-        await subscription.unsubscribe()
-      }
-
       // For Supabase Realtime v2 channels, removing the channel is the canonical teardown.
+      // Prefer `removeChannel` and only fall back to `channel.unsubscribe` when unavailable.
       if (typeof supabase?.removeChannel === 'function') {
         await supabase.removeChannel(subscription)
+        return
+      }
+
+      if (typeof subscription?.unsubscribe === 'function') {
+        await subscription.unsubscribe()
       }
     } catch (error) {
       console.warn('Failed to unsubscribe from notifications:', error)
