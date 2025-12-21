@@ -798,3 +798,37 @@ export const jobs = pgTable("jobs", {
 ---
 
 End of instructions.
+
+# Copilot Instructions — APP CREATION (Non-Negotiables)
+
+You are working in Rob’s APP CREATION ecosystem.
+
+## Hard rules
+- PR-sized changes only. No large refactors unless explicitly requested.
+- Diff-first: always propose a plan (files + commands) before edits.
+- Do NOT break existing behavior. Prefer additive/backward-compatible changes.
+- After ANY change, run verification commands and fix failures immediately.
+
+## Environment defaults (unless repo explicitly overrides)
+- WSL Ubuntu
+- Node 20 via `.nvmrc`
+- pnpm 10.15 via corepack
+- No Docker/devcontainers by default
+
+## App-wide rules
+- Forms: React Hook Form + Zod are the single source of validation truth.
+- Gamification: do NOT create a parallel points/XP system. Use shared patterns:
+  - game_events, game_profiles, streaks, challenges, achievements, leaderboards
+- Analytics: use analytics_events instead of ad-hoc logging.
+
+## Output format for recommendations
+Return:
+1) Must Fix (correctness/security/production risk)
+2) Should Fix (maintainability/DX)
+3) Nice to Have
+Each item must include:
+- Why it matters
+- Exact file paths
+- Minimal change approach
+- Verification commands
+- Rollback approach
