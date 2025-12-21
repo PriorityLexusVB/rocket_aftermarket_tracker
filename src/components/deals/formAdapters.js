@@ -47,16 +47,25 @@ export function normalizeLineItems(draft = {}) {
   return raw
     .filter(Boolean)
     .map((it) => {
-      const productId = it.product_id ?? it.productId ?? ''
+      const productIdRaw = it.product_id ?? it.productId ?? null
+      const productId = typeof productIdRaw === 'string' ? productIdRaw.trim() : productIdRaw
+      const hasProductId = !!productId
       const unitPrice = Number(it.unitPrice ?? it.unit_price ?? it.price ?? 0)
       const quantity = Number(it.quantity ?? it.qty ?? it.quantity_used ?? 1)
       const result = {
         ...it,
-        // Ensure both shapes are populated so downstream mappers see product_id
-        product_id: productId,
-        productId,
         unitPrice,
         quantity,
+      }
+
+      // Populate product ID in both shapes when present.
+      // If missing/blank, omit to keep adapter output stable for drafts.
+      if (hasProductId) {
+        result.product_id = productId
+        result.productId = productId
+      } else {
+        delete result.product_id
+        delete result.productId
       }
 
       // Preserve scheduling fields with proper naming

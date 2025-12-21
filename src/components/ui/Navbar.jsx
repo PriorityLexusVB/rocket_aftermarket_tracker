@@ -49,6 +49,13 @@ const Navbar = () => {
 
   // Load notifications on component mount and when user changes
   useEffect(() => {
+    // In tests, skip Supabase wiring to avoid open handles and network calls
+    if (isTest) {
+      setNotificationCount(0)
+      setNotifications([])
+      return () => {}
+    }
+
     let subscription = null
 
     const loadNotifications = async () => {

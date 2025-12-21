@@ -125,12 +125,6 @@ async function updateExistingJobParts(jobId, rows = [], opts = {}) {
 
     query = query.eq('job_id', jobId).eq('product_id', row.product_id)
 
-    if (row.promised_date) {
-      query = query.eq('promised_date', row.promised_date)
-    } else {
-      query = query.is('promised_date', null)
-    }
-
     if (includeVendor) {
       query = row.vendor_id ? query.eq('vendor_id', row.vendor_id) : query.is('vendor_id', null)
     }
@@ -407,7 +401,6 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
           includeVendor = false
           const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
           const retryConflict = ['job_id', 'product_id']
-          retryConflict.push('promised_date')
           if (includeTimes) {
             retryConflict.push('scheduled_start_time', 'scheduled_end_time')
           }
@@ -441,7 +434,6 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
         const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
         const retryConflict = ['job_id', 'product_id']
         if (includeVendor) retryConflict.push('vendor_id')
-        retryConflict.push('promised_date')
         const retryOnConflict = retryConflict.join(',')
 
         const { error: retryErr } = await supabase
