@@ -15,6 +15,16 @@ test.describe('Deal create redirect', () => {
     // First product line
     const product = page.getByTestId('product-select-0')
     await expect(product).toBeVisible()
+    await page
+      .waitForFunction(() => {
+        const el = document.querySelector('[data-testid="product-select-0"]')
+        return !!el && el instanceof HTMLSelectElement && el.options.length > 1
+      }, { timeout: 30_000 })
+      .catch(() => {
+        throw new Error(
+          'No products available in test environment; seed E2E products or run admin-crud first.'
+        )
+      })
     await product.selectOption({ index: 1 })
 
     // Vendor jobs require a scheduled date
