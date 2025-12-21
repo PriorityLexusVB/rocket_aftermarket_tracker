@@ -94,6 +94,10 @@ export default async function globalSetup() {
       console.error(
         '[global.setup] Missing E2E_EMAIL/E2E_PASSWORD. Set env or pre-create e2e/storageState.json by logging in manually. Skipping login step.'
       )
+      try {
+        await fs.mkdir(storageDir, { recursive: true })
+        await context.storageState({ path: storagePath })
+      } catch {}
       await browser.close()
       return
     }
