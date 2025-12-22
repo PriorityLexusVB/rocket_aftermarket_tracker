@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 // Simulates capability flag downgrades for user_profiles name columns by pre-setting
 // sessionStorage before app code runs. Verifies flags reflect expected fallback priority.
 
 test.describe('Profile name capability fallback', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('missing name -> falls back to full_name', async ({ page }) => {
     // Pre-set capability flags before app scripts execute
     await page.addInitScript(() => {

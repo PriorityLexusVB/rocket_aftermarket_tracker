@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 // Helper: skip when not authenticated
 async function ensureAuth(page: Page) {
   await page.goto('/debug-auth')
@@ -11,52 +13,56 @@ async function ensureAuth(page: Page) {
   test.skip(!hasSession, 'No authenticated session; skipping')
 }
 
-// New Deal: reps visible and loaner toggles on first click
-test('new deal: reps dropdowns present and loaner checkbox toggles once', async ({ page }) => {
-  await ensureAuth(page)
+test.describe('Loaner and Reps', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
 
-  await page.goto('/deals/new')
+  // New Deal: reps visible and loaner toggles on first click
+  test('new deal: reps dropdowns present and loaner checkbox toggles once', async ({ page }) => {
+    await ensureAuth(page)
 
-  // Reps selects visible (Step 1)
-  await expect(page.getByTestId('sales-select')).toBeVisible()
-  await expect(page.getByTestId('delivery-select')).toBeVisible()
-  await expect(page.getByTestId('finance-select')).toBeVisible()
+    await page.goto('/deals/new')
 
-  // Loaner checkbox toggles reliably
-  const loaner = page.getByTestId('loaner-checkbox')
-  await expect(loaner).toBeVisible()
-  const wasChecked = await loaner.isChecked()
-  await loaner.click() // single click should toggle
-  await expect(loaner).toHaveJSProperty('checked', !wasChecked)
-  await loaner.click()
-  await expect(loaner).toHaveJSProperty('checked', wasChecked)
-})
+    // Reps selects visible (Step 1)
+    await expect(page.getByTestId('sales-select')).toBeVisible()
+    await expect(page.getByTestId('delivery-select')).toBeVisible()
+    await expect(page.getByTestId('finance-select')).toBeVisible()
 
-// Edit Deal: open first deal, verify reps and loaner toggle
-// Note: Relies on at least one deal existing in the list.
-// If none exist, this test will be skipped gracefully.
-test('edit deal: reps visible and loaner checkbox toggles once', async ({ page }) => {
-  await ensureAuth(page)
+    // Loaner checkbox toggles reliably
+    const loaner = page.getByTestId('loaner-checkbox')
+    await expect(loaner).toBeVisible()
+    const wasChecked = await loaner.isChecked()
+    await loaner.click() // single click should toggle
+    await expect(loaner).toHaveJSProperty('checked', !wasChecked)
+    await loaner.click()
+    await expect(loaner).toHaveJSProperty('checked', wasChecked)
+  })
 
-  await page.goto('/deals')
+  // Edit Deal: open first deal, verify reps and loaner toggle
+  // Note: Relies on at least one deal existing in the list.
+  // If none exist, this test will be skipped gracefully.
+  test('edit deal: reps visible and loaner checkbox toggles once', async ({ page }) => {
+    await ensureAuth(page)
 
-  // Try to open the first Edit modal
-  const editLinks = page.locator('text=Edit')
-  const count = await editLinks.count()
-  test.skip(count === 0, 'No deals available to edit')
-  await editLinks.first().click()
+    await page.goto('/deals')
 
-  // The modal should appear; verify reps blocks exist
-  await expect(page.getByTestId('sales-select')).toBeVisible()
-  await expect(page.getByTestId('delivery-select')).toBeVisible()
-  await expect(page.getByTestId('finance-select')).toBeVisible()
+    // Try to open the first Edit modal
+    const editLinks = page.locator('text=Edit')
+    const count = await editLinks.count()
+    test.skip(count === 0, 'No deals available to edit')
+    await editLinks.first().click()
 
-  // Loaner checkbox behavior
-  const loaner = page.getByTestId('loaner-checkbox')
-  await expect(loaner).toBeVisible()
-  const wasChecked = await loaner.isChecked()
-  await loaner.click()
-  await expect(loaner).toHaveJSProperty('checked', !wasChecked)
-  await loaner.click()
-  await expect(loaner).toHaveJSProperty('checked', wasChecked)
+    // The modal should appear; verify reps blocks exist
+    await expect(page.getByTestId('sales-select')).toBeVisible()
+    await expect(page.getByTestId('delivery-select')).toBeVisible()
+    await expect(page.getByTestId('finance-select')).toBeVisible()
+
+    // Loaner checkbox behavior
+    const loaner = page.getByTestId('loaner-checkbox')
+    await expect(loaner).toBeVisible()
+    const wasChecked = await loaner.isChecked()
+    await loaner.click()
+    await expect(loaner).toHaveJSProperty('checked', !wasChecked)
+    await loaner.click()
+    await expect(loaner).toHaveJSProperty('checked', wasChecked)
+  })
 })

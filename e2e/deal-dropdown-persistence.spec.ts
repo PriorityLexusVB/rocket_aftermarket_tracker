@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 // Helper to require an authenticated session and org before proceeding
 async function ensureSessionAndOrg(page: Page) {
   await page.goto('/debug-auth')
@@ -33,6 +35,8 @@ async function pickFirstRealOption(select: ReturnType<Page['locator']>) {
 // (vendor, sales, finance, delivery, and first line item product) across save and reload.
 
 test.describe('Deal dropdown persistence across save + reload', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('create -> edit: selected values persist exactly', async ({ page }) => {
     await ensureSessionAndOrg(page)
 

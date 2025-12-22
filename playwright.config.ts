@@ -54,16 +54,16 @@ export default defineConfig({
     port: 5173,
     reuseExistingServer: !process.env.CI, // Avoid stale state in CI but allow reuse locally
     env: {
-      // Supabase client for the SPA
-      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+      // Supabase client for the SPA (defaults set at lines 22-23)
+      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL!,
+      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY!,
       VITE_ORG_SCOPED_DROPDOWNS: process.env.VITE_ORG_SCOPED_DROPDOWNS || 'true',
       VITE_SIMPLE_CALENDAR: process.env.VITE_SIMPLE_CALENDAR || 'true',
       VITE_DEAL_FORM_V2: process.env.VITE_DEAL_FORM_V2 || 'true',
-      // E2E config for global.setup
-      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL,
-      E2E_EMAIL: process.env.E2E_EMAIL,
-      E2E_PASSWORD: process.env.E2E_PASSWORD,
+      // E2E config for global.setup (defaults set at line 24)
+      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL!,
+      E2E_EMAIL: process.env.E2E_EMAIL || '',
+      E2E_PASSWORD: process.env.E2E_PASSWORD || '',
     },
   },
   globalSetup: './global.setup.ts',

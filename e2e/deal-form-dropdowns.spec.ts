@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 test.describe('Deal Form dropdowns and line items', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('dropdowns populate and product auto-fills unit price', async ({ page }) => {
     // Preflight: ensure we have an authenticated session (via storageState)
     await page.goto('/debug-auth')
