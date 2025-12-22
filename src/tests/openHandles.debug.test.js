@@ -17,7 +17,6 @@ describe('open handles debug', () => {
       String(type || '').toLowerCase().includes('websocket')
     )
 
-    // eslint-disable-next-line no-console
     console.log('[vitest-debug] open handles', {
       handles: handles.length,
       requests: requests.length,
