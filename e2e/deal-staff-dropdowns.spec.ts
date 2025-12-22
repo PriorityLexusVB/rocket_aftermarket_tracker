@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 // This spec validates that create-deal staff/vendor dropdowns populate, selections can be made,
 // and that those selections persist on the edit page and across reloads.
 // Requires an authenticated session. global.setup.ts will create one if
 // E2E_EMAIL/E2E_PASSWORD are provided, or if e2e/storageState.json already exists.
 
 test.describe('Deal staff/vendor dropdowns - create -> edit persistence', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('selects staff/vendor on create and persists on edit', async ({ page }) => {
     // Preflight: require an authenticated session (debug-auth markers)
     await page.goto('/debug-auth')

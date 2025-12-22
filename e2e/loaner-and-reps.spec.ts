@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 // Helper: skip when not authenticated
 async function ensureAuth(page: Page) {
   await page.goto('/debug-auth')
@@ -11,8 +13,11 @@ async function ensureAuth(page: Page) {
   test.skip(!hasSession, 'No authenticated session; skipping')
 }
 
-// New Deal: reps visible and loaner toggles on first click
-test('new deal: reps dropdowns present and loaner checkbox toggles once', async ({ page }) => {
+test.describe('Loaner and Reps', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
+  // New Deal: reps visible and loaner toggles on first click
+  test('new deal: reps dropdowns present and loaner checkbox toggles once', async ({ page }) => {
   await ensureAuth(page)
 
   await page.goto('/deals/new')

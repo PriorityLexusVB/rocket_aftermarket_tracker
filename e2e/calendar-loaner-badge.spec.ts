@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test'
 
+const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
 // Verifies that a seeded scheduled job shows a Loaner badge and a Promise chip on the calendar
 // Skips if there is no authenticated session/org (same pattern as other specs)
 
 test.describe('Calendar loaner badge and promise chip', () => {
+  test.skip(missingAuthEnv, 'E2E auth env not set')
+
   test('shows Loaner pill and Promise date for seeded job', async ({ page }) => {
     // Ensure authenticated session via debug-auth
     await page.goto('/debug-auth')
