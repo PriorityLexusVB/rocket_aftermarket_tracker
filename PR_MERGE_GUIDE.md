@@ -75,15 +75,16 @@ test.describe('Deal Form dropdowns and line items', () => {
 ### Files Changed
 | File | Lines Changed | Change Type |
 |------|--------------|-------------|
-| `e2e/calendar-loaner-badge.spec.ts` | +3 | Added skip logic |
+| `e2e/calendar-loaner-badge.spec.ts` | +4 | Added skip logic |
 | `e2e/deal-dropdown-persistence.spec.ts` | +3 | Added skip logic |
-| `e2e/deal-form-dropdowns.spec.ts` | +3 | Added skip logic |
-| `e2e/deal-staff-dropdowns.spec.ts` | +3 | Added skip logic |
-| `e2e/loaner-and-reps.spec.ts` | +3 | Added skip logic |
-| `e2e/profile-name-fallback.spec.ts` | +5 -2 | Replaced inline skip |
+| `e2e/deal-form-dropdowns.spec.ts` | +5 | Added skip logic |
+| `e2e/deal-staff-dropdowns.spec.ts` | +4 | Added skip logic |
+| `e2e/loaner-and-reps.spec.ts` | +7 | Added skip logic, wrapped tests, fixed syntax |
+| `e2e/profile-name-fallback.spec.ts` | +5 -2 (net +3) | Replaced inline skip |
 | `e2e/deal-edit.spec.ts` | ✅ No change | Already correct |
+| `playwright.config.ts` | +6 | Added non-null assertions for defaults |
 
-**Total Impact**: 21 lines changed across 6 files (minimal, surgical fix)
+**Total Impact**: ~32 lines changed across 7 files (plus this guide document; minimal, surgical fix)
 
 ---
 
@@ -116,8 +117,11 @@ main (production branch)
 git checkout copilot/fix-ci-test-duration-issue
 git pull origin copilot/fix-ci-test-duration-issue
 
-# 2. Cherry-pick the fix commit from PR #237
-git cherry-pick 684a17d
+# 2. Cherry-pick the fix commits from PR #237
+# Find the exact commit hashes via: git log origin/copilot/debug-failing-errors
+# You'll need to cherry-pick all relevant commits (684a17d, e70a026, and any formatting fixes)
+# Or use a range: git cherry-pick <first-commit>..<last-commit>
+git cherry-pick 684a17d e70a026  # Update with actual commit hashes from git log
 
 # 3. Push updated PR #232
 git push origin copilot/fix-ci-test-duration-issue
