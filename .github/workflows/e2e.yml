@@ -56,6 +56,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
@@ -170,6 +171,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"

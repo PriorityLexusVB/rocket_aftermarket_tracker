@@ -20,13 +20,23 @@ const { Client } = require('pg')
     process.exit(1)
   }
 
+  const e2eEmail = process.env.E2E_EMAIL
+  if (!e2eEmail) {
+    console.error('[seedE2E] Missing E2E_EMAIL environment variable.')
+    console.error('Set E2E_EMAIL to associate the test user with the E2E organization.')
+    process.exit(1)
+  }
+
+  // Replace $E2E_EMAIL$ placeholder with actual email (using parameterized query)
+  const sqlWithParams = sql.replace(/\$E2E_EMAIL\$/g, `'${e2eEmail.replace(/'/g, "''")}'`)
+
   const client = new Client({ connectionString: connStr })
   try {
     await client.connect()
     await client.query('BEGIN')
-    await client.query(sql)
+    await client.query(sqlWithParams)
     await client.query('COMMIT')
-    console.log('[seedE2E] Seed applied successfully.')
+    console.log(`[seedE2E] Seed applied successfully. Test user (${e2eEmail}) associated with E2E org.`)
   } catch (err) {
     try {
       await client.query('ROLLBACK')
