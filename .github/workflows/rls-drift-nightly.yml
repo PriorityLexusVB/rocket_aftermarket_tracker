@@ -43,8 +43,8 @@ jobs:
       - name: Run Schema Drift Script
         id: drift_check
         env:
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           echo "Running schema cache verification..."
           # Ensure we use npx supabase from node_modules
@@ -62,8 +62,8 @@ jobs:
         id: start_server
         if: always()
         env:
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           echo "Starting Vite dev server..."
           pnpm dev &
@@ -87,7 +87,7 @@ jobs:
         id: health_check
         if: always() && steps.start_server.conclusion == 'success'
         env:
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         run: |
           echo "Checking /api/health endpoint..."
           HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "http://localhost:5173/api/health" || echo "000")
@@ -109,7 +109,7 @@ jobs:
         id: deals_rel_check
         if: always() && steps.start_server.conclusion == 'success'
         env:
-          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
         run: |
           echo "Checking /api/health-deals-rel endpoint..."
           RESPONSE=$(curl -s -w "\n%{http_code}" "http://localhost:5173/api/health-deals-rel" || echo "000")

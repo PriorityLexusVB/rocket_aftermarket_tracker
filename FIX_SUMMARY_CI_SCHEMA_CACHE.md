@@ -8,9 +8,13 @@
 
 ## Executive Summary
 
-The Nightly RLS Drift & Health Check workflow was failing because recent migrations modified the `job_parts` schema without triggering a PostgREST schema cache reload. This caused the health endpoint to fail relationship queries, triggering the CI failure.
+The Nightly RLS Drift & Health Check workflow was failing due to **TWO issues**:
+1. **Incorrect secret names in workflow**: Workflow referenced `secrets.SUPABASE_URL` but actual secrets are named `VITE_SUPABASE_URL`
+2. **Missing schema cache reload**: Recent migrations modified `job_parts` schema without `NOTIFY pgrst, 'reload schema'`
 
-**Solution**: Created a new migration that executes `NOTIFY pgrst, 'reload schema';` to refresh the cache.
+**Solution**: 
+1. Fixed workflow to use correct secret names (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
+2. Created migration to execute `NOTIFY pgrst, 'reload schema';`
 
 ---
 
@@ -24,7 +28,17 @@ The Nightly RLS Drift & Health Check workflow was failing because recent migrati
   - `/api/health` endpoint failed
   - `/api/health-deals-rel` endpoint returned `ok: false`
 
-### Root Cause
+### Root Cause 1: Incorrect Secret Names (PRIMARY ISSUE)
+**The workflow was using wrong secret names**, causing environment variables to be empty:
+
+- **Workflow referenced**: `secrets.SUPABASE_URL` and `secrets.SUPABASE_ANON_KEY`
+- **Actual secret names**: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+
+This caused all Supabase API calls to fail because the health endpoints couldn't connect to the database.
+
+**Other workflows (e2e.yml, copilot-setup-steps.yml) use the correct names**, which is why they work.
+
+### Root Cause 2: Missing Schema Cache Reload (SECONDARY ISSUE)
 Two recent migrations modified `job_parts` schema but omitted the required `NOTIFY pgrst, 'reload schema';` command:
 
 1. **20251218042008_job_parts_unique_constraint_vendor_time.sql**
@@ -48,7 +62,29 @@ PostgREST caches the database schema for performance. When schema changes occur 
 
 ## Solution
 
-### New Migration: `20251222040813_notify_pgrst_reload_schema.sql`
+### Fix 1: Correct Workflow Secret Names (PRIMARY FIX)
+
+**Changed in**: `.github/workflows/rls-drift-nightly.yml`
+
+Updated all references from:
+```yaml
+env:
+  VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+```
+
+To:
+```yaml
+env:
+  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+```
+
+**Impact**: Health endpoints can now connect to Supabase and perform relationship checks.
+
+### Fix 2: Schema Cache Reload Migration (PREVENTIVE FIX)
+
+**New Migration**: `20251222040813_notify_pgrst_reload_schema.sql`
 
 **What it does**:
 - Executes `NOTIFY pgrst, 'reload schema';` to refresh PostgREST's schema cache
