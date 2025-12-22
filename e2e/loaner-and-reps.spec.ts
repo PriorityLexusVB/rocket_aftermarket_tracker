@@ -65,3 +65,4 @@ test('edit deal: reps visible and loaner checkbox toggles once', async ({ page }
   await loaner.click()
   await expect(loaner).toHaveJSProperty('checked', wasChecked)
 })
+})
