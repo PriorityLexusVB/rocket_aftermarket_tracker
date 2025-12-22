@@ -77,6 +77,9 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:5173
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Database access for global.setup to associate user with E2E org
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
         run: |
           pnpm exec playwright test \
             e2e/profile-name-fallback.spec.ts \
@@ -191,6 +194,9 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:5173
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Database access for global.setup to associate user with E2E org
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm e2e
 
       - name: Upload Playwright HTML report (always)

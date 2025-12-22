@@ -170,7 +170,66 @@ export default async function globalSetup() {
     })
   } catch {}
 
+  // Associate authenticated user with E2E organization
+  // This ensures RLS policies allow access to E2E test data (products, vendors, etc.)
+  try {
+    await associateUserWithE2EOrg()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn('[global.setup] Warning: Could not associate user with E2E org:', message)
+    // Non-fatal - tests may still work if user was already associated or if using different org
+  }
+
   await fs.mkdir(storageDir, { recursive: true })
   await context.storageState({ path: storagePath })
   await browser.close()
+}
+
+/**
+ * Associate the authenticated E2E user with the E2E organization.
+ * Runs after authentication completes to ensure user_profiles has correct org_id.
+ * This prevents RLS from blocking access to E2E test data.
+ */
+async function associateUserWithE2EOrg() {
+  const connStr = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+  if (!connStr) {
+    console.log('[global.setup] DATABASE_URL not set - skipping user-org association')
+    return
+  }
+
+  const e2eEmail = process.env.E2E_EMAIL
+  if (!e2eEmail) {
+    console.log('[global.setup] E2E_EMAIL not set - skipping user-org association')
+    return
+  }
+
+  const { Client } = require('pg')
+  const e2eOrgId = '00000000-0000-0000-0000-0000000000e2'
+
+  const client = new Client({ connectionString: connStr })
+  try {
+    await client.connect()
+
+    // Update user_profiles to associate with E2E org
+    // This runs AFTER authentication, so the profile row should exist (created by handle_new_user trigger)
+    const result = await client.query(
+      `UPDATE public.user_profiles 
+       SET org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
+       WHERE email = $2
+       RETURNING id, email, org_id, full_name`,
+      [e2eOrgId, e2eEmail]
+    )
+
+    if (result.rowCount === 0) {
+      console.warn(`[global.setup] Warning: No profile found for ${e2eEmail} to associate with E2E org`)
+    } else {
+      const profile = result.rows[0]
+      console.log(`[global.setup] ✅ User profile associated with E2E org:`)
+      console.log(`[global.setup]   Email: ${profile.email}`)
+      console.log(`[global.setup]   Name: ${profile.full_name}`)
+      console.log(`[global.setup]   Org ID: ${profile.org_id}`)
+    }
+  } finally {
+    await client.end()
+  }
 }
