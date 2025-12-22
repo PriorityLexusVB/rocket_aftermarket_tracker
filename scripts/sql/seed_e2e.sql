@@ -28,6 +28,24 @@ values
   ('00000000-0000-0000-0000-0000000000s3', 'E2E Delivery 1', 'delivery1@example.com', 'Delivery Coordinator', 'staff', true, '00000000-0000-0000-0000-0000000000e2')
 on conflict (id) do update set full_name = excluded.full_name, email = excluded.email, department = excluded.department, role = excluded.role, is_active = excluded.is_active, org_id = excluded.org_id;
 
+-- Associate the E2E test user with the E2E organization
+-- This ensures RLS policies allow the test user to see seeded products/vendors
+-- Uses parameterized query support: $E2E_EMAIL$ will be replaced by seedE2E.js
+-- Uses INSERT ... ON CONFLICT to create the profile if it doesn't exist yet
+insert into public.user_profiles (id, email, full_name, role, org_id, is_active)
+select 
+  id, 
+  email,
+  coalesce(raw_user_meta_data->>'full_name', raw_user_meta_data->>'name', email) as full_name,
+  'staff' as role,
+  '00000000-0000-0000-0000-0000000000e2' as org_id,
+  true as is_active
+from auth.users
+where email = $E2E_EMAIL$
+on conflict (id) do update 
+set org_id = excluded.org_id,
+    is_active = excluded.is_active;
+
 -- -----------------------------------------------------------
 -- Scheduled job with promised date and active loaner for E2E
 -- -----------------------------------------------------------

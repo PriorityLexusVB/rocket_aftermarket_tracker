@@ -20,18 +20,47 @@ const { Client } = require('pg')
     process.exit(1)
   }
 
+  const e2eEmail = process.env.E2E_EMAIL
+  if (!e2eEmail) {
+    console.error('[seedE2E] Missing E2E_EMAIL environment variable.')
+    console.error('Set E2E_EMAIL to associate the test user with the E2E organization.')
+    process.exit(1)
+  }
+
+  // Replace $E2E_EMAIL$ placeholder with actual email (using parameterized query)
+  const sqlWithParams = sql.replace(/\$E2E_EMAIL\$/g, `'${e2eEmail.replace(/'/g, "''")}'`)
+
   const client = new Client({ connectionString: connStr })
   try {
     await client.connect()
     await client.query('BEGIN')
-    await client.query(sql)
+    await client.query(sqlWithParams)
+    
+    // Verify the user profile was created/updated
+    const result = await client.query(
+      `SELECT id, email, org_id, full_name FROM public.user_profiles WHERE email = $1`,
+      [e2eEmail]
+    )
+    
     await client.query('COMMIT')
-    console.log('[seedE2E] Seed applied successfully.')
+    
+    if (result.rows.length > 0) {
+      const profile = result.rows[0]
+      console.log(`[seedE2E] ✅ Seed applied successfully.`)
+      console.log(`[seedE2E] Test user profile:`)
+      console.log(`[seedE2E]   Email: ${profile.email}`)
+      console.log(`[seedE2E]   Name: ${profile.full_name}`)
+      console.log(`[seedE2E]   Org ID: ${profile.org_id}`)
+      console.log(`[seedE2E]   Profile ID: ${profile.id}`)
+    } else {
+      console.warn(`[seedE2E] ⚠️ Warning: User profile for ${e2eEmail} was not found after seeding.`)
+      console.warn(`[seedE2E] The user may not exist in auth.users yet. Make sure E2E_EMAIL matches an existing authenticated user.`)
+    }
   } catch (err) {
     try {
       await client.query('ROLLBACK')
     } catch {}
-    console.error('[seedE2E] Seed failed:', err?.message || err)
+    console.error('[seedE2E] ❌ Seed failed:', err?.message || err)
     process.exit(1)
   } finally {
     await client.end()
