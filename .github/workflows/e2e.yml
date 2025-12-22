@@ -51,6 +51,20 @@ jobs:
         if: steps.check-secrets.outputs.secrets_available == 'true'
         run: pnpm exec playwright install --with-deps
 
+      - name: Seed E2E test data
+        if: steps.check-secrets.outputs.secrets_available == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
+            echo "Skipping seed step - tests will rely on existing data or admin-crud test"
+          else
+            echo "Seeding E2E test data (products, vendors, etc.)"
+            pnpm run db:seed-e2e || echo "::warning::Seed failed, continuing anyway"
+          fi
+
       - name: Run E2E smoke tests (fast subset)
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
@@ -151,6 +165,19 @@ jobs:
           fi
           echo "✅ All required secrets are accessible"
           echo "::endgroup::"
+
+      - name: Seed E2E test data
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
+            echo "Skipping seed step - tests will rely on existing data or admin-crud test"
+          else
+            echo "Seeding E2E test data (products, vendors, etc.)"
+            pnpm run db:seed-e2e || echo "::warning::Seed failed, continuing anyway"
+          fi
 
       - name: Run E2E tests (full suite)
         env:
