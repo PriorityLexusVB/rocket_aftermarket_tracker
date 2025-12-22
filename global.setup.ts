@@ -170,6 +170,10 @@ export default async function globalSetup() {
     })
   } catch {}
 
+  // Wait a moment for handle_new_user() trigger to complete
+  console.log('[global.setup] Waiting 2s for profile creation to settle...')
+  await page.waitForTimeout(2000)
+
   // Associate authenticated user with E2E organization
   // This ensures RLS policies allow access to E2E test data (products, vendors, etc.)
   try {
@@ -189,6 +193,9 @@ export default async function globalSetup() {
  * Associate the authenticated E2E user with the E2E organization.
  * Runs after authentication completes to ensure user_profiles has correct org_id.
  * This prevents RLS from blocking access to E2E test data.
+ * 
+ * CRITICAL: The handle_new_user() trigger may set org_id=NULL, so we need to
+ * wait for the profile to exist, then update it with retry logic.
  */
 async function associateUserWithE2EOrg() {
   const connStr = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
@@ -205,31 +212,88 @@ async function associateUserWithE2EOrg() {
 
   const { Client } = require('pg')
   const e2eOrgId = '00000000-0000-0000-0000-0000000000e2'
+  const maxRetries = 5
+  const retryDelayMs = 1000
 
-  const client = new Client({ connectionString: connStr })
-  try {
-    await client.connect()
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const client = new Client({ connectionString: connStr })
+    try {
+      await client.connect()
 
-    // Update user_profiles to associate with E2E org
-    // This runs AFTER authentication, so the profile row should exist (created by handle_new_user trigger)
-    const result = await client.query(
-      `UPDATE public.user_profiles 
-       SET org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
-       WHERE email = $2
-       RETURNING id, email, org_id, full_name`,
-      [e2eOrgId, e2eEmail]
-    )
+      // First, check if profile exists and current org_id
+      const checkResult = await client.query(
+        `SELECT id, email, org_id, full_name FROM public.user_profiles WHERE email = $1`,
+        [e2eEmail]
+      )
 
-    if (result.rowCount === 0) {
-      console.warn(`[global.setup] Warning: No profile found for ${e2eEmail} to associate with E2E org`)
-    } else {
-      const profile = result.rows[0]
-      console.log(`[global.setup] ✅ User profile associated with E2E org:`)
-      console.log(`[global.setup]   Email: ${profile.email}`)
-      console.log(`[global.setup]   Name: ${profile.full_name}`)
-      console.log(`[global.setup]   Org ID: ${profile.org_id}`)
+      if (checkResult.rowCount === 0) {
+        console.log(`[global.setup] Attempt ${attempt}/${maxRetries}: Profile not found yet, waiting...`)
+        await client.end()
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, retryDelayMs))
+          continue
+        } else {
+          console.error(`[global.setup] ❌ Failed: Profile not created after ${maxRetries} attempts`)
+          return
+        }
+      }
+
+      const currentProfile = checkResult.rows[0]
+      console.log(`[global.setup] Attempt ${attempt}: Profile found - org_id: ${currentProfile.org_id || 'NULL'}`)
+
+      // Update to E2E org (even if already set, to ensure it's correct)
+      const updateResult = await client.query(
+        `UPDATE public.user_profiles 
+         SET org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
+         WHERE email = $2
+         RETURNING id, email, org_id, full_name`,
+        [e2eOrgId, e2eEmail]
+      )
+
+      if (updateResult.rowCount === 0) {
+        console.warn(`[global.setup] Warning: UPDATE affected 0 rows for ${e2eEmail}`)
+        await client.end()
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, retryDelayMs))
+          continue
+        }
+      } else {
+        const updatedProfile = updateResult.rows[0]
+        console.log(`[global.setup] ✅ User profile associated with E2E org:`)
+        console.log(`[global.setup]   Email: ${updatedProfile.email}`)
+        console.log(`[global.setup]   Name: ${updatedProfile.full_name}`)
+        console.log(`[global.setup]   Org ID: ${updatedProfile.org_id}`)
+
+        // Verify the update persisted
+        const verifyResult = await client.query(
+          `SELECT org_id FROM public.user_profiles WHERE email = $1`,
+          [e2eEmail]
+        )
+        if (verifyResult.rows[0].org_id === e2eOrgId) {
+          console.log(`[global.setup] ✅ Verified: org_id persisted correctly`)
+          await client.end()
+          return  // Success!
+        } else {
+          console.warn(`[global.setup] ⚠️ Verification failed: org_id=${verifyResult.rows[0].org_id}, expected=${e2eOrgId}`)
+          await client.end()
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, retryDelayMs))
+            continue
+          }
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.error(`[global.setup] Attempt ${attempt} error:`, message)
+      try { await client.end() } catch {}
+      if (attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, retryDelayMs))
+        continue
+      } else {
+        throw err  // Re-throw on last attempt
+      }
     }
-  } finally {
-    await client.end()
   }
+
+  console.error(`[global.setup] ❌ Failed to associate user with E2E org after ${maxRetries} attempts`)
 }
