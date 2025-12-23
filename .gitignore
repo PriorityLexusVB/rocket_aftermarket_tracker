@@ -60,3 +60,9 @@ drizzle/
 !.vscode/settings.json
 !.vscode/extensions.json
 test-output*.log
+
+# Local temp/artifact folders (do not commit)
+_tmp_*/
+rocket-aftermarket-tracker@*/
+vite-err.log
+vite-out.log
