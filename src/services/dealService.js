@@ -127,6 +127,25 @@ function mapFormToDb(formState = {}) {
     }
   })
 
+  // DB constraint: vendor jobs must have scheduled dates.
+  // The UI frequently captures only a date on line items; derive job-level schedule if missing.
+  if (payload?.vendor_id && (!payload?.scheduled_start_time || !payload?.scheduled_end_time)) {
+    const firstPromisedDate = normalizedLineItems
+      .map((it) => it?.promised_date)
+      .find((d) => typeof d === 'string' && d.trim())
+
+    // Prefer a provided promised date; fall back to today (YYYY-MM-DD).
+    const dateStr = firstPromisedDate || new Date().toISOString().slice(0, 10)
+
+    // Use a stable business-hour window in UTC.
+    // (Matches existing expectations in tests/UX for default schedule blocks.)
+    const startIso = new Date(`${dateStr}T09:00:00.000Z`).toISOString()
+    const endIso = new Date(`${dateStr}T17:00:00.000Z`).toISOString()
+
+    if (!payload?.scheduled_start_time) payload.scheduled_start_time = startIso
+    if (!payload?.scheduled_end_time) payload.scheduled_end_time = endIso
+  }
+
   // Coerce invalid numerics and enforce business rules
   for (const item of normalizedLineItems) {
     if (Number.isNaN(item.quantity_used) || item.quantity_used == null) item.quantity_used = 1
@@ -574,7 +593,11 @@ export async function updateDeal(id, formState) {
   // Ensure description is explicitly updated when provided (some environments rely on it for display)
   {
     const desc = (formState?.description || '').trim()
-    if (desc) payload.description = desc
+    if (desc) {
+      payload.description = desc
+      // The app displays `title` as the primary "description". Keep them in sync on edit.
+      payload.title = desc
+    }
   }
 
   // Calculate total deal value for transactions
@@ -654,16 +677,98 @@ export async function updateDeal(id, formState) {
   }
 
   // 3) Replace job_parts with new scheduling fields
-  // Delete existing
-  const { error: delErr } = await supabase?.from('job_parts')?.delete()?.eq('job_id', id)
-  if (delErr) throw new Error(`Failed to update line items: ${delErr.message}`)
+  // Avoid unnecessary delete/insert cycles (and role-based RLS issues) by only replacing
+  // job_parts when there are actual changes.
+  const compareParts = (a, b) => {
+    const sameScalar = (x, y) => {
+      if (x == null && y == null) return true
+      return String(x) === String(y)
+    }
+    const sameBool = (x, y) => !!x === !!y
 
-  // Insert new (if any)
-  if ((normalizedLineItems || []).length > 0) {
-    const rows = toJobPartRows(id, normalizedLineItems)
-    if (rows?.length > 0) {
-      const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)
-      if (insErr) throw new Error(`Failed to update line items: ${insErr.message}`)
+    // If UI doesn't provide a promised_date for scheduled work, treat it as "no-op" vs DB.
+    const promisedA = a?.promised_date || null
+    const promisedB = b?.promised_date || null
+    const promisedOk =
+      (!promisedA && !!a?.requires_scheduling) || (!promisedB && !!b?.requires_scheduling)
+        ? true
+        : sameScalar(promisedA, promisedB)
+
+    return (
+      sameScalar(a?.product_id, b?.product_id) &&
+      sameBool(a?.requires_scheduling, b?.requires_scheduling) &&
+      sameBool(a?.is_off_site, b?.is_off_site) &&
+      sameScalar(Number(a?.unit_price ?? 0), Number(b?.unit_price ?? 0)) &&
+      sameScalar(Number(a?.quantity_used ?? 1), Number(b?.quantity_used ?? 1)) &&
+      sameScalar(a?.no_schedule_reason || null, b?.no_schedule_reason || null) &&
+      promisedOk
+    )
+  }
+
+  let shouldReplaceParts = true
+  try {
+    const { data: existingParts, error: existingErr } = await supabase
+      ?.from('job_parts')
+      ?.select(
+        'product_id, unit_price, quantity_used, promised_date, requires_scheduling, no_schedule_reason, is_off_site'
+      )
+      ?.eq('job_id', id)
+
+    if (existingErr) throw existingErr
+
+    const existing = (existingParts || []).map((p) => ({
+      product_id: p?.product_id ?? null,
+      unit_price: Number(p?.unit_price ?? 0),
+      quantity_used: Number(p?.quantity_used ?? 1),
+      promised_date: p?.promised_date || null,
+      requires_scheduling: !!p?.requires_scheduling,
+      no_schedule_reason: p?.no_schedule_reason || null,
+      is_off_site: !!p?.is_off_site,
+    }))
+
+    const incoming = (normalizedLineItems || []).map((it) => ({
+      product_id: it?.product_id ?? null,
+      unit_price: Number(it?.unit_price ?? 0),
+      quantity_used: Number(it?.quantity_used ?? 1),
+      promised_date: it?.promised_date || null,
+      requires_scheduling: !!it?.requires_scheduling,
+      no_schedule_reason: it?.no_schedule_reason || null,
+      is_off_site: !!it?.is_off_site,
+    }))
+
+    // If counts differ, definitely replace.
+    if (existing.length === incoming.length) {
+      // Compare in order (UI order is stable in this app).
+      const allSame = existing.every((row, idx) => compareParts(row, incoming[idx]))
+      shouldReplaceParts = !allSame
+    }
+  } catch (e) {
+    // If we can't read parts (RLS), fall back to the original replace behavior.
+    shouldReplaceParts = true
+  }
+
+  if (shouldReplaceParts) {
+    // Delete existing (request returning rows so we can detect RLS-noop deletes)
+    const { data: deletedRows, error: delErr } = await supabase
+      ?.from('job_parts')
+      ?.delete()
+      ?.eq('job_id', id)
+      ?.select('id')
+
+    if (delErr) throw new Error(`Failed to update line items: ${delErr.message}`)
+
+    // If we attempted a replace but couldn't delete anything, don't proceed to insert and hit unique constraints.
+    if ((deletedRows || []).length === 0) {
+      throw new Error('Failed to update line items: insufficient permissions to modify line items')
+    }
+
+    // Insert new (if any)
+    if ((normalizedLineItems || []).length > 0) {
+      const rows = toJobPartRows(id, normalizedLineItems)
+      if (rows?.length > 0) {
+        const { error: insErr } = await supabase?.from('job_parts')?.insert(rows)
+        if (insErr) throw new Error(`Failed to update line items: ${insErr.message}`)
+      }
     }
   }
 
@@ -700,14 +805,16 @@ export async function updateDealStatus(id, job_status) {
 function mapDbDealToForm(dbDeal) {
   if (!dbDeal) return null
 
+  const title = (dbDeal?.title || '').trim()
+  const description = (dbDeal?.description || '').trim()
+
   return {
     id: dbDeal?.id,
     updated_at: dbDeal?.updated_at,
     job_number: dbDeal?.job_number || '',
-    title: dbDeal?.title || '',
-    // Prefer title as the primary description source (we sync title to description on save)
-    // Fall back to DB description for older records
-    description: dbDeal?.title || dbDeal?.description || '',
+    title,
+    // Prefer the dedicated DB description when present; fall back to title for older records.
+    description: description || title,
     vendor_id: dbDeal?.vendor_id,
     vehicle_id: dbDeal?.vehicle_id,
     job_status: dbDeal?.job_status || 'pending',

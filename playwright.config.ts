@@ -39,5 +39,5 @@ export default defineConfig({
     port: 5173,
     reuseExistingServer: !process.env.CI,
   },
-  globalSetup: require.resolve('./global.setup.ts'),
+  globalSetup: require.resolve('./global.setup.cjs'),
 })

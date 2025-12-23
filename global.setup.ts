@@ -1,6 +1,8 @@
 import { chromium } from '@playwright/test'
 import fs from 'fs/promises'
 import path from 'path'
+import { execSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 // Ensure env vars (E2E_EMAIL/E2E_PASSWORD, PLAYWRIGHT_BASE_URL) load from .env.local/.env
 import dotenv from 'dotenv'
 import { existsSync } from 'fs'
@@ -13,12 +15,42 @@ try {
   }
 } catch {}
 
+const require = createRequire(import.meta.url)
+
+async function launchChromiumWithOptionalInstall() {
+  try {
+    return await chromium.launch()
+  } catch (err) {
+    const message = String((err as any)?.message ?? err)
+    const looksLikeMissingBrowsers =
+      /Playwright browser are not installed|Executable doesn't exist|browserType\.launch/i.test(
+        message
+      )
+
+    if (!looksLikeMissingBrowsers) throw err
+
+    if (process.env.PLAYWRIGHT_AUTO_INSTALL === '1') {
+      // eslint-disable-next-line no-console
+      console.log(
+        '[global.setup] Playwright browsers missing; auto-installing Chromium (PLAYWRIGHT_AUTO_INSTALL=1).'
+      )
+      const cliPath = require.resolve('playwright/cli')
+      execSync(`node "${cliPath}" install chromium`, { stdio: 'inherit' })
+      return await chromium.launch()
+    }
+
+    throw new Error(
+      '[global.setup] Playwright browsers are not installed. Run `pnpm exec playwright install chromium` (or set PLAYWRIGHT_AUTO_INSTALL=1 to auto-install during setup).'
+    )
+  }
+}
+
 export default async function globalSetup() {
   const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
   const storageDir = path.join(process.cwd(), 'e2e')
   const storagePath = path.join(storageDir, 'storageState.json')
 
-  const browser = await chromium.launch()
+  const browser = await launchChromiumWithOptionalInstall()
   const storageExists = await fs
     .stat(storagePath)
     .then(() => true)

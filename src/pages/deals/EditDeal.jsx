@@ -5,7 +5,6 @@ import DealForm from './DealForm'
 import * as dealService from '../../services/dealService'
 import { entityToDraft, draftToUpdatePayload } from '@/components/deals/formAdapters'
 
-
 export default function EditDeal() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -21,8 +20,8 @@ export default function EditDeal() {
         const d = await dealService?.getDeal(id)
         if (alive) {
           const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(d) : d
-          const useV2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
-          setInitial(useV2 ? entityToDraft(mapped) : mapped)
+          const USE_V2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
+          setInitial(USE_V2 ? entityToDraft(mapped) : mapped)
         }
       } catch (e) {
         alert(e?.message || 'Failed to load deal')
@@ -40,14 +39,17 @@ export default function EditDeal() {
     try {
       // Update then re-fetch latest persisted values; stay on Edit
       const USE_V2 = import.meta.env?.VITE_DEAL_FORM_V2 === 'true'
-      const payload = useV2 ? draftToUpdatePayload({ id }, formState) : formState
+      const payload = USE_V2 ? draftToUpdatePayload({ id }, formState) : formState
       await dealService?.updateDeal(id, payload)
       const fresh = await dealService?.getDeal(id)
       const mapped = dealService.mapDbDealToForm ? dealService.mapDbDealToForm(fresh) : fresh
-      setInitial(useV2 ? entityToDraft(mapped) : mapped)
+      setInitial(USE_V2 ? entityToDraft(mapped) : mapped)
       setLastSavedAt(new Date())
     } catch (e) {
-      alert(e?.message || 'Failed to save deal')
+      const msg = e?.message || 'Failed to save deal'
+      alert(msg)
+      // Re-throw so DealForm can render the error state (and avoid false-success banners).
+      throw new Error(msg)
     } finally {
       setSaving(false)
     }
