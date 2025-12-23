@@ -51,6 +51,12 @@ dist/
 dist/
 build-output.log
 
+# Local temp/artifacts
+_tmp_*/
+rocket-aftermarket-tracker@*/
+vite-err.log
+vite-out.log
+
 # Drizzle generated migrations (we use supabase/migrations instead)
 drizzle/
 
@@ -59,4 +65,5 @@ drizzle/
 !.vscode/profiles/
 !.vscode/settings.json
 !.vscode/extensions.json
+!.vscode/tasks.json
 test-output*.log
