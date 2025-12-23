@@ -224,6 +224,7 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
       record.job_id,
       record.product_id,
       includeVendor ? (record.vendor_id ?? VENDOR_PLACEHOLDER_UUID) : VENDOR_PLACEHOLDER_UUID,
+      record.promised_date ?? '1970-01-01', // Include promised_date to match DB unique index
       includeTimes ? (record.scheduled_start_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
       includeTimes ? (record.scheduled_end_time ?? TIME_PLACEHOLDER) : TIME_PLACEHOLDER,
     ]
@@ -361,10 +362,11 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
     return
   }
 
-  // Align with DB unique index job_parts_unique_job_product_schedule
-  // (job_id, product_id, coalesce(vendor_id,...), coalesce(scheduled_start_time,...), coalesce(scheduled_end_time,...))
+  // Align with DB unique index job_parts_unique_job_product_vendor_time (from migration 20251218042008)
+  // (job_id, product_id, vendor_id, promised_date, scheduled_start_time, scheduled_end_time)
   const conflictColumns = ['job_id', 'product_id']
   if (includeVendor) conflictColumns.push('vendor_id')
+  conflictColumns.push('promised_date') // Always include promised_date to match DB unique index
   if (includeTimes) {
     conflictColumns.push('scheduled_start_time', 'scheduled_end_time')
   }
@@ -400,7 +402,7 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
 
           includeVendor = false
           const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
-          const retryConflict = ['job_id', 'product_id']
+          const retryConflict = ['job_id', 'product_id', 'promised_date']
           if (includeTimes) {
             retryConflict.push('scheduled_start_time', 'scheduled_end_time')
           }
@@ -434,6 +436,7 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
         const retryRows = buildJobPartsPayload(jobId, lineItems, { includeTimes, includeVendor })
         const retryConflict = ['job_id', 'product_id']
         if (includeVendor) retryConflict.push('vendor_id')
+        retryConflict.push('promised_date')
         const retryOnConflict = retryConflict.join(',')
 
         const { error: retryErr } = await supabase

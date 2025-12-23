@@ -295,6 +295,8 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
   })
 
   it('buildJobPartsPayload merges rows that differ only by promised_date', () => {
+    // With the new unique index including promised_date, rows with different promised_date
+    // are considered distinct and should NOT be merged
     const payload = buildJobPartsPayload(
       'job-abc',
       [
@@ -316,10 +318,12 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
       { includeTimes: true, includeVendor: true }
     )
 
-    expect(payload).toHaveLength(1)
-    // When merged, the later row's promised_date wins and quantity sums.
-    expect(payload[0].promised_date).toBe('2025-01-03')
-    expect(payload[0].quantity_used).toBe(2)
+    // These are now considered distinct rows because promised_date differs
+    expect(payload).toHaveLength(2)
+    expect(payload[0].promised_date).toBe('2025-01-01')
+    expect(payload[0].quantity_used).toBe(1)
+    expect(payload[1].promised_date).toBe('2025-01-03')
+    expect(payload[1].quantity_used).toBe(1)
   })
 
   it('should prevent accumulation across three consecutive saves', async () => {
@@ -410,8 +414,9 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     await replaceJobPartsForJob(jobId, lineItems)
 
+    // promised_date is now always included in the conflict key to match DB unique index
     expect(lastOnConflict).toBe(
-      'job_id,product_id,vendor_id,scheduled_start_time,scheduled_end_time'
+      'job_id,product_id,vendor_id,promised_date,scheduled_start_time,scheduled_end_time'
     )
   })
 
@@ -426,6 +431,7 @@ describe('jobPartsService - replaceJobPartsForJob', () => {
 
     await replaceJobPartsForJob(jobId, lineItems, { includeVendor: false, includeTimes: false })
 
-    expect(lastOnConflict).toBe('job_id,product_id')
+    // promised_date is now always included in the conflict key
+    expect(lastOnConflict).toBe('job_id,product_id,promised_date')
   })
 })
