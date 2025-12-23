@@ -35,11 +35,17 @@ async function checkCol(col) {
       return false
     }
     if (errMsg.includes('permission denied') || errMsg.includes('not authorized')) {
-      logOnce(`perm-${col}`, `[health-user-profiles] Permission denied checking ${col}; treating as unavailable`)
+      logOnce(
+        `perm-${col}`,
+        `[health-user-profiles] Permission denied checking ${col}; treating as unavailable`
+      )
       return null
     }
     // Other errors (RLS, network, etc.) - treat as unknown
-    logOnce(`unexpected-${col}`, `[health-user-profiles] Unexpected error checking ${col}: ${error?.message}`)
+    logOnce(
+      `unexpected-${col}`,
+      `[health-user-profiles] Unexpected error checking ${col}: ${error?.message}`
+    )
     return null
   } catch (err) {
     logOnce(`exception-${col}`, `[health-user-profiles] Exception checking ${col}: ${err?.message}`)
@@ -50,6 +56,14 @@ async function checkCol(col) {
 function sendJson(res, status, body) {
   if (res && typeof res.status === 'function' && typeof res.json === 'function') {
     return res.status(status).json(body)
+  }
+
+  // Node.js http.ServerResponse
+  if (res && typeof res.setHeader === 'function' && typeof res.end === 'function') {
+    res.statusCode = status
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify(body))
+    return
   }
 
   return new Response(JSON.stringify(body), {
