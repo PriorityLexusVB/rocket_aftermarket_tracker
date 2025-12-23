@@ -11,6 +11,9 @@ vite.config.*s.*
 /playwright-report/
 /test-results/
 /e2e/storageState.json
+
+# Stray temporary artifacts (seen as 0-byte _tmp_* files in repo root)
+_tmp_*
 # VS Code chat state (keep out of git)
 .vscode_state/
 chatSessions/
