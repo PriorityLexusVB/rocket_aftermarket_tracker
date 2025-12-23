@@ -67,7 +67,7 @@ export function detectConflicts(rows) {
 // Undo helpers moved to './undoHelpers'
 
 export default function SnapshotView() {
-  const { orgId } = useTenant()
+  const { orgId, loading: tenantLoading } = useTenant()
   const toast = useToast?.()
   const navigate = useNavigate()
 
@@ -80,6 +80,12 @@ export default function SnapshotView() {
   const conflictIds = useMemo(() => detectConflicts(rows), [rows])
 
   const load = useCallback(async () => {
+    if (!orgId) {
+      setRawJobs([])
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
       const jobs = await jobService.getAllJobs({ orgId })
@@ -93,8 +99,9 @@ export default function SnapshotView() {
   }, [orgId])
 
   useEffect(() => {
+    if (tenantLoading) return
     load()
-  }, [load])
+  }, [load, tenantLoading])
 
   async function handleComplete(job) {
     const prevStatus = job?.job_status || 'scheduled'
