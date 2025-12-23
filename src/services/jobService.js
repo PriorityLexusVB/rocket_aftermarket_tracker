@@ -72,6 +72,18 @@ export const jobService = {
     try {
       let q = supabase?.from('jobs')
 
+      // If Supabase client is unavailable (e.g., missing env or stub), return empty to avoid runtime errors
+      if (!q || typeof q.select !== 'function') {
+        console.warn('[jobs] getAllJobs: supabase client unavailable; returning empty list')
+        return []
+      }
+
+      // Some dev stubs may not expose eq/in/or helpers; bail out cleanly
+      if (typeof q.eq !== 'function') {
+        console.warn('[jobs] getAllJobs: supabase query helpers unavailable; returning empty list')
+        return []
+      }
+
       if (filters?.status) q = q?.eq('job_status', filters?.status)
       if (filters?.vendorId) q = q?.eq('vendor_id', filters?.vendorId)
       if (filters?.vehicleId) q = q?.eq('vehicle_id', filters?.vehicleId)

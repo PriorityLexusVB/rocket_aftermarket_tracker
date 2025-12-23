@@ -60,6 +60,7 @@ export default defineConfig({
       VITE_ORG_SCOPED_DROPDOWNS: process.env.VITE_ORG_SCOPED_DROPDOWNS || 'true',
       VITE_SIMPLE_CALENDAR: process.env.VITE_SIMPLE_CALENDAR || 'true',
       VITE_DEAL_FORM_V2: process.env.VITE_DEAL_FORM_V2 || 'true',
+      VITE_ACTIVE_SNAPSHOT: process.env.VITE_ACTIVE_SNAPSHOT || 'true',
       // E2E config for global.setup
       PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL,
       E2E_EMAIL: process.env.E2E_EMAIL || '',
