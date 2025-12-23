@@ -14,18 +14,44 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup pnpm via corepack
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.15.0 --activate
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'pnpm'
-          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm via corepack (pinned) + retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+
+          for i in 1 2 3; do
+            echo "corepack prepare attempt $i..."
+            if corepack prepare pnpm@10.15.0 --activate; then
+              pnpm -v
+              exit 0
+            fi
+            sleep $((i * 5))
+          done
+
+          echo "corepack prepare failed after retries" >&2
+          exit 1
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
           
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
