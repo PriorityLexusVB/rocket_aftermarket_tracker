@@ -12,7 +12,8 @@
     "humao.rest-client",
     "github.copilot",
     "github.copilot-chat",
-    "github.vscode-pull-request-github"
+    "github.vscode-pull-request-github",
+    "ms-playwright.playwright"
   ],
   "unwantedRecommendations": [
     "ms-azuretools.vscode-docker",

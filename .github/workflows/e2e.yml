@@ -53,9 +53,10 @@ jobs:
           echo "::endgroup::"
 
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
-             [ -z "${{ secrets.E2E_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD }}" ]; then
+             [ -z "${{ secrets.E2E_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD }}" ] || \
+             [ -z "${{ secrets.DATABASE_URL }}" ]; then
             echo "secrets_available=false" >> $GITHUB_OUTPUT
-            echo "::warning::E2E secrets not available for this PR. Smoke tests will be skipped."
+            echo "::warning::E2E secrets not available for this PR (including DATABASE_URL). Smoke tests will be skipped."
           else
             echo "secrets_available=true" >> $GITHUB_OUTPUT
           fi
@@ -94,6 +95,9 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:5173
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Database access for global.setup / helpers
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
         run: |
           pnpm exec playwright test \
             e2e/profile-name-fallback.spec.ts \
