@@ -1,7 +1,57 @@
 {
   "version": "2.0.0",
   "tasks": [
-    { "label": "Dev: Vite",  "type": "shell", "command": "pnpm dev",  "group": "build" },
-    { "label": "Test: Vitest","type": "shell", "command": "pnpm test", "group": "test"  }
+    { "label": "Dev: Vite", "type": "shell", "command": "pnpm dev", "group": "build" },
+    {
+      "label": "Test: Vitest",
+      "type": "shell",
+      "command": "pnpm test",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "never",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "group": "test"
+    },
+    {
+      "label": "Test: Vitest (Stable)",
+      "type": "shell",
+      "command": "pnpm -s vitest run",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "never",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Dev: Vite (Stable)",
+      "type": "shell",
+      "command": "pnpm dev",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": false
+      },
+      "problemMatcher": [],
+      "group": "build"
+    }
   ]
 }
