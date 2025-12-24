@@ -1,7 +1,7 @@
 // src/services/jobService.js
 import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
-import { replaceJobPartsForJob } from './jobPartsService'
+import { syncJobPartsForJob } from './jobPartsService'
 import { z } from 'zod'
 // Typed schemas from Drizzle + Zod (Section 20)
 import { jobInsertSchema } from '@/db/schemas'
@@ -167,7 +167,7 @@ export const jobService = {
       // Line items (best-effort)
       if (Array.isArray(dealData?.lineItems) && dealData?.lineItems?.length > 0) {
         try {
-          await replaceJobPartsForJob(created?.id, dealData?.lineItems)
+          await syncJobPartsForJob(created?.id, dealData?.lineItems)
         } catch (liErr) {
           // rollback to avoid orphan job
           await supabase?.from('jobs')?.delete()?.eq('id', created?.id)
@@ -213,10 +213,10 @@ export const jobService = {
         ?.single()
       if (jobErr) throw jobErr
 
-      // Replace line items if provided using centralized helper
+      // Sync line items if provided using identity-based sync
       if (dealData?.lineItems !== undefined) {
         if (Array.isArray(dealData?.lineItems)) {
-          await replaceJobPartsForJob(jobId, dealData.lineItems)
+          await syncJobPartsForJob(jobId, dealData.lineItems)
         }
       }
 

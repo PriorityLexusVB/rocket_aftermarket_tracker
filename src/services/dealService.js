@@ -14,7 +14,7 @@ import {
   getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
 import { formatTime } from '@/utils/dateTimeUtils'
-import { replaceJobPartsForJob } from './jobPartsService'
+import { syncJobPartsForJob } from './jobPartsService'
 
 const IS_TEST_ENV =
   (typeof process !== 'undefined' && process?.env?.NODE_ENV === 'test') ||
@@ -1720,9 +1720,9 @@ export async function createDeal(formState) {
       }
     }
 
-    // 2) Insert parts using centralized helper (handles retry logic)
+    // 2) Sync parts using identity-based sync (prevents resurrection bugs)
     if ((normalizedLineItems || []).length > 0) {
-      await replaceJobPartsForJob(job?.id, normalizedLineItems, {
+      await syncJobPartsForJob(job?.id, normalizedLineItems, {
         includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
       })
     }
@@ -2193,8 +2193,8 @@ export async function updateDeal(id, formState) {
     throw wrapDbError(e, 'upsert transaction')
   }
 
-  // 3) Replace job_parts with new scheduling fields using centralized helper
-  await replaceJobPartsForJob(id, normalizedLineItems, {
+  // 3) Sync job_parts with identity-based sync (prevents resurrection bugs)
+  await syncJobPartsForJob(id, normalizedLineItems, {
     includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
   })
 

@@ -187,6 +187,8 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     if (Array.isArray(job?.lineItems) && job.lineItems.length > 0) {
       const mappedLineItems = job.lineItems.map((item) => ({
         ...item,
+        id: item?.id ?? null, // Preserve DB id for stable identity
+        clientId: item?.clientId ?? crypto.randomUUID(), // Generate clientId for React keys
         vendorId:
           item?.vendor_id ||
           item?.vendorId ||
@@ -290,14 +292,20 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
   // Add new line item
   const addLineItem = () => {
+    // Generate tomorrow's date for default (local timezone, not UTC)
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toLocaleDateString('en-CA') // YYYY-MM-DD format
+    
     setLineItems((prev) => [
       ...prev,
       {
-        id: Date.now(),
+        id: null, // DB id (null for new items)
+        clientId: crypto.randomUUID(), // Stable client-side identity
         productId: '',
         unitPrice: '',
         requiresScheduling: true,
-        dateScheduled: '',
+        dateScheduled: tomorrowStr,
         isMultiDay: false,
         scheduledStartTime: '',
         scheduledEndTime: '',
@@ -637,6 +645,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           : null
 
         return {
+          id: item?.id ?? null, // Include DB id for stable identity (null for new items)
           product_id: item?.productId,
           quantity_used: 1,
           unit_price: parseFloat(item?.unitPrice || 0),
@@ -1177,8 +1186,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                 <div className="space-y-4">
                   {lineItems?.map((item, index) => (
                     <div
-                      key={item?.id}
+                      key={item?.id ?? item?.clientId}
                       className="border rounded-xl p-4 bg-slate-50 border-slate-200"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
+                        <button
+                          onClick={() => removeLineItem(item?.id)}
+                          className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>

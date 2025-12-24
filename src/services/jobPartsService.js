@@ -309,11 +309,227 @@ function toJobPartRows(jobId, items = [], opts = {}) {
 }
 
 /**
- * Replace all job_parts for a given job with new parts
+ * Sync job_parts for a job using stable identity (id-based diff)
  *
- * This is the ONLY function that should directly write to job_parts table.
- * It uses an upsert on the logical key so saves are idempotent and avoid duplicates.
+/**
+ * Sync job_parts for a job using stable identity (id-based diff)
  *
+ * Algorithm:
+ * 1. Fetch existing job_parts ids for this job
+ * 2. Determine: toDelete = existing - incoming, toUpdate = intersection, toInsert = new
+ * 3. DELETE rows in toDelete, UPDATE rows in toUpdate, INSERT rows in toInsert
+ * 4. Guard: if toDelete.length > 0 but deletedCount === 0, throw error (RLS block detected)
+ *
+ * @param {string} jobId - The job ID to sync parts for
+ * @param {Array} lineItems - Array of line item objects with optional `id` field
+ * @param {Object} opts - Options: { includeTimes: boolean, includeVendor: boolean }
+ * @returns {Promise<void>}
+ * @throws {Error} If sync fails or RLS blocks deletes
+ */
+export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
+  if (!jobId) {
+    throw new Error('jobId is required for syncJobPartsForJob')
+  }
+
+  if (import.meta.env.MODE === 'development') {
+    console.log('[syncJobPartsForJob] Starting sync:', {
+      jobId: jobId.slice(0, 8) + '...',
+      lineItemsCount: lineItems?.length || 0,
+    })
+  }
+
+  const includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
+  const includeVendor = opts?.includeVendor ?? JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+
+  // Step 1: Fetch existing job_parts for this job
+  const { data: existingParts, error: fetchErr } = await supabase
+    .from('job_parts')
+    .select('id')
+    .eq('job_id', jobId)
+
+  if (fetchErr) {
+    console.error('[syncJobPartsForJob] Failed to fetch existing parts:', fetchErr)
+    throw new Error(`Failed to fetch existing job_parts: ${fetchErr.message}`)
+  }
+
+  const existingIds = new Set((existingParts || []).map((p) => p.id))
+  const incomingIds = new Set(lineItems.filter((item) => item.id).map((item) => item.id))
+
+  // Step 2: Determine diff
+  const toDelete = Array.from(existingIds).filter((id) => !incomingIds.has(id))
+  const toUpdate = lineItems.filter((item) => item.id && existingIds.has(item.id))
+  const toInsert = lineItems.filter((item) => !item.id)
+
+  if (import.meta.env.MODE === 'development') {
+    console.log('[syncJobPartsForJob] Diff computed:', {
+      existing: existingIds.size,
+      incoming: lineItems.length,
+      toDelete: toDelete.length,
+      toUpdate: toUpdate.length,
+      toInsert: toInsert.length,
+    })
+  }
+
+  // Step 3: Execute DELETE
+  if (toDelete.length > 0) {
+    const { error: delErr, count: deletedCount } = await supabase
+      .from('job_parts')
+      .delete({ count: 'exact' })
+      .in('id', toDelete)
+
+    if (delErr) {
+      console.error('[syncJobPartsForJob] DELETE failed:', delErr)
+      throw new Error(`Failed to delete job_parts: ${delErr.message}`)
+    }
+
+    // Guard: if we expected deletes but none happened, RLS likely blocked it
+    if (deletedCount === 0) {
+      console.error('[syncJobPartsForJob] DELETE guard triggered: expected deletes but none executed')
+      throw new Error(
+        `Failed to delete ${toDelete.length} job_parts (RLS policy may be blocking). Please check permissions.`
+      )
+    }
+
+    if (import.meta.env.MODE === 'development') {
+      console.log(`[syncJobPartsForJob] Deleted ${deletedCount} rows`)
+    }
+  }
+
+  // Step 4: Execute UPDATE
+  if (toUpdate.length > 0) {
+    for (const item of toUpdate) {
+      const row = buildJobPartsPayload(jobId, [item], { includeTimes, includeVendor })[0]
+      if (!row) continue
+
+      const { error: updErr } = await supabase
+        .from('job_parts')
+        .update({
+          product_id: row.product_id,
+          quantity_used: row.quantity_used,
+          unit_price: row.unit_price,
+          promised_date: row.promised_date,
+          requires_scheduling: row.requires_scheduling,
+          no_schedule_reason: row.no_schedule_reason,
+          is_off_site: row.is_off_site,
+          ...(includeTimes
+            ? {
+                scheduled_start_time: row.scheduled_start_time,
+                scheduled_end_time: row.scheduled_end_time,
+              }
+            : {}),
+          ...(includeVendor ? { vendor_id: row.vendor_id } : {}),
+        })
+        .eq('id', item.id)
+
+      if (updErr) {
+        console.error('[syncJobPartsForJob] UPDATE failed for id:', item.id, updErr)
+        throw new Error(`Failed to update job_part ${item.id}: ${updErr.message}`)
+      }
+    }
+
+    if (import.meta.env.MODE === 'development') {
+      console.log(`[syncJobPartsForJob] Updated ${toUpdate.length} rows`)
+    }
+  }
+
+  // Step 5: Execute INSERT
+  if (toInsert.length > 0) {
+    const rows = buildJobPartsPayload(jobId, toInsert, { includeTimes, includeVendor })
+
+    if (!rows || rows.length === 0) {
+      if (import.meta.env.MODE === 'development') {
+        console.log('[syncJobPartsForJob] No valid rows to insert after normalization')
+      }
+      return
+    }
+
+    if (import.meta.env.MODE === 'development') {
+      console.log('🧩 job_parts INSERT payload', {
+        jobId: jobId.slice(0, 8) + '...',
+        payloadCount: rows.length,
+        jobPartsPayload: rows,
+      })
+    }
+
+    const { error: insErr } = await supabase.from('job_parts').insert(rows).select()
+
+    if (insErr) {
+      // Handle unique violations (shouldn't happen with proper sync, but just in case)
+      if (isUniqueViolationError(insErr)) {
+        console.error('[syncJobPartsForJob] Unique violation on INSERT:', insErr)
+        throw new Error(
+          `Duplicate job_parts detected. This indicates a sync logic error: ${insErr.message}`
+        )
+      }
+
+      // Handle missing column errors with fallback retry
+      if (isMissingColumnError(insErr)) {
+        const errorCode = classifySchemaError(insErr)
+        const lower = String(insErr?.message || '').toLowerCase()
+
+        if (lower.includes('vendor_id') && includeVendor) {
+          console.warn(`[syncJobPartsForJob] ${errorCode}: vendor_id missing, retrying without it`)
+          disableJobPartsVendorIdCapability()
+          incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
+          const retryRows = buildJobPartsPayload(jobId, toInsert, {
+            includeTimes,
+            includeVendor: false,
+          })
+          const { error: retryErr } = await supabase.from('job_parts').insert(retryRows).select()
+          if (retryErr) {
+            console.error('[syncJobPartsForJob] Retry INSERT failed:', retryErr)
+            throw new Error(`Failed to insert job_parts (retry): ${retryErr.message}`)
+          }
+          if (import.meta.env.MODE === 'development') {
+            console.log('[syncJobPartsForJob] Retry INSERT successful')
+          }
+          return
+        } else if (
+          (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time')) &&
+          includeTimes
+        ) {
+          console.warn(
+            `[syncJobPartsForJob] ${errorCode}: scheduled times missing, retrying without them`
+          )
+          disableJobPartsTimeCapability()
+          incrementTelemetry?.(TelemetryKey?.SCHEDULED_TIMES_FALLBACK)
+          const retryRows = buildJobPartsPayload(jobId, toInsert, {
+            includeTimes: false,
+            includeVendor,
+          })
+          const { error: retryErr } = await supabase.from('job_parts').insert(retryRows).select()
+          if (retryErr) {
+            console.error('[syncJobPartsForJob] Retry INSERT failed:', retryErr)
+            throw new Error(`Failed to insert job_parts (retry): ${retryErr.message}`)
+          }
+          if (import.meta.env.MODE === 'development') {
+            console.log('[syncJobPartsForJob] Retry INSERT successful')
+          }
+          return
+        }
+      }
+
+      console.error('[syncJobPartsForJob] INSERT failed:', insErr)
+      throw new Error(`Failed to insert job_parts: ${insErr.message}`)
+    }
+
+    if (import.meta.env.MODE === 'development') {
+      console.log(`[syncJobPartsForJob] Inserted ${rows.length} rows`)
+    }
+  }
+
+  if (import.meta.env.MODE === 'development') {
+    console.log('[syncJobPartsForJob] Sync completed successfully')
+  }
+}
+
+/**
+ * Replace all job_parts for a given job with new parts (DEPRECATED - use syncJobPartsForJob)
+ *
+ * This function is kept for backward compatibility but is deprecated.
+ * Use syncJobPartsForJob for proper identity-based sync.
+ *
+ * @deprecated Use syncJobPartsForJob instead
  * @param {string} jobId - The job ID to update parts for
  * @param {Array} lineItems - Array of line item objects to convert to job_parts
  * @param {Object} opts - Options: { includeTimes: boolean }
@@ -475,7 +691,7 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
 }
 
 /**
- * Export helper for testing/compatibility
+ * Export helpers for testing/compatibility
  */
 export { toJobPartRows }
 
