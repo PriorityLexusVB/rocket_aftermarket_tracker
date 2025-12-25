@@ -12,33 +12,44 @@
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["--yes", "@playwright/mcp@latest"]
+      "args": ["@playwright/mcp@latest"],
+      "env": {
+        "npm_config_yes": "true"
+      }
     },
 
     "chrome-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["--yes", "chrome-devtools-mcp@latest"]
+      "args": ["chrome-devtools-mcp@latest"],
+      "env": {
+        "npm_config_yes": "true"
+      }
     },
 
     "firebase": {
       "type": "stdio",
       "command": "npx",
-      "args": ["--yes", "firebase-tools@latest", "mcp"]
+      "args": ["firebase-tools@latest", "mcp"],
+      "env": {
+        "npm_config_yes": "true"
+      }
     },
 
     "twilio": {
       "type": "stdio",
       "command": "npx",
       "args": [
-        "--yes",
         "@twilio-alpha/mcp",
         "${input:twilioAuth}",
         "--services",
         "twilio_api_v2010",
         "--tags",
         "Api20100401Message"
-      ]
+      ],
+      "env": {
+        "npm_config_yes": "true"
+      }
     },
 
     "sentry": {
