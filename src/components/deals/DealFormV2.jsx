@@ -296,7 +296,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
     const tomorrowStr = tomorrow.toLocaleDateString('en-CA') // YYYY-MM-DD format
-    
+
     setLineItems((prev) => [
       ...prev,
       {
@@ -1188,12 +1188,6 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     <div
                       key={item?.id ?? item?.clientId}
                       className="border rounded-xl p-4 bg-slate-50 border-slate-200"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>
-                        <button
-                          onClick={() => removeLineItem(item?.id)}
-                          className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg"
                     >
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-medium text-gray-900">Item #{index + 1}</h4>

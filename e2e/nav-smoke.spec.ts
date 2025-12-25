@@ -35,11 +35,11 @@ test.describe('Navigation smoke', () => {
       const visible = await link.isVisible().catch(() => false)
       if (visible) {
         await link.click()
-        await expect(page).toHaveURL(new RegExp(`${path.replace('/', '\/')}`))
+        await expect(page).toHaveURL(new RegExp(path.replaceAll('/', '\\/')))
       } else {
         // Fallback: direct navigation if navbar link not present (e.g., role-gated)
         await page.goto(path)
-        await expect(page).toHaveURL(new RegExp(`${path.replace('/', '\/')}`))
+        await expect(page).toHaveURL(new RegExp(path.replaceAll('/', '\\/')))
       }
     }
 
