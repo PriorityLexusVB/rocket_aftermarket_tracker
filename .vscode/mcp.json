@@ -1,22 +1,57 @@
 {
-	"servers": {
-		"supabase": {
-			"type": "http",
-			"url": "https://mcp.supabase.com/mcp"
-		},
-		"github": {
-			"type": "http",
-			"url": "https://api.githubcopilot.com/mcp"
-		},
-		"microsoft/playwright-mcp": {
-			"type": "stdio",
-			"command": "npx",
-			"args": [
-				"@playwright/mcp@latest"
-			],
-			"gallery": "https://api.mcp.github.com",
-			"version": "0.0.1-seed"
-		}
-	},
-	"inputs": []
+  "servers": {
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp"
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp"
+    },
+
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["--yes", "@playwright/mcp@latest"]
+    },
+
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["--yes", "chrome-devtools-mcp@latest"]
+    },
+
+    "firebase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["--yes", "firebase-tools@latest", "mcp"]
+    },
+
+    "twilio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "--yes",
+        "@twilio-alpha/mcp",
+        "${input:twilioAuth}",
+        "--services",
+        "twilio_api_v2010",
+        "--tags",
+        "Api20100401Message"
+      ]
+    },
+
+    "sentry": {
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp"
+    }
+  },
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "twilioAuth",
+      "description": "Twilio auth string (ACCOUNT_SID/API_KEY:API_SECRET)",
+      "password": true
+    }
+  ]
 }
