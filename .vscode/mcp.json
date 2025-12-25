@@ -20,11 +20,12 @@
 
     "chrome-devtools": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["chrome-devtools-mcp@latest"],
-      "env": {
-        "npm_config_yes": "true"
-      }
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "chrome-devtools-mcp@latest",
+        "--browser-url=http://127.0.0.1:9222"
+      ]
     },
 
     "firebase": {
