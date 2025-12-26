@@ -4,14 +4,23 @@ import type { Page } from '@playwright/test'
 // Helper to require an authenticated session and org before proceeding
 async function ensureSessionAndOrg(page: Page) {
   await page.goto('/debug-auth')
-  const hasSession = await page
+  const sessionText = await page
     .getByTestId('session-user-id')
-    .isVisible()
-    .catch(() => false)
-  const hasOrg = await page
+    .textContent()
+    .catch(() => '')
+  const orgText = await page
     .getByTestId('profile-org-id')
-    .isVisible()
-    .catch(() => false)
+    .textContent()
+    .catch(() => '')
+
+  const hasSession =
+    typeof sessionText === 'string' &&
+    sessionText.trim().length > 0 &&
+    !/\bnull\b/i.test(sessionText)
+  const hasOrg =
+    typeof orgText === 'string' &&
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(orgText)
+
   test.skip(!(hasSession && hasOrg), 'No authenticated session/org; skipping persistence test')
 }
 
@@ -23,8 +32,11 @@ async function getSelectValue(select: ReturnType<Page['locator']>) {
 // Select first non-placeholder option (index 1) and return the value string
 async function pickFirstRealOption(select: ReturnType<Page['locator']>) {
   await expect(select).toBeVisible()
-  const optionCount = await select.locator('option').count()
-  expect(optionCount).toBeGreaterThan(1)
+  await expect
+    .poll(async () => select.locator('option').count(), {
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(1)
   await select.selectOption({ index: 1 })
   return getSelectValue(select)
 }
