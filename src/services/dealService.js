@@ -2237,8 +2237,62 @@ export async function updateDeal(id, formState) {
 
 // ✅ UPDATED: Use safe cascade delete function
 export async function deleteDeal(id) {
-  const { error } = await supabase?.rpc('delete_job_cascade', { p_job_id: id })
-  if (error) throw new Error(`Failed to delete deal: ${error.message}`)
+  if (!id) throw new Error('Failed to delete deal: missing deal id')
+
+  const isPermissionDenied = (err) => {
+    const msg = String(err?.message || err || '')
+    const code = err?.code
+    return code === '42501' || /permission denied|insufficient privilege/i.test(msg)
+  }
+
+  const isMissingTable = (err) => {
+    const msg = String(err?.message || err || '')
+    const code = err?.code
+    // 42P01: undefined_table (PostgreSQL)
+    return code === '42P01' || /relation .* does not exist/i.test(msg)
+  }
+
+  const throwDeletePermission = () => {
+    throw new Error('You do not have permission to delete deals. Please ask a manager/admin.')
+  }
+
+  const tryDelete = async (table, whereCol, whereVal, opts = {}) => {
+    const { error } = await supabase?.from(table)?.delete()?.eq(whereCol, whereVal)
+    if (error) {
+      if (isPermissionDenied(error)) throwDeletePermission()
+      if (opts?.ignoreMissingTable && isMissingTable(error)) return
+      throw new Error(`Failed to delete deal: ${error.message}`)
+    }
+  }
+
+  // IMPORTANT:
+  // `delete_job_cascade` execution is intentionally revoked in
+  // supabase/migrations/20251210173000_harden_security_definer_permissions.sql.
+  // Application must delete via RLS-protected endpoints instead.
+
+  // Best-effort cascade in dependency order.
+  // Some installs may not have certain child tables; ignore missing-table errors.
+  await tryDelete('loaner_assignments', 'job_id', id, { ignoreMissingTable: true })
+  await tryDelete('job_parts', 'job_id', id)
+  await tryDelete('transactions', 'job_id', id)
+  await tryDelete('communications', 'job_id', id, { ignoreMissingTable: true })
+
+  const { data: deletedJobs, error: jobErr } = await supabase
+    ?.from('jobs')
+    ?.delete()
+    ?.eq('id', id)
+    ?.select('id')
+
+  if (jobErr) {
+    if (isPermissionDenied(jobErr)) throwDeletePermission()
+    throw new Error(`Failed to delete deal: ${jobErr.message}`)
+  }
+
+  if (!Array.isArray(deletedJobs) || deletedJobs.length === 0) {
+    // PostgREST returns 0 rows when RLS blocks or row doesn't exist
+    throwDeletePermission()
+  }
+
   return true
 }
 

@@ -7,25 +7,44 @@ values ('00000000-0000-0000-0000-0000000000e2', 'E2E Org')
 on conflict (id) do update set name = excluded.name;
 
 -- Vendors
+with e2e_org as (
+  select coalesce(
+    (select org_id from public.user_profiles where email = $E2E_EMAIL$ limit 1),
+    '00000000-0000-0000-0000-0000000000e2'::uuid
+  ) as org_id
+)
 insert into public.vendors (id, name, is_active, org_id)
-values
-  ('00000000-0000-0000-0000-0000000000v1', 'E2E Vendor 1', true, '00000000-0000-0000-0000-0000000000e2'),
-  ('00000000-0000-0000-0000-0000000000v2', 'E2E Vendor 2', true, '00000000-0000-0000-0000-0000000000e2')
+select '00000000-0000-0000-0000-0000000000a1'::uuid, 'E2E Vendor 1', true, e2e_org.org_id from e2e_org
+union all
+select '00000000-0000-0000-0000-0000000000a2'::uuid, 'E2E Vendor 2', true, e2e_org.org_id from e2e_org
 on conflict (id) do update set name = excluded.name, is_active = excluded.is_active, org_id = excluded.org_id;
 
 -- Products
+with e2e_org as (
+  select coalesce(
+    (select org_id from public.user_profiles where email = $E2E_EMAIL$ limit 1),
+    '00000000-0000-0000-0000-0000000000e2'::uuid
+  ) as org_id
+)
 insert into public.products (id, name, brand, unit_price, is_active, org_id)
-values
-  ('00000000-0000-0000-0000-0000000000p1', 'E2E Product 1', 'Brand A', 100, true, '00000000-0000-0000-0000-0000000000e2'),
-  ('00000000-0000-0000-0000-0000000000p2', 'E2E Product 2', 'Brand B', 200, true, '00000000-0000-0000-0000-0000000000e2')
+select '00000000-0000-0000-0000-0000000000b1'::uuid, 'E2E Product 1', 'Brand A', 100, true, e2e_org.org_id from e2e_org
+union all
+select '00000000-0000-0000-0000-0000000000b2'::uuid, 'E2E Product 2', 'Brand B', 200, true, e2e_org.org_id from e2e_org
 on conflict (id) do update set name = excluded.name, brand = excluded.brand, unit_price = excluded.unit_price, is_active = excluded.is_active, org_id = excluded.org_id;
 
 -- Staff (directory entries, not auth users)
+with e2e_org as (
+  select coalesce(
+    (select org_id from public.user_profiles where email = $E2E_EMAIL$ limit 1),
+    '00000000-0000-0000-0000-0000000000e2'::uuid
+  ) as org_id
+)
 insert into public.user_profiles (id, full_name, email, department, role, is_active, org_id)
-values
-  ('00000000-0000-0000-0000-0000000000s1', 'E2E Sales 1', 'sales1@example.com', 'Sales Consultants', 'staff', true, '00000000-0000-0000-0000-0000000000e2'),
-  ('00000000-0000-0000-0000-0000000000s2', 'E2E Finance 1', 'finance1@example.com', 'Finance Manager', 'staff', true, '00000000-0000-0000-0000-0000000000e2'),
-  ('00000000-0000-0000-0000-0000000000s3', 'E2E Delivery 1', 'delivery1@example.com', 'Delivery Coordinator', 'staff', true, '00000000-0000-0000-0000-0000000000e2')
+select '00000000-0000-0000-0000-0000000000c1'::uuid, 'Alex Johnson', 'sales1@seed.local', 'Sales Consultants', 'staff'::public.user_role, true, e2e_org.org_id from e2e_org
+union all
+select '00000000-0000-0000-0000-0000000000c2'::uuid, 'Casey Morgan', 'finance1@seed.local', 'Finance Manager', 'staff'::public.user_role, true, e2e_org.org_id from e2e_org
+union all
+select '00000000-0000-0000-0000-0000000000c3'::uuid, 'Taylor Reed', 'delivery1@seed.local', 'Delivery Coordinator', 'staff'::public.user_role, true, e2e_org.org_id from e2e_org
 on conflict (id) do update set full_name = excluded.full_name, email = excluded.email, department = excluded.department, role = excluded.role, is_active = excluded.is_active, org_id = excluded.org_id;
 
 -- Associate the E2E test user with the E2E organization
@@ -33,14 +52,21 @@ on conflict (id) do update set full_name = excluded.full_name, email = excluded.
 -- Uses parameterized query support: $E2E_EMAIL$ will be replaced by seedE2E.js
 -- Uses INSERT ... ON CONFLICT to create the profile if it doesn't exist yet
 insert into public.user_profiles (id, email, full_name, role, org_id, is_active)
-select 
-  id, 
-  email,
-  coalesce(raw_user_meta_data->>'full_name', raw_user_meta_data->>'name', email) as full_name,
-  'staff' as role,
-  '00000000-0000-0000-0000-0000000000e2' as org_id,
+with e2e_org as (
+  select coalesce(
+    (select org_id from public.user_profiles where email = $E2E_EMAIL$ limit 1),
+    '00000000-0000-0000-0000-0000000000e2'::uuid
+  ) as org_id
+)
+select
+  au.id,
+  au.email,
+  coalesce(au.raw_user_meta_data->>'full_name', au.raw_user_meta_data->>'name', au.email) as full_name,
+  'staff'::public.user_role as role,
+  e2e_org.org_id as org_id,
   true as is_active
-from auth.users
+from auth.users au
+cross join e2e_org
 where email = $E2E_EMAIL$
 on conflict (id) do update 
 set org_id = excluded.org_id,
@@ -52,7 +78,7 @@ set org_id = excluded.org_id,
 
 -- Insert a vehicle (optional)
 insert into public.vehicles (id, stock_number, make, model, year)
-values ('00000000-0000-0000-0000-0000000000vh', 'E2E-STK-1', 'Toyota', 'Camry', 2022)
+values ('00000000-0000-0000-0000-0000000000d1', 'E2E-STK-1', 'Toyota', 'Camry', 2022)
 on conflict (id) do update set stock_number = excluded.stock_number, make = excluded.make, model = excluded.model, year = excluded.year;
 
 -- Insert a scheduled job within current week/day
@@ -61,20 +87,26 @@ insert into public.jobs (
   scheduled_start_time, scheduled_end_time, job_status, priority,
   customer_needs_loaner, org_id
 )
-values (
-  '00000000-0000-0000-0000-0000000000jb',
+with e2e_org as (
+  select coalesce(
+    (select org_id from public.user_profiles where email = $E2E_EMAIL$ limit 1),
+    '00000000-0000-0000-0000-0000000000e2'::uuid
+  ) as org_id
+)
+select
+  '00000000-0000-0000-0000-0000000000e1'::uuid,
   'JOB-E2E-LOANER',
   'E2E Loaner Job',
   'Seeded job for E2E calendar badge check',
-  '00000000-0000-0000-0000-0000000000vh',
-  '00000000-0000-0000-0000-0000000000v1',
+  '00000000-0000-0000-0000-0000000000d1'::uuid,
+  '00000000-0000-0000-0000-0000000000a1'::uuid,
   date_trunc('day', now()) + interval '10 hours',
   date_trunc('day', now()) + interval '12 hours',
   'scheduled',
   'medium',
   true,
-  '00000000-0000-0000-0000-0000000000e2'
-)
+  e2e_org.org_id
+from e2e_org
 on conflict (id) do update set
   title = excluded.title,
   description = excluded.description,
@@ -90,8 +122,8 @@ on conflict (id) do update set
 -- Ensure a transaction row exists (minimal)
 insert into public.transactions (id, job_id, customer_name, total_amount, transaction_status, transaction_number)
 values (
-  '00000000-0000-0000-0000-0000000000tx',
-  '00000000-0000-0000-0000-0000000000jb',
+  '00000000-0000-0000-0000-0000000000f1',
+  '00000000-0000-0000-0000-0000000000e1',
   'E2E Customer',
   100,
   'pending',
@@ -105,9 +137,9 @@ insert into public.job_parts (
   promised_date, requires_scheduling, no_schedule_reason, is_off_site
 )
 values (
-  '00000000-0000-0000-0000-0000000000jp',
-  '00000000-0000-0000-0000-0000000000jb',
-  '00000000-0000-0000-0000-0000000000p1',
+  '00000000-0000-0000-0000-0000000000f2',
+  '00000000-0000-0000-0000-0000000000e1',
+  '00000000-0000-0000-0000-0000000000b1',
   1,
   100,
   (date_trunc('day', now()) + interval '1 day')::date,
@@ -120,9 +152,9 @@ on conflict (id) do update set product_id = excluded.product_id, quantity_used =
 -- Active loaner assignment
 insert into public.loaner_assignments (id, job_id, loaner_number, eta_return_date, notes)
 values (
-  '00000000-0000-0000-0000-0000000000la',
-  '00000000-0000-0000-0000-0000000000jb',
-  'L-1234',
+  '00000000-0000-0000-0000-0000000000f3',
+  '00000000-0000-0000-0000-0000000000e1',
+  'LOANER-E2E-123',
   (date_trunc('day', now()) + interval '2 days')::date,
   'Seeded loaner assignment for E2E'
 )

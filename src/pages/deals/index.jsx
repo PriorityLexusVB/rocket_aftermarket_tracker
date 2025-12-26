@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { parseISO, format } from 'date-fns'
-import { getAllDeals, markLoanerReturned } from '../../services/dealService'
+import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
@@ -355,7 +355,12 @@ export default function DealsPage() {
   } = useDropdownData({ loadOnMount: true })
 
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
+
+  const canDeleteDeals =
+    userProfile?.is_admin === true ||
+    userProfile?.role === 'admin' ||
+    userProfile?.role === 'manager'
 
   // ✅ FIXED: Replace direct function calls with hook-based calls
   const getSalesConsultants = () => {
@@ -416,8 +421,11 @@ export default function DealsPage() {
   const handleDeleteDeal = async (dealId) => {
     try {
       setError('') // Clear previous errors
-      const { error: deleteError } = await supabase?.rpc('delete_job_cascade', { p_job_id: dealId })
-      if (deleteError) throw deleteError
+      if (!canDeleteDeals) {
+        throw new Error('You do not have permission to delete deals. Please ask a manager/admin.')
+      }
+
+      await deleteDeal(dealId)
 
       setDeleteConfirm(null)
       await loadDeals()
@@ -1574,11 +1582,24 @@ export default function DealsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            if (!canDeleteDeals) {
+                              setError(
+                                'You do not have permission to delete deals. Please ask a manager/admin.'
+                              )
+                              return
+                            }
                             setDeleteConfirm(deal)
                           }}
-                          className="h-9 w-9 rounded flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50"
+                          disabled={!canDeleteDeals}
+                          className={`h-9 w-9 rounded flex items-center justify-center ${
+                            canDeleteDeals
+                              ? 'text-red-600 hover:text-red-800 hover:bg-red-50'
+                              : 'text-slate-300 cursor-not-allowed'
+                          }`}
                           aria-label="Delete deal"
-                          title="Delete deal"
+                          title={
+                            canDeleteDeals ? 'Delete deal' : 'Manager/admin required to delete'
+                          }
                         >
                           <Icon name="Trash2" size={16} />
                         </button>
@@ -1741,8 +1762,21 @@ export default function DealsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setDeleteConfirm(deal)}
-                          className="h-11 w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                          onClick={() => {
+                            if (!canDeleteDeals) {
+                              setError(
+                                'You do not have permission to delete deals. Please ask a manager/admin.'
+                              )
+                              return
+                            }
+                            setDeleteConfirm(deal)
+                          }}
+                          disabled={!canDeleteDeals}
+                          className={`h-11 w-full ${
+                            canDeleteDeals
+                              ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                              : 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed'
+                          }`}
                           aria-label="Delete deal"
                         >
                           <Icon name="Trash2" size={16} className="mr-2" />
@@ -1860,6 +1894,7 @@ export default function DealsPage() {
                   </Button>
                   <Button
                     onClick={() => handleDeleteDeal(deleteConfirm?.id)}
+                    disabled={!canDeleteDeals}
                     className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white"
                     aria-label="Confirm deletion"
                   >

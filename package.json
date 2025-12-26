@@ -84,6 +84,10 @@
     "db:audit": "npx supabase@latest db query ./scripts/sql/audit_security_surface.sql",
     "db:seed-org": "npx supabase@latest db query ./scripts/attach_org.sql",
     "db:seed-e2e": "node scripts/seedE2E.js",
+    "db:cleanup-e2e": "node scripts/cleanupE2E.js",
+    "db:report-e2e": "node scripts/reportE2E.js",
+    "db:print-org-id": "node scripts/printOrgId.js",
+    "e2e:seed": "pnpm -s db:seed-e2e",
     "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:studio": "drizzle-kit studio"

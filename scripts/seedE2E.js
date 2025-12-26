@@ -4,11 +4,90 @@
 //   - SUPABASE_DB_URL (fallback)
 // Reads SQL from ./scripts/sql/seed_e2e.sql and executes it as a single batch.
 
-const fs = require('fs')
-const path = require('path')
-const { Client } = require('pg')
+import dns from 'node:dns/promises'
+import fs from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
 
-;(async () => {
+import dotenv from 'dotenv'
+import { Client } from 'pg'
+
+// Best-effort: load local env files for scripts.
+// Never log env values.
+{
+  const root = process.cwd()
+  const envFiles = ['.env.local', '.env']
+  for (const filename of envFiles) {
+    const fullPath = path.join(root, filename)
+    if (fs.existsSync(fullPath)) {
+      dotenv.config({ path: fullPath, override: false })
+    }
+  }
+}
+
+const buildClientConfig = (connectionString) => {
+  const url = new URL(connectionString)
+
+  const sslmode = url.searchParams.get('sslmode')?.toLowerCase()
+  const requiresSsl =
+    sslmode === 'require' ||
+    /\.supabase\.co$/i.test(url.hostname) ||
+    /\.pooler\.supabase\.com$/i.test(url.hostname)
+
+  return {
+    connectionString,
+    connectionTimeoutMillis: 7_500,
+    ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
+  }
+}
+
+const buildClientConfigWithIpv4Host = async (connectionString) => {
+  const url = new URL(connectionString)
+  const ipv4 = await dns.lookup(url.hostname, { family: 4 }).then((r) => r.address)
+
+  const sslmode = url.searchParams.get('sslmode')?.toLowerCase()
+  const requiresSsl =
+    sslmode === 'require' ||
+    /\.supabase\.co$/i.test(url.hostname) ||
+    /\.pooler\.supabase\.com$/i.test(url.hostname)
+
+  return {
+    host: ipv4,
+    port: url.port ? Number(url.port) : 5432,
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database: url.pathname.replace(/^\//, ''),
+    connectionTimeoutMillis: 7_500,
+    ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
+  }
+}
+
+const connectWithIpv4Fallback = async (connectionString) => {
+  const primary = new Client(buildClientConfig(connectionString))
+  try {
+    await primary.connect()
+    return primary
+  } catch (err) {
+    try {
+      await primary.end()
+    } catch {}
+
+    const message = err instanceof Error ? err.message : String(err)
+    const code = err?.code
+
+    const looksLikeIpv6Unreach =
+      code === 'ENETUNREACH' ||
+      (typeof message === 'string' && /ENETUNREACH/i.test(message) && /:\d{2,5}\b/.test(message))
+
+    if (!looksLikeIpv6Unreach) throw err
+
+    const fallback = new Client(await buildClientConfigWithIpv4Host(connectionString))
+    await fallback.connect()
+    return fallback
+  }
+}
+
+const main = async () => {
   const root = process.cwd()
   const sqlPath = path.join(root, 'scripts', 'sql', 'seed_e2e.sql')
   const sql = fs.readFileSync(sqlPath, 'utf8')
@@ -27,12 +106,11 @@ const { Client } = require('pg')
     process.exit(1)
   }
 
-  // Replace $E2E_EMAIL$ placeholder with actual email (using parameterized query)
+  // Replace $E2E_EMAIL$ placeholder with actual email.
   const sqlWithParams = sql.replace(/\$E2E_EMAIL\$/g, `'${e2eEmail.replace(/'/g, "''")}'`)
 
-  const client = new Client({ connectionString: connStr })
+  const client = await connectWithIpv4Fallback(connStr)
   try {
-    await client.connect()
     await client.query('BEGIN')
     await client.query(sqlWithParams)
 
@@ -46,8 +124,8 @@ const { Client } = require('pg')
 
     if (result.rows.length > 0) {
       const profile = result.rows[0]
-      console.log(`[seedE2E] ✅ Seed applied successfully.`)
-      console.log(`[seedE2E] Test user profile:`)
+      console.log('[seedE2E] ✅ Seed applied successfully.')
+      console.log('[seedE2E] Test user profile:')
       console.log(`[seedE2E]   Email: ${profile.email}`)
       console.log(`[seedE2E]   Name: ${profile.full_name}`)
       console.log(`[seedE2E]   Org ID: ${profile.org_id}`)
@@ -57,7 +135,7 @@ const { Client } = require('pg')
         `[seedE2E] ⚠️ Warning: User profile for ${e2eEmail} was not found after seeding.`
       )
       console.warn(
-        `[seedE2E] The user may not exist in auth.users yet. Make sure E2E_EMAIL matches an existing authenticated user.`
+        '[seedE2E] The user may not exist in auth.users yet. Make sure E2E_EMAIL matches an existing authenticated user.'
       )
       process.exit(1)
     }
@@ -70,4 +148,6 @@ const { Client } = require('pg')
   } finally {
     await client.end()
   }
-})()
+}
+
+await main()
