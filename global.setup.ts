@@ -3,6 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 // Ensure env vars (E2E_EMAIL/E2E_PASSWORD, PLAYWRIGHT_BASE_URL) load from .env.local/.env
 import dotenv from 'dotenv'
+import dns from 'dns/promises'
 import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 
@@ -199,13 +200,94 @@ async function associateUserWithE2EOrg() {
   }
 
   const { Client } = await import('pg')
+
+  const buildClientConfig = async (connectionString: string) => {
+    const url = new URL(connectionString)
+
+    const sslmode = url.searchParams.get('sslmode')?.toLowerCase()
+    const requiresSsl =
+      sslmode === 'require' ||
+      // Supabase Postgres typically requires SSL; default to SSL for supabase hosts.
+      /\.supabase\.co$/i.test(url.hostname)
+
+    // Note: do NOT log connectionString.
+    return {
+      connectionString,
+      connectionTimeoutMillis: 7_500,
+      ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
+    } as const
+  }
+
+  const buildClientConfigWithIpv4Host = async (connectionString: string) => {
+    const url = new URL(connectionString)
+    let ipv4: string
+    try {
+      ipv4 = await dns.lookup(url.hostname, { family: 4 }).then((r) => r.address)
+    } catch (err) {
+      const code = (err as any)?.code as string | undefined
+      const message = err instanceof Error ? err.message : String(err)
+      if (code === 'ENOTFOUND') {
+        throw new Error(
+          `[global.setup] DB host has no IPv4 A record: ${url.hostname}. ` +
+            `If your environment cannot reach IPv6, use a Supabase pooler connection string (IPv4) ` +
+            `or enable IPv6 routing. Original error: ${message}`
+        )
+      }
+      throw err
+    }
+
+    const sslmode = url.searchParams.get('sslmode')?.toLowerCase()
+    const requiresSsl = sslmode === 'require' || /\.supabase\.co$/i.test(url.hostname)
+
+    return {
+      host: ipv4,
+      port: url.port ? Number(url.port) : 5432,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      database: url.pathname.replace(/^\//, ''),
+      connectionTimeoutMillis: 7_500,
+      ssl: requiresSsl ? { rejectUnauthorized: false } : undefined,
+    } as const
+  }
+
+  const connectWithIpv4Fallback = async (connectionString: string) => {
+    // First try normal connection string
+    const primary = new Client(await buildClientConfig(connectionString))
+    try {
+      await primary.connect()
+      return primary
+    } catch (err) {
+      try {
+        await primary.end()
+      } catch {}
+
+      const message = err instanceof Error ? err.message : String(err)
+      const code = (err as any)?.code as string | undefined
+
+      // In WSL/CI, IPv6 routes may be unavailable; retry using an IPv4-resolved host.
+      const looksLikeIpv6Unreach =
+        code === 'ENETUNREACH' ||
+        (typeof message === 'string' && /ENETUNREACH/i.test(message) && /:\d{2,5}\b/.test(message))
+
+      if (!looksLikeIpv6Unreach) throw err
+
+      try {
+        const fallback = new Client(await buildClientConfigWithIpv4Host(connectionString))
+        await fallback.connect()
+        return fallback
+      } catch (fallbackErr) {
+        // If IPv4 fallback isn’t possible, prefer surfacing the original IPv6 routing failure.
+        const fbMessage = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+        throw new Error(`${message} (IPv4 fallback failed: ${fbMessage})`)
+      }
+    }
+  }
+
   const maxAttempts = 5
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const client = new Client({ connectionString: connStr })
+    const client = await connectWithIpv4Fallback(connStr)
     try {
-      await client.connect()
-
       const check = await client.query(
         'select id, org_id from public.user_profiles where email = $1',
         [e2eEmail]
