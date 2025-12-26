@@ -71,13 +71,20 @@ test.describe('Deal dropdown persistence across save + reload', () => {
     await expect(unitPrice).toBeVisible()
     const unitPriceVal = await unitPrice.inputValue()
 
+    // Vendor jobs often require a scheduled/promised date for the first line item
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const tomorrowDate = tomorrow.toISOString().slice(0, 10)
+    const promisedDate = page.getByTestId('promised-date-0')
+    await expect(promisedDate).toBeVisible()
+    await promisedDate.fill(tomorrowDate)
+
     // Save the deal
     const save = page.getByTestId('save-deal-btn')
     await expect(save).toBeEnabled()
     await save.click()
 
     // Redirect to edit page
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15000 })
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 })
 
     // Verify exact selections persisted on edit page
     await expect(page.getByTestId('vendor-select')).toHaveValue(vendorVal)

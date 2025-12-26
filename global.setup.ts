@@ -188,7 +188,7 @@ export default async function globalSetup() {
 async function associateUserWithE2EOrg() {
   const connStr = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
   const e2eEmail = process.env.E2E_EMAIL
-  const targetOrg = '00000000-0000-0000-0000-0000000000e2'
+  const configuredOrg = process.env.E2E_ORG_ID
 
   if (!connStr) {
     console.log('[global.setup] DATABASE_URL missing; skipping org association')
@@ -340,6 +340,19 @@ async function associateUserWithE2EOrg() {
         throw new Error('profile not found after retries')
       }
 
+      const currentOrg = check.rows[0]?.org_id as string | null | undefined
+      const targetOrg = configuredOrg || currentOrg
+
+      if (!targetOrg) {
+        console.log(
+          `[global.setup] Attempt ${attempt}/${maxAttempts}: profile has no org_id and E2E_ORG_ID is not set; skipping org association.`
+        )
+        await client.end()
+        return
+      }
+
+      // If the profile already has an org, keep it unless E2E_ORG_ID overrides.
+      // This avoids foreign key violations when the hard-coded E2E org doesn't exist in the DB.
       const update = await client.query(
         `update public.user_profiles
          set org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
