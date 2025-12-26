@@ -208,7 +208,8 @@ async function associateUserWithE2EOrg() {
     const requiresSsl =
       sslmode === 'require' ||
       // Supabase Postgres typically requires SSL; default to SSL for supabase hosts.
-      /\.supabase\.co$/i.test(url.hostname)
+      /\.supabase\.co$/i.test(url.hostname) ||
+      /\.pooler\.supabase\.com$/i.test(url.hostname)
 
     // Note: do NOT log connectionString.
     return {
@@ -237,7 +238,10 @@ async function associateUserWithE2EOrg() {
     }
 
     const sslmode = url.searchParams.get('sslmode')?.toLowerCase()
-    const requiresSsl = sslmode === 'require' || /\.supabase\.co$/i.test(url.hostname)
+    const requiresSsl =
+      sslmode === 'require' ||
+      /\.supabase\.co$/i.test(url.hostname) ||
+      /\.pooler\.supabase\.com$/i.test(url.hostname)
 
     return {
       host: ipv4,
@@ -269,7 +273,38 @@ async function associateUserWithE2EOrg() {
         code === 'ENETUNREACH' ||
         (typeof message === 'string' && /ENETUNREACH/i.test(message) && /:\d{2,5}\b/.test(message))
 
-      if (!looksLikeIpv6Unreach) throw err
+      if (!looksLikeIpv6Unreach) {
+        const looksLikeAuthFailure =
+          code === '28P01' ||
+          (typeof message === 'string' && /password authentication failed/i.test(message))
+
+        if (looksLikeAuthFailure) {
+          // Provide actionable hints without logging credentials.
+          let parsed: { host: string; port: string; db: string; user: string } | null = null
+          try {
+            const u = new URL(connectionString)
+            parsed = {
+              host: u.hostname,
+              port: u.port || '5432',
+              db: u.pathname.replace(/^\//, '') || 'postgres',
+              user: decodeURIComponent(u.username),
+            }
+          } catch {}
+
+          const isPooler = parsed ? /\.pooler\.supabase\.com$/i.test(parsed.host) : false
+          const hint = isPooler
+            ? 'If using Supabase connection pooling, the username should be like "postgres.<projectRef>" and the password must be your Supabase Database Password (URL-encoded if it contains special characters).'
+            : 'Verify DATABASE_URL username/password and whether the database requires SSL.'
+
+          const parsedText = parsed
+            ? `Parsed: host=${parsed.host} port=${parsed.port} db=${parsed.db} user=${parsed.user}`
+            : 'Could not parse DATABASE_URL for additional hints.'
+
+          throw new Error(`[global.setup] DB authentication failed. ${hint} ${parsedText}`)
+        }
+
+        throw err
+      }
 
       try {
         const fallback = new Client(await buildClientConfigWithIpv4Host(connectionString))
