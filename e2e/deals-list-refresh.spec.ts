@@ -3,12 +3,18 @@ import { test, expect, type Page } from '@playwright/test'
 const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
 
 async function waitForEditOpen(page: Page) {
-  return Promise.race([
-    page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 }).then(() => 'url'),
-    page
-      .getByRole('heading', { name: /edit deal/i })
-      .waitFor({ state: 'visible', timeout: 30_000 }),
-  ])
+  const editUrlRe = /\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/
+  const editHeading = page.getByRole('heading', { name: /edit deal/i })
+
+  await expect
+    .poll(
+      async () => {
+        if (editUrlRe.test(page.url())) return true
+        return editHeading.isVisible().catch(() => false)
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(true)
 }
 
 async function goToLineItems(page: Page) {
@@ -27,11 +33,6 @@ async function fillStepOneRequiredFields(page: Page) {
   const description = page.getByTestId('description-input')
   if (await description.isVisible().catch(() => false)) {
     await description.fill(`E2E Refresh ${Date.now()}`)
-  }
-
-  const vendor = page.getByTestId('vendor-select')
-  if (await vendor.isVisible().catch(() => false)) {
-    await vendor.selectOption({ index: 1 })
   }
 
   const product = page.getByTestId('product-select-0')
@@ -76,9 +77,8 @@ test.describe('Deals List Refresh After Edit', () => {
       await description.fill(`E2E Refresh Test ${Date.now()}`)
 
       const vendor = page.getByTestId('vendor-select')
-      if (await vendor.isVisible().catch(() => false)) {
-        await vendor.selectOption({ index: 1 })
-      }
+      // Avoid selecting vendor here: some environments enforce vendor scheduling at DB layer,
+      // and Deal Form V1 does not expose appointment start/end inputs.
 
       const product = page.getByTestId('product-select-0')
       await expect(product).toBeVisible()
