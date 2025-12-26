@@ -2235,7 +2235,7 @@ export async function updateDeal(id, formState) {
   return await getDeal(id)
 }
 
-// ✅ UPDATED: Use safe cascade delete function
+// ✅ UPDATED: Use safe cascade delete function with improved error handling
 export async function deleteDeal(id) {
   if (!id) throw new Error('Failed to delete deal: missing deal id')
 
@@ -2270,6 +2270,21 @@ export async function deleteDeal(id) {
   // supabase/migrations/20251210173000_harden_security_definer_permissions.sql.
   // Application must delete via RLS-protected endpoints instead.
 
+  // First, verify the deal exists and user has access to it
+  const { data: existingDeal, error: readErr } = await supabase
+    ?.from('jobs')
+    ?.select('id')
+    ?.eq('id', id)
+    ?.maybeSingle()
+
+  if (readErr) {
+    throw new Error(`Failed to verify deal: ${readErr.message}`)
+  }
+
+  if (!existingDeal) {
+    throw new Error('Deal not found or you do not have access to it.')
+  }
+
   // Best-effort cascade in dependency order.
   // Some installs may not have certain child tables; ignore missing-table errors.
   await tryDelete('loaner_assignments', 'job_id', id, { ignoreMissingTable: true })
@@ -2289,7 +2304,8 @@ export async function deleteDeal(id) {
   }
 
   if (!Array.isArray(deletedJobs) || deletedJobs.length === 0) {
-    // PostgREST returns 0 rows when RLS blocks or row doesn't exist
+    // This should not happen since we verified the deal exists above,
+    // but if it does, it's likely an RLS issue
     throwDeletePermission()
   }
 
