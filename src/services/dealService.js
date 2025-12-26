@@ -2253,7 +2253,7 @@ export async function deleteDeal(id) {
   }
 
   const throwDeletePermission = () => {
-    throw new Error('You do not have permission to delete deals. Please ask a manager/admin.')
+    throw new Error('You do not have permission to delete deals.')
   }
 
   const tryDelete = async (table, whereCol, whereVal, opts = {}) => {

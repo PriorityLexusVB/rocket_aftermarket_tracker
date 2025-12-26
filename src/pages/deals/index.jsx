@@ -355,12 +355,7 @@ export default function DealsPage() {
   } = useDropdownData({ loadOnMount: true })
 
   const navigate = useNavigate()
-  const { user, userProfile } = useAuth()
-
-  const canDeleteDeals =
-    userProfile?.is_admin === true ||
-    userProfile?.role === 'admin' ||
-    userProfile?.role === 'manager'
+  const { user } = useAuth()
 
   // ✅ FIXED: Replace direct function calls with hook-based calls
   const getSalesConsultants = () => {
@@ -421,10 +416,6 @@ export default function DealsPage() {
   const handleDeleteDeal = async (dealId) => {
     try {
       setError('') // Clear previous errors
-      if (!canDeleteDeals) {
-        throw new Error('You do not have permission to delete deals. Please ask a manager/admin.')
-      }
-
       await deleteDeal(dealId)
 
       setDeleteConfirm(null)
@@ -1582,24 +1573,11 @@ export default function DealsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            if (!canDeleteDeals) {
-                              setError(
-                                'You do not have permission to delete deals. Please ask a manager/admin.'
-                              )
-                              return
-                            }
                             setDeleteConfirm(deal)
                           }}
-                          disabled={!canDeleteDeals}
-                          className={`h-9 w-9 rounded flex items-center justify-center ${
-                            canDeleteDeals
-                              ? 'text-red-600 hover:text-red-800 hover:bg-red-50'
-                              : 'text-slate-300 cursor-not-allowed'
-                          }`}
+                          className="h-9 w-9 rounded flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50"
                           aria-label="Delete deal"
-                          title={
-                            canDeleteDeals ? 'Delete deal' : 'Manager/admin required to delete'
-                          }
+                          title="Delete deal"
                         >
                           <Icon name="Trash2" size={16} />
                         </button>
@@ -1763,20 +1741,9 @@ export default function DealsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            if (!canDeleteDeals) {
-                              setError(
-                                'You do not have permission to delete deals. Please ask a manager/admin.'
-                              )
-                              return
-                            }
                             setDeleteConfirm(deal)
                           }}
-                          disabled={!canDeleteDeals}
-                          className={`h-11 w-full ${
-                            canDeleteDeals
-                              ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                              : 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed'
-                          }`}
+                          className="h-11 w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
                           aria-label="Delete deal"
                         >
                           <Icon name="Trash2" size={16} className="mr-2" />
@@ -1894,7 +1861,6 @@ export default function DealsPage() {
                   </Button>
                   <Button
                     onClick={() => handleDeleteDeal(deleteConfirm?.id)}
-                    disabled={!canDeleteDeals}
                     className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white"
                     aria-label="Confirm deletion"
                   >
