@@ -65,9 +65,9 @@ pnpm build
 ## Manual Verification (After Migration)
 
 ### Prerequisites
-1. **Apply the migration** to your Supabase database:
+1. **Apply the migration** to your Supabase database using the Supabase CLI:
    ```bash
-   pnpm db:push
+   supabase db push
    ```
    
    Or manually run the migration SQL file in your Supabase SQL editor:

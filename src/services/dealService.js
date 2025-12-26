@@ -2257,7 +2257,7 @@ export async function deleteDeal(id) {
   }
 
   const tryDelete = async (table, whereCol, whereVal, opts = {}) => {
-    const { error } = await supabase?.from(table)?.delete()?.eq(whereCol, whereVal)
+    const { error } = await supabase.from(table).delete().eq(whereCol, whereVal)
     if (error) {
       if (isPermissionDenied(error)) throwDeletePermission()
       if (opts?.ignoreMissingTable && isMissingTable(error)) return
@@ -2272,10 +2272,10 @@ export async function deleteDeal(id) {
 
   // First, verify the deal exists and user has access to it
   const { data: existingDeal, error: readErr } = await supabase
-    ?.from('jobs')
-    ?.select('id')
-    ?.eq('id', id)
-    ?.maybeSingle()
+    .from('jobs')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle()
 
   if (readErr) {
     throw new Error(`Failed to verify deal: ${readErr.message}`)
@@ -2293,10 +2293,10 @@ export async function deleteDeal(id) {
   await tryDelete('communications', 'job_id', id, { ignoreMissingTable: true })
 
   const { data: deletedJobs, error: jobErr } = await supabase
-    ?.from('jobs')
-    ?.delete()
-    ?.eq('id', id)
-    ?.select('id')
+    .from('jobs')
+    .delete()
+    .eq('id', id)
+    .select('id')
 
   if (jobErr) {
     if (isPermissionDenied(jobErr)) throwDeletePermission()
