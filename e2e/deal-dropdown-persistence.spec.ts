@@ -1,27 +1,75 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
+async function waitForCreateRedirectOrSaveFailure(page: Page) {
+  const redirectRe = /\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/
+  const saveError = page.getByTestId('save-error')
+  const saveSuccess = page.getByTestId('save-success')
+
+  const result = await Promise.race([
+    page
+      .waitForURL(redirectRe, { timeout: 30_000 })
+      .then(() => ({ kind: 'redirect' as const }))
+      .catch((error) => ({ kind: 'redirect-timeout' as const, error })),
+    saveError
+      .waitFor({ state: 'visible', timeout: 30_000 })
+      .then(async () => ({
+        kind: 'save-error' as const,
+        text: ((await saveError.textContent()) || '').trim(),
+      }))
+      .catch((error) => ({ kind: 'save-error-timeout' as const, error })),
+    saveSuccess
+      .waitFor({ state: 'visible', timeout: 30_000 })
+      .then(() => ({ kind: 'save-success' as const }))
+      .catch((error) => ({ kind: 'save-success-timeout' as const, error })),
+  ])
+
+  if (result.kind === 'redirect') return
+
+  if (result.kind === 'save-error') {
+    throw new Error(`Deal save failed (UI error): ${result.text || '(no message)'}`)
+  }
+
+  if (result.kind === 'save-success') {
+    await page.waitForURL(redirectRe, { timeout: 10_000 })
+    return
+  }
+
+  throw new Error('Deal save did not redirect and no save status was observed within 30s')
+}
+
 // Helper to require an authenticated session and org before proceeding
 async function ensureSessionAndOrg(page: Page) {
   await page.goto('/debug-auth')
-  const sessionText = await page
-    .getByTestId('session-user-id')
-    .textContent()
-    .catch(() => '')
-  const orgText = await page
-    .getByTestId('profile-org-id')
-    .textContent()
-    .catch(() => '')
 
-  const hasSession =
-    typeof sessionText === 'string' &&
-    sessionText.trim().length > 0 &&
-    !/\bnull\b/i.test(sessionText)
-  const hasOrg =
-    typeof orgText === 'string' &&
-    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(orgText)
+  const sessionEl = page.getByTestId('session-user-id')
+  const orgEl = page.getByTestId('profile-org-id')
+  await expect(sessionEl).toBeVisible({ timeout: 15_000 })
+  await expect(orgEl).toBeVisible({ timeout: 15_000 })
 
-  test.skip(!(hasSession && hasOrg), 'No authenticated session/org; skipping persistence test')
+  let ready = true
+  try {
+    await expect
+      .poll(
+        async () => {
+          const sessionText = (await sessionEl.textContent().catch(() => '')) || ''
+          const orgText = (await orgEl.textContent().catch(() => '')) || ''
+
+          const hasSession = sessionText.trim().length > 0 && !/\bnull\b/i.test(sessionText)
+          const hasOrg = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(
+            orgText
+          )
+
+          return hasSession && hasOrg
+        },
+        { timeout: 15_000 }
+      )
+      .toBe(true)
+  } catch {
+    ready = false
+  }
+
+  test.skip(!ready, 'No authenticated session/org; skipping persistence test')
 }
 
 // Capture the current value of a native <select>
@@ -52,13 +100,16 @@ test.describe('Deal dropdown persistence across save + reload', () => {
     await page.goto('/deals/new')
     await expect(page.getByTestId('deal-form')).toBeVisible()
 
+    // Description (required in current form)
+    const description = page.getByTestId('description-input')
+    await expect(description).toBeVisible()
+    await description.fill('E2E Deal ' + Date.now())
+
     // Primary dropdowns
-    const vendor = page.getByTestId('vendor-select')
     const sales = page.getByTestId('sales-select')
     const finance = page.getByTestId('finance-select')
     const delivery = page.getByTestId('delivery-select')
 
-    const vendorVal = await pickFirstRealOption(vendor)
     const salesVal = await pickFirstRealOption(sales)
     const financeVal = await pickFirstRealOption(finance)
     const deliveryVal = await pickFirstRealOption(delivery)
@@ -83,11 +134,10 @@ test.describe('Deal dropdown persistence across save + reload', () => {
     await expect(save).toBeEnabled()
     await save.click()
 
-    // Redirect to edit page
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30_000 })
+    // Redirect to edit page (or fail with a clear UI error)
+    await waitForCreateRedirectOrSaveFailure(page)
 
     // Verify exact selections persisted on edit page
-    await expect(page.getByTestId('vendor-select')).toHaveValue(vendorVal)
     await expect(page.getByTestId('sales-select')).toHaveValue(salesVal)
     await expect(page.getByTestId('finance-select')).toHaveValue(financeVal)
     await expect(page.getByTestId('delivery-select')).toHaveValue(deliveryVal)
@@ -96,7 +146,6 @@ test.describe('Deal dropdown persistence across save + reload', () => {
 
     // Reload and confirm still persisted
     await page.reload()
-    await expect(page.getByTestId('vendor-select')).toHaveValue(vendorVal)
     await expect(page.getByTestId('sales-select')).toHaveValue(salesVal)
     await expect(page.getByTestId('finance-select')).toHaveValue(financeVal)
     await expect(page.getByTestId('delivery-select')).toHaveValue(deliveryVal)

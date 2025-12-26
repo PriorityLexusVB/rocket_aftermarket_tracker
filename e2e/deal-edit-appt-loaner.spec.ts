@@ -22,6 +22,14 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
     await page.goto('/deals/new')
     await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })
 
+    // Appointment window (date + start/end time) is only available in Deal Form V2.
+    // Deal Form V1 does not expose these inputs and cannot satisfy vendor scheduling validation.
+    const hasV2SchedulingFields = await page
+      .getByTestId('date-scheduled-0')
+      .isVisible()
+      .catch(() => false)
+    test.skip(!hasV2SchedulingFields, 'Deal Form V2 scheduling fields not enabled')
+
     // Fill in basic deal info
     const description = page.getByTestId('description-input')
     await description.fill(`E2E Appt+Loaner Test ${Date.now()}`)
