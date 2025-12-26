@@ -170,7 +170,85 @@ export default async function globalSetup() {
     })
   } catch {}
 
+  // Give Supabase trigger a moment to write the profile row, then force org association
+  await page.waitForTimeout(2000)
+  try {
+    await associateUserWithE2EOrg()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn('[global.setup] Warning: org association failed:', message)
+  }
+
   await fs.mkdir(storageDir, { recursive: true })
   await context.storageState({ path: storagePath })
   await browser.close()
+}
+
+async function associateUserWithE2EOrg() {
+  const connStr = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+  const e2eEmail = process.env.E2E_EMAIL
+  const targetOrg = '00000000-0000-0000-0000-0000000000e2'
+
+  if (!connStr) {
+    console.log('[global.setup] DATABASE_URL missing; skipping org association')
+    return
+  }
+  if (!e2eEmail) {
+    console.log('[global.setup] E2E_EMAIL missing; skipping org association')
+    return
+  }
+
+  const { Client } = await import('pg')
+  const maxAttempts = 5
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const client = new Client({ connectionString: connStr })
+    try {
+      await client.connect()
+
+      const check = await client.query(
+        'select id, org_id from public.user_profiles where email = $1',
+        [e2eEmail]
+      )
+
+      if (check.rowCount === 0) {
+        console.log(
+          `[global.setup] Attempt ${attempt}/${maxAttempts}: profile not found yet, retrying...`
+        )
+        await client.end()
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1000))
+          continue
+        }
+        throw new Error('profile not found after retries')
+      }
+
+      const update = await client.query(
+        `update public.user_profiles
+         set org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
+         where email = $2
+         returning org_id`,
+        [targetOrg, e2eEmail]
+      )
+
+      const newOrg = update.rows[0]?.org_id
+      console.log(`[global.setup] org association attempt ${attempt}: org_id=${newOrg ?? 'null'}`)
+
+      if (newOrg === targetOrg) {
+        await client.end()
+        return
+      }
+
+      await client.end()
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 1000))
+      }
+    } catch (err) {
+      try {
+        await client.end()
+      } catch {}
+      if (attempt === maxAttempts) throw err
+      await new Promise((r) => setTimeout(r, 1000))
+    }
+  }
 }

@@ -35,15 +35,15 @@ const { Client } = require('pg')
     await client.connect()
     await client.query('BEGIN')
     await client.query(sqlWithParams)
-    
+
     // Verify the user profile was created/updated
     const result = await client.query(
       `SELECT id, email, org_id, full_name FROM public.user_profiles WHERE email = $1`,
       [e2eEmail]
     )
-    
+
     await client.query('COMMIT')
-    
+
     if (result.rows.length > 0) {
       const profile = result.rows[0]
       console.log(`[seedE2E] ✅ Seed applied successfully.`)
@@ -53,8 +53,13 @@ const { Client } = require('pg')
       console.log(`[seedE2E]   Org ID: ${profile.org_id}`)
       console.log(`[seedE2E]   Profile ID: ${profile.id}`)
     } else {
-      console.warn(`[seedE2E] ⚠️ Warning: User profile for ${e2eEmail} was not found after seeding.`)
-      console.warn(`[seedE2E] The user may not exist in auth.users yet. Make sure E2E_EMAIL matches an existing authenticated user.`)
+      console.warn(
+        `[seedE2E] ⚠️ Warning: User profile for ${e2eEmail} was not found after seeding.`
+      )
+      console.warn(
+        `[seedE2E] The user may not exist in auth.users yet. Make sure E2E_EMAIL matches an existing authenticated user.`
+      )
+      process.exit(1)
     }
   } catch (err) {
     try {
