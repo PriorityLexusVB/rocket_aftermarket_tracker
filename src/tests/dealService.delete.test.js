@@ -19,8 +19,7 @@ describe('dealService.deleteDeal', () => {
       delete: vi.fn(() => chain),
       select: vi.fn(() => chain),
       eq: vi.fn(() => chain),
-      maybeSingle: vi.fn(() => returnValue),
-      ...returnValue,
+      maybeSingle: vi.fn(() => Promise.resolve(returnValue)),
     }
     supabase.from.mockReturnValue(chain)
     return chain
@@ -54,24 +53,47 @@ describe('dealService.deleteDeal', () => {
   })
 
   it('throws permission error when delete returns permission denied error', async () => {
-    // Mock successful read
+    // Mock successful read and subsequent deletes with explicit chains
     let callCount = 0
+
     supabase.from.mockImplementation((table) => {
       callCount++
-      if (callCount === 1) {
+      if (callCount === 1 && table === 'jobs') {
         // First call: read to verify deal exists
-        return mockSupabaseChain({ data: { id: 'test-id' }, error: null })
-      } else if (table === 'loaner_assignments') {
-        // Loaner assignments delete (optional table)
-        return mockSupabaseChain({ data: [], error: null })
-      } else if (table === 'job_parts') {
-        // Job parts delete fails with permission error
-        return mockSupabaseChain({
-          data: null,
-          error: { code: '42501', message: 'permission denied for table job_parts' },
-        })
+        const readChain = {
+          select: vi.fn(() => readChain),
+          eq: vi.fn(() => readChain),
+          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'test-id' }, error: null })),
+        }
+        return readChain
       }
-      return mockSupabaseChain({ data: [], error: null })
+      if (table === 'loaner_assignments') {
+        // Loaner assignments delete (optional table)
+        const chain = {
+          delete: vi.fn(() => chain),
+          eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
+        }
+        return chain
+      }
+      if (table === 'job_parts') {
+        // Job parts delete fails with permission error
+        const chain = {
+          delete: vi.fn(() => chain),
+          eq: vi.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: { code: '42501', message: 'permission denied for table job_parts' },
+            })
+          ),
+        }
+        return chain
+      }
+      // Default chain for other tables
+      const chain = {
+        delete: vi.fn(() => chain),
+        eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
+      }
+      return chain
     })
 
     await expect(deleteDeal('test-id')).rejects.toThrow(
