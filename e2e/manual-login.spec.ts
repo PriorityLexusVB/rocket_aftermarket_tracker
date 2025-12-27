@@ -1,4 +1,4 @@
-import { test } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import dotenv from 'dotenv'
 import path from 'path'
 import { existsSync } from 'fs'
@@ -11,11 +11,8 @@ try {
   }
 } catch {}
 
-// If env credentials are present, globalSetup performs automatic login and saves storage state.
-// In that case, skip this manual helper test.
 // Disable manual helper by default; enable with MANUAL_LOGIN=1
 const manual = process.env.MANUAL_LOGIN === '1'
-test.skip(!manual, 'Manual login helper disabled by default; set MANUAL_LOGIN=1 to use')
 
 // Helper spec to capture an authenticated storage state via manual login.
 // Steps:
@@ -27,17 +24,24 @@ test.skip(!manual, 'Manual login helper disabled by default; set MANUAL_LOGIN=1 
 test('manual login captures storage state', async ({ page, context }) => {
   const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
 
-  // Open the auth page for manual login
-  await page.goto(base + '/auth')
+  if (manual) {
+    // Open the auth page for manual login
+    await page.goto(base + '/auth')
 
-  // Optional convenience: pre-fill email if provided via env
-  const email = process.env.E2E_EMAIL
-  if (email) {
-    await page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i)).fill(email)
+    // Optional convenience: pre-fill email if provided via env
+    const email = process.env.E2E_EMAIL
+    if (email) {
+      await page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i)).fill(email)
+    }
+
+    // Wait up to 2 minutes for the login to complete and redirect to /deals
+    await page.waitForURL('**/deals', { timeout: 120_000 })
+  } else {
+    // In non-manual mode, validate that globalSetup/storageState already provides auth.
+    await page.goto(base + '/debug-auth')
+    await expect(page.getByTestId('session-user-id')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByTestId('profile-org-id')).toBeVisible({ timeout: 30_000 })
   }
-
-  // Wait up to 2 minutes for the login to complete and redirect to /deals
-  await page.waitForURL('**/deals', { timeout: 120_000 })
 
   // Confirm session and org presence on debug page
   await page.goto(base + '/debug-auth')

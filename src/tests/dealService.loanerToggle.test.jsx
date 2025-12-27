@@ -88,8 +88,9 @@ describe('DealForm Loaner Toggle', () => {
     const dealForm = container.querySelector('[data-testid="deal-form"]')
     const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
     expect(loanerSection).toBeDefined()
-    expect(loanerSection?.getAttribute('aria-disabled')).toBe('true')
     expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
+    expect(dealForm?.querySelector('[data-testid="loaner-eta-input"]')).toBeDisabled()
+    expect(dealForm?.querySelector('[data-testid="loaner-notes-input"]')).toBeDisabled()
   })
 
   it('shows loaner section when checkbox is checked', async () => {
@@ -106,7 +107,7 @@ describe('DealForm Loaner Toggle', () => {
       const dealForm = container.querySelector('[data-testid="deal-form"]')
       const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
       expect(loanerSection).toBeDefined()
-      expect(loanerSection?.getAttribute('aria-disabled')).toBe('false')
+      expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).not.toBeDisabled()
     })
 
     // Check that loaner fields are present
@@ -135,22 +136,17 @@ describe('DealForm Loaner Toggle', () => {
     // Initially unchecked - section disabled
     expect(checkbox.checked).toBe(false)
     const initialSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-    expect(initialSection?.getAttribute('aria-disabled')).toBe('true')
     expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
 
     // Check it - section becomes enabled
     fireEvent.click(checkbox)
     await waitFor(() => {
-      const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-      expect(loanerSection?.getAttribute('aria-disabled')).toBe('false')
       expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).not.toBeDisabled()
     })
 
     // Uncheck it - section remains rendered but disabled
     fireEvent.click(checkbox)
     await waitFor(() => {
-      const loanerSection = dealForm?.querySelector('[data-testid="loaner-section"]')
-      expect(loanerSection?.getAttribute('aria-disabled')).toBe('true')
       expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
     })
   })

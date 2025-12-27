@@ -8,35 +8,18 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
   test('editing deal preserves appointment window and loaner return date', async ({ page }) => {
     // Preflight: ensure we have an authenticated session
     await page.goto('/debug-auth')
-    const hasSession = await page
-      .getByTestId('session-user-id')
-      .isVisible()
-      .catch(() => false)
-    const hasOrg = await page
-      .getByTestId('profile-org-id')
-      .isVisible()
-      .catch(() => false)
-    test.skip(!(hasSession && hasOrg), 'No authenticated session')
+    await expect(page.getByTestId('session-user-id')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('profile-org-id')).toBeVisible({ timeout: 15_000 })
 
     // Create a new deal with appointment window and loaner
     await page.goto('/deals/new')
     await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })
 
-    // Appointment window (date + start/end time) is only available in Deal Form V2.
-    // Deal Form V1 does not expose these inputs and cannot satisfy vendor scheduling validation.
-    const hasV2SchedulingFields = await page
-      .getByTestId('date-scheduled-0')
-      .isVisible()
-      .catch(() => false)
-    test.skip(!hasV2SchedulingFields, 'Deal Form V2 scheduling fields not enabled')
+    const loanerNumberValue = `LOANER-E2E-${Date.now()}`
 
     // Fill in basic deal info
     const description = page.getByTestId('description-input')
     await description.fill(`E2E Appt+Loaner Test ${Date.now()}`)
-
-    // Select vendor (required)
-    const vendor = page.getByTestId('vendor-select')
-    await vendor.selectOption({ index: 1 })
 
     // Select product for line item
     const product = page.getByTestId('product-select-0')
@@ -48,48 +31,47 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
       await page.locator('label[for="requiresScheduling-0"]').click()
     }
 
-    // Set appointment date and time for line item
-    const schedDate = page.getByTestId('date-scheduled-0')
-    await schedDate.fill('2025-12-12')
-
-    const schedStart = page.getByTestId('start-time-0')
-    await schedStart.fill('13:30')
-
-    const schedEnd = page.getByTestId('end-time-0')
-    await schedEnd.fill('15:00')
+    // Set scheduled/promised date for line item (current UI uses promised-date-0)
+    const promisedDate = page.getByTestId('promised-date-0')
+    await expect(promisedDate).toBeVisible()
+    await promisedDate.fill('2025-12-12')
 
     // Enable loaner
     const loanerCheckbox = page.getByTestId('loaner-checkbox')
     if (!(await loanerCheckbox.isChecked())) {
-      await loanerCheckbox.check()
+      await page.locator('label[for="needsLoaner"]').click({ force: true })
+      await expect(loanerCheckbox).toBeChecked({ timeout: 5_000 })
     }
 
     // Fill loaner details
     const loanerNumber = page.getByTestId('loaner-number-input')
-    await loanerNumber.fill('LOANER-E2E-123')
+    await loanerNumber.fill(loanerNumberValue)
 
-    const loanerReturnDate = page.getByTestId('loaner-return-date-input')
+    const loanerReturnDate = page.getByTestId('loaner-eta-input')
     await loanerReturnDate.fill('2025-12-18')
 
     // Save the deal
     const saveBtn = page.getByTestId('save-deal-btn')
     await saveBtn.click()
 
-    // Wait for redirect to edit page
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, {
+    // Depending on scheduling state, the app may redirect to Agenda with a focus param.
+    // Extract the job id from either the edit route or the agenda focus query param.
+    await page.waitForURL(/(\/deals\/[A-Za-z0-9-]+\/edit|\/calendar\/agenda\?focus=)/, {
       timeout: 30_000,
-      waitUntil: 'networkidle',
     })
 
-    // Verify appointment window time fields are populated in edit form
-    const schedDateAfter = page.getByTestId('date-scheduled-0')
-    await expect(schedDateAfter).toHaveValue('2025-12-12')
+    const url = new URL(page.url())
+    let jobId: string | null = null
+    const editMatch = url.pathname.match(/\/deals\/([A-Za-z0-9-]+)\/edit/)
+    if (editMatch?.[1]) jobId = editMatch[1]
+    if (!jobId) jobId = url.searchParams.get('focus')
+    if (!jobId) throw new Error(`Unable to determine job id after save. URL=${page.url()}`)
 
-    const schedStartAfter = page.getByTestId('start-time-0')
-    await expect(schedStartAfter).toHaveValue('13:30')
+    await page.goto(`/deals/${jobId}/edit`, { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 15_000 })
 
-    const schedEndAfter = page.getByTestId('end-time-0')
-    await expect(schedEndAfter).toHaveValue('15:00')
+    // Verify promised date persisted in edit form
+    await expect(page.getByTestId('promised-date-0')).toHaveValue('2025-12-12')
 
     // Verify loaner checkbox is checked
     const loanerCheckboxAfter = page.getByTestId('loaner-checkbox')
@@ -97,10 +79,10 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
 
     // Verify loaner number is populated
     const loanerNumberAfter = page.getByTestId('loaner-number-input')
-    await expect(loanerNumberAfter).toHaveValue('LOANER-E2E-123')
+    await expect(loanerNumberAfter).toHaveValue(loanerNumberValue)
 
     // Verify loaner return date is populated
-    const loanerReturnDateAfter = page.getByTestId('loaner-return-date-input')
+    const loanerReturnDateAfter = page.getByTestId('loaner-eta-input')
     await expect(loanerReturnDateAfter).toHaveValue('2025-12-18')
 
     // Save again without changes to ensure no data loss
@@ -117,29 +99,24 @@ test.describe('Deal edit: appointment window & loaner return date', () => {
     await page.reload()
 
     // Re-verify all fields after reload
-    await expect(page.getByTestId('date-scheduled-0')).toHaveValue('2025-12-12')
-    await expect(page.getByTestId('start-time-0')).toHaveValue('13:30')
-    await expect(page.getByTestId('end-time-0')).toHaveValue('15:00')
+    await expect(page.getByTestId('promised-date-0')).toHaveValue('2025-12-12')
     await expect(page.getByTestId('loaner-checkbox')).toBeChecked()
-    await expect(page.getByTestId('loaner-number-input')).toHaveValue('LOANER-E2E-123')
-    await expect(page.getByTestId('loaner-return-date-input')).toHaveValue('2025-12-18')
+    await expect(page.getByTestId('loaner-number-input')).toHaveValue(loanerNumberValue)
+    await expect(page.getByTestId('loaner-eta-input')).toHaveValue('2025-12-18')
 
     // Navigate back to deals list to verify display
     await page.goto('/deals')
     await page.waitForLoadState('networkidle')
 
-    // Find the deal in the list and verify appointment window and loaner display correctly
-    // The deal should show up with the appointment window and loaner badge
-    const dealRow = page.locator(`text=/E2E Appt\\+Loaner Test/`).first()
-    await expect(dealRow).toBeVisible({ timeout: 10_000 })
+    // Switch to All to avoid status-filter surprises, then locate the exact row by job id
+    await page.getByRole('button', { name: 'All', exact: true }).click()
+    const row = page.getByTestId(`deal-row-${jobId}`)
+    await expect(row).toBeVisible({ timeout: 15_000 })
 
-    // Check that appointment window is rendered (ScheduleChip should show date/time)
-    // Look for a schedule chip with the date we set
-    const scheduleChip = page.locator('text=/Dec 12/')
-    await expect(scheduleChip).toBeVisible({ timeout: 5_000 })
+    // Appointment window should be rendered once scheduled_start_time is inferred
+    await expect(row.getByText(/Dec 12/i)).toBeVisible({ timeout: 10_000 })
 
-    // Check that loaner badge is rendered
-    const loanerBadge = page.locator('text=/LOANER-E2E-123/')
-    await expect(loanerBadge).toBeVisible({ timeout: 5_000 })
+    // Loaner badge should show the loaner number
+    await expect(row.getByText(loanerNumberValue)).toBeVisible({ timeout: 10_000 })
   })
 })

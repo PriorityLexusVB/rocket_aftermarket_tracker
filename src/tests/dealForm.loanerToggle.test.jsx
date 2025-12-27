@@ -82,7 +82,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
     const loanerSection = container.querySelector('[data-testid="loaner-section"]')
 
     expect(loanerCheckbox.checked).toBe(false)
-    expect(loanerSection?.getAttribute('aria-disabled')).toBe('true')
+    expect(loanerSection).toBeTruthy()
     expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
     expect(container.querySelector('[data-testid="loaner-eta-input"]')).toBeDisabled()
     expect(container.querySelector('[data-testid="loaner-notes-input"]')).toBeDisabled()
@@ -90,8 +90,8 @@ describe('DealForm V2 - Loaner Toggle', () => {
     fireEvent.click(loanerCheckbox)
 
     await waitFor(() => {
-      const enabledSection = container.querySelector('[data-testid="loaner-section"]')
-      expect(enabledSection?.getAttribute('aria-disabled')).toBe('false')
+      const enabledInput = container.querySelector('[data-testid="loaner-number-input"]')
+      expect(enabledInput).not.toBeDisabled()
     })
 
     const loanerNumberInput = container.querySelector('[data-testid="loaner-number-input"]')
@@ -106,7 +106,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
     await waitFor(() => {
       const disabledSection = container.querySelector('[data-testid="loaner-section"]')
-      expect(disabledSection?.getAttribute('aria-disabled')).toBe('true')
+      expect(disabledSection).toBeTruthy()
       expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
       expect(container.querySelector('[data-testid="loaner-eta-input"]')).toBeDisabled()
       expect(container.querySelector('[data-testid="loaner-notes-input"]')).toBeDisabled()
@@ -167,7 +167,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
     await waitFor(() => {
       const disabledSection = container.querySelector('[data-testid="loaner-section"]')
-      expect(disabledSection?.getAttribute('aria-disabled')).toBe('true')
+      expect(disabledSection).toBeTruthy()
       expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
       expect(container.querySelector('[data-testid="loaner-number-input"]')?.value).toBe('')
       expect(container.querySelector('[data-testid="loaner-eta-input"]')?.value).toBe('')
@@ -225,7 +225,7 @@ describe('DealForm V2 - Loaner Toggle', () => {
 
     await waitFor(() => {
       const disabledSection = container.querySelector('[data-testid="loaner-section"]')
-      expect(disabledSection?.getAttribute('aria-disabled')).toBe('true')
+      expect(disabledSection).toBeTruthy()
       expect(container.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
     })
 

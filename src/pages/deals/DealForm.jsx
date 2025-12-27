@@ -542,9 +542,39 @@ export default function DealForm({
         isOffSite: !!li.isOffSite || !!li.is_off_site,
       }))
 
+      const inferScheduledWindowFromLineItems = (lineItems) => {
+        try {
+          const dates = (lineItems || [])
+            .filter((li) => li?.requires_scheduling && li?.promised_date)
+            .map((li) => String(li.promised_date))
+            .filter(Boolean)
+            .sort()
+
+          const first = dates?.[0]
+          if (!first) return { start: null, end: null }
+
+          // If we only have a date (YYYY-MM-DD), infer a small visible appointment window.
+          if (!first.includes('T')) {
+            return {
+              start: `${first}T12:00:00`,
+              end: `${first}T12:30:00`,
+            }
+          }
+
+          // Already has a time component; don't infer an end.
+          return { start: first, end: null }
+        } catch {
+          return { start: null, end: null }
+        }
+      }
+
+      const inferred = inferScheduledWindowFromLineItems(normalizedLineItems)
+
       const payload = {
         ...form,
         org_id: form.org_id || orgId || undefined,
+        scheduled_start_time: form.scheduled_start_time || inferred.start || null,
+        scheduled_end_time: form.scheduled_end_time || inferred.end || null,
         customer_needs_loaner: !!form.customer_needs_loaner,
         loanerForm: form.customer_needs_loaner
           ? {
@@ -860,7 +890,6 @@ export default function DealForm({
       {/* Loaner section */}
       <section
         data-testid="loaner-section"
-        aria-disabled={(!form.customer_needs_loaner).toString()}
         className={!form.customer_needs_loaner ? 'opacity-60 space-y-4' : 'space-y-4'}
       >
         <div className="flex items-center gap-3">

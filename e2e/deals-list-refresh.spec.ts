@@ -1,6 +1,30 @@
 import { test, expect, type Page } from '@playwright/test'
 import { missingAuthEnv } from './_authEnv'
 
+async function ensureAtLeastOneDeal(page: Page) {
+  await page.goto('/deals')
+  await page.waitForLoadState('networkidle')
+  const firstDealRow = page.locator('[data-testid^="deal-row-"]').first()
+  const hasDeal = await firstDealRow.isVisible().catch(() => false)
+  if (hasDeal) return
+
+  await page.goto('/deals/new')
+  const description = page.getByTestId('description-input')
+  await expect(description).toBeVisible()
+  await description.fill(`E2E Refresh Seed ${Date.now()}`)
+
+  const product = page.getByTestId('product-select-0')
+  await expect(product).toBeVisible()
+  await product.selectOption({ index: 1 })
+
+  await fillPromisedDate(page, 0)
+
+  const save = await goToLineItems(page)
+  await expect(save).toBeEnabled()
+  await save.click()
+  await waitForEditOpen(page)
+}
+
 async function waitForEditOpen(page: Page) {
   const editUrlRe = /\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/
   const editHeading = page.getByRole('heading', { name: /edit deal/i })
@@ -63,64 +87,28 @@ test.describe('Deals List Refresh After Edit', () => {
   }) => {
     test.setTimeout(60_000)
 
+    await ensureAtLeastOneDeal(page)
     await page.goto('/deals')
     await page.waitForLoadState('networkidle')
-
-    const firstDealRow = page.locator('[data-testid^="deal-row-"]').first()
-    const hasDeal = await firstDealRow.isVisible().catch(() => false)
-
-    if (!hasDeal) {
-      await page.goto('/deals/new')
-      const description = page.getByTestId('description-input')
-      await expect(description).toBeVisible()
-      await description.fill(`E2E Refresh Test ${Date.now()}`)
-
-      // Avoid selecting vendor here: some environments enforce vendor scheduling at DB layer,
-      // and Deal Form V1 does not expose appointment start/end inputs.
-
-      const product = page.getByTestId('product-select-0')
-      await expect(product).toBeVisible()
-      await product.selectOption({ index: 1 })
-
-      const promisedDate = page.getByTestId('promised-date-0')
-      if (await promisedDate.isVisible().catch(() => false)) {
-        const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-        await promisedDate.fill(tomorrow.toISOString().slice(0, 10))
-      } else {
-        await fillPromisedDate(page, 0)
-      }
-
-      const save = await goToLineItems(page)
-      await expect(save).toBeEnabled()
-      await save.click()
-      await waitForEditOpen(page)
-
-      await page.goto('/deals')
-      await page.waitForLoadState('networkidle')
-    }
 
     const firstDeal = page.locator('[data-testid^="deal-row-"]').first()
     await expect(firstDeal).toBeVisible({ timeout: 10_000 })
 
     const dealId = await firstDeal.getAttribute('data-testid')
     const cleanDealId = dealId?.replace('deal-row-', '')
-    if (!cleanDealId) test.skip(true, 'No deal id available to inspect')
+    if (!cleanDealId) throw new Error('No deal id available to inspect (missing data-testid)')
 
     console.log(`Deal row present for id ${cleanDealId}`)
   })
 
   test('should update promised date/window in deals list after edit', async ({ page }) => {
     // This test specifically checks promised date updates
+    await ensureAtLeastOneDeal(page)
     await page.goto('/deals')
     await page.waitForLoadState('networkidle')
 
     const firstDealRow = page.locator('[data-testid^="deal-row-"]').first()
-    const hasDeal = await firstDealRow.isVisible().catch(() => false)
-
-    if (!hasDeal) {
-      test.skip(true, 'No deals available for promised date test')
-      return
-    }
+    await expect(firstDealRow).toBeVisible({ timeout: 10_000 })
 
     // Get deal ID
     const dealId = await firstDealRow.getAttribute('data-testid')

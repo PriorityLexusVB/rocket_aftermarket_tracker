@@ -11,14 +11,55 @@ const password = process.env.E2E_PASSWORD
 test.describe('Agenda View', () => {
   test.skip(missingAuthEnv, 'E2E auth env not set')
 
-  test.skip('redirect after create focuses new appointment', async () => {
-    // Note: This test requires a full deal creation flow which involves multiple steps:
-    // 1. Create deal with customer/vehicle
-    // 2. Add line items with scheduling
-    // 3. Set scheduled_start_time and scheduled_end_time
-    // 4. Save and verify redirect to /calendar/agenda?focus=<id>
-    // Skip for now as it requires complete form flow setup
-    // Can be implemented once we have stable test data fixtures
+  test('redirect after create focuses new appointment', async ({ page }) => {
+    // Login
+    await page.goto('/auth')
+    await page.fill('input[name="email"]', email!)
+    await page.fill('input[name="password"]', password!)
+    await page.click('button:has-text("Sign In")')
+    await page.waitForTimeout(2000)
+
+    // Create a scheduled deal. In this codebase, saving a deal with a scheduled timestamp
+    // triggers a redirect to /calendar/agenda?focus=<job_id>.
+    await page.goto('/deals/new')
+    await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })
+
+    await page.getByTestId('description-input').fill(`E2E Agenda Focus ${Date.now()}`)
+
+    const product = page.getByTestId('product-select-0')
+    await expect(product).toBeVisible()
+    await product.selectOption({ index: 1 })
+
+    // Mark as off-site and provide a "Date Scheduled" (promised date) to trigger scheduling.
+    const offsite = page.getByTestId('offsite-radio-0')
+    if (await offsite.isVisible().catch(() => false)) {
+      await offsite.check().catch(async () => {
+        await offsite.click()
+      })
+    }
+
+    const promised = page.getByTestId('promised-date-0')
+    await expect(promised).toBeVisible()
+    const today = new Date()
+    const yyyy = today.getFullYear()
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const dd = String(today.getDate()).padStart(2, '0')
+    await promised.fill(`${yyyy}-${mm}-${dd}`)
+
+    const saveBtn = page.getByTestId('save-deal-btn')
+    await expect(saveBtn).toBeEnabled()
+    await saveBtn.click()
+
+    // In this route, NewDeal.jsx owns navigation and always routes to Edit.
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit/, { timeout: 30_000 })
+    const url = new URL(page.url())
+    const match = url.pathname.match(/\/deals\/([A-Za-z0-9-]+)\/edit/)
+    const jobId = match?.[1]
+    if (!jobId) throw new Error(`Unable to determine job id after create. URL=${page.url()}`)
+
+    // Verify agenda can accept focus param without crashing.
+    await page.goto(`/calendar/agenda?focus=${encodeURIComponent(jobId)}`)
+    await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible()
   })
 
   test('agenda view renders with flag enabled', async ({ page }) => {

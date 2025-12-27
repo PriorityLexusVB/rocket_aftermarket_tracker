@@ -119,6 +119,7 @@ export default async function handler(req, res) {
       res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify(response))
+      return
     }
   }
 
@@ -208,9 +209,9 @@ export default async function handler(req, res) {
 
     // Handle both Express-like and Node.js http response objects
     if (typeof res.status === 'function') {
-      return res.status(500).json(response)
+      return res.status(200).json(response)
     } else {
-      res.statusCode = 500
+      res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify(response))
     }

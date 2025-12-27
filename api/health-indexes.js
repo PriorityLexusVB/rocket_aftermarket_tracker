@@ -4,12 +4,59 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    return {
+      supabase: null,
+      env: {
+        hasSupabaseUrl: Boolean(supabaseUrl),
+        hasSupabaseKey: Boolean(supabaseKey),
+      },
+    }
+  }
+
+  return {
+    supabase: createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } }),
+    env: {
+      hasSupabaseUrl: true,
+      hasSupabaseKey: true,
+    },
+  }
+}
+
+function sendJson(res, status, body) {
+  if (res && typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(status).json(body)
+  }
+
+  if (res && typeof res.setHeader === 'function' && typeof res.end === 'function') {
+    res.statusCode = status
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify(body))
+    return
+  }
+
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
 
 export default async function handler(req, res) {
   const started = Date.now()
+  const { supabase, env } = getSupabase()
+  if (!supabase) {
+    return sendJson(res, 200, {
+      ok: false,
+      classification: 'misconfigured',
+      env,
+      ms: Date.now() - started,
+    })
+  }
+
   const expected = [
     'idx_job_parts_scheduled_start_time',
     'idx_job_parts_scheduled_end_time',
@@ -39,7 +86,7 @@ export default async function handler(req, res) {
   // For authoritative verification, use psql or MCP execute_sql.
   const indexes_verified = columnsOk
 
-  return res.status(200).json({
+  return sendJson(res, 200, {
     ok: true,
     columnsOk,
     indexes_verified, // Additive hint: true if columns accessible (best-effort)

@@ -1,14 +1,30 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-// Helper: skip when not authenticated
 async function ensureAuth(page: Page) {
   await page.goto('/debug-auth')
-  const hasSession = await page
-    .getByTestId('session-user-id')
-    .isVisible()
-    .catch(() => false)
-  test.skip(!hasSession, 'No authenticated session; skipping')
+  await expect(page.getByTestId('session-user-id')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('profile-org-id')).toBeVisible({ timeout: 15_000 })
+}
+
+function yyyyMmDd(d: Date) {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+async function createMinimalDeal(page: Page, description: string) {
+  await page.goto('/deals/new')
+  await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })
+
+  await page.getByTestId('description-input').fill(description)
+  await page.getByTestId('product-select-0').selectOption({ index: 1 })
+  await page.getByTestId('promised-date-0').fill(yyyyMmDd(new Date()))
+
+  const saveBtn = page.getByTestId('save-deal-btn')
+  await expect(saveBtn).toBeEnabled()
+  await saveBtn.click()
 }
 
 // New Deal: reps visible and loaner toggles on first click
@@ -26,9 +42,9 @@ test('new deal: reps dropdowns present and loaner checkbox toggles once', async 
   const loaner = page.getByTestId('loaner-checkbox')
   await expect(loaner).toBeVisible()
   const wasChecked = await loaner.isChecked()
-  await loaner.click() // single click should toggle
+  await page.locator('label[for="needsLoaner"]').click({ force: true }) // single click should toggle
   await expect(loaner).toHaveJSProperty('checked', !wasChecked)
-  await loaner.click()
+  await page.locator('label[for="needsLoaner"]').click({ force: true })
   await expect(loaner).toHaveJSProperty('checked', wasChecked)
 })
 
@@ -41,10 +57,16 @@ test('edit deal: reps visible and loaner checkbox toggles once', async ({ page }
   await page.goto('/deals')
 
   // Try to open the first Edit modal
-  const editLinks = page.locator('text=Edit')
-  const count = await editLinks.count()
-  test.skip(count === 0, 'No deals available to edit')
-  await editLinks.first().click()
+  const editButtons = page.getByRole('button', { name: 'Edit deal' })
+  const count = await editButtons.count()
+  if (count === 0) {
+    await createMinimalDeal(page, `E2E Reps Edit ${Date.now()}`)
+    await page.goto('/deals')
+    await page.waitForLoadState('networkidle')
+  }
+
+  await expect(editButtons.first()).toBeVisible({ timeout: 10_000 })
+  await editButtons.first().click()
 
   // The modal should appear; verify reps blocks exist
   await expect(page.getByTestId('sales-select')).toBeVisible()
@@ -55,8 +77,8 @@ test('edit deal: reps visible and loaner checkbox toggles once', async ({ page }
   const loaner = page.getByTestId('loaner-checkbox')
   await expect(loaner).toBeVisible()
   const wasChecked = await loaner.isChecked()
-  await loaner.click()
+  await page.locator('label[for="needsLoaner"]').click({ force: true })
   await expect(loaner).toHaveJSProperty('checked', !wasChecked)
-  await loaner.click()
+  await page.locator('label[for="needsLoaner"]').click({ force: true })
   await expect(loaner).toHaveJSProperty('checked', wasChecked)
 })

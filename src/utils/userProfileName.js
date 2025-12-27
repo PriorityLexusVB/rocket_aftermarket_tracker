@@ -13,24 +13,39 @@ let CAP_FULL_NAME = false
 let CAP_DISPLAY_NAME = false
 let CAPS_LOADED = false
 
+// Bump this when the client-side capability caching logic changes or when we need
+// to force a re-probe after schema changes.
+const CAPS_CACHE_VERSION = 2
+
 const SS_KEYS = {
   name: 'cap_userProfilesName',
   full: 'cap_userProfilesFullName',
   display: 'cap_userProfilesDisplayName',
+  verified: 'cap_userProfilesCapsVerified',
+  checkedAt: 'cap_userProfilesCapsCheckedAt',
+  version: 'cap_userProfilesCapsVersion',
 }
 
 function readCapsFromStorage() {
   if (typeof sessionStorage === 'undefined') return
+  const version = Number(sessionStorage.getItem(SS_KEYS.version) || 0)
+  const verified =
+    version === CAPS_CACHE_VERSION && sessionStorage.getItem(SS_KEYS.verified) === 'true'
   const name = sessionStorage.getItem(SS_KEYS.name)
   const full = sessionStorage.getItem(SS_KEYS.full)
   const display = sessionStorage.getItem(SS_KEYS.display)
-  // Read both true and false values from storage
+
+  // Safety rule: only trust stored "true" after we've verified caps via the
+  // /api/health-user-profiles probe. Schema changes can make stored truths stale
+  // and cause PostgREST 400s (e.g. selecting user_profiles.name when it no longer exists).
   if (name === 'false') CAP_NAME = false
-  else if (name === 'true') CAP_NAME = true
+  else if (verified && name === 'true') CAP_NAME = true
+
   if (full === 'false') CAP_FULL_NAME = false
-  else if (full === 'true') CAP_FULL_NAME = true
+  else if (verified && full === 'true') CAP_FULL_NAME = true
+
   if (display === 'false') CAP_DISPLAY_NAME = false
-  else if (display === 'true') CAP_DISPLAY_NAME = true
+  else if (verified && display === 'true') CAP_DISPLAY_NAME = true
 }
 
 function writeCapsToStorage() {
@@ -45,6 +60,11 @@ export function setProfileCaps({ name, full_name, display_name } = {}) {
   if (typeof full_name === 'boolean') CAP_FULL_NAME = full_name
   if (typeof display_name === 'boolean') CAP_DISPLAY_NAME = display_name
   CAPS_LOADED = true
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem(SS_KEYS.version, String(CAPS_CACHE_VERSION))
+    sessionStorage.setItem(SS_KEYS.verified, 'true')
+    sessionStorage.setItem(SS_KEYS.checkedAt, String(Date.now()))
+  }
   writeCapsToStorage()
 }
 
@@ -72,6 +92,18 @@ export async function ensureUserProfileCapsLoaded() {
   // Initialize from storage first
   readCapsFromStorage()
 
+  const now = Date.now()
+  const version =
+    typeof sessionStorage !== 'undefined' ? Number(sessionStorage.getItem(SS_KEYS.version) || 0) : 0
+  const verified =
+    typeof sessionStorage !== 'undefined' &&
+    version === CAPS_CACHE_VERSION &&
+    sessionStorage.getItem(SS_KEYS.verified) === 'true'
+  const checkedAtRaw =
+    typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SS_KEYS.checkedAt) : null
+  const checkedAt = checkedAtRaw ? Number(checkedAtRaw) : 0
+  const recentlyChecked = Number.isFinite(checkedAt) && now - checkedAt < 10 * 60 * 1000
+
   // Check if we already have caps from storage
   const hasStoredCaps =
     typeof sessionStorage !== 'undefined' &&
@@ -79,7 +111,8 @@ export async function ensureUserProfileCapsLoaded() {
       sessionStorage.getItem(SS_KEYS.full) !== null ||
       sessionStorage.getItem(SS_KEYS.display) !== null)
 
-  if (hasStoredCaps) {
+  // If caps were verified recently, trust them.
+  if (hasStoredCaps && verified && recentlyChecked) {
     CAPS_LOADED = true
     return
   }
@@ -104,6 +137,13 @@ export async function ensureUserProfileCapsLoaded() {
       // Capabilities remain at their default (false) values, meaning queries will only use id+email.
       // When columns are detected to exist, they'll be enabled via the health endpoint on subsequent loads.
     }
+  }
+
+  // Mark "checked" even if probe didn't provide columns, so we don't hammer the endpoint.
+  if (typeof sessionStorage !== 'undefined') {
+    // Ensure we don't keep trusting a legacy cache format.
+    sessionStorage.setItem(SS_KEYS.version, String(CAPS_CACHE_VERSION))
+    sessionStorage.setItem(SS_KEYS.checkedAt, String(Date.now()))
   }
   CAPS_LOADED = true
 }
