@@ -89,9 +89,20 @@ function _isRlsError(error) {
 }
 
 function handleAuthError(error, label = 'dropdown') {
-  const code = Number(error?.status ?? error?.statusCode ?? error?.code)
+  // Important: PostgREST/RLS "permission denied" is NOT an auth/session failure.
+  // Redirecting to /auth on RLS errors causes cascading test failures and a poor UX.
+  if (_isRlsError(error)) return false
+
+  const code = Number(error?.status ?? error?.statusCode)
   const msg = String(error?.message || '').toLowerCase()
-  if ([401, 403].includes(code) || msg.includes('permission denied')) {
+  const looksAuthRelated =
+    [401, 403].includes(code) ||
+    msg.includes('jwt') ||
+    msg.includes('token') ||
+    msg.includes('not authenticated') ||
+    msg.includes('invalid login')
+
+  if (looksAuthRelated) {
     try {
       sessionStorage.setItem('authRedirectReason', `Please sign in again (${label})`)
     } catch {
@@ -353,13 +364,17 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
       } catch (err) {
         const msg = String(err?.message || '').toLowerCase()
 
+        // RLS/permission errors are expected in some environments; treat as warn so
+        // Playwright console-error listeners don't cascade into auth redirects.
+        const isRls = _isRlsError(err)
+
         // Downgrade noisy schema errors to warnings so we don't trip console error listeners
         const isSchemaMissing =
           msg.includes('does not exist') ||
           (msg.includes('user_profiles') && msg.includes('column')) ||
           (msg.includes('user_profiles') && msg.includes('name'))
 
-        const logFn = isSchemaMissing ? console.warn : console.error
+        const logFn = isSchemaMissing || isRls ? console.warn : console.error
         logFn(`getStaff exact query failed (attempt ${attempt}):`, {
           err,
           departments,
@@ -480,7 +495,15 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
       return opts
     } catch (err) {
       if (!handleAuthError(err, 'getStaff')) {
-        console.error('getStaff fuzzy query failed:', { err, departments, roles })
+        if (_isRlsError(err)) {
+          console.warn('getStaff fuzzy query denied by RLS (returning []):', {
+            message: err?.message,
+            departments,
+            roles,
+          })
+        } else {
+          console.error('getStaff fuzzy query failed:', { err, departments, roles })
+        }
       }
       return []
     }

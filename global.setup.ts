@@ -186,12 +186,21 @@ export default async function globalSetup() {
 }
 
 async function associateUserWithE2EOrg() {
-  const connStr = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+  const connStr =
+    process.env.DATABASE_URL ||
+    process.env.SUPABASE_DB_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.DIRECT_URL ||
+    process.env.SUPABASE_DATABASE_URL ||
+    process.env.SUPABASE_POSTGRES_URL
   const e2eEmail = process.env.E2E_EMAIL
   const configuredOrg = process.env.E2E_ORG_ID
 
   if (!connStr) {
-    console.log('[global.setup] DATABASE_URL missing; skipping org association')
+    console.log(
+      '[global.setup] No DB connection env var found (DATABASE_URL/SUPABASE_DB_URL/POSTGRES_URL/DIRECT_URL/etc); skipping org association'
+    )
     return
   }
   if (!e2eEmail) {
