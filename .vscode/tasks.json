@@ -103,6 +103,40 @@
       },
       "problemMatcher": [],
       "group": "test"
+    },
+    {
+      "label": "DB: Supabase Status",
+      "type": "shell",
+      "command": "npx supabase@latest status",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "DB: Push (Migrations)",
+      "type": "shell",
+      "command": "pnpm -s db:push",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "group": "build"
     }
   ]
 }
