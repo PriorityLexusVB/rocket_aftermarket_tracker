@@ -118,7 +118,7 @@ pnpm build
 **Setup:**
 
 1. Start the development server: `pnpm start`
-2. Navigate to http://localhost:5173
+2. Navigate to <http://localhost:5173>
 3. Sign in with any authenticated user in the org
 
 **Steps:**
@@ -158,6 +158,7 @@ pnpm build
 **Steps:**
 
 1. Attempt to delete a deal with ID that doesn't exist (e.g., via browser console):
+
    ```javascript
    // In browser console on deals page
    import { deleteDeal } from './services/dealService'
