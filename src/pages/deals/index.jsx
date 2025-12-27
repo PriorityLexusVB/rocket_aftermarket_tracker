@@ -316,6 +316,7 @@ export default function DealsPage() {
   const [editingDealId, setEditingDealId] = useState(null)
   const [editingDeal, setEditingDeal] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deletingDeal, setDeletingDeal] = useState(false)
 
   // ✅ FIXED: Added missing error state management
   const [error, setError] = useState('')
@@ -415,6 +416,7 @@ export default function DealsPage() {
   // ✅ FIXED: Enhanced delete function with proper error handling
   const handleDeleteDeal = async (dealId) => {
     try {
+      setDeletingDeal(true)
       setError('') // Clear previous errors
       await deleteDeal(dealId)
 
@@ -423,6 +425,8 @@ export default function DealsPage() {
     } catch (e) {
       setError(`Failed to delete deal: ${e?.message}`)
       console.error('Delete error:', e)
+    } finally {
+      setDeletingDeal(false)
     }
   }
 
@@ -1573,6 +1577,7 @@ export default function DealsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            setError('')
                             setDeleteConfirm(deal)
                           }}
                           className="h-9 w-9 rounded flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50"
@@ -1741,6 +1746,7 @@ export default function DealsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => {
+                            setError('')
                             setDeleteConfirm(deal)
                           }}
                           className="h-11 w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
@@ -1850,12 +1856,18 @@ export default function DealsPage() {
                 <p className="text-slate-600 mb-6">
                   Delete deal and its line items? This cannot be undone.
                 </p>
+                {!!error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+                    <div className="text-sm text-red-800">{error}</div>
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setDeleteConfirm(null)}
                     className="flex-1 h-11"
                     aria-label="Cancel deletion"
+                    disabled={deletingDeal}
                   >
                     Cancel
                   </Button>
@@ -1863,8 +1875,9 @@ export default function DealsPage() {
                     onClick={() => handleDeleteDeal(deleteConfirm?.id)}
                     className="flex-1 h-11 bg-red-600 hover:bg-red-700 text-white"
                     aria-label="Confirm deletion"
+                    disabled={deletingDeal}
                   >
-                    Delete
+                    {deletingDeal ? 'Deleting...' : 'Delete'}
                   </Button>
                 </div>
               </div>
