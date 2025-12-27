@@ -6,7 +6,7 @@
  * - staff_can_view_jobs: All staff can view jobs
  * - staff_manage_assigned_jobs: Staff can only edit jobs assigned to them (assigned_to = auth.uid())
  * - managers_manage_jobs: Managers can edit all jobs
- * - managers_manage_job_parts: Only managers can manage job parts
+ * - managers_manage_job_parts: Only managers can update job parts (DELETE may be org-scoped)
  */
 
 import { supabase } from '@/lib/supabase'
@@ -165,7 +165,7 @@ describe('Step 20: RLS & Multi-User Concurrency', () => {
       console.log('✅ Staff User A can view and edit assigned job')
     })
 
-    test('can view job parts but cannot manage them (manager only)', async () => {
+    test('can view job parts but cannot update them (manager only)', async () => {
       // Should be able to view job parts through the RLS policy
       const { data: jobParts, error: viewError } = await supabase
         ?.from('job_parts')
@@ -186,7 +186,7 @@ describe('Step 20: RLS & Multi-User Concurrency', () => {
       expect(updateError)?.toBeTruthy()
       expect(updateError?.message)?.toContain('denied')
 
-      console.log('✅ Staff User A can view but cannot manage job parts')
+      console.log('✅ Staff User A can view but cannot update job parts')
     })
   })
 

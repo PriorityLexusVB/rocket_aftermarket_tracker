@@ -1,33 +1,46 @@
 # Deal Deletion Fix - Verification Guide
 
 ## Overview
-This fix addresses the issue where managers were incorrectly getting "You do not have permission to delete deals." errors when attempting to delete deals. The root cause was missing DELETE RLS policies on the `jobs` and `job_parts` tables.
+
+This fix addresses deal deletion failures caused by overly restrictive/missing DELETE RLS policies on deal-related tables. The end state for this repo is: **any authenticated user in the same org can delete deals** (no role gating).
 
 ## Changes Made
 
-### 1. Database Migration (Required)
-**File:** `supabase/migrations/20251226220653_add_jobs_and_job_parts_delete_policies.sql`
+### 1. Database Migrations (Required)
 
-Added two new RLS policies:
-- `managers can delete jobs` - Allows managers/admins to delete jobs in their org
-- `managers can delete job_parts via jobs` - Allows managers/admins to delete job_parts for jobs in their org
+**Files:**
 
-Both policies use:
-- `is_admin_or_manager()` function to check user role
-- `auth_user_org()` function to verify org scoping
+- `supabase/migrations/20251226220653_add_jobs_and_job_parts_delete_policies.sql` (manager-only DELETE for jobs/job_parts)
+- `supabase/migrations/20251227090000_add_org_scoped_delete_policies.sql` (**org-scoped DELETE** for jobs/job_parts/transactions/communications)
+
+The latest migration adds these RLS policies (additive):
+
+- `org can delete jobs`
+- `org can delete job_parts via jobs`
+- `org can delete transactions`
+- `org can delete communications via jobs`
+
+Notes:
+
+- Policies are additive (Postgres ORs policies for the same command), so leaving the existing manager-only DELETE policies in place is safe.
+- All policies are tenant-scoped via `auth_user_org()` and/or parent job org checks.
 
 ### 2. Application Code Improvements
+
 **File:** `src/services/dealService.js`
 
 Enhanced `deleteDeal()` function to:
+
 - Verify deal exists before attempting deletion (better error messages)
 - Distinguish between "deal not found" vs "permission denied"
 - Maintain existing cascade delete logic (no architectural changes)
 
 ### 3. Test Coverage
+
 **File:** `src/tests/dealService.delete.test.js`
 
 Added 7 comprehensive unit tests covering:
+
 - Missing deal ID validation
 - Deal not found scenarios
 - Permission denied errors
@@ -38,6 +51,7 @@ Added 7 comprehensive unit tests covering:
 ## Automated Verification
 
 ### Run Tests
+
 ```bash
 # Run all unit tests
 pnpm test
@@ -49,6 +63,7 @@ pnpm test src/tests/dealService.delete.test.js
 **Expected Result:** All tests should pass (7/7)
 
 ### Lint Check
+
 ```bash
 pnpm lint
 ```
@@ -56,79 +71,92 @@ pnpm lint
 **Expected Result:** No errors (warnings in unrelated files are acceptable)
 
 ### Build Check
+
 ```bash
 pnpm build
 ```
 
 **Expected Result:** Build completes successfully with no errors
 
-## Manual Verification (After Migration)
+## Manual Verification (After Migrations)
 
 ### Prerequisites
-1. **Apply the migration** to your Supabase database using the Supabase CLI:
+
+1. **Apply migrations** to your Supabase database using the Supabase CLI:
+
    ```bash
    supabase db push
    ```
-   
-   Or manually run the migration SQL file in your Supabase SQL editor:
+
+   Or manually run the migration SQL files in your Supabase SQL editor:
    - Open Supabase Dashboard → SQL Editor
-   - Copy contents of `supabase/migrations/20251226220653_add_jobs_and_job_parts_delete_policies.sql`
-   - Execute the migration
+   - Copy + execute the contents of:
+     - `supabase/migrations/20251226220653_add_jobs_and_job_parts_delete_policies.sql`
+     - `supabase/migrations/20251227090000_add_org_scoped_delete_policies.sql`
 
 2. **Verify policies were created:**
+
    ```sql
-   -- Check jobs DELETE policy
-   SELECT * FROM pg_policies 
-   WHERE schemaname='public' 
-   AND tablename='jobs' 
-   AND policyname='managers can delete jobs';
-   
-   -- Check job_parts DELETE policy
-   SELECT * FROM pg_policies 
-   WHERE schemaname='public' 
-   AND tablename='job_parts' 
-   AND policyname='managers can delete job_parts via jobs';
+    SELECT schemaname, tablename, policyname, cmd
+    FROM pg_policies
+    WHERE schemaname='public'
+       AND policyname IN (
+          'org can delete jobs',
+          'org can delete job_parts via jobs',
+          'org can delete transactions',
+          'org can delete communications via jobs'
+       )
+    ORDER BY tablename, policyname;
    ```
-   
-   **Expected Result:** Both queries should return 1 row each
+
+   **Expected Result:** 4 rows (one per policy)
 
 ### Test Scenarios
 
-#### Scenario 1: Manager Can Delete Deal (Success Case)
+#### Scenario 1: Any Org User Can Delete Deal (Success Case)
+
 **Setup:**
+
 1. Start the development server: `pnpm start`
 2. Navigate to http://localhost:5173
-3. Sign in with a user account that has role='manager' or role='admin'
+3. Sign in with any authenticated user in the org
 
 **Steps:**
+
 1. Navigate to the Deals page
 2. Find any existing deal or create a new test deal
 3. Click the delete icon/button for the deal
 4. Confirm the deletion in the modal
 
 **Expected Result:**
+
 - ✅ Deal is deleted successfully
 - ✅ Success message appears (or deals list refreshes without the deleted deal)
 - ✅ No "You do not have permission to delete deals." error
 
-#### Scenario 2: Non-Manager Cannot Delete (If UI Allows)
+#### Scenario 2: Org Scoping Is Enforced (Different Org)
+
 **Setup:**
-1. Sign in with a user account that has role='staff' or other non-manager role
+
+1. Sign in with a user account that belongs to a different org than the target deal
 
 **Steps:**
-1. Navigate to the Deals page
-2. Check if delete button is visible
+
+1. Attempt to delete a deal in another org
 
 **Expected Result:**
-- ✅ Delete button should be hidden/disabled for non-managers
-- ✅ If somehow triggered, should receive "You do not have permission to delete deals." error
+
+- ✅ Delete fails due to org scoping (RLS)
 
 #### Scenario 3: Deal Not Found (Edge Case)
+
 **Setup:**
+
 1. Sign in as manager/admin
 2. Manually construct a URL or API call to delete a non-existent deal ID
 
 **Steps:**
+
 1. Attempt to delete a deal with ID that doesn't exist (e.g., via browser console):
    ```javascript
    // In browser console on deals page
@@ -137,32 +165,38 @@ pnpm build
    ```
 
 **Expected Result:**
+
 - ✅ Error message: "Deal not found or you do not have access to it."
 - ✅ NOT: "You do not have permission to delete deals."
 
 #### Scenario 4: Cascade Deletion Verification
+
 **Setup:**
+
 1. Create a test deal with:
    - Line items (job_parts)
    - Transactions
    - Loaner assignment (if available)
 
 **Steps:**
+
 1. Note the deal ID
 2. Delete the deal via UI
 3. Verify child records are also deleted:
+
    ```sql
    -- Check no orphaned job_parts
    SELECT * FROM job_parts WHERE job_id = '<deleted-deal-id>';
-   
+
    -- Check no orphaned transactions
    SELECT * FROM transactions WHERE job_id = '<deleted-deal-id>';
-   
+
    -- Check no orphaned loaner_assignments
    SELECT * FROM loaner_assignments WHERE job_id = '<deleted-deal-id>';
    ```
 
 **Expected Result:**
+
 - ✅ All queries return 0 rows (all child records deleted)
 
 ### Browser Console Testing (Quick Verification)
@@ -187,60 +221,69 @@ testDeleteNonExistent()
 ## Rollback Plan (If Issues Occur)
 
 ### 1. Revert Code Changes
-```bash
-git revert 5ea13c8  # Revert the commit
-git push origin copilot/fix-deal-deletion-permission-error
-```
+
+Revert the application code commit(s) that introduced the deletion behavior changes.
 
 ### 2. Remove Database Policies (Manual)
+
 Run this SQL in Supabase SQL Editor:
+
 ```sql
--- Drop the added policies
-DROP POLICY IF EXISTS "managers can delete jobs" ON public.jobs;
-DROP POLICY IF EXISTS "managers can delete job_parts via jobs" ON public.job_parts;
+-- Drop the org-scoped policies
+DROP POLICY IF EXISTS "org can delete jobs" ON public.jobs;
+DROP POLICY IF EXISTS "org can delete job_parts via jobs" ON public.job_parts;
+DROP POLICY IF EXISTS "org can delete transactions" ON public.transactions;
+DROP POLICY IF EXISTS "org can delete communications via jobs" ON public.communications;
 
 -- Reload schema cache
 NOTIFY pgrst, 'reload schema';
 ```
 
 ## Performance Impact
+
 - **Minimal:** RLS policy checks are indexed and cached
 - **No schema changes:** Only added policies, no columns or indexes modified
 - **No data migration:** No existing data is modified
 
 ## Security Impact
-- **Improved:** More granular control over delete operations
-- **Org-scoped:** Policies enforce org isolation even for admins
-- **Role-based:** Only manager/admin roles can delete (consistent with other delete policies)
+
+- **Intentional broadening:** Any authenticated org member can delete deals.
+- **Org-scoped:** Policies enforce org isolation.
 
 ## Common Issues & Troubleshooting
 
 ### Issue: "You do not have permission to delete deals." still appears
+
 **Possible Causes:**
+
 1. Migration not applied yet
-2. User profile role is not 'manager' or 'admin'
+2. User is not in the same org as the deal
 3. Schema cache not reloaded
 
 **Solutions:**
+
 1. Verify migration was applied (check pg_policies)
 2. Check user role: `SELECT role FROM user_profiles WHERE id = auth.uid();`
 3. Reload schema cache: `NOTIFY pgrst, 'reload schema';`
 
 ### Issue: "Deal not found or you do not have access to it."
+
 **Possible Causes:**
+
 1. Deal doesn't exist
 2. Deal belongs to different org than user
 3. SELECT RLS policy blocking read access
 
 **Solutions:**
+
 1. Verify deal exists and org_id matches user's org_id
 2. Check SELECT RLS policies on jobs table
 
 ## Success Criteria
-- ✅ Managers can delete deals without permission errors
-- ✅ Non-managers cannot delete deals (UI prevents + server enforces)
+
+- ✅ Any org member can delete deals without permission errors
+- ✅ Org scoping is maintained (users can only delete deals in their org)
 - ✅ Accurate error messages (not found vs permission denied)
 - ✅ Cascade deletion works (child records deleted)
 - ✅ All automated tests pass
 - ✅ No build or lint errors
-- ✅ Org scoping is maintained (users can only delete deals in their org)
