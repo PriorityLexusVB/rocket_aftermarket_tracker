@@ -14,6 +14,7 @@ import {
 import AppLayout from '../../components/layouts/AppLayout'
 import { calendarService } from '../../services/calendarService'
 import { vendorService } from '../../services/vendorService'
+import useTenant from '@/hooks/useTenant'
 import QuickFilters from './components/QuickFilters'
 
 import UnassignedQueue from './components/UnassignedQueue'
@@ -53,16 +54,7 @@ const CalendarFlowManagementCenter = () => {
   // Drag and drop
   const [draggedJob, setDraggedJob] = useState(null)
 
-  // Load initial data
-  useEffect(() => {
-    loadCalendarData()
-    loadVendors()
-  }, [loadCalendarData, loadVendors])
-
-  // Apply filters whenever filters or original data change
-  useEffect(() => {
-    applyFilters()
-  }, [applyFilters])
+  const { orgId, loading: tenantLoading } = useTenant()
 
   const getViewStartDate = useCallback(() => {
     const date = new Date(currentDate)
@@ -105,6 +97,12 @@ const CalendarFlowManagementCenter = () => {
   }, [getViewStartDate, viewMode])
 
   const loadCalendarData = useCallback(async () => {
+    if (tenantLoading || !orgId) {
+      setOriginalJobs([])
+      setOriginalUnassignedJobs([])
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const startDate = getViewStartDate()
@@ -115,6 +113,7 @@ const CalendarFlowManagementCenter = () => {
         startDate,
         endDate,
         {
+          orgId,
           vendorId: filters?.vendors?.length > 0 ? filters?.vendors?.[0] : null,
           // Removed status filter to load all jobs for client-side filtering
         }
@@ -133,18 +132,7 @@ const CalendarFlowManagementCenter = () => {
     } finally {
       setLoading(false)
     }
-  }, [filters, getViewEndDate, getViewStartDate])
-
-  // New centralized filter application function
-  const applyFilters = useCallback(() => {
-    // Apply filters to assigned jobs
-    const filteredAssigned = applyFiltersToJobList(originalJobs)
-    setFilteredJobs(filteredAssigned)
-
-    // Apply filters to unassigned jobs
-    const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs)
-    setFilteredUnassignedJobs(filteredUnassigned)
-  }, [applyFiltersToJobList, originalJobs, originalUnassignedJobs])
+  }, [filters, getViewEndDate, getViewStartDate, orgId, tenantLoading])
 
   // Enhanced filter application function
   const applyFiltersToJobList = useCallback(
@@ -197,16 +185,42 @@ const CalendarFlowManagementCenter = () => {
     [filters]
   )
 
+  // New centralized filter application function
+  const applyFilters = useCallback(() => {
+    // Apply filters to assigned jobs
+    const filteredAssigned = applyFiltersToJobList(originalJobs)
+    setFilteredJobs(filteredAssigned)
+
+    // Apply filters to unassigned jobs
+    const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs)
+    setFilteredUnassignedJobs(filteredUnassigned)
+  }, [applyFiltersToJobList, originalJobs, originalUnassignedJobs])
+
   const loadVendors = useCallback(async () => {
     try {
-      const { data: vendorsData } = await vendorService?.getVendors({ is_active: true })
-      if (vendorsData) {
-        setVendors(vendorsData)
+      if (tenantLoading || !orgId) {
+        setVendors([])
+        return
       }
+      const vendorsData = await vendorService?.getAllVendors?.(orgId)
+      setVendors((vendorsData || [])?.filter((v) => v?.is_active))
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
-  }, [])
+  }, [orgId, tenantLoading])
+
+  // Load initial data
+  useEffect(() => {
+    if (tenantLoading) return
+    if (!orgId) return
+    loadCalendarData()
+    loadVendors()
+  }, [loadCalendarData, loadVendors, orgId, tenantLoading])
+
+  // Apply filters whenever filters or original data change
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
 
   const handleJobClick = (job) => {
     setSelectedJob(job)

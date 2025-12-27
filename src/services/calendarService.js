@@ -10,12 +10,30 @@ export const calendarService = {
    */
   async getJobsByDateRange(startDate, endDate, filters = {}) {
     try {
-      const { data, error } = await supabase?.rpc('get_jobs_by_date_range', {
+      const baseArgs = {
         start_date: startDate?.toISOString(),
         end_date: endDate?.toISOString(),
         vendor_filter: filters?.vendorId || null,
         status_filter: filters?.status || null,
-      })
+      }
+
+      // Best-effort tenant scoping: try org_id first; if the RPC signature doesn't support it, retry without.
+      const orgId = filters?.orgId || null
+      const { data, error } = orgId
+        ? await supabase
+            ?.rpc('get_jobs_by_date_range', { ...baseArgs, org_id: orgId })
+            ?.catch(async (e) => {
+              const msg = String(e?.message || '').toLowerCase()
+              if (
+                msg.includes('function') ||
+                msg.includes('parameter') ||
+                msg.includes('argument')
+              ) {
+                return await supabase?.rpc('get_jobs_by_date_range', baseArgs)
+              }
+              throw e
+            })
+        : await supabase?.rpc('get_jobs_by_date_range', baseArgs)
 
       if (error) {
         throw error

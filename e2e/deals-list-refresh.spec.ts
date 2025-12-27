@@ -76,7 +76,6 @@ test.describe('Deals List Refresh After Edit', () => {
       await expect(description).toBeVisible()
       await description.fill(`E2E Refresh Test ${Date.now()}`)
 
-      const vendor = page.getByTestId('vendor-select')
       // Avoid selecting vendor here: some environments enforce vendor scheduling at DB layer,
       // and Deal Form V1 does not expose appointment start/end inputs.
 

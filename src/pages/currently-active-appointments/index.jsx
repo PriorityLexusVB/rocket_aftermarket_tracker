@@ -12,9 +12,10 @@ import {
   CheckCheck,
   UserPlus,
 } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 import AppLayout from '../../components/layouts/AppLayout'
 import { useNavigate } from 'react-router-dom'
+import useTenant from '@/hooks/useTenant'
+import { appointmentsService } from '@/services/appointmentsService'
 
 // Import components
 import AppointmentCard from './components/AppointmentCard'
@@ -27,18 +28,36 @@ import AssignmentQuickPanel from './components/AssignmentQuickPanel'
 
 const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
 
-const CurrentlyActiveAppointments = () => {
-  // Feature-flagged simplified snapshot: early return before legacy workflow logic mounts
-  if (SNAPSHOT_ON) {
-    return (
-      <AppLayout>
-        <SnapshotView />
-      </AppLayout>
-    )
-  }
-  /* eslint-disable react-hooks/rules-of-hooks */
-  // Legacy: All hooks after conditional return. Refactor to split components when snapshot becomes default.
+const NoOrgState = ({ onGoDebugAuth }) => {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="max-w-xl w-full rounded-lg border border-amber-200 bg-amber-50 p-6">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="h-6 w-6 text-amber-700" />
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-amber-900">No organization found</h2>
+            <p className="mt-1 text-sm text-amber-800">
+              You’re signed in, but we couldn’t determine your organization. Ask an admin to assign
+              your account to an org.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={onGoDebugAuth}
+                className="inline-flex items-center gap-2 rounded-md bg-amber-700 px-3 py-2 text-sm font-medium text-white hover:bg-amber-800"
+              >
+                View debug auth
+                <ArrowUpRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
+const CurrentlyActiveAppointmentsLegacy = () => {
   const [appointments, setAppointments] = useState([])
   const [originalAppointments, setOriginalAppointments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -61,193 +80,80 @@ const CurrentlyActiveAppointments = () => {
   const [performanceMetrics, setPerformanceMetrics] = useState({})
 
   const navigate = useNavigate()
+  const { orgId, loading: tenantLoading } = useTenant()
 
-  useEffect(() => {
-    loadAppointments()
-    loadVendors()
-    loadStaffMembers()
-    loadUnassignedJobs()
-    loadPerformanceMetrics()
-
-    // Set up real-time subscription for job updates
-    const subscription = supabase
-      ?.channel('job_updates')
-      ?.on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => {
-        loadAppointments()
-        loadUnassignedJobs()
-        loadPerformanceMetrics()
-      })
-      ?.subscribe()
-
-    return () => {
-      subscription?.unsubscribe()
-    }
-  }, [loadAppointments, loadPerformanceMetrics, loadStaffMembers, loadUnassignedJobs, loadVendors])
-
-  useEffect(() => {
-    applyFilters()
-  }, [applyFilters])
+  const canQuery = Boolean(orgId) && tenantLoading === false
 
   const loadStaffMembers = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('user_profiles')
-        ?.select('id, full_name, email, role, department')
-        ?.eq('is_active', true)
-        ?.order('full_name')
-
+      if (!canQuery) {
+        setStaffMembers([])
+        return
+      }
+      const { data, error } = await appointmentsService.listStaff({ orgId })
       if (error) throw error
       setStaffMembers(data || [])
     } catch (error) {
       console.error('Error loading staff members:', error)
     }
-  }, [])
+  }, [canQuery, orgId])
 
   const loadUnassignedJobs = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('jobs')
-        ?.select(
-          `
-          *,
-          vehicles (
-            id, stock_number, year, make, model, owner_name
-          ),
-          vendors (
-            id, name
-          )
-        `
-        )
-        ?.is('assigned_to', null)
-        ?.eq('job_status', 'pending')
-        ?.order('created_at', { ascending: false })
-        ?.limit(10)
-
+      if (!canQuery) {
+        setUnassignedJobs([])
+        return
+      }
+      const { data, error } = await appointmentsService.listUnassignedJobs({ orgId, limit: 10 })
       if (error) throw error
       setUnassignedJobs(data || [])
     } catch (error) {
       console.error('Error loading unassigned jobs:', error)
     }
-  }, [])
+  }, [canQuery, orgId])
 
   const loadPerformanceMetrics = useCallback(async () => {
     try {
-      // Get today's metrics
-      const today = new Date()?.toISOString()?.split('T')?.[0]
-
-      const { data: todayJobs, error: todayError } = await supabase
-        ?.from('jobs')
-        ?.select('job_status, created_at, completed_at')
-        ?.gte('created_at', `${today}T00:00:00Z`)
-        ?.lte('created_at', `${today}T23:59:59Z`)
-
-      if (todayError) throw todayError
-
-      // Get this week's metrics
-      const weekStart = new Date()
-      weekStart?.setDate(weekStart?.getDate() - weekStart?.getDay())
-      const weekStartStr = weekStart?.toISOString()?.split('T')?.[0]
-
-      const { data: weekJobs, error: weekError } = await supabase
-        ?.from('jobs')
-        ?.select('job_status, created_at, completed_at')
-        ?.gte('created_at', `${weekStartStr}T00:00:00Z`)
-
-      if (weekError) throw weekError
-
-      // Calculate metrics
-      const todayCompleted =
-        todayJobs?.filter((job) => job?.job_status === 'completed')?.length || 0
-      const todayTotal = todayJobs?.length || 0
-      const weekCompleted = weekJobs?.filter((job) => job?.job_status === 'completed')?.length || 0
-      const weekTotal = weekJobs?.length || 0
-
-      // Average completion time (in hours)
-      const completedJobs = weekJobs?.filter(
-        (job) => job?.job_status === 'completed' && job?.completed_at && job?.created_at
-      )
-      const avgCompletionTime =
-        completedJobs?.length > 0
-          ? completedJobs?.reduce((sum, job) => {
-              const start = new Date(job?.created_at)
-              const end = new Date(job?.completed_at)
-              return sum + (end - start) / (1000 * 60 * 60) // Convert to hours
-            }, 0) / completedJobs?.length
-          : 0
-
-      setPerformanceMetrics({
-        todayCompleted,
-        todayTotal,
-        todayCompletionRate: todayTotal > 0 ? (todayCompleted / todayTotal) * 100 : 0,
-        weekCompleted,
-        weekTotal,
-        weekCompletionRate: weekTotal > 0 ? (weekCompleted / weekTotal) * 100 : 0,
-        avgCompletionTime: Math?.round(avgCompletionTime * 100) / 100,
-      })
+      if (!canQuery) {
+        setPerformanceMetrics({})
+        return
+      }
+      const { data, error } = await appointmentsService.getPerformanceMetrics({ orgId })
+      if (error) throw error
+      setPerformanceMetrics(data || {})
     } catch (error) {
       console.error('Error loading performance metrics:', error)
     }
-  }, [])
+  }, [canQuery, orgId])
 
   const loadVendors = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('vendors')
-        ?.select('id, name')
-        ?.eq('is_active', true)
-        ?.order('name')
-
+      if (!canQuery) {
+        setVendors([])
+        return
+      }
+      const { data, error } = await appointmentsService.listVendors({ orgId })
       if (error) throw error
       setVendors(data || [])
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
-  }, [])
+  }, [canQuery, orgId])
 
   const loadAppointments = useCallback(async () => {
     try {
+      if (!canQuery) {
+        setOriginalAppointments([])
+        setAppointments([])
+        return
+      }
       setLoading(true)
 
-      const { data, error } = await supabase
-        ?.from('jobs')
-        ?.select(
-          `
-          *,
-          vehicles (
-            id, stock_number, year, make, model, color, owner_name, 
-            owner_phone, owner_email, license_plate
-          ),
-          vendors (
-            id, name, phone, email, specialty, contact_person
-          ),
-          assigned_to_profile:user_profiles!assigned_to (
-            id, full_name, email, phone
-          ),
-          created_by_profile:user_profiles!created_by (
-            id, full_name, email
-          )
-        `
-        )
-        ?.in('job_status', ['pending', 'in_progress', 'scheduled', 'quality_check'])
-        ?.order('scheduled_start_time', { ascending: true })
-
+      const { data, error } = await appointmentsService.listActiveAppointments({ orgId })
       if (error) throw error
-
-      // Fetch active loaner assignments for these jobs to surface a Loaner badge
-      const jobIds = (data || []).map((j) => j?.id).filter(Boolean)
-      let loaners = []
-      if (jobIds.length) {
-        const { data: loanerRows } = await supabase
-          ?.from('loaner_assignments')
-          ?.select('job_id, id')
-          ?.in('job_id', jobIds)
-          ?.is('returned_at', null)
-        loaners = loanerRows || []
-      }
 
       const processedData = (data || [])?.map((job) => ({
         ...job,
-        has_active_loaner: !!loaners.find((l) => l?.job_id === job?.id)?.id,
         isOverdue: job?.promised_date && new Date(job?.promised_date) < new Date(),
         statusConfig: getStatusConfig(job?.job_status),
         priorityConfig: getPriorityConfig(job?.priority),
@@ -260,7 +166,7 @@ const CurrentlyActiveAppointments = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canQuery, orgId])
 
   const applyFilters = useCallback(() => {
     let filtered = [...originalAppointments]
@@ -302,6 +208,56 @@ const CurrentlyActiveAppointments = () => {
 
     setAppointments(filtered)
   }, [originalAppointments, priorityFilter, searchQuery, statusFilter, vendorFilter])
+
+  useEffect(() => {
+    if (tenantLoading) return
+    if (!orgId) return
+
+    loadAppointments()
+    loadVendors()
+    loadStaffMembers()
+    loadUnassignedJobs()
+    loadPerformanceMetrics()
+
+    // Set up real-time subscription for job updates
+    const subscription = appointmentsService.subscribeJobUpdates(() => {
+      loadAppointments()
+      loadUnassignedJobs()
+      loadPerformanceMetrics()
+    })
+
+    return () => {
+      subscription?.unsubscribe()
+    }
+  }, [
+    loadAppointments,
+    loadPerformanceMetrics,
+    loadStaffMembers,
+    loadUnassignedJobs,
+    loadVendors,
+    orgId,
+    tenantLoading,
+  ])
+
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
+
+  if (tenantLoading) {
+    return (
+      <AppLayout>
+        <div className="p-6 text-sm text-gray-600">Loading…</div>
+      </AppLayout>
+    )
+  }
+
+  if (!orgId) {
+    return (
+      <AppLayout>
+        <NoOrgState onGoDebugAuth={() => navigate('/debug-auth')} />
+      </AppLayout>
+    )
+  }
 
   const getStatusConfig = (status) => {
     const configs = {
@@ -372,14 +328,11 @@ const CurrentlyActiveAppointments = () => {
 
   const handleUpdateStatus = async (appointmentId, newStatus) => {
     try {
-      const { error } = await supabase
-        ?.from('jobs')
-        ?.update({
-          job_status: newStatus,
-          updated_at: new Date()?.toISOString(),
-        })
-        ?.eq('id', appointmentId)
-
+      const { error } = await appointmentsService.updateJobStatus({
+        jobId: appointmentId,
+        status: newStatus,
+        orgId,
+      })
       if (error) throw error
 
       loadAppointments()
@@ -393,14 +346,11 @@ const CurrentlyActiveAppointments = () => {
 
     try {
       const appointmentIds = Array?.from(selectedAppointments)
-      const { error } = await supabase
-        ?.from('jobs')
-        ?.update({
-          job_status: status,
-          updated_at: new Date()?.toISOString(),
-        })
-        ?.in('id', appointmentIds)
-
+      const { error } = await appointmentsService.bulkUpdateJobStatus({
+        jobIds: appointmentIds,
+        status,
+        orgId,
+      })
       if (error) throw error
 
       setSelectedAppointments(new Set())
@@ -415,14 +365,11 @@ const CurrentlyActiveAppointments = () => {
 
     try {
       const appointmentIds = Array?.from(selectedAppointments)
-      const { error } = await supabase
-        ?.from('jobs')
-        ?.update({
-          assigned_to: staffId,
-          updated_at: new Date()?.toISOString(),
-        })
-        ?.in('id', appointmentIds)
-
+      const { error } = await appointmentsService.bulkAssignJobs({
+        jobIds: appointmentIds,
+        staffId,
+        orgId,
+      })
       if (error) throw error
 
       setSelectedAppointments(new Set())
@@ -435,15 +382,7 @@ const CurrentlyActiveAppointments = () => {
 
   const handleQuickAssignJob = async (jobId, staffId) => {
     try {
-      const { error } = await supabase
-        ?.from('jobs')
-        ?.update({
-          assigned_to: staffId,
-          job_status: 'pending', // Changed from 'scheduled' - job is assigned but not yet scheduled on calendar
-          updated_at: new Date()?.toISOString(),
-        })
-        ?.eq('id', jobId)
-
+      const { error } = await appointmentsService.quickAssignJob({ jobId, staffId, orgId })
       if (error) throw error
 
       loadUnassignedJobs()
@@ -713,7 +652,18 @@ const CurrentlyActiveAppointments = () => {
       </div>
     </AppLayout>
   )
-  /* eslint-enable react-hooks/rules-of-hooks */
+}
+
+const CurrentlyActiveAppointments = () => {
+  if (SNAPSHOT_ON) {
+    return (
+      <AppLayout>
+        <SnapshotView />
+      </AppLayout>
+    )
+  }
+
+  return <CurrentlyActiveAppointmentsLegacy />
 }
 
 export default CurrentlyActiveAppointments

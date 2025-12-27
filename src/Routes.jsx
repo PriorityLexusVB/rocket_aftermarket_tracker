@@ -111,16 +111,18 @@ const Routes = () => {
                   </ProtectedRoute>
                 }
               />
-              {SimpleAgendaEnabled && (
-                <Route
-                  path="/calendar/agenda"
-                  element={
-                    <ProtectedRoute>
+              <Route
+                path="/calendar/agenda"
+                element={
+                  <ProtectedRoute>
+                    {SimpleAgendaEnabled ? (
                       <CalendarAgenda />
-                    </ProtectedRoute>
-                  }
-                />
-              )}
+                    ) : (
+                      <Navigate to="/calendar-flow-management-center" replace />
+                    )}
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/currently-active-appointments"
                 element={
