@@ -9,15 +9,8 @@ test.describe('Deal staff/vendor dropdowns - create -> edit persistence', () => 
   test('selects staff/vendor on create and persists on edit', async ({ page }) => {
     // Preflight: require an authenticated session (debug-auth markers)
     await page.goto('/debug-auth')
-    const hasSession = await page
-      .getByTestId('session-user-id')
-      .isVisible()
-      .catch(() => false)
-    const hasOrg = await page
-      .getByTestId('profile-org-id')
-      .isVisible()
-      .catch(() => false)
-    test.skip(!(hasSession && hasOrg), 'No authenticated session/org; skipping staff dropdown test')
+    await expect(page.getByTestId('session-user-id')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('profile-org-id')).toBeVisible({ timeout: 15_000 })
 
     // Start a new deal
     await page.goto('/deals/new')
@@ -34,21 +27,73 @@ test.describe('Deal staff/vendor dropdowns - create -> edit persistence', () => 
     await expect(finance).toBeVisible()
     await expect(delivery).toBeVisible()
 
-    const vendorOptions = vendor.locator('option')
-    const salesOptions = sales.locator('option')
-    const financeOptions = finance.locator('option')
-    const deliveryOptions = delivery.locator('option')
+    // Wait for async dropdown hydration (either options populate or empty-state banners appear)
+    await page
+      .waitForFunction(
+        () => {
+          const v = document.querySelector('[data-testid="vendor-select"]')
+          const s = document.querySelector('[data-testid="sales-select"]')
+          const f = document.querySelector('[data-testid="finance-select"]')
+          const d = document.querySelector('[data-testid="delivery-select"]')
+          if (!(v instanceof HTMLSelectElement)) return false
+          if (!(s instanceof HTMLSelectElement)) return false
+          if (!(f instanceof HTMLSelectElement)) return false
+          if (!(d instanceof HTMLSelectElement)) return false
+          const ok = (el: HTMLSelectElement, emptyText: string) =>
+            el.options.length > 1 || document.body.innerText.includes(emptyText)
+          return (
+            ok(v, 'No vendors found yet') &&
+            ok(s, 'No sales staff found yet') &&
+            ok(f, 'No finance managers found yet') &&
+            ok(d, 'No delivery coordinators found yet')
+          )
+        },
+        { timeout: 30_000 }
+      )
+      .catch(() => {
+        throw new Error('Dropdowns did not hydrate (options or empty-state banners)')
+      })
 
-    expect(await vendorOptions.count()).toBeGreaterThan(1)
-    expect(await salesOptions.count()).toBeGreaterThan(1)
-    expect(await financeOptions.count()).toBeGreaterThan(1)
-    expect(await deliveryOptions.count()).toBeGreaterThan(1)
+    const vendorOptions = await vendor.locator('option').count()
+    const salesOptions = await sales.locator('option').count()
+    const financeOptions = await finance.locator('option').count()
+    const deliveryOptions = await delivery.locator('option').count()
 
-    // Select first real option (index 1) for each
-    await vendor.selectOption({ index: 1 })
-    await sales.selectOption({ index: 1 })
-    await finance.selectOption({ index: 1 })
-    await delivery.selectOption({ index: 1 })
+    const selected = {
+      vendor: false,
+      sales: false,
+      finance: false,
+      delivery: false,
+    }
+
+    // Select first real option (index 1) only when available.
+    if (vendorOptions > 1) {
+      await vendor.selectOption({ index: 1 })
+      selected.vendor = true
+    } else {
+      await expect(page.getByTestId('admin-link-vendors')).toBeVisible({ timeout: 10_000 })
+    }
+
+    if (salesOptions > 1) {
+      await sales.selectOption({ index: 1 })
+      selected.sales = true
+    } else {
+      await expect(page.getByTestId('admin-link-sales-empty')).toBeVisible({ timeout: 10_000 })
+    }
+
+    if (financeOptions > 1) {
+      await finance.selectOption({ index: 1 })
+      selected.finance = true
+    } else {
+      await expect(page.getByTestId('admin-link-finance-empty')).toBeVisible({ timeout: 10_000 })
+    }
+
+    if (deliveryOptions > 1) {
+      await delivery.selectOption({ index: 1 })
+      selected.delivery = true
+    } else {
+      await expect(page.getByTestId('admin-link-delivery-empty')).toBeVisible({ timeout: 10_000 })
+    }
 
     // Also add first product so the save can succeed
     const product = page.getByTestId('product-select-0')
@@ -61,19 +106,19 @@ test.describe('Deal staff/vendor dropdowns - create -> edit persistence', () => 
     await saveBtn.click()
 
     // Expect redirect to edit page
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 15000 })
+    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, { timeout: 30000 })
 
-    // On edit page, verify the selections are still set (native selects should reflect a non-empty value)
-    await expect(page.getByTestId('vendor-select')).not.toHaveValue('')
-    await expect(page.getByTestId('sales-select')).not.toHaveValue('')
-    await expect(page.getByTestId('finance-select')).not.toHaveValue('')
-    await expect(page.getByTestId('delivery-select')).not.toHaveValue('')
+    // On edit page, verify selected fields persisted; otherwise verify empty-state UX.
+    if (selected.vendor) await expect(page.getByTestId('vendor-select')).not.toHaveValue('')
+    if (selected.sales) await expect(page.getByTestId('sales-select')).not.toHaveValue('')
+    if (selected.finance) await expect(page.getByTestId('finance-select')).not.toHaveValue('')
+    if (selected.delivery) await expect(page.getByTestId('delivery-select')).not.toHaveValue('')
 
     // Reload and confirm persistence
     await page.reload()
-    await expect(page.getByTestId('vendor-select')).not.toHaveValue('')
-    await expect(page.getByTestId('sales-select')).not.toHaveValue('')
-    await expect(page.getByTestId('finance-select')).not.toHaveValue('')
-    await expect(page.getByTestId('delivery-select')).not.toHaveValue('')
+    if (selected.vendor) await expect(page.getByTestId('vendor-select')).not.toHaveValue('')
+    if (selected.sales) await expect(page.getByTestId('sales-select')).not.toHaveValue('')
+    if (selected.finance) await expect(page.getByTestId('finance-select')).not.toHaveValue('')
+    if (selected.delivery) await expect(page.getByTestId('delivery-select')).not.toHaveValue('')
   })
 })

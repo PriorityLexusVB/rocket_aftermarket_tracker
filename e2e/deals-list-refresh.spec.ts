@@ -38,6 +38,9 @@ async function waitForEditOpen(page: Page) {
       { timeout: 30_000 }
     )
     .toBe(true)
+
+  // Ensure the form is actually mounted before tests interact with step buttons.
+  await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 20_000 })
 }
 
 async function goToLineItems(page: Page) {
@@ -48,7 +51,8 @@ async function goToLineItems(page: Page) {
   }
 
   const saveBtn = page.getByTestId('save-deal-btn')
-  await expect(saveBtn).toBeVisible()
+  await saveBtn.scrollIntoViewIfNeeded().catch(() => {})
+  await expect(saveBtn).toBeVisible({ timeout: 20_000 })
   return saveBtn
 }
 

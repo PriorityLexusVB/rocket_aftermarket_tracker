@@ -84,6 +84,102 @@ pnpm dev
 
 ## Production Deployment
 
+## Production Readiness Checklist (Must-Pass)
+
+Use this as the final gate before considering Production “healthy”. It is optimized for the real failure modes we’ve seen in this repo:
+
+- PostgREST schema-cache drift (missing relationship/columns)
+- RLS deletes that affect 0 rows (silent no-op)
+- Schema drift in `user_profiles` display columns (e.g. missing `name`)
+
+### 1) Supabase migrations applied
+
+- Apply latest migrations to the target Supabase project:
+
+```bash
+supabase link --project-ref <project-id>
+supabase db push
+```
+
+- Verify the latest migration is present:
+
+```sql
+select * from supabase_migrations.schema_migrations order by version desc;
+```
+
+### 2) Reload PostgREST schema cache (critical after relationships/columns)
+
+Run this in Supabase SQL editor (Production):
+
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+
+This is the first step anytime you see errors like:
+
+- “Could not find a relationship … in the schema cache”
+- “column … does not exist” right after a migration
+
+### 3) Vercel environment variables
+
+Set in Vercel → Project Settings → Environment Variables (Production + Preview):
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+Optional but recommended:
+
+- `VITE_SIMPLE_CALENDAR=true` (if you expect `/calendar/agenda`)
+- `VITE_DEAL_FORM_V2=true` (recommended default)
+
+### 4) Health endpoints (quick drift detectors)
+
+Hit these endpoints in Production (browser or curl). All are expected to return HTTP 200 with a JSON body.
+
+- `/api/health-user-profiles`
+  - Detects which `user_profiles` display columns exist (`name`, `full_name`, `display_name`).
+  - If your org’s schema does not have `user_profiles.name`, this endpoint should report `name: false`.
+- `/api/health-deals-rel`
+  - Validates nested relationships for deals: `jobs -> job_parts -> vendors`.
+  - If it reports `stale_cache`, run the schema reload (Step 2).
+
+### 5) Verify RLS deletes truly delete (no silent “0 rows affected”)
+
+Perform a real delete from the UI (e.g. delete a deal/job) and confirm:
+
+- The UI shows success.
+- Refreshing the list does not show the row.
+- Opening the URL for the deleted row fails/404s.
+
+If you have direct SQL access, confirm the row is gone:
+
+```sql
+select id from jobs where id = '<JOB_ID_YOU_DELETED>';
+select id from job_parts where job_id = '<JOB_ID_YOU_DELETED>';
+select id from transactions where job_id = '<JOB_ID_YOU_DELETED>';
+```
+
+If the UI reports success but rows remain, treat it as an RLS policy issue.
+
+### 6) Verify `/auth` does not spam PostgREST 400s
+
+Open `/auth` in Production and check the network tab.
+
+- Expected: no repeated 400s like `column user_profiles.name does not exist`.
+- Note: the client caches profile-column capabilities in `sessionStorage`.
+  - The cache is versioned; on deploy the app should auto-reprobe via `/api/health-user-profiles`.
+  - If you are diagnosing on an old tab that has been open a long time, do a hard refresh.
+
+### 7) Local verification before pushing to Production
+
+From repo root:
+
+```bash
+pnpm test
+pnpm build
+pnpm e2e --project=chromium
+```
+
 ### Supabase Setup
 
 1. **Create Project**

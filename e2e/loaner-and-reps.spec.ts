@@ -55,18 +55,24 @@ test('edit deal: reps visible and loaner checkbox toggles once', async ({ page }
   await ensureAuth(page)
 
   await page.goto('/deals')
+  await page.waitForLoadState('networkidle')
 
-  // Try to open the first Edit modal
-  const editButtons = page.getByRole('button', { name: 'Edit deal' })
-  const count = await editButtons.count()
-  if (count === 0) {
+  // Navigate directly to edit page of first visible deal row.
+  let firstRow = page.locator('[data-testid^="deal-row-"]').first()
+  const hasRow = await firstRow.isVisible().catch(() => false)
+  if (!hasRow) {
     await createMinimalDeal(page, `E2E Reps Edit ${Date.now()}`)
     await page.goto('/deals')
     await page.waitForLoadState('networkidle')
+    firstRow = page.locator('[data-testid^="deal-row-"]').first()
+    await expect(firstRow).toBeVisible({ timeout: 15_000 })
   }
 
-  await expect(editButtons.first()).toBeVisible({ timeout: 10_000 })
-  await editButtons.first().click()
+  const dealTestId = await firstRow.getAttribute('data-testid')
+  const dealId = dealTestId?.replace('deal-row-', '')
+  if (!dealId) throw new Error('Unable to derive deal id from first row')
+  await page.goto(`/deals/${dealId}/edit`, { waitUntil: 'domcontentloaded' })
+  await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 20_000 })
 
   // The modal should appear; verify reps blocks exist
   await expect(page.getByTestId('sales-select')).toBeVisible()
