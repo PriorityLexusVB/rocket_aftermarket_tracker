@@ -3,9 +3,28 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    return {
+      supabase: null,
+      env: {
+        hasSupabaseUrl: Boolean(supabaseUrl),
+        hasSupabaseKey: Boolean(supabaseKey),
+      },
+    }
+  }
+
+  return {
+    supabase: createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } }),
+    env: {
+      hasSupabaseUrl: true,
+      hasSupabaseKey: true,
+    },
+  }
+}
 
 // Allowed column names to prevent SQL injection.
 // NOTE: Currently column names are hardcoded in the handler (lines 42-44) and only
@@ -29,6 +48,9 @@ async function check(col) {
   }
 
   try {
+    const { supabase } = getSupabase()
+    if (!supabase) return null
+
     const { error } = await supabase.from('user_profiles').select(`id, ${col}`).limit(1)
     // If no error, column exists
     if (!error) return true
@@ -79,6 +101,17 @@ export default async function handler(req, res) {
   const started = Date.now()
   const columns = { name: null, full_name: null, display_name: null }
   try {
+    const { supabase, env } = getSupabase()
+    if (!supabase) {
+      return sendJson(res, 200, {
+        ok: false,
+        classification: 'misconfigured',
+        columns,
+        env,
+        ms: Date.now() - started,
+      })
+    }
+
     columns.name = await check('name')
     columns.full_name = await check('full_name')
     columns.display_name = await check('display_name')
@@ -86,7 +119,7 @@ export default async function handler(req, res) {
     const classification = ok ? 'ok' : 'missing_all'
     return sendJson(res, 200, { ok, classification, columns, ms: Date.now() - started })
   } catch (e) {
-    return sendJson(res, 500, {
+    return sendJson(res, 200, {
       ok: false,
       classification: 'error',
       columns,

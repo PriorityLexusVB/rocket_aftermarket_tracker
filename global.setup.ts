@@ -23,6 +23,8 @@ export default async function globalSetup() {
   const storageDir = path.join(process.cwd(), 'e2e')
   const storagePath = path.join(storageDir, 'storageState.json')
 
+  const seen5xx = new Set<string>()
+
   const browser = await chromium.launch()
   const storageExists = await fs
     .stat(storagePath)
@@ -45,8 +47,23 @@ export default async function globalSetup() {
   page.on('response', (res) => {
     try {
       const url = res.url()
+      const status = res.status()
+
+      // Always surface 5xx so we can identify noisy failing endpoints.
+      if (status >= 500) {
+        const key = `${status} ${url}`
+        if (!seen5xx.has(key)) {
+          seen5xx.add(key)
+          const req = res.request()
+          const method = req.method()
+          const rt = req.resourceType()
+          console.warn(`[setup:response:5xx] ${status} ${method} ${rt} ${url}`)
+        }
+        return
+      }
+
       if (/(auth|supabase)\//i.test(url)) {
-        console.log(`[setup:response] ${res.status()} ${url}`)
+        console.log(`[setup:response] ${status} ${url}`)
       }
     } catch {}
   })
