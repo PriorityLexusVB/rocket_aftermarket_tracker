@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+import { missingAuthEnv } from './_authEnv'
 
 test.describe('Deal create + edit flow', () => {
   test.skip(missingAuthEnv, 'E2E auth env not set')
@@ -30,10 +30,13 @@ test.describe('Deal create + edit flow', () => {
     const product = page.getByTestId('product-select-0')
     await expect(product).toBeVisible()
     await page
-      .waitForFunction(() => {
-        const el = document.querySelector('[data-testid="product-select-0"]')
-        return !!el && el instanceof HTMLSelectElement && el.options.length > 1
-      }, { timeout: 30_000 })
+      .waitForFunction(
+        () => {
+          const el = document.querySelector('[data-testid="product-select-0"]')
+          return !!el && el instanceof HTMLSelectElement && el.options.length > 1
+        },
+        { timeout: 30_000 }
+      )
       .catch(() => {
         throw new Error(
           'No products available in test environment; seed E2E products or run admin-crud first.'
@@ -88,15 +91,16 @@ test.describe('Deal create + edit flow', () => {
 
     // Toggle loaner need and ensure it remains after save
     const loaner = page.getByTestId('loaner-checkbox')
-    if (await loaner.isEnabled()) {
+    const loanerEnabled = await loaner.isEnabled().catch(() => false)
+    let loanerNumberValue: string | null = null
+    if (loanerEnabled) {
       await loaner.setChecked(true)
-    } else {
-      test.skip(true, 'Loaner checkbox disabled in this environment')
+
+      loanerNumberValue = `L-${Date.now()}`
+      const loanerNumber = page.getByTestId('loaner-number-input')
+      await expect(loanerNumber).toBeVisible({ timeout: 10_000 })
+      await loanerNumber.fill(loanerNumberValue)
     }
-    const loanerNumberValue = `L-${Date.now()}`
-    const loanerNumber = page.getByTestId('loaner-number-input')
-    await expect(loanerNumber).toBeVisible({ timeout: 10_000 })
-    await loanerNumber.fill(loanerNumberValue)
 
     // Save changes
     const saveAfterEdit = page.getByTestId('save-deal-btn')
@@ -160,7 +164,7 @@ test.describe('Deal create + edit flow', () => {
 
     // Wait for save to fully complete before reloading
     await page.waitForTimeout(1000)
-    
+
     // Stay on edit page and ensure the title persisted after reload
     await page.waitForTimeout(1000)
     await page.reload()
@@ -213,8 +217,12 @@ test.describe('Deal create + edit flow', () => {
     await expect(page.getByTestId('offsite-radio-0')).toHaveJSProperty('checked', false)
 
     // Verify loaner checkbox state persisted
-    await expect(page.getByTestId('loaner-checkbox')).toHaveJSProperty('checked', true)
-    await expect(page.getByTestId('loaner-number-input')).toHaveValue(loanerNumberValue)
+    if (loanerEnabled) {
+      await expect(page.getByTestId('loaner-checkbox')).toHaveJSProperty('checked', true)
+      await expect(page.getByTestId('loaner-number-input')).toHaveValue(loanerNumberValue!)
+    } else {
+      await expect(page.getByTestId('loaner-checkbox')).toBeDisabled()
+    }
 
     // Verify the edit page still loads after reload
     await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 15_000 })

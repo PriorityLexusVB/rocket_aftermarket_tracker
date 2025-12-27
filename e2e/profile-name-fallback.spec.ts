@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+import { missingAuthEnv } from './_authEnv'
 
 // Simulates capability flag downgrades for user_profiles name columns by pre-setting
 // sessionStorage before app code runs. Verifies flags reflect expected fallback priority.

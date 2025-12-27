@@ -1,12 +1,12 @@
 // e2e/agenda.spec.ts
 // Playwright spec for Agenda feature (flag-dependent)
 import { test, expect } from '@playwright/test'
+import { missingAuthEnv } from './_authEnv'
 
 // Assumes environment has VITE_SIMPLE_CALENDAR=true
 
 const email = process.env.E2E_EMAIL
 const password = process.env.E2E_PASSWORD
-const missingAuthEnv = !email || !password
 
 test.describe('Agenda View', () => {
   test.skip(missingAuthEnv, 'E2E auth env not set')

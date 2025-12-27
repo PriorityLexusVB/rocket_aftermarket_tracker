@@ -2,9 +2,10 @@
 // Test to verify job_parts are not duplicated on multiple saves
 import { test, expect } from '@playwright/test'
 
+import { missingAuthEnv } from './_authEnv'
+
 const email = process.env.E2E_EMAIL
 const password = process.env.E2E_PASSWORD
-const missingAuthEnv = !email || !password
 
 test.describe('Job Parts No Duplication', () => {
   test.skip(missingAuthEnv, 'E2E auth env not set')

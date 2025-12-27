@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+import { missingAuthEnv } from './_authEnv'
 
 test.describe('Deal edit: appointment window & loaner return date', () => {
   test.skip(missingAuthEnv, 'E2E auth env not set')

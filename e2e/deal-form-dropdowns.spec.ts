@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+import { missingAuthEnv } from './_authEnv'
 
 test.describe('Deal Form dropdowns and line items', () => {
   test.skip(missingAuthEnv, 'E2E auth env not set')
@@ -38,10 +38,13 @@ test.describe('Deal Form dropdowns and line items', () => {
     const productSelect = page.getByTestId('product-select-0')
     await expect(productSelect).toBeVisible()
     await page
-      .waitForFunction(() => {
-        const el = document.querySelector('[data-testid="product-select-0"]')
-        return !!el && el instanceof HTMLSelectElement && el.options.length > 1
-      }, { timeout: 30_000 })
+      .waitForFunction(
+        () => {
+          const el = document.querySelector('[data-testid="product-select-0"]')
+          return !!el && el instanceof HTMLSelectElement && el.options.length > 1
+        },
+        { timeout: 30_000 }
+      )
       .catch(() => {
         throw new Error(
           'No products available in test environment; seed E2E products or run admin-crud first.'

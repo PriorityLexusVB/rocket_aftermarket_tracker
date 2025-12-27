@@ -1,10 +1,9 @@
 import { test, expect, type Page } from '@playwright/test'
+import { missingAuthEnv } from './_authEnv'
 
 // This test is lightweight and resilient: it creates a pending job via Deal form,
 // then visits Active Appointments, switches filter to include pending/unassigned,
 // and (if present) uses the Assign Jobs quick panel to set it to scheduled.
-
-const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
 
 async function waitForEditOpen(page: Page) {
   return Promise.race([

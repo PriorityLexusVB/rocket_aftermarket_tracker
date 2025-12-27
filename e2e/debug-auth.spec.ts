@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+import { missingAuthEnv } from './_authEnv'
 test.skip(missingAuthEnv, 'E2E auth env not set')
 
 test('debug-auth shows session + org counts', async ({ page }) => {

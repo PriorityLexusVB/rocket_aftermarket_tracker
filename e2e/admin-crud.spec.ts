@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { Page, Dialog } from '@playwright/test'
 
-const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+import { missingAuthEnv } from './_authEnv'
 
 // Helper to locate a table row by its text content
 const rowByText = (page: Page, text: string) => page.locator('tbody tr').filter({ hasText: text })

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
+import { missingAuthEnv } from './_authEnv'
 
 // Minimal nav smoke: verify navbar links navigate correctly (desktop),
 // and routes load when directly visited (mobile).
 
 test.describe('Navigation smoke', () => {
-  const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
   test.skip(missingAuthEnv, 'E2E auth env not set')
   const desktopLinks: Array<{ name: string; path: string }> = [
     { name: 'Calendar', path: '/calendar-flow-management-center' },

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
+import { missingAuthEnv } from './_authEnv'
 
 // Validates that the DealForm sticky footer actions are visible and clickable on a small viewport
 // and are not overlapped by the mobile bottom navbar.
 
 test.describe('DealForm sticky footer - mobile', () => {
-  const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
   test.skip(missingAuthEnv, 'E2E auth env not set')
 
   test('save button is visible and clickable at 390x844', async ({ page }) => {
