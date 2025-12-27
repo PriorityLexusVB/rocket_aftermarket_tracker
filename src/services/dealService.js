@@ -2256,12 +2256,59 @@ export async function deleteDeal(id) {
     throw new Error('You do not have permission to delete deals.')
   }
 
+  const getCurrentUserOrgId = async () => {
+    try {
+      const { data: userData, error: userErr } = await supabase.auth.getUser()
+      if (userErr) return null
+      const userId = userData?.user?.id
+      if (!userId) return null
+
+      const { data: profile, error: profileErr } = await supabase
+        .from('user_profiles')
+        .select('org_id')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (profileErr) return null
+      return profile?.org_id ?? null
+    } catch {
+      return null
+    }
+  }
+
   const tryDelete = async (table, whereCol, whereVal, opts = {}) => {
-    const { error } = await supabase.from(table).delete().eq(whereCol, whereVal)
+    const { data: deletedRows, error } = await supabase
+      .from(table)
+      .delete()
+      .eq(whereCol, whereVal)
+      .select(whereCol)
+
     if (error) {
       if (isPermissionDenied(error)) throwDeletePermission()
       if (opts?.ignoreMissingTable && isMissingTable(error)) return
       throw new Error(`Failed to delete deal: ${error.message}`)
+    }
+
+    // PostgREST + RLS can return 200 with 0 deleted rows (no error) when DELETE is blocked.
+    // Verify whether rows still exist so we can surface a useful error.
+    if (Array.isArray(deletedRows) && deletedRows.length === 0) {
+      const { data: remainingRows, error: remainingErr } = await supabase
+        .from(table)
+        .select(whereCol)
+        .eq(whereCol, whereVal)
+        .limit(1)
+
+      if (remainingErr) {
+        if (isPermissionDenied(remainingErr)) {
+          throw new Error(`You do not have permission to delete related records (${table}).`)
+        }
+        if (opts?.ignoreMissingTable && isMissingTable(remainingErr)) return
+        throw new Error(`Failed to verify delete on ${table}: ${remainingErr.message}`)
+      }
+
+      if (Array.isArray(remainingRows) && remainingRows.length > 0) {
+        throw new Error(`You do not have permission to delete related records (${table}).`)
+      }
     }
   }
 
@@ -2273,7 +2320,7 @@ export async function deleteDeal(id) {
   // First, verify the deal exists and user has access to it
   const { data: existingDeal, error: readErr } = await supabase
     .from('jobs')
-    .select('id')
+    .select('id, org_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -2283,6 +2330,21 @@ export async function deleteDeal(id) {
 
   if (!existingDeal) {
     throw new Error('Deal not found or you do not have access to it.')
+  }
+
+  // Helpful diagnostics for the common case where the deal is visible but not deletable
+  // (e.g., org_id mismatch or NULL org_id legacy rows).
+  if (existingDeal?.org_id == null) {
+    throw new Error(
+      'This deal is missing org_id. Ask an admin to assign it to your organization (or delete as a manager).'
+    )
+  }
+
+  const currentUserOrgId = await getCurrentUserOrgId()
+  if (currentUserOrgId && existingDeal.org_id && existingDeal.org_id !== currentUserOrgId) {
+    throw new Error(
+      `This deal belongs to a different organization (${existingDeal.org_id}). Your org is ${currentUserOrgId}.`
+    )
   }
 
   // Best-effort cascade in dependency order.
@@ -2304,9 +2366,33 @@ export async function deleteDeal(id) {
   }
 
   if (!Array.isArray(deletedJobs) || deletedJobs.length === 0) {
-    // This should not happen since we verified the deal exists above,
-    // but if it does, it's likely an RLS issue
-    throwDeletePermission()
+    // PostgREST + RLS can return 200 with 0 deleted rows (no error) when DELETE is blocked.
+    // Verify whether the job still exists so we don't mis-report successful deletes.
+    const { data: remainingJob, error: remainingErr } = await supabase
+      .from('jobs')
+      .select('id, org_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (remainingErr) {
+      if (isPermissionDenied(remainingErr)) throwDeletePermission()
+      throw new Error(`Failed to verify deal deletion: ${remainingErr.message}`)
+    }
+
+    if (remainingJob) {
+      const userOrgId = currentUserOrgId ?? (await getCurrentUserOrgId())
+      if (remainingJob?.org_id == null) {
+        throw new Error(
+          'Delete was blocked because this deal is missing org_id. Ask an admin to assign it to your organization (or delete as a manager).'
+        )
+      }
+      if (userOrgId && remainingJob.org_id && remainingJob.org_id !== userOrgId) {
+        throw new Error(
+          `Delete was blocked because this deal belongs to a different organization (${remainingJob.org_id}). Your org is ${userOrgId}.`
+        )
+      }
+      throwDeletePermission()
+    }
   }
 
   return true

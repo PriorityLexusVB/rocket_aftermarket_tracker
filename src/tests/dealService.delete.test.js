@@ -14,14 +14,35 @@ describe('dealService.deleteDeal', () => {
     vi.clearAllMocks()
   })
 
-  const mockSupabaseChain = (returnValue) => {
+  const makeReadChain = (returnValue) => {
     const chain = {
-      delete: vi.fn(() => chain),
       select: vi.fn(() => chain),
       eq: vi.fn(() => chain),
       maybeSingle: vi.fn(() => Promise.resolve(returnValue)),
     }
-    supabase.from.mockReturnValue(chain)
+    return chain
+  }
+
+  const makeDeleteSelectChain = (
+    deleteReturnValue,
+    verifyReturnValue = { data: [], error: null }
+  ) => {
+    let didCallDelete = false
+    const chain = {
+      delete: vi.fn(() => {
+        didCallDelete = true
+        return chain
+      }),
+      select: vi.fn(() => {
+        // Used in two ways by deleteDeal():
+        // 1) delete().eq().select() -> returns Promise<{data,error}>
+        // 2) select().eq().limit()   -> returns chain for further calls
+        if (didCallDelete) return Promise.resolve(deleteReturnValue)
+        return chain
+      }),
+      eq: vi.fn(() => chain),
+      limit: vi.fn(() => Promise.resolve(verifyReturnValue)),
+    }
     return chain
   }
 
@@ -32,22 +53,24 @@ describe('dealService.deleteDeal', () => {
   })
 
   it('throws error when deal does not exist', async () => {
-    const chain = mockSupabaseChain({ data: null, error: null })
+    const chain = makeReadChain({ data: null, error: null })
+    supabase.from.mockReturnValue(chain)
 
     await expect(deleteDeal('non-existent-id')).rejects.toThrow(
       'Deal not found or you do not have access to it.'
     )
 
     expect(supabase.from).toHaveBeenCalledWith('jobs')
-    expect(chain.select).toHaveBeenCalledWith('id')
+    expect(chain.select).toHaveBeenCalledWith('id, org_id')
     expect(chain.eq).toHaveBeenCalledWith('id', 'non-existent-id')
   })
 
   it('throws error when read fails', async () => {
-    mockSupabaseChain({
+    const chain = makeReadChain({
       data: null,
       error: { message: 'Database connection error' },
     })
+    supabase.from.mockReturnValue(chain)
 
     await expect(deleteDeal('test-id')).rejects.toThrow('Failed to verify deal')
   })
@@ -60,40 +83,22 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1 && table === 'jobs') {
         // First call: read to verify deal exists
-        const readChain = {
-          select: vi.fn(() => readChain),
-          eq: vi.fn(() => readChain),
-          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'test-id' }, error: null })),
-        }
-        return readChain
+        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
       }
       if (table === 'loaner_assignments') {
         // Loaner assignments delete (optional table)
-        const chain = {
-          delete: vi.fn(() => chain),
-          eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
-        }
-        return chain
+        // Return 1 deleted row to avoid triggering the follow-up verification query.
+        return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
       }
       if (table === 'job_parts') {
         // Job parts delete fails with permission error
-        const chain = {
-          delete: vi.fn(() => chain),
-          eq: vi.fn(() =>
-            Promise.resolve({
-              data: null,
-              error: { code: '42501', message: 'permission denied for table job_parts' },
-            })
-          ),
-        }
-        return chain
+        return makeDeleteSelectChain({
+          data: null,
+          error: { code: '42501', message: 'permission denied for table job_parts' },
+        })
       }
       // Default chain for other tables
-      const chain = {
-        delete: vi.fn(() => chain),
-        eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
-      }
-      return chain
+      return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
     })
 
     await expect(deleteDeal('test-id')).rejects.toThrow(
@@ -107,27 +112,13 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
-        const readChain = {
-          select: vi.fn(() => readChain),
-          eq: vi.fn(() => readChain),
-          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'test-id' }, error: null })),
-        }
-        return readChain
+        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
       } else if (table === 'jobs' && callCount > 1) {
         // Final jobs delete with select to return deleted record
-        const deleteChain = {
-          delete: vi.fn(() => deleteChain),
-          eq: vi.fn(() => deleteChain),
-          select: vi.fn(() => Promise.resolve({ data: [{ id: 'test-id' }], error: null })),
-        }
-        return deleteChain
+        return makeDeleteSelectChain({ data: [{ id: 'test-id' }], error: null })
       } else {
         // All other child table deletes
-        const chain = {
-          delete: vi.fn(() => chain),
-          eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
-        }
-        return chain
+        return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
       }
     })
 
@@ -149,39 +140,19 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
-        const readChain = {
-          select: vi.fn(() => readChain),
-          eq: vi.fn(() => readChain),
-          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'test-id' }, error: null })),
-        }
-        return readChain
+        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
       } else if (table === 'loaner_assignments' || table === 'communications') {
         // Optional tables that might not exist
-        const chain = {
-          delete: vi.fn(() => chain),
-          eq: vi.fn(() =>
-            Promise.resolve({
-              data: null,
-              error: { code: '42P01', message: 'relation does not exist' },
-            })
-          ),
-        }
-        return chain
+        return makeDeleteSelectChain({
+          data: null,
+          error: { code: '42P01', message: 'relation does not exist' },
+        })
       } else if (table === 'jobs' && callCount > 1) {
         // Final jobs delete
-        const deleteChain = {
-          delete: vi.fn(() => deleteChain),
-          eq: vi.fn(() => deleteChain),
-          select: vi.fn(() => Promise.resolve({ data: [{ id: 'test-id' }], error: null })),
-        }
-        return deleteChain
+        return makeDeleteSelectChain({ data: [{ id: 'test-id' }], error: null })
       } else {
         // Other tables
-        const chain = {
-          delete: vi.fn(() => chain),
-          eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
-        }
-        return chain
+        return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
       }
     })
 
@@ -195,38 +166,19 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
-        const readChain = {
-          select: vi.fn(() => readChain),
-          eq: vi.fn(() => readChain),
-          maybeSingle: vi.fn(() => Promise.resolve({ data: { id: 'test-id' }, error: null })),
-        }
-        return readChain
+        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
       } else if (table === 'loaner_assignments') {
         // Loaner assignments delete succeeds
-        const chain = {
-          delete: vi.fn(() => chain),
-          eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
-        }
-        return chain
+        return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
       } else if (table === 'job_parts') {
         // Job parts delete fails with non-permission error
-        const chain = {
-          delete: vi.fn(() => chain),
-          eq: vi.fn(() =>
-            Promise.resolve({
-              data: null,
-              error: { message: 'Foreign key constraint violation' },
-            })
-          ),
-        }
-        return chain
+        return makeDeleteSelectChain({
+          data: null,
+          error: { message: 'Foreign key constraint violation' },
+        })
       }
       // Should not reach other tables
-      const chain = {
-        delete: vi.fn(() => chain),
-        eq: vi.fn(() => Promise.resolve({ data: [], error: null })),
-      }
-      return chain
+      return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
     })
 
     await expect(deleteDeal('test-id')).rejects.toThrow('Foreign key constraint violation')
