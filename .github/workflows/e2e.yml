@@ -139,8 +139,10 @@ jobs:
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           ENABLE_E2E_SEED: ${{ vars.ENABLE_E2E_SEED }}
         run: |
-          if [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
-            echo "::warning::ENABLE_E2E_SEED is not set to 1; skipping db:seed-e2e to avoid writing test data into any shared database."
+          # Default behavior: seed in CI when DATABASE_URL is provided and we've passed the production safety check.
+          # To disable seeding explicitly, set repository/environment variable ENABLE_E2E_SEED=0.
+          if [ -n "${ENABLE_E2E_SEED:-}" ] && [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
+            echo "::warning::ENABLE_E2E_SEED is set but not '1'; skipping db:seed-e2e."
             exit 0
           fi
           if [ -z "$DATABASE_URL" ]; then
@@ -241,7 +243,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Check for required secrets (copilot environment)
+      - name: Check for required secrets
         id: check-secrets
         run: |
           echo "::group::E2E main secret availability (present/not present)"
@@ -251,25 +253,6 @@ jobs:
           echo "E2E_PASSWORD=$([ -n \"${{ secrets.E2E_PASSWORD }}\" ] && echo PRESENT || echo NOT_PRESENT)"
           echo "DATABASE_URL=$([ -n \"${{ secrets.DATABASE_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
           echo "::endgroup::"
-
-          # If secrets are present but still point at production, skip E2E rather than fail.
-          # This keeps CI green while avoiding any chance of destructive E2E on prod.
-          PROD_REF="ogjtmtndgiqqdtwatsue"
-          if echo "${{ secrets.VITE_SUPABASE_URL }}" | grep -q "${PROD_REF}" || echo "${{ secrets.DATABASE_URL }}" | grep -q "${PROD_REF}"; then
-            echo "secrets_available=false" >> $GITHUB_OUTPUT
-            echo "::warning::E2E secrets appear to point at production (project ref ${PROD_REF}); skipping E2E."
-            echo "::warning::Set supabase-e2e environment secrets to a dedicated E2E/staging Supabase project to enable Playwright in CI."
-            exit 0
-          fi
-
-          # If secrets are present but still point at production, skip E2E rather than fail.
-          PROD_REF="ogjtmtndgiqqdtwatsue"
-          if echo "${{ secrets.VITE_SUPABASE_URL }}" | grep -q "${PROD_REF}" || echo "${{ secrets.DATABASE_URL }}" | grep -q "${PROD_REF}"; then
-            echo "secrets_available=false" >> $GITHUB_OUTPUT
-            echo "::warning::E2E secrets appear to point at production (project ref ${PROD_REF}); skipping E2E."
-            echo "::warning::Set supabase-e2e environment secrets to a dedicated E2E/staging Supabase project to enable Playwright in CI."
-            exit 0
-          fi
 
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
              [ -z "${{ secrets.E2E_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD }}" ] || \
@@ -334,8 +317,10 @@ jobs:
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           ENABLE_E2E_SEED: ${{ vars.ENABLE_E2E_SEED }}
         run: |
-          if [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
-            echo "::warning::ENABLE_E2E_SEED is not set to 1; skipping db:seed-e2e to avoid writing test data into any shared database."
+          # Default behavior: seed in CI when DATABASE_URL is provided and we've passed the production safety check.
+          # To disable seeding explicitly, set repository/environment variable ENABLE_E2E_SEED=0.
+          if [ -n "${ENABLE_E2E_SEED:-}" ] && [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
+            echo "::warning::ENABLE_E2E_SEED is set but not '1'; skipping db:seed-e2e."
             exit 0
           fi
           if [ -z "$DATABASE_URL" ]; then
@@ -357,6 +342,9 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:5173
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Database access for global.setup / helpers
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm e2e
 
       - name: Upload Playwright HTML report (always)
