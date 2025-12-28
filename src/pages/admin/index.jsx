@@ -983,6 +983,24 @@ const AdminPage = () => {
       if (table === 'user_profiles') {
         console.log('Cleaning up foreign key dependencies...')
 
+        const safeCleanupDelete = async (cleanupTable, whereColumn, whereValue) => {
+          try {
+            const { error } = await supabase
+              ?.from(cleanupTable)
+              ?.delete({ count: 'exact' })
+              ?.eq(whereColumn, whereValue)
+
+            if (error) {
+              console.warn(`[admin] Cleanup delete failed for ${cleanupTable}:`, error?.message)
+            }
+          } catch (e) {
+            console.warn(
+              `[admin] Cleanup delete threw for ${cleanupTable}:`,
+              e?.message || String(e)
+            )
+          }
+        }
+
         // Clean up foreign key references
         const cleanupPromises = [
           supabase
@@ -1015,16 +1033,11 @@ const AdminPage = () => {
           supabase?.from('sms_templates')?.update({ created_by: null })?.eq('created_by', id)
         )
 
-        // Clean up dependent records
-        cleanupPromises?.push(supabase?.from('filter_presets')?.delete()?.eq('user_id', id))
-
-        cleanupPromises?.push(
-          supabase?.from('notification_preferences')?.delete()?.eq('user_id', id)
-        )
-
-        cleanupPromises?.push(supabase?.from('activity_history')?.delete()?.eq('performed_by', id))
-
-        cleanupPromises?.push(supabase?.from('communications')?.delete()?.eq('sent_by', id))
+        // Clean up dependent records (best-effort). These can be RLS-restricted; log failures.
+        cleanupPromises?.push(safeCleanupDelete('filter_presets', 'user_id', id))
+        cleanupPromises?.push(safeCleanupDelete('notification_preferences', 'user_id', id))
+        cleanupPromises?.push(safeCleanupDelete('activity_history', 'performed_by', id))
+        cleanupPromises?.push(safeCleanupDelete('communications', 'sent_by', id))
 
         // Wait for all cleanup operations
         await Promise.allSettled(cleanupPromises)

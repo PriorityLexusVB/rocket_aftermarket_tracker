@@ -245,9 +245,26 @@ export const photoDocumentationService = {
       }
 
       // Delete from database
-      const { error: dbError } = await supabase?.from('job_photos')?.delete()?.eq('id', photoId)
+      const { data: deleted, error: dbError } = await supabase
+        ?.from('job_photos')
+        ?.delete()
+        ?.eq('id', photoId)
+        ?.select('id')
 
       if (dbError) throw dbError
+
+      if (!deleted || deleted.length === 0) {
+        // If the row still exists, RLS likely blocked the delete.
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from('job_photos')
+          ?.select('id')
+          ?.eq('id', photoId)
+          ?.maybeSingle?.()
+
+        if (!checkErr && stillThere?.id) {
+          throw new Error('Delete blocked by permissions (RLS). Please check your access.')
+        }
+      }
 
       return { success: true }
     } catch (error) {

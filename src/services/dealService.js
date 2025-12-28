@@ -1804,12 +1804,43 @@ export async function createDeal(formState) {
     console.error('[dealService:create] Failed to create deal:', error)
     // rollback best-effort: delete parts first, then job
     try {
-      await supabase?.from('job_parts')?.delete()?.eq('job_id', job?.id)
+      const { data: deletedParts, error: partsDelErr } = await supabase
+        ?.from('job_parts')
+        ?.delete()
+        ?.eq('job_id', job?.id)
+        ?.select('id')
+      if (partsDelErr) throw partsDelErr
+      if (!deletedParts || deletedParts.length === 0) {
+        const { data: partsStillThere, error: partsCheckErr } = await supabase
+          ?.from('job_parts')
+          ?.select('id')
+          ?.eq('job_id', job?.id)
+          ?.limit(1)
+          ?.maybeSingle?.()
+        if (!partsCheckErr && partsStillThere?.id) {
+          console.warn('[dealService:create] Rollback delete of job_parts blocked by RLS')
+        }
+      }
     } catch {
       // ignore
     }
     try {
-      await supabase?.from('jobs')?.delete()?.eq('id', job?.id)
+      const { data: deletedJobs, error: jobDelErr } = await supabase
+        ?.from('jobs')
+        ?.delete()
+        ?.eq('id', job?.id)
+        ?.select('id')
+      if (jobDelErr) throw jobDelErr
+      if (!deletedJobs || deletedJobs.length === 0) {
+        const { data: jobStillThere, error: jobCheckErr } = await supabase
+          ?.from('jobs')
+          ?.select('id')
+          ?.eq('id', job?.id)
+          ?.maybeSingle?.()
+        if (!jobCheckErr && jobStillThere?.id) {
+          console.warn('[dealService:create] Rollback delete of job blocked by RLS')
+        }
+      }
     } catch {
       // ignore
     }

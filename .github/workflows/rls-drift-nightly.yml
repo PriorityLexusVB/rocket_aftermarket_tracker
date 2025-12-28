@@ -15,6 +15,7 @@ jobs:
   rls-drift-check:
     name: RLS Schema Drift Detection
     runs-on: ubuntu-latest
+    environment: Production
     # Only run on main branch (skip forks)
     if: github.repository == 'PriorityLexusVB/rocket_aftermarket_tracker'
 

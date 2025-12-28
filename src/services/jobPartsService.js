@@ -384,7 +384,9 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
 
     // Guard: if we expected deletes but none happened, RLS likely blocked it
     if (deletedCount === 0) {
-      console.error('[syncJobPartsForJob] DELETE guard triggered: expected deletes but none executed')
+      console.error(
+        '[syncJobPartsForJob] DELETE guard triggered: expected deletes but none executed'
+      )
       throw new Error(
         `Failed to delete ${toDelete.length} job_parts (RLS policy may be blocking). Please check permissions.`
       )
@@ -549,10 +551,33 @@ export async function replaceJobPartsForJob(jobId, lineItems = [], opts = {}) {
   }
 
   // Remove existing rows so deletions are honored before upsert
-  const { error: delErr } = await supabase?.from('job_parts')?.delete()?.eq('job_id', jobId)
+  const { count: existingCount, error: countErr } = await supabase
+    ?.from('job_parts')
+    ?.select('id', { count: 'exact', head: true })
+    ?.eq('job_id', jobId)
+
+  if (countErr) {
+    console.error('[replaceJobPartsForJob] COUNT failed:', countErr)
+    throw new Error(`Failed to check existing job_parts: ${countErr?.message}`)
+  }
+
+  const { error: delErr, count: deletedCount } = await supabase
+    ?.from('job_parts')
+    ?.delete({ count: 'exact' })
+    ?.eq('job_id', jobId)
+
   if (delErr) {
     console.error('[replaceJobPartsForJob] DELETE failed:', delErr)
     throw new Error(`Failed to delete existing job_parts: ${delErr?.message}`)
+  }
+
+  if ((existingCount || 0) > 0 && deletedCount === 0) {
+    console.error(
+      '[replaceJobPartsForJob] DELETE guard triggered: expected deletes but none executed'
+    )
+    throw new Error(
+      `Failed to delete existing job_parts (RLS policy may be blocking). Please check permissions.`
+    )
   }
 
   if (import.meta.env.MODE === 'development') {
