@@ -110,24 +110,18 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          ALLOW_E2E_ON_PROD: ${{ vars.ALLOW_E2E_ON_PROD }}
         run: |
           set -euo pipefail
           PROD_REF="ogjtmtndgiqqdtwatsue"
-          if [ "${ALLOW_E2E_ON_PROD:-}" = "1" ]; then
-            echo "::warning::ALLOW_E2E_ON_PROD=1 set; skipping prod safety block"
-            exit 0
-          fi
-
           if echo "${VITE_SUPABASE_URL:-}" | grep -q "${PROD_REF}"; then
             echo "::error::Refusing to run E2E against production Supabase (VITE_SUPABASE_URL contains ${PROD_REF})."
-            echo "::error::Point repo secrets to a dedicated E2E/staging Supabase project, or set ALLOW_E2E_ON_PROD=1 intentionally."
+            echo "::error::Point repo secrets to a dedicated E2E/staging Supabase project."
             exit 1
           fi
 
           if echo "${DATABASE_URL:-}" | grep -q "${PROD_REF}"; then
             echo "::error::Refusing to seed E2E data against production Supabase (DATABASE_URL contains ${PROD_REF})."
-            echo "::error::Point DATABASE_URL to a dedicated E2E/staging database, or set ALLOW_E2E_ON_PROD=1 intentionally."
+            echo "::error::Point DATABASE_URL to a dedicated E2E/staging database."
             exit 1
           fi
 
@@ -137,14 +131,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
-          ENABLE_E2E_SEED: ${{ vars.ENABLE_E2E_SEED }}
         run: |
-          # Default behavior: seed in CI when DATABASE_URL is provided and we've passed the production safety check.
-          # To disable seeding explicitly, set repository/environment variable ENABLE_E2E_SEED=0.
-          if [ -n "${ENABLE_E2E_SEED:-}" ] && [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
-            echo "::warning::ENABLE_E2E_SEED is set but not '1'; skipping db:seed-e2e."
-            exit 0
-          fi
           if [ -z "$DATABASE_URL" ]; then
             echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
             echo "Skipping seed step - tests will rely on existing data or admin-crud test"
@@ -288,24 +275,18 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          ALLOW_E2E_ON_PROD: ${{ vars.ALLOW_E2E_ON_PROD }}
         run: |
           set -euo pipefail
           PROD_REF="ogjtmtndgiqqdtwatsue"
-          if [ "${ALLOW_E2E_ON_PROD:-}" = "1" ]; then
-            echo "::warning::ALLOW_E2E_ON_PROD=1 set; skipping prod safety block"
-            exit 0
-          fi
-
           if echo "${VITE_SUPABASE_URL:-}" | grep -q "${PROD_REF}"; then
             echo "::error::Refusing to run E2E against production Supabase (VITE_SUPABASE_URL contains ${PROD_REF})."
-            echo "::error::Point repo secrets to a dedicated E2E/staging Supabase project, or set ALLOW_E2E_ON_PROD=1 intentionally."
+            echo "::error::Point repo secrets to a dedicated E2E/staging Supabase project."
             exit 1
           fi
 
           if echo "${DATABASE_URL:-}" | grep -q "${PROD_REF}"; then
             echo "::error::Refusing to seed E2E data against production Supabase (DATABASE_URL contains ${PROD_REF})."
-            echo "::error::Point DATABASE_URL to a dedicated E2E/staging database, or set ALLOW_E2E_ON_PROD=1 intentionally."
+            echo "::error::Point DATABASE_URL to a dedicated E2E/staging database."
             exit 1
           fi
 
@@ -315,14 +296,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
-          ENABLE_E2E_SEED: ${{ vars.ENABLE_E2E_SEED }}
         run: |
-          # Default behavior: seed in CI when DATABASE_URL is provided and we've passed the production safety check.
-          # To disable seeding explicitly, set repository/environment variable ENABLE_E2E_SEED=0.
-          if [ -n "${ENABLE_E2E_SEED:-}" ] && [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
-            echo "::warning::ENABLE_E2E_SEED is set but not '1'; skipping db:seed-e2e."
-            exit 0
-          fi
           if [ -z "$DATABASE_URL" ]; then
             echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
             echo "Skipping seed step - tests will rely on existing data or admin-crud test"
