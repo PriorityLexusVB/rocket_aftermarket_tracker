@@ -46,13 +46,27 @@ export const photoDocumentationService = {
       if (photoError) throw photoError
 
       return { success: true, data: photoData }
-    } catch (error) {
-      return { success: false, error: error?.message }
+            const { data: deleted, error: dbError } = await supabase
+              ?.from('job_photos')
+              ?.delete()
+              ?.eq('id', photoId)
+              ?.select('id')
     }
   },
 
   // Get all photos for a job
   async getJobPhotos(jobId, orgId = null) {
+            if (Array.isArray(deleted) && deleted.length === 0) {
+              const { data: stillThere, error: checkErr } = await supabase
+                ?.from('job_photos')
+                ?.select('id')
+                ?.eq('id', photoId)
+                ?.limit(1)
+              if (checkErr) throw checkErr
+              if (Array.isArray(stillThere) && stillThere.length > 0) {
+                throw new Error('Delete was blocked by permissions (RLS).')
+              }
+            }
     try {
       const profileFrag = buildUserProfileSelectFragment()
       let q = supabase

@@ -261,11 +261,43 @@ export const jobService = {
     if (!jobId) throw new Error('Job ID is required')
 
     try {
-      const { error: partsErr } = await supabase?.from('job_parts')?.delete()?.eq('job_id', jobId)
+      const { data: deletedParts, error: partsErr } = await supabase
+        ?.from('job_parts')
+        ?.delete()
+        ?.eq('job_id', jobId)
+        ?.select('job_id')
       if (partsErr) throw partsErr
 
-      const { error } = await supabase?.from('jobs')?.delete()?.eq('id', jobId)
+      if (Array.isArray(deletedParts) && deletedParts.length === 0) {
+        const { data: remainingParts, error: remainingPartsErr } = await supabase
+          ?.from('job_parts')
+          ?.select('job_id')
+          ?.eq('job_id', jobId)
+          ?.limit(1)
+        if (remainingPartsErr) throw remainingPartsErr
+        if (Array.isArray(remainingParts) && remainingParts.length > 0) {
+          throw new Error('Delete was blocked by permissions (RLS) while deleting job parts.')
+        }
+      }
+
+      const { data: deletedJobs, error } = await supabase
+        ?.from('jobs')
+        ?.delete()
+        ?.eq('id', jobId)
+        ?.select('id')
       if (error) throw error
+
+      if (Array.isArray(deletedJobs) && deletedJobs.length === 0) {
+        const { data: remainingJob, error: remainingJobErr } = await supabase
+          ?.from('jobs')
+          ?.select('id')
+          ?.eq('id', jobId)
+          ?.maybeSingle()
+        if (remainingJobErr) throw remainingJobErr
+        if (remainingJob) {
+          throw new Error('Delete was blocked by permissions (RLS) while deleting the job.')
+        }
+      }
 
       return true
     } catch (err) {

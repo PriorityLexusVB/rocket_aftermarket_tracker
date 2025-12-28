@@ -95,10 +95,25 @@ export const advancedFeaturesService = {
 
   async deleteSmsTemplate(id) {
     try {
-      const { error } = await supabase?.from('sms_templates')?.delete()?.eq('id', id)
+      const { data: deleted, error } = await supabase
+        ?.from('sms_templates')
+        ?.delete()
+        ?.eq('id', id)
+        ?.select('id')
 
-      if (error) {
-        return { error: { message: error?.message } }
+      if (error) return { error: { message: error?.message } }
+
+      if (Array.isArray(deleted) && deleted.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from('sms_templates')
+          ?.select('id')
+          ?.eq('id', id)
+          ?.limit(1)
+
+        if (checkErr) return { error: { message: `Failed to verify delete: ${checkErr?.message}` } }
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          return { error: { message: 'Delete was blocked by permissions (RLS).' } }
+        }
       }
 
       return { error: null }
@@ -160,10 +175,25 @@ export const advancedFeaturesService = {
 
   async deleteFilterPreset(id) {
     try {
-      const { error } = await supabase?.from('filter_presets')?.delete()?.eq('id', id)
+      const { data: deleted, error } = await supabase
+        ?.from('filter_presets')
+        ?.delete()
+        ?.eq('id', id)
+        ?.select('id')
 
-      if (error) {
-        return { error: { message: error?.message } }
+      if (error) return { error: { message: error?.message } }
+
+      if (Array.isArray(deleted) && deleted.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from('filter_presets')
+          ?.select('id')
+          ?.eq('id', id)
+          ?.limit(1)
+
+        if (checkErr) return { error: { message: `Failed to verify delete: ${checkErr?.message}` } }
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          return { error: { message: 'Delete was blocked by permissions (RLS).' } }
+        }
       }
 
       return { error: null }

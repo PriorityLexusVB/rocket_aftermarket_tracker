@@ -588,10 +588,26 @@ class SalesTrackerService {
       if (orgId) sQuery = sQuery?.eq('org_id', orgId)
       const { data: staffMembers, error } = await sQuery
 
-      if (error) {
-        console.error('Staff query error:', error)
-        // Return sample staff data
-        return [
+          const { data: deleted, error } = await supabase
+            ?.from('transactions')
+            ?.delete()
+            ?.eq('id', saleId)
+            ?.select('id')
+
+          if (error) return { error: { message: error?.message } }
+
+          if (Array.isArray(deleted) && deleted.length === 0) {
+            const { data: stillThere, error: checkErr } = await supabase
+              ?.from('transactions')
+              ?.select('id')
+              ?.eq('id', saleId)
+              ?.limit(1)
+
+            if (checkErr) return { error: { message: `Failed to verify delete: ${checkErr?.message}` } }
+            if (Array.isArray(stillThere) && stillThere.length > 0) {
+              return { error: { message: 'Delete was blocked by permissions (RLS).' } }
+            }
+          }
           { id: 'staff-1', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Coordinator' },
           { id: 'staff-2', name: 'Mike Chen', email: 'mike@company.com', role: 'Coordinator' },
           { id: 'staff-3', name: 'Alex Rodriguez', email: 'alex@company.com', role: 'Manager' },
