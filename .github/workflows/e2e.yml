@@ -10,7 +10,7 @@ jobs:
     name: E2E Smoke (PR)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: copilot
+    environment: supabase-e2eyes
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -183,7 +183,7 @@ jobs:
     name: E2E Full (Main)
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    environment: copilot
+    environment: supabase-e2eyes
     timeout-minutes: 45
     steps:
       - name: Checkout
