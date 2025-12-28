@@ -93,6 +93,18 @@ jobs:
         if: steps.check-secrets.outputs.secrets_available == 'true'
         run: pnpm exec playwright install --with-deps
 
+      - name: Debug - show Supabase project refs (non-secret)
+        if: steps.check-secrets.outputs.secrets_available == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          echo "::group::Supabase refs (non-secret)"
+          echo "vite_supabase_ref=$(echo "${VITE_SUPABASE_URL:-}" | sed -n 's#https://\([^.]*\)\.supabase\.co.*#\1#p')"
+          echo "database_url_ref=$(echo "${DATABASE_URL:-}" | sed -n 's#.*\.\([a-z0-9]\{20\}\)@.*#\1#p')"
+          echo "::endgroup::"
+
       - name: Safety check - block E2E against production Supabase
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
@@ -239,6 +251,25 @@ jobs:
           echo "E2E_PASSWORD=$([ -n \"${{ secrets.E2E_PASSWORD }}\" ] && echo PRESENT || echo NOT_PRESENT)"
           echo "DATABASE_URL=$([ -n \"${{ secrets.DATABASE_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
           echo "::endgroup::"
+
+          # If secrets are present but still point at production, skip E2E rather than fail.
+          # This keeps CI green while avoiding any chance of destructive E2E on prod.
+          PROD_REF="ogjtmtndgiqqdtwatsue"
+          if echo "${{ secrets.VITE_SUPABASE_URL }}" | grep -q "${PROD_REF}" || echo "${{ secrets.DATABASE_URL }}" | grep -q "${PROD_REF}"; then
+            echo "secrets_available=false" >> $GITHUB_OUTPUT
+            echo "::warning::E2E secrets appear to point at production (project ref ${PROD_REF}); skipping E2E."
+            echo "::warning::Set supabase-e2e environment secrets to a dedicated E2E/staging Supabase project to enable Playwright in CI."
+            exit 0
+          fi
+
+          # If secrets are present but still point at production, skip E2E rather than fail.
+          PROD_REF="ogjtmtndgiqqdtwatsue"
+          if echo "${{ secrets.VITE_SUPABASE_URL }}" | grep -q "${PROD_REF}" || echo "${{ secrets.DATABASE_URL }}" | grep -q "${PROD_REF}"; then
+            echo "secrets_available=false" >> $GITHUB_OUTPUT
+            echo "::warning::E2E secrets appear to point at production (project ref ${PROD_REF}); skipping E2E."
+            echo "::warning::Set supabase-e2e environment secrets to a dedicated E2E/staging Supabase project to enable Playwright in CI."
+            exit 0
+          fi
 
           if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
              [ -z "${{ secrets.E2E_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD }}" ] || \
