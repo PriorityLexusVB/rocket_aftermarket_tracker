@@ -1032,11 +1032,32 @@ const AdminPage = () => {
       }
 
       // Perform the actual deletion
-      const { error: deleteError } = await supabase?.from(table)?.delete()?.eq('id', id)
+      const { data: deleted, error: deleteError } = await supabase
+        ?.from(table)
+        ?.delete()
+        ?.eq('id', id)
+        ?.select('id')
 
       if (deleteError) {
         console.error('Delete operation failed:', deleteError)
         throw deleteError
+      }
+
+      if (Array.isArray(deleted) && deleted.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from(table)
+          ?.select('id')
+          ?.eq('id', id)
+          ?.limit(1)
+
+        if (checkErr) {
+          console.error('Failed to verify delete:', checkErr)
+          throw checkErr
+        }
+
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          throw new Error('Delete was blocked by permissions (RLS).')
+        }
       }
 
       console.log('Delete operation successful')

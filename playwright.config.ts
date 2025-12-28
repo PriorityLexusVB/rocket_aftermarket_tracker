@@ -14,14 +14,21 @@ try {
 
 // Ensure the Playwright runner process itself has required env vars.
 // Note: webServer.env only applies to the spawned dev server process; globalSetup/tests run in this process.
-const DEFAULT_SUPABASE_URL = 'https://ogjtmtndgiqqdtwatsue.supabase.co'
-const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9nanRtdG5kZ2lxcWR0d2F0c3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTE5OTcsImV4cCI6MjA3NDEyNzk5N30.n17KiM5c08XuKY-W9fL667VsVWABwzGmJpxVieSgcX4'
+//
+// IMPORTANT: Do NOT default Supabase credentials here.
+// If these are missing, it is safer to fail fast than to accidentally run E2E against a real environment.
 const DEFAULT_BASE_URL = 'http://localhost:5173'
 
-process.env.VITE_SUPABASE_URL ||= DEFAULT_SUPABASE_URL
-process.env.VITE_SUPABASE_ANON_KEY ||= DEFAULT_SUPABASE_ANON_KEY
 process.env.PLAYWRIGHT_BASE_URL ||= DEFAULT_BASE_URL
+
+const required = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
+const missing = required.filter((k) => !process.env[k])
+if (missing.length) {
+  throw new Error(
+    `[playwright.config] Missing required env vars: ${missing.join(', ')}. ` +
+      `Refusing to run E2E without explicit Supabase config.`
+  )
+}
 // Do not set default E2E credentials here.
 // In CI (especially for forked PRs), secrets are not available; using hardcoded
 // credentials causes E2E to attempt login and fail. When E2E_EMAIL/E2E_PASSWORD

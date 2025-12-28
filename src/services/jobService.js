@@ -170,7 +170,19 @@ export const jobService = {
           await syncJobPartsForJob(created?.id, dealData?.lineItems)
         } catch (liErr) {
           // rollback to avoid orphan job
-          await supabase?.from('jobs')?.delete()?.eq('id', created?.id)
+          try {
+            const { data: deleted, error: delErr } = await supabase
+              ?.from('jobs')
+              ?.delete()
+              ?.eq('id', created?.id)
+              ?.select('id')
+            if (delErr) throw delErr
+            if (Array.isArray(deleted) && deleted.length === 0) {
+              console.warn('[jobs] rollback delete was blocked by RLS for job %s', created?.id)
+            }
+          } catch (rollbackErr) {
+            console.warn('[jobs] rollback delete failed:', rollbackErr?.message || rollbackErr)
+          }
           throw liErr
         }
       }

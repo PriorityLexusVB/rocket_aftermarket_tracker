@@ -20,6 +20,15 @@ try {
 
 export default async function globalSetup() {
   const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+  const allowProd = process.env.ALLOW_E2E_ON_PROD === '1'
+  const isProdVercel = /^https:\/\/rocket-aftermarket-tracker\.vercel\.app\b/i.test(base)
+  if (isProdVercel && !allowProd) {
+    throw new Error(
+      `[global.setup] Refusing to run E2E against production base URL (${base}). ` +
+        `Set ALLOW_E2E_ON_PROD=1 only if you truly intend to run destructive E2E on prod.`
+    )
+  }
+
   const storageDir = path.join(process.cwd(), 'e2e')
   const storagePath = path.join(storageDir, 'storageState.json')
 

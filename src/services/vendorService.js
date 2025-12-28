@@ -1,25 +1,22 @@
-import { supabase } from '@/lib/supabase';
-import { safeSelect } from '@/lib/supabase/safeSelect';
-import { toOptions } from '@/lib/options';
-import { z } from 'zod';
+import { supabase } from '@/lib/supabase'
+import { safeSelect } from '@/lib/supabase/safeSelect'
+import { toOptions } from '@/lib/options'
+import { z } from 'zod'
 // Typed schemas from Drizzle + Zod (Section 20)
-import { vendorInsertSchema } from '@/db/schemas';
+import { vendorInsertSchema } from '@/db/schemas'
 
 /**
  * Simple helper used by dropdowns to get vendor options
  */
 export async function listVendorsByOrg(orgId) {
-  let q = supabase
-    .from('vendors')
-    .select('*')
-    .order('name', { ascending: true });
+  let q = supabase.from('vendors').select('*').order('name', { ascending: true })
 
   if (orgId) {
-    q = q.or(`org_id.eq.${orgId},org_id.is.null`);
+    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
   }
 
-  const rows = await safeSelect(q, 'vendors:listByOrg');
-  return toOptions(rows, { labelKey: 'name', valueKey: 'id' });
+  const rows = await safeSelect(q, 'vendors:listByOrg')
+  return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
 }
 
 /**
@@ -36,20 +33,15 @@ async function doCreateVendor(parsedInput) {
     address: parsedInput.address || null,
     specialty: parsedInput.specialty || null,
     rating: parsedInput.rating ?? null,
-    is_active:
-      parsedInput.isActive !== undefined ? parsedInput.isActive : true,
+    is_active: parsedInput.isActive !== undefined ? parsedInput.isActive : true,
     notes: parsedInput.notes || null,
     org_id: parsedInput.orgId || null,
-  };
+  }
 
-  const { data, error } = await supabase
-    .from('vendors')
-    .insert(dbInput)
-    .select()
-    .single();
+  const { data, error } = await supabase.from('vendors').insert(dbInput).select().single()
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 async function doUpdateVendor(id, parsedInput) {
@@ -61,30 +53,39 @@ async function doUpdateVendor(id, parsedInput) {
     address: parsedInput.address || null,
     specialty: parsedInput.specialty || null,
     rating: parsedInput.rating ?? null,
-    is_active:
-      parsedInput.isActive !== undefined ? parsedInput.isActive : true,
+    is_active: parsedInput.isActive !== undefined ? parsedInput.isActive : true,
     notes: parsedInput.notes || null,
     org_id: parsedInput.orgId || null,
-  };
+  }
 
   const { data, error } = await supabase
     .from('vendors')
     .update(dbInput)
     .eq('id', id)
     .select()
-    .single();
+    .single()
 
-  if (error) throw error;
-  return data;
+  if (error) throw error
+  return data
 }
 
 async function doDeleteVendor(id) {
-  const { error } = await supabase
-    .from('vendors')
-    .delete()
-    .eq('id', id);
+  const { data: deleted, error } = await supabase.from('vendors').delete().eq('id', id).select('id')
 
-  if (error) throw error;
+  if (error) throw error
+
+  if (Array.isArray(deleted) && deleted.length === 0) {
+    const { data: stillThere, error: checkErr } = await supabase
+      .from('vendors')
+      .select('id')
+      .eq('id', id)
+      .limit(1)
+
+    if (checkErr) throw checkErr
+    if (Array.isArray(stillThere) && stillThere.length > 0) {
+      throw new Error('Delete was blocked by permissions (RLS).')
+    }
+  }
 }
 
 export const vendorService = {
@@ -97,67 +98,65 @@ export const vendorService = {
         .from('vendors')
         .select('*')
         .eq('is_active', true)
-        .order('name', { ascending: true });
+        .order('name', { ascending: true })
 
       if (orgId) {
-        q = q.or(`org_id.eq.${orgId},org_id.is.null`);
+        q = q.or(`org_id.eq.${orgId},org_id.is.null`)
       }
 
-      const rows = await safeSelect(q, 'vendors:getAll');
-      return toOptions(rows, { labelKey: 'name', valueKey: 'id' });
+      const rows = await safeSelect(q, 'vendors:getAll')
+      return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
     } catch (e) {
-      console.error('vendorService.getAll failed', e);
-      return [];
+      console.error('vendorService.getAll failed', e)
+      return []
     }
   },
 
   /** Search vendors; optional org scoping */
   async search(term, orgId = null) {
     try {
-      if (!term?.trim()) return this.getAll(orgId);
+      if (!term?.trim()) return this.getAll(orgId)
 
       let q = supabase
         .from('vendors')
         .select('*')
-        .or(
-          `name.ilike.%${term}%,specialty.ilike.%${term}%,contact_person.ilike.%${term}%`
-        )
+        .or(`name.ilike.%${term}%,specialty.ilike.%${term}%,contact_person.ilike.%${term}%`)
         .eq('is_active', true)
         .order('name', { ascending: true })
-        .limit(50);
+        .limit(50)
 
       if (orgId) {
-        q = q.or(`org_id.eq.${orgId},org_id.is.null`);
+        q = q.or(`org_id.eq.${orgId},org_id.is.null`)
       }
 
-      const rows = await safeSelect(q, 'vendors:search');
-      return toOptions(rows, { labelKey: 'name', valueKey: 'id' });
+      const rows = await safeSelect(q, 'vendors:search')
+      return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
     } catch (e) {
-      console.error('vendorService.search failed', e);
-      return [];
+      console.error('vendorService.search failed', e)
+      return []
     }
   },
 
   /** Get a vendor by id (optionally scoped to org) */
   async getById(id, orgId = null) {
-    if (!id) return null;
+    if (!id) return null
 
     try {
       let q = supabase
         .from('vendors')
         .select(`*, vendor_hours:vendor_hours(*), products:products(count)`)
         .eq('id', id)
-        .single();
+        .single()
 
       if (orgId) {
-        q = q.eq('org_id', orgId);
+        q = q.eq('org_id', orgId)
       }
 
-      const res = await q.throwOnError();
-      return res.data;
+      const res = await q.throwOnError()
+      return res.data
     } catch (e) {
-      console.error('vendorService.getById failed', e);
-      return null;
+      console.error('vendorService.getById failed', e)
+      return null
     }
   },
 
@@ -169,21 +168,18 @@ export const vendorService = {
    */
   async getAllVendors(orgId = null) {
     try {
-      let q = supabase
-        .from('vendors')
-        .select('*')
-        .order('name', { ascending: true });
+      let q = supabase.from('vendors').select('*').order('name', { ascending: true })
 
       if (orgId) {
-        q = q.or(`org_id.eq.${orgId},org_id.is.null`);
+        q = q.or(`org_id.eq.${orgId},org_id.is.null`)
       }
 
-      const { data, error } = await q;
-      if (error) throw error;
-      return data || [];
+      const { data, error } = await q
+      if (error) throw error
+      return data || []
     } catch (e) {
-      console.error('vendorService.getAllVendors failed', e);
-      throw e;
+      console.error('vendorService.getAllVendors failed', e)
+      throw e
     }
   },
 
@@ -196,11 +192,11 @@ export const vendorService = {
   async createVendor(input) {
     try {
       // Validate + normalize via Zod
-      const parsed = vendorInsertSchema.parse(input);
-      return await doCreateVendor(parsed);
+      const parsed = vendorInsertSchema.parse(input)
+      return await doCreateVendor(parsed)
     } catch (e) {
-      console.error('vendorService.createVendor failed', e);
-      throw e;
+      console.error('vendorService.createVendor failed', e)
+      throw e
     }
   },
 
@@ -214,11 +210,11 @@ export const vendorService = {
   async updateVendor(id, input) {
     try {
       // Validate + normalize via Zod (full payload)
-      const parsed = vendorInsertSchema.parse(input);
-      return await doUpdateVendor(id, parsed);
+      const parsed = vendorInsertSchema.parse(input)
+      return await doUpdateVendor(id, parsed)
     } catch (e) {
-      console.error('vendorService.updateVendor failed', e);
-      throw e;
+      console.error('vendorService.updateVendor failed', e)
+      throw e
     }
   },
 
@@ -229,10 +225,10 @@ export const vendorService = {
    */
   async deleteVendor(id) {
     try {
-      await doDeleteVendor(id);
+      await doDeleteVendor(id)
     } catch (e) {
-      console.error('vendorService.deleteVendor failed', e);
-      throw e;
+      console.error('vendorService.deleteVendor failed', e)
+      throw e
     }
   },
 
@@ -244,15 +240,12 @@ export const vendorService = {
    */
   async bulkUpdateVendors(vendorIds, updates) {
     try {
-      const { error } = await supabase
-        .from('vendors')
-        .update(updates)
-        .in('id', vendorIds);
+      const { error } = await supabase.from('vendors').update(updates).in('id', vendorIds)
 
-      if (error) throw error;
+      if (error) throw error
     } catch (e) {
-      console.error('vendorService.bulkUpdateVendors failed', e);
-      throw e;
+      console.error('vendorService.bulkUpdateVendors failed', e)
+      throw e
     }
   },
 
@@ -264,22 +257,20 @@ export const vendorService = {
    */
   async create(vendorData) {
     try {
-      const data = await this.createVendor(vendorData);
-      return { data, error: null };
+      const data = await this.createVendor(vendorData)
+      return { data, error: null }
     } catch (e) {
       if (e instanceof z.ZodError) {
         return {
           data: null,
           error: {
-            message:
-              'Validation failed: ' +
-              e.errors.map((err) => err.message).join(', '),
+            message: 'Validation failed: ' + e.errors.map((err) => err.message).join(', '),
             details: e.errors,
           },
-        };
+        }
       }
-      console.error('vendorService.create failed', e);
-      return { data: null, error: e };
+      console.error('vendorService.create failed', e)
+      return { data: null, error: e }
     }
   },
 
@@ -292,24 +283,22 @@ export const vendorService = {
   async update(id, vendorData) {
     try {
       // Allow partial payloads in this wrapper
-      const partialSchema = vendorInsertSchema.partial();
-      const parsed = partialSchema.parse(vendorData);
-      const data = await doUpdateVendor(id, parsed);
-      return { data, error: null };
+      const partialSchema = vendorInsertSchema.partial()
+      const parsed = partialSchema.parse(vendorData)
+      const data = await doUpdateVendor(id, parsed)
+      return { data, error: null }
     } catch (e) {
       if (e instanceof z.ZodError) {
         return {
           data: null,
           error: {
-            message:
-              'Validation failed: ' +
-              e.errors.map((err) => err.message).join(', '),
+            message: 'Validation failed: ' + e.errors.map((err) => err.message).join(', '),
             details: e.errors,
           },
-        };
+        }
       }
-      console.error('vendorService.update failed', e);
-      return { data: null, error: e };
+      console.error('vendorService.update failed', e)
+      return { data: null, error: e }
     }
   },
 
@@ -320,13 +309,13 @@ export const vendorService = {
    */
   async delete(id) {
     try {
-      await this.deleteVendor(id);
-      return { error: null };
+      await this.deleteVendor(id)
+      return { error: null }
     } catch (e) {
-      console.error('vendorService.delete failed', e);
-      return { error: e };
+      console.error('vendorService.delete failed', e)
+      return { error: e }
     }
   },
-};
+}
 
-export default vendorService;
+export default vendorService

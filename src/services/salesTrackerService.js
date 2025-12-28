@@ -491,10 +491,26 @@ class SalesTrackerService {
         ?.eq('id', saleId)
         ?.single()
 
-      // Delete transaction (will cascade to related records)
-      const { error } = await supabase?.from('transactions')?.delete()?.eq('id', saleId)
+      // Delete transaction (may be blocked by RLS and return 0 rows deleted with no error)
+      const { data: deleted, error } = await supabase
+        ?.from('transactions')
+        ?.delete()
+        ?.eq('id', saleId)
+        ?.select('id')
 
       if (error) throw error
+
+      if (Array.isArray(deleted) && deleted.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from('transactions')
+          ?.select('id')
+          ?.eq('id', saleId)
+          ?.limit(1)
+        if (checkErr) throw checkErr
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          throw new Error('Delete was blocked by permissions (RLS).')
+        }
+      }
 
       await logger?.success(
         ACTION_TYPES?.SALE_DELETED,
@@ -587,32 +603,7 @@ class SalesTrackerService {
         ?.order(nameCol, { ascending: true })
       if (orgId) sQuery = sQuery?.eq('org_id', orgId)
       const { data: staffMembers, error } = await sQuery
-
-          const { data: deleted, error } = await supabase
-            ?.from('transactions')
-            ?.delete()
-            ?.eq('id', saleId)
-            ?.select('id')
-
-          if (error) return { error: { message: error?.message } }
-
-          if (Array.isArray(deleted) && deleted.length === 0) {
-            const { data: stillThere, error: checkErr } = await supabase
-              ?.from('transactions')
-              ?.select('id')
-              ?.eq('id', saleId)
-              ?.limit(1)
-
-            if (checkErr) return { error: { message: `Failed to verify delete: ${checkErr?.message}` } }
-            if (Array.isArray(stillThere) && stillThere.length > 0) {
-              return { error: { message: 'Delete was blocked by permissions (RLS).' } }
-            }
-          }
-          { id: 'staff-1', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Coordinator' },
-          { id: 'staff-2', name: 'Mike Chen', email: 'mike@company.com', role: 'Coordinator' },
-          { id: 'staff-3', name: 'Alex Rodriguez', email: 'alex@company.com', role: 'Manager' },
-        ]
-      }
+      if (error) throw error
 
       const transformedStaff = (staffMembers || [])?.map((member) => ({
         id: member?.id,

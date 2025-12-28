@@ -290,10 +290,26 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
 
     setLoading(true)
     try {
-      const { error } = await supabase?.from('jobs')?.delete()?.eq('id', job?.id)
+      const { data: deleted, error } = await supabase
+        ?.from('jobs')
+        ?.delete()
+        ?.eq('id', job?.id)
+        ?.select('id')
 
       if (error) {
         throw error
+      }
+
+      if (Array.isArray(deleted) && deleted.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from('jobs')
+          ?.select('id')
+          ?.eq('id', job?.id)
+          ?.limit(1)
+        if (checkErr) throw checkErr
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          throw new Error('Delete was blocked by permissions (RLS).')
+        }
       }
 
       onClose?.()
