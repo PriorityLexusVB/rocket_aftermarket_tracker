@@ -6,6 +6,30 @@ This guide helps diagnose and fix common CI/CD pipeline failures in the Rocket A
 
 ## Common Failure Scenarios
 
+### 0. E2E Safety Check Failure (Production Block)
+
+**Symptom:**
+```
+Refusing to run E2E against production Supabase (VITE_SUPABASE_URL contains ogjtmtndgiqqdtwatsue).
+Point repo secrets to a dedicated E2E/staging Supabase project, or set ALLOW_E2E_ON_PROD=1 intentionally.
+```
+
+**Root Cause:**
+- The workflow has a **safety check** that prevents E2E tests from running against production databases
+- Your `VITE_SUPABASE_URL` or `DATABASE_URL` secrets contain the production Supabase reference
+- `ALLOW_E2E_ON_PROD` variable is not set to "1"
+
+**Resolution:**
+
+**Quick Fix (Temporary)**: Set `ALLOW_E2E_ON_PROD=1` repository variable
+- ⚠️ **WARNING**: This will run tests against production - use with caution!
+- See: [E2E Safety Check Quick Fix](./E2E_SAFETY_CHECK_QUICKFIX.md)
+
+**Proper Fix (Recommended)**: Set up dedicated E2E/Staging Supabase project
+- ✅ Complete isolation from production
+- ✅ Safe to seed and modify test data
+- See: [E2E Safety Check Guide](./E2E_SAFETY_CHECK_GUIDE.md) for detailed setup instructions
+
 ### 1. Secrets Not Accessible
 
 **Symptom:**
@@ -233,6 +257,8 @@ pnpm e2e:debug
 
 ## Related Documentation
 
+- [E2E Safety Check Guide](./E2E_SAFETY_CHECK_GUIDE.md) - Detailed guide for E2E safety check setup
+- [E2E Safety Check Quick Fix](./E2E_SAFETY_CHECK_QUICKFIX.md) - Quick fix for production block error
 - [User Profiles Schema](./USER_PROFILES_SCHEMA.md) - Schema details and capability system
 - [Profile Name Fallback](./PROFILE_NAME_FALLBACK.md) - Display name resolution
 - [README](../README.md) - General setup instructions
