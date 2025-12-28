@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { persistOrgId } from '../utils/orgStorage'
+import { persistOrgId, readOrgId } from '../utils/orgStorage'
 
 export const AuthContext = createContext()
 
@@ -10,6 +10,14 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [profileLoading, setProfileLoading] = useState(false)
+
+  const role = userProfile?.role || null
+  const orgId = userProfile?.org_id ?? null
+  const vendorId = userProfile?.vendor_id ?? null
+  const isVendor = role === 'vendor'
+  const isManager = role === 'manager' || role === 'admin'
+  // Treat managers as admin-equivalent for now (single-org, manager-only rollout).
+  const isAdmin = isManager
 
   const profileOperations = useMemo(
     () => ({
@@ -34,12 +42,14 @@ export const AuthProvider = ({ children }) => {
               data: { user },
             } = await supabase?.auth?.getUser()
             if (user) {
+              const inferredOrgId = readOrgId() || null
               const basicProfile = {
                 id: user?.id,
                 email: user?.email,
                 full_name: user?.email?.split('@')?.[0] || 'User',
-                role: 'admin', // Updated to default to admin role
+                role: 'manager',
                 is_active: true,
+                org_id: inferredOrgId,
               }
 
               const { data: newProfile } = await supabase
@@ -179,6 +189,12 @@ export const AuthProvider = ({ children }) => {
         userProfile,
         loading,
         profileLoading,
+        role,
+        orgId,
+        vendorId,
+        isVendor,
+        isManager,
+        isAdmin,
         isAuthed: !!session?.user,
         signIn,
         signOut,

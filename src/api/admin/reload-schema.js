@@ -82,8 +82,9 @@ export default async function handler(req, res) {
       })
     }
 
-    // Check is_admin flag or role
-    const isAdmin = profile.is_admin === true || profile.role === 'admin'
+    // Check is_admin flag or role (treat managers as admin-equivalent for now)
+    const isAdmin =
+      profile.is_admin === true || profile.role === 'admin' || profile.role === 'manager'
 
     if (!isAdmin) {
       return res.status(403).json({
