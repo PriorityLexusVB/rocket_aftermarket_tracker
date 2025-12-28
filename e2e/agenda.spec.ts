@@ -1,17 +1,13 @@
 // e2e/agenda.spec.ts
 // Playwright spec for Agenda feature (flag-dependent)
 import { test, expect } from '@playwright/test'
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 // Assumes environment has VITE_SIMPLE_CALENDAR=true
 
-const email = process.env.E2E_EMAIL
-const password = process.env.E2E_PASSWORD
-
 test.describe('Agenda View', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test('redirect after create focuses new appointment', async ({ page }) => {
+    const { email, password } = requireAuthEnv()
     // Login
     await page.goto('/auth')
     await page.fill('input[name="email"]', email!)
@@ -63,6 +59,7 @@ test.describe('Agenda View', () => {
   })
 
   test('agenda view renders with flag enabled', async ({ page }) => {
+    const { email, password } = requireAuthEnv()
     // Login
     await page.goto('/auth')
     await page.fill('input[name="email"]', email!)
@@ -92,6 +89,7 @@ test.describe('Agenda View', () => {
   })
 
   test('agenda view handles focus parameter', async ({ page }) => {
+    const { email, password } = requireAuthEnv()
     // Login first
     await page.goto('/auth')
     await page.fill('input[name="email"]', email!)
@@ -116,6 +114,7 @@ test.describe('Agenda View', () => {
   })
 
   test('agenda filters persist across navigation', async ({ page }) => {
+    const { email, password } = requireAuthEnv()
     // Login
     await page.goto('/auth')
     await page.fill('input[name="email"]', email!)

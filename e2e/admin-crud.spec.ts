@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import type { Page, Dialog } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 // Helper to locate a table row by its text content
 const rowByText = (page: Page, text: string) => page.locator('tbody tr').filter({ hasText: text })
@@ -46,7 +46,9 @@ const gotoAdmin = async (page: Page) => {
 }
 
 test.describe('Admin CRUD - Vendors and Products', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
+  test.beforeEach(() => {
+    requireAuthEnv()
+  })
 
   test('create, edit, and delete a Vendor', async ({ page }) => {
     const unique = Date.now()

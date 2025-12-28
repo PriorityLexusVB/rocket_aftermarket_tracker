@@ -54,3 +54,22 @@ try {
 }
 
 export const missingAuthEnv = !process.env.E2E_EMAIL || !process.env.E2E_PASSWORD
+
+export function requireAuthEnv() {
+  const missing: string[] = []
+  if (!process.env.E2E_EMAIL) missing.push('E2E_EMAIL')
+  if (!process.env.E2E_PASSWORD) missing.push('E2E_PASSWORD')
+
+  if (missing.length > 0) {
+    throw new Error(
+      `[E2E] Missing required auth env vars: ${missing.join(
+        ', '
+      )}. Set them in CI secrets or in .env.local (repo root) and re-run Playwright.`
+    )
+  }
+
+  return {
+    email: process.env.E2E_EMAIL as string,
+    password: process.env.E2E_PASSWORD as string,
+  }
+}

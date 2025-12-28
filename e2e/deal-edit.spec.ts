@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 test.describe('Deal create + edit flow', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test('create a deal, then edit and persist changes', async ({ page }) => {
     test.setTimeout(120_000)
+
+    requireAuthEnv()
 
     // Preflight: ensure we have an authenticated session (via storageState)
     await page.goto('/debug-auth')

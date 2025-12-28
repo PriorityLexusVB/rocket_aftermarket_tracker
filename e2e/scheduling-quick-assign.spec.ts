@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 // This test is lightweight and resilient: it creates a pending job via Deal form,
 // then visits Active Appointments, switches filter to include pending/unassigned,
@@ -85,11 +85,10 @@ async function setLineItemVendor(page: Page, idx = 0) {
 }
 
 test.describe('Scheduling via Active Appointments (quick assign)', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test('new pending job appears in Unassigned and can be assigned (scheduled)', async ({
     page,
   }) => {
+    requireAuthEnv()
     const unique = Date.now()
     const title = `E2E Schedule ${unique}`
 

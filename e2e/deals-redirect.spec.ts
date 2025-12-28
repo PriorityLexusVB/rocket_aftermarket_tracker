@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
-test.skip(missingAuthEnv, 'E2E auth env not set')
+import { requireAuthEnv } from './_authEnv'
 
 test.describe('Deal create redirect', () => {
   test('saving a new deal redirects to /deals/:id/edit', async ({ page }) => {
+    requireAuthEnv()
     await page.goto('/deals/new')
 
     // Description (required in current form)

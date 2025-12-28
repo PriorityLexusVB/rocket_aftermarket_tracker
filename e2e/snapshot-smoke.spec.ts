@@ -3,10 +3,12 @@
 // Added as part of closure task verification (Nov 16, 2025)
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 test.describe('Snapshot View (Currently Active Appointments)', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
+  test.beforeEach(() => {
+    requireAuthEnv()
+  })
 
   test('snapshot view loads successfully', async ({ page }) => {
     // Collect console errors BEFORE navigating

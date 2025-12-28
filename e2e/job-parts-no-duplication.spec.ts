@@ -2,16 +2,13 @@
 // Test to verify job_parts are not duplicated on multiple saves
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
-
-const email = process.env.E2E_EMAIL
-const password = process.env.E2E_PASSWORD
+import { requireAuthEnv } from './_authEnv'
 
 test.describe('Job Parts No Duplication', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test('should not create duplicate job_parts on multiple saves', async ({ page }) => {
     test.setTimeout(90_000)
+
+    const { email, password } = requireAuthEnv()
 
     // Login
     await page.goto('/auth')

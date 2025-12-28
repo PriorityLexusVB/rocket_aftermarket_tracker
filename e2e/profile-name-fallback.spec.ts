@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 // Simulates capability flag downgrades for user_profiles name columns by pre-setting
 // sessionStorage before app code runs. Verifies flags reflect expected fallback priority.
 
 test.describe('Profile name capability fallback', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test('missing name -> falls back to full_name', async ({ page }) => {
+    requireAuthEnv()
     // Pre-set capability flags before app scripts execute
     await page.addInitScript(() => {
       sessionStorage.setItem('cap_userProfilesName', 'false')
@@ -43,6 +42,7 @@ test.describe('Profile name capability fallback', () => {
   })
 
   test('missing name and full_name -> falls back to display_name', async ({ page }) => {
+    requireAuthEnv()
     await page.route('**/api/health-user-profiles', (route) => {
       return route.fulfill({
         status: 200,
@@ -68,6 +68,7 @@ test.describe('Profile name capability fallback', () => {
   })
 
   test('only email available -> email local-part used', async ({ page }) => {
+    requireAuthEnv()
     await page.route('**/api/health-user-profiles', (route) => {
       return route.fulfill({
         status: 200,

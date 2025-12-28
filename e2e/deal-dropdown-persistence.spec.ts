@@ -69,7 +69,11 @@ async function ensureSessionAndOrg(page: Page) {
     ready = false
   }
 
-  test.skip(!ready, 'No authenticated session/org; skipping persistence test')
+  if (!ready) {
+    throw new Error(
+      '[E2E] No authenticated session/org detected via /debug-auth. Ensure E2E_EMAIL/E2E_PASSWORD are set and the test user is associated to an org.'
+    )
+  }
 }
 
 // Capture the current value of a native <select>

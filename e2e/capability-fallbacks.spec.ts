@@ -2,12 +2,11 @@
 // E2E tests for capability fallback scenarios
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 test.describe('Capability Fallbacks', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test.beforeEach(async ({ page }) => {
+    requireAuthEnv()
     // Navigate to deals page
     await page.goto('/deals')
     await page.waitForLoadState('networkidle')

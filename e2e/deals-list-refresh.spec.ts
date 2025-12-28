@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 async function ensureAtLeastOneDeal(page: Page) {
   await page.goto('/deals')
@@ -84,11 +84,10 @@ async function fillPromisedDate(page: Page, idx = 0) {
 }
 
 test.describe('Deals List Refresh After Edit', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test('should show vehicle description and loaner badge presence in deals list', async ({
     page,
   }) => {
+    requireAuthEnv()
     test.setTimeout(60_000)
 
     await ensureAtLeastOneDeal(page)
@@ -106,6 +105,7 @@ test.describe('Deals List Refresh After Edit', () => {
   })
 
   test('should update promised date/window in deals list after edit', async ({ page }) => {
+    requireAuthEnv()
     // This test specifically checks promised date updates
     await ensureAtLeastOneDeal(page)
     await page.goto('/deals')

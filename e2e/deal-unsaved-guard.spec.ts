@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
+import { requireAuthEnv } from './_authEnv'
 
 // Relies on storageState.json if configured in playwright.config.ts; otherwise uses public flows
 
 test.describe('DealForm Unsaved Changes Guard', () => {
-  test.skip(missingAuthEnv, 'E2E auth env not set')
-
   test('Cancel prompts when form is dirty on New Deal', async ({ page }) => {
+    requireAuthEnv()
     // Go to New Deal page
     await page.goto('/deals/new')
 

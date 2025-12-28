@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
-test.skip(missingAuthEnv, 'E2E auth env not set')
+import { requireAuthEnv } from './_authEnv'
 
 test('debug-auth shows session + org counts', async ({ page }) => {
+  requireAuthEnv()
   await page.goto('/debug-auth')
 
   await expect(page.getByTestId('session-user-id')).toBeVisible()
