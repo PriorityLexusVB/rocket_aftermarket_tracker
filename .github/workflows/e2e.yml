@@ -10,7 +10,7 @@ jobs:
     name: E2E Smoke (PR)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: copilot
+    environment: supabase-e2e
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -93,6 +93,18 @@ jobs:
         if: steps.check-secrets.outputs.secrets_available == 'true'
         run: pnpm exec playwright install --with-deps
 
+      - name: Debug - show Supabase project refs (non-secret)
+        if: steps.check-secrets.outputs.secrets_available == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          echo "::group::Supabase refs (non-secret)"
+          echo "vite_supabase_ref=$(echo "${VITE_SUPABASE_URL:-}" | sed -n 's#https://\([^.]*\)\.supabase\.co.*#\1#p')"
+          echo "database_url_ref=$(echo "${DATABASE_URL:-}" | sed -n 's#.*\.\([a-z0-9]\{20\}\)@.*#\1#p')"
+          echo "::endgroup::"
+
       - name: Safety check - block E2E against production Supabase
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
@@ -127,8 +139,10 @@ jobs:
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           ENABLE_E2E_SEED: ${{ vars.ENABLE_E2E_SEED }}
         run: |
-          if [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
-            echo "::warning::ENABLE_E2E_SEED is not set to 1; skipping db:seed-e2e to avoid writing test data into any shared database."
+          # Default behavior: seed in CI when DATABASE_URL is provided and we've passed the production safety check.
+          # To disable seeding explicitly, set repository/environment variable ENABLE_E2E_SEED=0.
+          if [ -n "${ENABLE_E2E_SEED:-}" ] && [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
+            echo "::warning::ENABLE_E2E_SEED is set but not '1'; skipping db:seed-e2e."
             exit 0
           fi
           if [ -z "$DATABASE_URL" ]; then
@@ -183,7 +197,7 @@ jobs:
     name: E2E Full (Main)
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    environment: copilot
+    environment: supabase-e2e
     timeout-minutes: 45
     steps:
       - name: Checkout
@@ -229,7 +243,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Check for required secrets (copilot environment)
+      - name: Check for required secrets
         id: check-secrets
         run: |
           echo "::group::E2E main secret availability (present/not present)"
@@ -303,8 +317,10 @@ jobs:
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           ENABLE_E2E_SEED: ${{ vars.ENABLE_E2E_SEED }}
         run: |
-          if [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
-            echo "::warning::ENABLE_E2E_SEED is not set to 1; skipping db:seed-e2e to avoid writing test data into any shared database."
+          # Default behavior: seed in CI when DATABASE_URL is provided and we've passed the production safety check.
+          # To disable seeding explicitly, set repository/environment variable ENABLE_E2E_SEED=0.
+          if [ -n "${ENABLE_E2E_SEED:-}" ] && [ "${ENABLE_E2E_SEED:-}" != "1" ]; then
+            echo "::warning::ENABLE_E2E_SEED is set but not '1'; skipping db:seed-e2e."
             exit 0
           fi
           if [ -z "$DATABASE_URL" ]; then
@@ -326,6 +342,9 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:5173
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Database access for global.setup / helpers
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm e2e
 
       - name: Upload Playwright HTML report (always)
