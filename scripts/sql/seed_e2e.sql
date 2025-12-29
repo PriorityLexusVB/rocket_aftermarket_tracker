@@ -61,6 +61,11 @@ set org_id = excluded.org_id,
 -- Scheduled job with promised date and active loaner for E2E
 -- -----------------------------------------------------------
 
+-- This section is OPTIONAL. Some E2E DBs may not include all scheduling/loaner tables/columns.
+-- If it fails, we still want the core seed (org/vendors/products) to succeed.
+do $$
+begin
+
 -- Insert a vehicle (optional)
 insert into public.vehicles (id, stock_number, make, model, year)
 values ('00000000-0000-0000-0000-0000000000d1', 'E2E-STK-1', 'Toyota', 'Camry', 2022)
@@ -168,4 +173,9 @@ begin
       set eta_return_date = excluded.eta_return_date,
           notes = excluded.notes;
   end if;
+end $$;
+
+exception
+  when others then
+    raise notice 'E2E optional scheduling/loaner seed skipped: %', SQLERRM;
 end $$;
