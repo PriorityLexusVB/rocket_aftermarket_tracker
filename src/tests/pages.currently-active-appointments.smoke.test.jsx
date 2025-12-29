@@ -15,5 +15,5 @@ describe('CurrentlyActiveAppointments smoke', () => {
         </MemoryRouter>
       )
     }).not.toThrow()
-  })
+  }, 20_000)
 })

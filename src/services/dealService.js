@@ -419,27 +419,6 @@ function incrementFallbackTelemetry() {
   incrementTelemetry(TelemetryKey.VENDOR_FALLBACK)
 }
 
-// --- Capability detection for user_profiles.name column ---------------------
-// Some environments may not yet have a `name` column on user_profiles (may use display_name/full_name).
-// We degrade gracefully by omitting the column from selects when missing.
-let USER_PROFILES_NAME_AVAILABLE = true
-if (typeof sessionStorage !== 'undefined') {
-  const stored = sessionStorage.getItem('cap_userProfilesName')
-  if (stored === 'false') USER_PROFILES_NAME_AVAILABLE = false
-}
-function disableUserProfilesNameCapability() {
-  USER_PROFILES_NAME_AVAILABLE = false
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.setItem('cap_userProfilesName', 'false')
-  }
-}
-function enableUserProfilesNameCapability() {
-  USER_PROFILES_NAME_AVAILABLE = true
-  if (typeof sessionStorage !== 'undefined') {
-    sessionStorage.setItem('cap_userProfilesName', 'true')
-  }
-}
-
 // Export capability status for UI components
 export function getCapabilities() {
   return {
@@ -500,7 +479,6 @@ async function selectJoinedDealById(id) {
           '[dealService:selectJoinedDealById] user_profiles column missing; degrading caps'
         )
         downgradeCapForErrorMessage(msg)
-        disableUserProfilesNameCapability()
         continue
       }
 
@@ -529,7 +507,6 @@ async function selectJoinedDealById(id) {
       lastError = fallbackErr
       if (/user_profiles/i.test(fallbackErr?.message || '')) {
         downgradeCapForErrorMessage(fallbackErr?.message || '')
-        disableUserProfilesNameCapability()
         continue
       }
     }
@@ -1173,7 +1150,6 @@ export async function getAllDeals() {
         if (JOB_PARTS_VENDOR_REL_AVAILABLE) {
           enableJobPartsVendorRelCapability()
         }
-        if (USER_PROFILES_NAME_AVAILABLE) enableUserProfilesNameCapability()
         break
       }
 
