@@ -2,6 +2,24 @@ import { Client } from 'pg'
 
 const PROD_REF = 'ogjtmtndgiqqdtwatsue'
 
+function safeDbInfo(dbUrl) {
+  try {
+    const u = new URL(dbUrl)
+    const host = u.hostname
+    const port = u.port
+    const user = u.username
+    const db = u.pathname
+
+    // Try to extract the 20-char Supabase project ref from username patterns like: postgres.<ref>
+    const maybeRef = (user.split('.')[1] || '').trim()
+    const projectRefGuess = /^[a-z0-9]{20}$/i.test(maybeRef) ? maybeRef : null
+
+    return { host, port, user, db, projectRefGuess }
+  } catch {
+    return { host: null, port: null, user: null, db: null, projectRefGuess: null }
+  }
+}
+
 function getDbUrl() {
   return (
     process.env.E2E_DATABASE_URL ||
@@ -46,6 +64,10 @@ async function main() {
     )
     process.exit(1)
   }
+
+  const info = safeDbInfo(dbUrl)
+  console.log('[fixE2EPolicyConflicts] Starting policy conflict cleanup...')
+  console.log('[fixE2EPolicyConflicts] Target (non-secret):', info)
 
   if (dbUrl.includes(PROD_REF)) {
     console.error(
