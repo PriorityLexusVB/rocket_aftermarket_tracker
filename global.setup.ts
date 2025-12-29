@@ -367,9 +367,10 @@ async function associateUserWithE2EOrg() {
         // In some environments the auth->profile trigger may not run (or may be delayed).
         // Create the profile row directly using the DB connection so tests have org context.
         try {
-          const authUser = await client.query('select id from auth.users where email = $1 limit 1', [
-            e2eEmail,
-          ])
+          const authUser = await client.query(
+            'select id from auth.users where email = $1 limit 1',
+            [e2eEmail]
+          )
           const authUserId = authUser.rows?.[0]?.id as string | undefined
 
           if (authUserId) {
@@ -396,7 +397,9 @@ async function associateUserWithE2EOrg() {
           )
         }
 
-        console.log(`[global.setup] Attempt ${attempt}/${maxAttempts}: profile not found yet, retrying...`)
+        console.log(
+          `[global.setup] Attempt ${attempt}/${maxAttempts}: profile not found yet, retrying...`
+        )
         await client.end()
         if (attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 1000))
