@@ -10,6 +10,35 @@ function getDbUrl() {
   )
 }
 
+function buildClientConfig(dbUrl) {
+  const config = { connectionString: dbUrl }
+
+  try {
+    const url = new URL(dbUrl)
+    const host = url.hostname || ''
+    const sslmode = (url.searchParams.get('sslmode') || '').toLowerCase()
+
+    // Supabase hosted Postgres typically requires SSL. The pg driver needs an explicit ssl config.
+    // If sslmode=disable is explicitly requested, honor it.
+    if (sslmode === 'disable') return config
+
+    const looksLikeSupabase =
+      host.endsWith('.supabase.com') ||
+      host.includes('pooler.supabase.com') ||
+      host.includes('.supabase.co')
+
+    const sslRequested = ['require', 'prefer', 'verify-ca', 'verify-full'].includes(sslmode)
+
+    if (sslRequested || looksLikeSupabase) {
+      config.ssl = { rejectUnauthorized: false }
+    }
+  } catch {
+    // If parsing fails (non-URL DSN), fall back to plain connectionString.
+  }
+
+  return config
+}
+
 async function columnExists(client, { schema, table, column }) {
   const { rows } = await client.query(
     `select 1
@@ -32,7 +61,7 @@ async function main() {
     return
   }
 
-  const client = new Client({ connectionString: dbUrl })
+  const client = new Client(buildClientConfig(dbUrl))
   await client.connect()
   try {
     const ok = await columnExists(client, {
