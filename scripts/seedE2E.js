@@ -214,7 +214,9 @@ const main = async () => {
       console.warn(
         '[seedE2E] The user may not exist in auth.users yet. Make sure E2E_EMAIL matches an existing authenticated user.'
       )
-      console.warn('[seedE2E] Continuing: seeded org/vendors/products/jobs without attaching a user profile.')
+      console.warn(
+        '[seedE2E] Continuing: seeded org/vendors/products/jobs without attaching a user profile.'
+      )
     }
   } catch (err) {
     try {

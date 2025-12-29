@@ -602,7 +602,7 @@ async function main() {
       const sql = fs.readFileSync(filePath, 'utf8')
 
       const baseName = path.basename(filePath)
-      
+
       if (baseName === '20251212190000_job_parts_dedupe_and_unique.sql') {
         await applyJobPartsDedupeAndUnique(client)
         continue
