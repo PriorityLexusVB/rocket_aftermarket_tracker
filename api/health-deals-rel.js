@@ -166,6 +166,7 @@ export default async function handler(req, res) {
         res.statusCode = 200
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(response))
+        return
       }
     }
 
@@ -187,6 +188,7 @@ export default async function handler(req, res) {
       res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify(response))
+      return
     }
   } catch (e) {
     const code = classifySchemaError(e)
@@ -214,6 +216,7 @@ export default async function handler(req, res) {
       res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify(response))
+      return
     }
   }
 }

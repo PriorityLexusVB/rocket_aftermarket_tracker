@@ -15,10 +15,10 @@ export function apiPlugin() {
         // Extract pathname without query parameters
         const url = new URL(req.url, 'http://localhost')
         const pathname = url.pathname
-        
+
         // Remove /api/ prefix and sanitize path to prevent directory traversal
         let apiPath = pathname.replace('/api/', '')
-        
+
         // Security: Prevent path traversal attacks by blocking '..' segments and multiple slashes
         // Note: Most web servers normalize paths before they reach middleware, but we check as defense-in-depth
         if (apiPath.includes('..') || apiPath.includes('//') || apiPath.includes('\\')) {
@@ -28,7 +28,7 @@ export function apiPlugin() {
           res.end(JSON.stringify({ error: 'Bad Request', message: 'Invalid API path' }))
           return
         }
-        
+
         let handlerPath
 
         try {
@@ -45,6 +45,17 @@ export function apiPlugin() {
           await handler(req, res)
         } catch (error) {
           console.error(`[vite-plugin-api] Error loading handler ${handlerPath}:`, error)
+          // If the handler already started sending a response, we cannot safely
+          // modify headers or write a new body. Avoid crashing the dev server.
+          if (res.headersSent) {
+            try {
+              res.end()
+            } catch {
+              // ignore
+            }
+            return
+          }
+
           res.statusCode = 500
           res.setHeader('Content-Type', 'application/json')
           res.end(
