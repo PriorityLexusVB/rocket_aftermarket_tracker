@@ -125,6 +125,13 @@ jobs:
             exit 1
           fi
 
+      - name: Preflight - verify E2E DB schema (requires_scheduling)
+        if: steps.check-secrets.outputs.secrets_available == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+        run: node scripts/checkE2ESchema.mjs
+
       - name: Seed E2E test data
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
@@ -289,6 +296,13 @@ jobs:
             echo "::error::Point DATABASE_URL to a dedicated E2E/staging database."
             exit 1
           fi
+
+      - name: Preflight - verify E2E DB schema (requires_scheduling)
+        if: steps.check-secrets.outputs.secrets_available == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+        run: node scripts/checkE2ESchema.mjs
 
       - name: Seed E2E test data
         if: steps.check-secrets.outputs.secrets_available == 'true'
