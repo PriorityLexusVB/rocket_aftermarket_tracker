@@ -13,8 +13,10 @@ test.describe('Deal create + edit flow', () => {
     await expect(page.getByRole('heading', { name: /Debug: Auth/i })).toBeVisible({
       timeout: 15_000,
     })
-    await expect(page.getByTestId('session-user-id')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('profile-org-id')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('session-user-id')).not.toHaveText('—', { timeout: 15_000 })
+    await expect(page.getByTestId('profile-org-id')).not.toHaveText(/^(undefined|null)$/, {
+      timeout: 15_000,
+    })
 
     // Create new deal
     await page.goto('/deals/new')

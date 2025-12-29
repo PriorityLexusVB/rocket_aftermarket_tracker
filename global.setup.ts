@@ -102,15 +102,22 @@ export default async function globalSetup() {
       console.error('[global.setup] Server at %s did not become reachable within timeout.', base)
     }
     await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 15000 })
-    const hasSession = await page
+    // Important: these elements are always visible. Validate actual values.
+    const sessionText = await page
       .getByTestId('session-user-id')
-      .isVisible()
-      .catch(() => false)
-    const hasOrg = await page
+      .textContent()
+      .then((t) => (t ?? '').trim())
+      .catch(() => '')
+
+    const orgText = await page
       .getByTestId('profile-org-id')
-      .isVisible()
-      .catch(() => false)
-    hasValidState = !!(hasSession && hasOrg)
+      .textContent()
+      .then((t) => (t ?? '').trim())
+      .catch(() => '')
+
+    const hasSession = sessionText !== '' && sessionText !== '—'
+    const hasOrg = orgText !== '' && orgText !== 'undefined' && orgText !== 'null'
+    hasValidState = hasSession && hasOrg
   } catch {}
 
   if (!hasValidState) {
@@ -162,8 +169,15 @@ export default async function globalSetup() {
     for (let i = 0; i < 3 && !verified; i++) {
       await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 30000 })
       try {
-        await page.getByTestId('session-user-id').waitFor({ state: 'visible', timeout: 15000 })
-        await page.getByTestId('profile-org-id').waitFor({ state: 'visible', timeout: 15000 })
+        await page.waitForFunction(() => {
+          const sid = document.querySelector('[data-testid="session-user-id"]')
+          const oid = document.querySelector('[data-testid="profile-org-id"]')
+          const s = (sid?.textContent ?? '').trim()
+          const o = (oid?.textContent ?? '').trim()
+          const hasSession = s !== '' && s !== '—'
+          const hasOrg = o !== '' && o !== 'undefined' && o !== 'null'
+          return hasSession && hasOrg
+        })
         verified = true
       } catch {
         // If still redirected to /auth, wait a bit and retry
