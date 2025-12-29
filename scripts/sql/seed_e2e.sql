@@ -32,21 +32,6 @@ union all
 select '00000000-0000-0000-0000-0000000000b2'::uuid, 'E2E Product 2', 'Brand B', 200, true, e2e_org.org_id from e2e_org
 on conflict (id) do update set name = excluded.name, brand = excluded.brand, unit_price = excluded.unit_price, is_active = excluded.is_active, org_id = excluded.org_id;
 
--- Staff (directory entries, not auth users)
-with e2e_org as (
-  select coalesce(
-    (select org_id from public.user_profiles where email = $E2E_EMAIL$ limit 1),
-    '00000000-0000-0000-0000-0000000000e2'::uuid
-  ) as org_id
-)
-insert into public.user_profiles (id, full_name, email, department, role, is_active, org_id)
-select '00000000-0000-0000-0000-0000000000c1'::uuid, 'Alex Johnson', 'sales1@seed.local', 'Sales Consultants', 'staff'::public.user_role, true, e2e_org.org_id from e2e_org
-union all
-select '00000000-0000-0000-0000-0000000000c2'::uuid, 'Casey Morgan', 'finance1@seed.local', 'Finance Manager', 'staff'::public.user_role, true, e2e_org.org_id from e2e_org
-union all
-select '00000000-0000-0000-0000-0000000000c3'::uuid, 'Taylor Reed', 'delivery1@seed.local', 'Delivery Coordinator', 'staff'::public.user_role, true, e2e_org.org_id from e2e_org
-on conflict (id) do update set full_name = excluded.full_name, email = excluded.email, department = excluded.department, role = excluded.role, is_active = excluded.is_active, org_id = excluded.org_id;
-
 -- Associate the E2E test user with the E2E organization
 -- This ensures RLS policies allow the test user to see seeded products/vendors
 -- Uses parameterized query support: $E2E_EMAIL$ will be replaced by seedE2E.js

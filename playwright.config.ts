@@ -21,14 +21,20 @@ const DEFAULT_BASE_URL = 'http://localhost:5173'
 
 process.env.PLAYWRIGHT_BASE_URL ||= DEFAULT_BASE_URL
 
-const required = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']
-const missing = required.filter((k) => !process.env[k])
-if (missing.length) {
-  throw new Error(
-    `[playwright.config] Missing required env vars: ${missing.join(', ')}. ` +
-      `Refusing to run E2E without explicit Supabase config.`
-  )
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(
+      `[playwright.config] Missing required env var: ${name}. ` +
+        `Refusing to run E2E without explicit Supabase config.`
+    )
+  }
+  return value
 }
+
+const supabaseUrl = requireEnv('VITE_SUPABASE_URL')
+const supabaseAnonKey = requireEnv('VITE_SUPABASE_ANON_KEY')
+
 // Do not set default E2E credentials here.
 // In CI (especially for forked PRs), secrets are not available; using hardcoded
 // credentials causes E2E to attempt login and fail. When E2E_EMAIL/E2E_PASSWORD
@@ -44,7 +50,7 @@ export default defineConfig({
     ? Number(process.env.PLAYWRIGHT_WORKERS)
     : process.env.CI
       ? 1
-      : undefined,
+      : 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
@@ -61,15 +67,15 @@ export default defineConfig({
     port: 5173,
     reuseExistingServer: !process.env.CI, // Avoid stale state in CI but allow reuse locally
     env: {
-      // Supabase client for the SPA
-      VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
-      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY,
+      // Supabase client for the SPA (guaranteed to exist due to validation above)
+      VITE_SUPABASE_URL: supabaseUrl,
+      VITE_SUPABASE_ANON_KEY: supabaseAnonKey,
       VITE_ORG_SCOPED_DROPDOWNS: process.env.VITE_ORG_SCOPED_DROPDOWNS || 'true',
       VITE_SIMPLE_CALENDAR: process.env.VITE_SIMPLE_CALENDAR || 'true',
       VITE_DEAL_FORM_V2: process.env.VITE_DEAL_FORM_V2 || 'true',
       VITE_ACTIVE_SNAPSHOT: process.env.VITE_ACTIVE_SNAPSHOT || 'true',
-      // E2E config for global.setup
-      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL,
+      // E2E config for global.setup (guaranteed to exist due to default assignment above)
+      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL || DEFAULT_BASE_URL,
       E2E_EMAIL: process.env.E2E_EMAIL || '',
       E2E_PASSWORD: process.env.E2E_PASSWORD || '',
     },

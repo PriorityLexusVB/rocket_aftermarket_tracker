@@ -19,8 +19,11 @@ vi.mock('../lib/supabase', () => {
   return {
     supabase: {
       from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ count: 0, error: null })),
+        })),
         delete: vi.fn(() => ({
-          eq: vi.fn(() => Promise.resolve({ error: null })),
+          eq: vi.fn(() => Promise.resolve({ error: null, count: 0 })),
         })),
         upsert: vi.fn((rows, opts) => {
           upsertCallCount++
