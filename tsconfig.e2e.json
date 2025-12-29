@@ -10,6 +10,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node", "@playwright/test"]
   },
-  "include": ["global.setup.ts", "playwright.config.ts", "e2e/**/*.ts"],
+  "include": ["global.setup.ts", "playwright.config.ts", "e2e/**/*.ts", "e2e/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

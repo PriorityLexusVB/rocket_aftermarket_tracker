@@ -33,6 +33,11 @@ vi?.mock('../components/ui/Navbar', () => ({
   default: () => null,
 }))
 
+// Mock EditDealModal to avoid lazy-import fetch timeouts during list rendering
+vi?.mock('../pages/deals/components/EditDealModal.jsx', () => ({
+  default: () => null,
+}))
+
 // Mock dropdown hook to prevent network calls
 vi?.mock('../hooks/useDropdownData', () => ({
   useDropdownData: () => ({
