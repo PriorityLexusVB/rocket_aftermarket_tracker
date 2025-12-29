@@ -69,16 +69,16 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::E2E secret availability (present/not present)"
-          echo "VITE_SUPABASE_URL=$([ -n "${{ secrets.VITE_SUPABASE_URL }}" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "VITE_SUPABASE_ANON_KEY=$([ -n "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "E2E_EMAIL=$([ -n "${{ secrets.E2E_EMAIL }}" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "E2E_PASSWORD=$([ -n "${{ secrets.E2E_PASSWORD }}" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "DATABASE_URL=$([ -n "${{ secrets.DATABASE_URL }}" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "VITE_SUPABASE_URL=$([ -n \"${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "VITE_SUPABASE_ANON_KEY=$([ -n \"${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "E2E_EMAIL=$([ -n \"${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "E2E_PASSWORD=$([ -n \"${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "DATABASE_URL=$([ -n \"${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
           echo "::endgroup::"
 
-          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
-             [ -z "${{ secrets.E2E_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD }}" ] || \
-             [ -z "${{ secrets.DATABASE_URL }}" ]; then
+          if [ -z "${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
+             [ -z "${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}" ] || \
+             [ -z "${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}" ]; then
             echo "secrets_available=false" >> $GITHUB_OUTPUT
             echo "::warning::E2E secrets not available for this PR (including DATABASE_URL). Smoke tests will be skipped."
           else
@@ -96,8 +96,8 @@ jobs:
       - name: Debug - show Supabase project refs (non-secret)
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
           echo "::group::Supabase refs (non-secret)"
@@ -108,8 +108,8 @@ jobs:
       - name: Safety check - block E2E against production Supabase
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
           PROD_REF="ogjtmtndgiqqdtwatsue"
@@ -128,9 +128,9 @@ jobs:
       - name: Seed E2E test data
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
-          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
@@ -144,16 +144,16 @@ jobs:
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
           # App runtime env (Vite reads VITE_* at dev server start)
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_ORG_SCOPED_DROPDOWNS: true
           # Playwright/global.setup auth and base URL
           PLAYWRIGHT_BASE_URL: http://localhost:5173
-          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
-          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}
           # Database access for global.setup / helpers
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
         run: |
           pnpm exec playwright test \
             e2e/profile-name-fallback.spec.ts \
@@ -234,16 +234,16 @@ jobs:
         id: check-secrets
         run: |
           echo "::group::E2E main secret availability (present/not present)"
-          echo "VITE_SUPABASE_URL=$([ -n \"${{ secrets.VITE_SUPABASE_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "VITE_SUPABASE_ANON_KEY=$([ -n \"${{ secrets.VITE_SUPABASE_ANON_KEY }}\" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "E2E_EMAIL=$([ -n \"${{ secrets.E2E_EMAIL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "E2E_PASSWORD=$([ -n \"${{ secrets.E2E_PASSWORD }}\" ] && echo PRESENT || echo NOT_PRESENT)"
-          echo "DATABASE_URL=$([ -n \"${{ secrets.DATABASE_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "VITE_SUPABASE_URL=$([ -n \"${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "VITE_SUPABASE_ANON_KEY=$([ -n \"${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "E2E_EMAIL=$([ -n \"${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "E2E_PASSWORD=$([ -n \"${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}\" ] && echo PRESENT || echo NOT_PRESENT)"
+          echo "DATABASE_URL=$([ -n \"${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}\" ] && echo PRESENT || echo NOT_PRESENT)"
           echo "::endgroup::"
 
-          if [ -z "${{ secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
-             [ -z "${{ secrets.E2E_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD }}" ] || \
-             [ -z "${{ secrets.DATABASE_URL }}" ]; then
+          if [ -z "${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}" ] || [ -z "${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}" ] || \
+             [ -z "${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}" ] || [ -z "${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}" ] || \
+             [ -z "${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}" ]; then
             echo "secrets_available=false" >> $GITHUB_OUTPUT
             echo "::warning::E2E copilot secrets not configured; skipping full E2E on main."
           else
@@ -273,8 +273,8 @@ jobs:
       - name: Safety check - block E2E against production Supabase
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
           PROD_REF="ogjtmtndgiqqdtwatsue"
@@ -293,9 +293,9 @@ jobs:
       - name: Seed E2E test data
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
-          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
             echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
@@ -309,16 +309,16 @@ jobs:
         if: steps.check-secrets.outputs.secrets_available == 'true'
         env:
           # App runtime env (Vite reads VITE_* at dev server start)
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_ORG_SCOPED_DROPDOWNS: true
           # Playwright/global.setup auth and base URL
           PLAYWRIGHT_BASE_URL: http://localhost:5173
-          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
-          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}
           # Database access for global.setup / helpers
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
         run: pnpm e2e
 
       - name: Upload Playwright HTML report (always)
