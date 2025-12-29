@@ -169,14 +169,12 @@ export default async function globalSetup() {
     for (let i = 0; i < 3 && !verified; i++) {
       await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 30000 })
       try {
+        // Only verify that the session is present here.
+        // Org association can legitimately lag behind login and is handled below via DB upsert + retry.
         await page.waitForFunction(() => {
           const sid = document.querySelector('[data-testid="session-user-id"]')
-          const oid = document.querySelector('[data-testid="profile-org-id"]')
           const s = (sid?.textContent ?? '').trim()
-          const o = (oid?.textContent ?? '').trim()
-          const hasSession = s !== '' && s !== '—'
-          const hasOrg = o !== '' && o !== 'undefined' && o !== 'null'
-          return hasSession && hasOrg
+          return s !== '' && s !== '—'
         })
         verified = true
       } catch {
@@ -218,6 +216,33 @@ export default async function globalSetup() {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn('[global.setup] Warning: org association failed:', message)
+  }
+
+  // After org association attempt, verify /debug-auth reflects a real orgId.
+  // Some app code reads orgId from the profile row, so it can lag behind login.
+  try {
+    await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 30000 })
+    await page.waitForFunction(
+      () => {
+        const oid = document.querySelector('[data-testid="profile-org-id"]')
+        const o = (oid?.textContent ?? '').trim()
+        return o !== '' && o !== 'undefined' && o !== 'null'
+      },
+      undefined,
+      { timeout: 30000 }
+    )
+  } catch {
+    try {
+      await page.screenshot({
+        path: path.join(storageDir, 'setup-orgid-missing.png'),
+        fullPage: true,
+      })
+      const html = await page.content()
+      await fs.writeFile(path.join(storageDir, 'setup-orgid-missing.html'), html)
+    } catch {}
+    throw new Error(
+      '[global.setup] Logged in but orgId was still missing on /debug-auth after DB association'
+    )
   }
 
   await fs.mkdir(storageDir, { recursive: true })
