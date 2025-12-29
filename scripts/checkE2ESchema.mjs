@@ -83,6 +83,9 @@ async function main() {
       console.error(
         '[checkE2ESchema] Example: run `npx supabase db push` against the E2E project (or use your existing migration workflow).'
       )
+      console.error(
+        '[checkE2ESchema] If `db push` is blocked by migration-history drift, you can apply just this one migration with: `node scripts/applyLineItemSchedulingMigration.mjs`'
+      )
       process.exit(2)
     }
 
