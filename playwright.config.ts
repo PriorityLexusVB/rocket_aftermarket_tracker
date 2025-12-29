@@ -65,7 +65,12 @@ export default defineConfig({
     // Launch a fresh Vite dev server with explicit env vars so no .env.local is required in CI/agent
     command: 'pnpm start -- --port 5173',
     port: 5173,
+    // CI runners can be slow to install deps + boot Vite (and Playwright will kill the server if it times out).
+    timeout: process.env.CI ? 120_000 : 60_000,
     reuseExistingServer: !process.env.CI, // Avoid stale state in CI but allow reuse locally
+    // Surface server output in CI logs for diagnosing startup crashes (e.g., ERR_HTTP_HEADERS_SENT).
+    stdout: 'pipe',
+    stderr: 'pipe',
     env: {
       // Supabase client for the SPA (guaranteed to exist due to validation above)
       VITE_SUPABASE_URL: supabaseUrl,

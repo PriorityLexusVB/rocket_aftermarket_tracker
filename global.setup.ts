@@ -102,15 +102,22 @@ export default async function globalSetup() {
       console.error('[global.setup] Server at %s did not become reachable within timeout.', base)
     }
     await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 15000 })
-    const hasSession = await page
+    // Important: these elements are always visible. Validate actual values.
+    const sessionText = await page
       .getByTestId('session-user-id')
-      .isVisible()
-      .catch(() => false)
-    const hasOrg = await page
+      .textContent()
+      .then((t) => (t ?? '').trim())
+      .catch(() => '')
+
+    const orgText = await page
       .getByTestId('profile-org-id')
-      .isVisible()
-      .catch(() => false)
-    hasValidState = !!(hasSession && hasOrg)
+      .textContent()
+      .then((t) => (t ?? '').trim())
+      .catch(() => '')
+
+    const hasSession = sessionText !== '' && sessionText !== '—'
+    const hasOrg = orgText !== '' && orgText !== 'undefined' && orgText !== 'null'
+    hasValidState = hasSession && hasOrg
   } catch {}
 
   if (!hasValidState) {
@@ -162,8 +169,13 @@ export default async function globalSetup() {
     for (let i = 0; i < 3 && !verified; i++) {
       await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 30000 })
       try {
-        await page.getByTestId('session-user-id').waitFor({ state: 'visible', timeout: 15000 })
-        await page.getByTestId('profile-org-id').waitFor({ state: 'visible', timeout: 15000 })
+        // Only verify that the session is present here.
+        // Org association can legitimately lag behind login and is handled below via DB upsert + retry.
+        await page.waitForFunction(() => {
+          const sid = document.querySelector('[data-testid="session-user-id"]')
+          const s = (sid?.textContent ?? '').trim()
+          return s !== '' && s !== '—'
+        })
         verified = true
       } catch {
         // If still redirected to /auth, wait a bit and retry
@@ -206,6 +218,33 @@ export default async function globalSetup() {
     console.warn('[global.setup] Warning: org association failed:', message)
   }
 
+  // After org association attempt, verify /debug-auth reflects a real orgId.
+  // Some app code reads orgId from the profile row, so it can lag behind login.
+  try {
+    await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 30000 })
+    await page.waitForFunction(
+      () => {
+        const oid = document.querySelector('[data-testid="profile-org-id"]')
+        const o = (oid?.textContent ?? '').trim()
+        return o !== '' && o !== 'undefined' && o !== 'null'
+      },
+      undefined,
+      { timeout: 30000 }
+    )
+  } catch {
+    try {
+      await page.screenshot({
+        path: path.join(storageDir, 'setup-orgid-missing.png'),
+        fullPage: true,
+      })
+      const html = await page.content()
+      await fs.writeFile(path.join(storageDir, 'setup-orgid-missing.html'), html)
+    } catch {}
+    throw new Error(
+      '[global.setup] Logged in but orgId was still missing on /debug-auth after DB association'
+    )
+  }
+
   await fs.mkdir(storageDir, { recursive: true })
   await context.storageState({ path: storagePath })
   await browser.close()
@@ -235,6 +274,9 @@ async function associateUserWithE2EOrg() {
   }
 
   const { Client } = await import('pg')
+
+  // Keep this in sync with scripts/sql/seed_e2e.sql
+  const DEFAULT_E2E_ORG_ID = '00000000-0000-0000-0000-0000000000e2'
 
   const buildClientConfig = async (connectionString: string) => {
     const url = new URL(connectionString)
@@ -364,9 +406,51 @@ async function associateUserWithE2EOrg() {
       )
 
       if (check.rowCount === 0) {
-        console.log(
-          `[global.setup] Attempt ${attempt}/${maxAttempts}: profile not found yet, retrying...`
-        )
+        // Seed may run before the test user exists in auth.users.
+        // After we log in during globalSetup, ensure the profile row exists by upserting from auth.users.
+        const targetOrgForInsert = configuredOrg || DEFAULT_E2E_ORG_ID
+        try {
+          await client.query(
+            `insert into public.organizations (id, name)
+             values ($1::uuid, 'E2E Org')
+             on conflict (id) do update set name = excluded.name`,
+            [targetOrgForInsert]
+          )
+
+          const upsert = await client.query(
+            `insert into public.user_profiles (id, email, full_name, role, org_id, is_active)
+             select
+               au.id,
+               au.email,
+               coalesce(au.raw_user_meta_data->>'full_name', au.raw_user_meta_data->>'name', au.email) as full_name,
+               'staff'::public.user_role as role,
+               $2::uuid as org_id,
+               true as is_active
+             from auth.users au
+             where au.email = $1
+             on conflict (id) do update
+             set org_id = excluded.org_id,
+                 is_active = excluded.is_active
+             returning id`,
+            [e2eEmail, targetOrgForInsert]
+          )
+
+          if (upsert.rowCount && upsert.rowCount > 0) {
+            console.log(
+              `[global.setup] Attempt ${attempt}/${maxAttempts}: created user_profiles row from auth.users (email=${e2eEmail}).`
+            )
+          } else {
+            console.log(
+              `[global.setup] Attempt ${attempt}/${maxAttempts}: auth.users row not found yet for ${e2eEmail}; retrying...`
+            )
+          }
+        } catch (innerErr) {
+          const msg = innerErr instanceof Error ? innerErr.message : String(innerErr)
+          console.warn(
+            `[global.setup] Attempt ${attempt}/${maxAttempts}: profile upsert attempt failed: ${msg}`
+          )
+        }
+
         await client.end()
         if (attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 1000))

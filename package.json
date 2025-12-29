@@ -88,6 +88,7 @@
     "db:report-e2e": "node scripts/reportE2E.js",
     "db:print-org-id": "node scripts/printOrgId.js",
     "e2e:seed": "pnpm -s db:seed-e2e",
+    "e2e:schema:apply": "DOTENV_CONFIG_PATH=.env.e2e.local node -r dotenv/config scripts/applyLineItemSchedulingMigration.mjs",
     "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:studio": "drizzle-kit studio"
