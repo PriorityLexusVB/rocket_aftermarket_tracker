@@ -135,12 +135,37 @@ values (
 on conflict (id) do update set product_id = excluded.product_id, quantity_used = excluded.quantity_used, unit_price = excluded.unit_price, promised_date = excluded.promised_date, requires_scheduling = excluded.requires_scheduling, no_schedule_reason = excluded.no_schedule_reason, is_off_site = excluded.is_off_site;
 
 -- Active loaner assignment
-insert into public.loaner_assignments (id, job_id, loaner_number, eta_return_date, notes)
-values (
-  '00000000-0000-0000-0000-0000000000f3',
-  '00000000-0000-0000-0000-0000000000e1',
-  'LOANER-E2E-123',
-  (date_trunc('day', now()) + interval '2 days')::date,
-  'Seeded loaner assignment for E2E'
-)
-on conflict (id) do update set loaner_number = excluded.loaner_number, eta_return_date = excluded.eta_return_date, notes = excluded.notes;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'loaner_assignments'
+      and column_name = 'loaner_number'
+  ) then
+    insert into public.loaner_assignments (id, job_id, loaner_number, eta_return_date, notes)
+    values (
+      '00000000-0000-0000-0000-0000000000f3',
+      '00000000-0000-0000-0000-0000000000e1',
+      'LOANER-E2E-123',
+      (date_trunc('day', now()) + interval '2 days')::date,
+      'Seeded loaner assignment for E2E'
+    )
+    on conflict (id) do update
+      set loaner_number = excluded.loaner_number,
+          eta_return_date = excluded.eta_return_date,
+          notes = excluded.notes;
+  else
+    insert into public.loaner_assignments (id, job_id, eta_return_date, notes)
+    values (
+      '00000000-0000-0000-0000-0000000000f3',
+      '00000000-0000-0000-0000-0000000000e1',
+      (date_trunc('day', now()) + interval '2 days')::date,
+      'Seeded loaner assignment for E2E'
+    )
+    on conflict (id) do update
+      set eta_return_date = excluded.eta_return_date,
+          notes = excluded.notes;
+  end if;
+end $$;

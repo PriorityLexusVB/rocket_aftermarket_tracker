@@ -5,6 +5,25 @@
 import { createClient } from '@supabase/supabase-js'
 import { classifySchemaError, SchemaErrorCode } from '../src/utils/schemaErrorClassifier.js'
 
+function safeJson(res, statusCode, body) {
+  // In dev (Vite connect middleware), it’s possible for another middleware to
+  // have already started/ended the response. Never attempt to set headers twice.
+  if (res.headersSent || res.writableEnded) return
+
+  res.statusCode = statusCode
+  try {
+    res.setHeader('Content-Type', 'application/json')
+  } catch {
+    return
+  }
+
+  try {
+    res.end(JSON.stringify(body))
+  } catch {
+    // ignore
+  }
+}
+
 function getSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
@@ -116,9 +135,7 @@ export default async function handler(req, res) {
     if (typeof res.status === 'function') {
       return res.status(200).json(response)
     } else {
-      res.statusCode = 200
-      res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify(response))
+      safeJson(res, 200, response)
       return
     }
   }
@@ -163,9 +180,7 @@ export default async function handler(req, res) {
       if (typeof res.status === 'function') {
         return res.status(200).json(response)
       } else {
-        res.statusCode = 200
-        res.setHeader('Content-Type', 'application/json')
-        res.end(JSON.stringify(response))
+        safeJson(res, 200, response)
         return
       }
     }
@@ -185,9 +200,7 @@ export default async function handler(req, res) {
     if (typeof res.status === 'function') {
       return res.status(200).json(response)
     } else {
-      res.statusCode = 200
-      res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify(response))
+      safeJson(res, 200, response)
       return
     }
   } catch (e) {
@@ -213,13 +226,7 @@ export default async function handler(req, res) {
     if (typeof res.status === 'function') {
       return res.status(200).json(response)
     } else {
-      // If a response was already started/ended before the error occurred, do not attempt to
-      // set headers again (prevents ERR_HTTP_HEADERS_SENT which can crash the dev server).
-      if (res.headersSent || res.writableEnded) return
-
-      res.statusCode = 200
-      res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify(response))
+      safeJson(res, 200, response)
       return
     }
   }

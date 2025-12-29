@@ -7,6 +7,9 @@ export function apiPlugin() {
     name: 'vite-plugin-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        // If another middleware already ended the response, do nothing.
+        if (res.writableEnded) return
+
         // Only handle /api/* routes
         if (!req.url?.startsWith('/api/')) {
           return next()
@@ -67,15 +70,22 @@ export function apiPlugin() {
           // This prevents ERR_HTTP_HEADERS_SENT from crashing the Vite dev server.
           if (res.headersSent || res.writableEnded) return
 
-          res.statusCode = 500
-          res.setHeader('Content-Type', 'application/json')
-          res.end(
-            JSON.stringify({
-              error: 'Internal Server Error',
-              message: error.message,
-              handler: handlerPath,
-            })
-          )
+          try {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(
+              JSON.stringify({
+                error: 'Internal Server Error',
+                message: error?.message || String(error),
+                handler: handlerPath,
+              })
+            )
+          } catch (writeErr) {
+            console.error(
+              `[vite-plugin-api] Failed to write error response for ${handlerPath}:`,
+              writeErr
+            )
+          }
         }
       })
     },
