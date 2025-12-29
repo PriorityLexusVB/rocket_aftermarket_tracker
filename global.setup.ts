@@ -364,9 +364,39 @@ async function associateUserWithE2EOrg() {
       )
 
       if (check.rowCount === 0) {
-        console.log(
-          `[global.setup] Attempt ${attempt}/${maxAttempts}: profile not found yet, retrying...`
-        )
+        // In some environments the auth->profile trigger may not run (or may be delayed).
+        // Create the profile row directly using the DB connection so tests have org context.
+        try {
+          const authUser = await client.query('select id from auth.users where email = $1 limit 1', [
+            e2eEmail,
+          ])
+          const authUserId = authUser.rows?.[0]?.id as string | undefined
+
+          if (authUserId) {
+            const derivedName = e2eEmail.split('@')[0] || 'E2E User'
+            await client.query(
+              `insert into public.user_profiles (id, email, full_name, is_active, created_at, updated_at)
+               values ($1, $2, $3, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+               on conflict (id) do update
+               set email = excluded.email,
+                   full_name = excluded.full_name,
+                   is_active = true,
+                   updated_at = CURRENT_TIMESTAMP`,
+              [authUserId, e2eEmail, derivedName]
+            )
+          } else {
+            console.log(
+              `[global.setup] Attempt ${attempt}/${maxAttempts}: auth.users row not found for ${e2eEmail}; retrying...`
+            )
+          }
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e)
+          console.log(
+            `[global.setup] Attempt ${attempt}/${maxAttempts}: failed to upsert user_profiles row (${message}); retrying...`
+          )
+        }
+
+        console.log(`[global.setup] Attempt ${attempt}/${maxAttempts}: profile not found yet, retrying...`)
         await client.end()
         if (attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 1000))
