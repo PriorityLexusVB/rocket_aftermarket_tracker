@@ -131,6 +131,8 @@
 │                                                                  │
 │  URL: https://abc123xyz.supabase.co                            │
 │  (Different from production: ogjtmtndgiqqdtwatsue.supabase.co) │
+│  Note: "ogjtmtndgiqqdtwatsue" is the specific production       │
+│  reference being blocked by the safety check in this repo      │
 └─────────────────────────────────────────────────────────────────┘
                              │
                              ▼

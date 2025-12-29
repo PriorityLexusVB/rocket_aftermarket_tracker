@@ -15,7 +15,7 @@ The E2E workflow is **working correctly** but is **intentionally blocking** test
 
 **Impact**: PR #251 cannot complete E2E smoke tests until this configuration issue is resolved.
 
-**Risk Level**: 🟢 Low - This is a configuration issue, not a code defect. The PR code changes are fine.
+**Risk Level**: 🟢 Low - This is a configuration issue, not a code defect. The PR code changes are fine. However, there is a mismatch between the PR description/checklist and the actual code changes; the PR description should be updated to reflect the current implementation before merge.
 
 ---
 
@@ -89,7 +89,9 @@ The E2E workflow is **working correctly** but is **intentionally blocking** test
    - **Purpose**: Fix unit test to match actual service usage
    - **Impact**: Unit tests now pass correctly
 
-### PR Checklist (from PR description)
+### PR Checklist (from PR description – inconsistent with diff)
+
+**⚠️ Important:** The following checklist is copied from the PR description and **does not match the actual code changes** in PR #251. It references `VITE_DEAL_FORM_V2` and a `data-testid="loaner-section"` in `DealForm.jsx`, but the diff for this PR only includes Playwright worker configuration changes, capability cleanup in `dealService.js`, and a test mock fix. Treat this checklist as **stale/misapplied metadata**, and rely on the diff and this analysis when reviewing the PR.
 
 - [ ] VITE_DEAL_FORM_V2 honored; tests run with flag on.
 - [ ] Only a `data-testid="loaner-section"` was added to `DealForm.jsx`.
@@ -97,7 +99,7 @@ The E2E workflow is **working correctly** but is **intentionally blocking** test
 - [ ] No service signatures changed. ✅ **Confirmed: Only internal cleanup**
 - [ ] Rollback: set `VITE_DEAL_FORM_V2=false`.
 
-**Note**: The PR checklist items don't match the actual code changes (checklist mentions loaner section changes, but the diff shows different changes). This suggests the PR description may be out of date or the wrong template was used.
+**Note**: This mismatch between the checklist and the actual diff indicates a documentation/template issue in PR #251 itself (likely an outdated or incorrect PR description). Reviewers should **not rely on this checklist** to understand the code changes and should instead trust the diff and the analysis above.
 
 ---
 

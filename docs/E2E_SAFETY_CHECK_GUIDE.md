@@ -6,7 +6,7 @@ The E2E workflow includes a **safety check** that prevents accidental execution 
 
 ## Current Issue
 
-**Workflow Run**: https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/actions/runs/20557233940/job/59045279378
+**Workflow Run** (historical context; see current workflow in `.github/workflows/e2e.yml`): https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/actions/runs/20557233940/job/59045279378
 
 **Error**: The workflow failed at step 10: "Safety check - block E2E against production Supabase"
 
@@ -127,6 +127,8 @@ Option C: **Manual Schema Setup**
 #### 2.4. Set Up Test Organization/Tenant
 
 Run this SQL in your E2E Supabase SQL Editor:
+
+**Note**: Verify these table names match your actual schema. The example assumes standard `organizations` and `user_profiles` tables. Check your schema documentation or run `\dt` in the SQL editor to confirm table names.
 
 ```sql
 -- Create E2E organization
