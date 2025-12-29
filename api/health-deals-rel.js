@@ -166,6 +166,7 @@ export default async function handler(req, res) {
         res.statusCode = 200
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(response))
+        return
       }
     }
 
@@ -187,6 +188,7 @@ export default async function handler(req, res) {
       res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify(response))
+      return
     }
   } catch (e) {
     const code = classifySchemaError(e)
@@ -211,9 +213,14 @@ export default async function handler(req, res) {
     if (typeof res.status === 'function') {
       return res.status(200).json(response)
     } else {
+      // If a response was already started/ended before the error occurred, do not attempt to
+      // set headers again (prevents ERR_HTTP_HEADERS_SENT which can crash the dev server).
+      if (res.headersSent || res.writableEnded) return
+
       res.statusCode = 200
       res.setHeader('Content-Type', 'application/json')
       res.end(JSON.stringify(response))
+      return
     }
   }
 }

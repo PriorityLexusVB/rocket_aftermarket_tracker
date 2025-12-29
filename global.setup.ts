@@ -250,6 +250,9 @@ async function associateUserWithE2EOrg() {
 
   const { Client } = await import('pg')
 
+  // Keep this in sync with scripts/sql/seed_e2e.sql
+  const DEFAULT_E2E_ORG_ID = '00000000-0000-0000-0000-0000000000e2'
+
   const buildClientConfig = async (connectionString: string) => {
     const url = new URL(connectionString)
 
@@ -378,9 +381,51 @@ async function associateUserWithE2EOrg() {
       )
 
       if (check.rowCount === 0) {
-        console.log(
-          `[global.setup] Attempt ${attempt}/${maxAttempts}: profile not found yet, retrying...`
-        )
+        // Seed may run before the test user exists in auth.users.
+        // After we log in during globalSetup, ensure the profile row exists by upserting from auth.users.
+        const targetOrgForInsert = configuredOrg || DEFAULT_E2E_ORG_ID
+        try {
+          await client.query(
+            `insert into public.organizations (id, name)
+             values ($1::uuid, 'E2E Org')
+             on conflict (id) do update set name = excluded.name`,
+            [targetOrgForInsert]
+          )
+
+          const upsert = await client.query(
+            `insert into public.user_profiles (id, email, full_name, role, org_id, is_active)
+             select
+               au.id,
+               au.email,
+               coalesce(au.raw_user_meta_data->>'full_name', au.raw_user_meta_data->>'name', au.email) as full_name,
+               'staff'::public.user_role as role,
+               $2::uuid as org_id,
+               true as is_active
+             from auth.users au
+             where au.email = $1
+             on conflict (id) do update
+             set org_id = excluded.org_id,
+                 is_active = excluded.is_active
+             returning id`,
+            [e2eEmail, targetOrgForInsert]
+          )
+
+          if (upsert.rowCount && upsert.rowCount > 0) {
+            console.log(
+              `[global.setup] Attempt ${attempt}/${maxAttempts}: created user_profiles row from auth.users (email=${e2eEmail}).`
+            )
+          } else {
+            console.log(
+              `[global.setup] Attempt ${attempt}/${maxAttempts}: auth.users row not found yet for ${e2eEmail}; retrying...`
+            )
+          }
+        } catch (innerErr) {
+          const msg = innerErr instanceof Error ? innerErr.message : String(innerErr)
+          console.warn(
+            `[global.setup] Attempt ${attempt}/${maxAttempts}: profile upsert attempt failed: ${msg}`
+          )
+        }
+
         await client.end()
         if (attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 1000))
