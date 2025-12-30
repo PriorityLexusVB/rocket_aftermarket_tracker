@@ -1,5 +1,5 @@
 // src/pages/deals/index.jsx
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { parseISO, format } from 'date-fns'
 import {
@@ -485,19 +485,32 @@ export default function DealsPage() {
     }
   }
 
+  // Guards against overlapping loadDeals() calls overwriting state
+  const loadDealsRequestIdRef = useRef(0)
+
   // ✅ FIXED: Enhanced load deals with better error handling and retry logic
   const loadDeals = useCallback(async (retryCount = 0) => {
+    const requestId = ++loadDealsRequestIdRef.current
     try {
       setLoading(true)
       setError('') // Clear previous errors
       const data = await getAllDeals()
+
+      // Ignore stale responses (e.g., overlapping loads in React 18 StrictMode)
+      if (requestId !== loadDealsRequestIdRef.current) return
+
       setDeals(data || [])
     } catch (e) {
+      // Ignore stale errors from superseded requests
+      if (requestId !== loadDealsRequestIdRef.current) return
+
       const errorMessage = `Failed to load deals: ${e?.message}`
       console.error('Load deals error:', e)
 
       // Retry logic for network issues
       if (retryCount < 2 && (e?.message?.includes('fetch') || e?.message?.includes('network'))) {
+        // Only schedule retries for the latest request
+        if (requestId !== loadDealsRequestIdRef.current) return
         console.log(`Retrying load deals (attempt ${retryCount + 1})`)
         setTimeout(() => loadDeals(retryCount + 1), 1000 * (retryCount + 1))
         return
@@ -506,7 +519,10 @@ export default function DealsPage() {
       setError(errorMessage)
       setDeals([]) // Set empty array on error
     } finally {
-      setLoading(false)
+      // Only let the latest request control the loading indicator
+      if (requestId === loadDealsRequestIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [])
 
