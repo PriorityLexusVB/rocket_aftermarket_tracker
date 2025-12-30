@@ -2751,16 +2751,45 @@ function mapDbDealToForm(dbDeal) {
 // A3: New function to mark loaner as returned
 export async function markLoanerReturned(loanerAssignmentId) {
   try {
-    // Use direct update instead of RPC function if it doesn't exist
-    const { error } = await supabase
-      ?.from('loaner_assignments')
-      ?.update({ returned_at: new Date()?.toISOString() })
-      ?.eq('id', loanerAssignmentId)
+    if (!loanerAssignmentId) {
+      throw new Error('Missing loaner assignment id')
+    }
 
-    if (error) throw error
+    // Use direct update instead of RPC function if it doesn't exist
+    const nowIso = new Date()?.toISOString()
+    const res = await supabase
+      ?.from('loaner_assignments')
+      ?.update({ returned_at: nowIso })
+      ?.eq('id', loanerAssignmentId)
+      // IMPORTANT: PostgREST/Supabase can return 200 OK with 0 rows affected (especially under RLS).
+      // Selecting a column forces row return so we can detect no-op updates.
+      ?.select('id')
+
+    if (res?.error) throw res.error
+
+    const updated = res?.data
+    if (!Array.isArray(updated) || updated.length === 0) {
+      const err = new Error(
+        'Loaner return did not persist (0 rows updated). This usually means the record was not found or access was denied.'
+      )
+      // Shadow any ambient/prototype `code` (some test/mocks may set it globally)
+      // so this local error is never treated as a Postgres/PostgREST RLS error.
+      err.code = null
+      throw err
+    }
+
     return true
   } catch (error) {
     console.error('Failed to mark loaner as returned:', error)
+
+    // Only treat as an RLS denial when we have a real Postgres/PostgREST error code.
+    // (Synthetic/local errors should not be remapped.)
+    if (isRlsError(error) && error?.code) {
+      throw new Error(
+        'Permission denied while marking loaner returned. Ask an admin to verify your access / org assignment.'
+      )
+    }
+
     throw new Error(`Failed to mark loaner as returned: ${error?.message}`)
   }
 }

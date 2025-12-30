@@ -11,6 +11,7 @@ vi.mock('@/lib/supabase', () => {
   }
 
   let existingTxn = null
+  let loanerUpdateResult = [{ id: 'loaner-1' }]
 
   const supabase = {
     auth: {
@@ -144,7 +145,11 @@ vi.mock('@/lib/supabase', () => {
               calls.loaner_assignments.update.push(true)
               return {
                 eq() {
-                  return { error: null }
+                  return {
+                    async select() {
+                      return { data: loanerUpdateResult, error: null }
+                    },
+                  }
                 },
               }
             },
@@ -167,6 +172,9 @@ vi.mock('@/lib/supabase', () => {
     __calls: calls,
     __setExistingTxn(txn) {
       existingTxn = txn
+    },
+    __setLoanerUpdateResult(next) {
+      loanerUpdateResult = next
     },
   }
 
@@ -320,6 +328,17 @@ describe('dealService pure transforms', () => {
     const r2 = rows[1]
     expect(r2.requires_scheduling).toBe(false)
     expect(r2.no_schedule_reason).toBe('n/a')
+  })
+})
+
+describe('dealService loaner actions', () => {
+  beforeEach(() => {
+    supabase.__setLoanerUpdateResult([{ id: 'loaner-1' }])
+  })
+
+  it('markLoanerReturned throws when update affects 0 rows', async () => {
+    supabase.__setLoanerUpdateResult([])
+    await expect(dealService.markLoanerReturned('loaner-1')).rejects.toThrow(/0 rows updated/i)
   })
 })
 
