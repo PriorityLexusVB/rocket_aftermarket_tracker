@@ -18,7 +18,6 @@ import ScheduleChip from '../../components/deals/ScheduleChip'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
@@ -26,6 +25,11 @@ import Icon from '../../components/ui/Icon'
 // Feature flag for Simple Agenda
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
+
+const isDealsDebugEnabled = () =>
+  import.meta.env.DEV &&
+  (import.meta.env.VITE_DEBUG_DEALS_LIST === 'true' ||
+    (typeof window !== 'undefined' && window.localStorage?.getItem('debug:deals') === '1'))
 
 // ✅ UPDATED: StatusPill with enhanced styling
 const StatusPill = ({ status }) => {
@@ -363,6 +367,9 @@ export default function DealsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  const lastDeletedDealIdRef = useRef(null)
+  const lastDeletedAtRef = useRef(0)
+
   // Guard against rapid double-click triggering duplicate deletes
   const deleteInFlightRef = useRef(false)
 
@@ -423,19 +430,68 @@ export default function DealsPage() {
 
   // ✅ FIXED: Enhanced delete function with proper error handling
   const handleDeleteDeal = async (dealId) => {
+    const startedAt = Date.now()
     try {
       if (deleteInFlightRef.current) return
       deleteInFlightRef.current = true
 
       setDeletingDeal(true)
       setError('') // Clear previous errors
+
+      lastDeletedDealIdRef.current = dealId
+      lastDeletedAtRef.current = Date.now()
+
+      if (isDealsDebugEnabled()) {
+        console.info('[Deals][delete] start', {
+          dealId,
+          at: new Date(lastDeletedAtRef.current).toISOString(),
+        })
+      }
+
       await deleteDeal(dealId)
 
+      // If any UI is currently open for this deal, close it before reloading.
+      // This prevents confusing states where a drawer/modal appears to "come back" after deletion.
+      const closedUiState = {
+        closedLoanerDrawer: false,
+        closedDetailDrawer: false,
+      }
+      if (selectedDealForLoaner?.id === dealId) {
+        setShowLoanerDrawer(false)
+        setSelectedDealForLoaner(null)
+        closedUiState.closedLoanerDrawer = true
+      }
+      if (selectedDealForDetail?.id === dealId) {
+        setShowDetailDrawer(false)
+        setSelectedDealForDetail(null)
+        closedUiState.closedDetailDrawer = true
+      }
+      // Defensive: if a mark-returned modal is open, close it as well.
+      if (markReturnedModal) {
+        setMarkReturnedModal(null)
+      }
+
+      if (isDealsDebugEnabled()) {
+        console.info('[Deals][delete] success', {
+          dealId,
+          durationMs: Date.now() - startedAt,
+          ...closedUiState,
+        })
+      }
+
       setDeleteConfirm(null)
-      await loadDeals()
+      await loadDeals(0, 'after-delete')
     } catch (e) {
       setError(`Failed to delete deal: ${e?.message}`)
       console.error('Delete error:', e)
+
+      if (isDealsDebugEnabled()) {
+        console.info('[Deals][delete] failed', {
+          dealId,
+          durationMs: Date.now() - startedAt,
+          message: e?.message,
+        })
+      }
     } finally {
       setDeletingDeal(false)
       deleteInFlightRef.current = false
@@ -453,7 +509,7 @@ export default function DealsPage() {
       // ✅ FIXED: Properly close drawer and reset state
       setShowLoanerDrawer(false)
       setSelectedDealForLoaner(null)
-      await loadDeals() // Refresh data
+      await loadDeals(0, 'after-save-loaner') // Refresh data
     } catch (e) {
       const errorMessage = e?.message || 'Failed to save loaner assignment'
       setError(errorMessage)
@@ -470,7 +526,7 @@ export default function DealsPage() {
       setError('') // Clear previous errors
       await markLoanerReturned(loanerData?.loaner_id)
       setMarkReturnedModal(null)
-      await loadDeals() // Refresh data
+      await loadDeals(0, 'after-loaner-returned') // Refresh data
     } catch (e) {
       setError(`Failed to mark loaner as returned: ${e?.message}`)
       console.error('Mark returned error:', e)
@@ -496,30 +552,94 @@ export default function DealsPage() {
   const loadDealsRequestIdRef = useRef(0)
 
   // ✅ FIXED: Enhanced load deals with better error handling and retry logic
-  const loadDeals = useCallback(async (retryCount = 0) => {
+  const loadDeals = useCallback(async (retryCount = 0, reason = 'unknown') => {
     const requestId = ++loadDealsRequestIdRef.current
+    const startedAt = Date.now()
+    const lastDeletedDealId = lastDeletedDealIdRef.current
+    const lastDeletedAt = lastDeletedAtRef.current
+
+    const callerHint = isDealsDebugEnabled()
+      ? new Error().stack?.split('\n')?.[2]?.trim() || null
+      : null
+
+    if (isDealsDebugEnabled()) {
+      console.info('[Deals][load] start', {
+        requestId,
+        retryCount,
+        reason,
+        callerHint,
+        lastDeletedDealId,
+        lastDeletedAgeMs: lastDeletedAt ? Date.now() - lastDeletedAt : null,
+      })
+    }
     try {
       setLoading(true)
       setError('') // Clear previous errors
       const data = await getAllDeals()
 
       // Ignore stale responses (e.g., overlapping loads in React 18 StrictMode)
-      if (requestId !== loadDealsRequestIdRef.current) return
+      if (requestId !== loadDealsRequestIdRef.current) {
+        if (isDealsDebugEnabled()) {
+          console.info('[Deals][load] stale response ignored', {
+            requestId,
+            currentRequestId: loadDealsRequestIdRef.current,
+            durationMs: Date.now() - startedAt,
+            count: Array.isArray(data) ? data.length : null,
+            reason,
+          })
+        }
+        return
+      }
+
+      if (isDealsDebugEnabled()) {
+        const includesLastDeleted =
+          !!lastDeletedDealId &&
+          Array.isArray(data) &&
+          data.some((d) => d?.id === lastDeletedDealId || d?.job_id === lastDeletedDealId)
+
+        console.info('[Deals][load] apply', {
+          requestId,
+          durationMs: Date.now() - startedAt,
+          count: Array.isArray(data) ? data.length : null,
+          includesLastDeleted,
+          reason,
+        })
+      }
 
       setDeals(data || [])
     } catch (e) {
       // Ignore stale errors from superseded requests
-      if (requestId !== loadDealsRequestIdRef.current) return
+      if (requestId !== loadDealsRequestIdRef.current) {
+        if (isDealsDebugEnabled()) {
+          console.info('[Deals][load] stale error ignored', {
+            requestId,
+            currentRequestId: loadDealsRequestIdRef.current,
+            durationMs: Date.now() - startedAt,
+            message: e?.message,
+            reason,
+          })
+        }
+        return
+      }
 
       const errorMessage = `Failed to load deals: ${e?.message}`
       console.error('Load deals error:', e)
+
+      if (isDealsDebugEnabled()) {
+        console.info('[Deals][load] failed', {
+          requestId,
+          durationMs: Date.now() - startedAt,
+          message: e?.message,
+          reason,
+        })
+      }
 
       // Retry logic for network issues
       if (retryCount < 2 && (e?.message?.includes('fetch') || e?.message?.includes('network'))) {
         // Only schedule retries for the latest request
         if (requestId !== loadDealsRequestIdRef.current) return
         console.log(`Retrying load deals (attempt ${retryCount + 1})`)
-        setTimeout(() => loadDeals(retryCount + 1), 1000 * (retryCount + 1))
+        setTimeout(() => loadDeals(retryCount + 1, `retry:${reason}`), 1000 * (retryCount + 1))
         return
       }
 
@@ -529,6 +649,21 @@ export default function DealsPage() {
       // Only let the latest request control the loading indicator
       if (requestId === loadDealsRequestIdRef.current) {
         setLoading(false)
+
+        if (isDealsDebugEnabled()) {
+          console.info('[Deals][load] done (latest)', {
+            requestId,
+            durationMs: Date.now() - startedAt,
+            reason,
+          })
+        }
+      } else if (isDealsDebugEnabled()) {
+        console.info('[Deals][load] done (stale)', {
+          requestId,
+          currentRequestId: loadDealsRequestIdRef.current,
+          durationMs: Date.now() - startedAt,
+          reason,
+        })
       }
     }
   }, [])
@@ -545,7 +680,7 @@ export default function DealsPage() {
 
   useEffect(() => {
     if (!user?.id) return
-    loadDeals()
+    loadDeals(0, 'auth-mount')
   }, [user?.id, loadDeals])
 
   // ✅ FIXED: Move handleManageLoaner function to proper location inside component
@@ -1394,7 +1529,18 @@ export default function DealsPage() {
                     key={deal?.id}
                     data-testid={`deal-row-${deal?.id}`}
                     className="even:bg-slate-50 hover:bg-slate-100 cursor-pointer"
-                    onClick={() => handleOpenDetail(deal)}
+                    onClick={() => {
+                      if (isDealsDebugEnabled()) {
+                        console.info('[Deals][ui] row click -> open detail', {
+                          dealId: deal?.id,
+                          primary: getDealPrimaryRef(deal),
+                          customerNeedsLoaner: !!deal?.customer_needs_loaner,
+                          loanerId: deal?.loaner_id || null,
+                          loanerNumber: deal?.loaner_number || null,
+                        })
+                      }
+                      handleOpenDetail(deal)
+                    }}
                   >
                     <td className="px-4 py-3 w-[120px]">
                       <span className="text-sm text-slate-700">
@@ -1527,6 +1673,12 @@ export default function DealsPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
+                            if (isDealsDebugEnabled()) {
+                              console.info('[Deals][ui] click edit', {
+                                dealId: deal?.id,
+                                primary: getDealPrimaryRef(deal),
+                              })
+                            }
                             handleEditDeal(deal?.id)
                           }}
                           className="h-9 w-9 rounded flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
@@ -1541,6 +1693,14 @@ export default function DealsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (isDealsDebugEnabled()) {
+                                console.info('[Deals][ui] click manage loaner', {
+                                  dealId: deal?.id,
+                                  primary: getDealPrimaryRef(deal),
+                                  loanerId: deal?.loaner_id || null,
+                                  loanerNumber: deal?.loaner_number || null,
+                                })
+                              }
                               handleManageLoaner(deal)
                             }}
                             className="h-9 w-9 rounded flex items-center justify-center text-purple-600 hover:text-purple-800 hover:bg-purple-50"
@@ -1556,6 +1716,15 @@ export default function DealsPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
+
+                              if (isDealsDebugEnabled()) {
+                                console.info('[Deals][ui] click mark returned', {
+                                  dealId: deal?.id,
+                                  primary: getDealPrimaryRef(deal),
+                                  loanerId: deal?.loaner_id,
+                                  loanerNumber: deal?.loaner_number || null,
+                                })
+                              }
 
                               setMarkReturnedModal({
                                 loaner_id: deal?.loaner_id,
@@ -1575,6 +1744,15 @@ export default function DealsPage() {
                           onClick={(e) => {
                             e.stopPropagation()
                             setError('')
+                            if (isDealsDebugEnabled()) {
+                              console.info('[Deals][ui] click delete (open confirm)', {
+                                dealId: deal?.id,
+                                primary: getDealPrimaryRef(deal),
+                                customerNeedsLoaner: !!deal?.customer_needs_loaner,
+                                loanerId: deal?.loaner_id || null,
+                                loanerNumber: deal?.loaner_number || null,
+                              })
+                            }
                             setDeleteConfirm(deal)
                           }}
                           className="h-9 w-9 rounded flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50"
