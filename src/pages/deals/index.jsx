@@ -1639,6 +1639,12 @@ export default function DealsPage() {
                             )}
                           </div>
                         )}
+
+                        {isDealsDebugEnabled() && deal?.id && (
+                          <div className="mt-1 text-[10px] text-slate-400">
+                            id…{String(deal.id).slice(-6)}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 w-[150px]">
@@ -1823,6 +1829,11 @@ export default function DealsPage() {
                         <div>
                           <div className="font-medium text-slate-900">
                             {getDealPrimaryRef(deal)}
+                            {isDealsDebugEnabled() && deal?.id ? (
+                              <span className="ml-2 text-[10px] text-slate-400">
+                                id…{String(deal.id).slice(-6)}
+                              </span>
+                            ) : null}
                           </div>
                           <div className="text-sm text-slate-600">
                             {getDealSubtitle(deal) || '—'}
