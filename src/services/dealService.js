@@ -2794,6 +2794,129 @@ export async function markLoanerReturned(loanerAssignmentId) {
   }
 }
 
+// A3: Strict helper for interactive loaner assignment saves
+// - Unlike upsertLoanerAssignment() (which degrades silently to avoid blocking deal saves),
+//   this version is intended for dedicated UI actions and MUST surface failures.
+export async function saveLoanerAssignment(jobId, loanerData) {
+  if (!jobId) throw new Error('Missing job id')
+  if (!loanerData?.loaner_number?.trim()) throw new Error('Missing loaner number')
+
+  const loanerNumber = loanerData.loaner_number.trim()
+  const etaReturnDate = loanerData?.eta_return_date || null
+  const notes = loanerData?.notes?.trim() || null
+
+  try {
+    const ctx = await getOrgContext('saveLoanerAssignment')
+
+    const isMissingReturnedAtError = (err) => {
+      const msg = String(err?.message || '').toLowerCase()
+      return (
+        msg.includes('returned_at') && (msg.includes('does not exist') || msg.includes('column'))
+      )
+    }
+
+    const isMissingOrgIdError = (err) => {
+      const msg = String(err?.message || '').toLowerCase()
+      return msg.includes('org_id') && (msg.includes('does not exist') || msg.includes('column'))
+    }
+
+    // Find existing active assignment for this job
+    let existingId = null
+    {
+      const base = supabase?.from('loaner_assignments')?.select('id')?.eq('job_id', jobId)
+      const withReturnedAt =
+        base && typeof base.is === 'function' ? base.is('returned_at', null) : base
+      let res = await withReturnedAt?.limit?.(1)
+      if (res?.error && isMissingReturnedAtError(res.error)) {
+        res = await supabase
+          ?.from('loaner_assignments')
+          ?.select('id')
+          ?.eq('job_id', jobId)
+          ?.limit(1)
+      }
+
+      if (res?.error) {
+        if (isRlsError(res.error)) {
+          throw new Error('Permission denied while looking up the loaner assignment.')
+        }
+        throw new Error(`Failed to look up loaner assignment: ${res.error.message}`)
+      }
+
+      const rows = res?.data
+      if (Array.isArray(rows) && rows.length > 0) existingId = rows[0]?.id ?? null
+    }
+
+    const payload = {
+      job_id: jobId,
+      org_id: ctx?.org_id ?? loanerData?.org_id ?? null,
+      loaner_number: loanerNumber,
+      eta_return_date: etaReturnDate,
+      notes,
+    }
+
+    const payloadWithoutOrg = { ...payload }
+    delete payloadWithoutOrg.org_id
+
+    if (existingId) {
+      let res = await supabase
+        ?.from('loaner_assignments')
+        ?.update(payload)
+        ?.eq('id', existingId)
+        ?.select('id')
+
+      if (res?.error && isMissingOrgIdError(res.error)) {
+        res = await supabase
+          ?.from('loaner_assignments')
+          ?.update(payloadWithoutOrg)
+          ?.eq('id', existingId)
+          ?.select('id')
+      }
+
+      if (res?.error) {
+        if (isRlsError(res.error)) {
+          throw new Error('Permission denied while saving the loaner assignment.')
+        }
+        throw new Error(res.error.message)
+      }
+
+      if (!Array.isArray(res?.data) || res.data.length === 0) {
+        throw new Error(
+          'Loaner assignment save did not persist (0 rows updated). This usually means access was denied.'
+        )
+      }
+
+      return true
+    }
+
+    // Insert new assignment
+    let res = await supabase?.from('loaner_assignments')?.insert([payload])?.select('id')
+    if (res?.error && isMissingOrgIdError(res.error)) {
+      res = await supabase?.from('loaner_assignments')?.insert([payloadWithoutOrg])?.select('id')
+    }
+
+    if (res?.error) {
+      if (res.error?.code === '23505') {
+        throw new Error(`Loaner ${loanerNumber} is already assigned to another active job`)
+      }
+      if (isRlsError(res.error)) {
+        throw new Error('Permission denied while saving the loaner assignment.')
+      }
+      throw new Error(res.error.message)
+    }
+
+    if (!Array.isArray(res?.data) || res.data.length === 0) {
+      throw new Error(
+        'Loaner assignment save did not persist (0 rows inserted). This usually means access was denied.'
+      )
+    }
+
+    return true
+  } catch (error) {
+    console.error('[dealService:saveLoanerAssignment] Failed:', error)
+    throw new Error(`Failed to save loaner assignment: ${error?.message}`)
+  }
+}
+
 /**
  * Search for existing customers by name to prevent duplicates
  * @param {string} searchTerm - Partial customer name to search for

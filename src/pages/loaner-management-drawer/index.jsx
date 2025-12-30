@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import Navbar from '../../components/ui/Navbar'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
+import { markLoanerReturned, saveLoanerAssignment } from '../../services/dealService'
 
 export default function LoanerManagementDrawer() {
   const [loaners, setLoaners] = useState([])
@@ -130,16 +131,11 @@ export default function LoanerManagementDrawer() {
     try {
       setError('')
 
-      const { error } = await supabase?.from('loaner_assignments')?.insert([
-        {
-          job_id: selectedJob?.id,
-          loaner_number: assignmentForm?.loaner_number?.trim(),
-          eta_return_date: assignmentForm?.eta_return_date,
-          notes: assignmentForm?.notes?.trim() || null,
-        },
-      ])
-
-      if (error) throw error
+      await saveLoanerAssignment(selectedJob?.id, {
+        loaner_number: assignmentForm?.loaner_number,
+        eta_return_date: assignmentForm?.eta_return_date,
+        notes: assignmentForm?.notes,
+      })
 
       // Reset form and close modal
       setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' })
@@ -158,12 +154,7 @@ export default function LoanerManagementDrawer() {
     try {
       setError('')
 
-      const { error } = await supabase
-        ?.from('loaner_assignments')
-        ?.update({ returned_at: new Date()?.toISOString() })
-        ?.eq('id', assignmentId)
-
-      if (error) throw error
+      await markLoanerReturned(assignmentId)
 
       await loadLoaners()
     } catch (err) {

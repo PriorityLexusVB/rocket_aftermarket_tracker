@@ -2,7 +2,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { parseISO, format } from 'date-fns'
-import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
+import {
+  deleteDeal,
+  getAllDeals,
+  markLoanerReturned,
+  saveLoanerAssignment,
+} from '../../services/dealService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
@@ -436,46 +441,14 @@ export default function DealsPage() {
       setLoanerLoading(true)
       setError('') // Clear previous errors
 
-      // Insert or update loaner assignment without relying on ON CONFLICT
-      let existing = null
-      try {
-        const { data: rows } = await supabase
-          ?.from('loaner_assignments')
-          ?.select('id')
-          ?.eq('job_id', loanerData?.job_id)
-          ?.is('returned_at', null)
-          ?.limit(1)
-        existing = Array.isArray(rows) ? rows[0] : rows
-      } catch {}
-
-      if (existing?.id) {
-        const { error: updErr } = await supabase
-          ?.from('loaner_assignments')
-          ?.update({
-            loaner_number: loanerData?.loaner_number,
-            eta_return_date: loanerData?.eta_return_date,
-            notes: loanerData?.notes,
-          })
-          ?.eq('id', existing.id)
-        if (updErr) throw updErr
-      } else {
-        const { error: insErr } = await supabase?.from('loaner_assignments')?.insert([
-          {
-            job_id: loanerData?.job_id,
-            loaner_number: loanerData?.loaner_number,
-            eta_return_date: loanerData?.eta_return_date,
-            notes: loanerData?.notes,
-          },
-        ])
-        if (insErr) throw insErr
-      }
+      await saveLoanerAssignment(loanerData?.job_id, loanerData)
 
       // ✅ FIXED: Properly close drawer and reset state
       setShowLoanerDrawer(false)
       setSelectedDealForLoaner(null)
       await loadDeals() // Refresh data
     } catch (e) {
-      const errorMessage = `Failed to save loaner assignment: ${e?.message}`
+      const errorMessage = e?.message || 'Failed to save loaner assignment'
       setError(errorMessage)
       throw new Error(errorMessage)
     } finally {

@@ -11,7 +11,10 @@ vi.mock('@/lib/supabase', () => {
   }
 
   let existingTxn = null
+  let loanerSelectRows = []
   let loanerUpdateResult = [{ id: 'loaner-1' }]
+  let loanerInsertResult = [{ id: 'loaner-1' }]
+  let loanerInsertError = null
 
   const supabase = {
     auth: {
@@ -129,13 +132,20 @@ vi.mock('@/lib/supabase', () => {
             select() {
               return {
                 eq() {
+                  calls.loaner_assignments.select.push(true)
+
+                  const run = async () => ({ data: loanerSelectRows, error: null })
+
                   return {
                     is() {
                       return {
-                        async single() {
-                          return { data: null }
+                        async limit() {
+                          return run()
                         },
                       }
+                    },
+                    async limit() {
+                      return run()
                     },
                   }
                 },
@@ -153,9 +163,13 @@ vi.mock('@/lib/supabase', () => {
                 },
               }
             },
-            insert() {
-              calls.loaner_assignments.insert.push(true)
-              return { error: null }
+            insert(rows) {
+              calls.loaner_assignments.insert.push(rows)
+              return {
+                async select() {
+                  return { data: loanerInsertResult, error: loanerInsertError }
+                },
+              }
             },
           }
         default:
@@ -173,8 +187,17 @@ vi.mock('@/lib/supabase', () => {
     __setExistingTxn(txn) {
       existingTxn = txn
     },
+    __setLoanerSelectRows(next) {
+      loanerSelectRows = next
+    },
     __setLoanerUpdateResult(next) {
       loanerUpdateResult = next
+    },
+    __setLoanerInsertResult(next) {
+      loanerInsertResult = next
+    },
+    __setLoanerInsertError(next) {
+      loanerInsertError = next
     },
   }
 
@@ -333,12 +356,37 @@ describe('dealService pure transforms', () => {
 
 describe('dealService loaner actions', () => {
   beforeEach(() => {
+    supabase.__setLoanerSelectRows([])
     supabase.__setLoanerUpdateResult([{ id: 'loaner-1' }])
+    supabase.__setLoanerInsertResult([{ id: 'loaner-1' }])
+    supabase.__setLoanerInsertError(null)
   })
 
   it('markLoanerReturned throws when update affects 0 rows', async () => {
     supabase.__setLoanerUpdateResult([])
     await expect(dealService.markLoanerReturned('loaner-1')).rejects.toThrow(/0 rows updated/i)
+  })
+
+  it('saveLoanerAssignment throws when update affects 0 rows', async () => {
+    vi.spyOn(dealService, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
+
+    supabase.__setLoanerSelectRows([{ id: 'loaner-1' }])
+    supabase.__setLoanerUpdateResult([])
+
+    await expect(
+      dealService.saveLoanerAssignment('job-1', { loaner_number: 'L-123', eta_return_date: null })
+    ).rejects.toThrow(/0 rows updated/i)
+  })
+
+  it('saveLoanerAssignment throws when insert affects 0 rows', async () => {
+    vi.spyOn(dealService, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
+
+    supabase.__setLoanerSelectRows([])
+    supabase.__setLoanerInsertResult([])
+
+    await expect(
+      dealService.saveLoanerAssignment('job-1', { loaner_number: 'L-123', eta_return_date: null })
+    ).rejects.toThrow(/0 rows inserted/i)
   })
 })
 
