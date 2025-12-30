@@ -4,18 +4,18 @@ import { requireAuthEnv } from './_authEnv'
 
 test.describe('Deal create + edit flow', () => {
   test('create a deal, then edit and persist changes', async ({ page }) => {
-    test.setTimeout(120_000)
+    test.setTimeout(150_000) // Increase timeout for CI environments
 
     requireAuthEnv()
 
     // Preflight: ensure we have an authenticated session (via storageState)
     await page.goto('/debug-auth')
     await expect(page.getByRole('heading', { name: /Debug: Auth/i })).toBeVisible({
-      timeout: 15_000,
+      timeout: 20_000,
     })
-    await expect(page.getByTestId('session-user-id')).not.toHaveText('—', { timeout: 15_000 })
+    await expect(page.getByTestId('session-user-id')).not.toHaveText('—', { timeout: 20_000 })
     await expect(page.getByTestId('profile-org-id')).not.toHaveText(/^(undefined|null)$/, {
-      timeout: 15_000,
+      timeout: 20_000,
     })
 
     // Create new deal

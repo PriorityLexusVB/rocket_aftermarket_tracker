@@ -6,15 +6,15 @@ test.describe('Deal Form dropdowns and line items', () => {
   test('dropdowns populate and product auto-fills unit price', async ({ page }) => {
     // Preflight: ensure we have an authenticated session (via storageState)
     await page.goto('/debug-auth')
-    await expect(page.getByTestId('session-user-id')).not.toHaveText('—', { timeout: 15_000 })
+    await expect(page.getByTestId('session-user-id')).not.toHaveText('—', { timeout: 20_000 })
     await expect(page.getByTestId('profile-org-id')).not.toHaveText(/^(undefined|null)$/, {
-      timeout: 15_000,
+      timeout: 20_000,
     })
 
     await page.goto('/deals/new')
 
     // Wait for the form to render
-    await expect(page.getByTestId('deal-form')).toBeVisible()
+    await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 15_000 })
 
     // Vendor dropdown should either populate OR show the empty-state hint.
     const vendorSelect = page.getByTestId('vendor-select')

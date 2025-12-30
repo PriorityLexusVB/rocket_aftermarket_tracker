@@ -19,7 +19,7 @@ try {
 } catch {}
 
 export default async function globalSetup() {
-  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173'
   const allowProd = process.env.ALLOW_E2E_ON_PROD === '1'
   const isProdVercel = /^https:\/\/rocket-aftermarket-tracker\.vercel\.app\b/i.test(base)
   if (isProdVercel && !allowProd) {
@@ -28,6 +28,9 @@ export default async function globalSetup() {
         `Set ALLOW_E2E_ON_PROD=1 only if you truly intend to run destructive E2E on prod.`
     )
   }
+
+  console.log(`[global.setup] Using base URL: ${base}`)
+  console.log(`[global.setup] CI environment: ${process.env.CI ? 'yes' : 'no'}`)
 
   const storageDir = path.join(process.cwd(), 'e2e')
   const storagePath = path.join(storageDir, 'storageState.json')
@@ -78,30 +81,35 @@ export default async function globalSetup() {
   })
 
   // Helper: wait for server to be reachable to reduce flakes on slow start
-  const waitForServer = async (maxMs = 30000) => {
+  const waitForServer = async (maxMs = 60000) => {
     const start = Date.now()
     let attempt = 0
+    let lastError = ''
     while (Date.now() - start < maxMs) {
       attempt += 1
       try {
-        await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 5000 })
+        await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 10000 })
+        console.log(`[global.setup] Server reachable after ${attempt} attempt(s)`)
         return true
-      } catch {
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err)
         // Small backoff then retry
-        await new Promise((r) => setTimeout(r, Math.min(500 + attempt * 250, 2000)))
+        const backoff = Math.min(1000 + attempt * 500, 3000)
+        await new Promise((r) => setTimeout(r, backoff))
       }
     }
+    console.error(`[global.setup] Server at ${base} unreachable after ${attempt} attempts. Last error: ${lastError}`)
     return false
   }
 
   // If storage exists and debug-auth shows both testids, skip login
   let hasValidState = false
   try {
-    const up = await waitForServer(30000)
+    const up = await waitForServer(process.env.CI ? 90000 : 60000)
     if (!up) {
       console.error('[global.setup] Server at %s did not become reachable within timeout.', base)
     }
-    await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 15000 })
+    await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 30000 })
     // Important: these elements are always visible. Validate actual values.
     const sessionText = await page
       .getByTestId('session-user-id')
@@ -118,7 +126,11 @@ export default async function globalSetup() {
     const hasSession = sessionText !== '' && sessionText !== '—'
     const hasOrg = orgText !== '' && orgText !== 'undefined' && orgText !== 'null'
     hasValidState = hasSession && hasOrg
-  } catch {}
+    console.log(`[global.setup] Initial auth check: hasSession=${hasSession}, hasOrg=${hasOrg}`)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.warn(`[global.setup] Initial auth check failed: ${message}`)
+  }
 
   if (!hasValidState) {
     // Ensure auth flow (adjust selectors if needed)
@@ -135,7 +147,8 @@ export default async function globalSetup() {
       await browser.close()
       return
     }
-    await page.goto(base + '/auth', { waitUntil: 'domcontentloaded', timeout: 15000 })
+    console.log(`[global.setup] Attempting login with email: ${email}`)
+    await page.goto(base + '/auth', { waitUntil: 'domcontentloaded', timeout: 30000 })
 
     const emailInput = page.getByLabel(/email/i).or(page.getByPlaceholder(/email/i))
     const passInput = page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i))
@@ -148,20 +161,22 @@ export default async function globalSetup() {
       .click()
 
     // Wait for auth to settle: either navigation away from /auth or Supabase token response
+    console.log('[global.setup] Waiting for authentication to complete...')
     const postAuthSettled = await Promise.race([
       page
-        .waitForURL((url) => !url.pathname.startsWith('/auth'), { timeout: 30000 })
-        .then(() => true)
-        .catch(() => false),
+        .waitForURL((url) => !url.pathname.startsWith('/auth'), { timeout: 45000 })
+        .then(() => 'navigation'),
       page
         .waitForResponse((res) => res.url().includes('/auth/v1/token') && res.ok(), {
-          timeout: 30000,
+          timeout: 45000,
         })
-        .then(() => true)
-        .catch(() => false),
-    ])
-    if (!postAuthSettled) {
-      console.warn('[global.setup] Post-auth did not settle; proceeding to debug-auth anyway.')
+        .then(() => 'token'),
+    ]).catch(() => 'timeout')
+    
+    if (postAuthSettled === 'timeout') {
+      console.warn('[global.setup] Post-auth did not settle within timeout; proceeding to debug-auth anyway.')
+    } else {
+      console.log(`[global.setup] Auth settled via ${postAuthSettled}`)
     }
 
     // Try a few attempts to reach debug-auth and see the session/org markers
@@ -175,9 +190,12 @@ export default async function globalSetup() {
           const sid = document.querySelector('[data-testid="session-user-id"]')
           const s = (sid?.textContent ?? '').trim()
           return s !== '' && s !== '—'
-        })
+        }, undefined, { timeout: process.env.CI ? 20000 : 15000 })
+        console.log(`[global.setup] Session verified on attempt ${i + 1}`)
         verified = true
-      } catch {
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        console.warn(`[global.setup] Session verification attempt ${i + 1} failed: ${message}`)
         // If still redirected to /auth, wait a bit and retry
         if (page.url().includes('/auth')) {
           await page.waitForTimeout(2000)
@@ -229,9 +247,12 @@ export default async function globalSetup() {
         return o !== '' && o !== 'undefined' && o !== 'null'
       },
       undefined,
-      { timeout: 30000 }
+      { timeout: process.env.CI ? 45000 : 30000 }
     )
-  } catch {
+    console.log('[global.setup] Org association verified successfully')
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[global.setup] Org verification failed: ${message}`)
     try {
       await page.screenshot({
         path: path.join(storageDir, 'setup-orgid-missing.png'),

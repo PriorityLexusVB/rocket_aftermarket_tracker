@@ -23,7 +23,7 @@ test.describe('Profile name capability fallback', () => {
         sessionStorage.getItem('cap_userProfilesFullName') !== null ||
         sessionStorage.getItem('cap_userProfilesDisplayName') !== null,
       undefined,
-      { timeout: 5000 }
+      { timeout: 10000 }
     )
 
     // Navigate to a page that renders staff names (e.g., Deals list)
