@@ -601,7 +601,14 @@ export default function DealsPage() {
           data.some((d) => d?.id === lastDeletedDealId || d?.job_id === lastDeletedDealId)
 
         const sample = Array.isArray(data)
-          ? data.slice(0, 3).map((d) => ({ id: d?.id, primary: getDealPrimaryRef(d) }))
+          ? data.slice(0, 3).map((d) => ({
+              id: d?.id,
+              primary: getDealPrimaryRef(d),
+              customer_needs_loaner: !!d?.customer_needs_loaner,
+              loaner_id: d?.loaner_id || null,
+              loaner_number: d?.loaner_number || null,
+              has_active_loaner: !!d?.has_active_loaner,
+            }))
           : null
 
         console.info('[Deals][load] apply', {
