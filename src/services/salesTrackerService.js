@@ -408,6 +408,12 @@ class SalesTrackerService {
 
       // Update vehicle if needed
       if (updates?.year || updates?.make || updates?.model || updates?.color) {
+        const vehicleId = currentTransaction?.jobs?.vehicle_id
+
+        if (!vehicleId) {
+          throw new Error('Missing vehicle id for this sale; cannot update vehicle details.')
+        }
+
         const vehicleUpdates = {
           year: updates?.year || currentTransaction?.jobs?.vehicles?.year,
           make: updates?.make || currentTransaction?.jobs?.vehicles?.make,
@@ -416,10 +422,29 @@ class SalesTrackerService {
           stock_number: updates?.stockNumber || currentTransaction?.jobs?.vehicles?.stock_number,
         }
 
-        await supabase
+        const { data: updatedVehicles, error: vehicleErr } = await supabase
           ?.from('vehicles')
           ?.update(vehicleUpdates)
-          ?.eq('id', currentTransaction?.jobs?.vehicle_id)
+          ?.eq('id', vehicleId)
+          ?.select('id')
+
+        if (vehicleErr) throw vehicleErr
+
+        // Under RLS, UPDATE may succeed with 0 rows affected; detect and surface a clear error.
+        if (!Array.isArray(updatedVehicles) || updatedVehicles.length === 0) {
+          const { data: stillThere, error: checkErr } = await supabase
+            ?.from('vehicles')
+            ?.select('id')
+            ?.eq('id', vehicleId)
+            ?.limit(1)
+
+          if (checkErr) throw checkErr
+          if (Array.isArray(stillThere) && stillThere.length > 0) {
+            throw new Error('Vehicle update was blocked by permissions (RLS).')
+          }
+
+          throw new Error('Vehicle not found (or you do not have access).')
+        }
       }
 
       const updatedSale = {

@@ -2383,14 +2383,60 @@ export async function updateDeal(id, formState) {
   if (payload?.customer_needs_loaner && loanerForm) {
     await upsertLoanerAssignment(id, loanerForm, payload?.org_id || null)
   } else if (payload?.customer_needs_loaner === false) {
-    // Delete loaner assignments when toggle is turned OFF
-    const { error: deleteErr } = await supabase
-      ?.from('loaner_assignments')
-      ?.delete()
-      ?.eq('job_id', id)
+    // When the user turns OFF the loaner toggle, end any *active* assignment.
+    // Keep returned history intact (needed for the Return tab / audit trail).
+    try {
+      const returnedAtIso = new Date().toISOString()
 
-    if (deleteErr) {
-      console.warn('[dealService:update] Failed to delete loaner assignment:', deleteErr.message)
+      const { data: ended, error: endErr } = await supabase
+        ?.from('loaner_assignments')
+        ?.update({ returned_at: returnedAtIso })
+        ?.eq('job_id', id)
+        ?.is('returned_at', null)
+        ?.select('id')
+
+      if (endErr) {
+        // Back-compat: if returned_at doesn't exist in this environment,
+        // fall back to the legacy behavior (best-effort delete).
+        if (isMissingReturnedAtError(endErr)) {
+          const { error: deleteErr } = await supabase
+            ?.from('loaner_assignments')
+            ?.delete()
+            ?.eq('job_id', id)
+            ?.select('id')
+
+          if (deleteErr) {
+            console.warn(
+              '[dealService:update] Failed to delete loaner assignment (fallback):',
+              deleteErr.message
+            )
+          }
+        } else {
+          console.warn(
+            '[dealService:update] Failed to end active loaner assignment:',
+            endErr.message
+          )
+        }
+      } else if (Array.isArray(ended) && ended.length === 0) {
+        // Under RLS, UPDATE may succeed with 0 rows affected; verify so we can surface a useful warning.
+        const { data: stillActive, error: checkErr } = await supabase
+          ?.from('loaner_assignments')
+          ?.select('id')
+          ?.eq('job_id', id)
+          ?.is('returned_at', null)
+          ?.limit(1)
+
+        if (!checkErr && Array.isArray(stillActive) && stillActive.length > 0) {
+          console.warn(
+            '[dealService:update] Ending active loaner assignment was blocked (0 rows affected).'
+          )
+        }
+      }
+    } catch (e) {
+      console.warn(
+        '[dealService:update] Failed to end active loaner assignment (unexpected):',
+        e?.message
+      )
     }
   }
 
@@ -2781,6 +2827,67 @@ export async function markLoanerReturned(loanerAssignmentId) {
     }
 
     throw new Error(`Failed to mark loaner as returned: ${error?.message}`)
+  }
+}
+
+// A3: Fetch returned loaner assignments for a job (history)
+// - Used by the Loaner drawer "Returned" tab.
+// - Best-effort: returns [] on RLS denial or missing returned_at column.
+export async function getReturnedLoanerAssignmentsForJob(jobId, { limit = 25 } = {}) {
+  if (!jobId) return []
+
+  try {
+    const safeLimit = Number.isFinite(Number(limit))
+      ? Math.max(1, Math.min(100, Number(limit)))
+      : 25
+
+    let q = supabase
+      ?.from('loaner_assignments')
+      ?.select('id, loaner_number, eta_return_date, notes, returned_at')
+      ?.eq('job_id', jobId)
+
+    // Prefer server-side filtering for returned rows.
+    if (q && typeof q.not === 'function') {
+      q = q.not('returned_at', 'is', null)
+    }
+
+    if (q && typeof q.order === 'function') {
+      q = q.order('returned_at', { ascending: false })
+    }
+    if (q && typeof q.limit === 'function') {
+      q = q.limit(safeLimit)
+    }
+
+    const res = await q
+
+    if (res?.error) {
+      if (isMissingReturnedAtError(res.error)) {
+        // Some environments may not have returned_at yet.
+        return []
+      }
+
+      if (isRlsError(res.error)) {
+        console.warn(
+          '[dealService:getReturnedLoanerAssignmentsForJob] RLS blocked loaner history query (non-fatal):',
+          res.error?.message
+        )
+        return []
+      }
+
+      throw res.error
+    }
+
+    const rows = Array.isArray(res?.data) ? res.data : []
+
+    // If .not() isn't available (some mocks), filter client-side.
+    const filtered = q && typeof q.not === 'function' ? rows : rows.filter((r) => !!r?.returned_at)
+    return filtered
+  } catch (error) {
+    console.warn(
+      '[dealService:getReturnedLoanerAssignmentsForJob] Failed to load returned loaners (non-fatal):',
+      error?.message
+    )
+    return []
   }
 }
 

@@ -134,7 +134,24 @@ export const claimsService = {
         `)
 
       if (error) throw error
-      const row = data?.[0]
+
+      // Under RLS, UPDATE may succeed with 0 rows affected; detect and surface a clear error.
+      if (!Array.isArray(data) || data.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from('claims')
+          ?.select('id')
+          ?.eq('id', claimId)
+          ?.limit(1)
+
+        if (checkErr) throw checkErr
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          throw new Error('Update was blocked by permissions (RLS).')
+        }
+
+        throw new Error('Claim not found (or you do not have access).')
+      }
+
+      const row = data[0]
       if (row?.assigned_to_profile) {
         row.assigned_to_profile.display_name = resolveUserProfileName(row.assigned_to_profile)
       }

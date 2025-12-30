@@ -21,6 +21,7 @@ import Navbar from '../../components/ui/Navbar'
 import { useAuth } from '../../contexts/AuthContext'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
+import { useToast } from '../../components/ui/ToastProvider'
 
 // Feature flag for Simple Agenda
 const SIMPLE_AGENDA_ENABLED =
@@ -330,6 +331,7 @@ const MarkReturnedModal = ({ loaner, onClose, onConfirm, loading }) => {
 }
 
 export default function DealsPage() {
+  const toast = useToast?.()
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
   const [showNewDealModal, setShowNewDealModal] = useState(false)
@@ -360,6 +362,7 @@ export default function DealsPage() {
 
   // ✅ ADDED: Loaner management state
   const [showLoanerDrawer, setShowLoanerDrawer] = useState(false)
+  const [loanerDrawerTab, setLoanerDrawerTab] = useState('active')
   const [selectedDealForLoaner, setSelectedDealForLoaner] = useState(null)
   const [loanerLoading, setLoanerLoading] = useState(false)
   const [markReturnedModal, setMarkReturnedModal] = useState(null)
@@ -550,10 +553,76 @@ export default function DealsPage() {
       setError('') // Clear previous errors
       await markLoanerReturned(loanerData?.loaner_id)
       setMarkReturnedModal(null)
+      toast?.success?.('Loaner marked returned')
       await loadDeals(0, 'after-loaner-returned') // Refresh data
     } catch (e) {
       setError(`Failed to mark loaner as returned: ${e?.message}`)
       console.error('Mark returned error:', e)
+      toast?.error?.(e?.message || 'Failed to mark loaner returned')
+    } finally {
+      setReturningLoaner(false)
+    }
+  }
+
+  const handleRemoveLoanerFromDrawer = async (loanerAssignmentId) => {
+    const startedAt = Date.now()
+    try {
+      if (!loanerAssignmentId) throw new Error('Missing loaner assignment id')
+      setReturningLoaner(true)
+      setError('')
+
+      if (isDealsDebugEnabled()) {
+        console.info(
+          '[Deals][loaner] remove start',
+          safeJsonStringify({ loanerAssignmentId, at: new Date().toISOString() })
+        )
+      }
+
+      await markLoanerReturned(loanerAssignmentId)
+
+      // Keep the drawer open and switch to Returned so it isn't on the same screen.
+      setLoanerDrawerTab('returned')
+
+      // Clear active-loaner fields immediately to avoid stale "active" display.
+      setSelectedDealForLoaner((prev) =>
+        prev
+          ? {
+              ...prev,
+              has_active_loaner: false,
+              loaner_id: null,
+              loaner_number: null,
+              loaner_eta_short: null,
+              loaner_eta_return_date: null,
+            }
+          : prev
+      )
+
+      if (isDealsDebugEnabled()) {
+        console.info(
+          '[Deals][loaner] remove success',
+          safeJsonStringify({ loanerAssignmentId, durationMs: Date.now() - startedAt })
+        )
+      }
+
+      toast?.success?.('Loaner removed')
+
+      await loadDeals(0, 'after-loaner-returned')
+    } catch (e) {
+      setError(`Failed to remove loaner: ${e?.message}`)
+      console.error('Remove loaner error:', e)
+
+      toast?.error?.(e?.message || 'Failed to remove loaner')
+
+      if (isDealsDebugEnabled()) {
+        console.info(
+          '[Deals][loaner] remove failed',
+          safeJsonStringify({
+            loanerAssignmentId,
+            durationMs: Date.now() - startedAt,
+            message: e?.message,
+          })
+        )
+      }
     } finally {
       setReturningLoaner(false)
     }
@@ -755,6 +824,7 @@ export default function DealsPage() {
   // ✅ FIXED: Move handleManageLoaner function to proper location inside component
   const handleManageLoaner = (deal) => {
     setSelectedDealForLoaner(deal)
+    setLoanerDrawerTab('active')
     setShowLoanerDrawer(true)
   }
 
@@ -2161,11 +2231,16 @@ export default function DealsPage() {
           onClose={() => {
             setShowLoanerDrawer(false)
             setSelectedDealForLoaner(null)
+            setLoanerDrawerTab('active')
             setError('') // Clear any drawer-related errors
           }}
           deal={selectedDealForLoaner}
           onSave={handleSaveLoaner}
+          onRemove={handleRemoveLoanerFromDrawer}
           loading={loanerLoading}
+          removing={returningLoaner}
+          tab={loanerDrawerTab}
+          onTabChange={setLoanerDrawerTab}
         />
 
         {/* Deal Detail Drawer (read-only) */}

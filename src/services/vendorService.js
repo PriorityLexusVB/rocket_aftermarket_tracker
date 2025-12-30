@@ -240,9 +240,32 @@ export const vendorService = {
    */
   async bulkUpdateVendors(vendorIds, updates) {
     try {
-      const { error } = await supabase.from('vendors').update(updates).in('id', vendorIds)
+      const ids = Array.isArray(vendorIds) ? vendorIds.filter(Boolean) : []
+      if (!ids.length) return
+
+      const { data: updated, error } = await supabase
+        .from('vendors')
+        .update(updates)
+        .in('id', ids)
+        .select('id')
 
       if (error) throw error
+
+      // Under RLS, UPDATE may succeed with 0 rows affected; detect and surface a clear error.
+      if (Array.isArray(updated) && updated.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          .from('vendors')
+          .select('id')
+          .in('id', ids)
+          .limit(1)
+
+        if (checkErr) throw checkErr
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          throw new Error('Update was blocked by permissions (RLS).')
+        }
+
+        throw new Error('No vendors found for the provided ids.')
+      }
     } catch (e) {
       console.error('vendorService.bulkUpdateVendors failed', e)
       throw e
