@@ -2513,20 +2513,10 @@ export async function deleteDeal(id) {
     throw new Error('Deal not found or you do not have access to it.')
   }
 
-  // Helpful diagnostics for the common case where the deal is visible but not deletable
-  // (e.g., org_id mismatch or NULL org_id legacy rows).
-  if (existingDeal?.org_id == null) {
-    throw new Error(
-      'This deal is missing org_id. Ask an admin to assign it to your organization (or delete as a manager).'
-    )
-  }
-
+  // Capture org context for diagnostics, but do not pre-block the delete.
+  // Some roles/policies may legitimately allow deleting legacy NULL-org rows or cross-org rows.
+  // We'll surface these conditions only if the delete is actually blocked (0 rows affected).
   const currentUserOrgId = await getCurrentUserOrgId()
-  if (currentUserOrgId && existingDeal.org_id && existingDeal.org_id !== currentUserOrgId) {
-    throw new Error(
-      `This deal belongs to a different organization (${existingDeal.org_id}). Your org is ${currentUserOrgId}.`
-    )
-  }
 
   // Best-effort cascade in dependency order.
   // Some installs may not have certain child tables; ignore missing-table errors.

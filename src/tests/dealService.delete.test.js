@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { deleteDeal } from '@/services/dealService'
-import { supabase } from '@/lib/supabase'
 
-// Mock the supabase client
+// Override the global test setup mock with a minimal, controllable supabase.
+// These unit tests need to simulate `.from(...).select().eq().maybeSingle()` and
+// `.from(...).delete().eq().select()` chains, so `from` must be a mock function.
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
@@ -10,7 +10,16 @@ vi.mock('@/lib/supabase', () => ({
 }))
 
 describe('dealService.deleteDeal', () => {
-  beforeEach(() => {
+  let deleteDeal
+  let supabase
+
+  beforeEach(async () => {
+    // Reset module cache so `dealService` re-imports with this file's mock.
+    vi.resetModules()
+
+    ;({ supabase } = await import('@/lib/supabase'))
+    ;({ deleteDeal } = await import('@/services/dealService'))
+
     vi.clearAllMocks()
   })
 
@@ -158,6 +167,55 @@ describe('dealService.deleteDeal', () => {
 
     const result = await deleteDeal('test-id')
     expect(result).toBe(true)
+  })
+
+  it('does not pre-block deletes for legacy NULL org_id when delete succeeds', async () => {
+    let jobsCallCount = 0
+    supabase.from.mockImplementation((table) => {
+      if (table === 'jobs') {
+        jobsCallCount++
+
+        if (jobsCallCount === 1) {
+          // Read to verify deal exists (legacy row with NULL org_id)
+          return makeReadChain({ data: { id: 'test-id', org_id: null }, error: null })
+        }
+
+        // Final jobs delete succeeds
+        return makeDeleteSelectChain({ data: [{ id: 'test-id' }], error: null })
+      }
+
+      // Child deletes (may be empty or present; returning one row avoids triggering verification)
+      return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
+    })
+
+    await expect(deleteDeal('test-id')).resolves.toBe(true)
+  })
+
+  it('throws a helpful org_id message when delete is blocked and remaining job has NULL org_id', async () => {
+    let jobsCallCount = 0
+    supabase.from.mockImplementation((table) => {
+      if (table === 'jobs') {
+        jobsCallCount++
+
+        if (jobsCallCount === 1) {
+          // Deal exists (legacy row)
+          return makeReadChain({ data: { id: 'test-id', org_id: null }, error: null })
+        }
+
+        if (jobsCallCount === 2) {
+          // Jobs delete returns 0 rows with no error (RLS/no-op)
+          return makeDeleteSelectChain({ data: [], error: null })
+        }
+
+        // Verification read shows job still exists and has NULL org_id
+        return makeReadChain({ data: { id: 'test-id', org_id: null }, error: null })
+      }
+
+      // Child deletes: return empty so we don't fail early; also ensure verify query returns empty.
+      return makeDeleteSelectChain({ data: [], error: null }, { data: [], error: null })
+    })
+
+    await expect(deleteDeal('test-id')).rejects.toThrow(/missing org_id/i)
   })
 
   it('throws specific error for non-permission delete failures', async () => {
