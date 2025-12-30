@@ -31,6 +31,18 @@ const isDealsDebugEnabled = () =>
   (import.meta.env.VITE_DEBUG_DEALS_LIST === 'true' ||
     (typeof window !== 'undefined' && window.localStorage?.getItem('debug:deals') === '1'))
 
+const safeJsonStringify = (value) => {
+  try {
+    return JSON.stringify(value)
+  } catch {
+    try {
+      return String(value)
+    } catch {
+      return '[unserializable]'
+    }
+  }
+}
+
 // ✅ UPDATED: StatusPill with enhanced styling
 const StatusPill = ({ status }) => {
   const statusColors = {
@@ -445,10 +457,13 @@ export default function DealsPage() {
       lastDeletedAtRef.current = Date.now()
 
       if (isDealsDebugEnabled()) {
-        console.info('[Deals][delete] start', {
-          dealId,
-          at: new Date(lastDeletedAtRef.current).toISOString(),
-        })
+        console.info(
+          '[Deals][delete] start',
+          safeJsonStringify({
+            dealId,
+            at: new Date(lastDeletedAtRef.current).toISOString(),
+          })
+        )
       }
 
       await deleteDeal(dealId)
@@ -475,11 +490,14 @@ export default function DealsPage() {
       }
 
       if (isDealsDebugEnabled()) {
-        console.info('[Deals][delete] success', {
-          dealId,
-          durationMs: Date.now() - startedAt,
-          ...closedUiState,
-        })
+        console.info(
+          '[Deals][delete] success',
+          safeJsonStringify({
+            dealId,
+            durationMs: Date.now() - startedAt,
+            ...closedUiState,
+          })
+        )
       }
 
       setDeleteConfirm(null)
@@ -489,11 +507,14 @@ export default function DealsPage() {
       console.error('Delete error:', e)
 
       if (isDealsDebugEnabled()) {
-        console.info('[Deals][delete] failed', {
-          dealId,
-          durationMs: Date.now() - startedAt,
-          message: e?.message,
-        })
+        console.info(
+          '[Deals][delete] failed',
+          safeJsonStringify({
+            dealId,
+            durationMs: Date.now() - startedAt,
+            message: e?.message,
+          })
+        )
       }
     } finally {
       setDeletingDeal(false)
@@ -566,14 +587,17 @@ export default function DealsPage() {
       : null
 
     if (isDealsDebugEnabled()) {
-      console.info('[Deals][load] start', {
-        requestId,
-        retryCount,
-        reason,
-        callerHint,
-        lastDeletedDealId,
-        lastDeletedAgeMs: lastDeletedAt ? Date.now() - lastDeletedAt : null,
-      })
+      console.info(
+        '[Deals][load] start',
+        safeJsonStringify({
+          requestId,
+          retryCount,
+          reason,
+          callerHint,
+          lastDeletedDealId,
+          lastDeletedAgeMs: lastDeletedAt ? Date.now() - lastDeletedAt : null,
+        })
+      )
     }
     try {
       setLoading(true)
@@ -583,13 +607,16 @@ export default function DealsPage() {
       // Ignore stale responses (e.g., overlapping loads in React 18 StrictMode)
       if (requestId !== loadDealsRequestIdRef.current) {
         if (isDealsDebugEnabled()) {
-          console.info('[Deals][load] stale response ignored', {
-            requestId,
-            currentRequestId: loadDealsRequestIdRef.current,
-            durationMs: Date.now() - startedAt,
-            count: Array.isArray(data) ? data.length : null,
-            reason,
-          })
+          console.info(
+            '[Deals][load] stale response ignored',
+            safeJsonStringify({
+              requestId,
+              currentRequestId: loadDealsRequestIdRef.current,
+              durationMs: Date.now() - startedAt,
+              count: Array.isArray(data) ? data.length : null,
+              reason,
+            })
+          )
         }
         return
       }
@@ -611,14 +638,17 @@ export default function DealsPage() {
             }))
           : null
 
-        console.info('[Deals][load] apply', {
-          requestId,
-          durationMs: Date.now() - startedAt,
-          count: Array.isArray(data) ? data.length : null,
-          includesLastDeleted,
-          sample,
-          reason,
-        })
+        console.info(
+          '[Deals][load] apply',
+          safeJsonStringify({
+            requestId,
+            durationMs: Date.now() - startedAt,
+            count: Array.isArray(data) ? data.length : null,
+            includesLastDeleted,
+            sample,
+            reason,
+          })
+        )
       }
 
       setDeals(data || [])
@@ -626,13 +656,16 @@ export default function DealsPage() {
       // Ignore stale errors from superseded requests
       if (requestId !== loadDealsRequestIdRef.current) {
         if (isDealsDebugEnabled()) {
-          console.info('[Deals][load] stale error ignored', {
-            requestId,
-            currentRequestId: loadDealsRequestIdRef.current,
-            durationMs: Date.now() - startedAt,
-            message: e?.message,
-            reason,
-          })
+          console.info(
+            '[Deals][load] stale error ignored',
+            safeJsonStringify({
+              requestId,
+              currentRequestId: loadDealsRequestIdRef.current,
+              durationMs: Date.now() - startedAt,
+              message: e?.message,
+              reason,
+            })
+          )
         }
         return
       }
@@ -641,12 +674,15 @@ export default function DealsPage() {
       console.error('Load deals error:', e)
 
       if (isDealsDebugEnabled()) {
-        console.info('[Deals][load] failed', {
-          requestId,
-          durationMs: Date.now() - startedAt,
-          message: e?.message,
-          reason,
-        })
+        console.info(
+          '[Deals][load] failed',
+          safeJsonStringify({
+            requestId,
+            durationMs: Date.now() - startedAt,
+            message: e?.message,
+            reason,
+          })
+        )
       }
 
       // Retry logic for network issues
@@ -666,19 +702,25 @@ export default function DealsPage() {
         setLoading(false)
 
         if (isDealsDebugEnabled()) {
-          console.info('[Deals][load] done (latest)', {
+          console.info(
+            '[Deals][load] done (latest)',
+            safeJsonStringify({
+              requestId,
+              durationMs: Date.now() - startedAt,
+              reason,
+            })
+          )
+        }
+      } else if (isDealsDebugEnabled()) {
+        console.info(
+          '[Deals][load] done (stale)',
+          safeJsonStringify({
             requestId,
+            currentRequestId: loadDealsRequestIdRef.current,
             durationMs: Date.now() - startedAt,
             reason,
           })
-        }
-      } else if (isDealsDebugEnabled()) {
-        console.info('[Deals][load] done (stale)', {
-          requestId,
-          currentRequestId: loadDealsRequestIdRef.current,
-          durationMs: Date.now() - startedAt,
-          reason,
-        })
+        )
       }
     }
   }, [])
@@ -698,10 +740,13 @@ export default function DealsPage() {
 
     if (isDealsDebugEnabled() && !didLogDealsDebugInitRef.current) {
       didLogDealsDebugInitRef.current = true
-      console.info('[Deals][debug] bundle', {
-        marker: '2025-12-30-delete-ui-reset-v1',
-        at: new Date().toISOString(),
-      })
+      console.info(
+        '[Deals][debug] bundle',
+        safeJsonStringify({
+          marker: '2025-12-30-delete-ui-reset-v1',
+          at: new Date().toISOString(),
+        })
+      )
     }
 
     loadDeals(0, 'auth-mount')
@@ -1555,13 +1600,16 @@ export default function DealsPage() {
                     className="even:bg-slate-50 hover:bg-slate-100 cursor-pointer"
                     onClick={() => {
                       if (isDealsDebugEnabled()) {
-                        console.info('[Deals][ui] row click -> open detail', {
-                          dealId: deal?.id,
-                          primary: getDealPrimaryRef(deal),
-                          customerNeedsLoaner: !!deal?.customer_needs_loaner,
-                          loanerId: deal?.loaner_id || null,
-                          loanerNumber: deal?.loaner_number || null,
-                        })
+                        console.info(
+                          '[Deals][ui] row click -> open detail',
+                          safeJsonStringify({
+                            dealId: deal?.id,
+                            primary: getDealPrimaryRef(deal),
+                            customerNeedsLoaner: !!deal?.customer_needs_loaner,
+                            loanerId: deal?.loaner_id || null,
+                            loanerNumber: deal?.loaner_number || null,
+                          })
+                        )
                       }
                       handleOpenDetail(deal)
                     }}
@@ -1704,10 +1752,13 @@ export default function DealsPage() {
                           onClick={(e) => {
                             e.stopPropagation()
                             if (isDealsDebugEnabled()) {
-                              console.info('[Deals][ui] click edit', {
-                                dealId: deal?.id,
-                                primary: getDealPrimaryRef(deal),
-                              })
+                              console.info(
+                                '[Deals][ui] click edit',
+                                safeJsonStringify({
+                                  dealId: deal?.id,
+                                  primary: getDealPrimaryRef(deal),
+                                })
+                              )
                             }
                             handleEditDeal(deal?.id)
                           }}
@@ -1724,12 +1775,15 @@ export default function DealsPage() {
                             onClick={(e) => {
                               e.stopPropagation()
                               if (isDealsDebugEnabled()) {
-                                console.info('[Deals][ui] click manage loaner', {
-                                  dealId: deal?.id,
-                                  primary: getDealPrimaryRef(deal),
-                                  loanerId: deal?.loaner_id || null,
-                                  loanerNumber: deal?.loaner_number || null,
-                                })
+                                console.info(
+                                  '[Deals][ui] click manage loaner',
+                                  safeJsonStringify({
+                                    dealId: deal?.id,
+                                    primary: getDealPrimaryRef(deal),
+                                    loanerId: deal?.loaner_id || null,
+                                    loanerNumber: deal?.loaner_number || null,
+                                  })
+                                )
                               }
                               handleManageLoaner(deal)
                             }}
@@ -1748,12 +1802,15 @@ export default function DealsPage() {
                               e.stopPropagation()
 
                               if (isDealsDebugEnabled()) {
-                                console.info('[Deals][ui] click mark returned', {
-                                  dealId: deal?.id,
-                                  primary: getDealPrimaryRef(deal),
-                                  loanerId: deal?.loaner_id,
-                                  loanerNumber: deal?.loaner_number || null,
-                                })
+                                console.info(
+                                  '[Deals][ui] click mark returned',
+                                  safeJsonStringify({
+                                    dealId: deal?.id,
+                                    primary: getDealPrimaryRef(deal),
+                                    loanerId: deal?.loaner_id,
+                                    loanerNumber: deal?.loaner_number || null,
+                                  })
+                                )
                               }
 
                               setMarkReturnedModal({
@@ -1775,13 +1832,16 @@ export default function DealsPage() {
                             e.stopPropagation()
                             setError('')
                             if (isDealsDebugEnabled()) {
-                              console.info('[Deals][ui] click delete (open confirm)', {
-                                dealId: deal?.id,
-                                primary: getDealPrimaryRef(deal),
-                                customerNeedsLoaner: !!deal?.customer_needs_loaner,
-                                loanerId: deal?.loaner_id || null,
-                                loanerNumber: deal?.loaner_number || null,
-                              })
+                              console.info(
+                                '[Deals][ui] click delete (open confirm)',
+                                safeJsonStringify({
+                                  dealId: deal?.id,
+                                  primary: getDealPrimaryRef(deal),
+                                  customerNeedsLoaner: !!deal?.customer_needs_loaner,
+                                  loanerId: deal?.loaner_id || null,
+                                  loanerNumber: deal?.loaner_number || null,
+                                })
+                              )
                             }
                             setDeleteConfirm(deal)
                           }}
