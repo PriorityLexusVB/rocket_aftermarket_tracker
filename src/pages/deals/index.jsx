@@ -367,6 +367,9 @@ export default function DealsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  // Debug-only: helps confirm the browser is running the latest bundle.
+  const didLogDealsDebugInitRef = useRef(false)
+
   const lastDeletedDealIdRef = useRef(null)
   const lastDeletedAtRef = useRef(0)
 
@@ -597,11 +600,16 @@ export default function DealsPage() {
           Array.isArray(data) &&
           data.some((d) => d?.id === lastDeletedDealId || d?.job_id === lastDeletedDealId)
 
+        const sample = Array.isArray(data)
+          ? data.slice(0, 3).map((d) => ({ id: d?.id, primary: getDealPrimaryRef(d) }))
+          : null
+
         console.info('[Deals][load] apply', {
           requestId,
           durationMs: Date.now() - startedAt,
           count: Array.isArray(data) ? data.length : null,
           includesLastDeleted,
+          sample,
           reason,
         })
       }
@@ -680,6 +688,15 @@ export default function DealsPage() {
 
   useEffect(() => {
     if (!user?.id) return
+
+    if (isDealsDebugEnabled() && !didLogDealsDebugInitRef.current) {
+      didLogDealsDebugInitRef.current = true
+      console.info('[Deals][debug] bundle', {
+        marker: '2025-12-30-delete-ui-reset-v1',
+        at: new Date().toISOString(),
+      })
+    }
+
     loadDeals(0, 'auth-mount')
   }, [user?.id, loadDeals])
 
