@@ -17,9 +17,16 @@ try {
 //
 // IMPORTANT: Do NOT default Supabase credentials here.
 // If these are missing, it is safer to fail fast than to accidentally run E2E against a real environment.
-const DEFAULT_BASE_URL = 'http://localhost:5173'
+// Prefer 127.0.0.1 over localhost to avoid IPv6/localhost resolution mismatches in CI.
+const DEFAULT_BASE_URL = 'http://127.0.0.1:5173'
 
 process.env.PLAYWRIGHT_BASE_URL ||= DEFAULT_BASE_URL
+
+// Normalize explicit localhost to 127.0.0.1 for maximum consistency.
+const normalizedBaseURL = (process.env.PLAYWRIGHT_BASE_URL || DEFAULT_BASE_URL).replace(
+  'http://localhost',
+  'http://127.0.0.1'
+)
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -53,7 +60,7 @@ export default defineConfig({
       : 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
+    baseURL: normalizedBaseURL,
     trace: process.env.CI ? 'on' : 'on-first-retry', // Always capture traces in CI
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -63,7 +70,9 @@ export default defineConfig({
   // If our dev server script is not "dev", detect and adjust to the correct one (e.g., "start").
   webServer: {
     // Launch a fresh Vite dev server with explicit env vars so no .env.local is required in CI/agent
-    command: 'pnpm start -- --port 5173',
+    // IMPORTANT: use --strictPort so Vite cannot auto-increment to 5174+ (which would cause
+    // Playwright to hit localhost:5173 and fail with ERR_CONNECTION_REFUSED).
+    command: 'pnpm start -- --host 127.0.0.1 --port 5173 --strictPort',
     port: 5173,
     // CI runners can be slow to install deps + boot Vite (and Playwright will kill the server if it times out).
     timeout: process.env.CI ? 120_000 : 60_000,
@@ -80,7 +89,7 @@ export default defineConfig({
       VITE_DEAL_FORM_V2: process.env.VITE_DEAL_FORM_V2 || 'true',
       VITE_ACTIVE_SNAPSHOT: process.env.VITE_ACTIVE_SNAPSHOT || 'true',
       // E2E config for global.setup (guaranteed to exist due to default assignment above)
-      PLAYWRIGHT_BASE_URL: process.env.PLAYWRIGHT_BASE_URL || DEFAULT_BASE_URL,
+      PLAYWRIGHT_BASE_URL: normalizedBaseURL,
       E2E_EMAIL: process.env.E2E_EMAIL || '',
       E2E_PASSWORD: process.env.E2E_PASSWORD || '',
     },
