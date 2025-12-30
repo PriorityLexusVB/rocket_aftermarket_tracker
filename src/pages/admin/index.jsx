@@ -29,6 +29,7 @@ import { vendorInsertSchema } from '../../db/schemas'
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
   const { orgId } = useTenant()
+  const effectiveOrgId = orgId || userProfile?.org_id || null
   const { logBusinessAction, logError: logErr } = useLogger()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('userAccounts')
@@ -235,7 +236,7 @@ const AdminPage = () => {
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
         ?.in('role', ['admin', 'manager'])
-      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -250,14 +251,14 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading user accounts:', error)
     }
-  }, [onlyMyOrg, orgId])
+  }, [onlyMyOrg, effectiveOrgId])
 
   const loadStaffRecords = useCallback(async () => {
     try {
       console.log('Loading staff records...')
 
       let q = supabase?.from('user_profiles')?.select('*', { count: 'exact' })?.eq('role', 'staff')
-      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -272,14 +273,14 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading staff records:', error)
     }
-  }, [onlyMyOrg, orgId])
+  }, [onlyMyOrg, effectiveOrgId])
 
   const loadVendors = useCallback(async () => {
     try {
       console.log('Loading vendors...')
 
       let q = supabase?.from('vendors')?.select('*', { count: 'exact' })
-      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -294,14 +295,14 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
-  }, [onlyMyOrg, orgId])
+  }, [onlyMyOrg, effectiveOrgId])
 
   const loadProducts = useCallback(async () => {
     try {
       console.log('Loading products...')
 
       let q = supabase?.from('products')?.select('*, vendors(name)', { count: 'exact' })
-      if (onlyMyOrg && orgId) q = q?.eq('org_id', orgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -316,7 +317,7 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading products:', error)
     }
-  }, [onlyMyOrg, orgId])
+  }, [onlyMyOrg, effectiveOrgId])
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -344,7 +345,7 @@ const AdminPage = () => {
       console.log('Loading organizations...')
 
       let q = supabase?.from('organizations')?.select('*', { count: 'exact' })
-      if (onlyMyOrg && orgId) q = q?.eq('id', orgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -359,7 +360,7 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading organizations:', error)
     }
-  }, [onlyMyOrg, orgId])
+  }, [onlyMyOrg, effectiveOrgId])
 
   // Enhanced data loading with better error handling
   const loadAllData = useCallback(async () => {
@@ -660,7 +661,7 @@ const AdminPage = () => {
               email: item.email || '',
               specialty: item.specialty || '',
               rating: item.rating?.toString() || '',
-              orgId: item.org_id || orgId || null,
+              orgId: item.org_id || effectiveOrgId || null,
               isActive: item.is_active !== undefined ? item.is_active : true,
             }
           : {
@@ -670,7 +671,7 @@ const AdminPage = () => {
               email: '',
               specialty: '',
               rating: '',
-              orgId: orgId || null,
+              orgId: effectiveOrgId || null,
               isActive: true,
             }
       )
@@ -685,7 +686,7 @@ const AdminPage = () => {
           part_number: '',
           description: '',
           op_code: '',
-          org_id: orgId || null,
+          org_id: effectiveOrgId || null,
         }
       )
     } else if (type === 'template') {
@@ -709,8 +710,12 @@ const AdminPage = () => {
       } else if (modalType === 'staff') {
         await handleStaffSubmit()
       } else if (modalType === 'vendor') {
-        // Section 20: handleVendorSubmit is react-hook-form's handleSubmit wrapper
-        // Call it directly to trigger validation and submission
+        // Section 20: react-hook-form does NOT throw on validation failure.
+        // If invalid, keep the modal open so inline errors remain visible.
+        const isValid = await vendorFormMethods.trigger()
+        if (!isValid) return
+
+        // Valid: proceed with the RHF submission handler.
         await handleVendorSubmit()
       } else if (modalType === 'product') {
         await handleProductSubmit()
@@ -883,10 +888,14 @@ const AdminPage = () => {
 
   // Section 20: Typed vendor submit using vendorService
   const handleVendorSubmit = vendorFormMethods.handleSubmit(async (formData) => {
+    const payload = {
+      ...formData,
+      orgId: formData?.orgId || effectiveOrgId || null,
+    }
     if (editingItem) {
-      await vendorService.updateVendor(editingItem?.id, formData)
+      await vendorService.updateVendor(editingItem?.id, payload)
     } else {
-      await vendorService.createVendor(formData)
+      await vendorService.createVendor(payload)
     }
 
     await loadVendors()
@@ -905,7 +914,7 @@ const AdminPage = () => {
       part_number: productForm?.part_number,
       description: productForm?.description,
       op_code: productForm?.op_code || null,
-      org_id: productForm?.org_id || orgId || null,
+      org_id: productForm?.org_id || effectiveOrgId || null,
     }
 
     if (editingItem) {

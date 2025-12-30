@@ -69,10 +69,54 @@ test.describe('Admin CRUD - Vendors and Products', () => {
     await page.getByLabel('Specialty').fill('Tint')
     await page.getByLabel(/Rating/).fill('4.5')
 
-    await page.getByRole('button', { name: /create/i }).click()
+    // Capture any alert() surfaced by the UI on submit.
+    // Use a scoped handler and remove it immediately after the click so it can't intercept later dialogs.
+    let submitDialogMessage: string | null = null
+    const onSubmitDialog = async (dialog: Dialog) => {
+      submitDialogMessage = dialog.message()
+      await dialog.accept()
+    }
+    page.on('dialog', onSubmitDialog)
+
+    // Capture the create-vendor network response for diagnostics
+    const createResponsePromise = page.waitForResponse(
+      (res) => /\/rest\/v1\/vendors\b/i.test(res.url()) && res.request().method() === 'POST',
+      { timeout: 15_000 }
+    )
+
+    await Promise.all([
+      createResponsePromise,
+      page.getByRole('button', { name: /create/i }).click(),
+    ])
+
+    page.off('dialog', onSubmitDialog)
+
+    if (submitDialogMessage) {
+      throw new Error(`Vendor create surfaced a dialog: ${submitDialogMessage}`)
+    }
+
+    const createRes = await createResponsePromise
+    const createBodyText = await createRes.text().catch(() => '')
+    if (!createRes.ok()) {
+      throw new Error(
+        `Vendor create failed: ${createRes.status()} ${createRes.statusText()} ${createBodyText}`
+      )
+    }
+
+    // Best-effort: validate the created vendor is echoed in the API response
+    if (createBodyText && !createBodyText.includes(vendorName)) {
+      throw new Error(
+        `Vendor create response did not include vendor name. Response: ${createBodyText}`
+      )
+    }
+
+    // Wait for modal to close and list to refresh
+    await expect(page.locator('div[role="dialog"], .fixed.inset-0')).toBeHidden({
+      timeout: 15_000,
+    })
 
     // Expect the vendor to appear in the table
-    await expect(rowByText(page, vendorName)).toHaveCount(1)
+    await expect(rowByText(page, vendorName)).toHaveCount(1, { timeout: 15_000 })
 
     // Edit the vendor
     await clickEditInRow(page, vendorName)
@@ -82,11 +126,11 @@ test.describe('Admin CRUD - Vendors and Products', () => {
     await nameInput.fill(vendorNameUpdated)
     await page.getByRole('button', { name: /update/i }).click()
 
-    await expect(rowByText(page, vendorNameUpdated)).toHaveCount(1)
+    await expect(rowByText(page, vendorNameUpdated)).toHaveCount(1, { timeout: 15_000 })
 
     // Delete the vendor
     await clickDeleteInRow(page, vendorNameUpdated)
-    await expect(rowByText(page, vendorNameUpdated)).toHaveCount(0)
+    await expect(rowByText(page, vendorNameUpdated)).toHaveCount(0, { timeout: 15_000 })
   })
 
   test('create, edit, and delete a Product', async ({ page }) => {

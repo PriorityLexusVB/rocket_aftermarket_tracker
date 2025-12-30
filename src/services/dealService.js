@@ -1210,6 +1210,11 @@ export async function getAllDeals() {
 
     let jobs = null
     let jobsError = null
+    // Some environments have job_status as an enum that does NOT include "draft".
+    // If we include an invalid enum value in an .in() filter, Postgres will hard-fail the query.
+    // Start with the preferred list (includes draft for environments that support it) and retry
+    // without draft if the database rejects it.
+    let jobStatusFilter = ['draft', 'pending', 'in_progress', 'completed']
 
     // We may need up to 4 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
     for (let attempt = 1; attempt <= 4; attempt++) {
@@ -1248,7 +1253,7 @@ export async function getAllDeals() {
       const result = await supabase
         ?.from('jobs')
         ?.select(baseSelect)
-        ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
+        ?.in('job_status', jobStatusFilter)
         ?.order('created_at', { ascending: false })
 
       jobs = result?.data
@@ -1261,6 +1266,21 @@ export async function getAllDeals() {
           enableJobPartsVendorRelCapability()
         }
         break
+      }
+
+      // If job_status is an enum that doesn't include "draft", retry without it.
+      const msg = String(jobsError?.message || '')
+      if (
+        jobStatusFilter.includes('draft') &&
+        msg.toLowerCase().includes('invalid input value for enum') &&
+        msg.toLowerCase().includes('job_status') &&
+        msg.includes('"draft"')
+      ) {
+        console.warn(
+          '[dealService:getAllDeals] job_status enum does not support "draft"; retrying without it'
+        )
+        jobStatusFilter = jobStatusFilter.filter((s) => s !== 'draft')
+        continue
       }
 
       // Handle specific fallbacks
