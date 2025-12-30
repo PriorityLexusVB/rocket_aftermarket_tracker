@@ -5,10 +5,20 @@ import { existsSync } from 'fs'
 import path from 'path'
 
 try {
-  const envFiles = ['.env.local', '.env']
-  for (const f of envFiles) {
-    const p = path.resolve(process.cwd(), f)
-    if (existsSync(p)) dotenv.config({ path: p })
+  // Prefer an explicit local E2E env file (never commit secrets).
+  // Use override=true so a developer can keep prod-ish settings in .env.local
+  // while running Playwright against a dedicated E2E project.
+  const e2eEnvPath = path.resolve(process.cwd(), '.env.e2e.local')
+  const hasE2eEnv = existsSync(e2eEnvPath)
+  if (hasE2eEnv) {
+    dotenv.config({ path: e2eEnvPath, override: true })
+  } else {
+    // Fallbacks for older local setups.
+    const envFiles = ['.env.local', '.env']
+    for (const f of envFiles) {
+      const p = path.resolve(process.cwd(), f)
+      if (existsSync(p)) dotenv.config({ path: p, override: false })
+    }
   }
 } catch {}
 
@@ -17,7 +27,9 @@ try {
 //
 // IMPORTANT: Do NOT default Supabase credentials here.
 // If these are missing, it is safer to fail fast than to accidentally run E2E against a real environment.
-const DEFAULT_BASE_URL = 'http://localhost:5173'
+// Prefer IPv4 loopback in CI to avoid ::1/IPv6 resolution issues.
+const DEFAULT_BASE_URL = 'http://127.0.0.1:5173'
+const PROD_REF = 'ogjtmtndgiqqdtwatsue'
 
 process.env.PLAYWRIGHT_BASE_URL ||= DEFAULT_BASE_URL
 
@@ -34,6 +46,20 @@ function requireEnv(name: string): string {
 
 const supabaseUrl = requireEnv('VITE_SUPABASE_URL')
 const supabaseAnonKey = requireEnv('VITE_SUPABASE_ANON_KEY')
+
+if (supabaseUrl.includes(PROD_REF)) {
+  throw new Error(
+    `[playwright.config] Refusing to run E2E against production Supabase (VITE_SUPABASE_URL contains ${PROD_REF}).`
+  )
+}
+
+const possibleDbUrl =
+  process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+if (possibleDbUrl && possibleDbUrl.includes(PROD_REF)) {
+  throw new Error(
+    `[playwright.config] Refusing to run E2E seeding/helpers against production Supabase (DATABASE_URL contains ${PROD_REF}).`
+  )
+}
 
 // Do not set default E2E credentials here.
 // In CI (especially for forked PRs), secrets are not available; using hardcoded
@@ -63,7 +89,8 @@ export default defineConfig({
   // If our dev server script is not "dev", detect and adjust to the correct one (e.g., "start").
   webServer: {
     // Launch a fresh Vite dev server with explicit env vars so no .env.local is required in CI/agent
-    command: 'pnpm start -- --port 5173',
+    // Bind to IPv4 to avoid localhost resolving to ::1 in CI.
+    command: 'pnpm start -- --host 127.0.0.1 --port 5173',
     port: 5173,
     // CI runners can be slow to install deps + boot Vite (and Playwright will kill the server if it times out).
     timeout: process.env.CI ? 120_000 : 60_000,

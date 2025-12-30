@@ -804,7 +804,7 @@ export function toJobPartRows(jobId, items = [], opts = {}) {
 }
 
 // A3: Enhanced UPSERT loaner assignment function
-async function upsertLoanerAssignment(jobId, loanerData) {
+async function upsertLoanerAssignment(jobId, loanerData, orgId) {
   if (!loanerData?.loaner_number?.trim()) {
     return // No loaner number provided, skip assignment
   }
@@ -836,17 +836,45 @@ async function upsertLoanerAssignment(jobId, loanerData) {
 
     const assignmentData = {
       job_id: jobId,
+      // Some RLS policies require tenant scoping on the row itself.
+      // Prefer explicit orgId (resolved in create/update), otherwise fall back to payload.
+      org_id: orgId ?? loanerData?.org_id ?? null,
       loaner_number: loanerData?.loaner_number?.trim(),
       eta_return_date: loanerData?.eta_return_date || null,
       notes: loanerData?.notes?.trim() || null,
     }
 
+    const assignmentDataWithoutOrgId = { ...assignmentData }
+    delete assignmentDataWithoutOrgId.org_id
+
+    const shouldRetryWithoutOrgId = (err) => {
+      if (!err) return false
+      // Some environments may not have loaner_assignments.org_id yet.
+      // If so, retry without that column to preserve backward compatibility.
+      return isMissingColumnError(err) && /\borg_id\b/i.test(String(err?.message || ''))
+    }
+
+    const updateById = async (data) =>
+      await supabase?.from('loaner_assignments')?.update(data)?.eq('id', existing?.id)?.select('id')
+
+    const updateByJobId = async (data) =>
+      await supabase
+        ?.from('loaner_assignments')
+        ?.update(data)
+        ?.eq('job_id', jobId)
+        ?.is('returned_at', null)
+        ?.select('id')
+
+    const insertRow = async (data) =>
+      await supabase?.from('loaner_assignments')?.insert([data])?.select('id')
+
     if (existing?.id) {
       // Update existing assignment
-      const { error } = await supabase
-        ?.from('loaner_assignments')
-        ?.update(assignmentData)
-        ?.eq('id', existing?.id)
+      let { data: updated, error } = await updateById(assignmentData)
+
+      if (error && shouldRetryWithoutOrgId(error)) {
+        ;({ data: updated, error } = await updateById(assignmentDataWithoutOrgId))
+      }
 
       if (error) {
         if (isRlsError(error)) {
@@ -858,9 +886,43 @@ async function upsertLoanerAssignment(jobId, loanerData) {
         }
         throw error
       }
+
+      // PostgREST can return 200 OK with 0 rows affected under some RLS/policy setups.
+      // Keep behavior non-fatal, but attempt a job-scoped fallback update.
+      if (!Array.isArray(updated) || updated.length === 0) {
+        let { data: updatedByJobId, error: updByJobErr } = await updateByJobId(assignmentData)
+        if (updByJobErr && shouldRetryWithoutOrgId(updByJobErr)) {
+          ;({ data: updatedByJobId, error: updByJobErr } = await updateByJobId(
+            assignmentDataWithoutOrgId
+          ))
+        }
+        if (updByJobErr) {
+          if (isRlsError(updByJobErr)) {
+            console.warn(
+              '[dealService:upsertLoanerAssignment] RLS blocked fallback UPDATE by job_id (non-fatal):',
+              updByJobErr?.message
+            )
+            return
+          }
+          throw updByJobErr
+        }
+        if (!Array.isArray(updatedByJobId) || updatedByJobId.length === 0) {
+          console.warn('[dealService:upsertLoanerAssignment] UPDATE affected 0 rows (non-fatal)')
+          return
+        }
+      }
     } else {
       // Create new assignment
-      const { error } = await supabase?.from('loaner_assignments')?.insert([assignmentData])
+      let { data: inserted, error } = await insertRow(assignmentData)
+
+      if (error && shouldRetryWithoutOrgId(error)) {
+        ;({ data: inserted, error } = await insertRow(assignmentDataWithoutOrgId))
+      }
+
+      if (!error && (!Array.isArray(inserted) || inserted.length === 0)) {
+        console.warn('[dealService:upsertLoanerAssignment] INSERT affected 0 rows (non-fatal)')
+        return
+      }
 
       if (error) {
         // Handle duplicate constraint error specifically
@@ -886,15 +948,24 @@ async function upsertLoanerAssignment(jobId, loanerData) {
           console.warn(
             '[dealService:upsertLoanerAssignment] Duplicate key error, attempting fallback UPDATE by job_id'
           )
-          const { error: updateError } = await supabase
-            ?.from('loaner_assignments')
-            ?.update(assignmentData)
-            ?.eq('job_id', jobId)
-            ?.is('returned_at', null)
+          let { data: updatedByJobId, error: updateError } = await updateByJobId(assignmentData)
+
+          if (updateError && shouldRetryWithoutOrgId(updateError)) {
+            ;({ data: updatedByJobId, error: updateError } = await updateByJobId(
+              assignmentDataWithoutOrgId
+            ))
+          }
 
           if (updateError && !isRlsError(updateError)) {
             // If UPDATE also fails, re-throw the original error
             throw error
+          }
+
+          if (!updateError && (!Array.isArray(updatedByJobId) || updatedByJobId.length === 0)) {
+            console.warn(
+              '[dealService:upsertLoanerAssignment] Fallback UPDATE (duplicate) affected 0 rows (non-fatal)'
+            )
+            return
           }
           return
         }
@@ -1705,7 +1776,7 @@ export async function createDeal(formState) {
 
     // A3: Handle loaner assignment for new deals
     if (payload?.customer_needs_loaner && loanerForm) {
-      await upsertLoanerAssignment(job?.id, loanerForm)
+      await upsertLoanerAssignment(job?.id, loanerForm, payload?.org_id || job?.org_id || null)
     }
 
     // 3) Ensure a transaction row exists immediately to satisfy NOT NULLs in some environments
@@ -2152,19 +2223,46 @@ export async function updateDeal(id, formState) {
           baseTransactionData.org_id = existingTxn.org_id
         }
 
-        const { error: updErr } = await supabase
+        // IMPORTANT: Under PostgREST + RLS, an UPDATE can return 200 with 0 affected rows
+        // (and no error) when the policy blocks the write. If we don't request returning
+        // columns, supabase-js can't tell us that nothing was updated.
+        // We request a minimal return payload and validate that at least one row updated.
+        const { data: updatedById, error: updErr } = await supabase
           ?.from('transactions')
           ?.update(baseTransactionData) // don't overwrite transaction_number on update
           ?.eq('id', existingTxn.id)
+          ?.select('id')
         if (updErr) throw updErr
+
+        if (!Array.isArray(updatedById) || updatedById.length === 0) {
+          // Fallback: update by job_id. Some RLS policies permit UPDATE via the jobs relationship
+          // even when transaction.org_id is NULL/stale.
+          const { data: updatedByJobId, error: updByJobErr } = await supabase
+            ?.from('transactions')
+            ?.update(baseTransactionData)
+            ?.eq('job_id', id)
+            ?.select('id')
+          if (updByJobErr) throw updByJobErr
+          if (!Array.isArray(updatedByJobId) || updatedByJobId.length === 0) {
+            throw new Error(
+              'Failed to save deal: Transaction update was blocked (0 rows affected). '
+            )
+          }
+        }
       } else {
         // No transaction exists - create one
         const insertData = {
           ...baseTransactionData,
           transaction_number: generateTransactionNumber(),
         }
-        const { error: insErr } = await supabase?.from('transactions')?.insert([insertData])
+        const { data: inserted, error: insErr } = await supabase
+          ?.from('transactions')
+          ?.insert([insertData])
+          ?.select('id')
         if (insErr) throw insErr
+        if (!Array.isArray(inserted) || inserted.length === 0) {
+          throw new Error('Failed to save deal: Transaction insert was blocked (0 rows affected).')
+        }
       }
     }
   } catch (e) {
@@ -2207,7 +2305,7 @@ export async function updateDeal(id, formState) {
 
   // A3: Handle loaner assignment updates
   if (payload?.customer_needs_loaner && loanerForm) {
-    await upsertLoanerAssignment(id, loanerForm)
+    await upsertLoanerAssignment(id, loanerForm, payload?.org_id || null)
   } else if (payload?.customer_needs_loaner === false) {
     // Delete loaner assignments when toggle is turned OFF
     const { error: deleteErr } = await supabase

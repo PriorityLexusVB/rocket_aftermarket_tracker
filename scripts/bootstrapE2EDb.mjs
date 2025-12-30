@@ -388,6 +388,37 @@ async function ensurePostBaselineFixups(client) {
   await client.query('ALTER TABLE IF EXISTS public.jobs ADD COLUMN IF NOT EXISTS location TEXT')
   await client.query('ALTER TABLE IF EXISTS public.jobs ADD COLUMN IF NOT EXISTS color_code TEXT')
 
+  // DealFormV2 writes staff assignment fields on jobs.
+  await client.query(
+    'ALTER TABLE IF EXISTS public.jobs ADD COLUMN IF NOT EXISTS sales_consultant_id uuid REFERENCES public.user_profiles(id) ON DELETE SET NULL'
+  )
+  await client.query(
+    'CREATE INDEX IF NOT EXISTS idx_jobs_sales_consultant_id ON public.jobs(sales_consultant_id)'
+  )
+  await client.query(
+    'ALTER TABLE IF EXISTS public.jobs ADD COLUMN IF NOT EXISTS finance_manager_id uuid REFERENCES public.user_profiles(id) ON DELETE SET NULL'
+  )
+  await client.query(
+    'CREATE INDEX IF NOT EXISTS idx_jobs_finance_manager_id ON public.jobs(finance_manager_id)'
+  )
+  await client.query(
+    'ALTER TABLE IF EXISTS public.jobs ADD COLUMN IF NOT EXISTS delivery_coordinator_id uuid REFERENCES public.user_profiles(id) ON DELETE SET NULL'
+  )
+  await client.query(
+    'CREATE INDEX IF NOT EXISTS idx_jobs_delivery_coordinator_id ON public.jobs(delivery_coordinator_id)'
+  )
+
+  // DealFormV2 writes line-item scheduling fields on job_parts.
+  await client.query(
+    'ALTER TABLE IF EXISTS public.job_parts ADD COLUMN IF NOT EXISTS requires_scheduling BOOLEAN DEFAULT true'
+  )
+  await client.query(
+    'ALTER TABLE IF EXISTS public.job_parts ADD COLUMN IF NOT EXISTS no_schedule_reason TEXT'
+  )
+  await client.query(
+    'ALTER TABLE IF EXISTS public.job_parts ADD COLUMN IF NOT EXISTS is_off_site BOOLEAN DEFAULT false'
+  )
+
   // Later RLS/auth helper migrations sometimes expect a separate auth_user_id column.
   await client.query(
     'ALTER TABLE IF EXISTS public.user_profiles ADD COLUMN IF NOT EXISTS auth_user_id uuid'
@@ -449,6 +480,11 @@ async function ensureOrgIdColumnsForRlsPolicies(client) {
   await client.query(
     'ALTER TABLE IF EXISTS public.products ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES public.organizations(id)'
   )
+  // Dropdown/product selectors expect these legacy columns even when starting from a later baseline.
+  // The E2E bootstrap applies the baseline migration (202509...) forward, which skips earlier product
+  // migrations that introduced these columns.
+  await client.query('ALTER TABLE IF EXISTS public.products ADD COLUMN IF NOT EXISTS op_code text')
+  await client.query('ALTER TABLE IF EXISTS public.products ADD COLUMN IF NOT EXISTS cost numeric')
   await client.query(
     'ALTER TABLE IF EXISTS public.sms_templates ADD COLUMN IF NOT EXISTS org_id uuid REFERENCES public.organizations(id)'
   )
@@ -469,11 +505,36 @@ async function ensureOrgIdColumnsForRlsPolicies(client) {
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       job_id uuid NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
       org_id uuid NULL REFERENCES public.organizations(id),
+      loaner_number text,
+      eta_return_date date,
+      notes text,
       customer_phone text,
       created_at timestamptz DEFAULT now(),
       updated_at timestamptz DEFAULT now()
     )
   `)
+
+  // If the table already existed from a previous run (or earlier minimal shape), ensure expected columns exist.
+  await client.query(
+    'ALTER TABLE IF EXISTS public.loaner_assignments ADD COLUMN IF NOT EXISTS loaner_number text'
+  )
+  await client.query(
+    'ALTER TABLE IF EXISTS public.loaner_assignments ADD COLUMN IF NOT EXISTS eta_return_date date'
+  )
+  await client.query(
+    'ALTER TABLE IF EXISTS public.loaner_assignments ADD COLUMN IF NOT EXISTS notes text'
+  )
+}
+
+async function ensureAuthenticatedWriteGrants(client) {
+  // When we wipe/recreate the public schema, table ownership and default privileges can differ
+  // from a `supabase db reset` flow. PostgREST executes queries as `authenticated`, so ensure
+  // it has baseline DML privileges. RLS still governs row access.
+  await client.query('GRANT USAGE ON SCHEMA public TO authenticated')
+  await client.query(
+    'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated'
+  )
+  await client.query('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated')
 }
 
 async function runStatement(client, statement) {
@@ -608,6 +669,16 @@ async function main() {
         continue
       }
 
+      // This migration contains malformed quoting inside a DO $$ EXECUTE string.
+      // On a schema that includes the scheduling columns, it fails with an unterminated string error.
+      // The constraint is not required for E2E correctness, so we skip it here.
+      if (baseName === '20251023000000_add_job_parts_no_schedule_reason_check.sql') {
+        console.warn(
+          `[bootstrapE2EDb] Skipping ${baseName}: known quoting bug in CHECK constraint migration.`
+        )
+        continue
+      }
+
       const statements = splitSqlStatements(sql)
       for (const statement of statements) {
         await runStatement(client, statement)
@@ -624,6 +695,8 @@ async function main() {
         await ensurePostBaselineFixups(client)
       }
     }
+
+    await ensureAuthenticatedWriteGrants(client)
 
     console.log('[bootstrapE2EDb] ✅ Schema bootstrap complete.')
   } finally {

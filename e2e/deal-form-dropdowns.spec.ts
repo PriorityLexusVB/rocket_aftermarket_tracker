@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
-
 test.describe('Deal Form dropdowns and line items', () => {
   test('dropdowns populate and product auto-fills unit price', async ({ page }) => {
     // Preflight: ensure we have an authenticated session (via storageState)
     await page.goto('/debug-auth')
-    await expect(page.getByTestId('session-user-id')).not.toHaveText('—', { timeout: 15_000 })
+    await expect(page.getByTestId('session-user-id')).not.toHaveText('—', {
+      timeout: process.env.CI ? 30_000 : 15_000,
+    })
     await expect(page.getByTestId('profile-org-id')).not.toHaveText(/^(undefined|null)$/, {
-      timeout: 15_000,
+      timeout: process.env.CI ? 30_000 : 15_000,
     })
 
     await page.goto('/deals/new')

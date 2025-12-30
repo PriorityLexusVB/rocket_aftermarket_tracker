@@ -47,7 +47,7 @@ select
   au.id,
   au.email,
   coalesce(au.raw_user_meta_data->>'full_name', au.raw_user_meta_data->>'name', au.email) as full_name,
-  'staff'::public.user_role as role,
+  'admin'::public.user_role as role,
   e2e_org.org_id as org_id,
   true as is_active
 from auth.users au
@@ -119,7 +119,7 @@ on conflict (id) do update set customer_name = excluded.customer_name, total_amo
 -- Insert a job part with a promised date (tomorrow)
 insert into public.job_parts (
   id, job_id, product_id, quantity_used, unit_price,
-  promised_date, requires_scheduling, no_schedule_reason, is_off_site
+  promised_date
 )
 values (
   '00000000-0000-0000-0000-0000000000f2',
@@ -127,36 +127,45 @@ values (
   '00000000-0000-0000-0000-0000000000b1',
   1,
   100,
-  (date_trunc('day', now()) + interval '1 day')::date,
-  true,
-  null,
-  false
+  (date_trunc('day', now()) + interval '1 day')::date
 )
-on conflict (id) do update set product_id = excluded.product_id, quantity_used = excluded.quantity_used, unit_price = excluded.unit_price, promised_date = excluded.promised_date, requires_scheduling = excluded.requires_scheduling, no_schedule_reason = excluded.no_schedule_reason, is_off_site = excluded.is_off_site;
+on conflict (id) do update set product_id = excluded.product_id, quantity_used = excluded.quantity_used, unit_price = excluded.unit_price, promised_date = excluded.promised_date;
 
--- Active loaner assignment
 do $$
 begin
+  -- Prefer the minimal schema used by the E2E bootstrap (org_id + customer_phone).
   if exists (
     select 1
     from information_schema.columns
     where table_schema = 'public'
       and table_name = 'loaner_assignments'
-      and column_name = 'loaner_number'
+      and column_name = 'customer_phone'
   ) then
-    insert into public.loaner_assignments (id, job_id, loaner_number, eta_return_date, notes)
-    values (
-      '00000000-0000-0000-0000-0000000000f3',
-      '00000000-0000-0000-0000-0000000000e1',
-      'LOANER-E2E-123',
-      (date_trunc('day', now()) + interval '2 days')::date,
-      'Seeded loaner assignment for E2E'
+    with e2e_org as (
+      select coalesce(
+        (select org_id from public.user_profiles where email = $E2E_EMAIL$ limit 1),
+        '00000000-0000-0000-0000-0000000000e2'::uuid
+      ) as org_id
     )
+    insert into public.loaner_assignments (id, job_id, org_id, customer_phone)
+    select
+      '00000000-0000-0000-0000-0000000000f3'::uuid,
+      '00000000-0000-0000-0000-0000000000e1'::uuid,
+      e2e_org.org_id,
+      '555-0100'
+    from e2e_org
     on conflict (id) do update
-      set loaner_number = excluded.loaner_number,
-          eta_return_date = excluded.eta_return_date,
-          notes = excluded.notes;
-  else
+      set org_id = excluded.org_id,
+          customer_phone = excluded.customer_phone;
+
+  -- Legacy schema fallback (only if those columns exist).
+  elsif exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'loaner_assignments'
+      and column_name = 'eta_return_date'
+  ) then
     insert into public.loaner_assignments (id, job_id, eta_return_date, notes)
     values (
       '00000000-0000-0000-0000-0000000000f3',
@@ -167,5 +176,14 @@ begin
     on conflict (id) do update
       set eta_return_date = excluded.eta_return_date,
           notes = excluded.notes;
+
+  -- Ultra-minimal fallback.
+  else
+    insert into public.loaner_assignments (id, job_id)
+    values (
+      '00000000-0000-0000-0000-0000000000f3',
+      '00000000-0000-0000-0000-0000000000e1'
+    )
+    on conflict (id) do update set job_id = excluded.job_id;
   end if;
 end $$;

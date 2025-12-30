@@ -19,7 +19,8 @@ try {
 } catch {}
 
 export default async function globalSetup() {
-  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+  // Prefer IPv4 loopback to avoid ::1/IPv6 routing issues in CI.
+  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173'
   const allowProd = process.env.ALLOW_E2E_ON_PROD === '1'
   const isProdVercel = /^https:\/\/rocket-aftermarket-tracker\.vercel\.app\b/i.test(base)
   if (isProdVercel && !allowProd) {
@@ -78,7 +79,7 @@ export default async function globalSetup() {
   })
 
   // Helper: wait for server to be reachable to reduce flakes on slow start
-  const waitForServer = async (maxMs = 30000) => {
+  const waitForServer = async (maxMs = process.env.CI ? 90_000 : 30_000) => {
     const start = Date.now()
     let attempt = 0
     while (Date.now() - start < maxMs) {
@@ -97,7 +98,7 @@ export default async function globalSetup() {
   // If storage exists and debug-auth shows both testids, skip login
   let hasValidState = false
   try {
-    const up = await waitForServer(30000)
+    const up = await waitForServer()
     if (!up) {
       console.error('[global.setup] Server at %s did not become reachable within timeout.', base)
     }

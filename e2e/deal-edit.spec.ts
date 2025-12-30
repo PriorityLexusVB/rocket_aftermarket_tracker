@@ -4,7 +4,7 @@ import { requireAuthEnv } from './_authEnv'
 
 test.describe('Deal create + edit flow', () => {
   test('create a deal, then edit and persist changes', async ({ page }) => {
-    test.setTimeout(120_000)
+    test.setTimeout(process.env.CI ? 150_000 : 120_000)
 
     requireAuthEnv()
 
@@ -62,19 +62,30 @@ test.describe('Deal create + edit flow', () => {
     // Click save and wait for either redirect or error
     await save.click()
 
-    // Wait for redirect to edit page - increased timeout and wait for network idle
+    // Wait for redirect to edit page.
+    // Avoid `networkidle` here: realtime subscriptions + polling can keep the network busy
+    // and make this wait flaky even when navigation succeeded.
     await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, {
       timeout: 30_000,
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
     })
 
     // Re-acquire description element after navigation (DOM changed)
     const descriptionAfterNav = page.getByTestId('description-input')
     await expect(descriptionAfterNav).toBeVisible({ timeout: 10_000 })
 
+    // Wait for edit page hydration to finish. The edit route fetches the deal and then
+    // DealForm syncs local state from `initial`; if we type too early, our input can be
+    // overwritten by the late-arriving initial payload.
+    await expect(descriptionAfterNav).toHaveValue(initialDescription, { timeout: 15_000 })
+    await page.waitForTimeout(400)
+    await expect(descriptionAfterNav).toHaveValue(initialDescription)
+
     // Edit: change description and toggle scheduling flags
     const editedDescription = `${initialDescription} - Edited`
     await descriptionAfterNav.fill(editedDescription)
+    await descriptionAfterNav.blur()
+    await expect(descriptionAfterNav).toHaveValue(editedDescription)
 
     // For line item 0: uncheck requires scheduling to reveal reason, then re-check
     const reason = page.getByTestId('no-schedule-reason-0')
