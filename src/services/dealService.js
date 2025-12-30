@@ -82,6 +82,10 @@ function isRlsError(error) {
   )
 }
 
+function isMissingReturnedAtError(error) {
+  return isMissingColumnError(error) && /\breturned_at\b/i.test(String(error?.message || ''))
+}
+
 // Safely sum job_parts when transactions are unavailable (e.g., RLS blocks read)
 function sumJobParts(parts = []) {
   return (parts || []).reduce((sum, part) => {
@@ -813,12 +817,35 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
     // Check for existing active assignment for this job
     // Use maybeSingle() instead of single() to handle RLS gracefully
     // The RLS policy on loaner_assignments checks through the jobs table
-    const { data: existing, error: selectError } = await supabase
-      ?.from('loaner_assignments')
-      ?.select('id')
-      ?.eq('job_id', jobId)
-      ?.is('returned_at', null)
-      ?.maybeSingle()
+    let existing = null
+    let selectError = null
+
+    {
+      const base = supabase?.from('loaner_assignments')?.select('id')?.eq('job_id', jobId)
+      const withReturnedAt =
+        base && typeof base.is === 'function' ? base.is('returned_at', null) : base
+      const res =
+        withReturnedAt && typeof withReturnedAt.maybeSingle === 'function'
+          ? await withReturnedAt.maybeSingle()
+          : null
+      existing = res?.data || null
+      selectError = res?.error || null
+
+      // Some E2E/staging DBs may not have loaner_assignments.returned_at yet.
+      // Retry without the filter so loaner persistence can still work.
+      if (selectError && isMissingReturnedAtError(selectError)) {
+        const { data, error } = await supabase
+          ?.from('loaner_assignments')
+          ?.select('id')
+          ?.eq('job_id', jobId)
+          ?.limit(1)
+
+        selectError = error || null
+        if (!selectError && Array.isArray(data) && data.length > 0) {
+          existing = { id: data[0]?.id }
+        }
+      }
+    }
 
     // Handle RLS errors on SELECT gracefully
     if (selectError) {
@@ -857,13 +884,25 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
     const updateById = async (data) =>
       await supabase?.from('loaner_assignments')?.update(data)?.eq('id', existing?.id)?.select('id')
 
-    const updateByJobId = async (data) =>
-      await supabase
-        ?.from('loaner_assignments')
-        ?.update(data)
-        ?.eq('job_id', jobId)
-        ?.is('returned_at', null)
-        ?.select('id')
+    const updateByJobId = async (data) => {
+      const base = supabase?.from('loaner_assignments')?.update(data)?.eq('job_id', jobId)
+      const withReturnedAt =
+        base && typeof base.is === 'function' ? base.is('returned_at', null) : base
+      const res =
+        withReturnedAt && typeof withReturnedAt.select === 'function'
+          ? await withReturnedAt.select('id')
+          : null
+
+      if (res?.error && isMissingReturnedAtError(res.error)) {
+        return await supabase
+          ?.from('loaner_assignments')
+          ?.update(data)
+          ?.eq('job_id', jobId)
+          ?.select('id')
+      }
+
+      return res
+    }
 
     const insertRow = async (data) =>
       await supabase?.from('loaner_assignments')?.insert([data])?.select('id')
@@ -1285,7 +1324,7 @@ export async function getAllDeals() {
     // Get transactions and loaner assignments separately for better performance
     const jobIds = jobs?.map((j) => j?.id) || []
 
-    const [transactionsResult, loanersResult] = await Promise.all([
+    const [transactionsResult, initialLoanersResult] = await Promise.all([
       supabase
         ?.from('transactions')
         ?.select('job_id, customer_name, customer_phone, customer_email, total_amount')
@@ -1299,6 +1338,14 @@ export async function getAllDeals() {
         return q && typeof q.is === 'function' ? q.is('returned_at', null) : q
       })(),
     ])
+
+    let loanersResult = initialLoanersResult
+    if (loanersResult?.error && isMissingReturnedAtError(loanersResult.error)) {
+      loanersResult = await supabase
+        ?.from('loaner_assignments')
+        ?.select('job_id, id, loaner_number, eta_return_date')
+        ?.in('job_id', jobIds)
+    }
 
     const transactions = transactionsResult?.data || []
 
@@ -1479,7 +1526,7 @@ export async function getDeal(id) {
     const job = await selectJoinedDealById(id)
 
     // Get transaction data and loaner data separately
-    const [transactionResult, loanerResult] = await Promise.all([
+    const [transactionResult, initialLoanerResult] = await Promise.all([
       supabase
         ?.from('transactions')
         ?.select('customer_name, customer_phone, customer_email, total_amount')
@@ -1494,6 +1541,15 @@ export async function getDeal(id) {
         return q2 && typeof q2.maybeSingle === 'function' ? q2.maybeSingle() : q2
       })(),
     ])
+
+    let loanerResult = initialLoanerResult
+    if (loanerResult?.error && isMissingReturnedAtError(loanerResult.error)) {
+      loanerResult = await supabase
+        ?.from('loaner_assignments')
+        ?.select('id, loaner_number, eta_return_date, notes')
+        ?.eq('job_id', id)
+        ?.maybeSingle()
+    }
 
     const transaction = transactionResult?.data
 

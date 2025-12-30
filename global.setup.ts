@@ -12,9 +12,16 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 try {
-  for (const f of ['.env.local', '.env']) {
-    const p = path.resolve(__dirname, f)
-    if (existsSync(p)) dotenv.config({ path: p })
+  // Keep in sync with playwright.config.ts:
+  // Prefer a dedicated local E2E env file when present, but never commit secrets.
+  const e2eEnvPath = path.resolve(process.cwd(), '.env.e2e.local')
+  if (existsSync(e2eEnvPath)) {
+    dotenv.config({ path: e2eEnvPath, override: true })
+  } else {
+    for (const f of ['.env.local', '.env']) {
+      const p = path.resolve(__dirname, f)
+      if (existsSync(p)) dotenv.config({ path: p, override: false })
+    }
   }
 } catch {}
 
@@ -253,6 +260,7 @@ export default async function globalSetup() {
 
 async function associateUserWithE2EOrg() {
   const connStr =
+    process.env.E2E_DATABASE_URL ||
     process.env.DATABASE_URL ||
     process.env.SUPABASE_DB_URL ||
     process.env.POSTGRES_URL ||
