@@ -363,6 +363,9 @@ export default function DealsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
+  // Guard against rapid double-click triggering duplicate deletes
+  const deleteInFlightRef = useRef(false)
+
   // ✅ FIXED: Replace direct function calls with hook-based calls
   const getSalesConsultants = () => {
     try {
@@ -421,6 +424,9 @@ export default function DealsPage() {
   // ✅ FIXED: Enhanced delete function with proper error handling
   const handleDeleteDeal = async (dealId) => {
     try {
+      if (deleteInFlightRef.current) return
+      deleteInFlightRef.current = true
+
       setDeletingDeal(true)
       setError('') // Clear previous errors
       await deleteDeal(dealId)
@@ -432,6 +438,7 @@ export default function DealsPage() {
       console.error('Delete error:', e)
     } finally {
       setDeletingDeal(false)
+      deleteInFlightRef.current = false
     }
   }
 
@@ -537,8 +544,9 @@ export default function DealsPage() {
   }, [])
 
   useEffect(() => {
+    if (!user?.id) return
     loadDeals()
-  }, [loadDeals])
+  }, [user?.id, loadDeals])
 
   // ✅ FIXED: Move handleManageLoaner function to proper location inside component
   const handleManageLoaner = (deal) => {

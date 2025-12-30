@@ -1236,7 +1236,7 @@ export async function getAllDeals() {
         : ''
       const productFields = `product:products(id, name, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})`
       const jobPartsFieldsVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields}${perLineVendorJoin2})`
-      const jobPartsFieldsNoVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields}${perLineVendorJoin2})`
+      const jobPartsFieldsNoVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields})`
 
       const baseSelect = `
           id, org_id, created_at, job_status, service_type, color_code, title, job_number,
