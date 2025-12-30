@@ -16,7 +16,6 @@ describe('dealService.deleteDeal', () => {
   beforeEach(async () => {
     // Reset module cache so `dealService` re-imports with this file's mock.
     vi.resetModules()
-
     ;({ supabase } = await import('@/lib/supabase'))
     ;({ deleteDeal } = await import('@/services/dealService'))
 
