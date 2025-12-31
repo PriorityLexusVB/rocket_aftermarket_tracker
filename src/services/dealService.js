@@ -621,7 +621,12 @@ function mapFormToDb(formState = {}) {
       ? formState?.lineItems
       : []
 
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
   const normalizedLineItems = (lineItemsInput || []).map((li) => {
+    const idRaw = li?.id ?? li?.job_part_id ?? li?.jobPartId ?? null
+    const idNorm = typeof idRaw === 'string' && uuidRegex.test(idRaw) ? idRaw : null
+
     const productIdRaw = li?.product_id ?? li?.productId ?? null
     const productIdNorm =
       typeof productIdRaw === 'string'
@@ -634,25 +639,23 @@ function mapFormToDb(formState = {}) {
     const noScheduleReasonNorm = li?.no_schedule_reason || li?.noScheduleReason || null
     const lineItemPromisedDateNorm = li?.promised_date || li?.lineItemPromisedDate || null
     const isOffSiteNorm = li?.is_off_site ?? li?.isOffSite ?? false
-    // Extract scheduled time window fields
     const scheduledStartNorm = li?.scheduled_start_time || li?.scheduledStartTime || null
     const scheduledEndNorm = li?.scheduled_end_time || li?.scheduledEndTime || null
-    // NEW: Extract vendor_id for per-line vendor support
     const vendorIdNorm = li?.vendor_id ?? li?.vendorId ?? null
+
     return {
+      id: idNorm,
       product_id: productIdNorm ?? null,
-      vendor_id: vendorIdNorm, // NEW: per-line vendor support
+      vendor_id: vendorIdNorm,
       quantity_used: Number(li.quantity_used ?? li.quantity ?? 1),
       unit_price: Number(li.unit_price ?? li.price ?? 0),
-      // snake_case for DB
       promised_date: lineItemPromisedDateNorm,
       requires_scheduling: !!requiresSchedulingNorm,
       no_schedule_reason: requiresSchedulingNorm ? null : noScheduleReasonNorm,
       is_off_site: !!isOffSiteNorm,
       scheduled_start_time: scheduledStartNorm,
       scheduled_end_time: scheduledEndNorm,
-      // keep camelCase too for internal callers
-      vendorId: vendorIdNorm, // NEW: per-line vendor support
+      vendorId: vendorIdNorm,
       lineItemPromisedDate: lineItemPromisedDateNorm,
       requiresScheduling: !!requiresSchedulingNorm,
       noScheduleReason: requiresSchedulingNorm ? null : noScheduleReasonNorm,
@@ -666,7 +669,6 @@ function mapFormToDb(formState = {}) {
   for (const item of normalizedLineItems) {
     if (Number.isNaN(item.quantity_used) || item.quantity_used == null) item.quantity_used = 1
     if (Number.isNaN(item.unit_price) || item.unit_price == null) item.unit_price = 0
-    // Business rule: if not scheduling, reason is required
     if (!item.requires_scheduling && !String(item.no_schedule_reason || '').trim()) {
       throw new Error('Each non-scheduled line item must include a reason')
     }
@@ -681,11 +683,10 @@ function mapFormToDb(formState = {}) {
   // Contract-friendly jobParts for callers that expect quantity + total_price (UI keeps snake_case)
   const jobParts = (normalizedLineItems || []).map((it) => ({
     product_id: it.product_id,
-    vendor_id: it.vendor_id, // NEW: per-line vendor support
+    vendor_id: it.vendor_id,
     quantity: Number(it.quantity_used ?? 1),
     unit_price: Number(it.unit_price ?? 0),
     total_price: Number(it.unit_price ?? 0) * Number(it.quantity_used ?? 1),
-    // Preserve UI snake_case so consumers don't lose fields
     quantity_used: it.quantity_used,
     promised_date: it.promised_date,
     requires_scheduling: it.requires_scheduling,

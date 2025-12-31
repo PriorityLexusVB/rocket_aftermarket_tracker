@@ -335,6 +335,34 @@ describe('dealService pure transforms', () => {
     expect(typeof customerPhone).toBe('string')
   })
 
+  it('mapFormToDb preserves job_parts UUID ids for stable sync updates', () => {
+    const uuid = '58a6f225-c870-483f-9c6a-931d3816b91a'
+    const input = {
+      lineItems: [
+        {
+          id: uuid,
+          product_id: 'p1',
+          quantity_used: 1,
+          unit_price: 25,
+          requires_scheduling: true,
+          promised_date: '2025-12-26',
+        },
+        {
+          id: 'temp-job-0',
+          product_id: 'p2',
+          quantity_used: 1,
+          unit_price: 10,
+          requires_scheduling: true,
+          promised_date: '2025-12-27',
+        },
+      ],
+    }
+
+    const { normalizedLineItems } = dealService.mapFormToDb(input)
+    expect(normalizedLineItems[0].id).toBe(uuid)
+    expect(normalizedLineItems[1].id).toBeNull()
+  })
+
   it('mapFormToDb throws when non-scheduled item missing reason', () => {
     const bad = {
       lineItems: [{ product_id: 'p1', requiresScheduling: false, noScheduleReason: '' }],
