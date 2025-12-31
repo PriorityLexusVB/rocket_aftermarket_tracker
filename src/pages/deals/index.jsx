@@ -14,7 +14,7 @@ import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import LoanerDrawer from './components/LoanerDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
-import ScheduleChip from '../../components/deals/ScheduleChip'
+import ScheduleBlock from '../../components/deals/ScheduleBlock'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -26,6 +26,22 @@ import { useToast } from '../../components/ui/ToastProvider'
 // Feature flag for Simple Agenda
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
+
+const ET_TZ = 'America/New_York'
+
+const formatEtShortDate = (date) => {
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return ''
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: ET_TZ,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).formatToParts(d)
+
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]))
+  return [map.weekday, map.month, map.day].filter(Boolean).join(' ')
+}
 
 const isDealsDebugEnabled = () =>
   import.meta.env.DEV &&
@@ -126,6 +142,38 @@ const NextPromisedChip = ({ nextPromisedAt }) => {
     </span>
   )
 }
+
+const getDealPromiseIso = (deal) => {
+  const explicit = deal?.next_promised_iso
+  if (explicit) return explicit
+
+  try {
+    if (Array.isArray(deal?.job_parts)) {
+      const dates = deal.job_parts
+        .map((p) => p?.promised_date)
+        .filter(Boolean)
+        .map((d) => {
+          // Normalize to local date-time to avoid UTC day shift in tests
+          const dateStr = String(d)
+          return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
+        })
+        .sort()
+      return dates?.[0] || null
+    }
+  } catch {
+    // ignore
+  }
+
+  return null
+}
+
+const Pill = ({ children, className = '' }) => (
+  <span
+    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-700 ${className}`}
+  >
+    {children}
+  </span>
+)
 
 // ✅ ADDED: Customer display helper so table renders without missing component
 const CustomerDisplay = ({ deal }) => {
@@ -471,6 +519,9 @@ export default function DealsPage() {
 
       await deleteDeal(dealId)
 
+      // Optimistic: remove the deleted row immediately.
+      setDeals((prev) => (Array.isArray(prev) ? prev.filter((d) => d?.id !== dealId) : prev))
+
       // If any UI is currently open for this deal, close it before reloading.
       // This prevents confusing states where a drawer/modal appears to "come back" after deletion.
       const closedUiState = {
@@ -503,11 +554,15 @@ export default function DealsPage() {
         )
       }
 
+      toast?.success?.('Deal deleted')
+
       setDeleteConfirm(null)
       await loadDeals(0, 'after-delete')
     } catch (e) {
       setError(`Failed to delete deal: ${e?.message}`)
       console.error('Delete error:', e)
+
+      toast?.error?.(e?.message || 'Failed to delete deal')
 
       if (isDealsDebugEnabled()) {
         console.info(
@@ -1609,65 +1664,23 @@ export default function DealsPage() {
           })()}
         </div>
 
-        {/* Desktop Table with horizontal scroll to view all columns */}
-        <div className="hidden md:block bg-white border rounded-lg overflow-x-auto shadow-sm">
-          <table className="table-fixed min-w-[1200px] w-full text-sm">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-[120px]">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Age
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Promise
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Appt Window
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Vehicle
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider w-[120px]">
-                  $
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden xl:table-cell">
-                  Vendor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Loaner
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {filteredDeals?.length === 0 ? (
-                <tr>
-                  <td colSpan="13" className="px-6 py-12 text-center text-slate-500">
-                    No deals
-                  </td>
-                </tr>
-              ) : (
-                filteredDeals?.map((deal) => (
-                  <tr
+        {/* Desktop/iPad: modern card rows (no horizontal scroll) */}
+        <div className="hidden md:block">
+          {filteredDeals?.length === 0 ? (
+            <div className="bg-white rounded-lg border p-10 text-center text-slate-500">
+              No deals
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredDeals?.map((deal) => {
+                const promiseIso = getDealPromiseIso(deal)
+                const todayEtLabel = formatEtShortDate(new Date())
+
+                return (
+                  <div
                     key={deal?.id}
                     data-testid={`deal-row-${deal?.id}`}
-                    className="even:bg-slate-50 hover:bg-slate-100 cursor-pointer"
+                    className="group cursor-pointer rounded-xl bg-slate-50/70 hover:bg-slate-100/80 px-4 py-4"
                     onClick={() => {
                       if (isDealsDebugEnabled()) {
                         console.info(
@@ -1684,250 +1697,162 @@ export default function DealsPage() {
                       handleOpenDetail(deal)
                     }}
                   >
-                    <td className="px-4 py-3 w-[120px]">
-                      <span className="text-sm text-slate-700">
-                        {(() => {
-                          try {
-                            const date = deal?.deal_date || deal?.created_at
-                            if (!date) return '—'
-                            return format(parseISO(date), 'MMM d, yyyy')
-                          } catch {
-                            return '—'
-                          }
-                        })()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill status={deal?.job_status} />
-                    </td>
-                    <td className="px-4 py-3 w-[72px]">
-                      <span className="text-sm text-slate-700">
-                        {typeof deal?.age_days === 'number' ? `${deal?.age_days}d` : '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 w-[120px]">
-                      {(() => {
-                        const explicit = deal?.next_promised_iso
-                        let fallback = null
-                        try {
-                          if (!explicit && Array.isArray(deal?.job_parts)) {
-                            const dates = deal.job_parts
-                              .map((p) => p?.promised_date)
-                              .filter(Boolean)
-                              .map((d) => {
-                                // Normalize to local date-time to avoid UTC day shift in tests
-                                const dateStr = String(d)
-                                return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
-                              })
-                              .sort()
-                            fallback = dates?.[0] || null
-                          }
-                        } catch {}
-                        return (
-                          <NextPromisedChip
-                            nextPromisedAt={explicit || fallback}
-                            jobId={deal?.id}
-                          />
-                        )
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 w-[180px]">
-                      <ScheduleChip
-                        deal={deal}
-                        onClick={handleScheduleClick}
-                        showIcon={true}
-                        Icon={Icon}
-                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
-                      />
-                    </td>
-                    <td
-                      className="px-4 py-3 max-w-[220px]"
-                      data-testid={`deal-customer-${deal?.id}`}
-                    >
-                      <div className="truncate">
-                        <CustomerDisplay deal={deal} />
-                        {/* Render staff names in "Lastname, F." format for visibility in tests */}
-                        {(deal?.delivery_coordinator_name || deal?.sales_consultant_name) && (
-                          <div className="mt-1 text-xs text-slate-600 space-x-2">
-                            {deal?.delivery_coordinator_name && (
-                              <span>{formatStaffName(deal?.delivery_coordinator_name)}</span>
-                            )}
-                            {deal?.sales_consultant_name && (
-                              <span>{formatStaffName(deal?.sales_consultant_name)}</span>
-                            )}
-                          </div>
-                        )}
-
-                        {isDealsDebugEnabled() && deal?.id && (
-                          <div className="mt-1 text-[10px] text-slate-400">
-                            id…{String(deal.id).slice(-6)}
-                          </div>
-                        )}
+                    {/* Line 1: Schedule | Customer+Owner+Age | Actions */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 text-xs font-medium text-slate-500">
+                          {todayEtLabel}
+                        </div>
+                        <ScheduleBlock
+                          deal={deal}
+                          promiseDate={promiseIso}
+                          onClick={() => handleScheduleClick?.(deal)}
+                          className="w-full"
+                        />
                       </div>
-                    </td>
-                    <td className="px-4 py-3 w-[150px]">
-                      <span className="text-sm text-slate-700">{getDisplayPhone(deal)}</span>
-                    </td>
-                    <td className="px-4 py-3 max-w-[220px]">
-                      <span
-                        className="text-sm text-slate-700 truncate inline-block max-w-full"
-                        title={
-                          deal?.vehicle_description ||
-                          `${deal?.vehicle ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()) : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
-                          ''
-                        }
-                      >
-                        {deal?.vehicle_description
-                          ? titleCase(deal.vehicle_description)
-                          : deal?.vehicle
-                            ? titleCase(
-                                `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
-                              )
-                            : '—'}
-                        {deal?.vehicle?.stock_number ? (
-                          <span className="text-slate-400">
-                            {' '}
-                            • Stock: {deal?.vehicle?.stock_number}
-                          </span>
-                        ) : null}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 w-[120px] text-right tabular-nums">
-                      <ValueDisplay amount={deal?.total_amount} />
-                    </td>
-                    <td className="px-4 py-3 max-w-[160px] hidden xl:table-cell">
-                      <span
-                        className="text-sm text-slate-700 truncate inline-block max-w-full"
-                        title={deal?.vendor_name || 'Unassigned'}
-                      >
-                        {deal?.vendor_name || 'Unassigned'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 w-[120px]">
-                      <ServiceLocationTag
-                        serviceType={deal?.service_type}
-                        jobParts={deal?.job_parts}
-                      />
-                    </td>
-                    <td className="px-4 py-3 w-[140px]">
-                      {deal?.loaner_number || deal?.has_active_loaner ? (
-                        <LoanerBadge deal={deal} />
-                      ) : (
-                        <span className="text-xs text-gray-500">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right w-[160px]">
-                      <div className="flex items-center justify-end space-x-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (isDealsDebugEnabled()) {
-                              console.info(
-                                '[Deals][ui] click edit',
-                                safeJsonStringify({
-                                  dealId: deal?.id,
-                                  primary: getDealPrimaryRef(deal),
-                                })
-                              )
-                            }
-                            handleEditDeal(deal?.id)
-                          }}
-                          className="h-9 w-9 rounded flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                          aria-label="Edit deal"
-                          title="Edit deal"
-                        >
-                          <Icon name="Pencil" size={16} />
-                        </button>
 
-                        {/* ✅ FIXED: Loaner management for desktop with proper condition */}
-                        {deal?.customer_needs_loaner && (
+                      <div className="min-w-0 flex-[1.1]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate">
+                              <CustomerDisplay deal={deal} />
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                              {typeof deal?.age_days === 'number' ? (
+                                <span className="tabular-nums">E2E {deal?.age_days}d</span>
+                              ) : null}
+                              {deal?.delivery_coordinator_name ? (
+                                <span>{formatStaffName(deal?.delivery_coordinator_name)}</span>
+                              ) : null}
+                              {deal?.sales_consultant_name ? (
+                                <span>{formatStaffName(deal?.sales_consultant_name)}</span>
+                              ) : null}
+                              {deal?.job_number ? (
+                                <span className="tabular-nums">{deal?.job_number}</span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            <StatusPill status={deal?.job_status} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions (icons only) */}
+                      <div className="shrink-0">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              if (isDealsDebugEnabled()) {
-                                console.info(
-                                  '[Deals][ui] click manage loaner',
-                                  safeJsonStringify({
-                                    dealId: deal?.id,
-                                    primary: getDealPrimaryRef(deal),
-                                    loanerId: deal?.loaner_id || null,
-                                    loanerNumber: deal?.loaner_number || null,
-                                  })
-                                )
-                              }
-                              handleManageLoaner(deal)
+                              handleEditDeal(deal?.id)
                             }}
-                            className="h-9 w-9 rounded flex items-center justify-center text-purple-600 hover:text-purple-800 hover:bg-purple-50"
-                            aria-label="Manage loaner"
-                            title="Manage loaner"
+                            className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                            aria-label="Edit deal"
+                            title="Edit deal"
                           >
-                            <Icon name="Car" size={16} />
+                            <span className="sr-only">Edit</span>
+                            <Icon name="Pencil" size={16} />
                           </button>
-                        )}
 
-                        {/* Mark returned button for active loaners */}
-                        {deal?.loaner_id && (
+                          {deal?.customer_needs_loaner && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleManageLoaner(deal)
+                              }}
+                              className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                              aria-label="Manage loaner"
+                              title="Manage loaner"
+                            >
+                              <span className="sr-only">Loaner</span>
+                              <Icon name="Car" size={16} />
+                            </button>
+                          )}
+
+                          {deal?.loaner_id && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setMarkReturnedModal({
+                                  loaner_id: deal?.loaner_id,
+                                  loaner_number: deal?.loaner_number,
+                                  job_title: getDealPrimaryRef(deal),
+                                })
+                              }}
+                              className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                              aria-label="Mark loaner returned"
+                              title="Mark loaner returned"
+                            >
+                              <span className="sr-only">Mark returned</span>
+                              <Icon name="Car" size={16} />
+                            </button>
+                          )}
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-
-                              if (isDealsDebugEnabled()) {
-                                console.info(
-                                  '[Deals][ui] click mark returned',
-                                  safeJsonStringify({
-                                    dealId: deal?.id,
-                                    primary: getDealPrimaryRef(deal),
-                                    loanerId: deal?.loaner_id,
-                                    loanerNumber: deal?.loaner_number || null,
-                                  })
-                                )
-                              }
-
-                              setMarkReturnedModal({
-                                loaner_id: deal?.loaner_id,
-                                loaner_number: deal?.loaner_number,
-                                job_title: getDealPrimaryRef(deal),
-                              })
+                              setError('')
+                              setDeleteConfirm(deal)
                             }}
-                            className="h-9 w-9 rounded flex items-center justify-center text-green-600 hover:text-green-800 hover:bg-green-50"
-                            aria-label="Mark loaner returned"
-                            title="Mark loaner returned"
+                            className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                            aria-label="Delete deal"
+                            title="Delete deal"
                           >
-                            <Icon name="Car" size={16} />
+                            <span className="sr-only">Delete</span>
+                            <Icon name="Trash2" size={16} />
                           </button>
-                        )}
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setError('')
-                            if (isDealsDebugEnabled()) {
-                              console.info(
-                                '[Deals][ui] click delete (open confirm)',
-                                safeJsonStringify({
-                                  dealId: deal?.id,
-                                  primary: getDealPrimaryRef(deal),
-                                  customerNeedsLoaner: !!deal?.customer_needs_loaner,
-                                  loanerId: deal?.loaner_id || null,
-                                  loanerNumber: deal?.loaner_number || null,
-                                })
-                              )
-                            }
-                            setDeleteConfirm(deal)
-                          }}
-                          className="h-9 w-9 rounded flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50"
-                          aria-label="Delete deal"
-                          title="Delete deal"
-                        >
-                          <Icon name="Trash2" size={16} />
-                        </button>
+                        </div>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                    </div>
+
+                    {/* Line 2: Vehicle | compact pills */}
+                    <div className="mt-3 flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div
+                          className="truncate text-sm text-slate-800"
+                          title={
+                            deal?.vehicle_description ||
+                            `${deal?.vehicle ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()) : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
+                            ''
+                          }
+                        >
+                          {deal?.vehicle_description
+                            ? titleCase(deal.vehicle_description)
+                            : deal?.vehicle
+                              ? titleCase(
+                                  `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                                )
+                              : '—'}
+                          {deal?.vehicle?.stock_number ? (
+                            <span className="text-slate-400">
+                              {' '}
+                              • Stock: {deal?.vehicle?.stock_number}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-0.5 text-xs text-slate-500">{getDisplayPhone(deal)}</div>
+                      </div>
+
+                      <div className="shrink-0 flex flex-wrap items-center justify-end gap-2">
+                        <Pill className="tabular-nums">
+                          <ValueDisplay amount={deal?.total_amount} />
+                        </Pill>
+                        <Pill>Vendor: {deal?.vendor_name || 'Unassigned'}</Pill>
+                        <ServiceLocationTag jobParts={deal?.job_parts} />
+                        {deal?.loaner_number || deal?.has_active_loaner ? (
+                          <LoanerBadge deal={deal} />
+                        ) : (
+                          <Pill>Loaner: —</Pill>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* ✅ UPDATED: Mobile Cards with enhanced styling and loaner support */}
@@ -2023,46 +1948,27 @@ export default function DealsPage() {
                         ) : null}
                       </div>
 
-                      {/* Line 3: Promise + Appt Window + Loaner + Value */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span data-testid="mobile-next-chip">
-                          {(() => {
-                            const explicit = deal?.next_promised_iso
-                            let fallback = null
-                            try {
-                              if (!explicit && Array.isArray(deal?.job_parts)) {
-                                const dates = deal.job_parts
-                                  .map((p) => p?.promised_date)
-                                  .filter(Boolean)
-                                  .map((d) => {
-                                    // Normalize to local date-time to avoid UTC day shift in tests
-                                    const dateStr = String(d)
-                                    return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
-                                  })
-                                  .sort()
-                                fallback = dates?.[0] || null
-                              }
-                            } catch {}
-                            return (
-                              <NextPromisedChip
-                                nextPromisedAt={explicit || fallback}
-                                jobId={deal?.id}
-                              />
-                            )
-                          })()}
-                        </span>
-                        <ScheduleChip
+                      {/* Line 3: Unified schedule (no duplicate Promise / Appt Window) */}
+                      <div>
+                        <div className="mb-1 text-xs font-medium text-slate-500">
+                          {formatEtShortDate(new Date())}
+                        </div>
+                        <ScheduleBlock
                           deal={deal}
-                          onClick={handleScheduleClick}
-                          showIcon={true}
-                          Icon={Icon}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-indigo-100 text-indigo-800 border border-indigo-200 hover:bg-indigo-200 transition-colors"
+                          promiseDate={getDealPromiseIso(deal)}
+                          onClick={() => handleScheduleClick?.(deal)}
+                          className="w-full"
                         />
-                        {(deal?.loaner_number || deal?.has_active_loaner) && (
-                          <LoanerBadge deal={deal} />
-                        )}
-                        <div className="ml-auto font-medium text-slate-900 text-sm">
-                          <ValueDisplay amount={deal?.total_amount} />
+
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          {deal?.loaner_number || deal?.has_active_loaner ? (
+                            <LoanerBadge deal={deal} />
+                          ) : (
+                            <Pill>Loaner: —</Pill>
+                          )}
+                          <Pill className="tabular-nums">
+                            <ValueDisplay amount={deal?.total_amount} />
+                          </Pill>
                         </div>
                       </div>
                     </div>

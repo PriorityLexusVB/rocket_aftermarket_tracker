@@ -271,7 +271,7 @@ describe('Step 16: Deals List Screen Verification', () => {
 
     await waitFor(() => {
       // Products should show full names, not abbreviations or codes
-      const jobRows = screen?.getAllByRole('row')?.slice(1) // Skip header
+      const jobRows = screen?.getAllByTestId(/deal-row-/)
       expect(jobRows)?.toHaveLength(3)
 
       // Verify no "Qty" text appears in the table
@@ -346,7 +346,7 @@ describe('Step 16: Deals List Screen Verification', () => {
 
     await waitFor(() => {
       // Currently no filter controls visible, but data loads successfully
-      const dealRows = screen?.getAllByRole('row')?.slice(1)
+      const dealRows = screen?.getAllByTestId(/deal-row-/)
       expect(dealRows)?.toHaveLength(3) // All deals shown
     })
 
@@ -414,9 +414,8 @@ describe('Step 16: Deals List Screen Verification', () => {
       const { within } = require('@testing-library/react')
 
       // Job-002 has earliest promised_date of 2025-01-18 (Saturday)
-      // Format is "EEE d" (day of week + day number), e.g., "Sat 18"
-      const chip = within(row2)?.getByTestId('promise-chip')
-      expect(chip)?.toHaveTextContent(/Next: (Sat|Mon|Tue|Wed|Thu|Fri|Sun) 18/)
+      // Unified schedule block should reflect that date (either as Promise or the scheduled day)
+      expect(within(row2)?.getByText(/Jan\s+18/))?.toBeInTheDocument()
 
       // Check for overdue count indicator (all 3 jobs are overdue given current date Nov 2025)
       // Note: Test data dates are in past, so count will be 3, not 1

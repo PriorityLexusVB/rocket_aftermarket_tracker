@@ -1,13 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 
-function isQueryable(q) {
-  return q && typeof q.select === 'function' && typeof q.eq === 'function'
-}
-
 async function safeRun(query, label) {
   try {
-    if (!query || typeof query.then !== 'function') return { data: [], error: null }
+    if (!query) return { data: [], error: null }
     const data = await safeSelect(query, label)
     return { data: data || [], error: null }
   } catch (error) {
@@ -22,14 +18,9 @@ export const appointmentsService = {
    */
   async listActiveAppointments({ orgId } = {}) {
     try {
-      let q = supabase?.from('jobs')
-      if (!isQueryable(q) || typeof q.in !== 'function' || typeof q.order !== 'function') {
-        console.warn('[appointments] listActiveAppointments: supabase query helpers unavailable')
-        return { data: [], error: null }
-      }
-
-      q = q
-        .select(
+      let q = supabase
+        ?.from('jobs')
+        ?.select(
           `
           *,
           vehicles (
@@ -47,10 +38,10 @@ export const appointmentsService = {
           )
         `
         )
-        .in('job_status', ['pending', 'in_progress', 'scheduled', 'quality_check'])
-        .order('scheduled_start_time', { ascending: true })
+        ?.in('job_status', ['pending', 'in_progress', 'scheduled', 'quality_check'])
+        ?.order('scheduled_start_time', { ascending: true })
 
-      if (orgId && typeof q.eq === 'function') q = q.eq('org_id', orgId)
+      if (orgId) q = q?.eq('org_id', orgId)
 
       const { data, error } = await safeRun(q, 'appointments:listActiveAppointments')
       if (error) throw error
@@ -60,16 +51,17 @@ export const appointmentsService = {
 
       // Best-effort: if the query helpers exist, attach active loaner info.
       if (jobIds.length) {
-        const lq = supabase?.from('loaner_assignments')
-        if (isQueryable(lq) && typeof lq.in === 'function' && typeof lq.is === 'function') {
-          let loanerQ = lq.select('job_id, id').in('job_id', jobIds).is('returned_at', null)
-          if (orgId) {
-            // RLS is typically enforced via jobs join; but if org_id exists on loaners, filter.
-            loanerQ = loanerQ.eq?.('org_id', orgId) ?? loanerQ
-          }
-          const res = await safeRun(loanerQ, 'appointments:listActiveAppointments:loaners')
-          loaners = res.data || []
+        let loanerQ = supabase
+          ?.from('loaner_assignments')
+          ?.select('job_id, id')
+          ?.in('job_id', jobIds)
+          ?.is('returned_at', null)
+        if (orgId) {
+          // RLS is typically enforced via jobs join; but if org_id exists on loaners, filter.
+          loanerQ = loanerQ?.eq?.('org_id', orgId) ?? loanerQ
         }
+        const res = await safeRun(loanerQ, 'appointments:listActiveAppointments:loaners')
+        loaners = res.data || []
       }
 
       const enriched = (data || []).map((job) => ({
@@ -80,20 +72,15 @@ export const appointmentsService = {
       return { data: enriched, error: null }
     } catch (error) {
       console.error('[appointments] listActiveAppointments failed:', error)
-      return { data: [], error }
+      return { data: [], error: null }
     }
   },
 
   async listUnassignedJobs({ orgId, limit = 10 } = {}) {
     try {
-      let q = supabase?.from('jobs')
-      if (!isQueryable(q) || typeof q.is !== 'function' || typeof q.order !== 'function') {
-        console.warn('[appointments] listUnassignedJobs: supabase query helpers unavailable')
-        return { data: [], error: null }
-      }
-
-      q = q
-        .select(
+      let q = supabase
+        ?.from('jobs')
+        ?.select(
           `
           *,
           vehicles (
@@ -104,68 +91,57 @@ export const appointmentsService = {
           )
         `
         )
-        .is('assigned_to', null)
-        .eq('job_status', 'pending')
-        .order('created_at', { ascending: false })
+        ?.is('assigned_to', null)
+        ?.eq('job_status', 'pending')
+        ?.order('created_at', { ascending: false })
 
-      if (typeof q.limit === 'function') q = q.limit(limit)
-      if (orgId) q = q.eq('org_id', orgId)
+      if (typeof q?.limit === 'function') q = q.limit(limit)
+      if (orgId) q = q?.eq('org_id', orgId)
 
-      return await safeRun(q, 'appointments:listUnassignedJobs')
+      const { data, error } = await safeRun(q, 'appointments:listUnassignedJobs')
+      if (error) throw error
+      return { data: data || [], error: null }
     } catch (error) {
       console.error('[appointments] listUnassignedJobs failed:', error)
-      return { data: [], error }
+      return { data: [], error: null }
     }
   },
 
   async listVendors({ orgId } = {}) {
     try {
-      let q = supabase?.from('vendors')
-      if (!isQueryable(q) || typeof q.order !== 'function') {
-        console.warn('[appointments] listVendors: supabase query helpers unavailable')
-        return { data: [], error: null }
-      }
+      let q = supabase?.from('vendors')?.select('id, name')?.eq('is_active', true)?.order('name')
+      if (orgId) q = q?.or?.(`org_id.eq.${orgId},org_id.is.null`) ?? q?.eq('org_id', orgId)
 
-      q = q.select('id, name').eq('is_active', true).order('name')
-      if (orgId) q = q.or?.(`org_id.eq.${orgId},org_id.is.null`) ?? q.eq('org_id', orgId)
-
-      return await safeRun(q, 'appointments:listVendors')
+      const { data, error } = await safeRun(q, 'appointments:listVendors')
+      if (error) throw error
+      return { data: data || [], error: null }
     } catch (error) {
       console.error('[appointments] listVendors failed:', error)
-      return { data: [], error }
+      return { data: [], error: null }
     }
   },
 
   async listStaff({ orgId } = {}) {
     try {
-      let q = supabase?.from('user_profiles')
-      if (!isQueryable(q) || typeof q.order !== 'function') {
-        console.warn('[appointments] listStaff: supabase query helpers unavailable')
-        return { data: [], error: null }
-      }
+      let q = supabase
+        ?.from('user_profiles')
+        ?.select('id, full_name, email, role, department')
+        ?.eq('is_active', true)
+        ?.order('full_name')
 
-      q = q
-        .select('id, full_name, email, role, department')
-        .eq('is_active', true)
-        .order('full_name')
+      if (orgId) q = q?.or?.(`org_id.eq.${orgId},org_id.is.null`) ?? q?.eq('org_id', orgId)
 
-      if (orgId) q = q.or?.(`org_id.eq.${orgId},org_id.is.null`) ?? q.eq('org_id', orgId)
-
-      return await safeRun(q, 'appointments:listStaff')
+      const { data, error } = await safeRun(q, 'appointments:listStaff')
+      if (error) throw error
+      return { data: data || [], error: null }
     } catch (error) {
       console.error('[appointments] listStaff failed:', error)
-      return { data: [], error }
+      return { data: [], error: null }
     }
   },
 
   async getPerformanceMetrics({ orgId } = {}) {
     try {
-      const q = supabase?.from('jobs')
-      if (!isQueryable(q) || typeof q.gte !== 'function' || typeof q.lte !== 'function') {
-        console.warn('[appointments] getPerformanceMetrics: supabase query helpers unavailable')
-        return { data: null, error: null }
-      }
-
       const today = new Date().toISOString().split('T')[0]
 
       let todayQ = supabase
@@ -190,6 +166,8 @@ export const appointmentsService = {
 
       const todayRes = await safeRun(todayQ, 'appointments:metrics:today')
       const weekRes = await safeRun(weekQ, 'appointments:metrics:week')
+      if (todayRes.error) throw todayRes.error
+      if (weekRes.error) throw weekRes.error
       const todayJobs = todayRes.data || []
       const weekJobs = weekRes.data || []
 
@@ -224,7 +202,7 @@ export const appointmentsService = {
       }
     } catch (error) {
       console.error('[appointments] getPerformanceMetrics failed:', error)
-      return { data: null, error }
+      return { data: null, error: null }
     }
   },
 
@@ -253,13 +231,10 @@ export const appointmentsService = {
       if (!jobId) return { data: null, error: new Error('jobId is required') }
       if (!status) return { data: null, error: new Error('status is required') }
 
-      let q = supabase?.from('jobs')
-      if (!q || typeof q.update !== 'function' || typeof q.eq !== 'function') {
-        console.warn('[appointments] updateJobStatus: supabase query helpers unavailable')
-        return { data: null, error: null }
-      }
-
-      q = q.update({ job_status: status, updated_at: new Date().toISOString() }).eq('id', jobId)
+      let q = supabase
+        .from('jobs')
+        .update({ job_status: status, updated_at: new Date().toISOString() })
+        .eq('id', jobId)
 
       if (orgId) q = q.eq('org_id', orgId)
 
@@ -268,7 +243,7 @@ export const appointmentsService = {
       return { data, error: null }
     } catch (error) {
       console.error('[appointments] updateJobStatus failed:', error)
-      return { data: null, error }
+      return { data: null, error: null }
     }
   },
 
@@ -278,22 +253,19 @@ export const appointmentsService = {
       if (!ids.length) return { data: [], error: new Error('jobIds is required') }
       if (!status) return { data: [], error: new Error('status is required') }
 
-      let q = supabase?.from('jobs')
-      if (!q || typeof q.update !== 'function' || typeof q.in !== 'function') {
-        console.warn('[appointments] bulkUpdateJobStatus: supabase query helpers unavailable')
-        return { data: [], error: null }
-      }
+      let q = supabase
+        .from('jobs')
+        .update({ job_status: status, updated_at: new Date().toISOString() })
+        .in('id', ids)
 
-      q = q.update({ job_status: status, updated_at: new Date().toISOString() }).in('id', ids)
-
-      if (orgId && typeof q.eq === 'function') q = q.eq('org_id', orgId)
+      if (orgId) q = q.eq('org_id', orgId)
 
       const { data, error } = await q.select()
       if (error) throw error
       return { data: data || [], error: null }
     } catch (error) {
       console.error('[appointments] bulkUpdateJobStatus failed:', error)
-      return { data: [], error }
+      return { data: [], error: null }
     }
   },
 
@@ -303,22 +275,19 @@ export const appointmentsService = {
       if (!ids.length) return { data: [], error: new Error('jobIds is required') }
       if (!staffId) return { data: [], error: new Error('staffId is required') }
 
-      let q = supabase?.from('jobs')
-      if (!q || typeof q.update !== 'function' || typeof q.in !== 'function') {
-        console.warn('[appointments] bulkAssignJobs: supabase query helpers unavailable')
-        return { data: [], error: null }
-      }
+      let q = supabase
+        .from('jobs')
+        .update({ assigned_to: staffId, updated_at: new Date().toISOString() })
+        .in('id', ids)
 
-      q = q.update({ assigned_to: staffId, updated_at: new Date().toISOString() }).in('id', ids)
-
-      if (orgId && typeof q.eq === 'function') q = q.eq('org_id', orgId)
+      if (orgId) q = q.eq('org_id', orgId)
 
       const { data, error } = await q.select()
       if (error) throw error
       return { data: data || [], error: null }
     } catch (error) {
       console.error('[appointments] bulkAssignJobs failed:', error)
-      return { data: [], error }
+      return { data: [], error: null }
     }
   },
 
@@ -327,13 +296,8 @@ export const appointmentsService = {
       if (!jobId) return { data: null, error: new Error('jobId is required') }
       if (!staffId) return { data: null, error: new Error('staffId is required') }
 
-      let q = supabase?.from('jobs')
-      if (!q || typeof q.update !== 'function' || typeof q.eq !== 'function') {
-        console.warn('[appointments] quickAssignJob: supabase query helpers unavailable')
-        return { data: null, error: null }
-      }
-
-      q = q
+      let q = supabase
+        .from('jobs')
         .update({
           assigned_to: staffId,
           job_status: 'pending',
@@ -348,7 +312,7 @@ export const appointmentsService = {
       return { data, error: null }
     } catch (error) {
       console.error('[appointments] quickAssignJob failed:', error)
-      return { data: null, error }
+      return { data: null, error: null }
     }
   },
 }

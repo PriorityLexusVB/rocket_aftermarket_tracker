@@ -117,7 +117,7 @@ export const authService = {
         localStorage.removeItem('sb-' + supabaseUrl?.split('//')?.[1] + '-auth-token')
       }
 
-      const { error } = await supabase?.auth?.signOut()
+      const { error } = await supabase?.auth?.signOut({ scope: 'local' })
 
       if (error && !error?.message?.includes('refresh_token')) {
         return { error: { message: error?.message } }

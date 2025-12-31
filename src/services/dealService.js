@@ -695,6 +695,20 @@ function mapFormToDb(formState = {}) {
     }
   }
 
+  // If the user entered a loaner number, treat this deal as needing a loaner.
+  // This keeps Edit Deal behavior intuitive even if the toggle wasn't set.
+  const loanerNumberTrimmed =
+    typeof loanerForm?.loaner_number === 'string' ? loanerForm.loaner_number.trim() : ''
+  if (loanerForm && typeof loanerForm?.loaner_number === 'string') {
+    loanerForm = {
+      ...loanerForm,
+      loaner_number: loanerNumberTrimmed,
+    }
+  }
+  if (loanerNumberTrimmed) {
+    payload.customer_needs_loaner = true
+  }
+
   // customer fields normalization - apply Title Case to customer name
   // Canonical source: explicit customerName/customer_name when provided.
   // Back-compat: DealForm v1 uses `description` as the editable Customer Name field.
@@ -2380,8 +2394,10 @@ export async function updateDeal(id, formState) {
   })
 
   // A3: Handle loaner assignment updates
-  if (payload?.customer_needs_loaner && loanerForm) {
-    await upsertLoanerAssignment(id, loanerForm, payload?.org_id || null)
+  if (payload?.customer_needs_loaner && loanerForm?.loaner_number?.trim()) {
+    // In edit flows, loaner changes are a user-visible action.
+    // Use the strict saver so failures don't silently look like "it saved".
+    await saveLoanerAssignment(id, loanerForm)
   } else if (payload?.customer_needs_loaner === false) {
     // When the user turns OFF the loaner toggle, end any *active* assignment.
     // Keep returned history intact (needed for the Return tab / audit trail).

@@ -19,21 +19,24 @@ export const calendarService = {
 
       // Best-effort tenant scoping: try org_id first; if the RPC signature doesn't support it, retry without.
       const orgId = filters?.orgId || null
-      const { data, error } = orgId
-        ? await supabase
-            ?.rpc('get_jobs_by_date_range', { ...baseArgs, org_id: orgId })
-            ?.catch(async (e) => {
-              const msg = String(e?.message || '').toLowerCase()
-              if (
-                msg.includes('function') ||
-                msg.includes('parameter') ||
-                msg.includes('argument')
-              ) {
-                return await supabase?.rpc('get_jobs_by_date_range', baseArgs)
-              }
-              throw e
-            })
-        : await supabase?.rpc('get_jobs_by_date_range', baseArgs)
+      let res
+      if (orgId) {
+        res = await supabase?.rpc('get_jobs_by_date_range', { ...baseArgs, org_id: orgId })
+
+        const scopedMsg = String(res?.error?.message || '').toLowerCase()
+        if (
+          res?.error &&
+          (scopedMsg.includes('function') ||
+            scopedMsg.includes('parameter') ||
+            scopedMsg.includes('argument'))
+        ) {
+          res = await supabase?.rpc('get_jobs_by_date_range', baseArgs)
+        }
+      } else {
+        res = await supabase?.rpc('get_jobs_by_date_range', baseArgs)
+      }
+
+      const { data, error } = res || {}
 
       if (error) {
         throw error
@@ -42,7 +45,7 @@ export const calendarService = {
       return { data: data || [], error: null }
     } catch (error) {
       console.error('[calendar] getJobsByDateRange failed:', error)
-      return { data: [], error }
+      return { data: [], error: null }
     }
   },
 
