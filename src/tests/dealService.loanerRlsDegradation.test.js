@@ -23,7 +23,7 @@ const sessionStorageMock = (() => {
 global.sessionStorage = sessionStorageMock
 
 // Mock supabase
-vi.mock('../lib/supabase', () => ({
+vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
     auth: {
@@ -39,11 +39,14 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     sessionStorageMock.clear()
     vi.resetModules()
 
-    const module = await import('../lib/supabase')
+    const module = await import('@/lib/supabase')
     mockSupabase = module.supabase
+    mockSupabase.from.mockReset()
+    mockSupabase.auth.getUser.mockClear()
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.clearAllMocks()
   })
 
@@ -119,8 +122,6 @@ describe('dealService - loaner_assignments RLS degradation', () => {
       expect.stringContaining('[dealService:getAllDeals] RLS blocked loaner_assignments query'),
       expect.any(String)
     )
-
-    warnSpy.mockRestore()
   })
 })
 

@@ -218,7 +218,7 @@ export const calendarService = {
       // Get jobs count for the period
       let totalQ = supabase
         ?.from('jobs')
-        ?.select('*', { count: 'exact', head: true })
+        ?.select('id', { count: 'exact', head: true })
         ?.neq('job_status', 'cancelled')
       if (orgId) totalQ = totalQ?.eq('org_id', orgId)
       const { count: totalJobs, error: totalErr } = await totalQ
@@ -227,7 +227,7 @@ export const calendarService = {
       // Get scheduled jobs for the period
       let schedQ = supabase
         ?.from('jobs')
-        ?.select('*', { count: 'exact', head: true })
+        ?.select('id', { count: 'exact', head: true })
         ?.gte('scheduled_start_time', startDate?.toISOString())
         ?.lt('scheduled_start_time', endDate?.toISOString())
       if (orgId) schedQ = schedQ?.eq('org_id', orgId)
@@ -240,7 +240,7 @@ export const calendarService = {
       // Get active vendors
       let vendorsQ = supabase
         ?.from('vendors')
-        ?.select('*', { count: 'exact', head: true })
+        ?.select('id', { count: 'exact', head: true })
         ?.eq('is_active', true)
       if (orgId) vendorsQ = vendorsQ?.eq('org_id', orgId)
       const { count: activeVendors, error: vErr } = await vendorsQ

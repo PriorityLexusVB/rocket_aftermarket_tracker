@@ -403,7 +403,7 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
       const row = buildJobPartsPayload(jobId, [item], { includeTimes, includeVendor })[0]
       if (!row) continue
 
-      const { error: updErr } = await supabase
+      const { data: updatedRows, error: updErr } = await supabase
         .from('job_parts')
         .update({
           product_id: row.product_id,
@@ -422,10 +422,28 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
           ...(includeVendor ? { vendor_id: row.vendor_id } : {}),
         })
         .eq('id', item.id)
+        .select('id')
 
       if (updErr) {
         console.error('[syncJobPartsForJob] UPDATE failed for id:', item.id, updErr)
         throw new Error(`Failed to update job_part ${item.id}: ${updErr.message}`)
+      }
+
+      // Guard: UPDATE can be blocked by RLS and return 0 rows without error.
+      if (Array.isArray(updatedRows) && updatedRows.length === 0) {
+        const { data: stillThere, error: checkErr } = await supabase
+          .from('job_parts')
+          .select('id')
+          .eq('id', item.id)
+          .limit(1)
+
+        if (checkErr) throw checkErr
+
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          throw new Error('Update was blocked by permissions (RLS) while updating job parts.')
+        }
+
+        throw new Error('Job part not found (or you do not have access).')
       }
     }
 

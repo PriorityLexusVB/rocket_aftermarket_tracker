@@ -9,7 +9,10 @@ import { vendorInsertSchema } from '@/db/schemas'
  * Simple helper used by dropdowns to get vendor options
  */
 export async function listVendorsByOrg(orgId) {
-  let q = supabase.from('vendors').select('*').order('name', { ascending: true })
+  let q = supabase
+    .from('vendors')
+    .select('id, name, is_active, phone, email, specialty')
+    .order('name', { ascending: true })
 
   if (orgId) {
     q = q.or(`org_id.eq.${orgId},org_id.is.null`)
@@ -96,7 +99,7 @@ export const vendorService = {
     try {
       let q = supabase
         .from('vendors')
-        .select('*')
+        .select('id, name, is_active, phone, email, specialty')
         .eq('is_active', true)
         .order('name', { ascending: true })
 
@@ -119,7 +122,7 @@ export const vendorService = {
 
       let q = supabase
         .from('vendors')
-        .select('*')
+        .select('id, name, is_active, phone, email, specialty')
         .or(`name.ilike.%${term}%,specialty.ilike.%${term}%,contact_person.ilike.%${term}%`)
         .eq('is_active', true)
         .order('name', { ascending: true })

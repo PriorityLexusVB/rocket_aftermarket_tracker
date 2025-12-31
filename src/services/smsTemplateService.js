@@ -3,7 +3,10 @@ import { safeSelect } from '@/lib/supabase/safeSelect'
 import { toOptions } from '@/lib/options'
 
 export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
-  let q = supabase.from('sms_templates').select('*').order('created_at', { ascending: true })
+  let q = supabase
+    .from('sms_templates')
+    .select('id, name, message_template, is_active')
+    .order('created_at', { ascending: true })
   if (activeOnly) q = q.eq('is_active', true)
   if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
   const rows = await safeSelect(q, 'sms_templates:listByOrg')
@@ -11,7 +14,10 @@ export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
 }
 
 export async function listSmsTemplatesGlobal({ activeOnly = true } = {}) {
-  let q = supabase.from('sms_templates').select('*').order('created_at', { ascending: true })
+  let q = supabase
+    .from('sms_templates')
+    .select('id, name, message_template, is_active')
+    .order('created_at', { ascending: true })
   if (activeOnly) q = q.eq('is_active', true)
   // global: no org filter
   const rows = await safeSelect(q, 'sms_templates:listGlobal')

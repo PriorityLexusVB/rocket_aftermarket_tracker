@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import { supabase } from '../../lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
+import { calendarService } from '@/services/calendarService'
 
 // Safe date creation utility
 const safeCreateDate = (input) => {
@@ -60,7 +60,7 @@ const safeFormatTime = (dateInput, options = {}) => {
 
 const CalendarSchedulingCenter = () => {
   // State management
-  const { user } = useAuth()
+  const { user, orgId } = useAuth()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewType, setViewType] = useState('week') // 'day', 'week', 'month'
   const [jobs, setJobs] = useState([])
@@ -113,11 +113,13 @@ const CalendarSchedulingCenter = () => {
       setLoading(true)
       setError(null)
 
-      const { data, error } = await supabase
-        ?.from('jobs')
-        ?.select('*')
-        ?.eq('user_id', user?.id)
-        ?.order('scheduled_start_time', { ascending: true })
+      const { data, error } = await calendarService?.getJobsByDateRange(
+        dateRange?.start,
+        dateRange?.end,
+        {
+          orgId: orgId || null,
+        }
+      )
 
       if (error) {
         console.error('Error loading jobs:', error)
@@ -135,14 +137,16 @@ const CalendarSchedulingCenter = () => {
       setJobs(jobsData)
 
       // Update debug info
-      setDebugInfo(`Loaded ${jobsData?.length} jobs`)
+      setDebugInfo(
+        `Loaded ${jobsData?.length} jobs (${safeFormatDate(dateRange?.start)} - ${safeFormatDate(dateRange?.end)})`
+      )
     } catch (error) {
       console.error('Error loading calendar data:', error)
       setError('Failed to load calendar data')
     } finally {
       setLoading(false)
     }
-  }, [user?.id])
+  }, [dateRange, orgId])
 
   // Load data on component mount and date range changes
   useEffect(() => {

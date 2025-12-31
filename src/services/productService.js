@@ -4,7 +4,10 @@ import { toOptions } from '@/lib/options'
 
 // Tenant-aware list for dropdowns and consumers
 export async function listProductsByOrg(orgId, { activeOnly = true } = {}) {
-  let q = supabase.from('products').select('*').order('name', { ascending: true })
+  let q = supabase
+    .from('products')
+    .select('id, name, brand, unit_price, is_active, op_code, cost, category')
+    .order('name', { ascending: true })
   if (activeOnly) q = q.eq('is_active', true)
   if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
   const rows = await safeSelect(q, 'products:listByOrg')
@@ -13,7 +16,10 @@ export async function listProductsByOrg(orgId, { activeOnly = true } = {}) {
 
 export const productService = {
   async list({ orgId = null, activeOnly = true } = {}) {
-    let q = supabase.from('products').select('*').order('name', { ascending: true })
+    let q = supabase
+      .from('products')
+      .select('id, name, brand, unit_price, is_active, op_code, cost, category')
+      .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
     const rows = await safeSelect(q, 'products:list')

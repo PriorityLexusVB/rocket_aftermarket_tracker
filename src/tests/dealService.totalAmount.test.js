@@ -126,6 +126,7 @@ vi.mock('@/lib/supabase', () => {
 
 describe('dealService - total_amount numeric coercion', () => {
   beforeEach(() => {
+    vi.resetModules()
     vi.clearAllMocks()
   })
 
