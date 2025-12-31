@@ -19,3 +19,31 @@ These instructions apply to all agents working in this repo.
 - pnpm test (if present)
 - pnpm run typecheck (if present)
 - pnpm build (if present)
+
+---
+
+# Aftermarket Tracker — Runtime Debug Policy (DevTools MCP)
+
+When a user message indicates a runtime/browser issue, you MUST use browser evidence before proposing code changes.
+
+Trigger words (any): error, failed, 4xx/5xx, 401, 403, 409, CORS, cookie, blank screen, UI overlap, stale list, didn't save, console, network, request.
+
+## Evidence-first workflow (MANDATORY)
+1) If chrome-devtools tools are available:
+   - list_pages → set_active_page (pick the app tab)
+   - take_screenshot
+   - list_console_messages (summarize actionable only)
+   - list_network_requests (last 60–80)
+   - For top 1–3 failures (>=400): pull full request/response (headers + body + response body)
+2) Decide lane and smallest fix:
+   - Network/API mismatch → exact payload/headers to change
+   - Auth/RLS → exact token/cookie/claim mismatch
+   - UI/state desync → correlate mutation vs refresh/list call (cache/optimistic update)
+   - CORS/cookies → preflight/cookie attributes and required headers
+3) Output format (always):
+   - Root cause (bullets)
+   - Smallest fix (exact file + minimal diff)
+   - Proof step (how to retest)
+
+## Security
+DevTools remote debugging exposes the browser instance. Assume the debug Chrome profile is non-sensitive.
