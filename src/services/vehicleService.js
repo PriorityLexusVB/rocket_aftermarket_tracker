@@ -271,10 +271,32 @@ export const vehicleService = {
           created_by_profile:user_profiles!vehicles_created_by_fkey${profileFrag4}
         `
         )
-        ?.single()
+        ?.maybeSingle()
 
       if (error) {
         return { data: null, error: { message: error?.message } }
+      }
+
+      // Guard: UPDATE can be blocked by RLS and return 0 rows without error.
+      if (!data) {
+        const { data: stillThere, error: checkErr } = await supabase
+          ?.from('vehicles')
+          ?.select('id')
+          ?.eq('id', id)
+          ?.limit(1)
+
+        if (checkErr) {
+          return {
+            data: null,
+            error: { message: `Failed to verify update: ${checkErr?.message}` },
+          }
+        }
+
+        if (Array.isArray(stillThere) && stillThere.length > 0) {
+          return { data: null, error: { message: 'Update was blocked by permissions (RLS).' } }
+        }
+
+        return { data: null, error: { message: 'Vehicle not found (or you do not have access).' } }
       }
 
       if (data?.created_by_profile) {
