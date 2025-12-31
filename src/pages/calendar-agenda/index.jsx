@@ -12,13 +12,15 @@ import { formatScheduleRange } from '@/utils/dateTimeUtils'
 import useJobEventActions from '@/hooks/useJobEventActions'
 import RescheduleModal from './RescheduleModal'
 
+const TZ = 'America/New_York'
+
 // Lightweight date key grouping (America/New_York)
 function toDateKey(ts) {
   if (!ts) return 'unscheduled'
   const d = new Date(ts)
   // Force America/New_York without external deps: compute offset via Intl
   const fmt = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
+    timeZone: TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -28,25 +30,96 @@ function toDateKey(ts) {
   return `${yyyy}-${m}-${dd}`
 }
 
+function getTimeZoneOffsetMs(date, timeZone) {
+  // Parse short offset like "GMT-5" or "GMT-05:00"
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    timeZoneName: 'shortOffset',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+  const parts = fmt.formatToParts(date)
+  const tzName = parts.find((p) => p.type === 'timeZoneName')?.value || 'GMT+0'
+  if (tzName === 'GMT' || tzName === 'UTC') return 0
+  const m = tzName.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/) // GMT-5, GMT-05:00
+  if (!m) return 0
+  const sign = m[1] === '-' ? -1 : 1
+  const hours = Number(m[2] || 0)
+  const minutes = Number(m[3] || 0)
+  return sign * (hours * 60 + minutes) * 60 * 1000
+}
+
+function getZonedYmd(date, timeZone) {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const ymd = fmt.format(date) // YYYY-MM-DD
+  const [year, month, day] = ymd.split('-').map(Number)
+  return { year, month, day }
+}
+
+function zonedStartOfDay(date, timeZone) {
+  const { year, month, day } = getZonedYmd(date, timeZone)
+  const baseUtc = Date.UTC(year, month - 1, day, 0, 0, 0, 0)
+
+  // Iterate once to stabilize around DST boundaries
+  const guess = new Date(baseUtc)
+  const offset1 = getTimeZoneOffsetMs(guess, timeZone)
+  const utc1 = baseUtc - offset1
+  const d1 = new Date(utc1)
+  const offset2 = getTimeZoneOffsetMs(d1, timeZone)
+  const utc2 = baseUtc - offset2
+  return new Date(utc2)
+}
+
+function zonedStartOfNextDay(date, timeZone, days = 1) {
+  const start = zonedStartOfDay(date, timeZone)
+  const probe = new Date(start.getTime() + days * 24 * 60 * 60 * 1000)
+  return zonedStartOfDay(probe, timeZone)
+}
+
+export function getEffectiveScheduleWindow(job) {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  const scheduledParts = parts
+    .filter((p) => p?.scheduled_start_time)
+    .sort((a, b) => String(a.scheduled_start_time).localeCompare(String(b.scheduled_start_time)))
+
+  const start = scheduledParts?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
+  const end = scheduledParts?.[0]?.scheduled_end_time || job?.scheduled_end_time || start || null
+
+  return { start, end }
+}
+
 // Derive filtered list
-function applyFilters(rows, { q, status, dateRange, vendorFilter }) {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const next7Days = new Date(today)
-  next7Days.setDate(next7Days.getDate() + 7)
+export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: nowOverride } = {}) {
+  const now = nowOverride instanceof Date ? nowOverride : new Date()
+  const rangeStart = zonedStartOfDay(now, TZ)
+  const rangeEnd =
+    dateRange === 'today'
+      ? zonedStartOfNextDay(now, TZ, 1)
+      : dateRange === 'next7days'
+        ? zonedStartOfNextDay(now, TZ, 7)
+        : null
 
   return rows.filter((r) => {
     if (status && r.job_status !== status) return false
     if (vendorFilter && r.vendor_id !== vendorFilter) return false
 
+    const { start: apptStartIso, end: apptEndIso } = getEffectiveScheduleWindow(r)
+    if (!apptStartIso) return false
+
     // Date range filter
-    if (dateRange === 'today') {
-      const startDate = new Date(r.scheduled_start_time)
-      const jobDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-      if (jobDay.getTime() !== today.getTime()) return false
-    } else if (dateRange === 'next7days') {
-      const startDate = new Date(r.scheduled_start_time)
-      if (startDate < today || startDate >= next7Days) return false
+    if (rangeStart && rangeEnd) {
+      const apptStart = new Date(apptStartIso)
+      const apptEnd = apptEndIso ? new Date(apptEndIso) : apptStart
+      if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false
+
+      // Overlap: appt_start < rangeEnd AND appt_end > rangeStart
+      if (!(apptStart < rangeEnd && apptEnd > rangeStart)) return false
     }
 
     if (q) {
@@ -143,18 +216,25 @@ export default function CalendarAgenda() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    // Fetch scheduled jobs only (scheduled_start_time not null, status optional filter)
+    // Fetch jobs and derive scheduled windows from either job_parts or job-level schedule.
     let all = []
     try {
       all = await jobService.getAllJobs({ orgId })
     } catch (e) {
       console.warn('[agenda] load failed', e)
     }
-    // Filter to those with a start time in the future OR today
-    const upcoming = (all || []).filter((j) => j.scheduled_start_time)
-    // Sort ascending by start time
-    upcoming.sort((a, b) => new Date(a.scheduled_start_time) - new Date(b.scheduled_start_time))
-    setJobs(upcoming)
+    const excluded = new Set(['draft', 'canceled', 'cancelled'])
+    const scheduled = (all || [])
+      .filter((j) => !excluded.has(String(j?.job_status || '').toLowerCase()))
+      .filter((j) => !!getEffectiveScheduleWindow(j)?.start)
+
+    // Sort ascending by derived start time
+    scheduled.sort((a, b) => {
+      const aStart = getEffectiveScheduleWindow(a)?.start
+      const bStart = getEffectiveScheduleWindow(b)?.start
+      return new Date(aStart) - new Date(bStart)
+    })
+    setJobs(scheduled)
     setLoading(false)
   }, [orgId])
 
@@ -200,7 +280,7 @@ export default function CalendarAgenda() {
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach((j) => {
-      const key = toDateKey(j.scheduled_start_time)
+      const key = toDateKey(getEffectiveScheduleWindow(j)?.start)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(j)
     })
@@ -338,6 +418,7 @@ export default function CalendarAgenda() {
               onChange={(e) => setStatus(e.target.value)}
             >
               <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
               <option value="scheduled">Scheduled</option>
               <option value="in_progress">In Progress</option>
               <option value="completed">Completed</option>
@@ -349,7 +430,7 @@ export default function CalendarAgenda() {
 
       {groups.length === 0 && (
         <div role="status" aria-live="polite">
-          No upcoming appointments.
+          No appointments in this range.
         </div>
       )}
       {groups.map(([dateKey, rows]) => (
@@ -359,7 +440,8 @@ export default function CalendarAgenda() {
             {rows.map((r) => {
               const focused = r.id === focusId
               const hasConflict = conflicts.get(r.id)
-              const timeRange = formatScheduleRange(r.scheduled_start_time, r.scheduled_end_time)
+              const { start, end } = getEffectiveScheduleWindow(r)
+              const timeRange = formatScheduleRange(start, end)
 
               return (
                 <li
@@ -423,8 +505,8 @@ export default function CalendarAgenda() {
         onClose={() => setRescheduleModal({ open: false, job: null })}
         onSubmit={handleRescheduleSubmit}
         job={rescheduleModal.job}
-        initialStart={rescheduleModal.job?.scheduled_start_time}
-        initialEnd={rescheduleModal.job?.scheduled_end_time}
+        initialStart={getEffectiveScheduleWindow(rescheduleModal.job)?.start}
+        initialEnd={getEffectiveScheduleWindow(rescheduleModal.job)?.end}
       />
     </div>
   )

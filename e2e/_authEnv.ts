@@ -32,7 +32,6 @@ try {
         dotenv.config({ path: found })
         seen.add(found)
         if (debug) {
-          // eslint-disable-next-line no-console
           console.log('[e2e/_authEnv] loaded', fileName, 'from', found)
         }
       }
@@ -40,13 +39,9 @@ try {
   }
 
   if (debug) {
-    // eslint-disable-next-line no-console
     console.log('[e2e/_authEnv] PWD', process.env.PWD)
-    // eslint-disable-next-line no-console
     console.log('[e2e/_authEnv] cwd', process.cwd())
-    // eslint-disable-next-line no-console
     console.log('[e2e/_authEnv] has E2E_EMAIL', Boolean(process.env.E2E_EMAIL))
-    // eslint-disable-next-line no-console
     console.log('[e2e/_authEnv] has E2E_PASSWORD', Boolean(process.env.E2E_PASSWORD))
   }
 } catch {

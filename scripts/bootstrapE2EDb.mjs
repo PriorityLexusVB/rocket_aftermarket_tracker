@@ -576,7 +576,6 @@ async function runStatement(client, statement) {
     const isCreateTrigger = upper.startsWith('CREATE TRIGGER')
     const touchesStorageObjects = /\bstorage\.objects\b/i.test(sql)
     const isDoBlock = upper.startsWith('DO $$') || upper.startsWith('DO $')
-    const isAnalyze = upper.startsWith('ANALYZE')
 
     const looksLikeDuplicate =
       code === '42710' || // duplicate_object

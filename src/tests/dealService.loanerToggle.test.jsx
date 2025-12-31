@@ -135,7 +135,6 @@ describe('DealForm Loaner Toggle', () => {
 
     // Initially unchecked - section disabled
     expect(checkbox.checked).toBe(false)
-    const initialSection = dealForm?.querySelector('[data-testid="loaner-section"]')
     expect(dealForm?.querySelector('[data-testid="loaner-number-input"]')).toBeDisabled()
 
     // Check it - section becomes enabled

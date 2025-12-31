@@ -20,7 +20,6 @@ test.describe('Calendar loaner badge and promise chip', () => {
     // Create a deal with a loaner and a scheduled/promised date so it appears in the calendar.
     const jobTitle = `E2E Loaner Job ${Date.now()}`
     const jobNumber = `JOB-${Date.now()}`
-    const jobNumberSuffix = jobNumber.split('-').pop() || jobNumber
     const loanerNumberValue = `LOANER-E2E-${Date.now()}`
     await page.goto('/deals/new')
     await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })

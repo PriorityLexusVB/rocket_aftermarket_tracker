@@ -26,7 +26,7 @@ async function selectJobs(baseQuery) {
         assigned_to_profile:user_profiles!jobs_assigned_to_fkey${profileFrag},
         created_by_profile:user_profiles!jobs_created_by_fkey${profileFrag},
         delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey${profileFrag},
-        job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
+        job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,scheduled_start_time,scheduled_end_time,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
       `)
 
     if (error) {

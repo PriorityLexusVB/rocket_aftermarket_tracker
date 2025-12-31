@@ -10,7 +10,12 @@ import { supabase } from '../../lib/supabase'
 import Button from '../ui/Button'
 import Icon from '../ui/Icon'
 import { titleCase } from '../../lib/format'
-import { combineDateAndTime, toDateInputValue } from '../../utils/dateTimeUtils'
+import {
+  combineDateAndTime,
+  toDateInputValue,
+  formatTime,
+  toLocalDateTimeFields,
+} from '../../utils/dateTimeUtils'
 import {
   getSalesConsultants,
   getDeliveryCoordinators,
@@ -30,6 +35,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   const initializedJobSig = useRef(null)
   const currentLineItemsSig = useRef('')
   const isHydrating = useRef(false)
+  const hasHydratedRef = useRef(false)
   const userHasEdited = useRef(false) // Track if user has made intentional edits
   const savingRef = useRef(false) // Synchronous in-flight guard to prevent double-submit
   const [currentStep, setCurrentStep] = useState(1) // 1 = Customer, 2 = Line Items
@@ -194,11 +200,18 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
           item?.vendorId ||
           (item?.isOffSite || item?.is_off_site ? job?.vendor_id : null) ||
           null,
-        dateScheduled: toDateInputValue(item?.promised_date) || '',
-        // ✅ FIX: Time fields should already be in HH:MM format from mapDbDealToForm's formatTime()
-        // Keep them as-is without additional transformation
-        scheduledStartTime: item?.scheduled_start_time || item?.scheduledStartTime || '',
-        scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
+        // Prefer date derived from scheduled window; fall back to promised_date for legacy rows
+        dateScheduled:
+          toLocalDateTimeFields(item?.scheduled_start_time || item?.appt_start)?.date ||
+          toDateInputValue(item?.promised_date) ||
+          '',
+        // Ensure <input type="time"> receives HH:MM (not ISO)
+        scheduledStartTime:
+          item?.scheduledStartTime ||
+          formatTime(item?.scheduled_start_time || item?.appt_start) ||
+          '',
+        scheduledEndTime:
+          item?.scheduledEndTime || formatTime(item?.scheduled_end_time || item?.appt_end) || '',
         isMultiDay: false,
       }))
 
@@ -230,6 +243,25 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     // Initial hydration/refetch should not mark the form as dirty.
     setHasUnsavedChanges(false)
   }, [job, job?.id, mode])
+
+  // Apply "today defaults" only for NEW deals (create mode) and only once.
+  // This prevents any later hydration/refetch from overwriting user edits.
+  useEffect(() => {
+    if (mode !== 'create') return
+    if (hasHydratedRef.current) return
+    if (!Array.isArray(lineItems) || lineItems.length === 0) return
+
+    hasHydratedRef.current = true
+
+    const todayStr = new Date().toISOString().slice(0, 10)
+    setLineItems((prev) =>
+      prev.map((it) => {
+        if (!it?.requiresScheduling) return it
+        if (it?.dateScheduled) return it
+        return { ...it, dateScheduled: todayStr }
+      })
+    )
+  }, [mode, lineItems])
 
   // Track unsaved changes and mark user edits
   useEffect(() => {

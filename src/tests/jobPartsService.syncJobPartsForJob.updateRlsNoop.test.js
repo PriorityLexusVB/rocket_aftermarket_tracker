@@ -19,7 +19,7 @@ describe('jobPartsService.syncJobPartsForJob - RLS/no-op update verification', (
     const partId = 'job_part-1'
 
     // Step 1 select existing parts by job_id
-    const selectEq = vi.fn((col, val) => {
+    const selectEq = vi.fn((col) => {
       if (col === 'job_id') {
         return Promise.resolve({ data: [{ id: partId }], error: null })
       }

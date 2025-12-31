@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test'
 
-import { missingAuthEnv } from './_authEnv'
-
 test.describe('Deal edit: appointment window & loaner return date', () => {
   test('editing deal preserves appointment window and loaner return date', async ({ page }) => {
     test.setTimeout(60_000)
