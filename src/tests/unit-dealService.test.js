@@ -15,6 +15,7 @@ vi.mock('@/lib/supabase', () => {
   let loanerUpdateResult = [{ id: 'loaner-1' }]
   let loanerInsertResult = [{ id: 'loaner-1' }]
   let loanerInsertError = null
+  let loanerInsertErrorsQueue = []
 
   const supabase = {
     auth: {
@@ -167,7 +168,11 @@ vi.mock('@/lib/supabase', () => {
               calls.loaner_assignments.insert.push(rows)
               return {
                 async select() {
-                  return { data: loanerInsertResult, error: loanerInsertError }
+                  const nextError =
+                    loanerInsertErrorsQueue.length > 0
+                      ? loanerInsertErrorsQueue.shift()
+                      : loanerInsertError
+                  return { data: loanerInsertResult, error: nextError }
                 },
               }
             },
@@ -198,6 +203,9 @@ vi.mock('@/lib/supabase', () => {
     },
     __setLoanerInsertError(next) {
       loanerInsertError = next
+    },
+    __setLoanerInsertErrors(next) {
+      loanerInsertErrorsQueue = Array.isArray(next) ? [...next] : []
     },
   }
 
@@ -356,10 +364,20 @@ describe('dealService pure transforms', () => {
 
 describe('dealService loaner actions', () => {
   beforeEach(() => {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('cap_loanerAssignmentsOrgId')
+    }
+
+    // reset recorded calls for isolation
+    supabase.__calls.loaner_assignments.select.length = 0
+    supabase.__calls.loaner_assignments.update.length = 0
+    supabase.__calls.loaner_assignments.insert.length = 0
+
     supabase.__setLoanerSelectRows([])
     supabase.__setLoanerUpdateResult([{ id: 'loaner-1' }])
     supabase.__setLoanerInsertResult([{ id: 'loaner-1' }])
     supabase.__setLoanerInsertError(null)
+    supabase.__setLoanerInsertErrors([])
   })
 
   it('markLoanerReturned throws when update affects 0 rows', async () => {
@@ -387,6 +405,45 @@ describe('dealService loaner actions', () => {
     await expect(
       dealService.saveLoanerAssignment('job-1', { loaner_number: 'L-123', eta_return_date: null })
     ).rejects.toThrow(/0 rows inserted/i)
+  })
+
+  it('saveLoanerAssignment retries insert without org_id when column is missing (PGRST204)', async () => {
+    supabase.__setLoanerSelectRows([])
+    supabase.__setLoanerInsertErrors([
+      {
+        code: 'PGRST204',
+        message: "Could not find the 'org_id' column of 'loaner_assignments' in the schema cache",
+      },
+      null,
+    ])
+
+    await expect(
+      dealService.saveLoanerAssignment('job-1', {
+        loaner_number: 'L-123',
+        eta_return_date: null,
+        org_id: 'org-1',
+      })
+    ).resolves.toBe(true)
+
+    const inserts = supabase.__calls.loaner_assignments.insert
+    expect(inserts.length).toBeGreaterThanOrEqual(2)
+
+    const [firstInsert, secondInsert] = inserts.slice(-2)
+
+    expect(firstInsert[0]).toMatchObject({
+      job_id: 'job-1',
+      org_id: 'org-1',
+      loaner_number: 'L-123',
+    })
+    expect(secondInsert[0]).toMatchObject({
+      job_id: 'job-1',
+      loaner_number: 'L-123',
+    })
+    expect(secondInsert[0]).not.toHaveProperty('org_id')
+
+    if (typeof sessionStorage !== 'undefined') {
+      expect(sessionStorage.getItem('cap_loanerAssignmentsOrgId')).toBe('false')
+    }
   })
 })
 

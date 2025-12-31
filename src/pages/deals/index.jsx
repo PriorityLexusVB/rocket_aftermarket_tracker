@@ -112,37 +112,6 @@ const formatStaffName = (fullName) => {
   return `${lastName}, ${firstInitial}.`
 }
 
-// ✅ UPDATED: Next promised chip with <24h amber and overdue red; accepts ISO datetime
-const NextPromisedChip = ({ nextPromisedAt }) => {
-  if (!nextPromisedAt) {
-    return <span className="text-xs text-gray-500">—</span>
-  }
-
-  const now = new Date()
-  const due = new Date(nextPromisedAt)
-  const diffMs = due - now
-  const isOverdue = diffMs < 0
-  const isSoon = diffMs >= 0 && diffMs < 24 * 60 * 60 * 1000 // <24h
-
-  const urgencyClass = isOverdue
-    ? 'bg-red-100 text-red-800 border-red-200'
-    : isSoon
-      ? 'bg-amber-100 text-amber-800 border-amber-200'
-      : 'bg-green-100 text-green-800 border-green-200'
-
-  // Use date-fns for consistent formatting: "EEE d" (e.g., "Mon 18")
-  const short = format(parseISO(nextPromisedAt), 'EEE d')
-
-  return (
-    <span
-      data-testid="promise-chip"
-      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${urgencyClass}`}
-    >
-      Next: {short}
-    </span>
-  )
-}
-
 const getDealPromiseIso = (deal) => {
   const explicit = deal?.next_promised_iso
   if (explicit) return explicit

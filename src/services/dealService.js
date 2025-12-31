@@ -31,6 +31,17 @@ const TEST_CUSTOMER_PATTERNS = [
   /\bdummy\b/i,
 ]
 
+// Some environments may not have loaner_assignments.org_id yet.
+// Cache the capability after first detection so we don't repeatedly trigger
+// PostgREST 400 responses on subsequent loaner saves.
+// null = unknown, true = present, false = missing
+let loanerAssignmentsHasOrgId = null
+if (typeof sessionStorage !== 'undefined') {
+  const stored = sessionStorage.getItem('cap_loanerAssignmentsOrgId')
+  if (stored === 'false') loanerAssignmentsHasOrgId = false
+  if (stored === 'true') loanerAssignmentsHasOrgId = true
+}
+
 function isTestLikeValue(value) {
   const str = value ? String(value) : ''
   return TEST_CUSTOMER_PATTERNS.some((pattern) => pattern.test(str))
@@ -875,11 +886,13 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       }
     }
 
+    const resolvedOrgId = orgId ?? loanerData?.org_id ?? null
+    let didUseOrgId = loanerAssignmentsHasOrgId !== false && !!resolvedOrgId
+
     const assignmentData = {
       job_id: jobId,
       // Some RLS policies require tenant scoping on the row itself.
-      // Prefer explicit orgId (resolved in create/update), otherwise fall back to payload.
-      org_id: orgId ?? loanerData?.org_id ?? null,
+      ...(didUseOrgId ? { org_id: resolvedOrgId } : {}),
       loaner_number: loanerData?.loaner_number?.trim(),
       eta_return_date: loanerData?.eta_return_date || null,
       notes: loanerData?.notes?.trim() || null,
@@ -892,7 +905,8 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       if (!err) return false
       // Some environments may not have loaner_assignments.org_id yet.
       // If so, retry without that column to preserve backward compatibility.
-      return isMissingColumnError(err) && /\borg_id\b/i.test(String(err?.message || ''))
+      const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
+      return isMissingColumnError(err) && /\borg_id\b/i.test(haystack)
     }
 
     const updateById = async (data) =>
@@ -926,6 +940,11 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       let { data: updated, error } = await updateById(assignmentData)
 
       if (error && shouldRetryWithoutOrgId(error)) {
+        loanerAssignmentsHasOrgId = false
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+        }
+        didUseOrgId = false
         ;({ data: updated, error } = await updateById(assignmentDataWithoutOrgId))
       }
 
@@ -945,6 +964,11 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       if (!Array.isArray(updated) || updated.length === 0) {
         let { data: updatedByJobId, error: updByJobErr } = await updateByJobId(assignmentData)
         if (updByJobErr && shouldRetryWithoutOrgId(updByJobErr)) {
+          loanerAssignmentsHasOrgId = false
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+          }
+          didUseOrgId = false
           ;({ data: updatedByJobId, error: updByJobErr } = await updateByJobId(
             assignmentDataWithoutOrgId
           ))
@@ -969,7 +993,19 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       let { data: inserted, error } = await insertRow(assignmentData)
 
       if (error && shouldRetryWithoutOrgId(error)) {
+        loanerAssignmentsHasOrgId = false
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+        }
+        didUseOrgId = false
         ;({ data: inserted, error } = await insertRow(assignmentDataWithoutOrgId))
+      }
+
+      if (!error && didUseOrgId) {
+        loanerAssignmentsHasOrgId = true
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
+        }
       }
 
       if (!error && (!Array.isArray(inserted) || inserted.length === 0)) {
@@ -1004,6 +1040,11 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
           let { data: updatedByJobId, error: updateError } = await updateByJobId(assignmentData)
 
           if (updateError && shouldRetryWithoutOrgId(updateError)) {
+            loanerAssignmentsHasOrgId = false
+            if (typeof sessionStorage !== 'undefined') {
+              sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+            }
+            didUseOrgId = false
             ;({ data: updatedByJobId, error: updateError } = await updateByJobId(
               assignmentDataWithoutOrgId
             ))
@@ -1535,7 +1576,17 @@ export async function getAllDeals() {
         }
       }) || []
 
-    return IS_TEST_ENV ? mappedDeals : filterTestCustomersKeepFirst(mappedDeals)
+    if (IS_TEST_ENV) return mappedDeals
+
+    // In local development, show all rows (including multiple E2E/test records) so
+    // the Deals page reflects what the DB actually contains.
+    // Keep the existing de-noise behavior for production builds.
+    const isProd =
+      typeof import.meta !== 'undefined' &&
+      import.meta?.env &&
+      import.meta.env?.MODE === 'production'
+
+    return isProd ? filterTestCustomersKeepFirst(mappedDeals) : mappedDeals
   } catch (error) {
     console.error('Failed to load deals:', error)
     // Provide specific guidance for missing relationship errors using classifier
@@ -2921,16 +2972,12 @@ export async function saveLoanerAssignment(jobId, loanerData) {
   try {
     const ctx = await getOrgContext('saveLoanerAssignment')
 
-    const isMissingReturnedAtError = (err) => {
-      const msg = String(err?.message || '').toLowerCase()
-      return (
-        msg.includes('returned_at') && (msg.includes('does not exist') || msg.includes('column'))
-      )
-    }
-
-    const isMissingOrgIdError = (err) => {
-      const msg = String(err?.message || '').toLowerCase()
-      return msg.includes('org_id') && (msg.includes('does not exist') || msg.includes('column'))
+    const shouldRetryWithoutOrgId = (err) => {
+      // Use the canonical classifier (handles PostgREST PGRST204 + schema-cache variants)
+      if (!err) return false
+      if (!isMissingColumnError(err)) return false
+      const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
+      return /\borg_id\b/i.test(haystack)
     }
 
     // Find existing active assignment for this job
@@ -2959,30 +3006,49 @@ export async function saveLoanerAssignment(jobId, loanerData) {
       if (Array.isArray(rows) && rows.length > 0) existingId = rows[0]?.id ?? null
     }
 
+    const resolvedOrgId = ctx?.org_id ?? loanerData?.org_id ?? null
+    let didUseOrgId = loanerAssignmentsHasOrgId !== false && !!resolvedOrgId
+
     const payload = {
       job_id: jobId,
-      org_id: ctx?.org_id ?? loanerData?.org_id ?? null,
+      ...(didUseOrgId ? { org_id: resolvedOrgId } : {}),
       loaner_number: loanerNumber,
       eta_return_date: etaReturnDate,
       notes,
     }
 
-    const payloadWithoutOrg = { ...payload }
-    delete payloadWithoutOrg.org_id
+    const payloadWithoutOrg = {
+      job_id: jobId,
+      loaner_number: loanerNumber,
+      eta_return_date: etaReturnDate,
+      notes,
+    }
 
     if (existingId) {
       let res = await supabase
         ?.from('loaner_assignments')
-        ?.update(payload)
+        ?.update(loanerAssignmentsHasOrgId === false ? payloadWithoutOrg : payload)
         ?.eq('id', existingId)
         ?.select('id')
 
-      if (res?.error && isMissingOrgIdError(res.error)) {
+      if (res?.error && shouldRetryWithoutOrgId(res.error)) {
+        loanerAssignmentsHasOrgId = false
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+        }
+        didUseOrgId = false
         res = await supabase
           ?.from('loaner_assignments')
           ?.update(payloadWithoutOrg)
           ?.eq('id', existingId)
           ?.select('id')
+      }
+
+      if (!res?.error && didUseOrgId) {
+        loanerAssignmentsHasOrgId = true
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
+        }
       }
 
       if (res?.error) {
@@ -3002,9 +3068,24 @@ export async function saveLoanerAssignment(jobId, loanerData) {
     }
 
     // Insert new assignment
-    let res = await supabase?.from('loaner_assignments')?.insert([payload])?.select('id')
-    if (res?.error && isMissingOrgIdError(res.error)) {
+    let res = await supabase
+      ?.from('loaner_assignments')
+      ?.insert([loanerAssignmentsHasOrgId === false ? payloadWithoutOrg : payload])
+      ?.select('id')
+    if (res?.error && shouldRetryWithoutOrgId(res.error)) {
+      loanerAssignmentsHasOrgId = false
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+      }
+      didUseOrgId = false
       res = await supabase?.from('loaner_assignments')?.insert([payloadWithoutOrg])?.select('id')
+    }
+
+    if (!res?.error && didUseOrgId) {
+      loanerAssignmentsHasOrgId = true
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
+      }
     }
 
     if (res?.error) {

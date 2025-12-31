@@ -49,8 +49,13 @@ export function classifySchemaError(error) {
 
   // Check for missing column errors
   // PostgREST: "column \"xyz\" does not exist"
+  // PostgREST schema cache: "Could not find the 'xyz' column of 'table' in the schema cache"
   // Supabase: "PGRST...column"
-  if (/column .* does not exist/i.test(msg) || /pgrst.*column/i.test(msg)) {
+  if (
+    /column .* does not exist/i.test(msg) ||
+    /pgrst.*column/i.test(msg) ||
+    (/could not find/i.test(msg) && /\bcolumn\b/i.test(msg) && /schema cache/i.test(msg))
+  ) {
     // Specialized job_parts columns
     if (/job_parts/i.test(msg) && /scheduled_(start|end)_time/i.test(msg)) {
       return SchemaErrorCode.MISSING_JOB_PARTS_SCHEDULED_TIMES
