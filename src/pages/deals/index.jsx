@@ -121,11 +121,6 @@ const getDealPromiseIso = (deal) => {
       const dates = deal.job_parts
         .map((p) => p?.promised_date)
         .filter(Boolean)
-        .map((d) => {
-          // Normalize to local date-time to avoid UTC day shift in tests
-          const dateStr = String(d)
-          return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`
-        })
         .sort()
       return dates?.[0] || null
     }

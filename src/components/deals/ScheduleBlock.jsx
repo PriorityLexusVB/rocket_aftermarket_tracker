@@ -2,6 +2,41 @@ import React from 'react'
 
 const TZ = 'America/New_York'
 
+function toSafeDateForTimeZone(input) {
+  if (!input) return null
+  if (input instanceof Date) {
+    return Number.isNaN(input.getTime()) ? null : input
+  }
+
+  const str = String(input)
+
+  // Date-only values (YYYY-MM-DD) are interpreted by JS as UTC midnight.
+  // When displayed in America/New_York this can shift to the previous day.
+  // Anchor at noon UTC to keep the intended calendar day stable.
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(str)
+  if (m) {
+    const y = Number(m[1])
+    const mo = Number(m[2])
+    const d = Number(m[3])
+    const dt = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0))
+    return Number.isNaN(dt.getTime()) ? null : dt
+  }
+
+  // Legacy normalization sometimes appends a local midnight time.
+  // Treat it like a date-only value to prevent the same day-shift.
+  const m2 = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T00:00:00$/.exec(str)
+  if (m2) {
+    const y = Number(m2[1])
+    const mo = Number(m2[2])
+    const d = Number(m2[3])
+    const dt = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0))
+    return Number.isNaN(dt.getTime()) ? null : dt
+  }
+
+  const dt = new Date(str)
+  return Number.isNaN(dt.getTime()) ? null : dt
+}
+
 function extractScheduleTimes(deal) {
   if (!deal) return { startTime: null, endTime: null }
 
@@ -43,8 +78,8 @@ function extractScheduleTimes(deal) {
 
 function buildDateLabelET(isoOrDate, timeZone = TZ) {
   if (!isoOrDate) return ''
-  const d = new Date(isoOrDate)
-  if (Number.isNaN(d.getTime())) return ''
+  const d = toSafeDateForTimeZone(isoOrDate)
+  if (!d) return ''
 
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -62,8 +97,8 @@ function buildDateLabelET(isoOrDate, timeZone = TZ) {
 
 function buildTimePartsET(isoOrDate, timeZone = TZ) {
   if (!isoOrDate) return null
-  const d = new Date(isoOrDate)
-  if (Number.isNaN(d.getTime())) return null
+  const d = toSafeDateForTimeZone(isoOrDate)
+  if (!d) return null
 
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -82,8 +117,8 @@ function buildTimePartsET(isoOrDate, timeZone = TZ) {
 
 function getEtDayKey(isoOrDate, timeZone = TZ) {
   if (!isoOrDate) return ''
-  const d = new Date(isoOrDate)
-  if (Number.isNaN(d.getTime())) return ''
+  const d = toSafeDateForTimeZone(isoOrDate)
+  if (!d) return ''
   return new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
