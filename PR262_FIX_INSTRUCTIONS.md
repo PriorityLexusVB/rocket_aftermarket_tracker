@@ -38,7 +38,8 @@ git push origin copilot/add-agents-md-file
 
 - Your PR branch: Based on commit `71cdcd1`
 - Main branch now: At commit `4294086`
-- Missing commit: `4294086` - "preserve UUIDs in mapFormToDb"
+- Missing commit: `4294086` - "feat(dealService): preserve UUIDs in mapFormToDb for stable sync updates; add test for UUID handling"
+  - This commit added critical UUID preservation logic to prevent job_part duplicates during deal updates
 - Result: E2E test `deal-edit.spec.ts` fails when trying to edit deals
 
 ## What Gets Fixed
@@ -63,7 +64,9 @@ After applying fix:
 pnpm test src/tests/unit-dealService.test.js
 # Expected: ✅ 17 passed
 
-# Run E2E tests (if you have credentials)
+# Run E2E tests (requires E2E env vars)
+# Ensure required env vars (E2E_EMAIL, E2E_PASSWORD, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, etc.)
+# are configured as described in Section 16 (E2E Testing with Playwright) or in .env.example
 pnpm exec playwright test e2e/deal-edit.spec.ts
 # Expected: ✅ Test passes
 ```
@@ -74,7 +77,7 @@ See full analysis: `E2E_FIX_FOR_PR262.md`
 
 ## After Fix Applied
 
-Once CI shows green:
+Once CI shows green (after merging `main` with commit `4294086` into your PR branch):
 1. ✅ All E2E tests should pass
-2. ✅ PR is safe to merge
-3. ✅ Deal editing will work correctly with job_parts UUIDs preserved
+2. ✅ This documentation PR demonstrates the fix exists in main
+3. ✅ Deal editing will continue to work correctly with job_parts UUIDs preserved via the existing fix in `dealService.js`

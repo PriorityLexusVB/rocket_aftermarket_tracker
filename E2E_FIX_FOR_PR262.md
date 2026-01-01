@@ -48,12 +48,14 @@ const normalizedLineItems = (lineItemsInput || []).map((li) => {
 
 ### File: `src/services/dealService.js`
 
-**Add UUID regex** (after line 623):
+The UUID preservation code has been added to the `mapFormToDb` function in the main branch:
+
+**Add UUID regex** (near the beginning of the function):
 ```javascript
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 ```
 
-**Extract and normalize ID** (in the map function, after line 624):
+**Extract and normalize ID** (in the normalizedLineItems map function):
 ```javascript
 const normalizedLineItems = (lineItemsInput || []).map((li) => {
   const idRaw = li?.id ?? li?.job_part_id ?? li?.jobPartId ?? null
@@ -63,7 +65,7 @@ const normalizedLineItems = (lineItemsInput || []).map((li) => {
   // ... rest of extraction logic
 ```
 
-**Include ID in return object** (in the return statement, line 642):
+**Include ID in return object** (in the return statement within the map):
 ```javascript
 return {
   id: idNorm,  // ← ADD THIS LINE
@@ -75,7 +77,7 @@ return {
 
 ### File: `src/tests/unit-dealService.test.js`
 
-**Add test** (after line 336):
+**Add test** (search for "mapFormToDb preserves job_parts UUID ids for stable sync updates"):
 ```javascript
 it('mapFormToDb preserves job_parts UUID ids for stable sync updates', () => {
   const uuid = '58a6f225-c870-483f-9c6a-931d3816b91a'
