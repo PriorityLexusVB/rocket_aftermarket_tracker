@@ -1637,13 +1637,12 @@ export default function DealsPage() {
             <div className="space-y-2">
               {filteredDeals?.map((deal) => {
                 const promiseIso = getDealPromiseIso(deal)
-                const todayEtLabel = formatEtShortDate(new Date())
 
                 return (
                   <div
                     key={deal?.id}
                     data-testid={`deal-row-${deal?.id}`}
-                    className="group cursor-pointer rounded-xl bg-slate-50/70 hover:bg-slate-100/80 px-4 py-4"
+                    className="group cursor-pointer rounded-xl border border-slate-200/60 bg-slate-50/70 hover:bg-slate-100/80 hover:border-slate-300/70 px-4 py-4"
                     onClick={() => {
                       if (isDealsDebugEnabled()) {
                         console.info(
@@ -1660,12 +1659,10 @@ export default function DealsPage() {
                       handleOpenDetail(deal)
                     }}
                   >
-                    {/* Line 1: Schedule | Customer+Owner+Age | Actions */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="mb-1 text-xs font-medium text-slate-500">
-                          {todayEtLabel}
-                        </div>
+                    {/* Column order (2-line card): Schedule | Customer/Sales | Vehicle | $ | Vendor | Location | Loaner | Actions */}
+                    <div className="grid grid-cols-12 gap-x-4 gap-y-3">
+                      {/* Schedule */}
+                      <div className="col-span-12 lg:col-span-4 min-w-0">
                         <ScheduleBlock
                           deal={deal}
                           promiseDate={promiseIso}
@@ -1674,7 +1671,8 @@ export default function DealsPage() {
                         />
                       </div>
 
-                      <div className="min-w-0 flex-[1.1]">
+                      {/* Customer/Sales */}
+                      <div className="col-span-12 lg:col-span-7 min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="truncate">
@@ -1704,7 +1702,7 @@ export default function DealsPage() {
                       </div>
 
                       {/* Actions (icons only) */}
-                      <div className="shrink-0">
+                      <div className="col-span-12 lg:col-span-1 justify-self-end">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={(e) => {
@@ -1768,11 +1766,9 @@ export default function DealsPage() {
                           </button>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Line 2: Vehicle | compact pills */}
-                    <div className="mt-3 flex items-center justify-between gap-4">
-                      <div className="min-w-0 flex-1">
+                      {/* Vehicle */}
+                      <div className="col-span-12 lg:col-span-6 min-w-0">
                         <div
                           className="truncate text-sm text-slate-800"
                           title={
@@ -1798,7 +1794,8 @@ export default function DealsPage() {
                         <div className="mt-0.5 text-xs text-slate-500">{getDisplayPhone(deal)}</div>
                       </div>
 
-                      <div className="shrink-0 flex flex-wrap items-center justify-end gap-2">
+                      {/* $ | Vendor | Location | Loaner */}
+                      <div className="col-span-12 lg:col-span-6 flex flex-wrap items-center justify-start lg:justify-end gap-2">
                         <Pill className="tabular-nums">
                           <ValueDisplay amount={deal?.total_amount} />
                         </Pill>
@@ -1913,9 +1910,6 @@ export default function DealsPage() {
 
                       {/* Line 3: Unified schedule (no duplicate Promise / Appt Window) */}
                       <div>
-                        <div className="mb-1 text-xs font-medium text-slate-500">
-                          {formatEtShortDate(new Date())}
-                        </div>
                         <ScheduleBlock
                           deal={deal}
                           promiseDate={getDealPromiseIso(deal)}
