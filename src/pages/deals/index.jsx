@@ -1,7 +1,6 @@
 // src/pages/deals/index.jsx
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { parseISO, format } from 'date-fns'
 import {
   deleteDeal,
   getAllDeals,

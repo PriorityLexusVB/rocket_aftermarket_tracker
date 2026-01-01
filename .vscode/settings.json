@@ -44,6 +44,7 @@
     "**/.next/**": true
   },
   "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.useAgentsMdFile": true,
   "chat.mcp.access": "all",
   "chat.mcp.gallery.enabled": true,
   "dev.containers.openRepositoryInContainer": "never",
