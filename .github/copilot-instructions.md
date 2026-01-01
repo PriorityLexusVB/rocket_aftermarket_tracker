@@ -832,3 +832,28 @@ Each item must include:
 - Minimal change approach
 - Verification commands
 - Rollback approach
+
+---
+
+## 21. Runtime Debug Default (Chrome DevTools MCP Evidence-First)
+
+When the user reports any runtime/browser issue (keywords: error, failed, 4xx/5xx, 401/403/409, CORS, cookie, blank screen, UI overlap, stale list, didn’t save, console, network):
+- DO NOT guess from source code alone if chrome-devtools MCP tools are available.
+- Collect browser evidence first, then propose the smallest fix.
+
+### Mandatory Evidence Steps (if chrome-devtools tools available)
+1) `list_pages` → select the app tab → `set_active_page`
+2) `take_screenshot`
+3) `list_console_messages` → summarize actionable only (ignore noise)
+4) `list_network_requests` (last 60–80) → table: method | status | url(trim)
+5) For top 1–3 failures (status >= 400): pull full request/response details:
+   - request headers + body
+   - response headers + body
+
+### Output Format (always)
+- Root cause (bullets)
+- Smallest fix (exact file paths + minimal diff)
+- Proof step (how to retest)
+
+### Safety
+- Remote debugging exposes the browser instance. Assume a non-sensitive debug Chrome profile is used.

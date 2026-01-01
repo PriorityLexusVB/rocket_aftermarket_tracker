@@ -13,6 +13,26 @@
     "node_modules": true
   },
   "editor.codeActions.triggerOnFocusChange": true,
+
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "chat.useAgentsMdFile": true,
+
+  "chat.promptFilesLocations": {
+    ".github/prompts": true
+  },
+  "chat.promptFilesRecommendations": {
+    "mcp-preflight": true,
+    "debug-router": true,
+    "full-debug-sweep": true,
+    "why-request-failed": true,
+    "rls-auth-failure": true,
+    "ui-state-desync": true,
+    "cors-cookies-session": true,
+    "console-issues-only": true,
+    "perf-slow-page": true,
+    "repro-script-from-devtools": true
+  },
+
   "cSpell.words": [
     "aftermarket",
     "PostgREST",

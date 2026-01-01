@@ -16,12 +16,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Determine if E2E smoke should run
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            run_e2e:
+              - 'src/**'
+              - 'api/**'
+              - 'e2e/**'
+              - 'supabase/**'
+              - 'scripts/**'
+              - 'global.setup.ts'
+              - 'playwright.config.ts'
+              - 'vite.config.*'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+
       - name: Setup Node
+        if: steps.changes.outputs.run_e2e == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Setup pnpm via corepack (use packageManager version) + retry
+        if: steps.changes.outputs.run_e2e == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -42,6 +61,7 @@ jobs:
           exit 1
 
       - name: Get pnpm store path
+        if: steps.changes.outputs.run_e2e == 'true'
         id: pnpm-store
         shell: bash
         run: |
@@ -49,6 +69,7 @@ jobs:
           echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
 
       - name: Cache pnpm store
+        if: steps.changes.outputs.run_e2e == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -57,6 +78,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Check for required secrets
+        if: steps.changes.outputs.run_e2e == 'true'
         id: check-secrets
         run: |
           echo "::group::E2E PR context"
@@ -86,15 +108,15 @@ jobs:
           fi
 
       - name: Install dependencies
-        if: steps.check-secrets.outputs.secrets_available == 'true'
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Browsers
-        if: steps.check-secrets.outputs.secrets_available == 'true'
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         run: pnpm exec playwright install --with-deps
 
       - name: Debug - show Supabase project refs (non-secret)
-        if: steps.check-secrets.outputs.secrets_available == 'true'
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         env:
           VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
@@ -106,7 +128,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Safety check - block E2E against production Supabase
-        if: steps.check-secrets.outputs.secrets_available == 'true'
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         env:
           VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
           DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
@@ -126,14 +148,14 @@ jobs:
           fi
 
       - name: Preflight - verify E2E DB schema (requires_scheduling)
-        if: steps.check-secrets.outputs.secrets_available == 'true'
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         env:
           DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
           SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
         run: node scripts/checkE2ESchema.mjs
 
       - name: Seed E2E test data
-        if: steps.check-secrets.outputs.secrets_available == 'true'
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         env:
           DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
           SUPABASE_DB_URL: ${{ secrets.E2E_DATABASE_URL || secrets.DATABASE_URL || secrets.SUPABASE_DB_URL }}
@@ -148,7 +170,7 @@ jobs:
           fi
 
       - name: Run E2E smoke tests (fast subset)
-        if: steps.check-secrets.outputs.secrets_available == 'true'
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         env:
           # App runtime env (Vite reads VITE_* at dev server start)
           VITE_SUPABASE_URL: ${{ secrets.E2E_VITE_SUPABASE_URL || secrets.VITE_SUPABASE_URL }}
@@ -168,7 +190,7 @@ jobs:
             e2e/deal-edit.spec.ts
 
       - name: Upload Playwright HTML report (always)
-        if: always() && steps.check-secrets.outputs.secrets_available == 'true'
+        if: always() && steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-smoke
@@ -176,7 +198,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload test results and traces
-        if: always() && steps.check-secrets.outputs.secrets_available == 'true'
+        if: always() && steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: test-results-smoke
