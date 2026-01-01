@@ -42,6 +42,14 @@ if (typeof sessionStorage !== 'undefined') {
   if (stored === 'true') loanerAssignmentsHasOrgId = true
 }
 
+function setLoanerAssignmentsOrgIdCapability(value) {
+  loanerAssignmentsHasOrgId = value
+  if (typeof sessionStorage !== 'undefined') {
+    if (value === true) sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
+    if (value === false) sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+  }
+}
+
 function isTestLikeValue(value) {
   const str = value ? String(value) : ''
   return TEST_CUSTOMER_PATTERNS.some((pattern) => pattern.test(str))
@@ -621,7 +629,12 @@ function mapFormToDb(formState = {}) {
       ? formState?.lineItems
       : []
 
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
   const normalizedLineItems = (lineItemsInput || []).map((li) => {
+    const idRaw = li?.id ?? li?.job_part_id ?? li?.jobPartId ?? null
+    const idNorm = typeof idRaw === 'string' && uuidRegex.test(idRaw) ? idRaw : null
+
     const productIdRaw = li?.product_id ?? li?.productId ?? null
     const productIdNorm =
       typeof productIdRaw === 'string'
@@ -634,25 +647,23 @@ function mapFormToDb(formState = {}) {
     const noScheduleReasonNorm = li?.no_schedule_reason || li?.noScheduleReason || null
     const lineItemPromisedDateNorm = li?.promised_date || li?.lineItemPromisedDate || null
     const isOffSiteNorm = li?.is_off_site ?? li?.isOffSite ?? false
-    // Extract scheduled time window fields
     const scheduledStartNorm = li?.scheduled_start_time || li?.scheduledStartTime || null
     const scheduledEndNorm = li?.scheduled_end_time || li?.scheduledEndTime || null
-    // NEW: Extract vendor_id for per-line vendor support
     const vendorIdNorm = li?.vendor_id ?? li?.vendorId ?? null
+
     return {
+      id: idNorm,
       product_id: productIdNorm ?? null,
-      vendor_id: vendorIdNorm, // NEW: per-line vendor support
+      vendor_id: vendorIdNorm,
       quantity_used: Number(li.quantity_used ?? li.quantity ?? 1),
       unit_price: Number(li.unit_price ?? li.price ?? 0),
-      // snake_case for DB
       promised_date: lineItemPromisedDateNorm,
       requires_scheduling: !!requiresSchedulingNorm,
       no_schedule_reason: requiresSchedulingNorm ? null : noScheduleReasonNorm,
       is_off_site: !!isOffSiteNorm,
       scheduled_start_time: scheduledStartNorm,
       scheduled_end_time: scheduledEndNorm,
-      // keep camelCase too for internal callers
-      vendorId: vendorIdNorm, // NEW: per-line vendor support
+      vendorId: vendorIdNorm,
       lineItemPromisedDate: lineItemPromisedDateNorm,
       requiresScheduling: !!requiresSchedulingNorm,
       noScheduleReason: requiresSchedulingNorm ? null : noScheduleReasonNorm,
@@ -666,7 +677,6 @@ function mapFormToDb(formState = {}) {
   for (const item of normalizedLineItems) {
     if (Number.isNaN(item.quantity_used) || item.quantity_used == null) item.quantity_used = 1
     if (Number.isNaN(item.unit_price) || item.unit_price == null) item.unit_price = 0
-    // Business rule: if not scheduling, reason is required
     if (!item.requires_scheduling && !String(item.no_schedule_reason || '').trim()) {
       throw new Error('Each non-scheduled line item must include a reason')
     }
@@ -681,11 +691,10 @@ function mapFormToDb(formState = {}) {
   // Contract-friendly jobParts for callers that expect quantity + total_price (UI keeps snake_case)
   const jobParts = (normalizedLineItems || []).map((it) => ({
     product_id: it.product_id,
-    vendor_id: it.vendor_id, // NEW: per-line vendor support
+    vendor_id: it.vendor_id,
     quantity: Number(it.quantity_used ?? 1),
     unit_price: Number(it.unit_price ?? 0),
     total_price: Number(it.unit_price ?? 0) * Number(it.quantity_used ?? 1),
-    // Preserve UI snake_case so consumers don't lose fields
     quantity_used: it.quantity_used,
     promised_date: it.promised_date,
     requires_scheduling: it.requires_scheduling,
@@ -887,7 +896,9 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
     }
 
     const resolvedOrgId = orgId ?? loanerData?.org_id ?? null
-    let didUseOrgId = loanerAssignmentsHasOrgId !== false && !!resolvedOrgId
+    // Default to omitting org_id to avoid PGRST204 when the column does not exist.
+    // Only include when we have positive capability evidence.
+    let didUseOrgId = loanerAssignmentsHasOrgId === true && !!resolvedOrgId
 
     const assignmentData = {
       job_id: jobId,
@@ -907,6 +918,17 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       // If so, retry without that column to preserve backward compatibility.
       const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
       return isMissingColumnError(err) && /\borg_id\b/i.test(haystack)
+    }
+
+    const shouldRetryWithOrgId = (err) => {
+      if (!err) return false
+      if (!resolvedOrgId) return false
+      if (loanerAssignmentsHasOrgId === false) return false
+      const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
+      return (
+        isRlsError(err) ||
+        (/\borg_id\b/i.test(haystack) && /not[-\s]?null|violates|null value/i.test(haystack))
+      )
     }
 
     const updateById = async (data) =>
@@ -937,13 +959,15 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
 
     if (existing?.id) {
       // Update existing assignment
-      let { data: updated, error } = await updateById(assignmentData)
+      let { data: updated, error } = await updateById(assignmentDataWithoutOrgId)
+
+      if (error && shouldRetryWithOrgId(error)) {
+        didUseOrgId = true
+        ;({ data: updated, error } = await updateById(assignmentData))
+      }
 
       if (error && shouldRetryWithoutOrgId(error)) {
-        loanerAssignmentsHasOrgId = false
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
-        }
+        setLoanerAssignmentsOrgIdCapability(false)
         didUseOrgId = false
         ;({ data: updated, error } = await updateById(assignmentDataWithoutOrgId))
       }
@@ -962,12 +986,16 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       // PostgREST can return 200 OK with 0 rows affected under some RLS/policy setups.
       // Keep behavior non-fatal, but attempt a job-scoped fallback update.
       if (!Array.isArray(updated) || updated.length === 0) {
-        let { data: updatedByJobId, error: updByJobErr } = await updateByJobId(assignmentData)
+        let { data: updatedByJobId, error: updByJobErr } = await updateByJobId(
+          assignmentDataWithoutOrgId
+        )
+
+        if (updByJobErr && shouldRetryWithOrgId(updByJobErr)) {
+          didUseOrgId = true
+          ;({ data: updatedByJobId, error: updByJobErr } = await updateByJobId(assignmentData))
+        }
         if (updByJobErr && shouldRetryWithoutOrgId(updByJobErr)) {
-          loanerAssignmentsHasOrgId = false
-          if (typeof sessionStorage !== 'undefined') {
-            sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
-          }
+          setLoanerAssignmentsOrgIdCapability(false)
           didUseOrgId = false
           ;({ data: updatedByJobId, error: updByJobErr } = await updateByJobId(
             assignmentDataWithoutOrgId
@@ -990,22 +1018,21 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       }
     } else {
       // Create new assignment
-      let { data: inserted, error } = await insertRow(assignmentData)
+      let { data: inserted, error } = await insertRow(assignmentDataWithoutOrgId)
+
+      if (error && shouldRetryWithOrgId(error)) {
+        didUseOrgId = true
+        ;({ data: inserted, error } = await insertRow(assignmentData))
+      }
 
       if (error && shouldRetryWithoutOrgId(error)) {
-        loanerAssignmentsHasOrgId = false
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
-        }
+        setLoanerAssignmentsOrgIdCapability(false)
         didUseOrgId = false
         ;({ data: inserted, error } = await insertRow(assignmentDataWithoutOrgId))
       }
 
       if (!error && didUseOrgId) {
-        loanerAssignmentsHasOrgId = true
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
-        }
+        setLoanerAssignmentsOrgIdCapability(true)
       }
 
       if (!error && (!Array.isArray(inserted) || inserted.length === 0)) {
@@ -1037,13 +1064,17 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
           console.warn(
             '[dealService:upsertLoanerAssignment] Duplicate key error, attempting fallback UPDATE by job_id'
           )
-          let { data: updatedByJobId, error: updateError } = await updateByJobId(assignmentData)
+          let { data: updatedByJobId, error: updateError } = await updateByJobId(
+            assignmentDataWithoutOrgId
+          )
+
+          if (updateError && shouldRetryWithOrgId(updateError)) {
+            didUseOrgId = true
+            ;({ data: updatedByJobId, error: updateError } = await updateByJobId(assignmentData))
+          }
 
           if (updateError && shouldRetryWithoutOrgId(updateError)) {
-            loanerAssignmentsHasOrgId = false
-            if (typeof sessionStorage !== 'undefined') {
-              sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
-            }
+            setLoanerAssignmentsOrgIdCapability(false)
             didUseOrgId = false
             ;({ data: updatedByJobId, error: updateError } = await updateByJobId(
               assignmentDataWithoutOrgId
@@ -3007,7 +3038,9 @@ export async function saveLoanerAssignment(jobId, loanerData) {
     }
 
     const resolvedOrgId = ctx?.org_id ?? loanerData?.org_id ?? null
-    let didUseOrgId = loanerAssignmentsHasOrgId !== false && !!resolvedOrgId
+    // Default to omitting org_id to avoid PGRST204 when the column does not exist.
+    // Only include when we have positive capability evidence.
+    let didUseOrgId = loanerAssignmentsHasOrgId === true && !!resolvedOrgId
 
     const payload = {
       job_id: jobId,
@@ -3024,18 +3057,35 @@ export async function saveLoanerAssignment(jobId, loanerData) {
       notes,
     }
 
+    const shouldRetryWithOrgId = (err) => {
+      if (!err) return false
+      if (!resolvedOrgId) return false
+      if (loanerAssignmentsHasOrgId === false) return false
+      const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
+      return (
+        isRlsError(err) ||
+        (/\borg_id\b/i.test(haystack) && /not[-\s]?null|violates|null value/i.test(haystack))
+      )
+    }
+
     if (existingId) {
       let res = await supabase
         ?.from('loaner_assignments')
-        ?.update(loanerAssignmentsHasOrgId === false ? payloadWithoutOrg : payload)
+        ?.update(payloadWithoutOrg)
         ?.eq('id', existingId)
         ?.select('id')
 
+      if (res?.error && shouldRetryWithOrgId(res.error)) {
+        didUseOrgId = true
+        res = await supabase
+          ?.from('loaner_assignments')
+          ?.update(payload)
+          ?.eq('id', existingId)
+          ?.select('id')
+      }
+
       if (res?.error && shouldRetryWithoutOrgId(res.error)) {
-        loanerAssignmentsHasOrgId = false
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
-        }
+        setLoanerAssignmentsOrgIdCapability(false)
         didUseOrgId = false
         res = await supabase
           ?.from('loaner_assignments')
@@ -3045,10 +3095,7 @@ export async function saveLoanerAssignment(jobId, loanerData) {
       }
 
       if (!res?.error && didUseOrgId) {
-        loanerAssignmentsHasOrgId = true
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
-        }
+        setLoanerAssignmentsOrgIdCapability(true)
       }
 
       if (res?.error) {
@@ -3068,24 +3115,20 @@ export async function saveLoanerAssignment(jobId, loanerData) {
     }
 
     // Insert new assignment
-    let res = await supabase
-      ?.from('loaner_assignments')
-      ?.insert([loanerAssignmentsHasOrgId === false ? payloadWithoutOrg : payload])
-      ?.select('id')
+    let res = await supabase?.from('loaner_assignments')?.insert([payloadWithoutOrg])?.select('id')
+
+    if (res?.error && shouldRetryWithOrgId(res.error)) {
+      didUseOrgId = true
+      res = await supabase?.from('loaner_assignments')?.insert([payload])?.select('id')
+    }
     if (res?.error && shouldRetryWithoutOrgId(res.error)) {
-      loanerAssignmentsHasOrgId = false
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
-      }
+      setLoanerAssignmentsOrgIdCapability(false)
       didUseOrgId = false
       res = await supabase?.from('loaner_assignments')?.insert([payloadWithoutOrg])?.select('id')
     }
 
     if (!res?.error && didUseOrgId) {
-      loanerAssignmentsHasOrgId = true
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
-      }
+      setLoanerAssignmentsOrgIdCapability(true)
     }
 
     if (res?.error) {

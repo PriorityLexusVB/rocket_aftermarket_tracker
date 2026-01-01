@@ -335,6 +335,34 @@ describe('dealService pure transforms', () => {
     expect(typeof customerPhone).toBe('string')
   })
 
+  it('mapFormToDb preserves job_parts UUID ids for stable sync updates', () => {
+    const uuid = '58a6f225-c870-483f-9c6a-931d3816b91a'
+    const input = {
+      lineItems: [
+        {
+          id: uuid,
+          product_id: 'p1',
+          quantity_used: 1,
+          unit_price: 25,
+          requires_scheduling: true,
+          promised_date: '2025-12-26',
+        },
+        {
+          id: 'temp-job-0',
+          product_id: 'p2',
+          quantity_used: 1,
+          unit_price: 10,
+          requires_scheduling: true,
+          promised_date: '2025-12-27',
+        },
+      ],
+    }
+
+    const { normalizedLineItems } = dealService.mapFormToDb(input)
+    expect(normalizedLineItems[0].id).toBe(uuid)
+    expect(normalizedLineItems[1].id).toBeNull()
+  })
+
   it('mapFormToDb throws when non-scheduled item missing reason', () => {
     const bad = {
       lineItems: [{ product_id: 'p1', requiresScheduling: false, noScheduleReason: '' }],
@@ -407,15 +435,10 @@ describe('dealService loaner actions', () => {
     ).rejects.toThrow(/0 rows inserted/i)
   })
 
-  it('saveLoanerAssignment retries insert without org_id when column is missing (PGRST204)', async () => {
+  it('saveLoanerAssignment omits org_id by default (avoids PGRST204)', async () => {
+    vi.spyOn(dealService, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
+
     supabase.__setLoanerSelectRows([])
-    supabase.__setLoanerInsertErrors([
-      {
-        code: 'PGRST204',
-        message: "Could not find the 'org_id' column of 'loaner_assignments' in the schema cache",
-      },
-      null,
-    ])
 
     await expect(
       dealService.saveLoanerAssignment('job-1', {
@@ -426,24 +449,14 @@ describe('dealService loaner actions', () => {
     ).resolves.toBe(true)
 
     const inserts = supabase.__calls.loaner_assignments.insert
-    expect(inserts.length).toBeGreaterThanOrEqual(2)
+    expect(inserts.length).toBeGreaterThanOrEqual(1)
 
-    const [firstInsert, secondInsert] = inserts.slice(-2)
-
-    expect(firstInsert[0]).toMatchObject({
-      job_id: 'job-1',
-      org_id: 'org-1',
-      loaner_number: 'L-123',
-    })
-    expect(secondInsert[0]).toMatchObject({
+    const lastInsert = inserts[inserts.length - 1]
+    expect(lastInsert[0]).toMatchObject({
       job_id: 'job-1',
       loaner_number: 'L-123',
     })
-    expect(secondInsert[0]).not.toHaveProperty('org_id')
-
-    if (typeof sessionStorage !== 'undefined') {
-      expect(sessionStorage.getItem('cap_loanerAssignmentsOrgId')).toBe('false')
-    }
+    expect(lastInsert[0]).not.toHaveProperty('org_id')
   })
 })
 
