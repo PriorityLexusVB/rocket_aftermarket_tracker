@@ -154,6 +154,26 @@ export function getRemediationGuidance(error) {
   const code = classifySchemaError(error)
   const migration = MigrationMapping[code]
 
+  const msg = String(error?.message || error || '').toLowerCase()
+
+  // Special-case: loaner_assignments is scoped via jobs.org_id in this repo's RLS model.
+  // If a caller includes org_id in a request payload (insert/update/select), PostgREST will
+  // reject it when the column doesn't exist (common) or when the schema cache is stale.
+  if (code === SchemaErrorCode.MISSING_COLUMN) {
+    const mentionsLoaners = /\bloaner_assignments\b/i.test(msg)
+    const mentionsOrgId = /\borg_id\b/i.test(msg)
+    if (mentionsLoaners && mentionsOrgId) {
+      return {
+        code,
+        instructions: [
+          'Do not reference loaner_assignments.org_id in REST queries or payloads.',
+          'Tenant scoping for loaner_assignments is enforced via jobs.org_id (RLS policy joins through jobs).',
+          "If you recently added org_id to loaner_assignments, run: NOTIFY pgrst, 'reload schema';",
+        ],
+      }
+    }
+  }
+
   if (migration) {
     return {
       code,

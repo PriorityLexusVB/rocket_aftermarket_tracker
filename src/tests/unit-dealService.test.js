@@ -435,15 +435,10 @@ describe('dealService loaner actions', () => {
     ).rejects.toThrow(/0 rows inserted/i)
   })
 
-  it('saveLoanerAssignment retries insert without org_id when column is missing (PGRST204)', async () => {
+  it('saveLoanerAssignment omits org_id by default (avoids PGRST204)', async () => {
+    vi.spyOn(dealService, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
+
     supabase.__setLoanerSelectRows([])
-    supabase.__setLoanerInsertErrors([
-      {
-        code: 'PGRST204',
-        message: "Could not find the 'org_id' column of 'loaner_assignments' in the schema cache",
-      },
-      null,
-    ])
 
     await expect(
       dealService.saveLoanerAssignment('job-1', {
@@ -454,24 +449,14 @@ describe('dealService loaner actions', () => {
     ).resolves.toBe(true)
 
     const inserts = supabase.__calls.loaner_assignments.insert
-    expect(inserts.length).toBeGreaterThanOrEqual(2)
+    expect(inserts.length).toBeGreaterThanOrEqual(1)
 
-    const [firstInsert, secondInsert] = inserts.slice(-2)
-
-    expect(firstInsert[0]).toMatchObject({
-      job_id: 'job-1',
-      org_id: 'org-1',
-      loaner_number: 'L-123',
-    })
-    expect(secondInsert[0]).toMatchObject({
+    const lastInsert = inserts[inserts.length - 1]
+    expect(lastInsert[0]).toMatchObject({
       job_id: 'job-1',
       loaner_number: 'L-123',
     })
-    expect(secondInsert[0]).not.toHaveProperty('org_id')
-
-    if (typeof sessionStorage !== 'undefined') {
-      expect(sessionStorage.getItem('cap_loanerAssignmentsOrgId')).toBe('false')
-    }
+    expect(lastInsert[0]).not.toHaveProperty('org_id')
   })
 })
 

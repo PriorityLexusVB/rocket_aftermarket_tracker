@@ -7,6 +7,7 @@ import {
   isMissingColumnError,
   isMissingRelationshipError,
   isStaleCacheError,
+  getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
 
 describe('schemaErrorClassifier', () => {
@@ -93,6 +94,18 @@ describe('schemaErrorClassifier', () => {
       expect(isStaleCacheError(cacheError)).toBe(true)
       expect(isStaleCacheError(relationshipError)).toBe(false) // Classified as MISSING_FK
       expect(isStaleCacheError(otherError)).toBe(false)
+    })
+
+    it('getRemediationGuidance should give loaner_assignments org_id guidance', () => {
+      const err = {
+        code: 'PGRST204',
+        message: "Could not find the 'org_id' column of 'loaner_assignments' in the schema cache",
+      }
+
+      const guidance = getRemediationGuidance(err)
+      expect(guidance.code).toBe(SchemaErrorCode.MISSING_COLUMN)
+      expect(guidance.instructions.join(' ')).toMatch(/loaner_assignments\.org_id/i)
+      expect(guidance.instructions.join(' ')).toMatch(/jobs\.org_id/i)
     })
   })
 
