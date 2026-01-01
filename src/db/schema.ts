@@ -22,7 +22,8 @@ import { sql } from 'drizzle-orm';
 
 /**
  * Vendors table
- * Multi-tenant via org_id
+ * Multi-tenant via dealer_id (canon). NOTE: we keep the property name `orgId`
+ * for compatibility with existing form/service code; it maps to `dealer_id`.
  */
 export const vendors = pgTable('vendors', {
   // PK
@@ -42,7 +43,7 @@ export const vendors = pgTable('vendors', {
 
   // Metadata
   notes: text('notes'),
-  orgId: uuid('org_id'), // Added in migration 20251106120000
+  orgId: uuid('dealer_id'),
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
@@ -50,7 +51,8 @@ export const vendors = pgTable('vendors', {
 
 /**
  * Jobs table
- * Multi-tenant via org_id
+ * Multi-tenant via dealer_id (canon). NOTE: we keep the property name `orgId`
+ * for compatibility with existing form/service code; it maps to `dealer_id`.
  * Scheduled times are DEPRECATED - use job_parts scheduled times instead
  */
 export const jobs = pgTable('jobs', {
@@ -88,7 +90,7 @@ export const jobs = pgTable('jobs', {
   colorCode: text('color_code').default('#3b82f6'),
 
   // Multi-tenant
-  orgId: uuid('org_id'), // Added in migration 20251022180000
+  orgId: uuid('dealer_id'),
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),

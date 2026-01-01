@@ -8,7 +8,7 @@ import DealFormV2 from '../../components/deals/DealFormV2'
 import Icon from '../../components/ui/Icon'
 
 export default function NewDealModal({ isOpen, onClose, onSuccess }) {
-  const { orgId } = useTenant() || {}
+  const { dealerId } = useTenant() || {}
   const [error, setError] = useState('')
 
   // Handle save - DealFormV2 will call this with the payload
@@ -16,10 +16,10 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     try {
       setError('')
 
-      // Add org_id if available
+      // Canon tenancy: dealer_id
       const dealPayload = {
         ...payload,
-        org_id: orgId || undefined,
+        dealer_id: dealerId || undefined,
       }
 
       // Use feature flag to determine if we need to adapt the payload

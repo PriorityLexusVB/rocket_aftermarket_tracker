@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useContext, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { persistOrgId, readOrgId } from '../utils/orgStorage'
+import { persistDealerId, readDealerId } from '../utils/dealerStorage'
 
 export const AuthContext = createContext()
 
@@ -13,6 +14,7 @@ export const AuthProvider = ({ children }) => {
 
   const role = userProfile?.role || null
   const orgId = userProfile?.org_id ?? null
+  const dealerId = userProfile?.dealer_id ?? orgId ?? null
   const vendorId = userProfile?.vendor_id ?? null
   const isVendor = role === 'vendor'
   const isManager = role === 'manager' || role === 'admin'
@@ -35,6 +37,8 @@ export const AuthProvider = ({ children }) => {
             if (typeof localStorage !== 'undefined') {
               localStorage.setItem('userRole', data?.role)
             }
+            // Canon tenancy: dealer_id. Keep org_id persistence for backward compatibility.
+            persistDealerId(data?.dealer_id ?? data?.org_id ?? null, userId)
             persistOrgId(data?.org_id ?? null, userId)
           } else {
             // Create basic profile for auth.users with admin role by default
@@ -42,14 +46,14 @@ export const AuthProvider = ({ children }) => {
               data: { user },
             } = await supabase?.auth?.getUser()
             if (user) {
-              const inferredOrgId = readOrgId() || null
+              const inferredDealerId = readDealerId() || readOrgId() || null
               const basicProfile = {
                 id: user?.id,
                 email: user?.email,
                 full_name: user?.email?.split('@')?.[0] || 'User',
                 role: 'manager',
                 is_active: true,
-                org_id: inferredOrgId,
+                dealer_id: inferredDealerId,
               }
 
               const { data: newProfile } = await supabase
@@ -63,6 +67,10 @@ export const AuthProvider = ({ children }) => {
                 if (typeof localStorage !== 'undefined') {
                   localStorage.setItem('userRole', newProfile?.role)
                 }
+                persistDealerId(
+                  newProfile?.dealer_id ?? newProfile?.org_id ?? null,
+                  user?.id || userId
+                )
                 persistOrgId(newProfile?.org_id ?? null, user?.id || userId)
               }
             }
@@ -86,6 +94,7 @@ export const AuthProvider = ({ children }) => {
         if (typeof localStorage !== 'undefined') {
           localStorage.removeItem('userRole')
         }
+        persistDealerId(null)
         persistOrgId(null)
       },
     }),
@@ -191,6 +200,7 @@ export const AuthProvider = ({ children }) => {
         profileLoading,
         role,
         orgId,
+        dealerId,
         vendorId,
         isVendor,
         isManager,

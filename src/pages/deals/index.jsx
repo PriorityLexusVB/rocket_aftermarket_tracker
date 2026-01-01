@@ -26,22 +26,6 @@ import { useToast } from '../../components/ui/ToastProvider'
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
-const ET_TZ = 'America/New_York'
-
-const formatEtShortDate = (date) => {
-  const d = date instanceof Date ? date : new Date(date)
-  if (Number.isNaN(d.getTime())) return ''
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: ET_TZ,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).formatToParts(d)
-
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]))
-  return [map.weekday, map.month, map.day].filter(Boolean).join(' ')
-}
-
 const isDealsDebugEnabled = () =>
   import.meta.env.DEV &&
   (import.meta.env.VITE_DEBUG_DEALS_LIST === 'true' ||
@@ -1190,7 +1174,7 @@ export default function DealsPage() {
   // ✅ FIXED: Enhanced loading state without dropdown dependency
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
         <Navbar />
         <div className="p-4 md:p-8" style={{ paddingTop: '5rem' }}>
           <div className="flex items-center justify-center py-12">
@@ -1204,7 +1188,7 @@ export default function DealsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
       {/* ✅ FIXED: Ensure navbar is always visible */}
       <Navbar />
       <div className="p-4 md:p-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
@@ -1252,7 +1236,7 @@ export default function DealsPage() {
 
         {/* ✅ UPDATED: KPI Row - Enhanced with profit analysis */}
         <div className="mb-6" data-testid="kpi-row">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {/* Active Jobs */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
               <div className="flex items-center">

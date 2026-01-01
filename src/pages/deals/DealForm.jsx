@@ -117,7 +117,8 @@ export default function DealForm({
     })
   }, [initial])
 
-  const { orgId } = useTenant()
+  const { dealerId, orgId } = useTenant()
+  const tenantId = dealerId || orgId || null
   const { logFormSubmission, logError } = useLogger()
   const toast = useToast?.()
   const [initialSnapshot] = useState(() =>
@@ -154,29 +155,31 @@ export default function DealForm({
       try {
         const ignoreOrg = UI_FLAGS?.forceGlobalDropdowns === true
         const vendorsPromise =
-          orgId && !ignoreOrg ? listVendorsByOrg(orgId, { activeOnly: true }) : getVendors()
+          tenantId && !ignoreOrg ? listVendorsByOrg(tenantId, { activeOnly: true }) : getVendors()
         const productsPromise =
-          orgId && !ignoreOrg ? listProductsByOrg(orgId, { activeOnly: true }) : getProducts()
+          tenantId && !ignoreOrg
+            ? listProductsByOrg(tenantId, { activeOnly: true })
+            : getProducts()
 
         const salesPromise =
-          orgId && !ignoreOrg
-            ? listStaffByOrg(orgId, {
+          tenantId && !ignoreOrg
+            ? listStaffByOrg(tenantId, {
                 departments: ['Sales', 'Sales Consultant', 'Sales Consultants'],
                 roles: ['staff'],
                 activeOnly: true,
               })
             : getSalesConsultants()
         const financePromise =
-          orgId && !ignoreOrg
-            ? listStaffByOrg(orgId, {
+          tenantId && !ignoreOrg
+            ? listStaffByOrg(tenantId, {
                 departments: ['Finance', 'Finance Manager', 'Finance Managers', 'Managers'],
                 roles: ['staff'],
                 activeOnly: true,
               })
             : getFinanceManagers()
         const deliveryPromise =
-          orgId && !ignoreOrg
-            ? listStaffByOrg(orgId, {
+          tenantId && !ignoreOrg
+            ? listStaffByOrg(tenantId, {
                 departments: ['Delivery', 'Delivery Coordinator', 'Delivery Coordinators'],
                 roles: ['staff'],
                 activeOnly: true,
@@ -191,7 +194,7 @@ export default function DealForm({
           deliveryPromise,
         ])
 
-        if (orgId && !ignoreOrg) {
+        if (tenantId && !ignoreOrg) {
           if (!Array.isArray(vOpts) || vOpts.length === 0) {
             vOpts = await getVendors().catch(() => [])
           }
@@ -202,21 +205,21 @@ export default function DealForm({
           if (!Array.isArray(sOpts) || sOpts.length === 0) {
             sOpts = (await getSalesConsultants().catch(() => [])) || []
             if (!sOpts?.length)
-              sOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
+              sOpts = await listStaffByOrg(tenantId, { roles: ['staff'], activeOnly: true }).catch(
                 () => []
               )
           }
           if (!Array.isArray(fOpts) || fOpts.length === 0) {
             fOpts = (await getFinanceManagers().catch(() => [])) || []
             if (!fOpts?.length)
-              fOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
+              fOpts = await listStaffByOrg(tenantId, { roles: ['staff'], activeOnly: true }).catch(
                 () => []
               )
           }
           if (!Array.isArray(dOpts) || dOpts.length === 0) {
             dOpts = (await getDeliveryCoordinators().catch(() => [])) || []
             if (!dOpts?.length)
-              dOpts = await listStaffByOrg(orgId, { roles: ['staff'], activeOnly: true }).catch(
+              dOpts = await listStaffByOrg(tenantId, { roles: ['staff'], activeOnly: true }).catch(
                 () => []
               )
           }
@@ -256,7 +259,7 @@ export default function DealForm({
     return () => {
       mounted = false
     }
-  }, [orgId])
+  }, [tenantId])
 
   // Synthetic option reconciliation so selected values render immediately
   useEffect(() => {
@@ -572,7 +575,7 @@ export default function DealForm({
 
       const payload = {
         ...form,
-        org_id: form.org_id || orgId || undefined,
+        dealer_id: form.dealer_id || dealerId || undefined,
         scheduled_start_time: form.scheduled_start_time || inferred.start || null,
         scheduled_end_time: form.scheduled_end_time || inferred.end || null,
         customer_needs_loaner: !!form.customer_needs_loaner,
@@ -594,7 +597,7 @@ export default function DealForm({
         await onSave(payload)
         await logFormSubmission?.(
           'DealForm',
-          { orgId, hasLineItems: payload?.lineItems?.length > 0 },
+          { dealerId: dealerId || null, hasLineItems: payload?.lineItems?.length > 0 },
           true
         )
         setSavedAt(Date.now())
@@ -634,7 +637,7 @@ export default function DealForm({
         }
         await logFormSubmission?.(
           'DealForm',
-          { orgId, hasLineItems: payload?.lineItems?.length > 0 },
+          { dealerId: dealerId || null, hasLineItems: payload?.lineItems?.length > 0 },
           true
         )
         setSavedAt(Date.now())

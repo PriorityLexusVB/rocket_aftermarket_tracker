@@ -15,7 +15,7 @@ export async function listVendorsByOrg(orgId) {
     .order('name', { ascending: true })
 
   if (orgId) {
-    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
   }
 
   const rows = await safeSelect(q, 'vendors:listByOrg')
@@ -38,7 +38,7 @@ async function doCreateVendor(parsedInput) {
     rating: parsedInput.rating ?? null,
     is_active: parsedInput.isActive !== undefined ? parsedInput.isActive : true,
     notes: parsedInput.notes || null,
-    org_id: parsedInput.orgId || null,
+    dealer_id: parsedInput.orgId || null,
   }
 
   const { data, error } = await supabase.from('vendors').insert(dbInput).select().single()
@@ -58,7 +58,7 @@ async function doUpdateVendor(id, parsedInput) {
     rating: parsedInput.rating ?? null,
     is_active: parsedInput.isActive !== undefined ? parsedInput.isActive : true,
     notes: parsedInput.notes || null,
-    org_id: parsedInput.orgId || null,
+    dealer_id: parsedInput.orgId || null,
   }
 
   const { data, error } = await supabase
@@ -104,7 +104,7 @@ export const vendorService = {
         .order('name', { ascending: true })
 
       if (orgId) {
-        q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+        q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
       }
 
       const rows = await safeSelect(q, 'vendors:getAll')
@@ -129,7 +129,7 @@ export const vendorService = {
         .limit(50)
 
       if (orgId) {
-        q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+        q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
       }
 
       const rows = await safeSelect(q, 'vendors:search')
@@ -152,7 +152,7 @@ export const vendorService = {
         .single()
 
       if (orgId) {
-        q = q.eq('org_id', orgId)
+        q = q.eq('dealer_id', orgId)
       }
 
       const res = await q.throwOnError()
@@ -174,7 +174,7 @@ export const vendorService = {
       let q = supabase.from('vendors').select('*').order('name', { ascending: true })
 
       if (orgId) {
-        q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+        q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
       }
 
       const { data, error } = await q

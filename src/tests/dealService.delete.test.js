@@ -1,22 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Override the global test setup mock with a minimal, controllable supabase.
-// These unit tests need to simulate `.from(...).select().eq().maybeSingle()` and
-// `.from(...).delete().eq().select()` chains, so `from` must be a mock function.
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(),
-  },
-}))
-
 describe('dealService.deleteDeal', () => {
   let deleteDeal
   let supabase
+  let fromSpy
 
   beforeEach(async () => {
-    // Reset module cache so `dealService` re-imports with this file's mock.
     vi.resetModules()
     ;({ supabase } = await import('@/lib/supabase'))
+
+    // Use a spy instead of a module-level mock so this test file doesn't
+    // fight the global test setup's supabase mock.
+    fromSpy = vi.spyOn(supabase, 'from')
     ;({ deleteDeal } = await import('@/services/dealService'))
 
     vi.clearAllMocks()
@@ -62,13 +57,13 @@ describe('dealService.deleteDeal', () => {
 
   it('throws error when deal does not exist', async () => {
     const chain = makeReadChain({ data: null, error: null })
-    supabase.from.mockReturnValue(chain)
+    fromSpy.mockReturnValue(chain)
 
     await expect(deleteDeal('non-existent-id')).rejects.toThrow(
       'Deal not found or you do not have access to it.'
     )
 
-    expect(supabase.from).toHaveBeenCalledWith('jobs')
+    expect(fromSpy).toHaveBeenCalledWith('jobs')
     expect(chain.select).toHaveBeenCalledWith('id, org_id')
     expect(chain.eq).toHaveBeenCalledWith('id', 'non-existent-id')
   })
@@ -78,7 +73,7 @@ describe('dealService.deleteDeal', () => {
       data: null,
       error: { message: 'Database connection error' },
     })
-    supabase.from.mockReturnValue(chain)
+    fromSpy.mockReturnValue(chain)
 
     await expect(deleteDeal('test-id')).rejects.toThrow('Failed to verify deal')
   })
@@ -87,7 +82,7 @@ describe('dealService.deleteDeal', () => {
     // Mock successful read and subsequent deletes with explicit chains
     let callCount = 0
 
-    supabase.from.mockImplementation((table) => {
+    fromSpy.mockImplementation((table) => {
       callCount++
       if (callCount === 1 && table === 'jobs') {
         // First call: read to verify deal exists
@@ -116,7 +111,7 @@ describe('dealService.deleteDeal', () => {
 
   it('successfully deletes deal and child records', async () => {
     let callCount = 0
-    supabase.from.mockImplementation((table) => {
+    fromSpy.mockImplementation((table) => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
@@ -134,7 +129,7 @@ describe('dealService.deleteDeal', () => {
     expect(result).toBe(true)
 
     // Verify supabase.from was called for all expected tables
-    const fromCalls = supabase.from.mock.calls.map((call) => call[0])
+    const fromCalls = fromSpy.mock.calls.map((call) => call[0])
     expect(fromCalls).toContain('jobs')
     expect(fromCalls).toContain('job_parts')
     expect(fromCalls).toContain('transactions')
@@ -144,7 +139,7 @@ describe('dealService.deleteDeal', () => {
 
   it('handles missing optional tables gracefully', async () => {
     let callCount = 0
-    supabase.from.mockImplementation((table) => {
+    fromSpy.mockImplementation((table) => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
@@ -170,7 +165,7 @@ describe('dealService.deleteDeal', () => {
 
   it('does not pre-block deletes for legacy NULL org_id when delete succeeds', async () => {
     let jobsCallCount = 0
-    supabase.from.mockImplementation((table) => {
+    fromSpy.mockImplementation((table) => {
       if (table === 'jobs') {
         jobsCallCount++
 
@@ -192,7 +187,7 @@ describe('dealService.deleteDeal', () => {
 
   it('throws a helpful org_id message when delete is blocked and remaining job has NULL org_id', async () => {
     let jobsCallCount = 0
-    supabase.from.mockImplementation((table) => {
+    fromSpy.mockImplementation((table) => {
       if (table === 'jobs') {
         jobsCallCount++
 
@@ -219,7 +214,7 @@ describe('dealService.deleteDeal', () => {
 
   it('throws specific error for non-permission delete failures', async () => {
     let callCount = 0
-    supabase.from.mockImplementation((table) => {
+    fromSpy.mockImplementation((table) => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists

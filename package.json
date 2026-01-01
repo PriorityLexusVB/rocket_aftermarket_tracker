@@ -65,6 +65,7 @@
     "zod": "^4.1.13"
   },
   "scripts": {
+    "db:rls-check": "node scripts/db/rlsCheck.mjs",
     "dev": "vite",
     "test": "vitest run",
     "start": "vite",

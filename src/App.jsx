@@ -13,7 +13,8 @@ import { useAuth } from './contexts/AuthContext'
 import { useToast } from './components/ui/ToastProvider'
 
 function App() {
-  const { orgId } = useTenant()
+  const { dealerId, orgId } = useTenant()
+  const tenantId = dealerId || orgId || null
   const { user, loading: authLoading } = useAuth()
   const toast = useToast()
   const isAuthRoute =
@@ -43,9 +44,9 @@ function App() {
 
   // Realtime cache busting for dropdowns (products/vendors/staff)
   useEffect(() => {
-    const cleanup = initDropdownCacheRealtime(orgId)
+    const cleanup = initDropdownCacheRealtime(tenantId)
     return () => cleanup?.()
-  }, [orgId])
+  }, [tenantId])
 
   useEffect(() => {
     try {

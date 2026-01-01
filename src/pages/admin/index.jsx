@@ -27,9 +27,10 @@ import { vendorService } from '../../services/vendorService'
 import { vendorInsertSchema } from '../../db/schemas'
 
 const AdminPage = () => {
-  const { userProfile, user, loading: authLoading } = useAuth()
-  const { orgId } = useTenant()
-  const effectiveOrgId = orgId || userProfile?.org_id || null
+  const { userProfile, user, loading: authLoading, dealerId: authDealerId } = useAuth()
+  const { dealerId: tenantDealerId, orgId } = useTenant()
+  const effectiveDealerId =
+    tenantDealerId || authDealerId || userProfile?.dealer_id || userProfile?.org_id || orgId || null
   const { logBusinessAction, logError: logErr } = useLogger()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('userAccounts')
@@ -236,7 +237,7 @@ const AdminPage = () => {
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
         ?.in('role', ['admin', 'manager'])
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveDealerId) q = q?.eq('dealer_id', effectiveDealerId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -251,14 +252,14 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading user accounts:', error)
     }
-  }, [onlyMyOrg, effectiveOrgId])
+  }, [onlyMyOrg, effectiveDealerId])
 
   const loadStaffRecords = useCallback(async () => {
     try {
       console.log('Loading staff records...')
 
       let q = supabase?.from('user_profiles')?.select('*', { count: 'exact' })?.eq('role', 'staff')
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveDealerId) q = q?.eq('dealer_id', effectiveDealerId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -273,14 +274,14 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading staff records:', error)
     }
-  }, [onlyMyOrg, effectiveOrgId])
+  }, [onlyMyOrg, effectiveDealerId])
 
   const loadVendors = useCallback(async () => {
     try {
       console.log('Loading vendors...')
 
       let q = supabase?.from('vendors')?.select('*', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveDealerId) q = q?.eq('dealer_id', effectiveDealerId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -295,14 +296,14 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading vendors:', error)
     }
-  }, [onlyMyOrg, effectiveOrgId])
+  }, [onlyMyOrg, effectiveDealerId])
 
   const loadProducts = useCallback(async () => {
     try {
       console.log('Loading products...')
 
       let q = supabase?.from('products')?.select('*, vendors(name)', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveDealerId) q = q?.eq('dealer_id', effectiveDealerId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -317,7 +318,7 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading products:', error)
     }
-  }, [onlyMyOrg, effectiveOrgId])
+  }, [onlyMyOrg, effectiveDealerId])
 
   const loadSmsTemplates = useCallback(async () => {
     try {
@@ -345,7 +346,7 @@ const AdminPage = () => {
       console.log('Loading organizations...')
 
       let q = supabase?.from('organizations')?.select('*', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('id', effectiveOrgId)
+      if (onlyMyOrg && effectiveDealerId) q = q?.eq('id', effectiveDealerId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -360,7 +361,7 @@ const AdminPage = () => {
     } catch (error) {
       console.error('Error loading organizations:', error)
     }
-  }, [onlyMyOrg, effectiveOrgId])
+  }, [onlyMyOrg, effectiveDealerId])
 
   // Enhanced data loading with better error handling
   const loadAllData = useCallback(async () => {
@@ -450,7 +451,7 @@ const AdminPage = () => {
 
   // Attach/assign a single profile to current org
   const attachProfileToMyOrg = async (profileId) => {
-    if (!orgId) {
+    if (!effectiveDealerId) {
       alert('No organization detected for current user')
       return
     }
@@ -458,7 +459,7 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('user_profiles')
-        ?.update({ org_id: orgId, is_active: true })
+        ?.update({ dealer_id: effectiveDealerId, is_active: true })
         ?.eq('id', profileId)
       if (error) throw error
       await Promise.all([loadUserAccounts(), loadStaffRecords()])
@@ -468,14 +469,14 @@ const AdminPage = () => {
           'admin',
           profileId,
           'Attached user profile to current org',
-          { orgId }
+          { dealerId: effectiveDealerId }
         )
       } catch {}
     } catch (e) {
       console.error('attachProfileToMyOrg error:', e)
       alert('Failed to attach to org: ' + (e?.message || 'Unknown error'))
       try {
-        await logErr?.(e, { where: 'attachProfileToMyOrg', orgId, profileId })
+        await logErr?.(e, { where: 'attachProfileToMyOrg', dealerId: effectiveDealerId, profileId })
       } catch {}
     } finally {
       setSubmitting(false)
@@ -485,7 +486,7 @@ const AdminPage = () => {
   // Assign current org to all active staff missing org
   const assignOrgToActiveStaff = async () => {
     setStaffActionMsg('')
-    if (!orgId) {
+    if (!effectiveDealerId) {
       setStaffActionMsg('No organization detected for current user.')
       return
     }
@@ -493,8 +494,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('user_profiles')
-        ?.update({ org_id: orgId, is_active: true })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: effectiveDealerId, is_active: true })
+        ?.is('dealer_id', null)
         ?.eq('role', 'staff')
       if (error) throw error
       setStaffActionMsg('Assigned org to active staff without org.')
@@ -505,14 +506,14 @@ const AdminPage = () => {
           'system',
           null,
           'Assigned org to staff without org',
-          { orgId }
+          { dealerId: effectiveDealerId }
         )
       } catch {}
     } catch (e) {
       console.error('assignOrgToActiveStaff error:', e)
       setStaffActionMsg(e?.message || 'Failed to assign org to staff')
       try {
-        await logErr?.(e, { where: 'assignOrgToActiveStaff', orgId })
+        await logErr?.(e, { where: 'assignOrgToActiveStaff', dealerId: effectiveDealerId })
       } catch {}
     } finally {
       setSubmitting(false)
@@ -522,7 +523,7 @@ const AdminPage = () => {
   // Assign current org to all active admin/manager accounts missing org
   const assignOrgToAccounts = async () => {
     setAccountsActionMsg('')
-    if (!orgId) {
+    if (!effectiveDealerId) {
       setAccountsActionMsg('No organization detected for current user.')
       return
     }
@@ -530,8 +531,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('user_profiles')
-        ?.update({ org_id: orgId, is_active: true })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: effectiveDealerId, is_active: true })
+        ?.is('dealer_id', null)
         ?.in('role', ['admin', 'manager'])
       if (error) throw error
       setAccountsActionMsg('Assigned org to admin/manager accounts without org.')
@@ -555,7 +556,7 @@ const AdminPage = () => {
   // Assign current org to vendors with null org
   const assignOrgToVendors = async () => {
     setVendorsActionMsg('')
-    if (!orgId) {
+    if (!effectiveDealerId) {
       setVendorsActionMsg('No organization detected for current user.')
       return
     }
@@ -563,8 +564,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('vendors')
-        ?.update({ org_id: orgId })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: effectiveDealerId })
+        ?.is('dealer_id', null)
       if (error) throw error
       setVendorsActionMsg('Assigned org to vendors without org.')
       await loadVendors()
@@ -574,14 +575,14 @@ const AdminPage = () => {
           'system',
           null,
           'Assigned org to vendors without org',
-          { orgId }
+          { dealerId: effectiveDealerId }
         )
       } catch {}
     } catch (e) {
       console.error('assignOrgToVendors error:', e)
       setVendorsActionMsg(e?.message || 'Failed to assign org to vendors')
       try {
-        await logErr?.(e, { where: 'assignOrgToVendors', orgId })
+        await logErr?.(e, { where: 'assignOrgToVendors', dealerId: effectiveDealerId })
       } catch {}
     } finally {
       setSubmitting(false)
@@ -591,7 +592,7 @@ const AdminPage = () => {
   // Assign current org to products with null org
   const assignOrgToProducts = async () => {
     setProductsActionMsg('')
-    if (!orgId) {
+    if (!effectiveDealerId) {
       setProductsActionMsg('No organization detected for current user.')
       return
     }
@@ -599,8 +600,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('products')
-        ?.update({ org_id: orgId })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: effectiveDealerId })
+        ?.is('dealer_id', null)
       if (error) throw error
       setProductsActionMsg('Assigned org to products without org.')
       await loadProducts()
@@ -610,14 +611,14 @@ const AdminPage = () => {
           'system',
           null,
           'Assigned org to products without org',
-          { orgId }
+          { dealerId: effectiveDealerId }
         )
       } catch {}
     } catch (e) {
       console.error('assignOrgToProducts error:', e)
       setProductsActionMsg(e?.message || 'Failed to assign org to products')
       try {
-        await logErr?.(e, { where: 'assignOrgToProducts', orgId })
+        await logErr?.(e, { where: 'assignOrgToProducts', dealerId: effectiveDealerId })
       } catch {}
     } finally {
       setSubmitting(false)
@@ -661,7 +662,7 @@ const AdminPage = () => {
               email: item.email || '',
               specialty: item.specialty || '',
               rating: item.rating?.toString() || '',
-              orgId: item.org_id || effectiveOrgId || null,
+              orgId: item.dealer_id || item.org_id || effectiveDealerId || null,
               isActive: item.is_active !== undefined ? item.is_active : true,
             }
           : {
@@ -671,7 +672,7 @@ const AdminPage = () => {
               email: '',
               specialty: '',
               rating: '',
-              orgId: effectiveOrgId || null,
+              orgId: effectiveDealerId || null,
               isActive: true,
             }
       )
@@ -686,7 +687,7 @@ const AdminPage = () => {
           part_number: '',
           description: '',
           op_code: '',
-          org_id: effectiveOrgId || null,
+          org_id: effectiveDealerId || null,
         }
       )
     } else if (type === 'template') {
@@ -754,8 +755,9 @@ const AdminPage = () => {
 
   const handleUserAccountSubmit = async () => {
     if (editingItem) {
+      const editingItemTenantId = editingItem?.dealer_id || editingItem?.org_id || null
       // If editing a user in another org, optionally reassign to current org before updating
-      if (orgId && editingItem?.org_id && editingItem?.org_id !== orgId) {
+      if (effectiveDealerId && editingItemTenantId && editingItemTenantId !== effectiveDealerId) {
         const doReassign = window.confirm(
           'This user belongs to another organization. Reassign to your org and continue editing?'
         )
@@ -764,7 +766,7 @@ const AdminPage = () => {
         }
         const { error: reassignErr } = await supabase
           ?.from('user_profiles')
-          ?.update({ org_id: orgId, is_active: true })
+          ?.update({ dealer_id: effectiveDealerId, is_active: true })
           ?.eq('id', editingItem?.id)
         if (reassignErr) throw reassignErr
       }
@@ -817,12 +819,13 @@ const AdminPage = () => {
       role: 'staff', // Always staff role for directory entries
       is_active: true,
       vendor_id: null,
-      org_id: staffForm?.org_id || orgId || null,
+      dealer_id: effectiveDealerId || null,
     }
 
     if (editingItem) {
+      const editingItemTenantId = editingItem?.dealer_id || editingItem?.org_id || null
       // If editing a staff in another org, optionally reassign to current org before updating
-      if (orgId && editingItem?.org_id && editingItem?.org_id !== orgId) {
+      if (effectiveDealerId && editingItemTenantId && editingItemTenantId !== effectiveDealerId) {
         const doReassign = window.confirm(
           'This staff profile belongs to another organization. Reassign to your org and continue editing?'
         )
@@ -831,7 +834,7 @@ const AdminPage = () => {
         }
         const { error: reassignErr } = await supabase
           ?.from('user_profiles')
-          ?.update({ org_id: orgId, is_active: true })
+          ?.update({ dealer_id: effectiveDealerId, is_active: true })
           ?.eq('id', editingItem?.id)
         if (reassignErr) throw reassignErr
       }
@@ -863,7 +866,7 @@ const AdminPage = () => {
         if (createdUserId) {
           const { error: upErr } = await supabase
             ?.from('user_profiles')
-            ?.update({ org_id: staffData.org_id, phone: staffData.phone, is_active: true })
+            ?.update({ dealer_id: staffData.dealer_id, phone: staffData.phone, is_active: true })
             ?.or(`id.eq.${createdUserId},auth_user_id.eq.${createdUserId}`)
           if (upErr) {
             // Non-fatal; log and continue
@@ -890,7 +893,7 @@ const AdminPage = () => {
   const handleVendorSubmit = vendorFormMethods.handleSubmit(async (formData) => {
     const payload = {
       ...formData,
-      orgId: formData?.orgId || effectiveOrgId || null,
+      orgId: formData?.orgId || effectiveDealerId || null,
     }
     if (editingItem) {
       await vendorService.updateVendor(editingItem?.id, payload)
@@ -914,7 +917,7 @@ const AdminPage = () => {
       part_number: productForm?.part_number,
       description: productForm?.description,
       op_code: productForm?.op_code || null,
-      org_id: productForm?.org_id || effectiveOrgId || null,
+      dealer_id: productForm?.org_id || effectiveDealerId || null,
     }
 
     if (editingItem) {
@@ -1317,8 +1320,14 @@ const AdminPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center gap-2">
-                      <span>{account?.org_id ? String(account?.org_id).slice(0, 8) : '—'}</span>
-                      {orgId && account?.org_id && account?.org_id !== orgId ? (
+                      <span>
+                        {account?.dealer_id || account?.org_id
+                          ? String(account?.dealer_id || account?.org_id).slice(0, 8)
+                          : '—'}
+                      </span>
+                      {effectiveDealerId &&
+                      (account?.dealer_id || account?.org_id) &&
+                      (account?.dealer_id || account?.org_id) !== effectiveDealerId ? (
                         <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
                           Other org
                         </span>
@@ -1342,14 +1351,18 @@ const AdminPage = () => {
                         onClick={() => openModal('userAccount', account)}
                         className="text-blue-600 hover:text-blue-900"
                         title={
-                          orgId && account?.org_id && account?.org_id !== orgId
+                          effectiveDealerId &&
+                          (account?.dealer_id || account?.org_id) &&
+                          (account?.dealer_id || account?.org_id) !== effectiveDealerId
                             ? 'Edit user (will prompt to reassign to your org on save)'
                             : 'Edit user'
                         }
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      {orgId && account?.org_id && account?.org_id !== orgId && (
+                      {effectiveDealerId &&
+                      (account?.dealer_id || account?.org_id) &&
+                      (account?.dealer_id || account?.org_id) !== effectiveDealerId && (
                         <button
                           title="Attach to my org"
                           onClick={() => attachProfileToMyOrg(account?.id)}
@@ -1517,8 +1530,14 @@ const AdminPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center gap-2">
-                      <span>{staff?.org_id ? String(staff?.org_id).slice(0, 8) : '—'}</span>
-                      {orgId && staff?.org_id && staff?.org_id !== orgId ? (
+                      <span>
+                        {staff?.dealer_id || staff?.org_id
+                          ? String(staff?.dealer_id || staff?.org_id).slice(0, 8)
+                          : '—'}
+                      </span>
+                      {effectiveDealerId &&
+                      (staff?.dealer_id || staff?.org_id) &&
+                      (staff?.dealer_id || staff?.org_id) !== effectiveDealerId ? (
                         <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
                           Other org
                         </span>
@@ -1540,14 +1559,18 @@ const AdminPage = () => {
                         onClick={() => openModal('staff', staff)}
                         className="text-blue-600 hover:text-blue-900"
                         title={
-                          orgId && staff?.org_id && staff?.org_id !== orgId
+                          effectiveDealerId &&
+                          (staff?.dealer_id || staff?.org_id) &&
+                          (staff?.dealer_id || staff?.org_id) !== effectiveDealerId
                             ? 'Edit staff (will prompt to reassign to your org on save)'
                             : 'Edit staff'
                         }
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      {orgId && staff?.org_id && staff?.org_id !== orgId && (
+                      {effectiveDealerId &&
+                      (staff?.dealer_id || staff?.org_id) &&
+                      (staff?.dealer_id || staff?.org_id) !== effectiveDealerId && (
                         <button
                           title="Attach to my org"
                           onClick={() => attachProfileToMyOrg(staff?.id)}

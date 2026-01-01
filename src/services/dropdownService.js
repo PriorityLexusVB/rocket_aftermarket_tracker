@@ -7,7 +7,7 @@ import {
   downgradeCapForErrorMessage,
 } from '@/utils/userProfileName'
 import { incrementTelemetry, TelemetryKey } from '@/utils/capabilityTelemetry'
-import { persistOrgId, readOrgId } from '@/utils/orgStorage'
+import { persistDealerId, readDealerId } from '@/utils/dealerStorage'
 
 // ---------------------------------------------------------------------------
 // Capability: user_profiles.vendor_id column (some environments may not have it yet)
@@ -65,11 +65,11 @@ function _clearPending(key) {
   _pending.delete(key)
 }
 
-// Resolve current user's org_id once per session for org-scoped dropdowns
-// Returns cached org_id if available, or null if user has no org (deliberately not caching errors)
-let _orgIdCache = null
-let _orgIdPending = null
-let _orgIdCacheValid = false // Track whether cache is valid (vs. error state)
+// Resolve current user's dealer_id once per session for dealer-scoped dropdowns
+// Returns cached dealer_id if available, or null if user has no dealer (deliberately not caching errors)
+let _dealerIdCache = null
+let _dealerIdPending = null
+let _dealerIdCacheValid = false // Track whether cache is valid (vs. error state)
 
 /**
  * Helper: Check if an error is an RLS/permission error
@@ -132,36 +132,36 @@ async function requireAuthenticatedUser(label = 'dropdown') {
   }
 }
 
-async function getScopedOrgId() {
+async function getScopedDealerId() {
   // If we have a valid cached value, return it immediately
-  if (_orgIdCacheValid && _orgIdCache !== undefined) return _orgIdCache
-  if (_orgIdPending) return _orgIdPending
+  if (_dealerIdCacheValid && _dealerIdCache !== undefined) return _dealerIdCache
+  if (_dealerIdPending) return _dealerIdPending
 
-  _orgIdPending = (async () => {
+  _dealerIdPending = (async () => {
     try {
       const authResult = await supabase?.auth?.getUser?.()
       const userId = authResult?.data?.user?.id
       const email = authResult?.data?.user?.email
 
       if (!userId && !email) {
-        _orgIdCache = null
-        _orgIdCacheValid = false
+        _dealerIdCache = null
+        _dealerIdCacheValid = false
         return null
       }
 
-      // Prefer org_id cached for this authenticated user to avoid redundant lookups
-      const stored = readOrgId(userId)
-      if (stored && !_orgIdCacheValid) {
-        _orgIdCache = stored
-        _orgIdCacheValid = true
-        return _orgIdCache
+      // Prefer dealer_id cached for this authenticated user to avoid redundant lookups
+      const stored = readDealerId(userId)
+      if (stored && !_dealerIdCacheValid) {
+        _dealerIdCache = stored
+        _dealerIdCacheValid = true
+        return _dealerIdCache
       }
 
       if (!userId && !email) {
-        // User is not authenticated - cache null as valid (no org available)
-        _orgIdCache = null
-        _orgIdCacheValid = true
-        persistOrgId(null, userId)
+        // User is not authenticated - cache null as valid (no dealer available)
+        _dealerIdCache = null
+        _dealerIdCacheValid = true
+        persistDealerId(null, userId)
         return null
       }
 
@@ -172,7 +172,7 @@ async function getScopedOrgId() {
       if (userId) {
         const { data, error } = await supabase
           .from('user_profiles')
-          .select('org_id')
+          .select('dealer_id')
           .eq('id', userId)
           .single()
         prof = data
@@ -188,10 +188,10 @@ async function getScopedOrgId() {
       }
 
       // Fallback: match by email if id lookup failed or returned null
-      if ((!prof || !prof.org_id) && email) {
+      if ((!prof || !prof.dealer_id) && email) {
         const { data: profByEmail, error: emailErr } = await supabase
           .from('user_profiles')
-          .select('org_id')
+          .select('dealer_id')
           .eq('email', email)
           .order('updated_at', { ascending: false })
           .limit(1)
@@ -199,31 +199,31 @@ async function getScopedOrgId() {
 
         emailError = emailErr
 
-        if (profByEmail?.org_id) {
+        if (profByEmail?.dealer_id) {
           prof = profByEmail
         } else if (emailError && _isRlsError(emailError)) {
           console.warn(
-            '[dropdownService] getScopedOrgId: RLS error on email fallback:',
+            '[dropdownService] getScopedDealerId: RLS error on email fallback:',
             emailError?.message
           )
         }
       }
 
-      // If we found an org_id, cache it as valid
-      if (prof?.org_id) {
-        _orgIdCache = prof.org_id
-        _orgIdCacheValid = true
-        persistOrgId(_orgIdCache, userId)
-        return _orgIdCache
+      // If we found a dealer_id, cache it as valid
+      if (prof?.dealer_id) {
+        _dealerIdCache = prof.dealer_id
+        _dealerIdCacheValid = true
+        persistDealerId(_dealerIdCache, userId)
+        return _dealerIdCache
       }
 
-      // No org_id found from either lookup - this may be:
-      // 1. User genuinely has no org_id (valid state)
+      // No dealer_id found from either lookup - this may be:
+      // 1. User genuinely has no dealer_id (valid state)
       // 2. RLS blocked our query (transient state, should retry)
       // If we had RLS errors from either lookup, don't cache - allow retry on next call
       if ((primaryError && _isRlsError(primaryError)) || (emailError && _isRlsError(emailError))) {
         console.warn(
-          '[dropdownService] getScopedOrgId: No org_id found due to RLS - will retry on next call'
+          '[dropdownService] getScopedDealerId: No dealer_id found due to RLS - will retry on next call'
         )
         // Track RLS fallback in telemetry for auditing
         incrementTelemetry(TelemetryKey.DROPDOWN_ORG_FALLBACK)
@@ -231,42 +231,42 @@ async function getScopedOrgId() {
         return null
       }
 
-      // No RLS errors, user just doesn't have org_id - cache null as valid
-      _orgIdCache = null
-      _orgIdCacheValid = true
-      persistOrgId(null, userId)
+      // No RLS errors, user just doesn't have dealer_id - cache null as valid
+      _dealerIdCache = null
+      _dealerIdCacheValid = true
+      persistDealerId(null, userId)
       return null
     } catch (e) {
       // Unexpected error - don't cache, allow retry
-      console.warn('[dropdownService] getScopedOrgId failed:', e?.message || e)
+      console.warn('[dropdownService] getScopedDealerId failed:', e?.message || e)
       return null
     } finally {
-      _orgIdPending = null
+      _dealerIdPending = null
     }
   })()
-  return _orgIdPending
+  return _dealerIdPending
 }
 
 // Lightweight cache peekers to enable cached-first UI rendering without awaiting network
 export function peekVendors({ activeOnly = true } = {}) {
-  const orgId = null
-  const key = _cacheKey('vendors', { activeOnly, orgId })
+  const dealerId = null
+  const key = _cacheKey('vendors', { activeOnly, dealerId })
   return _getCache(key) || []
 }
 
 export function peekProducts({ activeOnly = true } = {}) {
-  const orgId = null
-  const key = _cacheKey('products', { activeOnly, orgId })
+  const dealerId = null
+  const key = _cacheKey('products', { activeOnly, dealerId })
   return _getCache(key) || []
 }
 
 export function peekStaff({ departments = [], roles = [], activeOnly = true } = {}) {
-  const orgId = null
+  const dealerId = null
   const key = _cacheKey('staff', {
     departments: departments?.join(','),
     roles: roles?.join(','),
     activeOnly,
-    orgId,
+    dealerId,
   })
   return _getCache(key) || []
 }
@@ -296,12 +296,12 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
   const user = await requireAuthenticatedUser('getStaff')
   if (!user) return []
 
-  const orgId = await getScopedOrgId()
+  const dealerId = await getScopedDealerId()
   const key = _cacheKey('staff', {
     departments: departments?.join(','),
     roles: roles?.join(','),
     activeOnly,
-    orgId,
+    dealerId,
   })
   const cached = _getCache(key)
   if (cached) return cached
@@ -348,7 +348,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
         if (activeOnly) q = q.eq('is_active', true)
         if (departments.length) q = q.in('department', departments)
         if (roles.length) q = q.in('role', roles)
-        if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (dealerId) q = q.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
 
         const { data: exact, count } = await q.throwOnError()
         if ((count ?? 0) > 0) {
@@ -458,7 +458,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
       if (nameCol2) q2 = q2.order(nameCol2, { ascending: true })
       else q2 = q2.order('email', { ascending: true })
 
-      if (orgId) q2 = q2.or(`org_id.eq.${orgId},org_id.is.null`)
+      if (dealerId) q2 = q2.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
 
       const { data: fuzzy, error: fuzzyErr } = await q2.throwOnError()
       if (fuzzyErr) {
@@ -481,7 +481,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
               .or(
                 ors || (nameCol2 ? `${nameCol2}.ilike.%placeholder%` : 'email.ilike.%placeholder%')
               )
-            if (orgId) qRetry = qRetry.or(`org_id.eq.${orgId},org_id.is.null`)
+            if (dealerId) qRetry = qRetry.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
             const r = await qRetry
             const opts2 = toOptions(r?.data || [])
             _setCache(key, opts2)
@@ -544,8 +544,8 @@ export async function getVendors({ activeOnly = true } = {}) {
     const user = await requireAuthenticatedUser('getVendors')
     if (!user) return []
 
-    const orgId = await getScopedOrgId()
-    const key = _cacheKey('vendors', { activeOnly, orgId })
+    const dealerId = await getScopedDealerId()
+    const key = _cacheKey('vendors', { activeOnly, dealerId })
     const cached = _getCache(key)
     if (cached) return cached
     const inflight = _getPending(key)
@@ -555,7 +555,7 @@ export async function getVendors({ activeOnly = true } = {}) {
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    if (dealerId) q = q.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
     const promise = (async () => {
       const { data } = await q.throwOnError()
       const opts = toOptions(data, 'name')
@@ -583,8 +583,8 @@ export async function getProducts({ activeOnly = true } = {}) {
     const user = await requireAuthenticatedUser('getProducts')
     if (!user) return []
 
-    const orgId = await getScopedOrgId()
-    const key = _cacheKey('products', { activeOnly, orgId })
+    const dealerId = await getScopedDealerId()
+    const key = _cacheKey('products', { activeOnly, dealerId })
     const cached = _getCache(key)
     if (cached) return cached
     const inflight = _getPending(key)
@@ -594,7 +594,7 @@ export async function getProducts({ activeOnly = true } = {}) {
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    if (dealerId) q = q.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
     const promise = (async () => {
       const { data } = await q.throwOnError()
       const opts = (data || []).map((p) => ({
@@ -635,7 +635,7 @@ export async function globalSearch(term) {
     const user = await requireAuthenticatedUser('globalSearch')
     if (!user) return { users: [], vendors: [], products: [] }
 
-    const orgId = await getScopedOrgId()
+    const dealerId = await getScopedDealerId()
     await ensureUserProfileCapsLoaded()
     const caps = getProfileCaps()
     const nameCol = caps.name
@@ -654,7 +654,7 @@ export async function globalSearch(term) {
             [nameCol ? `${nameCol}.ilike.${q}` : null, `email.ilike.${q}`].filter(Boolean).join(',')
           )
           .limit(20)
-        if (orgId) uq = uq.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (dealerId) uq = uq.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
         return uq.throwOnError()
       })(),
       (async () => {
@@ -663,7 +663,7 @@ export async function globalSearch(term) {
           .select('id, name, specialty')
           .or(`name.ilike.${q},specialty.ilike.${q}`)
           .limit(20)
-        if (orgId) vq = vq.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (dealerId) vq = vq.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
         return vq.throwOnError()
       })(),
       (async () => {
@@ -672,7 +672,7 @@ export async function globalSearch(term) {
           .select('id, name, brand, unit_price')
           .or(`name.ilike.${q},brand.ilike.${q}`)
           .limit(20)
-        if (orgId) pq = pq.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (dealerId) pq = pq.or(`dealer_id.eq.${dealerId},dealer_id.is.null`)
         return pq.throwOnError()
       })(),
     ])
@@ -737,9 +737,9 @@ export function clearDropdownCache() {
     if (typeof _pending?.clear === 'function') {
       _pending.clear()
     }
-    // Reset org_id cache to allow re-fetch
-    _orgIdCache = null
-    _orgIdCacheValid = false
-    _orgIdPending = null
+    // Reset dealer_id cache to allow re-fetch
+    _dealerIdCache = null
+    _dealerIdCacheValid = false
+    _dealerIdPending = null
   } catch {}
 }

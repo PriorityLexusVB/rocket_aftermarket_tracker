@@ -169,7 +169,9 @@ const main = async () => {
   const connStr =
     process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
   if (!connStr) {
-    console.error('[seedE2E] Missing DATABASE_URL or SUPABASE_DB_URL environment variable.')
+    console.error(
+      '[seedE2E] Missing E2E_DATABASE_URL, DATABASE_URL, or SUPABASE_DB_URL environment variable.'
+    )
     console.error('Set a Postgres connection string, e.g. postgres://user:pass@host:5432/dbname')
     process.exit(1)
   }
@@ -192,10 +194,21 @@ const main = async () => {
     await client.query(sqlWithParams)
 
     // Verify the user profile was created/updated
-    const result = await client.query(
-      `SELECT id, email, org_id, full_name FROM public.user_profiles WHERE email = $1`,
-      [e2eEmail]
-    )
+    let result
+    try {
+      // Canon: dealer_id. Prefer it when present.
+      result = await client.query(
+        `SELECT id, email, dealer_id, full_name FROM public.user_profiles WHERE email = $1`,
+        [e2eEmail]
+      )
+    } catch (e) {
+      // Transitional/legacy fallback where org_id still exists and dealer_id may not.
+      if (e?.code !== '42703') throw e // undefined_column
+      result = await client.query(
+        `SELECT id, email, org_id, full_name FROM public.user_profiles WHERE email = $1`,
+        [e2eEmail]
+      )
+    }
 
     await client.query('COMMIT')
 
@@ -205,7 +218,8 @@ const main = async () => {
       console.log('[seedE2E] Test user profile:')
       console.log(`[seedE2E]   Email: ${profile.email}`)
       console.log(`[seedE2E]   Name: ${profile.full_name}`)
-      console.log(`[seedE2E]   Org ID: ${profile.org_id}`)
+      if (profile.dealer_id) console.log(`[seedE2E]   Dealer ID: ${profile.dealer_id}`)
+      else if (profile.org_id) console.log(`[seedE2E]   Org ID: ${profile.org_id}`)
       console.log(`[seedE2E]   Profile ID: ${profile.id}`)
     } else {
       console.warn(

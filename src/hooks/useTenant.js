@@ -12,9 +12,10 @@ import { supabase } from '../lib/supabase'
  * - Uses an alive/ref flag to avoid state updates after unmount.
  */
 function useTenant() {
-  const { user, userProfile } = useAuth() || {}
+  const { user, userProfile, dealerId: authDealerId, orgId: authOrgId } = useAuth() || {}
+  const [dealerId, setDealerId] = useState(null)
   const [orgId, setOrgId] = useState(null)
-  const [loading, setLoading] = useState(Boolean(user) && orgId === null)
+  const [loading, setLoading] = useState(Boolean(user) && dealerId === null)
   const aliveRef = useRef(true)
   // Derive a session-like shape for consumers that expect session.user
   const derivedSession = user ? { user } : null
@@ -35,22 +36,27 @@ function useTenant() {
       // If there's no authenticated user, ensure we surface null and not-loading
       if (!user?.id && !user?.email) {
         if (aliveRef.current) {
+          setDealerId(null)
           setOrgId(null)
           setLoading(false)
         }
         return
       }
 
-      // If AuthContext already resolved org_id, prefer it and skip extra selects
-      if (userProfile?.org_id != null) {
+      // Prefer AuthContext-derived values to avoid extra selects
+      if (authDealerId !== undefined || authOrgId !== undefined) {
         if (aliveRef.current) {
-          setOrgId(userProfile.org_id)
+          setDealerId(authDealerId ?? null)
+          setOrgId(authOrgId ?? null)
           setLoading(false)
         }
         return
       }
-      if (userProfile && 'org_id' in userProfile) {
+
+      // If profile is loaded but lacks dealer_id and org_id, treat as no-tenant.
+      if (userProfile && ('dealer_id' in userProfile || 'org_id' in userProfile)) {
         if (aliveRef.current) {
+          setDealerId(userProfile?.dealer_id ?? (userProfile?.org_id ?? null))
           setOrgId(null)
           setLoading(false)
         }
@@ -59,8 +65,8 @@ function useTenant() {
 
       if (aliveRef.current) setLoading(true)
 
-      const CANDIDATES = ['org_id', 'organization_id', 'tenant_id']
-      let resolvedOrg = null
+      const CANDIDATES = ['dealer_id', 'org_id', 'organization_id', 'tenant_id']
+      let resolvedDealer = null
       let nonFatal = false
       let shouldRetry = false
 
@@ -76,7 +82,7 @@ function useTenant() {
             .single()
 
           if (!error && data && Object.prototype.hasOwnProperty.call(data, col)) {
-            resolvedOrg = data[col] ?? null
+            resolvedDealer = data[col] ?? null
             break
           }
           if (error) {
@@ -108,7 +114,7 @@ function useTenant() {
       }
 
       // If id-based lookup didn't find org_id and we have email, try email fallback
-      if (resolvedOrg === null && !nonFatal && user?.email && !shouldRetry) {
+      if (resolvedDealer === null && !nonFatal && user?.email && !shouldRetry) {
         for (const col of CANDIDATES) {
           try {
             const { data, error } = await supabase
@@ -120,9 +126,9 @@ function useTenant() {
               .maybeSingle?.()
 
             if (!error && data && Object.prototype.hasOwnProperty.call(data, col)) {
-              resolvedOrg = data[col] ?? null
-              if (resolvedOrg) {
-                console.log('[useTenant] Found org_id via email fallback')
+              resolvedDealer = data[col] ?? null
+              if (resolvedDealer) {
+                console.log('[useTenant] Found tenant id via email fallback')
               }
               break
             }
@@ -154,12 +160,15 @@ function useTenant() {
       }
 
       if (aliveRef.current && !didCancel) {
-        if (resolvedOrg !== null) {
-          setOrgId(resolvedOrg)
+        // Canon tenancy: dealer_id. We expose orgId only for legacy consumers.
+        if (resolvedDealer !== null) {
+          setDealerId(resolvedDealer)
+          setOrgId(null)
         } else {
           if (nonFatal) {
             console.warn('useTenant: treating RLS/permission as no-org')
           }
+          setDealerId(null)
           setOrgId(null)
         }
         setLoading(false)
@@ -171,9 +180,9 @@ function useTenant() {
     return () => {
       didCancel = true
     }
-  }, [user?.id, user?.email, userProfile, userProfile?.org_id])
+  }, [user?.id, user?.email, userProfile, authDealerId, authOrgId])
 
-  return { orgId, loading, session: derivedSession }
+  return { dealerId, orgId, loading, session: derivedSession }
 }
 
 // Default export required by callers; also provide a named export for compatibility
