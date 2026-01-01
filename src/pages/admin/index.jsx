@@ -1361,17 +1361,17 @@ const AdminPage = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       {effectiveDealerId &&
-                      (account?.dealer_id || account?.org_id) &&
-                      (account?.dealer_id || account?.org_id) !== effectiveDealerId && (
-                        <button
-                          title="Attach to my org"
-                          onClick={() => attachProfileToMyOrg(account?.id)}
-                          className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                          disabled={submitting}
-                        >
-                          <Building className="w-4 h-4" />
-                        </button>
-                      )}
+                        (account?.dealer_id || account?.org_id) &&
+                        (account?.dealer_id || account?.org_id) !== effectiveDealerId && (
+                          <button
+                            title="Attach to my org"
+                            onClick={() => attachProfileToMyOrg(account?.id)}
+                            className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                            disabled={submitting}
+                          >
+                            <Building className="w-4 h-4" />
+                          </button>
+                        )}
                       <button
                         onClick={() => handleDelete('user_profiles', account?.id, 'userAccount')}
                         disabled={deletingId === account?.id}
@@ -1569,17 +1569,17 @@ const AdminPage = () => {
                         <Edit className="w-4 h-4" />
                       </button>
                       {effectiveDealerId &&
-                      (staff?.dealer_id || staff?.org_id) &&
-                      (staff?.dealer_id || staff?.org_id) !== effectiveDealerId && (
-                        <button
-                          title="Attach to my org"
-                          onClick={() => attachProfileToMyOrg(staff?.id)}
-                          className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                          disabled={submitting}
-                        >
-                          <Building className="w-4 h-4" />
-                        </button>
-                      )}
+                        (staff?.dealer_id || staff?.org_id) &&
+                        (staff?.dealer_id || staff?.org_id) !== effectiveDealerId && (
+                          <button
+                            title="Attach to my org"
+                            onClick={() => attachProfileToMyOrg(staff?.id)}
+                            className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                            disabled={submitting}
+                          >
+                            <Building className="w-4 h-4" />
+                          </button>
+                        )}
                       <button
                         onClick={() => handleDelete('user_profiles', staff?.id, 'staff')}
                         disabled={deletingId === staff?.id}

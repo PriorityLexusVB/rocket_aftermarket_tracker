@@ -56,7 +56,7 @@ function useTenant() {
       // If profile is loaded but lacks dealer_id and org_id, treat as no-tenant.
       if (userProfile && ('dealer_id' in userProfile || 'org_id' in userProfile)) {
         if (aliveRef.current) {
-          setDealerId(userProfile?.dealer_id ?? (userProfile?.org_id ?? null))
+          setDealerId(userProfile?.dealer_id ?? userProfile?.org_id ?? null)
           setOrgId(null)
           setLoading(false)
         }

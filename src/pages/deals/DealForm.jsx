@@ -157,9 +157,7 @@ export default function DealForm({
         const vendorsPromise =
           tenantId && !ignoreOrg ? listVendorsByOrg(tenantId, { activeOnly: true }) : getVendors()
         const productsPromise =
-          tenantId && !ignoreOrg
-            ? listProductsByOrg(tenantId, { activeOnly: true })
-            : getProducts()
+          tenantId && !ignoreOrg ? listProductsByOrg(tenantId, { activeOnly: true }) : getProducts()
 
         const salesPromise =
           tenantId && !ignoreOrg
