@@ -125,6 +125,69 @@ const getDealPromiseIso = (deal) => {
   return null
 }
 
+const getDealVehicleDisplay = (deal) => {
+  const year = deal?.vehicle?.year
+  const make = deal?.vehicle?.make
+  const model = deal?.vehicle?.model
+  const stock =
+    deal?.vehicle?.stock_number ||
+    deal?.vehicle?.vin ||
+    deal?.stock_no ||
+    deal?.stockNumber ||
+    deal?.vin ||
+    null
+
+  const ymm = [year, make, model].filter(Boolean).join(' ').trim()
+  const vehicleLabel = ymm ? titleCase(ymm) : ''
+
+  const rawDesc = (deal?.vehicle_description || '').trim()
+  const title = ((deal?.title || deal?.description || '') + '').trim()
+  const jobNumber = ((deal?.job_number || deal?.jobNumber || '') + '').trim()
+  const descLower = rawDesc.toLowerCase()
+
+  const isDuplicativeDesc =
+    !rawDesc ||
+    (title && descLower === title.toLowerCase()) ||
+    (jobNumber &&
+      (descLower === jobNumber.toLowerCase() || descLower.includes(jobNumber.toLowerCase()))) ||
+    /e2e\s*loaner\s*job/i.test(rawDesc)
+
+  // Vehicle-first:
+  // 1) Prefer structured year/make/model
+  // 2) Then accept vehicle_description only if it doesn't duplicate job/title
+  // 3) Then fall back to stock/vin snippet
+  if (vehicleLabel) {
+    return {
+      main: vehicleLabel,
+      stock: stock || null,
+      title: `${vehicleLabel}${stock ? ` • Stock: ${stock}` : ''}`,
+      isMissing: false,
+    }
+  }
+
+  if (!isDuplicativeDesc) {
+    const descLabel = titleCase(rawDesc)
+    return {
+      main: descLabel,
+      stock: null,
+      title: descLabel,
+      isMissing: false,
+    }
+  }
+
+  if (stock) {
+    const stockLabel = `Stock: ${stock}`
+    return {
+      main: stockLabel,
+      stock: null,
+      title: stockLabel,
+      isMissing: false,
+    }
+  }
+
+  return { main: '—', stock: null, title: '—', isMissing: true }
+}
+
 const Pill = ({ children, className = '' }) => (
   <span
     className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-700 ${className}`}
@@ -1692,28 +1755,21 @@ export default function DealsPage() {
 
                       {/* Vehicle */}
                       <div className="col-span-12 lg:col-span-2 min-w-0">
-                        <div
-                          className="truncate text-sm text-slate-800"
-                          title={
-                            deal?.vehicle_description ||
-                            `${deal?.vehicle ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()) : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
-                            ''
-                          }
-                        >
-                          {deal?.vehicle_description
-                            ? titleCase(deal.vehicle_description)
-                            : deal?.vehicle
-                              ? titleCase(
-                                  `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
-                                )
-                              : '—'}
-                          {deal?.vehicle?.stock_number ? (
-                            <span className="text-slate-400">
-                              {' '}
-                              • Stock: {deal?.vehicle?.stock_number}
-                            </span>
-                          ) : null}
-                        </div>
+                        {(() => {
+                          const v = getDealVehicleDisplay(deal)
+                          return (
+                            <div
+                              data-testid={`deal-vehicle-${deal?.id}`}
+                              className="truncate text-sm text-slate-800"
+                              title={v?.title || ''}
+                            >
+                              {v?.isMissing ? <span className="text-slate-400">—</span> : v?.main}
+                              {v?.stock ? (
+                                <span className="text-slate-400"> • Stock: {v?.stock}</span>
+                              ) : null}
+                            </div>
+                          )
+                        })()}
                         <div className="mt-0.5 text-xs text-slate-500">{getDisplayPhone(deal)}</div>
                       </div>
 

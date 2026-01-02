@@ -202,6 +202,39 @@ const mockDealsData = [
       },
     ],
   },
+  {
+    id: 'job-004',
+    job_number: 'JOB-004',
+    title: 'E2E Loaner Job - Do Not Show As Vehicle',
+    job_status: 'pending',
+    total_amount: '0.00',
+    profit_amount: '0.00',
+    delivery_coordinator_name: null,
+    sales_consultant_name: null,
+    // Stock-only case (no year/make/model)
+    vehicle: {
+      year: null,
+      make: null,
+      model: null,
+      stock_number: 'VIN999',
+      owner_name: null,
+    },
+    job_parts: [],
+  },
+  {
+    id: 'job-005',
+    job_number: 'JOB-005',
+    title: 'No Vehicle Deal Title Should Not Appear',
+    job_status: 'pending',
+    total_amount: '0.00',
+    profit_amount: '0.00',
+    delivery_coordinator_name: null,
+    sales_consultant_name: null,
+    // No vehicle case (must render muted em dash, not title/job)
+    vehicle: null,
+    vehicle_description: null,
+    job_parts: [],
+  },
 ]
 
 describe('Step 16: Deals List Screen Verification', () => {
@@ -222,6 +255,30 @@ describe('Step 16: Deals List Screen Verification', () => {
       </BrowserRouter>
     )
   }
+
+  it('renders vehicle slot as vehicle-first with clean fallbacks (full, stock-only, none)', async () => {
+    renderComponent()
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId(/deal-row-/)).toHaveLength(5)
+    })
+
+    const full = screen.getByTestId('deal-vehicle-job-001')
+    expect(full).toHaveTextContent('2024 Honda Accord')
+    expect(full).toHaveTextContent('Stock: VIN123')
+    expect(full).not.toHaveTextContent('JOB-001')
+    expect(full).not.toHaveTextContent('2024 Honda Accord Service')
+
+    const stockOnly = screen.getByTestId('deal-vehicle-job-004')
+    expect(stockOnly).toHaveTextContent('Stock: VIN999')
+    expect(stockOnly).not.toHaveTextContent('JOB-004')
+    expect(stockOnly).not.toHaveTextContent('E2E Loaner Job')
+
+    const none = screen.getByTestId('deal-vehicle-job-005')
+    expect(none).toHaveTextContent('—')
+    expect(none).not.toHaveTextContent('JOB-005')
+    expect(none).not.toHaveTextContent('No Vehicle Deal Title Should Not Appear')
+  })
 
   it('should display vehicle information correctly with year, make, model and stock number', async () => {
     renderComponent()
@@ -272,7 +329,7 @@ describe('Step 16: Deals List Screen Verification', () => {
     await waitFor(() => {
       // Products should show full names, not abbreviations or codes
       const jobRows = screen?.getAllByTestId(/deal-row-/)
-      expect(jobRows)?.toHaveLength(3)
+      expect(jobRows)?.toHaveLength(mockDealsData.length)
 
       // Verify no "Qty" text appears in the table
       expect(screen?.queryByText(/Qty/i))?.not?.toBeInTheDocument()
@@ -345,7 +402,7 @@ describe('Step 16: Deals List Screen Verification', () => {
     await waitFor(() => {
       // Currently no filter controls visible, but data loads successfully
       const dealRows = screen?.getAllByTestId(/deal-row-/)
-      expect(dealRows)?.toHaveLength(3) // All deals shown
+      expect(dealRows)?.toHaveLength(mockDealsData.length) // All deals shown
     })
 
     // Test that component doesn't crash with different data states
