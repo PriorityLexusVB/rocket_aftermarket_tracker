@@ -4,6 +4,7 @@ import {
   filterAndSort,
   detectConflicts,
   splitSnapshotItems,
+  splitNeedsSchedulingItems,
 } from '@/pages/currently-active-appointments/components/SnapshotView'
 import {
   createUndoEntry,
@@ -169,5 +170,27 @@ describe('SnapshotView.splitSnapshotItems (unscheduled bucket)', () => {
     ]
     const out = splitSnapshotItems(items, { now })
     expect(out.unscheduledInProgress).toEqual([])
+  })
+})
+
+describe('SnapshotView.splitNeedsSchedulingItems', () => {
+  it('splits by promisedAt relative to today start', () => {
+    const now = new Date('2025-11-11T12:00:00Z')
+    const items = [
+      { id: 'a', promisedAt: '2025-11-10T00:00:00Z', raw: {} },
+      { id: 'b', promisedAt: '2025-11-11T00:00:00Z', raw: {} },
+      { id: 'c', promisedAt: '2025-11-12T00:00:00Z', raw: {} },
+    ]
+    const out = splitNeedsSchedulingItems(items, { now })
+    expect(out.overdue.map((x) => x.id)).toEqual(['a'])
+    expect(out.upcoming.map((x) => x.id)).toEqual(['b', 'c'])
+  })
+
+  it('ignores items without a parseable promise', () => {
+    const now = new Date('2025-11-11T12:00:00Z')
+    const items = [{ id: 'x', promisedAt: null, raw: {} }]
+    const out = splitNeedsSchedulingItems(items, { now })
+    expect(out.overdue).toEqual([])
+    expect(out.upcoming).toEqual([])
   })
 })

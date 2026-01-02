@@ -1,6 +1,7 @@
 // src/pages/currently-active-appointments/components/SnapshotView.jsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
 import { createUndoEntry, canUndo } from './undoHelpers'
@@ -9,6 +10,7 @@ import {
   getScheduleItems,
   classifyScheduleState,
   getUnscheduledInProgressInHouseItems,
+  getNeedsSchedulingPromiseItems,
 } from '@/services/scheduleItemsService'
 
 const SIMPLE_CAL_ON = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -25,6 +27,16 @@ function startOfDay(d) {
   const out = new Date(base)
   out.setHours(0, 0, 0, 0)
   return out
+}
+
+function formatPromiseLabel(d) {
+  const dt = safeDate(d)
+  if (!dt) return '—'
+  return dt.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
 }
 
 function safeDate(input) {
@@ -106,6 +118,32 @@ export function splitSnapshotItems(items, { now = new Date() } = {}) {
   return { upcoming, overdueRecent, overdueOld, unscheduledInProgress }
 }
 
+// Exported to allow unit testing
+export function splitNeedsSchedulingItems(items, { now = new Date() } = {}) {
+  const list = Array.isArray(items) ? items : []
+  const nowDayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const overdue = []
+  const upcoming = []
+
+  for (const it of list) {
+    const p = safeDate(it?.promisedAt || it?.raw?.next_promised_iso || it?.raw?.promised_date)
+    if (!p) continue
+    if (p.getTime() < nowDayUtc.getTime()) overdue.push(it)
+    else upcoming.push(it)
+  }
+
+  const sortByPromise = (a, b) => {
+    const aMs = safeDate(a?.promisedAt)?.getTime() || 0
+    const bMs = safeDate(b?.promisedAt)?.getTime() || 0
+    return aMs - bMs
+  }
+
+  overdue.sort(sortByPromise)
+  upcoming.sort(sortByPromise)
+
+  return { overdue, upcoming }
+}
+
 // Exported to allow unit testing: detect overlapping appointments per vendor
 // Returns a Set of job ids that have a local overlap with at least one other job for the same vendor
 export function detectConflicts(rows) {
@@ -158,6 +196,7 @@ export default function SnapshotView() {
   const { orgId, loading: tenantLoading } = useTenant()
   const toast = useToast?.()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -165,11 +204,12 @@ export default function SnapshotView() {
   const [statusMessage, setStatusMessage] = useState('') // For aria-live announcements
   const [showOlderOverdue, setShowOlderOverdue] = useState(false)
   const [sourceDebug, setSourceDebug] = useState(null)
-  const [windowMode, setWindowMode] = useState('next7') // 'today' | 'next7'
+  const [windowMode, setWindowMode] = useState('next7') // 'today' | 'next7' | 'needs_scheduling'
 
   const now = useMemo(() => new Date(), [])
 
   const split = useMemo(() => splitSnapshotItems(items, { now }), [items, now])
+  const needsSplit = useMemo(() => splitNeedsSchedulingItems(items, { now }), [items, now])
 
   const groupedUpcoming = useMemo(() => {
     const scheduled = []
@@ -209,6 +249,66 @@ export default function SnapshotView() {
     setLoading(true)
     try {
       const nowDate = new Date()
+
+      if (windowMode === 'needs_scheduling') {
+        const start = addDays(nowDate, -365)
+        const end = addDays(nowDate, 7)
+        const res = await getNeedsSchedulingPromiseItems({
+          orgId,
+          rangeStart: start,
+          rangeEnd: end,
+        })
+        setItems(res.items || [])
+
+        if (import.meta.env.DEV) {
+          const allItems = Array.isArray(res.items) ? res.items : []
+          const countBy = (arr, keyFn) =>
+            (arr || []).reduce((acc, it) => {
+              const k = keyFn(it)
+              if (!k) return acc
+              acc[k] = (acc[k] || 0) + 1
+              return acc
+            }, {})
+
+          const scheduleStateCounts = countBy(allItems, (it) => String(it?.scheduleState || ''))
+          const scheduleSourceCounts = countBy(allItems, (it) => String(it?.scheduleSource || ''))
+
+          setSourceDebug({
+            needsScheduling: res.debug || null,
+            totals: {
+              needsSchedulingPromise: allItems.length,
+              scheduledRpcUnique: 0,
+              unscheduledQuery: 0,
+            },
+            counts: {
+              scheduleState: {
+                scheduled: scheduleStateCounts?.scheduled || 0,
+                in_progress: scheduleStateCounts?.in_progress || 0,
+                overdue_recent: scheduleStateCounts?.overdue_recent || 0,
+                overdue_old: scheduleStateCounts?.overdue_old || 0,
+                unscheduled: scheduleStateCounts?.unscheduled || 0,
+              },
+              scheduleSource: {
+                needs_scheduling_promise: scheduleSourceCounts?.needs_scheduling_promise || 0,
+                job_parts: scheduleSourceCounts?.job_parts || 0,
+                job: scheduleSourceCounts?.job || 0,
+                legacy_appt: scheduleSourceCounts?.legacy_appt || 0,
+                none: scheduleSourceCounts?.none || 0,
+              },
+            },
+            effectiveFilters: {
+              window: windowMode,
+              org_id: orgId,
+              vendor: 'all',
+            },
+          })
+        } else {
+          setSourceDebug(null)
+        }
+
+        return
+      }
+
       const windowStart = windowMode === 'today' ? startOfDay(nowDate) : nowDate
       const windowEnd =
         windowMode === 'today' ? addDays(startOfDay(nowDate), 1) : addDays(nowDate, 7)
@@ -307,6 +407,14 @@ export default function SnapshotView() {
   }, [orgId, windowMode])
 
   useEffect(() => {
+    const mode = String(searchParams?.get?.('window') || '')
+    if (mode === 'needs_scheduling' && windowMode !== 'needs_scheduling') {
+      setWindowMode('needs_scheduling')
+      return
+    }
+  }, [searchParams, windowMode])
+
+  useEffect(() => {
     if (tenantLoading) return
     load()
   }, [load, tenantLoading])
@@ -390,7 +498,7 @@ export default function SnapshotView() {
           <div
             className="inline-flex rounded-md border border-border bg-card overflow-hidden"
             role="group"
-            aria-label="Window toggle"
+            aria-label="Snapshot mode toggle"
           >
             <button
               type="button"
@@ -415,6 +523,23 @@ export default function SnapshotView() {
               aria-pressed={windowMode === 'next7'}
             >
               Next 7 Days
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setWindowMode('needs_scheduling')
+                const next = new URLSearchParams(searchParams)
+                next.set('window', 'needs_scheduling')
+                setSearchParams(next, { replace: true })
+              }}
+              className={
+                windowMode === 'needs_scheduling'
+                  ? 'px-3 py-1.5 text-sm font-medium btn-primary'
+                  : 'px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-gray-50'
+              }
+              aria-pressed={windowMode === 'needs_scheduling'}
+            >
+              Needs Scheduling
             </button>
           </div>
 
@@ -442,7 +567,8 @@ export default function SnapshotView() {
         </div>
       ) : null}
 
-      {split.upcoming.length === 0 &&
+      {windowMode !== 'needs_scheduling' &&
+      split.upcoming.length === 0 &&
       split.overdueRecent.length === 0 &&
       split.unscheduledInProgress.length === 0 ? (
         <div role="status" aria-live="polite" className="text-muted-foreground">
@@ -450,63 +576,101 @@ export default function SnapshotView() {
         </div>
       ) : null}
 
-      {split.overdueOld.length > 0 ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-muted-foreground">Overdue Old</div>
-          <button
-            type="button"
-            onClick={() => setShowOlderOverdue((v) => !v)}
-            className="text-blue-600 hover:underline"
-            aria-label={
-              showOlderOverdue
-                ? 'Hide older overdue'
-                : `Show older overdue (${split.overdueOld.length})`
-            }
-          >
-            {showOlderOverdue
-              ? 'Hide older overdue'
-              : `Show older overdue (${split.overdueOld.length})`}
-          </button>
+      {windowMode === 'needs_scheduling' &&
+      needsSplit.overdue.length === 0 &&
+      needsSplit.upcoming.length === 0 ? (
+        <div role="status" aria-live="polite" className="text-muted-foreground">
+          No items need scheduling in this range.
         </div>
       ) : null}
 
-      {groupedUpcoming.scheduled.length > 0 ? (
+      {windowMode === 'needs_scheduling' && needsSplit.overdue.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Scheduled</div>
+          <div className="text-foreground font-medium">Overdue (Needs Scheduling)</div>
+          <div className="text-xs text-muted-foreground">Promise date passed</div>
+        </div>
+      ) : null}
+
+      {windowMode === 'needs_scheduling' && needsSplit.overdue.length > 0 ? (
+        <ul role="list" className="divide-y rounded-lg border border-border bg-card">
+          {needsSplit.overdue.map((j) => {
+            const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
+            const vendorName = j?.vendorName || 'Unassigned'
+            const customer = j?.customerName || vehicle?.owner_name || ''
+            const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+            const promiseLabel = formatPromiseLabel(j?.promisedAt)
+            return (
+              <li
+                key={j.id}
+                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                aria-label={`Needs scheduling ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+              >
+                <div className="w-28 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{promiseLabel}</span>
+                  <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[11px] font-medium">
+                    Overdue
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate text-foreground">
+                    {j?.raw?.title || j?.raw?.job_number}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {customer ? `${customer} • ` : ''}
+                    {vehicle
+                      ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
+                      : ''}
+                  </div>
+                </div>
+                <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
+                <div className="w-28 text-muted-foreground">{statusLabel}</div>
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    onClick={() => navigate(`/deals/${j.id}/edit`)}
+                    className="text-blue-600 hover:underline"
+                    aria-label="View deal"
+                  >
+                    View
+                  </button>
+                  {SIMPLE_CAL_ON && (
+                    <button
+                      onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
+                      className="text-blue-600 hover:underline"
+                      aria-label="Schedule in Agenda"
+                    >
+                      Schedule
+                    </button>
+                  )}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+
+      {windowMode === 'needs_scheduling' && needsSplit.upcoming.length > 0 ? (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+          <div className="text-foreground font-medium">Upcoming (Needs Scheduling)</div>
           <div className="text-xs text-muted-foreground">Next window</div>
         </div>
       ) : null}
 
-      {groupedUpcoming.scheduled.length > 0 ? (
+      {windowMode === 'needs_scheduling' && needsSplit.upcoming.length > 0 ? (
         <ul role="list" className="divide-y rounded-lg border border-border bg-card">
-          {groupedUpcoming.scheduled.map((j) => {
-            const start = formatTime(j.scheduledStart)
-            const end = formatTime(j.scheduledEnd)
+          {needsSplit.upcoming.map((j) => {
             const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
             const vendorName = j?.vendorName || 'Unassigned'
             const customer = j?.customerName || vehicle?.owner_name || ''
             const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+            const promiseLabel = formatPromiseLabel(j?.promisedAt)
             return (
               <li
                 key={j.id}
                 className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+                aria-label={`Needs scheduling ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
                 <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>
-                    {start}
-                    {end ? ` – ${end}` : ''}
-                  </span>
-                  {conflictIds.has(j.id) && (
-                    <span
-                      className="text-amber-600"
-                      title="Potential scheduling overlap for this vendor"
-                      aria-label="Scheduling conflict detected"
-                      role="img"
-                    >
-                      ⚠️
-                    </span>
-                  )}
+                  <span>{promiseLabel}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate text-foreground">
@@ -533,26 +697,9 @@ export default function SnapshotView() {
                     <button
                       onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
                       className="text-blue-600 hover:underline"
-                      aria-label="Reschedule in Agenda"
+                      aria-label="Schedule in Agenda"
                     >
-                      Reschedule
-                    </button>
-                  )}
-                  {canUndo(undoMap, j.id) ? (
-                    <button
-                      onClick={() => handleUndo(j.id)}
-                      className="text-amber-600 hover:underline"
-                      aria-label="Undo complete"
-                    >
-                      Undo
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleComplete(j)}
-                      className="text-green-600 hover:underline"
-                      aria-label="Mark complete"
-                    >
-                      Complete
+                      Schedule
                     </button>
                   )}
                 </div>
@@ -562,279 +709,401 @@ export default function SnapshotView() {
         </ul>
       ) : null}
 
-      {groupedUpcoming.inProgress.length > 0 ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">In Progress</div>
-          <div className="text-xs text-muted-foreground">Scheduled window</div>
-        </div>
-      ) : null}
-
-      {groupedUpcoming.inProgress.length > 0 ? (
-        <ul role="list" className="divide-y rounded-lg border border-border bg-card">
-          {groupedUpcoming.inProgress.map((j) => {
-            const start = formatTime(j.scheduledStart)
-            const end = formatTime(j.scheduledEnd)
-            const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-            const vendorName = j?.vendorName || 'Unassigned'
-            const customer = j?.customerName || vehicle?.owner_name || ''
-            const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
-            return (
-              <li
-                key={j.id}
-                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+      {windowMode === 'needs_scheduling' ? null : (
+        <>
+          {split.overdueOld.length > 0 ? (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+              <div className="text-muted-foreground">Overdue Old</div>
+              <button
+                type="button"
+                onClick={() => setShowOlderOverdue((v) => !v)}
+                className="text-blue-600 hover:underline"
+                aria-label={
+                  showOlderOverdue
+                    ? 'Hide older overdue'
+                    : `Show older overdue (${split.overdueOld.length})`
+                }
               >
-                <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>
-                    {start}
-                    {end ? ` – ${end}` : ''}
-                  </span>
-                  {conflictIds.has(j.id) && (
-                    <span
-                      className="text-amber-600"
-                      title="Potential scheduling overlap for this vendor"
-                      aria-label="Scheduling conflict detected"
-                      role="img"
-                    >
-                      ⚠️
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate text-foreground">
-                    {j?.raw?.title || j?.raw?.job_number}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {customer ? `${customer} • ` : ''}
-                    {vehicle
-                      ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
-                      : ''}
-                  </div>
-                </div>
-                <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                <div className="flex items-center gap-2 ml-auto">
-                  <button
-                    onClick={() => navigate(`/deals/${j.id}/edit`)}
-                    className="text-blue-600 hover:underline"
-                    aria-label="View deal"
+                {showOlderOverdue
+                  ? 'Hide older overdue'
+                  : `Show older overdue (${split.overdueOld.length})`}
+              </button>
+            </div>
+          ) : null}
+
+          {groupedUpcoming.scheduled.length > 0 ? (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+              <div className="text-foreground font-medium">Scheduled</div>
+              <div className="text-xs text-muted-foreground">Next window</div>
+            </div>
+          ) : null}
+
+          {groupedUpcoming.scheduled.length > 0 ? (
+            <ul role="list" className="divide-y rounded-lg border border-border bg-card">
+              {groupedUpcoming.scheduled.map((j) => {
+                const start = formatTime(j.scheduledStart)
+                const end = formatTime(j.scheduledEnd)
+                const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
+                const vendorName = j?.vendorName || 'Unassigned'
+                const customer = j?.customerName || vehicle?.owner_name || ''
+                const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+                return (
+                  <li
+                    key={j.id}
+                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
-                    View
-                  </button>
-                  {SIMPLE_CAL_ON && (
-                    <button
-                      onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
-                      className="text-blue-600 hover:underline"
-                      aria-label="Reschedule in Agenda"
-                    >
-                      Reschedule
-                    </button>
-                  )}
-                  {canUndo(undoMap, j.id) ? (
-                    <button
-                      onClick={() => handleUndo(j.id)}
-                      className="text-amber-600 hover:underline"
-                      aria-label="Undo complete"
-                    >
-                      Undo
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleComplete(j)}
-                      className="text-green-600 hover:underline"
-                      aria-label="Mark complete"
-                    >
-                      Complete
-                    </button>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
+                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>
+                        {start}
+                        {end ? ` – ${end}` : ''}
+                      </span>
+                      {conflictIds.has(j.id) && (
+                        <span
+                          className="text-amber-600"
+                          title="Potential scheduling overlap for this vendor"
+                          aria-label="Scheduling conflict detected"
+                          role="img"
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate text-foreground">
+                        {j?.raw?.title || j?.raw?.job_number}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {customer ? `${customer} • ` : ''}
+                        {vehicle
+                          ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
+                          : ''}
+                      </div>
+                    </div>
+                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
+                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={() => navigate(`/deals/${j.id}/edit`)}
+                        className="text-blue-600 hover:underline"
+                        aria-label="View deal"
+                      >
+                        View
+                      </button>
+                      {SIMPLE_CAL_ON && (
+                        <button
+                          onClick={() =>
+                            navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
+                          }
+                          className="text-blue-600 hover:underline"
+                          aria-label="Reschedule in Agenda"
+                        >
+                          Reschedule
+                        </button>
+                      )}
+                      {canUndo(undoMap, j.id) ? (
+                        <button
+                          onClick={() => handleUndo(j.id)}
+                          className="text-amber-600 hover:underline"
+                          aria-label="Undo complete"
+                        >
+                          Undo
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleComplete(j)}
+                          className="text-green-600 hover:underline"
+                          aria-label="Mark complete"
+                        >
+                          Complete
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
 
-      {split.overdueRecent.length > 0 ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Overdue Recent</div>
-          <div className="text-xs text-muted-foreground">Within 7 days</div>
-        </div>
-      ) : null}
+          {groupedUpcoming.inProgress.length > 0 ? (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+              <div className="text-foreground font-medium">In Progress</div>
+              <div className="text-xs text-muted-foreground">Scheduled window</div>
+            </div>
+          ) : null}
 
-      {split.overdueRecent.length > 0 ? (
-        <ul role="list" className="divide-y rounded-lg border border-border bg-card">
-          {split.overdueRecent.map((j) => {
-            const start = formatTime(j.scheduledStart)
-            const end = formatTime(j.scheduledEnd)
-            const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-            const vendorName = j?.vendorName || 'Unassigned'
-            const customer = j?.customerName || vehicle?.owner_name || ''
-            const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
-            return (
-              <li
-                key={j.id}
-                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
-              >
-                <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>
-                    {start}
-                    {end ? ` – ${end}` : ''}
-                  </span>
-                  {conflictIds.has(j.id) && (
-                    <span
-                      className="text-amber-600"
-                      title="Potential scheduling overlap for this vendor"
-                      aria-label="Scheduling conflict detected"
-                      role="img"
-                    >
-                      ⚠️
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate text-foreground">
-                    {j?.raw?.title || j?.raw?.job_number}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {customer ? `${customer} • ` : ''}
-                    {vehicle
-                      ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
-                      : ''}
-                  </div>
-                </div>
-                <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                <div className="flex items-center gap-2 ml-auto">
-                  <button
-                    onClick={() => navigate(`/deals/${j.id}/edit`)}
-                    className="text-blue-600 hover:underline"
-                    aria-label="View deal"
+          {groupedUpcoming.inProgress.length > 0 ? (
+            <ul role="list" className="divide-y rounded-lg border border-border bg-card">
+              {groupedUpcoming.inProgress.map((j) => {
+                const start = formatTime(j.scheduledStart)
+                const end = formatTime(j.scheduledEnd)
+                const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
+                const vendorName = j?.vendorName || 'Unassigned'
+                const customer = j?.customerName || vehicle?.owner_name || ''
+                const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+                return (
+                  <li
+                    key={j.id}
+                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
-                    View
-                  </button>
-                  {SIMPLE_CAL_ON && (
-                    <button
-                      onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
-                      className="text-blue-600 hover:underline"
-                      aria-label="Reschedule in Agenda"
-                    >
-                      Reschedule
-                    </button>
-                  )}
-                  {canUndo(undoMap, j.id) ? (
-                    <button
-                      onClick={() => handleUndo(j.id)}
-                      className="text-amber-600 hover:underline"
-                      aria-label="Undo complete"
-                    >
-                      Undo
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleComplete(j)}
-                      className="text-green-600 hover:underline"
-                      aria-label="Mark complete"
-                    >
-                      Complete
-                    </button>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
+                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>
+                        {start}
+                        {end ? ` – ${end}` : ''}
+                      </span>
+                      {conflictIds.has(j.id) && (
+                        <span
+                          className="text-amber-600"
+                          title="Potential scheduling overlap for this vendor"
+                          aria-label="Scheduling conflict detected"
+                          role="img"
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate text-foreground">
+                        {j?.raw?.title || j?.raw?.job_number}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {customer ? `${customer} • ` : ''}
+                        {vehicle
+                          ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
+                          : ''}
+                      </div>
+                    </div>
+                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
+                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={() => navigate(`/deals/${j.id}/edit`)}
+                        className="text-blue-600 hover:underline"
+                        aria-label="View deal"
+                      >
+                        View
+                      </button>
+                      {SIMPLE_CAL_ON && (
+                        <button
+                          onClick={() =>
+                            navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
+                          }
+                          className="text-blue-600 hover:underline"
+                          aria-label="Reschedule in Agenda"
+                        >
+                          Reschedule
+                        </button>
+                      )}
+                      {canUndo(undoMap, j.id) ? (
+                        <button
+                          onClick={() => handleUndo(j.id)}
+                          className="text-amber-600 hover:underline"
+                          aria-label="Undo complete"
+                        >
+                          Undo
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleComplete(j)}
+                          className="text-green-600 hover:underline"
+                          aria-label="Mark complete"
+                        >
+                          Complete
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
 
-      {showOlderOverdue && split.overdueOld.length > 0 ? (
-        <ul role="list" className="divide-y rounded-lg border border-border bg-card">
-          {split.overdueOld.map((j) => {
-            const start = formatTime(j.scheduledStart)
-            const end = formatTime(j.scheduledEnd)
-            const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-            const vendorName = j?.vendorName || 'Unassigned'
-            const customer = j?.customerName || vehicle?.owner_name || ''
-            const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
-            return (
-              <li
-                key={j.id}
-                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
-              >
-                <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>
-                    {start}
-                    {end ? ` – ${end}` : ''}
-                  </span>
-                  {conflictIds.has(j.id) && (
-                    <span
-                      className="text-amber-600"
-                      title="Potential scheduling overlap for this vendor"
-                      aria-label="Scheduling conflict detected"
-                      role="img"
-                    >
-                      ⚠️
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate text-foreground">
-                    {j?.raw?.title || j?.raw?.job_number}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {customer ? `${customer} • ` : ''}
-                    {vehicle
-                      ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
-                      : ''}
-                  </div>
-                </div>
-                <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                <div className="flex items-center gap-2 ml-auto">
-                  <button
-                    onClick={() => navigate(`/deals/${j.id}/edit`)}
-                    className="text-blue-600 hover:underline"
-                    aria-label="View deal"
+          {split.overdueRecent.length > 0 ? (
+            <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+              <div className="text-foreground font-medium">Overdue Recent</div>
+              <div className="text-xs text-muted-foreground">Within 7 days</div>
+            </div>
+          ) : null}
+
+          {split.overdueRecent.length > 0 ? (
+            <ul role="list" className="divide-y rounded-lg border border-border bg-card">
+              {split.overdueRecent.map((j) => {
+                const start = formatTime(j.scheduledStart)
+                const end = formatTime(j.scheduledEnd)
+                const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
+                const vendorName = j?.vendorName || 'Unassigned'
+                const customer = j?.customerName || vehicle?.owner_name || ''
+                const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+                return (
+                  <li
+                    key={j.id}
+                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
-                    View
-                  </button>
-                  {SIMPLE_CAL_ON && (
-                    <button
-                      onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
-                      className="text-blue-600 hover:underline"
-                      aria-label="Reschedule in Agenda"
-                    >
-                      Reschedule
-                    </button>
-                  )}
-                  {canUndo(undoMap, j.id) ? (
-                    <button
-                      onClick={() => handleUndo(j.id)}
-                      className="text-amber-600 hover:underline"
-                      aria-label="Undo complete"
-                    >
-                      Undo
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleComplete(j)}
-                      className="text-green-600 hover:underline"
-                      aria-label="Mark complete"
-                    >
-                      Complete
-                    </button>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
-      ) : null}
+                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>
+                        {start}
+                        {end ? ` – ${end}` : ''}
+                      </span>
+                      {conflictIds.has(j.id) && (
+                        <span
+                          className="text-amber-600"
+                          title="Potential scheduling overlap for this vendor"
+                          aria-label="Scheduling conflict detected"
+                          role="img"
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate text-foreground">
+                        {j?.raw?.title || j?.raw?.job_number}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {customer ? `${customer} • ` : ''}
+                        {vehicle
+                          ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
+                          : ''}
+                      </div>
+                    </div>
+                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
+                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={() => navigate(`/deals/${j.id}/edit`)}
+                        className="text-blue-600 hover:underline"
+                        aria-label="View deal"
+                      >
+                        View
+                      </button>
+                      {SIMPLE_CAL_ON && (
+                        <button
+                          onClick={() =>
+                            navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
+                          }
+                          className="text-blue-600 hover:underline"
+                          aria-label="Reschedule in Agenda"
+                        >
+                          Reschedule
+                        </button>
+                      )}
+                      {canUndo(undoMap, j.id) ? (
+                        <button
+                          onClick={() => handleUndo(j.id)}
+                          className="text-amber-600 hover:underline"
+                          aria-label="Undo complete"
+                        >
+                          Undo
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleComplete(j)}
+                          className="text-green-600 hover:underline"
+                          aria-label="Mark complete"
+                        >
+                          Complete
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
 
-      {/* NOTE: Unscheduled section remains below (separate operational bucket) */}
+          {showOlderOverdue && split.overdueOld.length > 0 ? (
+            <ul role="list" className="divide-y rounded-lg border border-border bg-card">
+              {split.overdueOld.map((j) => {
+                const start = formatTime(j.scheduledStart)
+                const end = formatTime(j.scheduledEnd)
+                const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
+                const vendorName = j?.vendorName || 'Unassigned'
+                const customer = j?.customerName || vehicle?.owner_name || ''
+                const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+                return (
+                  <li
+                    key={j.id}
+                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+                  >
+                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>
+                        {start}
+                        {end ? ` – ${end}` : ''}
+                      </span>
+                      {conflictIds.has(j.id) && (
+                        <span
+                          className="text-amber-600"
+                          title="Potential scheduling overlap for this vendor"
+                          aria-label="Scheduling conflict detected"
+                          role="img"
+                        >
+                          ⚠️
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate text-foreground">
+                        {j?.raw?.title || j?.raw?.job_number}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {customer ? `${customer} • ` : ''}
+                        {vehicle
+                          ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
+                          : ''}
+                      </div>
+                    </div>
+                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
+                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={() => navigate(`/deals/${j.id}/edit`)}
+                        className="text-blue-600 hover:underline"
+                        aria-label="View deal"
+                      >
+                        View
+                      </button>
+                      {SIMPLE_CAL_ON && (
+                        <button
+                          onClick={() =>
+                            navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
+                          }
+                          className="text-blue-600 hover:underline"
+                          aria-label="Reschedule in Agenda"
+                        >
+                          Reschedule
+                        </button>
+                      )}
+                      {canUndo(undoMap, j.id) ? (
+                        <button
+                          onClick={() => handleUndo(j.id)}
+                          className="text-amber-600 hover:underline"
+                          aria-label="Undo complete"
+                        >
+                          Undo
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleComplete(j)}
+                          className="text-green-600 hover:underline"
+                          aria-label="Mark complete"
+                        >
+                          Complete
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
 
-      {/* Legacy combined list removed in favor of sectioned lists */}
-      {/*
+          {/* NOTE: Unscheduled section remains below (separate operational bucket) */}
+
+          {/* Legacy combined list removed in favor of sectioned lists */}
+          {/*
       <ul role="list" className="divide-y rounded border bg-white">
         {rows.map((j) => {
           const start = formatTime(j.scheduledStart)
@@ -917,77 +1186,79 @@ export default function SnapshotView() {
       </ul>
       */}
 
-      {split.unscheduledInProgress.length > 0 ? (
-        <div className="pt-2">
-          <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-            <div className="text-foreground font-medium">In Progress (Unscheduled)</div>
-            <div className="text-xs text-muted-foreground">In-house/on-site only</div>
-          </div>
-          <ul role="list" className="mt-2 divide-y rounded-lg border border-border bg-card">
-            {split.unscheduledInProgress.map((j) => {
-              const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-              const customer = j?.customerName || vehicle?.owner_name || ''
-              const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
-              const svc = String(j?.raw?.service_type || '').toLowerCase()
-              const locationLabel =
-                svc === 'onsite' || svc === 'in_house' || svc === 'inhouse'
-                  ? 'Unscheduled (In House / On-Site)'
-                  : 'Unscheduled'
+          {split.unscheduledInProgress.length > 0 ? (
+            <div className="pt-2">
+              <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
+                <div className="text-foreground font-medium">In Progress (Unscheduled)</div>
+                <div className="text-xs text-muted-foreground">In-house/on-site only</div>
+              </div>
+              <ul role="list" className="mt-2 divide-y rounded-lg border border-border bg-card">
+                {split.unscheduledInProgress.map((j) => {
+                  const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
+                  const customer = j?.customerName || vehicle?.owner_name || ''
+                  const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+                  const svc = String(j?.raw?.service_type || '').toLowerCase()
+                  const locationLabel =
+                    svc === 'onsite' || svc === 'in_house' || svc === 'inhouse'
+                      ? 'Unscheduled (In House / On-Site)'
+                      : 'Unscheduled'
 
-              return (
-                <li
-                  key={j.id}
-                  className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                  aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
-                >
-                  <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
-                    <span>Unscheduled</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-foreground">
-                      {j?.raw?.title || j?.raw?.job_number}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {customer ? `${customer} • ` : ''}
-                      {vehicle
-                        ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
-                        : ''}
-                    </div>
-                  </div>
-                  <div className="w-40 text-muted-foreground truncate">{locationLabel}</div>
-                  <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <button
-                      onClick={() => navigate(`/deals/${j.id}/edit`)}
-                      className="text-blue-600 hover:underline"
-                      aria-label="View deal"
+                  return (
+                    <li
+                      key={j.id}
+                      className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                      aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                     >
-                      View
-                    </button>
-                    {canUndo(undoMap, j.id) ? (
-                      <button
-                        onClick={() => handleUndo(j.id)}
-                        className="text-amber-600 hover:underline"
-                        aria-label="Undo complete"
-                      >
-                        Undo
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleComplete(j)}
-                        className="text-green-600 hover:underline"
-                        aria-label="Mark complete"
-                      >
-                        Complete
-                      </button>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        </div>
-      ) : null}
+                      <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                        <span>Unscheduled</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate text-foreground">
+                          {j?.raw?.title || j?.raw?.job_number}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {customer ? `${customer} • ` : ''}
+                          {vehicle
+                            ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
+                            : ''}
+                        </div>
+                      </div>
+                      <div className="w-40 text-muted-foreground truncate">{locationLabel}</div>
+                      <div className="w-28 text-muted-foreground">{statusLabel}</div>
+                      <div className="flex items-center gap-2 ml-auto">
+                        <button
+                          onClick={() => navigate(`/deals/${j.id}/edit`)}
+                          className="text-blue-600 hover:underline"
+                          aria-label="View deal"
+                        >
+                          View
+                        </button>
+                        {canUndo(undoMap, j.id) ? (
+                          <button
+                            onClick={() => handleUndo(j.id)}
+                            className="text-amber-600 hover:underline"
+                            aria-label="Undo complete"
+                          >
+                            Undo
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleComplete(j)}
+                            className="text-green-600 hover:underline"
+                            aria-label="Mark complete"
+                          >
+                            Complete
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   )
 }

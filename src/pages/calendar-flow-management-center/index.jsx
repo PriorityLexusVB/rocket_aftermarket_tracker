@@ -12,7 +12,10 @@ import {
 } from 'lucide-react'
 import AppLayout from '../../components/layouts/AppLayout'
 import { calendarService } from '../../services/calendarService'
-import { getScheduledJobsByDateRange } from '@/services/scheduleItemsService'
+import {
+  getNeedsSchedulingPromiseItems,
+  getScheduledJobsByDateRange,
+} from '@/services/scheduleItemsService'
 import { vendorService } from '../../services/vendorService'
 import useTenant from '@/hooks/useTenant'
 import QuickFilters from './components/QuickFilters'
@@ -21,6 +24,7 @@ import UnassignedQueue from './components/UnassignedQueue'
 import JobDrawer from './components/JobDrawer'
 import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
+import { useNavigate } from 'react-router-dom'
 
 const CalendarFlowManagementCenter = () => {
   // State management
@@ -56,7 +60,11 @@ const CalendarFlowManagementCenter = () => {
   // Drag and drop
   const [draggedJob, setDraggedJob] = useState(null)
 
+  // Needs Scheduling queue (promise-only)
+  const [needsSchedulingItems, setNeedsSchedulingItems] = useState([])
+
   const { orgId, loading: tenantLoading } = useTenant()
+  const navigate = useNavigate()
 
   const getViewStartDate = useCallback(() => {
     const date = new Date(currentDate)
@@ -102,6 +110,7 @@ const CalendarFlowManagementCenter = () => {
     if (tenantLoading || !orgId) {
       setOriginalJobs([])
       setOriginalUnassignedJobs([])
+      setNeedsSchedulingItems([])
       setLoading(false)
       return
     }
@@ -123,6 +132,16 @@ const CalendarFlowManagementCenter = () => {
       // Store original data separately
       setOriginalJobs(assignedJobs)
       setOriginalUnassignedJobs(unassigned)
+
+      // Promise-only needs-scheduling queue for this view window (include overdue)
+      const needsStart = new Date(startDate)
+      needsStart?.setDate(needsStart?.getDate() - 365)
+      const needsRes = await getNeedsSchedulingPromiseItems({
+        orgId,
+        rangeStart: needsStart,
+        rangeEnd: endDate,
+      })
+      setNeedsSchedulingItems(needsRes?.items || [])
     } catch (error) {
       console.error('Error loading calendar data:', error)
     } finally {
@@ -806,7 +825,7 @@ const CalendarFlowManagementCenter = () => {
           {/* Unassigned Queue Sidebar - Hide for month view */}
           {viewMode !== 'month' && (
             <UnassignedQueue
-              jobs={filteredUnassignedJobs}
+              jobs={(needsSchedulingItems || []).map((it) => it?.raw).filter(Boolean)}
               onJobClick={handleJobClick}
               onDragStart={handleDragStart}
               loading={loading}
@@ -851,6 +870,14 @@ const CalendarFlowManagementCenter = () => {
                           {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
                         </button>
                       )}
+                      <button
+                        onClick={() =>
+                          navigate('/currently-active-appointments?window=needs_scheduling')
+                        }
+                        className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
+                      >
+                        Go to Needs Scheduling
+                      </button>
                     </div>
                   </div>
                 ) : vendorLanesEnabled ? (

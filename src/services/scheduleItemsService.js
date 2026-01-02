@@ -248,6 +248,91 @@ export async function getUnscheduledInProgressInHouseItems({ orgId } = {}) {
   }
 }
 
+function isoDateKey(d) {
+  const dt = safeDate(d)
+  if (!dt) return null
+  return dt.toISOString().slice(0, 10)
+}
+
+/**
+ * Needs Scheduling support: promise-only items with no effective schedule window.
+ *
+ * Definition (per requirements):
+ * - Has at least one job_part with requires_scheduling = true AND promised_date set
+ * - Has no scheduled_start_time / scheduled_end_time on those job_parts
+ * - AND there is no effective scheduled window from job_parts/job/legacy (canonical truth)
+ * - Excludes completed/cancelled/draft via normalizeScheduleItemFromJob
+ */
+export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeEnd } = {}) {
+  const startKey = isoDateKey(rangeStart)
+  const endKey = isoDateKey(rangeEnd)
+  if (!startKey || !endKey) return { items: [], debug: { reason: 'invalid_range' } }
+
+  try {
+    let q = supabase
+      ?.from('job_parts')
+      ?.select('job_id, promised_date')
+      ?.eq('requires_scheduling', true)
+      ?.not('promised_date', 'is', null)
+      ?.is('scheduled_start_time', null)
+      ?.is('scheduled_end_time', null)
+      ?.gte('promised_date', startKey)
+      ?.lt('promised_date', endKey)
+
+    // Back-compat: orgId param is treated as dealer_id.
+    if (orgId) q = q?.eq('dealer_id', orgId)
+
+    const data = await safeSelect(q, 'scheduleItems:needsScheduling:partIds')
+    const jobIds = Array.from(
+      new Set((Array.isArray(data) ? data : []).map((r) => r?.job_id).filter(Boolean))
+    )
+
+    if (!jobIds.length) {
+      return { items: [], debug: { candidateJobs: 0, hydrated: 0, kept: 0 } }
+    }
+
+    const jobs = await jobService.getJobsByIds(jobIds, { orgId })
+    const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+
+    const now = new Date()
+    const items = []
+    for (const job of withLoaners) {
+      const schedule = getEffectiveScheduleWindowFromJob(job)
+      if (schedule?.start) continue
+
+      const item = normalizeScheduleItemFromJob(job, {
+        now,
+        scheduleOverride: { start: null, end: null, source: 'needs_scheduling_promise' },
+      })
+
+      if (!item?.promisedAt) continue
+      const promiseDate = safeDate(item.promisedAt)
+      if (!promiseDate) continue
+      if (promiseDate.toISOString().slice(0, 10) < startKey) continue
+      if (promiseDate.toISOString().slice(0, 10) >= endKey) continue
+
+      items.push(item)
+    }
+
+    items.sort((a, b) => {
+      const aMs = safeDate(a?.promisedAt)?.getTime() || 0
+      const bMs = safeDate(b?.promisedAt)?.getTime() || 0
+      return aMs - bMs
+    })
+
+    return {
+      items,
+      debug: {
+        candidateJobs: jobIds.length,
+        hydrated: withLoaners.length,
+        kept: items.length,
+      },
+    }
+  } catch {
+    return { items: [], debug: { reason: 'needs_scheduling_query_failed' } }
+  }
+}
+
 /**
  * Hydrate job rows for a date range using the canonical overlap window from the calendar RPC.
  *
