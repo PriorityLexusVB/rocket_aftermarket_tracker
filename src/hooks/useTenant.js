@@ -41,15 +41,16 @@ function useTenant() {
         return
       }
 
-      // If AuthContext already resolved org_id, prefer it and skip extra selects
-      if (userProfile?.org_id != null) {
+      // If AuthContext already resolved tenant id, prefer it and skip extra selects
+      const profileTenantId = userProfile?.dealer_id ?? userProfile?.org_id
+      if (profileTenantId != null) {
         if (aliveRef.current) {
-          setOrgId(userProfile.org_id)
+          setOrgId(profileTenantId)
           setLoading(false)
         }
         return
       }
-      if (userProfile && 'org_id' in userProfile) {
+      if (userProfile && ('dealer_id' in userProfile || 'org_id' in userProfile)) {
         if (aliveRef.current) {
           setOrgId(null)
           setLoading(false)
@@ -59,7 +60,7 @@ function useTenant() {
 
       if (aliveRef.current) setLoading(true)
 
-      const CANDIDATES = ['org_id', 'organization_id', 'tenant_id']
+      const CANDIDATES = ['dealer_id', 'org_id', 'organization_id', 'tenant_id']
       let resolvedOrg = null
       let nonFatal = false
       let shouldRetry = false
@@ -171,7 +172,7 @@ function useTenant() {
     return () => {
       didCancel = true
     }
-  }, [user?.id, user?.email, userProfile, userProfile?.org_id])
+  }, [user?.id, user?.email, userProfile, userProfile?.dealer_id, userProfile?.org_id])
 
   return { orgId, loading, session: derivedSession }
 }

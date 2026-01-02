@@ -16,7 +16,8 @@ export const vehicleService = {
         `
         )
         ?.order('created_at', { ascending: false })
-      if (orgId) query = query?.eq('org_id', orgId)
+      // Back-compat: orgId param is treated as dealer_id.
+      if (orgId) query = query?.eq('dealer_id', orgId)
 
       // Apply filters
       if (filters?.status) {
@@ -85,7 +86,7 @@ export const vehicleService = {
         )
         ?.eq('id', id)
         ?.single()
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const data = await safeSelect(q, 'vehicles:getVehicleById')
       if (data?.created_by_profile) {
         data.created_by_profile.display_name = resolveUserProfileName(data.created_by_profile)
@@ -359,7 +360,7 @@ export const vehicleService = {
   async getVehicleStats(orgId = null) {
     try {
       let q = supabase?.from('vehicles')?.select('vehicle_status')
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const data = await safeSelect(q, 'vehicles:getVehicleStats')
 
       const stats = {
@@ -405,7 +406,7 @@ export const getVehicles = async (options = {}, orgId = null) => {
         assigned_to
       )
     `)
-    if (orgId) query = query?.eq('org_id', orgId)
+    if (orgId) query = query?.eq('dealer_id', orgId)
 
     // Apply filters if provided
     if (options?.status) {

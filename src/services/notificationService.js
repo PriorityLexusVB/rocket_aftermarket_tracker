@@ -19,8 +19,8 @@ export const notificationService = {
           job_id,
           vehicle_id
         `)
-      // Optional org filter when communications.org_id exists
-      if (opts?.orgId) q = q?.eq('org_id', opts.orgId)
+      // Back-compat: opts.orgId is treated as dealer_id.
+      if (opts?.orgId) q = q?.eq('dealer_id', opts.orgId)
       const { data } = await q?.order('sent_at', { ascending: false })?.limit(10)?.throwOnError()
 
       // Filter for recent communications (within last 7 days)
@@ -55,8 +55,7 @@ export const notificationService = {
         ?.from('notification_outbox')
         ?.select('id, status, created_at, message_template, phone_e164')
         ?.eq('status', 'pending')
-      // Optional org filter when notification_outbox.org_id exists
-      if (opts?.orgId) q = q?.eq('org_id', opts.orgId)
+      if (opts?.orgId) q = q?.eq('dealer_id', opts.orgId)
       const { data } = await q?.order('created_at', { ascending: false })?.limit(5)?.throwOnError()
 
       return {

@@ -431,9 +431,9 @@ export const advancedFeaturesService = {
       // Define explicit column selections for each table type
       // This reduces payload size and allows covering indexes
       const columnSelections = {
-        jobs: 'id,job_number,title,job_status,customer_name,customer_phone,created_at,updated_at,org_id,assigned_to,vehicle_id',
-        vehicles: 'id,vin,make,model,year,license_plate,created_at,updated_at,org_id',
-        vendors: 'id,name,specialty,contact_person,phone,email,created_at,updated_at,org_id',
+        jobs: 'id,job_number,title,job_status,customer_name,customer_phone,created_at,updated_at,dealer_id,assigned_to,vehicle_id',
+        vehicles: 'id,vin,make,model,year,license_plate,created_at,updated_at,dealer_id',
+        vendors: 'id,name,specialty,contact_person,phone,email,created_at,updated_at,dealer_id',
       }
 
       // Apply search

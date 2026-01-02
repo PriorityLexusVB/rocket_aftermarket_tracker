@@ -76,7 +76,7 @@ export const photoDocumentationService = {
         )
         ?.eq('job_id', jobId)
         ?.order('created_at', { ascending: false })
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const data = await safeSelect(q, 'photoDocs:getJobPhotos')
       const mapped = (data || []).map((p) => {
         if (p?.user_profiles) {
@@ -173,7 +173,7 @@ export const photoDocumentationService = {
         ?.eq('job_id', jobId)
         ?.in('communication_type', ['note', 'photo_documentation'])
         ?.order('sent_at', { ascending: false })
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const data = await safeSelect(q, 'photoDocs:getDocumentationNotes')
       const mapped = (data || []).map((n) => {
         if (n?.user_profiles) {
@@ -293,7 +293,7 @@ export const photoDocumentationService = {
         `
         )
         ?.eq('job_id', jobId)
-      if (orgId) query = query?.eq('org_id', orgId)
+      if (orgId) query = query?.eq('dealer_id', orgId)
 
       if (filters?.stage) {
         query = query?.eq('stage', filters?.stage)

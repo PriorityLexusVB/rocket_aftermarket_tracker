@@ -1,4 +1,4 @@
-// Note: vehicles may not have org_id; tenant scoping flows via claims.org_id and joins.
+// Note: vehicles may not have org_id; tenant scoping flows via dealer_id and RLS.
 import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 
@@ -19,7 +19,7 @@ export const claimsService = {
         `
         )
         ?.order('created_at', { ascending: false })
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q.throwOnError()
       return (data || []).map((c) => ({
         ...c,
@@ -56,7 +56,7 @@ export const claimsService = {
         )
         ?.eq('customer_email', customerEmail)
         ?.order('created_at', { ascending: false })
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q.throwOnError()
       return data || []
     } catch (error) {
@@ -72,7 +72,7 @@ export const claimsService = {
         ?.select('id, make, model, year, vin')
         ?.eq('owner_email', customerEmail)
         ?.eq('vehicle_status', 'active')
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q.throwOnError()
       return data || []
     } catch (error) {
@@ -87,7 +87,7 @@ export const claimsService = {
         ?.from('products')
         ?.select('id, name, brand, category, unit_price')
         ?.order('name')
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q.throwOnError()
       return data || []
     } catch (error) {
@@ -468,7 +468,7 @@ export const claimsService = {
   async getClaimsStats(orgId = null) {
     try {
       let q = supabase?.from('claims')?.select('status, priority, claim_amount, created_at')
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data, error } = await q
 
       if (error) throw error
@@ -520,7 +520,7 @@ export const claimsService = {
         ?.in('role', ['admin', 'manager', 'staff'])
         ?.eq('is_active', true)
         ?.order('full_name')
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data, error } = await q
 
       if (error) throw error

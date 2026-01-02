@@ -29,7 +29,7 @@ import { vendorInsertSchema } from '../../db/schemas'
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
   const { orgId } = useTenant()
-  const effectiveOrgId = orgId || userProfile?.org_id || null
+  const effectiveOrgId = orgId || userProfile?.dealer_id || userProfile?.org_id || null
   const { logBusinessAction, logError: logErr } = useLogger()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('userAccounts')
@@ -108,6 +108,8 @@ const AdminPage = () => {
     part_number: '',
     description: '',
     op_code: '',
+    dealer_id: null,
+    // legacy fallback (do not write to DB)
     org_id: null,
   })
 
@@ -236,7 +238,7 @@ const AdminPage = () => {
         ?.from('user_profiles')
         ?.select('*', { count: 'exact' })
         ?.in('role', ['admin', 'manager'])
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -258,7 +260,7 @@ const AdminPage = () => {
       console.log('Loading staff records...')
 
       let q = supabase?.from('user_profiles')?.select('*', { count: 'exact' })?.eq('role', 'staff')
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -280,7 +282,7 @@ const AdminPage = () => {
       console.log('Loading vendors...')
 
       let q = supabase?.from('vendors')?.select('*', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -302,7 +304,7 @@ const AdminPage = () => {
       console.log('Loading products...')
 
       let q = supabase?.from('products')?.select('*, vendors(name)', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('org_id', effectiveOrgId)
+      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
       q = q?.order('created_at', { ascending: false })
 
       const { data, error } = await q
@@ -458,7 +460,7 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('user_profiles')
-        ?.update({ org_id: orgId, is_active: true })
+        ?.update({ dealer_id: orgId, is_active: true })
         ?.eq('id', profileId)
       if (error) throw error
       await Promise.all([loadUserAccounts(), loadStaffRecords()])
@@ -493,8 +495,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('user_profiles')
-        ?.update({ org_id: orgId, is_active: true })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: orgId, is_active: true })
+        ?.is('dealer_id', null)
         ?.eq('role', 'staff')
       if (error) throw error
       setStaffActionMsg('Assigned org to active staff without org.')
@@ -530,8 +532,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('user_profiles')
-        ?.update({ org_id: orgId, is_active: true })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: orgId, is_active: true })
+        ?.is('dealer_id', null)
         ?.in('role', ['admin', 'manager'])
       if (error) throw error
       setAccountsActionMsg('Assigned org to admin/manager accounts without org.')
@@ -563,8 +565,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('vendors')
-        ?.update({ org_id: orgId })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: orgId })
+        ?.is('dealer_id', null)
       if (error) throw error
       setVendorsActionMsg('Assigned org to vendors without org.')
       await loadVendors()
@@ -599,8 +601,8 @@ const AdminPage = () => {
       setSubmitting(true)
       const { error } = await supabase
         ?.from('products')
-        ?.update({ org_id: orgId })
-        ?.is('org_id', null)
+        ?.update({ dealer_id: orgId })
+        ?.is('dealer_id', null)
       if (error) throw error
       setProductsActionMsg('Assigned org to products without org.')
       await loadProducts()
@@ -661,7 +663,7 @@ const AdminPage = () => {
               email: item.email || '',
               specialty: item.specialty || '',
               rating: item.rating?.toString() || '',
-              orgId: item.org_id || effectiveOrgId || null,
+              orgId: item.dealer_id || item.org_id || effectiveOrgId || null,
               isActive: item.is_active !== undefined ? item.is_active : true,
             }
           : {
@@ -686,7 +688,7 @@ const AdminPage = () => {
           part_number: '',
           description: '',
           op_code: '',
-          org_id: effectiveOrgId || null,
+          dealer_id: effectiveOrgId || null,
         }
       )
     } else if (type === 'template') {
@@ -755,7 +757,8 @@ const AdminPage = () => {
   const handleUserAccountSubmit = async () => {
     if (editingItem) {
       // If editing a user in another org, optionally reassign to current org before updating
-      if (orgId && editingItem?.org_id && editingItem?.org_id !== orgId) {
+      const editingTenantId = editingItem?.dealer_id ?? editingItem?.org_id
+      if (orgId && editingTenantId && editingTenantId !== orgId) {
         const doReassign = window.confirm(
           'This user belongs to another organization. Reassign to your org and continue editing?'
         )
@@ -764,7 +767,7 @@ const AdminPage = () => {
         }
         const { error: reassignErr } = await supabase
           ?.from('user_profiles')
-          ?.update({ org_id: orgId, is_active: true })
+          ?.update({ dealer_id: orgId, is_active: true })
           ?.eq('id', editingItem?.id)
         if (reassignErr) throw reassignErr
       }
@@ -817,12 +820,13 @@ const AdminPage = () => {
       role: 'staff', // Always staff role for directory entries
       is_active: true,
       vendor_id: null,
-      org_id: staffForm?.org_id || orgId || null,
+      dealer_id: staffForm?.dealer_id || staffForm?.org_id || orgId || null,
     }
 
     if (editingItem) {
       // If editing a staff in another org, optionally reassign to current org before updating
-      if (orgId && editingItem?.org_id && editingItem?.org_id !== orgId) {
+      const editingTenantId = editingItem?.dealer_id ?? editingItem?.org_id
+      if (orgId && editingTenantId && editingTenantId !== orgId) {
         const doReassign = window.confirm(
           'This staff profile belongs to another organization. Reassign to your org and continue editing?'
         )
@@ -831,7 +835,7 @@ const AdminPage = () => {
         }
         const { error: reassignErr } = await supabase
           ?.from('user_profiles')
-          ?.update({ org_id: orgId, is_active: true })
+          ?.update({ dealer_id: orgId, is_active: true })
           ?.eq('id', editingItem?.id)
         if (reassignErr) throw reassignErr
       }
@@ -863,7 +867,7 @@ const AdminPage = () => {
         if (createdUserId) {
           const { error: upErr } = await supabase
             ?.from('user_profiles')
-            ?.update({ org_id: staffData.org_id, phone: staffData.phone, is_active: true })
+            ?.update({ dealer_id: staffData.dealer_id, phone: staffData.phone, is_active: true })
             ?.or(`id.eq.${createdUserId},auth_user_id.eq.${createdUserId}`)
           if (upErr) {
             // Non-fatal; log and continue
@@ -914,7 +918,7 @@ const AdminPage = () => {
       part_number: productForm?.part_number,
       description: productForm?.description,
       op_code: productForm?.op_code || null,
-      org_id: productForm?.org_id || effectiveOrgId || null,
+      dealer_id: productForm?.dealer_id || productForm?.org_id || effectiveOrgId || null,
     }
 
     if (editingItem) {
@@ -1317,8 +1321,14 @@ const AdminPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center gap-2">
-                      <span>{account?.org_id ? String(account?.org_id).slice(0, 8) : '—'}</span>
-                      {orgId && account?.org_id && account?.org_id !== orgId ? (
+                      <span>
+                        {account?.dealer_id || account?.org_id
+                          ? String(account?.dealer_id || account?.org_id).slice(0, 8)
+                          : '—'}
+                      </span>
+                      {orgId &&
+                      (account?.dealer_id || account?.org_id) &&
+                      (account?.dealer_id || account?.org_id) !== orgId ? (
                         <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
                           Other org
                         </span>
@@ -1342,23 +1352,27 @@ const AdminPage = () => {
                         onClick={() => openModal('userAccount', account)}
                         className="text-blue-600 hover:text-blue-900"
                         title={
-                          orgId && account?.org_id && account?.org_id !== orgId
+                          orgId &&
+                          (account?.dealer_id || account?.org_id) &&
+                          (account?.dealer_id || account?.org_id) !== orgId
                             ? 'Edit user (will prompt to reassign to your org on save)'
                             : 'Edit user'
                         }
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      {orgId && account?.org_id && account?.org_id !== orgId && (
-                        <button
-                          title="Attach to my org"
-                          onClick={() => attachProfileToMyOrg(account?.id)}
-                          className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                          disabled={submitting}
-                        >
-                          <Building className="w-4 h-4" />
-                        </button>
-                      )}
+                      {orgId &&
+                        (account?.dealer_id || account?.org_id) &&
+                        (account?.dealer_id || account?.org_id) !== orgId && (
+                          <button
+                            title="Attach to my org"
+                            onClick={() => attachProfileToMyOrg(account?.id)}
+                            className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                            disabled={submitting}
+                          >
+                            <Building className="w-4 h-4" />
+                          </button>
+                        )}
                       <button
                         onClick={() => handleDelete('user_profiles', account?.id, 'userAccount')}
                         disabled={deletingId === account?.id}
@@ -1517,8 +1531,14 @@ const AdminPage = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center gap-2">
-                      <span>{staff?.org_id ? String(staff?.org_id).slice(0, 8) : '—'}</span>
-                      {orgId && staff?.org_id && staff?.org_id !== orgId ? (
+                      <span>
+                        {staff?.dealer_id || staff?.org_id
+                          ? String(staff?.dealer_id || staff?.org_id).slice(0, 8)
+                          : '—'}
+                      </span>
+                      {orgId &&
+                      (staff?.dealer_id || staff?.org_id) &&
+                      (staff?.dealer_id || staff?.org_id) !== orgId ? (
                         <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
                           Other org
                         </span>
@@ -1540,23 +1560,27 @@ const AdminPage = () => {
                         onClick={() => openModal('staff', staff)}
                         className="text-blue-600 hover:text-blue-900"
                         title={
-                          orgId && staff?.org_id && staff?.org_id !== orgId
+                          orgId &&
+                          (staff?.dealer_id || staff?.org_id) &&
+                          (staff?.dealer_id || staff?.org_id) !== orgId
                             ? 'Edit staff (will prompt to reassign to your org on save)'
                             : 'Edit staff'
                         }
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      {orgId && staff?.org_id && staff?.org_id !== orgId && (
-                        <button
-                          title="Attach to my org"
-                          onClick={() => attachProfileToMyOrg(staff?.id)}
-                          className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                          disabled={submitting}
-                        >
-                          <Building className="w-4 h-4" />
-                        </button>
-                      )}
+                      {orgId &&
+                        (staff?.dealer_id || staff?.org_id) &&
+                        (staff?.dealer_id || staff?.org_id) !== orgId && (
+                          <button
+                            title="Attach to my org"
+                            onClick={() => attachProfileToMyOrg(staff?.id)}
+                            className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
+                            disabled={submitting}
+                          >
+                            <Building className="w-4 h-4" />
+                          </button>
+                        )}
                       <button
                         onClick={() => handleDelete('user_profiles', staff?.id, 'staff')}
                         disabled={deletingId === staff?.id}
@@ -2288,9 +2312,9 @@ const AdminPage = () => {
                     Organization
                   </label>
                   <select
-                    value={productForm?.org_id || ''}
+                    value={productForm?.dealer_id || productForm?.org_id || ''}
                     onChange={(e) =>
-                      setProductForm({ ...productForm, org_id: e?.target?.value || null })
+                      setProductForm({ ...productForm, dealer_id: e?.target?.value || null })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   >

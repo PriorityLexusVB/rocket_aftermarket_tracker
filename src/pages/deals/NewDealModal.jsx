@@ -16,10 +16,10 @@ export default function NewDealModal({ isOpen, onClose, onSuccess }) {
     try {
       setError('')
 
-      // Add org_id if available
+      // Add dealer_id if available (tenant scoping)
       const dealPayload = {
         ...payload,
-        org_id: orgId || undefined,
+        dealer_id: orgId || undefined,
       }
 
       // Use feature flag to determine if we need to adapt the payload

@@ -41,7 +41,8 @@ export const appointmentsService = {
         ?.in('job_status', ['pending', 'in_progress', 'scheduled', 'quality_check'])
         ?.order('scheduled_start_time', { ascending: true })
 
-      if (orgId) q = q?.eq('org_id', orgId)
+      // Back-compat: orgId param is treated as dealer_id.
+      if (orgId) q = q?.eq('dealer_id', orgId)
 
       const { data, error } = await safeRun(q, 'appointments:listActiveAppointments')
       if (error) throw error
@@ -57,8 +58,7 @@ export const appointmentsService = {
           ?.in('job_id', jobIds)
           ?.is('returned_at', null)
         if (orgId) {
-          // RLS is typically enforced via jobs join; but if org_id exists on loaners, filter.
-          loanerQ = loanerQ?.eq?.('org_id', orgId) ?? loanerQ
+          loanerQ = loanerQ?.eq?.('dealer_id', orgId) ?? loanerQ
         }
         const res = await safeRun(loanerQ, 'appointments:listActiveAppointments:loaners')
         loaners = res.data || []
@@ -96,7 +96,7 @@ export const appointmentsService = {
         ?.order('created_at', { ascending: false })
 
       if (typeof q?.limit === 'function') q = q.limit(limit)
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
 
       const { data, error } = await safeRun(q, 'appointments:listUnassignedJobs')
       if (error) throw error
@@ -110,7 +110,7 @@ export const appointmentsService = {
   async listVendors({ orgId } = {}) {
     try {
       let q = supabase?.from('vendors')?.select('id, name')?.eq('is_active', true)?.order('name')
-      if (orgId) q = q?.or?.(`org_id.eq.${orgId},org_id.is.null`) ?? q?.eq('org_id', orgId)
+      if (orgId) q = q?.or?.(`dealer_id.eq.${orgId},dealer_id.is.null`) ?? q?.eq('dealer_id', orgId)
 
       const { data, error } = await safeRun(q, 'appointments:listVendors')
       if (error) throw error
@@ -129,7 +129,7 @@ export const appointmentsService = {
         ?.eq('is_active', true)
         ?.order('full_name')
 
-      if (orgId) q = q?.or?.(`org_id.eq.${orgId},org_id.is.null`) ?? q?.eq('org_id', orgId)
+      if (orgId) q = q?.or?.(`dealer_id.eq.${orgId},dealer_id.is.null`) ?? q?.eq('dealer_id', orgId)
 
       const { data, error } = await safeRun(q, 'appointments:listStaff')
       if (error) throw error
@@ -160,8 +160,8 @@ export const appointmentsService = {
         .gte('created_at', `${weekStartStr}T00:00:00Z`)
 
       if (orgId) {
-        todayQ = todayQ.eq('org_id', orgId)
-        weekQ = weekQ.eq('org_id', orgId)
+        todayQ = todayQ.eq('dealer_id', orgId)
+        weekQ = weekQ.eq('dealer_id', orgId)
       }
 
       const todayRes = await safeRun(todayQ, 'appointments:metrics:today')
@@ -236,7 +236,7 @@ export const appointmentsService = {
         .update({ job_status: status, updated_at: new Date().toISOString() })
         .eq('id', jobId)
 
-      if (orgId) q = q.eq('org_id', orgId)
+      if (orgId) q = q.eq('dealer_id', orgId)
 
       const { data, error } = await q.select().single()
       if (error) throw error
@@ -258,7 +258,7 @@ export const appointmentsService = {
         .update({ job_status: status, updated_at: new Date().toISOString() })
         .in('id', ids)
 
-      if (orgId) q = q.eq('org_id', orgId)
+      if (orgId) q = q.eq('dealer_id', orgId)
 
       const { data, error } = await q.select()
       if (error) throw error
@@ -280,7 +280,7 @@ export const appointmentsService = {
         .update({ assigned_to: staffId, updated_at: new Date().toISOString() })
         .in('id', ids)
 
-      if (orgId) q = q.eq('org_id', orgId)
+      if (orgId) q = q.eq('dealer_id', orgId)
 
       const { data, error } = await q.select()
       if (error) throw error
@@ -305,7 +305,7 @@ export const appointmentsService = {
         })
         .eq('id', jobId)
 
-      if (orgId) q = q.eq('org_id', orgId)
+      if (orgId) q = q.eq('dealer_id', orgId)
 
       const { data, error } = await q.select().single()
       if (error) throw error

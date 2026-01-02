@@ -31,22 +31,22 @@ const TEST_CUSTOMER_PATTERNS = [
   /\bdummy\b/i,
 ]
 
-// Some environments may not have loaner_assignments.org_id yet.
+// Some environments may not have loaner_assignments.dealer_id yet.
 // Cache the capability after first detection so we don't repeatedly trigger
 // PostgREST 400 responses on subsequent loaner saves.
 // null = unknown, true = present, false = missing
-let loanerAssignmentsHasOrgId = null
+let loanerAssignmentsHasDealerId = null
 if (typeof sessionStorage !== 'undefined') {
-  const stored = sessionStorage.getItem('cap_loanerAssignmentsOrgId')
-  if (stored === 'false') loanerAssignmentsHasOrgId = false
-  if (stored === 'true') loanerAssignmentsHasOrgId = true
+  const stored = sessionStorage.getItem('cap_loanerAssignmentsDealerId')
+  if (stored === 'false') loanerAssignmentsHasDealerId = false
+  if (stored === 'true') loanerAssignmentsHasDealerId = true
 }
 
-function setLoanerAssignmentsOrgIdCapability(value) {
-  loanerAssignmentsHasOrgId = value
+function setLoanerAssignmentsDealerIdCapability(value) {
+  loanerAssignmentsHasDealerId = value
   if (typeof sessionStorage !== 'undefined') {
-    if (value === true) sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'true')
-    if (value === false) sessionStorage.setItem('cap_loanerAssignmentsOrgId', 'false')
+    if (value === true) sessionStorage.setItem('cap_loanerAssignmentsDealerId', 'true')
+    if (value === false) sessionStorage.setItem('cap_loanerAssignmentsDealerId', 'false')
   }
 }
 
@@ -115,7 +115,7 @@ function sumJobParts(parts = []) {
 }
 
 /**
- * Get the complete org context (org_id, user_id, user_email) for tenant scoping.
+ * Get the complete org context (legacy) for tenant scoping.
  * This helper provides all fields needed for proper RLS compliance in DB operations.
  * Uses id-based lookup with email fallback for maximum compatibility with legacy profiles.
  *
@@ -163,12 +163,13 @@ async function getUserOrgIdWithFallback(label = 'operation') {
     if (userId) {
       const { data: prof, error: profErr } = await supabase
         ?.from('user_profiles')
-        ?.select('org_id')
+        ?.select('dealer_id')
         ?.eq('id', userId)
         ?.maybeSingle()
 
-      if (prof?.org_id) {
-        return prof.org_id
+      const tenantId = prof?.dealer_id
+      if (tenantId) {
+        return tenantId
       }
       if (profErr && isRlsError(profErr)) {
         console.warn(
@@ -183,15 +184,16 @@ async function getUserOrgIdWithFallback(label = 'operation') {
     if (userId) {
       const { data: profByAuthUserId, error: authUserIdErr } = await supabase
         ?.from('user_profiles')
-        ?.select('org_id')
+        ?.select('dealer_id')
         ?.eq('auth_user_id', userId)
         ?.order('created_at', { ascending: false })
         ?.limit(1)
         ?.maybeSingle()
 
-      if (profByAuthUserId?.org_id) {
-        console.info(`[dealService:${label}] Found org_id via auth_user_id lookup`)
-        return profByAuthUserId.org_id
+      const tenantId = profByAuthUserId?.dealer_id
+      if (tenantId) {
+        console.info(`[dealService:${label}] Found tenant id via auth_user_id lookup`)
+        return tenantId
       }
       if (authUserIdErr && isRlsError(authUserIdErr)) {
         console.warn(
@@ -204,15 +206,16 @@ async function getUserOrgIdWithFallback(label = 'operation') {
     if (userEmail) {
       const { data: profByEmail, error: emailErr } = await supabase
         ?.from('user_profiles')
-        ?.select('org_id')
+        ?.select('dealer_id')
         ?.eq('email', userEmail)
         ?.order('created_at', { ascending: false }) // Order by created_at descending to select most recently created profile when multiple exist
         ?.limit(1)
         ?.maybeSingle()
 
-      if (profByEmail?.org_id) {
-        console.info(`[dealService:${label}] Found org_id via email fallback`)
-        return profByEmail.org_id
+      const tenantId = profByEmail?.dealer_id
+      if (tenantId) {
+        console.info(`[dealService:${label}] Found tenant id via email fallback`)
+        return tenantId
       }
       if (emailErr && isRlsError(emailErr)) {
         console.warn(
@@ -252,7 +255,7 @@ const JOB_COLS = [
   'finance_manager_id', // ✅ ADDED: Missing from previous list
   'assigned_to',
   // Optional multi-tenant scoping when present
-  'org_id',
+  'dealer_id',
 ]
 
 function pick(obj, keys) {
@@ -471,7 +474,7 @@ async function selectJoinedDealById(id) {
         : ''
 
     const selectWithTimes = `
-          id, org_id, job_number, title, description, job_status, priority, location,
+          id, dealer_id, job_number, title, description, job_status, priority, location,
           vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
           estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
           service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
@@ -510,7 +513,7 @@ async function selectJoinedDealById(id) {
 
       // Retry without per-line times
       const selectNoTimes = `
-            id, org_id, job_number, title, description, job_status, priority, location,
+        id, dealer_id, job_number, title, description, job_status, priority, location,
             vehicle_id, vendor_id, scheduled_start_time, scheduled_end_time,
             estimated_hours, estimated_cost, actual_cost, customer_needs_loaner,
             service_type, delivery_coordinator_id, assigned_to, created_at, updated_at, finance_manager_id,
@@ -581,8 +584,9 @@ function mapFormToDb(formState = {}) {
   const base = sanitizeDealPayload(formState || {})
 
   // Optional tenant scoping if provided by caller
-  const orgId = formState?.org_id ?? formState?.orgId
-  const payload = orgId ? { ...base, org_id: orgId } : base
+  const dealerId =
+    formState?.dealer_id ?? formState?.dealerId ?? formState?.org_id ?? formState?.orgId
+  const payload = dealerId ? { ...base, dealer_id: dealerId } : base
   // Ensure title stays meaningful and mirrors description edits for UX consistency
   // Priority: explicit title (if provided) > vehicle_description > description > job_number > default
   // Apply Title Case to vehicle_description when present
@@ -895,39 +899,39 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       }
     }
 
-    const resolvedOrgId = orgId ?? loanerData?.org_id ?? null
-    // Default to omitting org_id to avoid PGRST204 when the column does not exist.
+    const resolvedDealerId = orgId ?? loanerData?.dealer_id ?? loanerData?.org_id ?? null
+    // Default to omitting dealer_id to avoid PGRST204 when the column does not exist.
     // Only include when we have positive capability evidence.
-    let didUseOrgId = loanerAssignmentsHasOrgId === true && !!resolvedOrgId
+    let didUseDealerId = loanerAssignmentsHasDealerId === true && !!resolvedDealerId
 
     const assignmentData = {
       job_id: jobId,
       // Some RLS policies require tenant scoping on the row itself.
-      ...(didUseOrgId ? { org_id: resolvedOrgId } : {}),
+      ...(didUseDealerId ? { dealer_id: resolvedDealerId } : {}),
       loaner_number: loanerData?.loaner_number?.trim(),
       eta_return_date: loanerData?.eta_return_date || null,
       notes: loanerData?.notes?.trim() || null,
     }
 
-    const assignmentDataWithoutOrgId = { ...assignmentData }
-    delete assignmentDataWithoutOrgId.org_id
+    const assignmentDataWithoutDealerId = { ...assignmentData }
+    delete assignmentDataWithoutDealerId.dealer_id
 
-    const shouldRetryWithoutOrgId = (err) => {
+    const shouldRetryWithoutDealerId = (err) => {
       if (!err) return false
-      // Some environments may not have loaner_assignments.org_id yet.
+      // Some environments may not have loaner_assignments.dealer_id yet.
       // If so, retry without that column to preserve backward compatibility.
       const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
-      return isMissingColumnError(err) && /\borg_id\b/i.test(haystack)
+      return isMissingColumnError(err) && /\bdealer_id\b/i.test(haystack)
     }
 
-    const shouldRetryWithOrgId = (err) => {
+    const shouldRetryWithDealerId = (err) => {
       if (!err) return false
-      if (!resolvedOrgId) return false
-      if (loanerAssignmentsHasOrgId === false) return false
+      if (!resolvedDealerId) return false
+      if (loanerAssignmentsHasDealerId === false) return false
       const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
       return (
         isRlsError(err) ||
-        (/\borg_id\b/i.test(haystack) && /not[-\s]?null|violates|null value/i.test(haystack))
+        (/\bdealer_id\b/i.test(haystack) && /not[-\s]?null|violates|null value/i.test(haystack))
       )
     }
 
@@ -959,17 +963,17 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
 
     if (existing?.id) {
       // Update existing assignment
-      let { data: updated, error } = await updateById(assignmentDataWithoutOrgId)
+      let { data: updated, error } = await updateById(assignmentDataWithoutDealerId)
 
-      if (error && shouldRetryWithOrgId(error)) {
-        didUseOrgId = true
+      if (error && shouldRetryWithDealerId(error)) {
+        didUseDealerId = true
         ;({ data: updated, error } = await updateById(assignmentData))
       }
 
-      if (error && shouldRetryWithoutOrgId(error)) {
-        setLoanerAssignmentsOrgIdCapability(false)
-        didUseOrgId = false
-        ;({ data: updated, error } = await updateById(assignmentDataWithoutOrgId))
+      if (error && shouldRetryWithoutDealerId(error)) {
+        setLoanerAssignmentsDealerIdCapability(false)
+        didUseDealerId = false
+        ;({ data: updated, error } = await updateById(assignmentDataWithoutDealerId))
       }
 
       if (error) {
@@ -987,18 +991,18 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       // Keep behavior non-fatal, but attempt a job-scoped fallback update.
       if (!Array.isArray(updated) || updated.length === 0) {
         let { data: updatedByJobId, error: updByJobErr } = await updateByJobId(
-          assignmentDataWithoutOrgId
+          assignmentDataWithoutDealerId
         )
 
-        if (updByJobErr && shouldRetryWithOrgId(updByJobErr)) {
-          didUseOrgId = true
+        if (updByJobErr && shouldRetryWithDealerId(updByJobErr)) {
+          didUseDealerId = true
           ;({ data: updatedByJobId, error: updByJobErr } = await updateByJobId(assignmentData))
         }
-        if (updByJobErr && shouldRetryWithoutOrgId(updByJobErr)) {
-          setLoanerAssignmentsOrgIdCapability(false)
-          didUseOrgId = false
+        if (updByJobErr && shouldRetryWithoutDealerId(updByJobErr)) {
+          setLoanerAssignmentsDealerIdCapability(false)
+          didUseDealerId = false
           ;({ data: updatedByJobId, error: updByJobErr } = await updateByJobId(
-            assignmentDataWithoutOrgId
+            assignmentDataWithoutDealerId
           ))
         }
         if (updByJobErr) {
@@ -1018,21 +1022,21 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       }
     } else {
       // Create new assignment
-      let { data: inserted, error } = await insertRow(assignmentDataWithoutOrgId)
+      let { data: inserted, error } = await insertRow(assignmentDataWithoutDealerId)
 
-      if (error && shouldRetryWithOrgId(error)) {
-        didUseOrgId = true
+      if (error && shouldRetryWithDealerId(error)) {
+        didUseDealerId = true
         ;({ data: inserted, error } = await insertRow(assignmentData))
       }
 
-      if (error && shouldRetryWithoutOrgId(error)) {
-        setLoanerAssignmentsOrgIdCapability(false)
-        didUseOrgId = false
-        ;({ data: inserted, error } = await insertRow(assignmentDataWithoutOrgId))
+      if (error && shouldRetryWithoutDealerId(error)) {
+        setLoanerAssignmentsDealerIdCapability(false)
+        didUseDealerId = false
+        ;({ data: inserted, error } = await insertRow(assignmentDataWithoutDealerId))
       }
 
-      if (!error && didUseOrgId) {
-        setLoanerAssignmentsOrgIdCapability(true)
+      if (!error && didUseDealerId) {
+        setLoanerAssignmentsDealerIdCapability(true)
       }
 
       if (!error && (!Array.isArray(inserted) || inserted.length === 0)) {
@@ -1065,19 +1069,19 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
             '[dealService:upsertLoanerAssignment] Duplicate key error, attempting fallback UPDATE by job_id'
           )
           let { data: updatedByJobId, error: updateError } = await updateByJobId(
-            assignmentDataWithoutOrgId
+            assignmentDataWithoutDealerId
           )
 
-          if (updateError && shouldRetryWithOrgId(updateError)) {
-            didUseOrgId = true
+          if (updateError && shouldRetryWithDealerId(updateError)) {
+            didUseDealerId = true
             ;({ data: updatedByJobId, error: updateError } = await updateByJobId(assignmentData))
           }
 
-          if (updateError && shouldRetryWithoutOrgId(updateError)) {
-            setLoanerAssignmentsOrgIdCapability(false)
-            didUseOrgId = false
+          if (updateError && shouldRetryWithoutDealerId(updateError)) {
+            setLoanerAssignmentsDealerIdCapability(false)
+            didUseDealerId = false
             ;({ data: updatedByJobId, error: updateError } = await updateByJobId(
-              assignmentDataWithoutOrgId
+              assignmentDataWithoutDealerId
             ))
           }
 
@@ -1167,7 +1171,7 @@ function computeEarliestTimeWindow(normalizedLineItems) {
 async function attachOrCreateVehicleByStockNumber(
   stockNumber,
   customerPhone,
-  orgId = null,
+  dealerId = null,
   vin = null
 ) {
   if (!stockNumber?.trim()) {
@@ -1181,12 +1185,23 @@ async function attachOrCreateVehicleByStockNumber(
     // Try to find existing vehicle by stock_number
     let query = supabase?.from('vehicles')?.select('id')?.eq('stock_number', normalizedStock)
 
-    // Optionally scope by org_id if provided
-    if (orgId) {
-      query = query?.eq('org_id', orgId)
+    // Optionally scope by dealer_id if provided
+    if (dealerId) {
+      query = query?.eq('dealer_id', dealerId)
     }
 
-    const { data: existing, error: lookupErr } = await query?.maybeSingle()
+    let { data: existing, error: lookupErr } = await query?.maybeSingle()
+
+    // Backward compatibility: if dealer_id column doesn't exist on vehicles, retry unscoped.
+    if (lookupErr && isMissingColumnError(lookupErr)) {
+      const haystack = [lookupErr?.message, lookupErr?.details, lookupErr?.hint]
+        .filter(Boolean)
+        .join(' ')
+      if (/\bdealer_id\b/i.test(haystack)) {
+        const retry = supabase?.from('vehicles')?.select('id')?.eq('stock_number', normalizedStock)
+        ;({ data: existing, error: lookupErr } = await retry?.maybeSingle())
+      }
+    }
 
     // PGRST116 = "no rows returned" - expected when vehicle doesn't exist
     const PGRST_NO_ROWS = 'PGRST116'
@@ -1210,15 +1225,31 @@ async function attachOrCreateVehicleByStockNumber(
       vehicleData.vin = normalizedVin
     }
 
-    if (orgId) {
-      vehicleData.org_id = orgId
+    if (dealerId) {
+      vehicleData.dealer_id = dealerId
     }
 
-    const { data: newVehicle, error: createErr } = await supabase
+    let { data: newVehicle, error: createErr } = await supabase
       ?.from('vehicles')
       ?.insert([vehicleData])
       ?.select('id')
       ?.single()
+
+    // Backward compatibility: if dealer_id column doesn't exist, retry without it.
+    if (createErr && isMissingColumnError(createErr) && vehicleData?.dealer_id) {
+      const haystack = [createErr?.message, createErr?.details, createErr?.hint]
+        .filter(Boolean)
+        .join(' ')
+      if (/\bdealer_id\b/i.test(haystack)) {
+        const retryVehicleData = { ...vehicleData }
+        delete retryVehicleData.dealer_id
+        ;({ data: newVehicle, error: createErr } = await supabase
+          ?.from('vehicles')
+          ?.insert([retryVehicleData])
+          ?.select('id')
+          ?.single())
+      }
+    }
 
     if (createErr) {
       // Log but don't fail - vehicle creation is best-effort
@@ -1325,7 +1356,7 @@ export async function getAllDeals() {
       const jobPartsFieldsNoVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields})`
 
       const baseSelect = `
-          id, org_id, created_at, job_status, service_type, color_code, title, job_number,
+          id, dealer_id, created_at, job_status, service_type, color_code, title, job_number,
           customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
           scheduled_start_time, scheduled_end_time,
           vehicle:vehicles(year, make, model, stock_number),
@@ -1827,21 +1858,21 @@ export async function createDeal(formState) {
     vin,
   } = mapFormToDb(formState || {})
 
-  // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile
-  if (!payload?.org_id) {
-    const inferredOrgId = await getUserOrgIdWithFallback('create')
-    if (inferredOrgId) {
-      payload.org_id = inferredOrgId
+  // Fallback tenant scoping: if dealer_id is missing, try to infer from current user's profile
+  if (!payload?.dealer_id) {
+    const inferredDealerId = await getUserOrgIdWithFallback('create')
+    if (inferredDealerId) {
+      payload.dealer_id = inferredDealerId
     }
   }
 
-  // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
+  // ✅ VALIDATION: Warn if dealer_id is missing (may cause RLS violations in production)
   // In test environments, this is logged but doesn't block operation
-  if (!payload?.org_id) {
+  if (!payload?.dealer_id) {
     if (import.meta?.env?.MODE !== 'test') {
       console.warn(
-        '[dealService:create] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
-          'Ensure UI passes org_id or user is properly authenticated.'
+        '[dealService:create] ⚠️ CRITICAL: dealer_id is missing! This may cause RLS violations. ' +
+          'Ensure UI passes dealer_id or user is properly authenticated.'
       )
     }
     // Note: We don't throw here to preserve backward compatibility with tests
@@ -1865,7 +1896,7 @@ export async function createDeal(formState) {
     const vehicleId = await attachOrCreateVehicleByStockNumber(
       stockNumber,
       customerPhone,
-      payload?.org_id,
+      payload?.dealer_id,
       vin
     )
     if (vehicleId) {
@@ -1948,21 +1979,21 @@ export async function createDeal(formState) {
 
     // A3: Handle loaner assignment for new deals
     if (payload?.customer_needs_loaner && loanerForm) {
-      await upsertLoanerAssignment(job?.id, loanerForm, payload?.org_id || job?.org_id || null)
+      await upsertLoanerAssignment(job?.id, loanerForm, payload?.dealer_id || null)
     }
 
     // 3) Ensure a transaction row exists immediately to satisfy NOT NULLs in some environments
     try {
-      // ✅ Ensure org_id is set, fallback to job's org_id if not in payload
-      let transactionOrgId = payload?.org_id || job?.org_id || null
-      if (transactionOrgId) {
-        console.info('[dealService:create] Using org_id for transaction:', transactionOrgId)
+      // ✅ Ensure dealer_id is set for transaction tenant scoping
+      const transactionDealerId = payload?.dealer_id || null
+      if (transactionDealerId) {
+        console.info('[dealService:create] Using dealer_id for transaction:', transactionDealerId)
       }
 
       const baseTransaction = {
         job_id: job?.id,
         vehicle_id: payload?.vehicle_id || null,
-        org_id: transactionOrgId, // ✅ FIX: Include org_id for RLS compliance
+        dealer_id: transactionDealerId,
         total_amount:
           (normalizedLineItems || []).reduce((sum, item) => {
             const qty = Number(item?.quantity_used || item?.quantity || 1)
@@ -1999,7 +2030,17 @@ export async function createDeal(formState) {
         }
       } else if (!existingTxn?.id) {
         // Only INSERT if SELECT succeeded and found no transaction
-        const { error: insErr } = await supabase?.from('transactions')?.insert([baseTransaction])
+        let { error: insErr } = await supabase?.from('transactions')?.insert([baseTransaction])
+        if (insErr && isMissingColumnError(insErr)) {
+          const haystack = [insErr?.message, insErr?.details, insErr?.hint]
+            .filter(Boolean)
+            .join(' ')
+          if (/\bdealer_id\b/i.test(haystack)) {
+            const retryTransaction = { ...baseTransaction }
+            delete retryTransaction.dealer_id
+            ;({ error: insErr } = await supabase?.from('transactions')?.insert([retryTransaction]))
+          }
+        }
         if (insErr) {
           console.warn(
             '[dealService:create] Transaction INSERT failed (non-fatal):',
@@ -2114,21 +2155,21 @@ export async function updateDeal(id, formState) {
     })
   }
 
-  // Fallback tenant scoping: if org_id is missing, try to infer from current user's profile (align with createDeal)
-  if (!payload?.org_id) {
-    const inferredOrgId = await getUserOrgIdWithFallback('update')
-    if (inferredOrgId) {
-      payload.org_id = inferredOrgId
+  // Fallback tenant scoping: if dealer_id is missing, try to infer from current user's profile (align with createDeal)
+  if (!payload?.dealer_id) {
+    const inferredDealerId = await getUserOrgIdWithFallback('update')
+    if (inferredDealerId) {
+      payload.dealer_id = inferredDealerId
     }
   }
 
-  // ✅ VALIDATION: Warn if org_id is missing (may cause RLS violations in production)
+  // ✅ VALIDATION: Warn if dealer_id is missing (may cause RLS violations in production)
   // In test environments, this is logged but doesn't block operation
-  if (!payload?.org_id) {
+  if (!payload?.dealer_id) {
     if (import.meta?.env?.MODE !== 'test') {
       console.warn(
-        '[dealService:update] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
-          'Ensure UI passes org_id or user is properly authenticated.'
+        '[dealService:update] ⚠️ CRITICAL: dealer_id is missing! This may cause RLS violations. ' +
+          'Ensure UI passes dealer_id or user is properly authenticated.'
       )
     }
     // Note: We don't throw here to preserve backward compatibility with tests
@@ -2146,7 +2187,7 @@ export async function updateDeal(id, formState) {
       id,
       payloadDescription: payload?.description,
       payloadTitle: payload?.title,
-      hasOrgId: !!payload?.org_id,
+      hasDealerId: !!payload?.dealer_id,
     })
   }
 
@@ -2163,7 +2204,7 @@ export async function updateDeal(id, formState) {
     const vehicleId = await attachOrCreateVehicleByStockNumber(
       stockNumber,
       customerPhone,
-      payload?.org_id,
+      payload?.dealer_id,
       vin
     )
     if (vehicleId) {
@@ -2189,7 +2230,7 @@ export async function updateDeal(id, formState) {
   try {
     let q = supabase?.from('jobs')?.update(payload)?.eq('id', id)
     // Tenant scope if provided
-    if (payload?.org_id) q = q?.eq?.('org_id', payload.org_id)
+    if (payload?.dealer_id) q = q?.eq?.('dealer_id', payload.dealer_id)
     // Optimistic concurrency using updated_at if provided by caller
     if (formState?.updated_at) q = q?.eq?.('updated_at', formState.updated_at)
 
@@ -2218,36 +2259,39 @@ export async function updateDeal(id, formState) {
   // Prefer server-truth; do not write localStorage fallbacks for description
 
   // 2) ✅ ENHANCED: Upsert transaction with customer data
-  // ✅ SAFETY: If org_id is missing from payload, fetch it from the job record
-  // NOTE: This fallback should rarely execute - org_id should come from form state (mapDbDealToForm).
-  // If this executes frequently, investigate why form state lacks org_id.
-  let transactionOrgId = payload?.org_id || null
-  if (!transactionOrgId) {
-    console.warn('[dealService:update] org_id missing from payload, fetching from job record')
+  // ✅ SAFETY: If dealer_id is missing from payload, fetch it from the job record
+  // NOTE: This fallback should rarely execute - dealer_id should come from form state (mapDbDealToForm).
+  // If this executes frequently, investigate why form state lacks dealer_id.
+  let transactionDealerId = payload?.dealer_id || null
+  if (!transactionDealerId) {
+    console.warn('[dealService:update] dealer_id missing from payload, fetching from job record')
     try {
       const { data: jobData, error: jobFetchErr } = await supabase
         ?.from('jobs')
-        ?.select('org_id')
+        ?.select('dealer_id')
         ?.eq('id', id)
         ?.single()
-      if (!jobFetchErr && jobData?.org_id) {
-        transactionOrgId = jobData.org_id
+      if (!jobFetchErr && jobData?.dealer_id) {
+        transactionDealerId = jobData.dealer_id
         console.info(
-          '[dealService:update] Retrieved org_id from job:',
-          transactionOrgId ? transactionOrgId.slice(0, 8) + '...' : 'N/A'
+          '[dealService:update] Retrieved dealer_id from job:',
+          transactionDealerId ? transactionDealerId.slice(0, 8) + '...' : 'N/A'
         )
       } else {
-        console.error('[dealService:update] Failed to fetch org_id from job:', jobFetchErr?.message)
+        console.error(
+          '[dealService:update] Failed to fetch dealer_id from job:',
+          jobFetchErr?.message
+        )
       }
     } catch (e) {
-      console.error('[dealService:update] Error fetching org_id from job:', e?.message)
+      console.error('[dealService:update] Error fetching dealer_id from job:', e?.message)
     }
   }
 
   const baseTransactionData = {
     job_id: id,
     vehicle_id: payload?.vehicle_id || null,
-    org_id: transactionOrgId, // ✅ FIX: Include org_id for RLS compliance (from payload or job)
+    dealer_id: transactionDealerId,
     total_amount: totalDealValue,
     customer_name: customerName || 'Unknown Customer',
     customer_phone: customerPhone || null,
@@ -2268,7 +2312,7 @@ export async function updateDeal(id, formState) {
     // ✅ FIX: Check for errors and handle RLS-blocked SELECTs
     const { data: existingTxn, error: selectErr } = await supabase
       ?.from('transactions')
-      ?.select('id, transaction_number, org_id')
+      ?.select('id, transaction_number, dealer_id')
       ?.eq('job_id', id)
       ?.limit(1)
       ?.maybeSingle?.() // keep compatibility if maybeSingle exists
@@ -2285,60 +2329,59 @@ export async function updateDeal(id, formState) {
         // Track RLS recovery attempt in telemetry
         incrementTelemetry(TelemetryKey.RLS_TRANSACTION_RECOVERY)
 
-        // Get the job's org_id to use for the transaction
-        let jobOrgId = baseTransactionData.org_id
-        if (!jobOrgId) {
+        // Get the job's dealer_id to use for the transaction
+        let jobDealerId = baseTransactionData.dealer_id
+        if (!jobDealerId) {
           const { data: jobData, error: jobErr } = await supabase
             ?.from('jobs')
-            ?.select('org_id')
+            ?.select('dealer_id')
             ?.eq('id', id)
             ?.single()
 
           if (jobErr) {
-            console.error('[dealService:update] Failed to fetch job org_id:', jobErr?.message)
+            console.error('[dealService:update] Failed to fetch job dealer_id:', jobErr?.message)
             throw jobErr
           }
-          jobOrgId = jobData?.org_id
+          jobDealerId = jobData?.dealer_id
         }
 
-        // If job has no org_id (legacy data), try to get user's org_id and set it on both job and transaction
-        // This is a graceful recovery for legacy deals created before org scoping was implemented
-        if (!jobOrgId) {
+        // If job has no dealer_id (legacy data), try to get user's dealer_id and set it on both job and transaction
+        // This is a graceful recovery for legacy deals created before tenant scoping was implemented
+        if (!jobDealerId) {
           console.warn(
-            '[dealService:update] Job has no org_id - attempting to set from user profile'
+            '[dealService:update] Job has no dealer_id - attempting to set from user profile'
           )
 
-          // Use the shared helper function to get org_id with email fallback
-          const profileOrgId = await getUserOrgIdWithFallback('update:rls-recovery')
+          // Use the shared helper function to get dealer_id with email fallback
+          const profileDealerId = await getUserOrgIdWithFallback('update:rls-recovery')
 
-          if (profileOrgId) {
-            jobOrgId = profileOrgId
-            // Set org_id on the job to fix the legacy data
+          if (profileDealerId) {
+            jobDealerId = profileDealerId
+            // Set dealer_id on the job to fix the legacy data
             const jobUpdateResult = await supabase
               .from('jobs')
-              .update({ org_id: jobOrgId })
+              .update({ dealer_id: jobDealerId })
               .eq('id', id)
 
             if (jobUpdateResult.error) {
               console.warn(
-                '[dealService:update] Failed to set job org_id:',
+                '[dealService:update] Failed to set job dealer_id:',
                 jobUpdateResult.error.message
               )
             } else {
-              console.info('[dealService:update] Successfully set job org_id from user profile')
+              console.info('[dealService:update] Successfully set job dealer_id from user profile')
             }
           }
         }
 
-        if (!jobOrgId) {
+        if (!jobDealerId) {
           throw new Error(
-            'Cannot recover from RLS error: job has no org_id and unable to get user org_id'
+            'Cannot recover from RLS error: job has no dealer_id and unable to get user dealer_id'
           )
         }
 
-        // Set the transaction's org_id to match the job's org_id (or user's org_id)
-        // The RLS UPDATE policy allows: org_id matches user's org OR job.org_id matches user's org
-        baseTransactionData.org_id = jobOrgId
+        // Set the transaction's dealer_id to match the job's dealer_id (or user's dealer_id)
+        baseTransactionData.dealer_id = jobDealerId
 
         // Attempt UPDATE by job_id (RLS policy allows this via job relationship)
         // This will update the existing transaction's org_id and other fields
@@ -2371,11 +2414,11 @@ export async function updateDeal(id, formState) {
 
         // If UPDATE affected rows, we're done (transaction was updated)
         if (updateResult?.length > 0) {
-          // Log truncated org_id for debugging while maintaining security
-          const orgIdPrefix = jobOrgId ? jobOrgId.slice(0, 8) + '...' : 'N/A'
+          // Log truncated dealer_id for debugging while maintaining security
+          const dealerIdPrefix = jobDealerId ? jobDealerId.slice(0, 8) + '...' : 'N/A'
           console.info(
-            '[dealService:update] Successfully updated transaction via RLS recovery, org:',
-            orgIdPrefix
+            '[dealService:update] Successfully updated transaction via RLS recovery, dealer:',
+            dealerIdPrefix
           )
           rlsRecoveryAttempted = true
         }
@@ -2390,9 +2433,9 @@ export async function updateDeal(id, formState) {
     // Normal path when SELECT succeeded or RLS recovery didn't update any rows
     if (!rlsRecoveryAttempted) {
       if (existingTxn?.id) {
-        // Preserve existing org_id if not provided in payload (don't overwrite with null)
-        if (!baseTransactionData.org_id && existingTxn.org_id) {
-          baseTransactionData.org_id = existingTxn.org_id
+        // Preserve existing dealer_id if not provided in payload (don't overwrite with null)
+        if (!baseTransactionData.dealer_id && existingTxn.dealer_id) {
+          baseTransactionData.dealer_id = existingTxn.dealer_id
         }
 
         // IMPORTANT: Under PostgREST + RLS, an UPDATE can return 200 with 0 affected rows
@@ -2438,26 +2481,26 @@ export async function updateDeal(id, formState) {
       }
     }
   } catch (e) {
-    // Enhance error message with context about org_id for debugging
+    // Enhance error message with context about dealer_id for debugging
     if (isRlsError(e)) {
       // Log detailed info for debugging (won't be shown to user)
       console.error('[dealService:update] RLS violation on transactions table:', {
         error: e?.message,
         job_id: id,
-        has_org_id: !!transactionOrgId,
-        org_id_source: transactionOrgId ? 'resolved' : 'missing',
+        has_dealer_id: !!transactionDealerId,
+        dealer_id_source: transactionDealerId ? 'resolved' : 'missing',
       })
 
       // Provide actionable guidance based on the scenario
       let guidance = ''
-      if (!transactionOrgId) {
-        // User profile is missing org_id - admin action required
+      if (!transactionDealerId) {
+        // User profile is missing dealer_id - admin action required
         guidance =
           'Unable to determine your organization. This typically means:\n' +
           '• Your user profile may not be linked to an organization.\n' +
           '• Please contact your administrator to verify your account setup.'
       } else {
-        // org_id exists but RLS still failed - likely a database sync issue
+        // dealer_id exists but RLS still failed - likely a database sync issue
         guidance =
           'The database rejected this update. Please try:\n' +
           '• Refreshing the page and trying again.\n' +
@@ -2590,12 +2633,12 @@ export async function deleteDeal(id) {
 
       const { data: profile, error: profileErr } = await supabase
         .from('user_profiles')
-        .select('org_id')
+        .select('dealer_id')
         .eq('id', userId)
         .maybeSingle()
 
       if (profileErr) return null
-      return profile?.org_id ?? null
+      return profile?.dealer_id ?? null
     } catch {
       return null
     }
@@ -2645,7 +2688,7 @@ export async function deleteDeal(id) {
   // First, verify the deal exists and user has access to it
   const { data: existingDeal, error: readErr } = await supabase
     .from('jobs')
-    .select('id, org_id')
+    .select('id, dealer_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -2685,7 +2728,7 @@ export async function deleteDeal(id) {
     // Verify whether the job still exists so we don't mis-report successful deletes.
     const { data: remainingJob, error: remainingErr } = await supabase
       .from('jobs')
-      .select('id, org_id')
+      .select('id, dealer_id')
       .eq('id', id)
       .maybeSingle()
 
@@ -2696,14 +2739,14 @@ export async function deleteDeal(id) {
 
     if (remainingJob) {
       const userOrgId = currentUserOrgId ?? (await getCurrentUserOrgId())
-      if (remainingJob?.org_id == null) {
+      if (remainingJob?.dealer_id == null) {
         throw new Error(
-          'Delete was blocked because this deal is missing org_id. Ask an admin to assign it to your organization (or delete as a manager).'
+          'Delete was blocked because this deal is missing dealer_id. Ask an admin to assign it to your organization (or delete as a manager).'
         )
       }
-      if (userOrgId && remainingJob.org_id && remainingJob.org_id !== userOrgId) {
+      if (userOrgId && remainingJob.dealer_id && remainingJob.dealer_id !== userOrgId) {
         throw new Error(
-          `Delete was blocked because this deal belongs to a different organization (${remainingJob.org_id}). Your org is ${userOrgId}.`
+          `Delete was blocked because this deal belongs to a different organization (${remainingJob.dealer_id}). Your org is ${userOrgId}.`
         )
       }
       throwDeletePermission()
@@ -2801,7 +2844,8 @@ function mapDbDealToForm(dbDeal) {
   return {
     id: normalized?.id,
     updated_at: normalized?.updated_at,
-    org_id: normalized?.org_id, // ✅ FIX: Include org_id for RLS compliance in edit flow
+    dealer_id: normalized?.dealer_id,
+    org_id: normalized?.org_id, // Legacy/back-compat only (older DB rows / older callers)
     // Deal date (local YYYY-MM-DD format)
     deal_date:
       normalized?.deal_date ||
@@ -3003,12 +3047,22 @@ export async function saveLoanerAssignment(jobId, loanerData) {
   try {
     const ctx = await getOrgContext('saveLoanerAssignment')
 
-    const shouldRetryWithoutOrgId = (err) => {
-      // Use the canonical classifier (handles PostgREST PGRST204 + schema-cache variants)
+    const shouldRetryWithoutDealerId = (err) => {
       if (!err) return false
       if (!isMissingColumnError(err)) return false
       const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
-      return /\borg_id\b/i.test(haystack)
+      return /\bdealer_id\b/i.test(haystack)
+    }
+
+    const shouldRetryWithDealerId = (err, resolvedDealerId) => {
+      if (!err) return false
+      if (!resolvedDealerId) return false
+      if (loanerAssignmentsHasDealerId === false) return false
+      const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
+      return (
+        isRlsError(err) ||
+        (/\bdealer_id\b/i.test(haystack) && /not[-\s]?null|violates|null value/i.test(haystack))
+      )
     }
 
     // Find existing active assignment for this job
@@ -3037,74 +3091,67 @@ export async function saveLoanerAssignment(jobId, loanerData) {
       if (Array.isArray(rows) && rows.length > 0) existingId = rows[0]?.id ?? null
     }
 
-    const resolvedOrgId = ctx?.org_id ?? loanerData?.org_id ?? null
-    // Default to omitting org_id to avoid PGRST204 when the column does not exist.
-    // Only include when we have positive capability evidence.
-    let didUseOrgId = loanerAssignmentsHasOrgId === true && !!resolvedOrgId
+    const resolvedDealerId = ctx?.org_id ?? loanerData?.dealer_id ?? loanerData?.org_id ?? null
+    let didUseDealerId = loanerAssignmentsHasDealerId === true && !!resolvedDealerId
 
-    const payload = {
+    const payloadWithOptionalDealerId = {
       job_id: jobId,
-      ...(didUseOrgId ? { org_id: resolvedOrgId } : {}),
+      ...(didUseDealerId ? { dealer_id: resolvedDealerId } : {}),
       loaner_number: loanerNumber,
       eta_return_date: etaReturnDate,
       notes,
     }
 
-    const payloadWithoutOrg = {
+    const payloadWithoutDealerId = {
       job_id: jobId,
       loaner_number: loanerNumber,
       eta_return_date: etaReturnDate,
       notes,
     }
 
-    const shouldRetryWithOrgId = (err) => {
-      if (!err) return false
-      if (!resolvedOrgId) return false
-      if (loanerAssignmentsHasOrgId === false) return false
-      const haystack = [err?.message, err?.details, err?.hint].filter(Boolean).join(' ')
-      return (
-        isRlsError(err) ||
-        (/\borg_id\b/i.test(haystack) && /not[-\s]?null|violates|null value/i.test(haystack))
-      )
+    const normalizeError = (err) => {
+      if (!err) return null
+      if (err?.code === '23505') {
+        return new Error(`Loaner ${loanerNumber} is already assigned to another active job`)
+      }
+      if (isRlsError(err)) {
+        return new Error('Permission denied while saving the loaner assignment.')
+      }
+      return new Error(err?.message || String(err))
     }
 
     if (existingId) {
+      // Try UPDATE without dealer_id first to avoid missing-column errors.
       let res = await supabase
         ?.from('loaner_assignments')
-        ?.update(payloadWithoutOrg)
+        ?.update(payloadWithoutDealerId)
         ?.eq('id', existingId)
         ?.select('id')
 
-      if (res?.error && shouldRetryWithOrgId(res.error)) {
-        didUseOrgId = true
+      if (res?.error && shouldRetryWithDealerId(res.error, resolvedDealerId)) {
+        didUseDealerId = true
         res = await supabase
           ?.from('loaner_assignments')
-          ?.update(payload)
+          ?.update(payloadWithOptionalDealerId)
           ?.eq('id', existingId)
           ?.select('id')
       }
 
-      if (res?.error && shouldRetryWithoutOrgId(res.error)) {
-        setLoanerAssignmentsOrgIdCapability(false)
-        didUseOrgId = false
+      if (res?.error && shouldRetryWithoutDealerId(res.error)) {
+        setLoanerAssignmentsDealerIdCapability(false)
+        didUseDealerId = false
         res = await supabase
           ?.from('loaner_assignments')
-          ?.update(payloadWithoutOrg)
+          ?.update(payloadWithoutDealerId)
           ?.eq('id', existingId)
           ?.select('id')
       }
 
-      if (!res?.error && didUseOrgId) {
-        setLoanerAssignmentsOrgIdCapability(true)
+      if (!res?.error && didUseDealerId) {
+        setLoanerAssignmentsDealerIdCapability(true)
       }
 
-      if (res?.error) {
-        if (isRlsError(res.error)) {
-          throw new Error('Permission denied while saving the loaner assignment.')
-        }
-        throw new Error(res.error.message)
-      }
-
+      if (res?.error) throw normalizeError(res.error)
       if (!Array.isArray(res?.data) || res.data.length === 0) {
         throw new Error(
           'Loaner assignment save did not persist (0 rows updated). This usually means access was denied.'
@@ -3115,32 +3162,33 @@ export async function saveLoanerAssignment(jobId, loanerData) {
     }
 
     // Insert new assignment
-    let res = await supabase?.from('loaner_assignments')?.insert([payloadWithoutOrg])?.select('id')
+    let res = await supabase
+      ?.from('loaner_assignments')
+      ?.insert([payloadWithoutDealerId])
+      ?.select('id')
 
-    if (res?.error && shouldRetryWithOrgId(res.error)) {
-      didUseOrgId = true
-      res = await supabase?.from('loaner_assignments')?.insert([payload])?.select('id')
-    }
-    if (res?.error && shouldRetryWithoutOrgId(res.error)) {
-      setLoanerAssignmentsOrgIdCapability(false)
-      didUseOrgId = false
-      res = await supabase?.from('loaner_assignments')?.insert([payloadWithoutOrg])?.select('id')
-    }
-
-    if (!res?.error && didUseOrgId) {
-      setLoanerAssignmentsOrgIdCapability(true)
+    if (res?.error && shouldRetryWithDealerId(res.error, resolvedDealerId)) {
+      didUseDealerId = true
+      res = await supabase
+        ?.from('loaner_assignments')
+        ?.insert([payloadWithOptionalDealerId])
+        ?.select('id')
     }
 
-    if (res?.error) {
-      if (res.error?.code === '23505') {
-        throw new Error(`Loaner ${loanerNumber} is already assigned to another active job`)
-      }
-      if (isRlsError(res.error)) {
-        throw new Error('Permission denied while saving the loaner assignment.')
-      }
-      throw new Error(res.error.message)
+    if (res?.error && shouldRetryWithoutDealerId(res.error)) {
+      setLoanerAssignmentsDealerIdCapability(false)
+      didUseDealerId = false
+      res = await supabase
+        ?.from('loaner_assignments')
+        ?.insert([payloadWithoutDealerId])
+        ?.select('id')
     }
 
+    if (!res?.error && didUseDealerId) {
+      setLoanerAssignmentsDealerIdCapability(true)
+    }
+
+    if (res?.error) throw normalizeError(res.error)
     if (!Array.isArray(res?.data) || res.data.length === 0) {
       throw new Error(
         'Loaner assignment save did not persist (0 rows inserted). This usually means access was denied.'

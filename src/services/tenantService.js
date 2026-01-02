@@ -11,7 +11,7 @@ export async function listVendorsByOrg(orgId, { activeOnly = true } = {}) {
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
     const data = await safeSelect(q)
     return toOptions(data, { labelKey: 'name', valueKey: 'id' })
   } catch (err) {
@@ -28,7 +28,7 @@ export async function listProductsByOrg(orgId, { activeOnly = true } = {}) {
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
     const data = await safeSelect(q)
     // Preserve unit_price on options for auto-fill in forms
     return (Array.isArray(data) ? data : []).map((p) => ({
@@ -52,9 +52,9 @@ export async function listStaffByOrg(
       .from('user_profiles')
       .select('id, full_name, email, department, role, is_active')
       .order('full_name', { ascending: true })
-    // Include both org-scoped and global (NULL org_id) staff so dropdowns aren't empty
+    // Include both dealer-scoped and global (NULL dealer_id) staff so dropdowns aren't empty
     // when shared/global staff are used across multiple orgs.
-    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
     if (activeOnly) q = q.eq('is_active', true)
     if (departments.length) q = q.in('department', departments)
     if (roles.length) q = q.in('role', roles)
@@ -77,7 +77,7 @@ export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
       .select('id, name, message_template, is_active')
       .order('created_at', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
     const data = await safeSelect(q)
     return toOptions(data, { labelKey: 'name', valueKey: 'id' })
   } catch (err) {

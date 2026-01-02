@@ -22,7 +22,7 @@ export async function listStaffByOrg(orgId, { activeOnly = true } = {}) {
     .select(['id', nameCol, 'email', 'role', 'department', 'is_active'].filter(Boolean).join(', '))
     .order(nameCol, { ascending: true })
   if (activeOnly) q = q.eq('is_active', true)
-  if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+  if (orgId) q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
   const rows = await safeSelect(q, 'staff:listByOrg')
   return (rows || []).map((r) => ({
     ...r,

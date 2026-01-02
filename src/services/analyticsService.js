@@ -45,7 +45,7 @@ class AnalyticsService {
         ?.not('products', 'is', null)
         ?.not('jobs', 'is', null)
         ?.not('jobs.vehicles', 'is', null)
-      if (orgId) q = q?.eq('jobs.org_id', orgId)
+      if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q.throwOnError()
 
       const currentYear = new Date()?.getFullYear()
@@ -96,7 +96,7 @@ class AnalyticsService {
         ?.not('products', 'is', null)
         ?.not('jobs', 'is', null)
         ?.not('jobs.vehicles', 'is', null)
-      if (orgId) q = q?.eq('jobs.org_id', orgId)
+      if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q.throwOnError()
 
       // Group by vehicle make/model combination
@@ -177,7 +177,7 @@ class AnalyticsService {
         `
         )
         ?.not('job_parts', 'is', null)
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q.throwOnError()
 
       const dealAnalysis = []
@@ -265,7 +265,7 @@ class AnalyticsService {
         `
         )
         ?.eq('is_active', true)
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q.throwOnError()
 
       const vendorAnalysis =
@@ -349,7 +349,7 @@ class AnalyticsService {
         `
         )
         ?.eq('is_active', true)
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q.throwOnError()
 
       // Group by category
@@ -442,7 +442,7 @@ class AnalyticsService {
         ?.not('products', 'is', null)
         ?.not('jobs', 'is', null)
         ?.order('created_at', { ascending: true })
-      if (orgId) q = q?.eq('jobs.org_id', orgId)
+      if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q.throwOnError()
 
       // Group by month

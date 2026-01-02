@@ -4,7 +4,7 @@ import { mapFormToDb, toJobPartRows } from '@/services/dealService'
 
 /**
  * Unit tests for dealService persistence behaviors specified in problem statement:
- * 1. org_id inference
+ * 1. dealer_id inference
  * 2. loaner assignment persistence (create + edit)
  * 3. scheduling fallback when per-line scheduled_* absent
  * 4. error wrapper mapping (relationship vs permission vs generic)
@@ -12,11 +12,11 @@ import { mapFormToDb, toJobPartRows } from '@/services/dealService'
  */
 
 describe('dealService - Persistence Test Coverage', () => {
-  describe('org_id inference', () => {
-    it('should preserve org_id from form state when provided', () => {
+  describe('dealer_id inference', () => {
+    it('should preserve dealer_id from form state when provided', () => {
       const formState = {
         job_number: 'JOB-001',
-        org_id: 'org-priority-automotive',
+        dealer_id: 'dealer-priority-automotive',
         customer_name: 'Test Customer',
         lineItems: [
           {
@@ -31,15 +31,15 @@ describe('dealService - Persistence Test Coverage', () => {
 
       const result = mapFormToDb(formState)
 
-      expect(result.jobPayload.org_id).toBe('org-priority-automotive')
+      expect(result.jobPayload.dealer_id).toBe('dealer-priority-automotive')
       expect(result.customerName).toBe('Test Customer')
     })
 
-    it('should handle missing org_id gracefully (let backend infer)', () => {
+    it('should handle missing dealer_id gracefully (let backend infer)', () => {
       const formState = {
         job_number: 'JOB-002',
         customer_name: 'Test Customer',
-        // No org_id provided - backend should infer from user context
+        // No dealer_id provided - backend should infer from user context
         lineItems: [
           {
             product_id: 'prod-1',
@@ -53,14 +53,14 @@ describe('dealService - Persistence Test Coverage', () => {
 
       const result = mapFormToDb(formState)
 
-      // org_id should be undefined, allowing backend to infer
-      expect(result.jobPayload.org_id).toBeUndefined()
+      // dealer_id should be undefined, allowing backend to infer
+      expect(result.jobPayload.dealer_id).toBeUndefined()
     })
 
-    it('should pass org_id to transaction when creating new transaction', () => {
+    it('should pass dealer_id to transaction when creating new transaction', () => {
       const formState = {
         job_number: 'JOB-003',
-        org_id: 'org-test',
+        dealer_id: 'dealer-test',
         customer_name: 'Test Customer',
         customerMobile: '+15551234567',
         lineItems: [
@@ -76,7 +76,7 @@ describe('dealService - Persistence Test Coverage', () => {
 
       const result = mapFormToDb(formState)
 
-      expect(result.jobPayload.org_id).toBe('org-test')
+      expect(result.jobPayload.dealer_id).toBe('dealer-test')
       expect(result.customerName).toBe('Test Customer')
       expect(result.customerPhone).toBeTruthy()
     })

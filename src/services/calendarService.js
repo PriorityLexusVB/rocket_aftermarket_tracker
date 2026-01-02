@@ -17,24 +17,8 @@ export const calendarService = {
         status_filter: filters?.status || null,
       }
 
-      // Best-effort tenant scoping: try org_id first; if the RPC signature doesn't support it, retry without.
-      const orgId = filters?.orgId || null
-      let res
-      if (orgId) {
-        res = await supabase?.rpc('get_jobs_by_date_range', { ...baseArgs, org_id: orgId })
-
-        const scopedMsg = String(res?.error?.message || '').toLowerCase()
-        if (
-          res?.error &&
-          (scopedMsg.includes('function') ||
-            scopedMsg.includes('parameter') ||
-            scopedMsg.includes('argument'))
-        ) {
-          res = await supabase?.rpc('get_jobs_by_date_range', baseArgs)
-        }
-      } else {
-        res = await supabase?.rpc('get_jobs_by_date_range', baseArgs)
-      }
+      // Tenant scoping is enforced via RLS. Avoid passing legacy org_id args to RPCs.
+      const res = await supabase?.rpc('get_jobs_by_date_range', baseArgs)
 
       const { data, error } = res || {}
 
@@ -109,7 +93,8 @@ export const calendarService = {
         `
         )
         ?.single()
-      if (orgId) q = q?.eq('org_id', orgId)
+      // Back-compat: orgId param is treated as dealer_id.
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const data = await safeSelect(q, 'calendar:updateJobSchedule')
 
       return { data, error: null }
@@ -146,7 +131,8 @@ export const calendarService = {
         color_code: jobData?.colorCode || '#3b82f6',
         calendar_notes: jobData?.notes || '',
         created_by: jobData?.createdBy,
-        org_id: orgId ?? jobData?.org_id ?? null,
+        // Back-compat: orgId param is treated as dealer_id.
+        dealer_id: orgId ?? jobData?.dealer_id ?? null,
       }
 
       const { data } = await supabase
@@ -223,7 +209,7 @@ export const calendarService = {
         ?.from('jobs')
         ?.select('id', { count: 'exact', head: true })
         ?.neq('job_status', 'cancelled')
-      if (orgId) totalQ = totalQ?.eq('org_id', orgId)
+      if (orgId) totalQ = totalQ?.eq('dealer_id', orgId)
       const { count: totalJobs, error: totalErr } = await totalQ
       if (totalErr) throw totalErr
 
@@ -233,7 +219,7 @@ export const calendarService = {
         ?.select('id', { count: 'exact', head: true })
         ?.gte('scheduled_start_time', startDate?.toISOString())
         ?.lt('scheduled_start_time', endDate?.toISOString())
-      if (orgId) schedQ = schedQ?.eq('org_id', orgId)
+      if (orgId) schedQ = schedQ?.eq('dealer_id', orgId)
       const { count: scheduledJobs, error: schedErr } = await schedQ
       if (schedErr) throw schedErr
 
@@ -245,7 +231,7 @@ export const calendarService = {
         ?.from('vendors')
         ?.select('id', { count: 'exact', head: true })
         ?.eq('is_active', true)
-      if (orgId) vendorsQ = vendorsQ?.eq('org_id', orgId)
+      if (orgId) vendorsQ = vendorsQ?.eq('dealer_id', orgId)
       const { count: activeVendors, error: vErr } = await vendorsQ
       if (vErr) throw vErr
 

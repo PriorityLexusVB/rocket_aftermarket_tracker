@@ -87,8 +87,8 @@ export const jobService = {
       if (filters?.status) q = q?.eq('job_status', filters?.status)
       if (filters?.vendorId) q = q?.eq('vendor_id', filters?.vendorId)
       if (filters?.vehicleId) q = q?.eq('vehicle_id', filters?.vehicleId)
-      // Optional multi-tenant scoping when jobs.org_id exists
-      if (filters?.orgId) q = q?.eq('org_id', filters?.orgId)
+      // Back-compat: filters.orgId is treated as dealer_id.
+      if (filters?.orgId) q = q?.eq('dealer_id', filters?.orgId)
       if (filters?.search) {
         const s = filters?.search?.trim()
         if (s) q = q?.or(`title.ilike.%${s}%,description.ilike.%${s}%,job_number.ilike.%${s}%`)

@@ -8,10 +8,10 @@ import { mapFormToDb, mapDbDealToForm, toJobPartRows } from '@/services/dealServ
 /**
  * FIELD MAPPING DOCUMENTATION
  * ===========================
- * 
+ *
  * DealFormV2 (src/components/deals/DealFormV2.jsx) handles both CREATE and EDIT modes.
  * Below is the complete mapping from UI fields to database columns.
- * 
+ *
  * CUSTOMER SECTION (Step 1):
  * --------------------------
  * UI Field                → DB Column(s)
@@ -32,7 +32,7 @@ import { mapFormToDb, mapDbDealToForm, toJobPartRows } from '@/services/dealServ
  * loanerNumber            → loaner_assignments.loaner_number
  * loanerReturnDate        → loaner_assignments.eta_return_date
  * loanerNotes             → loaner_assignments.notes
- * 
+ *
  * LINE ITEMS SECTION (Step 2):
  * ----------------------------
  * UI Field                → DB Column(s)
@@ -46,11 +46,11 @@ import { mapFormToDb, mapDbDealToForm, toJobPartRows } from '@/services/dealServ
  * noScheduleReason        → job_parts.no_schedule_reason
  * isOffSite               → job_parts.is_off_site
  * vendorId (per-line)     → job_parts.vendor_id
- * 
+ *
  * COMPUTED FIELDS:
  * ----------------
  * Total                   → transactions.total_amount (sum of line items)
- * org_id                  → jobs.org_id, transactions.org_id (from useTenant hook)
+ * dealer_id               → jobs.dealer_id, transactions.dealer_id (from useTenant hook)
  * job_id                  → job_parts.job_id, transactions.job_id, loaner_assignments.job_id
  */
 
@@ -86,13 +86,13 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
       expect(payload.description).toBe('Special instructions for this deal')
     })
 
-    it('includes org_id in payload when provided', () => {
+    it('includes dealer_id in payload when provided', () => {
       const formData = {
-        org_id: 'org-uuid-123',
+        dealer_id: 'dealer-uuid-123',
         lineItems: [],
       }
       const { payload } = mapFormToDb(formData)
-      expect(payload.org_id).toBe('org-uuid-123')
+      expect(payload.dealer_id).toBe('dealer-uuid-123')
     })
 
     it('maps staff assignments correctly', () => {
@@ -143,7 +143,7 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
       }
       const { normalizedLineItems } = mapFormToDb(formData)
       const item = normalizedLineItems[0]
-      
+
       expect(item.product_id).toBe('prod-uuid-1')
       expect(item.unit_price).toBe(299.99)
       expect(item.quantity_used).toBe(1)
@@ -168,7 +168,7 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
       }
       const { normalizedLineItems } = mapFormToDb(formData)
       const item = normalizedLineItems[0]
-      
+
       expect(item.requires_scheduling).toBe(false)
       expect(item.no_schedule_reason).toBe('Installed at delivery')
     })
@@ -188,10 +188,10 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
           scheduledEndTime: '12:00',
         },
       ]
-      
+
       const rows = toJobPartRows(jobId, lineItems, { includeTimes: true })
       const row = rows[0]
-      
+
       expect(row.job_id).toBe(jobId)
       expect(row.product_id).toBe('prod-1')
       expect(row.vendor_id).toBe('vendor-1')
@@ -205,16 +205,20 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
     })
 
     it('toJobPartRows excludes time fields when capability disabled', () => {
-      const rows = toJobPartRows('job-1', [
-        {
-          product_id: 'prod-1',
-          requiresScheduling: true,
-          lineItemPromisedDate: '2025-12-20',
-          scheduledStartTime: '09:00',
-          scheduledEndTime: '12:00',
-        },
-      ], { includeTimes: false })
-      
+      const rows = toJobPartRows(
+        'job-1',
+        [
+          {
+            product_id: 'prod-1',
+            requiresScheduling: true,
+            lineItemPromisedDate: '2025-12-20',
+            scheduledStartTime: '09:00',
+            scheduledEndTime: '12:00',
+          },
+        ],
+        { includeTimes: false }
+      )
+
       expect(rows[0].scheduled_start_time).toBeUndefined()
       expect(rows[0].scheduled_end_time).toBeUndefined()
     })
@@ -224,7 +228,7 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
     it('mapDbDealToForm correctly maps for edit mode', () => {
       const dbDeal = {
         id: 'deal-uuid-123',
-        org_id: 'org-uuid-456',
+        dealer_id: 'dealer-uuid-456',
         job_number: 'JOB-001',
         title: '2024 Lexus RX350',
         description: 'Customer requested early delivery',
@@ -261,35 +265,35 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
         ],
         updated_at: '2025-11-25T10:00:00Z',
       }
-      
+
       const formData = mapDbDealToForm(dbDeal)
-      
+
       // Core fields
       expect(formData.id).toBe('deal-uuid-123')
-      expect(formData.org_id).toBe('org-uuid-456')
+      expect(formData.dealer_id).toBe('dealer-uuid-456')
       expect(formData.job_number).toBe('JOB-001')
       expect(formData.vehicle_description).toBe('2024 Lexus RX350')
       expect(formData.notes).toBe('Customer requested early delivery')
-      
+
       // Staff assignments
       expect(formData.assigned_to).toBe('sales-user-id')
       expect(formData.delivery_coordinator_id).toBe('dc-user-id')
       expect(formData.finance_manager_id).toBe('fm-user-id')
-      
+
       // Customer fields
       expect(formData.customer_name).toBe('Jane Doe')
       expect(formData.customer_phone).toBe('+15551234567')
       expect(formData.customer_email).toBe('jane@example.com')
-      
+
       // Loaner fields
       expect(formData.customer_needs_loaner).toBe(true)
       expect(formData.loanerForm.loaner_number).toBe('L-5678')
       expect(formData.loanerForm.eta_return_date).toBe('2025-12-25')
       expect(formData.loanerForm.notes).toBe('Full tank required')
-      
+
       // Stock number from vehicle
       expect(formData.stock_number).toBe('STK-001')
-      
+
       // Line items
       expect(formData.lineItems).toHaveLength(1)
       const lineItem = formData.lineItems[0]
@@ -303,10 +307,10 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
   })
 
   describe('Create vs Edit Mode Behavior', () => {
-    it('create mode requires org_id for RLS compliance', () => {
-      // This documents that the form includes org_id from useTenant hook
+    it('create mode requires dealer_id for RLS compliance', () => {
+      // This documents that the form includes dealer_id from useTenant hook
       const formData = {
-        org_id: 'required-org-id',
+        dealer_id: 'required-dealer-id',
         customerName: 'Test',
         jobNumber: 'JOB-001',
         lineItems: [
@@ -319,20 +323,20 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
         ],
       }
       const { payload } = mapFormToDb(formData)
-      expect(payload.org_id).toBe('required-org-id')
+      expect(payload.dealer_id).toBe('required-dealer-id')
     })
 
-    it('edit mode preserves org_id from existing deal', () => {
+    it('edit mode preserves dealer_id from existing deal', () => {
       const dbDeal = {
         id: 'existing-deal-id',
-        org_id: 'existing-org-id',
+        dealer_id: 'existing-dealer-id',
         job_number: 'JOB-002',
         title: 'Test Deal',
         job_parts: [],
       }
-      
+
       const formData = mapDbDealToForm(dbDeal)
-      expect(formData.org_id).toBe('existing-org-id')
+      expect(formData.dealer_id).toBe('existing-dealer-id')
     })
   })
 
@@ -341,13 +345,13 @@ describe('DealFormV2 - UI → DB Field Mapping Documentation', () => {
       const formData = {
         lineItems: [
           { product_id: 'p1', unit_price: 299.99, quantity_used: 1, requires_scheduling: true },
-          { product_id: 'p2', unit_price: 199.50, quantity_used: 2, requires_scheduling: true },
+          { product_id: 'p2', unit_price: 199.5, quantity_used: 2, requires_scheduling: true },
         ],
       }
       const { jobParts } = mapFormToDb(formData)
-      
+
       const total = jobParts.reduce((sum, item) => sum + item.total_price, 0)
-      expect(total).toBe(299.99 + (199.50 * 2)) // 698.99
+      expect(total).toBe(299.99 + 199.5 * 2) // 698.99
     })
   })
 })
@@ -363,7 +367,7 @@ describe('DealFormV2 - V2 Flag Behavior', () => {
       },
       lineItems: [],
     }
-    
+
     const { loanerForm } = mapFormToDb(formData)
     expect(loanerForm).toEqual({
       loaner_number: 'L-1234',
@@ -377,22 +381,22 @@ describe('DealFormV2 - V2 Flag Behavior', () => {
       customer_needs_loaner: false,
       lineItems: [],
     }
-    
+
     const { loanerForm } = mapFormToDb(formData)
     expect(loanerForm).toBeNull()
   })
 })
 
 /**
- * Tests for org_id preservation - critical for RLS compliance
+ * Tests for dealer_id preservation - critical for RLS compliance
  * These tests document the expected behavior when editing legacy deals
  */
-describe('DealFormV2 - org_id Preservation for RLS Compliance', () => {
-  it('org_id flows through full edit cycle: DB → Form → Payload', () => {
+describe('DealFormV2 - dealer_id Preservation for RLS Compliance', () => {
+  it('dealer_id flows through full edit cycle: DB → Form → Payload', () => {
     // Simulate loading a deal from database
     const dbDeal = {
       id: 'job-uuid-123',
-      org_id: 'org-uuid-456',
+      dealer_id: 'dealer-uuid-456',
       job_number: 'JOB-TEST-001',
       title: '2024 Lexus RX350',
       description: 'Customer notes',
@@ -409,25 +413,25 @@ describe('DealFormV2 - org_id Preservation for RLS Compliance', () => {
         },
       ],
     }
-    
+
     // Map DB → Form
     const formData = mapDbDealToForm(dbDeal)
-    expect(formData.org_id).toBe('org-uuid-456')
-    
-    // Simulate user editing (org_id should NOT be lost)
+    expect(formData.dealer_id).toBe('dealer-uuid-456')
+
+    // Simulate user editing (dealer_id should NOT be lost)
     const editedFormData = {
       ...formData,
       customer_name: 'Updated Customer Name',
     }
-    
+
     // Map Form → DB payload
     const { payload } = mapFormToDb(editedFormData)
-    expect(payload.org_id).toBe('org-uuid-456')
+    expect(payload.dealer_id).toBe('dealer-uuid-456')
   })
 
-  it('org_id in payload enables RLS-compliant transaction updates', () => {
+  it('dealer_id in payload enables RLS-compliant transaction updates', () => {
     const formData = {
-      org_id: 'org-uuid-789',
+      dealer_id: 'dealer-uuid-789',
       job_number: 'JOB-002',
       customer_name: 'Test Customer',
       lineItems: [
@@ -438,11 +442,11 @@ describe('DealFormV2 - org_id Preservation for RLS Compliance', () => {
         },
       ],
     }
-    
+
     const { payload } = mapFormToDb(formData)
-    
-    // The transaction upsert will use this org_id
-    // to satisfy RLS policy: org_id = auth_user_org() OR job.org_id = auth_user_org()
-    expect(payload.org_id).toBe('org-uuid-789')
+
+    // The transaction upsert will use this dealer_id
+    // to satisfy RLS policy: dealer_id = auth_dealer_id()
+    expect(payload.dealer_id).toBe('dealer-uuid-789')
   })
 })

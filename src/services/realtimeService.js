@@ -14,7 +14,7 @@ export function initDropdownCacheRealtime(orgId) {
     const channel = supabase.channel('dropdown-cache')
 
     const base = { event: '*', schema: 'public' }
-    const orgFilter = orgId ? `org_id=eq.${orgId}` : undefined
+    const orgFilter = orgId ? `dealer_id=eq.${orgId}` : undefined
 
     channel.on('postgres_changes', { ...base, table: 'vendors', filter: orgFilter }, () => {
       try {
@@ -36,7 +36,6 @@ export function initDropdownCacheRealtime(orgId) {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-         
         console.debug('[realtime] dropdown-cache subscribed', { orgId })
       }
     })

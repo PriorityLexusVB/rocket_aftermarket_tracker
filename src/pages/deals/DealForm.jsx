@@ -570,9 +570,13 @@ export default function DealForm({
 
       const inferred = inferScheduledWindowFromLineItems(normalizedLineItems)
 
+      // Avoid passing legacy org_id to service layer; dealer_id is the tenant key.
+      const formWithoutOrgId = { ...(form || {}) }
+      delete formWithoutOrgId.org_id
+
       const payload = {
-        ...form,
-        org_id: form.org_id || orgId || undefined,
+        ...formWithoutOrgId,
+        dealer_id: form?.dealer_id || form?.org_id || orgId || undefined,
         scheduled_start_time: form.scheduled_start_time || inferred.start || null,
         scheduled_end_time: form.scheduled_end_time || inferred.end || null,
         customer_needs_loaner: !!form.customer_needs_loaner,

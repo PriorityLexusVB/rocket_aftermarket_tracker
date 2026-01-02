@@ -21,7 +21,7 @@ class ClaimsAnalyticsService {
           title,
           service_type
         `)
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q?.throwOnError()
 
       if (!Array.isArray(data)) {
@@ -123,7 +123,7 @@ class ClaimsAnalyticsService {
         )
         ?.not('products', 'is', null)
         ?.not('jobs', 'is', null)
-      if (orgId) q = q?.eq('jobs.org_id', orgId)
+      if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q?.throwOnError()
 
       if (!Array.isArray(data)) {
@@ -243,7 +243,7 @@ class ClaimsAnalyticsService {
         )
         ?.gte('created_at', dateFilter)
         ?.order('created_at', { ascending: true })
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q?.throwOnError()
 
       if (!Array.isArray(data)) {
@@ -338,7 +338,7 @@ class ClaimsAnalyticsService {
         )
         ?.eq('is_active', true)
       // Scope via joined jobs when vendors.org_id is not guaranteed
-      if (orgId) q = q?.eq('jobs.org_id', orgId)
+      if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q?.throwOnError()
 
       if (!Array.isArray(data)) {
@@ -433,7 +433,7 @@ class ClaimsAnalyticsService {
         `
         )
         ?.not('job_parts.products', 'is', null)
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q?.throwOnError()
 
       if (!Array.isArray(data)) {
@@ -520,7 +520,7 @@ class ClaimsAnalyticsService {
             transaction_status
           )
         `)
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const { data } = await q?.throwOnError()
 
       if (!Array.isArray(data)) {

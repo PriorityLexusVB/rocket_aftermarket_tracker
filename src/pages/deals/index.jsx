@@ -26,22 +26,6 @@ import { useToast } from '../../components/ui/ToastProvider'
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
-const ET_TZ = 'America/New_York'
-
-const formatEtShortDate = (date) => {
-  const d = date instanceof Date ? date : new Date(date)
-  if (Number.isNaN(d.getTime())) return ''
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: ET_TZ,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).formatToParts(d)
-
-  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]))
-  return [map.weekday, map.month, map.day].filter(Boolean).join(' ')
-}
-
 const isDealsDebugEnabled = () =>
   import.meta.env.DEV &&
   (import.meta.env.VITE_DEBUG_DEALS_LIST === 'true' ||

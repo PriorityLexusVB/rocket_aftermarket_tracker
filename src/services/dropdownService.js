@@ -65,8 +65,8 @@ function _clearPending(key) {
   _pending.delete(key)
 }
 
-// Resolve current user's org_id once per session for org-scoped dropdowns
-// Returns cached org_id if available, or null if user has no org (deliberately not caching errors)
+// Resolve current user's tenant id once per session for scoped dropdowns.
+// Back-compat: variable/storage naming still uses "orgId", but values are dealer_id.
 let _orgIdCache = null
 let _orgIdPending = null
 let _orgIdCacheValid = false // Track whether cache is valid (vs. error state)
@@ -165,6 +165,19 @@ async function getScopedOrgId() {
         return null
       }
 
+      // Primary: derive dealer_id via server-side helper (preferred when available).
+      try {
+        const { data: dealerId, error: dealerErr } = await supabase?.rpc?.('auth_dealer_id')
+        if (!dealerErr && dealerId) {
+          _orgIdCache = dealerId
+          _orgIdCacheValid = true
+          persistOrgId(_orgIdCache, userId)
+          return _orgIdCache
+        }
+      } catch {
+        // ignore and fall back to profile lookups
+      }
+
       // Primary: match by id
       let prof = null
       let primaryError = null
@@ -172,7 +185,7 @@ async function getScopedOrgId() {
       if (userId) {
         const { data, error } = await supabase
           .from('user_profiles')
-          .select('org_id')
+          .select('dealer_id')
           .eq('id', userId)
           .single()
         prof = data
@@ -188,10 +201,10 @@ async function getScopedOrgId() {
       }
 
       // Fallback: match by email if id lookup failed or returned null
-      if ((!prof || !prof.org_id) && email) {
+      if ((!prof || !prof.dealer_id) && email) {
         const { data: profByEmail, error: emailErr } = await supabase
           .from('user_profiles')
-          .select('org_id')
+          .select('dealer_id')
           .eq('email', email)
           .order('updated_at', { ascending: false })
           .limit(1)
@@ -199,7 +212,7 @@ async function getScopedOrgId() {
 
         emailError = emailErr
 
-        if (profByEmail?.org_id) {
+        if (profByEmail?.dealer_id) {
           prof = profByEmail
         } else if (emailError && _isRlsError(emailError)) {
           console.warn(
@@ -210,8 +223,8 @@ async function getScopedOrgId() {
       }
 
       // If we found an org_id, cache it as valid
-      if (prof?.org_id) {
-        _orgIdCache = prof.org_id
+      if (prof?.dealer_id) {
+        _orgIdCache = prof.dealer_id
         _orgIdCacheValid = true
         persistOrgId(_orgIdCache, userId)
         return _orgIdCache
@@ -348,7 +361,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
         if (activeOnly) q = q.eq('is_active', true)
         if (departments.length) q = q.in('department', departments)
         if (roles.length) q = q.in('role', roles)
-        if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (orgId) q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
 
         const { data: exact, count } = await q.throwOnError()
         if ((count ?? 0) > 0) {
@@ -458,7 +471,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
       if (nameCol2) q2 = q2.order(nameCol2, { ascending: true })
       else q2 = q2.order('email', { ascending: true })
 
-      if (orgId) q2 = q2.or(`org_id.eq.${orgId},org_id.is.null`)
+      if (orgId) q2 = q2.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
 
       const { data: fuzzy, error: fuzzyErr } = await q2.throwOnError()
       if (fuzzyErr) {
@@ -481,7 +494,7 @@ async function getStaff({ departments = [], roles = [], activeOnly = true } = {}
               .or(
                 ors || (nameCol2 ? `${nameCol2}.ilike.%placeholder%` : 'email.ilike.%placeholder%')
               )
-            if (orgId) qRetry = qRetry.or(`org_id.eq.${orgId},org_id.is.null`)
+            if (orgId) qRetry = qRetry.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
             const r = await qRetry
             const opts2 = toOptions(r?.data || [])
             _setCache(key, opts2)
@@ -555,7 +568,7 @@ export async function getVendors({ activeOnly = true } = {}) {
       .select('id, name, is_active, phone, email, specialty')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    if (orgId) q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
     const promise = (async () => {
       const { data } = await q.throwOnError()
       const opts = toOptions(data, 'name')
@@ -594,7 +607,7 @@ export async function getProducts({ activeOnly = true } = {}) {
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    if (orgId) q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
     const promise = (async () => {
       const { data } = await q.throwOnError()
       const opts = (data || []).map((p) => ({
@@ -654,7 +667,7 @@ export async function globalSearch(term) {
             [nameCol ? `${nameCol}.ilike.${q}` : null, `email.ilike.${q}`].filter(Boolean).join(',')
           )
           .limit(20)
-        if (orgId) uq = uq.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (orgId) uq = uq.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
         return uq.throwOnError()
       })(),
       (async () => {
@@ -663,7 +676,7 @@ export async function globalSearch(term) {
           .select('id, name, specialty')
           .or(`name.ilike.${q},specialty.ilike.${q}`)
           .limit(20)
-        if (orgId) vq = vq.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (orgId) vq = vq.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
         return vq.throwOnError()
       })(),
       (async () => {
@@ -672,7 +685,7 @@ export async function globalSearch(term) {
           .select('id, name, brand, unit_price')
           .or(`name.ilike.${q},brand.ilike.${q}`)
           .limit(20)
-        if (orgId) pq = pq.or(`org_id.eq.${orgId},org_id.is.null`)
+        if (orgId) pq = pq.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
         return pq.throwOnError()
       })(),
     ])

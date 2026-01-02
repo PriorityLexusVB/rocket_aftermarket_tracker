@@ -9,7 +9,7 @@ export async function listProductsByOrg(orgId, { activeOnly = true } = {}) {
     .select('id, name, brand, unit_price, is_active, op_code, cost, category')
     .order('name', { ascending: true })
   if (activeOnly) q = q.eq('is_active', true)
-  if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+  if (orgId) q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
   const rows = await safeSelect(q, 'products:listByOrg')
   return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
 }
@@ -21,7 +21,7 @@ export const productService = {
       .select('id, name, brand, unit_price, is_active, op_code, cost, category')
       .order('name', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
-    if (orgId) q = q.or(`org_id.eq.${orgId},org_id.is.null`)
+    if (orgId) q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
     const rows = await safeSelect(q, 'products:list')
     return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
   },
@@ -30,7 +30,7 @@ export const productService = {
     if (!id) return null
     try {
       let q = supabase.from('products').select('*').eq('id', id).single()
-      if (orgId) q = q.eq('org_id', orgId)
+      if (orgId) q = q.eq('dealer_id', orgId)
       const res = await q.throwOnError()
       return res?.data ?? null
     } catch (e) {

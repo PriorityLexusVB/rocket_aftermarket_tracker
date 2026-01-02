@@ -35,7 +35,7 @@ export const kanbanService = {
           created_user:user_profiles!jobs_created_by_fkey${profileFrag},
           transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `)
-      if (orgId) query = query?.eq('org_id', orgId)
+      if (orgId) query = query?.eq('dealer_id', orgId)
 
       // Apply filters
       if (filters?.vendorIds?.length > 0) {
@@ -152,7 +152,7 @@ export const kanbanService = {
         `
         )
         ?.single()
-      if (orgId) updateQ = updateQ?.eq('org_id', orgId)
+      if (orgId) updateQ = updateQ?.eq('dealer_id', orgId)
       const data = await safeSelect(updateQ, 'kanban:update:apply')
       const mapped = withCustomerFields(data)
       if (mapped?.assigned_user) {
@@ -199,7 +199,7 @@ export const kanbanService = {
         ?.in('job_status', statuses)
         ?.order('priority', { ascending: false })
         ?.order('created_at', { ascending: false })
-      if (orgId) q = q?.eq('org_id', orgId)
+      if (orgId) q = q?.eq('dealer_id', orgId)
       const data = await safeSelect(q, 'kanban:getJobsByStatus')
       const normalized = (data || [])?.map(withCustomerFields)?.map((row) => {
         if (row?.assigned_user) {
@@ -231,7 +231,7 @@ export const kanbanService = {
         ?.from('jobs')
         ?.select('job_status, priority, due_date')
         ?.neq('job_status', 'cancelled')
-      if (orgId) statsQ = statsQ?.eq('org_id', orgId)
+      if (orgId) statsQ = statsQ?.eq('dealer_id', orgId)
       const jobStats = await safeSelect(statsQ, 'kanban:stats:jobStatus')
 
       const stats = {
@@ -381,7 +381,7 @@ export const kanbanService = {
           assigned_user:user_profiles!jobs_assigned_to_fkey${profileFrag},
           transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
         `)
-      if (orgId) query = query?.eq('org_id', orgId)
+      if (orgId) query = query?.eq('dealer_id', orgId)
 
       // Apply search term across multiple fields
       if (searchTerm) {

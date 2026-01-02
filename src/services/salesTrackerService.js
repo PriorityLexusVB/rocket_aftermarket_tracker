@@ -40,7 +40,7 @@ class SalesTrackerService {
         `
         )
         ?.order('created_at', { ascending: false })
-      if (orgId) tQuery = tQuery?.eq('org_id', orgId)
+      if (orgId) tQuery = tQuery?.eq('dealer_id', orgId)
       const { data: transactions } = await tQuery.throwOnError()
 
       // If no transactions, return sample data for demo purposes
@@ -60,7 +60,7 @@ class SalesTrackerService {
           ?.from('jobs')
           ?.select('id, title, job_status, delivery_coordinator_id, vehicle_id')
           ?.in('id', jobIds)
-        if (orgId) jQuery = jQuery?.eq('org_id', orgId)
+        if (orgId) jQuery = jQuery?.eq('dealer_id', orgId)
         try {
           const { data: jobs } = await jQuery.throwOnError()
           jobsData = jobs || []
@@ -102,7 +102,7 @@ class SalesTrackerService {
           ?.from('user_profiles')
           ?.select(['id', nameCol, 'email'].filter(Boolean).join(', '))
           ?.eq('is_active', true)
-        if (orgId) cQuery = cQuery?.eq('org_id', orgId)
+        if (orgId) cQuery = cQuery?.eq('dealer_id', orgId)
         const { data: coordinatorData } = await cQuery.throwOnError()
         deliveryCoordinators = (coordinatorData || []).map((u) => ({
           ...u,
@@ -626,7 +626,7 @@ class SalesTrackerService {
         )
         ?.eq('is_active', true)
         ?.order(nameCol, { ascending: true })
-      if (orgId) sQuery = sQuery?.eq('org_id', orgId)
+      if (orgId) sQuery = sQuery?.eq('dealer_id', orgId)
       const { data: staffMembers, error } = await sQuery
       if (error) throw error
 

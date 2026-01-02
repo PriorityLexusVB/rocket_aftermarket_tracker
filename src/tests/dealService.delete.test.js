@@ -69,7 +69,7 @@ describe('dealService.deleteDeal', () => {
     )
 
     expect(supabase.from).toHaveBeenCalledWith('jobs')
-    expect(chain.select).toHaveBeenCalledWith('id, org_id')
+    expect(chain.select).toHaveBeenCalledWith('id, dealer_id')
     expect(chain.eq).toHaveBeenCalledWith('id', 'non-existent-id')
   })
 
@@ -91,7 +91,7 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1 && table === 'jobs') {
         // First call: read to verify deal exists
-        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
+        return makeReadChain({ data: { id: 'test-id', dealer_id: 'dealer-1' }, error: null })
       }
       if (table === 'loaner_assignments') {
         // Loaner assignments delete (optional table)
@@ -120,7 +120,7 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
-        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
+        return makeReadChain({ data: { id: 'test-id', dealer_id: 'dealer-1' }, error: null })
       } else if (table === 'jobs' && callCount > 1) {
         // Final jobs delete with select to return deleted record
         return makeDeleteSelectChain({ data: [{ id: 'test-id' }], error: null })
@@ -148,7 +148,7 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
-        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
+        return makeReadChain({ data: { id: 'test-id', dealer_id: 'dealer-1' }, error: null })
       } else if (table === 'loaner_assignments' || table === 'communications') {
         // Optional tables that might not exist
         return makeDeleteSelectChain({
@@ -168,15 +168,15 @@ describe('dealService.deleteDeal', () => {
     expect(result).toBe(true)
   })
 
-  it('does not pre-block deletes for legacy NULL org_id when delete succeeds', async () => {
+  it('does not pre-block deletes for legacy NULL dealer_id when delete succeeds', async () => {
     let jobsCallCount = 0
     supabase.from.mockImplementation((table) => {
       if (table === 'jobs') {
         jobsCallCount++
 
         if (jobsCallCount === 1) {
-          // Read to verify deal exists (legacy row with NULL org_id)
-          return makeReadChain({ data: { id: 'test-id', org_id: null }, error: null })
+          // Read to verify deal exists (legacy row with NULL dealer_id)
+          return makeReadChain({ data: { id: 'test-id', dealer_id: null }, error: null })
         }
 
         // Final jobs delete succeeds
@@ -190,7 +190,7 @@ describe('dealService.deleteDeal', () => {
     await expect(deleteDeal('test-id')).resolves.toBe(true)
   })
 
-  it('throws a helpful org_id message when delete is blocked and remaining job has NULL org_id', async () => {
+  it('throws a helpful dealer_id message when delete is blocked and remaining job has NULL dealer_id', async () => {
     let jobsCallCount = 0
     supabase.from.mockImplementation((table) => {
       if (table === 'jobs') {
@@ -198,7 +198,7 @@ describe('dealService.deleteDeal', () => {
 
         if (jobsCallCount === 1) {
           // Deal exists (legacy row)
-          return makeReadChain({ data: { id: 'test-id', org_id: null }, error: null })
+          return makeReadChain({ data: { id: 'test-id', dealer_id: null }, error: null })
         }
 
         if (jobsCallCount === 2) {
@@ -206,15 +206,15 @@ describe('dealService.deleteDeal', () => {
           return makeDeleteSelectChain({ data: [], error: null })
         }
 
-        // Verification read shows job still exists and has NULL org_id
-        return makeReadChain({ data: { id: 'test-id', org_id: null }, error: null })
+        // Verification read shows job still exists and has NULL dealer_id
+        return makeReadChain({ data: { id: 'test-id', dealer_id: null }, error: null })
       }
 
       // Child deletes: return empty so we don't fail early; also ensure verify query returns empty.
       return makeDeleteSelectChain({ data: [], error: null }, { data: [], error: null })
     })
 
-    await expect(deleteDeal('test-id')).rejects.toThrow(/missing org_id/i)
+    await expect(deleteDeal('test-id')).rejects.toThrow(/missing dealer_id/i)
   })
 
   it('throws specific error for non-permission delete failures', async () => {
@@ -223,7 +223,7 @@ describe('dealService.deleteDeal', () => {
       callCount++
       if (callCount === 1) {
         // First call: read to verify deal exists
-        return makeReadChain({ data: { id: 'test-id', org_id: 'org-1' }, error: null })
+        return makeReadChain({ data: { id: 'test-id', dealer_id: 'dealer-1' }, error: null })
       } else if (table === 'loaner_assignments') {
         // Loaner assignments delete succeeds
         return makeDeleteSelectChain({ data: [{ job_id: 'test-id' }], error: null })
