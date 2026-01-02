@@ -25,6 +25,7 @@ import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 const CalendarFlowManagementCenter = () => {
   // State management
   const [loading, setLoading] = useState(true)
+  const [jumpLoading, setJumpLoading] = useState(false)
 
   // Separate original data from filtered data
   const [originalJobs, setOriginalJobs] = useState([])
@@ -41,6 +42,7 @@ const CalendarFlowManagementCenter = () => {
   // View settings - Updated default and possible values
   const [viewMode, setViewMode] = useState('week') // week, day, month
   const [vendorLanesEnabled, setVendorLanesEnabled] = useState(true)
+  const [showEmptyLanes, setShowEmptyLanes] = useState(false)
   const [currentDate, setCurrentDate] = useState(new Date())
 
   // Filters
@@ -259,6 +261,78 @@ const CalendarFlowManagementCenter = () => {
       console.error('Error updating job assignment:', error)
     }
   }
+
+  const findNextScheduledJob = useCallback(
+    async ({ fromDate, searchDays }) => {
+      if (tenantLoading || !orgId) return null
+
+      const parseDateSafe = (value) => {
+        if (!value) return null
+        const date = new Date(value)
+        return Number.isNaN(date?.getTime?.()) ? null : date
+      }
+
+      const rangeStart = new Date(fromDate || new Date())
+      const rangeEnd = new Date(rangeStart)
+      rangeEnd?.setDate(rangeEnd?.getDate() + (searchDays || 180))
+
+      const { jobs } = await getScheduledJobsByDateRange({
+        rangeStart,
+        rangeEnd,
+        orgId,
+      })
+
+      const fromMs = rangeStart?.getTime?.() || 0
+      const candidates = (jobs || [])
+        ?.map((job) => {
+          const start = parseDateSafe(job?.scheduled_start_time)
+          return start ? { job, start, startMs: start?.getTime?.() } : null
+        })
+        ?.filter((x) => x && x?.startMs > fromMs)
+
+      if (!candidates || candidates?.length === 0) return null
+      candidates?.sort((a, b) => a?.startMs - b?.startMs)
+      return candidates?.[0] || null
+    },
+    [orgId, tenantLoading]
+  )
+
+  const handleJumpToNextScheduled = useCallback(async () => {
+    setJumpLoading(true)
+    try {
+      const next = await findNextScheduledJob({ fromDate: new Date(), searchDays: 180 })
+      if (next?.start) {
+        setCurrentDate(new Date(next?.start))
+      } else {
+        if (import.meta?.env?.DEV) {
+          console.info('[Flow Mgmt] No next scheduled job found in search window')
+        }
+      }
+    } catch (error) {
+      console.error('Error jumping to next scheduled job:', error)
+    } finally {
+      setJumpLoading(false)
+    }
+  }, [findNextScheduledJob])
+
+  const handleGoToNextRangeWithJobs = useCallback(async () => {
+    setJumpLoading(true)
+    try {
+      const fromDate = getViewEndDate()
+      const next = await findNextScheduledJob({ fromDate, searchDays: 365 })
+      if (next?.start) {
+        setCurrentDate(new Date(next?.start))
+      } else {
+        if (import.meta?.env?.DEV) {
+          console.info('[Flow Mgmt] No jobs found in future search window')
+        }
+      }
+    } catch (error) {
+      console.error('Error finding next range with jobs:', error)
+    } finally {
+      setJumpLoading(false)
+    }
+  }, [findNextScheduledJob, getViewEndDate])
 
   // New month view render function
   const renderMonthView = () => {
@@ -496,32 +570,29 @@ const CalendarFlowManagementCenter = () => {
   }
 
   const renderVendorLanes = () => {
+    const onSiteJobs = filteredJobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
+    const vendorsToShow = showEmptyLanes
+      ? vendors
+      : vendors?.filter((vendor) => filteredJobs?.some((job) => job?.vendor_id === vendor?.id))
+
     return (
       <div className="space-y-4">
         {/* On-Site Lane */}
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
-              <h3 className="font-medium">On-Site (PLV)</h3>
+        {(showEmptyLanes || (onSiteJobs && onSiteJobs?.length > 0)) && (
+          <div className="bg-green-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
+                <h3 className="font-medium">On-Site (PLV)</h3>
+              </div>
+              <div className="text-sm text-gray-600">{onSiteJobs?.length || 0} jobs</div>
             </div>
-            <div className="text-sm text-gray-600">
-              {
-                filteredJobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
-                  ?.length
-              }{' '}
-              jobs
-            </div>
-          </div>
 
-          <div className="grid grid-cols-6 gap-2">
-            {filteredJobs
-              ?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
-              ?.map(renderEventChip)}
+            <div className="grid grid-cols-6 gap-2">{onSiteJobs?.map(renderEventChip)}</div>
           </div>
-        </div>
+        )}
         {/* Vendor Lanes */}
-        {vendors?.map((vendor) => {
+        {vendorsToShow?.map((vendor) => {
           const vendorJobs = filteredJobs?.filter((job) => job?.vendor_id === vendor?.id)
           const capacity = vendorJobs?.length
           const maxCapacity = 7 // Default capacity
@@ -674,6 +745,17 @@ const CalendarFlowManagementCenter = () => {
               >
                 Today
               </button>
+
+              {viewMode !== 'month' && (
+                <button
+                  onClick={handleJumpToNextScheduled}
+                  disabled={jumpLoading}
+                  className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+                  title="Jump to the next scheduled job"
+                >
+                  {jumpLoading ? 'Finding…' : 'Jump to Next Scheduled'}
+                </button>
+              )}
             </div>
 
             {/* Search */}
@@ -739,11 +821,53 @@ const CalendarFlowManagementCenter = () => {
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
-                {viewMode === 'month'
-                  ? renderMonthView()
-                  : vendorLanesEnabled
-                    ? renderVendorLanes()
-                    : renderWeekView()}
+                {viewMode === 'month' ? (
+                  renderMonthView()
+                ) : filteredJobs?.length +
+                    (filters?.showUnassigned ? filteredUnassignedJobs?.length : 0) ===
+                  0 ? (
+                  <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                    <div className="text-lg font-semibold text-gray-900">
+                      No jobs this {viewMode === 'day' ? 'day' : 'week'}.
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Try jumping forward to the next scheduled job.
+                    </div>
+                    <div className="mt-4 flex items-center gap-3">
+                      <button
+                        onClick={handleGoToNextRangeWithJobs}
+                        disabled={jumpLoading}
+                        className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        {jumpLoading
+                          ? 'Finding…'
+                          : `Go to next ${viewMode === 'day' ? 'day' : 'week'} with jobs`}
+                      </button>
+                      {vendorLanesEnabled && (
+                        <button
+                          onClick={() => setShowEmptyLanes((v) => !v)}
+                          className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
+                        >
+                          {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : vendorLanesEnabled ? (
+                  <div className="h-full">
+                    <div className="flex items-center justify-end px-4 py-3 border-b border-gray-100">
+                      <button
+                        onClick={() => setShowEmptyLanes((v) => !v)}
+                        className="text-sm text-gray-700 hover:text-gray-900"
+                      >
+                        {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
+                      </button>
+                    </div>
+                    <div className="p-4">{renderVendorLanes()}</div>
+                  </div>
+                ) : (
+                  renderWeekView()
+                )}
               </div>
             )}
           </div>

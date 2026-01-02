@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Override the global test setup mock with a minimal, controllable supabase.
-// These unit tests need to simulate `.from(...).select().eq().maybeSingle()` and
-// `.from(...).delete().eq().select()` chains, so `from` must be a mock function.
+// This test suite needs to fully control `.from(...).select().eq().maybeSingle()` and
+// `.from(...).delete().eq().select()` chains.
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
+    auth: {
+      // deleteDeal() reads auth context for diagnostics; keep it harmless.
+      getUser: vi.fn(async () => ({ data: { user: null }, error: null })),
+    },
   },
 }))
 
@@ -14,10 +18,13 @@ describe('dealService.deleteDeal', () => {
   let supabase
 
   beforeEach(async () => {
-    // Reset module cache so `dealService` re-imports with this file's mock.
+    // Reset module cache so dealService re-imports using this file's supabase mock.
     vi.resetModules()
     ;({ supabase } = await import('@/lib/supabase'))
-    ;({ deleteDeal } = await import('@/services/dealService'))
+
+    // Import via relative path to avoid the global partial mock in src/tests/setup.ts
+    // that mocks '@/services/dealService'.
+    ;({ deleteDeal } = await import('../services/dealService.js'))
 
     vi.clearAllMocks()
   })

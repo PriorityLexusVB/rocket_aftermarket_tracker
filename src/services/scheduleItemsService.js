@@ -189,6 +189,66 @@ export function normalizeScheduleItemFromJob(job, { now = new Date(), scheduleOv
 }
 
 /**
+ * Snapshot support: include unscheduled items in a controlled bucket.
+ *
+ * Definition (per requirements):
+ * - location = On-Site / In-House (job.service_type)
+ * - status ∈ in_progress | quality_check
+ * - scheduled_start_time and scheduled_end_time are null
+ * - AND there is no effective scheduled window from job_parts (canonical truth)
+ */
+export async function getUnscheduledInProgressInHouseItems({ orgId } = {}) {
+  try {
+    let q = supabase
+      ?.from('jobs')
+      ?.select('id')
+      ?.in('job_status', ['in_progress', 'quality_check'])
+      ?.in('service_type', ['onsite', 'in_house'])
+      ?.is('scheduled_start_time', null)
+      ?.is('scheduled_end_time', null)
+      ?.order('created_at', { ascending: false })
+
+    // Back-compat: orgId param is treated as dealer_id.
+    if (orgId) q = q?.eq('dealer_id', orgId)
+
+    const data = await safeSelect(q, 'scheduleItems:unscheduledInHouse:ids')
+    const ids = (Array.isArray(data) ? data : []).map((r) => r?.id).filter(Boolean)
+    if (!ids.length) return { items: [], debug: { candidateIds: 0, hydrated: 0, kept: 0 } }
+
+    const jobs = await jobService.getJobsByIds(ids, { orgId })
+    const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+
+    const now = new Date()
+    const items = []
+
+    for (const job of withLoaners) {
+      const schedule = getEffectiveScheduleWindowFromJob(job)
+      // Canonical truth: if job_parts has a schedule window, it is scheduled and must not
+      // appear in the unscheduled bucket.
+      if (schedule?.start) continue
+
+      const item = normalizeScheduleItemFromJob(job, {
+        now,
+        scheduleOverride: { start: null, end: null, source: 'none' },
+      })
+
+      if (item) items.push(item)
+    }
+
+    return {
+      items,
+      debug: {
+        candidateIds: ids.length,
+        hydrated: withLoaners.length,
+        kept: items.length,
+      },
+    }
+  } catch {
+    return { items: [], debug: { reason: 'unscheduled_query_failed' } }
+  }
+}
+
+/**
  * Hydrate job rows for a date range using the canonical overlap window from the calendar RPC.
  *
  * Unlike getScheduleItems(), this does NOT normalize into schedule-item shapes and does NOT

@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import {
   filterAndSort,
   detectConflicts,
+  splitSnapshotItems,
 } from '@/pages/currently-active-appointments/components/SnapshotView'
 import {
   createUndoEntry,
@@ -117,5 +118,56 @@ describe('SnapshotView.undoHelpers', () => {
   it('canUndo returns false for empty map', () => {
     const undoMap = new Map()
     expect(canUndo(undoMap, 'any-id')).toBe(false)
+  })
+})
+
+describe('SnapshotView.splitSnapshotItems (unscheduled bucket)', () => {
+  it('includes unscheduled in-house in_progress in controlled bucket', () => {
+    const now = new Date('2025-11-11T12:00:00Z')
+    const items = [
+      {
+        id: 'u1',
+        scheduledStart: null,
+        scheduledEnd: null,
+        scheduleState: 'unscheduled',
+        locationType: 'In-House',
+        raw: { job_status: 'in_progress', service_type: 'onsite' },
+      },
+    ]
+    const out = splitSnapshotItems(items, { now })
+    expect(out.unscheduledInProgress.map((j) => j.id)).toEqual(['u1'])
+    expect(out.upcoming).toEqual([])
+  })
+
+  it('excludes unscheduled items that are not in_progress/quality_check', () => {
+    const now = new Date('2025-11-11T12:00:00Z')
+    const items = [
+      {
+        id: 'u2',
+        scheduledStart: null,
+        scheduledEnd: null,
+        scheduleState: 'unscheduled',
+        locationType: 'In-House',
+        raw: { job_status: 'pending', service_type: 'onsite' },
+      },
+    ]
+    const out = splitSnapshotItems(items, { now })
+    expect(out.unscheduledInProgress).toEqual([])
+  })
+
+  it('excludes unscheduled items that are not in-house/on-site', () => {
+    const now = new Date('2025-11-11T12:00:00Z')
+    const items = [
+      {
+        id: 'u3',
+        scheduledStart: null,
+        scheduledEnd: null,
+        scheduleState: 'unscheduled',
+        locationType: 'Off-Site',
+        raw: { job_status: 'quality_check', service_type: 'vendor' },
+      },
+    ]
+    const out = splitSnapshotItems(items, { now })
+    expect(out.unscheduledInProgress).toEqual([])
   })
 })

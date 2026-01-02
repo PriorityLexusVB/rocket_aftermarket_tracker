@@ -76,6 +76,77 @@ export const appointmentsService = {
     }
   },
 
+  /**
+   * Snapshot support: include unscheduled items in a controlled bucket.
+   *
+   * Definition (per requirements):
+   * - service_type indicates On-Site / In-House
+   * - status ∈ in_progress | quality_check
+   * - scheduled_start_time and scheduled_end_time are null
+   */
+  async listUnscheduledInProgressInHouse({ orgId } = {}) {
+    try {
+      let q = supabase
+        ?.from('jobs')
+        ?.select(
+          `
+          *,
+          vehicles (
+            id, stock_number, year, make, model, color, owner_name,
+            owner_phone, owner_email, license_plate
+          ),
+          vendors (
+            id, name, phone, email, specialty, contact_person
+          ),
+          assigned_to_profile:user_profiles!assigned_to (
+            id, full_name, email, phone
+          ),
+          created_by_profile:user_profiles!created_by (
+            id, full_name, email
+          )
+        `
+        )
+        ?.in('job_status', ['in_progress', 'quality_check'])
+        ?.in('service_type', ['onsite', 'in_house'])
+        ?.is('scheduled_start_time', null)
+        ?.is('scheduled_end_time', null)
+        ?.order('created_at', { ascending: false })
+
+      // Back-compat: orgId param is treated as dealer_id.
+      if (orgId) q = q?.eq('dealer_id', orgId)
+
+      const { data, error } = await safeRun(q, 'appointments:listUnscheduledInProgressInHouse')
+      if (error) throw error
+
+      const jobIds = (data || []).map((j) => j?.id).filter(Boolean)
+      let loaners = []
+
+      // Best-effort: attach active loaner info.
+      if (jobIds.length) {
+        let loanerQ = supabase
+          ?.from('loaner_assignments')
+          ?.select('job_id, id')
+          ?.in('job_id', jobIds)
+          ?.is('returned_at', null)
+        if (orgId) {
+          loanerQ = loanerQ?.eq?.('dealer_id', orgId) ?? loanerQ
+        }
+        const res = await safeRun(loanerQ, 'appointments:listUnscheduledInProgressInHouse:loaners')
+        loaners = res.data || []
+      }
+
+      const enriched = (data || []).map((job) => ({
+        ...job,
+        has_active_loaner: !!loaners.find((l) => l?.job_id === job?.id)?.id,
+      }))
+
+      return { data: enriched, error: null }
+    } catch (error) {
+      console.error('[appointments] listUnscheduledInProgressInHouse failed:', error)
+      return { data: [], error: null }
+    }
+  },
+
   async listUnassignedJobs({ orgId, limit = 10 } = {}) {
     try {
       let q = supabase

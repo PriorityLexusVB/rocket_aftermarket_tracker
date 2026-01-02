@@ -228,6 +228,29 @@
   }
 }
 
+@layer utilities {
+  /* Theme token aliases (mapped to theme-neutral.css variables) */
+  .bg-background {
+    background-color: var(--bg-app) !important;
+  }
+
+  .bg-card {
+    background-color: var(--bg-card) !important;
+  }
+
+  .border-border {
+    border-color: var(--border) !important;
+  }
+
+  .text-foreground {
+    color: var(--text) !important;
+  }
+
+  .text-muted-foreground {
+    color: var(--text-muted) !important;
+  }
+}
+
 /* Dark mode media query override for light theme preference */
 @media (prefers-color-scheme: dark) {
   .theme-neutral-luxe {
