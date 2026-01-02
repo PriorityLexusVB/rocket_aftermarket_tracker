@@ -43,6 +43,17 @@ const safeJsonStringify = (value) => {
   }
 }
 
+const formatCreatedShort = (input) => {
+  if (!input) return null
+  try {
+    const d = input instanceof Date ? input : new Date(input)
+    if (Number.isNaN(d.getTime())) return null
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch {
+    return null
+  }
+}
+
 // ✅ UPDATED: StatusPill with enhanced styling
 const StatusPill = ({ status }) => {
   const statusColors = {
@@ -67,7 +78,7 @@ const LoanerBadge = ({ deal }) => {
       })
     : null
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
       <Icon name="Car" size={12} className="mr-1" />
       {deal?.loaner_number ? `#${deal.loaner_number}` : 'Loaner'}
       {dueShort ? ` • Due ${dueShort}` : ''}
@@ -175,27 +186,6 @@ const getDealPrimaryRef = (deal) => {
   return fallbackId || 'Deal'
 }
 
-// Secondary descriptor for compact cards (vehicle, vendor, work tags)
-const getDealSubtitle = (deal) => {
-  if (!deal) return ''
-
-  const vehicleParts = [deal?.vehicle?.year, deal?.vehicle?.make, deal?.vehicle?.model]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-  const stock = deal?.vehicle?.stock_number || deal?.stock_no
-  const vendor = deal?.vendor_name || ''
-  const tags = Array.isArray(deal?.work_tags) ? deal.work_tags.slice(0, 2) : []
-
-  const pieces = []
-  if (vehicleParts) pieces.push(vehicleParts)
-  if (stock) pieces.push(`Stock ${stock}`)
-  if (vendor) pieces.push(vendor)
-  if (tags.length) pieces.push(tags.join(', '))
-
-  return pieces.join(' • ')
-}
-
 const ValueDisplay = ({ amount }) => {
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -220,11 +210,11 @@ const ServiceLocationTag = ({ jobParts }) => {
   if (hasOffSiteItems && hasOnSiteItems) {
     return (
       <div className="flex flex-col space-y-1">
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
-          🏢 Off-Site
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          Off-Site
         </span>
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-          🏠 On-Site
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+          On-Site
         </span>
       </div>
     )
@@ -232,15 +222,15 @@ const ServiceLocationTag = ({ jobParts }) => {
 
   if (hasOffSiteItems) {
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-orange-100 text-orange-800">
-        🏢 Off-Site
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+        Off-Site
       </span>
     )
   }
 
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-      🏠 On-Site
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+      On-Site
     </span>
   )
 }
@@ -1621,6 +1611,9 @@ export default function DealsPage() {
             <div className="space-y-2">
               {filteredDeals?.map((deal) => {
                 const promiseIso = getDealPromiseIso(deal)
+                const createdShort = formatCreatedShort(
+                  deal?.created_at || deal?.createdAt || deal?.created || deal?.inserted_at
+                )
 
                 return (
                   <div
@@ -1643,10 +1636,25 @@ export default function DealsPage() {
                       handleOpenDetail(deal)
                     }}
                   >
-                    {/* Column order (2-line card): Schedule | Customer/Sales | Vehicle | $ | Vendor | Location | Loaner | Actions */}
+                    {/* Column order (desktop): Created | Schedule | Customer/Sales | Vehicle | Pills | Actions */}
                     <div className="grid grid-cols-12 gap-x-4 gap-y-3">
+                      {/* Created */}
+                      <div className="col-span-12 lg:col-span-2 min-w-0">
+                        <div className="text-xs text-slate-500">Created</div>
+                        <div className="mt-0.5 flex items-baseline gap-2">
+                          <div className="text-sm text-slate-800 tabular-nums">
+                            {createdShort || '—'}
+                          </div>
+                          {typeof deal?.age_days === 'number' ? (
+                            <div className="text-xs text-slate-500 tabular-nums">
+                              {deal?.age_days}d
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
                       {/* Schedule */}
-                      <div className="col-span-12 lg:col-span-4 min-w-0">
+                      <div className="col-span-12 lg:col-span-3 min-w-0">
                         <ScheduleBlock
                           deal={deal}
                           promiseDate={promiseIso}
@@ -1656,7 +1664,7 @@ export default function DealsPage() {
                       </div>
 
                       {/* Customer/Sales */}
-                      <div className="col-span-12 lg:col-span-7 min-w-0">
+                      <div className="col-span-12 lg:col-span-3 min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="truncate">
@@ -1664,9 +1672,6 @@ export default function DealsPage() {
                             </div>
 
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                              {typeof deal?.age_days === 'number' ? (
-                                <span className="tabular-nums">E2E {deal?.age_days}d</span>
-                              ) : null}
                               {deal?.delivery_coordinator_name ? (
                                 <span>{formatStaffName(deal?.delivery_coordinator_name)}</span>
                               ) : null}
@@ -1683,6 +1688,47 @@ export default function DealsPage() {
                             <StatusPill status={deal?.job_status} />
                           </div>
                         </div>
+                      </div>
+
+                      {/* Vehicle */}
+                      <div className="col-span-12 lg:col-span-2 min-w-0">
+                        <div
+                          className="truncate text-sm text-slate-800"
+                          title={
+                            deal?.vehicle_description ||
+                            `${deal?.vehicle ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()) : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
+                            ''
+                          }
+                        >
+                          {deal?.vehicle_description
+                            ? titleCase(deal.vehicle_description)
+                            : deal?.vehicle
+                              ? titleCase(
+                                  `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                                )
+                              : '—'}
+                          {deal?.vehicle?.stock_number ? (
+                            <span className="text-slate-400">
+                              {' '}
+                              • Stock: {deal?.vehicle?.stock_number}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="mt-0.5 text-xs text-slate-500">{getDisplayPhone(deal)}</div>
+                      </div>
+
+                      {/* $ | Vendor | Location | Loaner */}
+                      <div className="col-span-12 lg:col-span-1 flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                        <Pill className="tabular-nums">
+                          <ValueDisplay amount={deal?.total_amount} />
+                        </Pill>
+                        <Pill>Vendor: {deal?.vendor_name || 'Unassigned'}</Pill>
+                        <ServiceLocationTag jobParts={deal?.job_parts} />
+                        {deal?.loaner_number || deal?.has_active_loaner ? (
+                          <LoanerBadge deal={deal} />
+                        ) : (
+                          <Pill>Loaner: —</Pill>
+                        )}
                       </div>
 
                       {/* Actions (icons only) */}
@@ -1750,47 +1796,6 @@ export default function DealsPage() {
                           </button>
                         </div>
                       </div>
-
-                      {/* Vehicle */}
-                      <div className="col-span-12 lg:col-span-6 min-w-0">
-                        <div
-                          className="truncate text-sm text-slate-800"
-                          title={
-                            deal?.vehicle_description ||
-                            `${deal?.vehicle ? titleCase(`${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()) : ''}${deal?.vehicle?.stock_number ? ` • Stock: ${deal?.vehicle?.stock_number}` : ''}`.trim() ||
-                            ''
-                          }
-                        >
-                          {deal?.vehicle_description
-                            ? titleCase(deal.vehicle_description)
-                            : deal?.vehicle
-                              ? titleCase(
-                                  `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
-                                )
-                              : '—'}
-                          {deal?.vehicle?.stock_number ? (
-                            <span className="text-slate-400">
-                              {' '}
-                              • Stock: {deal?.vehicle?.stock_number}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-0.5 text-xs text-slate-500">{getDisplayPhone(deal)}</div>
-                      </div>
-
-                      {/* $ | Vendor | Location | Loaner */}
-                      <div className="col-span-12 lg:col-span-6 flex flex-wrap items-center justify-start lg:justify-end gap-2">
-                        <Pill className="tabular-nums">
-                          <ValueDisplay amount={deal?.total_amount} />
-                        </Pill>
-                        <Pill>Vendor: {deal?.vendor_name || 'Unassigned'}</Pill>
-                        <ServiceLocationTag jobParts={deal?.job_parts} />
-                        {deal?.loaner_number || deal?.has_active_loaner ? (
-                          <LoanerBadge deal={deal} />
-                        ) : (
-                          <Pill>Loaner: —</Pill>
-                        )}
-                      </div>
                     </div>
                   </div>
                 )
@@ -1826,31 +1831,51 @@ export default function DealsPage() {
                     <div className="p-4 border-b bg-slate-50">
                       <div className="flex justify-between items-start mb-2">
                         <div>
+                          <div className="text-xs text-slate-500">
+                            {formatCreatedShort(
+                              deal?.created_at ||
+                                deal?.createdAt ||
+                                deal?.created ||
+                                deal?.inserted_at
+                            ) || '—'}
+                            {typeof deal?.age_days === 'number' ? (
+                              <span className="ml-2 tabular-nums">{deal?.age_days}d</span>
+                            ) : null}
+                            {deal?.job_number ? (
+                              <span className="ml-2 tabular-nums" title={getDealPrimaryRef(deal)}>
+                                {deal?.job_number}
+                              </span>
+                            ) : null}
+                          </div>
                           <div className="font-medium text-slate-900">
-                            {getDealPrimaryRef(deal)}
+                            {deal?.customer_name || '—'}
                             {isDealsDebugEnabled() && deal?.id ? (
                               <span className="ml-2 text-[10px] text-slate-400">
                                 id…{String(deal.id).slice(-6)}
                               </span>
                             ) : null}
                           </div>
-                          <div className="text-sm text-slate-600">
-                            {getDealSubtitle(deal) || '—'}
+                          <div className="text-sm text-slate-600 truncate">
+                            {deal?.sales_consultant_name
+                              ? formatStaffName(deal?.sales_consultant_name)
+                              : deal?.delivery_coordinator_name
+                                ? formatStaffName(deal?.delivery_coordinator_name)
+                                : '—'}
                           </div>
-                        </div>
-                        <StatusPill status={deal?.job_status} />
-                      </div>
-                    </div>
-
-                    {/* Card Content with compact 3-line mobile layout */}
-                    <div className="p-4 space-y-2">
-                      {/* Line 1: Customer + Phone */}
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0">
-                          <div className="truncate font-medium text-slate-900 text-sm">
-                            {deal?.customer_name || '—'}
+                          <div className="mt-1 text-xs text-slate-600 truncate">
+                            {(deal?.vehicle
+                              ? titleCase(
+                                  `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                                )
+                              : '') || '—'}
+                            {deal?.vehicle?.stock_number ? (
+                              <span className="text-slate-400">
+                                {' '}
+                                • Stock: {deal?.vehicle?.stock_number}
+                              </span>
+                            ) : null}
                           </div>
-                          <div className="text-xs text-slate-500 truncate">
+                          <div className="mt-1 text-xs text-slate-500 truncate">
                             {deal?.customer_phone_e164 ||
                             deal?.customer_phone ||
                             deal?.customer_mobile ? (
@@ -1866,33 +1891,13 @@ export default function DealsPage() {
                             )}
                           </div>
                         </div>
-                        <div className="ml-3 shrink-0">
-                          <ServiceLocationTag
-                            serviceType={deal?.service_type}
-                            jobParts={deal?.job_parts}
-                          />
-                        </div>
+                        <StatusPill status={deal?.job_status} />
                       </div>
+                    </div>
 
-                      {/* Line 2: Vehicle + Vendor */}
-                      <div className="text-xs text-slate-600 truncate">
-                        {(deal?.vehicle
-                          ? titleCase(
-                              `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
-                            )
-                          : '') || '—'}
-                        {deal?.vehicle?.stock_number ? (
-                          <span className="text-slate-400">
-                            {' '}
-                            • Stock: {deal?.vehicle?.stock_number}
-                          </span>
-                        ) : null}
-                        {deal?.vendor_name ? (
-                          <span className="text-slate-400"> • {deal?.vendor_name}</span>
-                        ) : null}
-                      </div>
-
-                      {/* Line 3: Unified schedule (no duplicate Promise / Appt Window) */}
+                    {/* Card Content with compact 3-line mobile layout */}
+                    <div className="p-4 space-y-2">
+                      {/* Unified schedule (no duplicate Promise / Appt Window) */}
                       <div>
                         <ScheduleBlock
                           deal={deal}
@@ -1902,6 +1907,8 @@ export default function DealsPage() {
                         />
 
                         <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <Pill>Vendor: {deal?.vendor_name || 'Unassigned'}</Pill>
+                          <ServiceLocationTag jobParts={deal?.job_parts} />
                           {deal?.loaner_number || deal?.has_active_loaner ? (
                             <LoanerBadge deal={deal} />
                           ) : (
@@ -1922,7 +1929,7 @@ export default function DealsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleEditDeal(deal?.id)}
-                          className="h-11 w-full bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                          className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                           aria-label="Edit deal"
                         >
                           <Icon name="Edit" size={16} className="mr-2" />
@@ -1936,7 +1943,7 @@ export default function DealsPage() {
                             setError('')
                             setDeleteConfirm(deal)
                           }}
-                          className="h-11 w-full bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                          className="h-11 w-full bg-white border-slate-200 text-red-700 hover:bg-red-50"
                           aria-label="Delete deal"
                         >
                           <Icon name="Trash2" size={16} className="mr-2" />
@@ -1952,7 +1959,7 @@ export default function DealsPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleManageLoaner(deal)}
-                              className="h-11 w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                              className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                               aria-label="Manage loaner"
                             >
                               <Icon name="Car" size={16} className="mr-2" />
@@ -1966,7 +1973,7 @@ export default function DealsPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleManageLoaner(deal)}
-                                className="h-11 w-full bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                                className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                                 aria-label="Edit loaner"
                               >
                                 <Icon name="Edit" size={16} className="mr-2" />
@@ -1983,7 +1990,7 @@ export default function DealsPage() {
                                     job_title: getDealPrimaryRef(deal),
                                   })
                                 }
-                                className="h-11 w-full bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
                                 aria-label="Mark loaner returned"
                               >
                                 <Icon name="CheckCircle" size={16} className="mr-2" />

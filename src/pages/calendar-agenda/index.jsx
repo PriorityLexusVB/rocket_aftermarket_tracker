@@ -6,10 +6,10 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { jobService } from '@/services/jobService'
 import { calendarService } from '@/services/calendarService'
+import { getScheduleItems } from '@/services/scheduleItemsService'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
-import useJobEventActions from '@/hooks/useJobEventActions'
 import RescheduleModal from './RescheduleModal'
 
 const TZ = 'America/New_York'
@@ -106,10 +106,15 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
         : null
 
   return rows.filter((r) => {
-    if (status && r.job_status !== status) return false
-    if (vendorFilter && r.vendor_id !== vendorFilter) return false
+    const jobStatus = r?.raw?.job_status ?? r?.job_status
+    if (status && jobStatus !== status) return false
 
-    const { start: apptStartIso, end: apptEndIso } = getEffectiveScheduleWindow(r)
+    const vendorId = r?.vendorId ?? r?.vendor_id ?? r?.raw?.vendor_id
+    if (vendorFilter && vendorId !== vendorFilter) return false
+
+    const { start: apptStartIso, end: apptEndIso } = r?.scheduledStart
+      ? { start: r.scheduledStart, end: r.scheduledEnd }
+      : getEffectiveScheduleWindow(r)
     if (!apptStartIso) return false
 
     // Date range filter
@@ -124,7 +129,14 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
 
     if (q) {
       const needle = q.toLowerCase()
-      const hay = [r.title, r.description, r.job_number, r.vehicle?.owner_name]
+      const hay = [
+        r?.raw?.title ?? r?.title,
+        r?.raw?.description ?? r?.description,
+        r?.raw?.job_number ?? r?.job_number,
+        r?.raw?.vehicle?.owner_name ?? r?.vehicle?.owner_name,
+        r?.customerName,
+        r?.vehicleLabel,
+      ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
@@ -177,7 +189,12 @@ export default function CalendarAgenda() {
   const focusRef = useRef(null)
 
   // Reschedule modal state
-  const [rescheduleModal, setRescheduleModal] = useState({ open: false, job: null })
+  const [rescheduleModal, setRescheduleModal] = useState({
+    open: false,
+    job: null,
+    initialStart: null,
+    initialEnd: null,
+  })
 
   // Filters toggle state
   const [filtersExpanded, setFiltersExpanded] = useState(false)
@@ -216,25 +233,32 @@ export default function CalendarAgenda() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    // Fetch jobs and derive scheduled windows from either job_parts or job-level schedule.
-    let all = []
     try {
-      all = await jobService.getAllJobs({ orgId })
+      if (!orgId) {
+        setJobs([])
+        setConflicts(new Map())
+        setLoading(false)
+        return
+      }
+
+      const now = new Date()
+      const rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const rangeEnd = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
+
+      const res = await getScheduleItems({ rangeStart, rangeEnd, orgId })
+      const excluded = new Set(['draft', 'canceled', 'cancelled'])
+      const scheduled = (res?.items || [])
+        .filter(
+          (it) => !excluded.has(String(it?.raw?.job_status || it?.job_status || '').toLowerCase())
+        )
+        .filter((it) => !!(it?.scheduledStart || getEffectiveScheduleWindow(it?.raw)?.start))
+
+      scheduled.sort((a, b) => new Date(a?.scheduledStart || 0) - new Date(b?.scheduledStart || 0))
+      setJobs(scheduled)
     } catch (e) {
       console.warn('[agenda] load failed', e)
+      setJobs([])
     }
-    const excluded = new Set(['draft', 'canceled', 'cancelled'])
-    const scheduled = (all || [])
-      .filter((j) => !excluded.has(String(j?.job_status || '').toLowerCase()))
-      .filter((j) => !!getEffectiveScheduleWindow(j)?.start)
-
-    // Sort ascending by derived start time
-    scheduled.sort((a, b) => {
-      const aStart = getEffectiveScheduleWindow(a)?.start
-      const bStart = getEffectiveScheduleWindow(b)?.start
-      return new Date(aStart) - new Date(bStart)
-    })
-    setJobs(scheduled)
     setLoading(false)
   }, [orgId])
 
@@ -247,15 +271,18 @@ export default function CalendarAgenda() {
     const checkConflicts = async () => {
       const conflictMap = new Map()
       for (const job of jobs) {
-        if (!job.vendor_id || !job.scheduled_start_time || !job.scheduled_end_time) continue
+        const vendorId = job?.vendorId ?? job?.vendor_id ?? job?.raw?.vendor_id
+        const startIso = job?.scheduledStart ?? job?.scheduled_start_time
+        const endIso = job?.scheduledEnd ?? job?.scheduled_end_time
+        if (!vendorId || !startIso || !endIso) continue
         try {
-          const start = new Date(job.scheduled_start_time)
-          const end = new Date(job.scheduled_end_time)
+          const start = new Date(startIso)
+          const end = new Date(endIso)
           // Check 30min window
           const checkStart = new Date(start.getTime() - 30 * 60 * 1000)
           const checkEnd = new Date(end.getTime() + 30 * 60 * 1000)
           const { hasConflict } = await calendarService.checkSchedulingConflict(
-            job.vendor_id,
+            vendorId,
             checkStart,
             checkEnd,
             job.id
@@ -280,7 +307,7 @@ export default function CalendarAgenda() {
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach((j) => {
-      const key = toDateKey(getEffectiveScheduleWindow(j)?.start)
+      const key = toDateKey(j?.scheduledStart || getEffectiveScheduleWindow(j?.raw || j)?.start)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(j)
     })
@@ -298,20 +325,12 @@ export default function CalendarAgenda() {
     }
   }, [focusId])
 
-  // Shared job event actions
-  const jobActions = useJobEventActions({
-    navigate,
-    toast,
-    jobService,
-    calendarService,
-    onReschedule: (job) => {
-      setRescheduleModal({ open: true, job })
-    },
-    onRefresh: load,
-  })
-
   function handleReschedule(job) {
-    jobActions.openRescheduleModal(job)
+    const raw = job?.raw || job
+    const { start, end } = job?.scheduledStart
+      ? { start: job.scheduledStart, end: job.scheduledEnd }
+      : getEffectiveScheduleWindow(raw)
+    setRescheduleModal({ open: true, job: raw, initialStart: start, initialEnd: end })
   }
 
   async function handleRescheduleSubmit(scheduleData) {
@@ -325,7 +344,7 @@ export default function CalendarAgenda() {
       toast?.success?.('Schedule updated successfully')
 
       // Close modal and refresh
-      setRescheduleModal({ open: false, job: null })
+      setRescheduleModal({ open: false, job: null, initialStart: null, initialEnd: null })
       await load()
     } catch (e) {
       console.error('[agenda] reschedule failed', e)
@@ -440,21 +459,28 @@ export default function CalendarAgenda() {
             {rows.map((r) => {
               const focused = r.id === focusId
               const hasConflict = conflicts.get(r.id)
-              const { start, end } = getEffectiveScheduleWindow(r)
+              const raw = r?.raw || r
+              const { start, end } = r?.scheduledStart
+                ? { start: r.scheduledStart, end: r.scheduledEnd }
+                : getEffectiveScheduleWindow(raw)
               const timeRange = formatScheduleRange(start, end)
+              const title = raw?.title || raw?.job_number
+              const vehicleLabel =
+                r?.vehicleLabel ||
+                `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
 
               return (
                 <li
                   key={r.id}
                   ref={focused ? focusRef : null}
                   tabIndex={0}
-                  aria-label={`Appointment ${r.title || r.job_number}`}
+                  aria-label={`Appointment ${title || r.id}`}
                   className={`flex items-center gap-3 px-3 py-2 text-sm ${focused ? 'bg-yellow-50' : ''}`}
                 >
                   <div className="w-40 text-gray-700 font-mono text-xs">{timeRange}</div>
                   <div className="flex-1">
                     <div className="font-medium truncate flex items-center gap-2">
-                      {r.title || r.job_number}
+                      {title}
                       {hasConflict && (
                         <span
                           className="text-yellow-600"
@@ -465,9 +491,7 @@ export default function CalendarAgenda() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {r.vehicle?.make} {r.vehicle?.model} {r.vehicle?.year}
-                    </div>
+                    <div className="text-xs text-gray-500 truncate">{vehicleLabel}</div>
                   </div>
                   <div className="flex items-center gap-2 ml-auto">
                     <button
@@ -502,11 +526,13 @@ export default function CalendarAgenda() {
       {/* Reschedule Modal */}
       <RescheduleModal
         open={rescheduleModal.open}
-        onClose={() => setRescheduleModal({ open: false, job: null })}
+        onClose={() =>
+          setRescheduleModal({ open: false, job: null, initialStart: null, initialEnd: null })
+        }
         onSubmit={handleRescheduleSubmit}
         job={rescheduleModal.job}
-        initialStart={getEffectiveScheduleWindow(rescheduleModal.job)?.start}
-        initialEnd={getEffectiveScheduleWindow(rescheduleModal.job)?.end}
+        initialStart={rescheduleModal.initialStart}
+        initialEnd={rescheduleModal.initialEnd}
       />
     </div>
   )

@@ -6,7 +6,7 @@
  * - Customer shows the saved name (not N/A unless missing)
  * - Items area shows full product names (no OP codes alone; no Qty)
  * - Value equals sum(job_parts.total_price) for that job
- * - Service location pill shows 🏢 Off-Site (orange) or 🏠 On-Site (green) matching service_type
+ * - Service location pill shows Off-Site / On-Site (muted styling)
  * - Filter toggles between "all" and "pending" without errors
  * - Export produces CSV with the visible rows (print first 2 lines)
  */
@@ -73,8 +73,8 @@ vi?.mock('../components/common/ExportButton', () => ({
         // Simulate CSV export with first 2 lines
         const csvData = [
           'Job #,Title,Vehicle,Customer,Value,Service Location,Status',
-          'JOB-001,2024 Honda Accord Service,2024 Honda Accord • Stock: VIN123,John Smith,$850.00,🏢 Off-Site,in_progress',
-          'JOB-002,Paint Protection Package,2023 Toyota Camry • Stock: VIN456,Sarah Johnson,$1200.50,🏠 On-Site,scheduled',
+          'JOB-001,2024 Honda Accord Service,2024 Honda Accord • Stock: VIN123,John Smith,$850.00,Off-Site,in_progress',
+          'JOB-002,Paint Protection Package,2023 Toyota Camry • Stock: VIN456,Sarah Johnson,$1200.50,On-Site,scheduled',
         ]
         console.log('CSV Export - First 2 lines:')
         console.log(csvData?.slice(0, 2)?.join('\\n'))
@@ -315,30 +315,28 @@ describe('Step 16: Deals List Screen Verification', () => {
     console.log('✅ Deal values correctly calculated as sum of job_parts.total_price')
   })
 
-  it('should display service location pills with correct colors and icons', async () => {
+  it('should display service location pills with correct labels (muted styling)', async () => {
     renderComponent()
 
     await waitFor(() => {
       // Check for service location indicators
-      const offSitePills = screen?.getAllByText('🏢 Off-Site')
-      const onSitePills = screen?.getAllByText('🏠 On-Site')
+      const offSitePills = screen?.getAllByText('Off-Site')
+      const onSitePills = screen?.getAllByText('On-Site')
 
       expect(offSitePills?.length)?.toBeGreaterThan(0)
       expect(onSitePills?.length)?.toBeGreaterThan(0)
 
-      // Verify color classes are applied (orange for off-site, green for on-site)
+      // Verify muted pill styling classes are applied
       offSitePills?.forEach((pill) => {
-        expect(pill)?.toHaveClass('bg-orange-100', 'text-orange-800')
+        expect(pill)?.toHaveClass('bg-slate-100', 'text-slate-700', 'border', 'border-slate-200')
       })
 
       onSitePills?.forEach((pill) => {
-        expect(pill)?.toHaveClass('bg-green-100', 'text-green-800')
+        expect(pill)?.toHaveClass('bg-slate-100', 'text-slate-700', 'border', 'border-slate-200')
       })
     })
 
-    console.log(
-      '✅ Service location pills display correctly: 🏢 Off-Site (orange) and 🏠 On-Site (green)'
-    )
+    console.log('✅ Service location pills display correctly: Off-Site and On-Site (muted)')
   })
 
   it('should handle filter toggles without errors', async () => {
@@ -438,7 +436,7 @@ console.log('• Vehicle title: ✅ <year> <make> <model> • Stock: <number> fo
 console.log('• Customer names: ✅ Available from vehicle.owner_name, null when missing')
 console.log('• Product names: ✅ Full descriptive names, no OP codes or Qty labels')
 console.log('• Value calculation: ✅ Matches sum(job_parts.total_price)')
-console.log('• Service location: ✅ 🏢 Off-Site (orange) and 🏠 On-Site (green) pills')
+console.log('• Service location: ✅ Off-Site and On-Site pills (muted)')
 console.log('• Filter functionality: ✅ No errors, handles all/filtered states')
 console.log('• CSV export: ✅ Generates properly formatted data')
 console.log('• Staff formatting: ✅ "Lastname, F." pattern applied')

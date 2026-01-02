@@ -105,6 +105,35 @@ export const jobService = {
   },
 
   /**
+   * Fetch a set of jobs by id (org-scoped) with the same expanded select as getAllJobs.
+   * Used by canonical schedule pipelines to hydrate job rows after an index query.
+   */
+  async getJobsByIds(ids = [], { orgId } = {}) {
+    const list = Array.isArray(ids) ? ids.filter(Boolean) : []
+    if (list.length === 0) return []
+
+    try {
+      let q = supabase?.from('jobs')
+
+      if (!q || typeof q.select !== 'function' || typeof q.in !== 'function') {
+        console.warn('[jobs] getJobsByIds: supabase client unavailable; returning empty list')
+        return []
+      }
+
+      q = q.in('id', list)
+      // Back-compat: orgId is treated as dealer_id.
+      if (orgId) q = q.eq('dealer_id', orgId)
+      q = q.order('created_at', { ascending: false })
+
+      const data = await selectJobs(q)
+      return data ?? []
+    } catch (err) {
+      console.error('[jobs] getJobsByIds failed:', err?.message || err)
+      return []
+    }
+  },
+
+  /**
    * Get a single job by id
    */
   async getJobById(id) {

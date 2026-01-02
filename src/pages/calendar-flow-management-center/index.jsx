@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  Calendar,
   Clock,
   Car,
   Building2,
@@ -13,6 +12,7 @@ import {
 } from 'lucide-react'
 import AppLayout from '../../components/layouts/AppLayout'
 import { calendarService } from '../../services/calendarService'
+import { getScheduledJobsByDateRange } from '@/services/scheduleItemsService'
 import { vendorService } from '../../services/vendorService'
 import useTenant from '@/hooks/useTenant'
 import QuickFilters from './components/QuickFilters'
@@ -87,8 +87,8 @@ const CalendarFlowManagementCenter = () => {
         date?.setDate(date?.getDate() + 6) // Monday to Saturday
         return date
       case 'month':
-        date?.setMonth(date?.getMonth() + 1) // Next month
-        date?.setDate(0) // Last day of current month
+        // End-exclusive: first day of next month
+        date?.setMonth(date?.getMonth() + 1)
         return date
       default:
         date?.setDate(date?.getDate() + 1)
@@ -108,31 +108,25 @@ const CalendarFlowManagementCenter = () => {
       const startDate = getViewStartDate()
       const endDate = getViewEndDate()
 
-      // Load all jobs without status filtering to allow client-side filtering
-      const { data: jobsData, error } = await calendarService?.getJobsByDateRange(
-        startDate,
-        endDate,
-        {
-          orgId,
-          vendorId: filters?.vendors?.length > 0 ? filters?.vendors?.[0] : null,
-          // Removed status filter to load all jobs for client-side filtering
-        }
-      )
+      // Canonical scheduling truth: overlap window from calendar RPC, then hydrate job rows.
+      const { jobs: jobsData } = await getScheduledJobsByDateRange({
+        rangeStart: startDate,
+        rangeEnd: endDate,
+        orgId,
+      })
 
-      if (!error && jobsData) {
-        const assignedJobs = jobsData?.filter((job) => job?.vendor_id)
-        const unassigned = jobsData?.filter((job) => !job?.vendor_id)
+      const assignedJobs = jobsData?.filter((job) => job?.vendor_id)
+      const unassigned = jobsData?.filter((job) => !job?.vendor_id)
 
-        // Store original data separately
-        setOriginalJobs(assignedJobs)
-        setOriginalUnassignedJobs(unassigned)
-      }
+      // Store original data separately
+      setOriginalJobs(assignedJobs)
+      setOriginalUnassignedJobs(unassigned)
     } catch (error) {
       console.error('Error loading calendar data:', error)
     } finally {
       setLoading(false)
     }
-  }, [filters, getViewEndDate, getViewStartDate, orgId, tenantLoading])
+  }, [getViewEndDate, getViewStartDate, orgId, tenantLoading])
 
   // Enhanced filter application function
   const applyFiltersToJobList = useCallback(
@@ -419,12 +413,6 @@ const CalendarFlowManagementCenter = () => {
               <div className="flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
                 {formatTime(job?.scheduled_start_time)}–{formatTime(job?.scheduled_end_time)}
-              </div>
-              <div className="flex items-center">
-                <Calendar className="h-3 w-3 mr-1" />
-                {job?.next_promised_short
-                  ? `Promise: ${job?.next_promised_short}`
-                  : `Promise: ${new Date(job?.promised_date)?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`}
               </div>
             </div>
 
