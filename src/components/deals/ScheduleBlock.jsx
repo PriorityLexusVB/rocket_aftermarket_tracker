@@ -2,6 +2,62 @@ import React from 'react'
 
 const TZ = 'America/New_York'
 
+function isDateOnlyValue(input) {
+  if (!input) return false
+  if (input instanceof Date) return false
+  const str = String(input).trim()
+  if (!str) return false
+  // Treat bare dates (and a legacy local-midnight normalization) as NOT a scheduled window.
+  // These values are commonly used for promise dates and should render as "Promise:" + "Not scheduled".
+  return /^\d{4}-\d{2}-\d{2}$/.test(str) || /^\d{4}-\d{2}-\d{2}T00:00:00$/.test(str)
+}
+
+function toUtcDayKey(input) {
+  if (!input) return ''
+  try {
+    // Date-only promise values
+    const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(String(input).trim())
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`
+
+    const d = input instanceof Date ? input : new Date(String(input))
+    if (Number.isNaN(d.getTime())) return ''
+    const y = d.getUTCFullYear()
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(d.getUTCDate()).padStart(2, '0')
+    return `${y}-${mo}-${day}`
+  } catch {
+    return ''
+  }
+}
+
+function isPromisePlaceholderWindow(start, end, promiseDate, timeZone = TZ) {
+  if (!start || !end || !promiseDate) return false
+  if (isDateOnlyValue(start) || isDateOnlyValue(end)) return false
+
+  const startDate = new Date(String(start))
+  const endDate = new Date(String(end))
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return false
+
+  // Heuristic: some environments materialize a fake schedule window for promise-only jobs.
+  // It appears as 12:00Z–12:30Z on the promise day (renders as 7:00–7:30 AM ET).
+  const scheduleDayKey = getEtDayKey(startDate, timeZone)
+  const promiseDayKey = getEtDayKey(promiseDate, timeZone)
+  if (!scheduleDayKey || !promiseDayKey || scheduleDayKey !== promiseDayKey) return false
+
+  const durationMs = endDate.getTime() - startDate.getTime()
+  const expectedMs = 30 * 60 * 1000
+  const withinTwoMinutes = Math.abs(durationMs - expectedMs) <= 2 * 60 * 1000
+
+  return withinTwoMinutes
+}
+
+function hasAnyPerLineWindow(deal) {
+  if (!deal || !Array.isArray(deal.job_parts)) return false
+  return deal.job_parts.some(
+    (p) => !!p?.scheduled_start_time && !isDateOnlyValue(p.scheduled_start_time)
+  )
+}
+
 function toSafeDateForTimeZone(input) {
   if (!input) return null
   if (input instanceof Date) {
@@ -37,39 +93,51 @@ function toSafeDateForTimeZone(input) {
   return Number.isNaN(dt.getTime()) ? null : dt
 }
 
-function extractScheduleTimes(deal) {
+function extractScheduleTimes(deal, promiseDate) {
   if (!deal) return { startTime: null, endTime: null }
 
-  // 1) Job-level schedule
-  if (deal.scheduled_start_time) {
-    return {
-      startTime: deal.scheduled_start_time,
-      endTime: deal.scheduled_end_time || null,
-    }
-  }
-
-  // 2) Earliest line-item schedule (job_parts)
+  // 1) Earliest line-item schedule (job_parts)
   if (Array.isArray(deal.job_parts)) {
     const scheduledParts = deal.job_parts
-      .filter((p) => p?.scheduled_start_time)
+      .filter((p) => p?.scheduled_start_time && !isDateOnlyValue(p.scheduled_start_time))
       .sort(
         (a, b) =>
           new Date(a.scheduled_start_time).getTime() - new Date(b.scheduled_start_time).getTime()
       )
 
     if (scheduledParts.length > 0) {
+      const candidateStart = scheduledParts[0].scheduled_start_time
+      const candidateEnd = scheduledParts[0].scheduled_end_time || null
+      if (isPromisePlaceholderWindow(candidateStart, candidateEnd, promiseDate)) {
+        return { startTime: null, endTime: null }
+      }
       return {
-        startTime: scheduledParts[0].scheduled_start_time,
-        endTime: scheduledParts[0].scheduled_end_time || null,
+        startTime: candidateStart,
+        endTime: candidateEnd,
       }
     }
   }
 
-  // 3) Legacy appt fields
-  if (deal.appt_start) {
+  // 2) Legacy appt fields
+  if (deal.appt_start && !isDateOnlyValue(deal.appt_start)) {
     return {
       startTime: deal.appt_start,
       endTime: deal.appt_end || null,
+    }
+  }
+
+  // 3) Job-level schedule (deprecated; keep only as a fallback)
+  if (deal.scheduled_start_time && !isDateOnlyValue(deal.scheduled_start_time)) {
+    // If no line items have a real scheduled window, suppress synthesized job-level placeholders.
+    if (
+      !hasAnyPerLineWindow(deal) &&
+      isPromisePlaceholderWindow(deal.scheduled_start_time, deal.scheduled_end_time, promiseDate)
+    ) {
+      return { startTime: null, endTime: null }
+    }
+    return {
+      startTime: deal.scheduled_start_time,
+      endTime: deal.scheduled_end_time || null,
     }
   }
 
@@ -142,11 +210,14 @@ export default function ScheduleBlock({
   onClick,
   className = '',
 }) {
-  const derived = deal && !scheduledStart ? extractScheduleTimes(deal) : null
-  const effectiveStart = scheduledStart || derived?.startTime || null
-  const effectiveEnd = scheduledEnd || derived?.endTime || null
+  const derived = deal && !scheduledStart ? extractScheduleTimes(deal, promiseDate) : null
+  const effectiveStartRaw = scheduledStart || derived?.startTime || null
+  const effectiveEndRaw = scheduledEnd || derived?.endTime || null
 
-  const hasWindow = !!effectiveStart
+  const effectiveStart = effectiveStartRaw
+  const effectiveEnd = effectiveEndRaw
+
+  const hasWindow = !!effectiveStart && !isDateOnlyValue(effectiveStart)
 
   const scheduleDayKey = hasWindow ? getEtDayKey(effectiveStart, timeZone) : ''
   const promiseDayKey = promiseDate ? getEtDayKey(promiseDate, timeZone) : ''

@@ -16,8 +16,9 @@
 
 ### E2E Flakiness Tips
 
-- If tests fail locally with auth issues, set E2E_EMAIL/E2E_PASSWORD in `.env.local` and run `pnpm e2e`.
+- If tests fail locally with auth issues, set `E2E_EMAIL`/`E2E_PASSWORD` in `.env.e2e.local` (preferred) and run `pnpm e2e`.
 - Global setup writes `e2e/storageState.json`. Delete it if corrupted and rerun.
+- To confirm Playwright is discovering tests, run `pnpm exec playwright test --list`.
 - Ensure port 5173 is free; the Playwright config launches the Vite dev server automatically.
 
 ## Local Development Setup

@@ -137,6 +137,40 @@
       },
       "problemMatcher": [],
       "group": "build"
+    },
+    {
+      "label": "E2E: List Tests (Playwright)",
+      "type": "shell",
+      "command": "pnpm exec playwright test --list",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "E2E: debug-auth (Playwright)",
+      "type": "shell",
+      "command": "pnpm exec playwright test e2e/debug-auth.spec.ts --project=chromium --reporter=list",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "group": "test"
     }
   ]
 }

@@ -16,32 +16,39 @@ Added automatic test data seeding to the E2E workflow to prevent "No products av
 ## Problem Statement
 
 ### Issue Reported
+
 @PriorityLexusVB reported that E2E tests are failing with error:
+
 ```
 No products available in test environment; seed E2E products or run admin-crud first.
 ```
 
 This error occurs at:
+
 - `e2e/deal-edit.spec.ts` line 38
-- `e2e/deal-form-dropdowns.spec.ts` 
+- `e2e/deal-form-dropdowns.spec.ts`
 - `e2e/deals-redirect.spec.ts`
 
 ### Root Cause
+
 **The E2E workflow had no step to seed test data before running tests.**
 
 **Evidence**:
-1. ✅ Seed script exists: `scripts/seedE2E.js` 
+
+1. ✅ Seed script exists: `scripts/seedE2E.js`
 2. ✅ Seed SQL exists: `scripts/sql/seed_e2e.sql`
 3. ✅ Package.json has script: `"db:seed-e2e": "node scripts/seedE2E.js"`
 4. ❌ E2E workflow never calls this script
 5. ❌ Tests run expecting products to exist, but they don't
 
 **Test Execution Order** (in smoke tests):
+
 1. `profile-name-fallback.spec.ts` ✅ (doesn't need products)
 2. `deal-form-dropdowns.spec.ts` ❌ (NEEDS products - fails!)
 3. `deal-edit.spec.ts` ❌ (NEEDS products - fails!)
 
 **Why This Happened**:
+
 - The error message mentions "run admin-crud first"
 - `admin-crud.spec.ts` creates products through the UI
 - But it's **not in the smoke test list** (lines 66-69 of e2e.yml)
@@ -57,6 +64,7 @@ This error occurs at:
 **Commit**: dad4700
 
 Added seeding step to **both jobs**:
+
 1. `e2e-smoke` (runs on pull requests)
 2. `e2e-full` (runs on main branch)
 
@@ -111,24 +119,28 @@ Added seeding step to **both jobs**:
 The seeding requires a **Postgres connection string** (not the REST API URL).
 
 **Format**:
+
 ```
 postgres://user:password@host:5432/database?options
 ```
 
 **Where to set**:
+
 - GitHub Repository Settings → Secrets and variables → Actions → Repository secrets
 - Name: `DATABASE_URL`
 - Value: Your Supabase Postgres connection string
 
 **How to get it**:
+
 1. Go to Supabase Dashboard
 2. Project Settings → Database
 3. Copy "Connection String" (choose "Direct connection" or "Session pooler")
 4. Replace `[YOUR-PASSWORD]` with actual password
 
 **Example**:
+
 ```
-postgres://postgres.xxxxx:password@aws-0-us-west-1.pooler.supabase.com:5432/postgres
+postgres://postgres.<project-ref>:[YOUR-PASSWORD]@aws-0-us-west-1.pooler.supabase.com:5432/postgres
 ```
 
 ---
@@ -138,12 +150,14 @@ postgres://postgres.xxxxx:password@aws-0-us-west-1.pooler.supabase.com:5432/post
 ### Expected Behavior After Fix
 
 **Before seeding**:
+
 ```
 ❌ Test: deal-edit.spec.ts
 Error: No products available in test environment
 ```
 
 **After seeding**:
+
 ```
 ✅ Seed E2E test data
 Seeding E2E test data (products, vendors, etc.)
@@ -194,6 +208,7 @@ If `DATABASE_URL` secret is not set, the workflow will:
 The user mentioned "i thought this was fixed in pr 40" (likely PR #240).
 
 Looking at commit `ceb1e85` (most recent before this fix):
+
 ```
 Fix E2E test failures in PR #239: Rebase on main to include auth improvements (#240)
 ```
@@ -212,12 +227,14 @@ This commit fixed **authentication-related E2E issues** but did **not** add the 
 ## Impact
 
 ### Before This Fix
+
 - ❌ E2E tests failed with "No products available" error
 - ❌ Manual seeding required before running tests
 - ❌ Tests only worked if admin-crud ran first
 - ❌ Unreliable test results
 
 ### After This Fix
+
 - ✅ E2E tests have data automatically seeded
 - ✅ No manual intervention required
 - ✅ Tests work reliably in any order
@@ -228,40 +245,45 @@ This commit fixed **authentication-related E2E issues** but did **not** add the 
 ## Related Files
 
 ### Seeding Scripts
+
 - `scripts/seedE2E.js` - Node.js script to run SQL
 - `scripts/sql/seed_e2e.sql` - SQL with test data
 
 ### Tests That Need Products
+
 - `e2e/deal-edit.spec.ts` - Tests deal editing with products
 - `e2e/deal-form-dropdowns.spec.ts` - Tests product dropdowns
 - `e2e/deals-redirect.spec.ts` - Tests deal creation with products
 
 ### Test That Creates Products
+
 - `e2e/admin-crud.spec.ts` - Creates products via UI (not in smoke tests)
 
 ---
 
 ## Timeline
 
-| Date/Time | Event |
-|-----------|-------|
-| Dec 22, 2025 (earlier) | PR #240 merged - fixed auth issues |
+| Date/Time              | Event                                                   |
+| ---------------------- | ------------------------------------------------------- |
+| Dec 22, 2025 (earlier) | PR #240 merged - fixed auth issues                      |
 | Dec 22, 2025 14:11 UTC | @PriorityLexusVB reported "No products available" error |
-| Dec 22, 2025 14:15 UTC | Root cause identified: missing seeding step |
-| Dec 22, 2025 14:20 UTC | Fix implemented: added seeding step to E2E workflow |
-| Dec 22, 2025 | **Pending**: Test with DATABASE_URL secret set |
+| Dec 22, 2025 14:15 UTC | Root cause identified: missing seeding step             |
+| Dec 22, 2025 14:20 UTC | Fix implemented: added seeding step to E2E workflow     |
+| Dec 22, 2025           | **Pending**: Test with DATABASE_URL secret set          |
 
 ---
 
 ## Success Criteria
 
 ✅ **Pre-Merge Complete**:
+
 - Seeding step added to both E2E jobs
 - Graceful handling of missing DATABASE_URL
 - Idempotent SQL with ON CONFLICT clauses
 - Clear warnings and error messages
 
 ⏳ **Post-Merge Pending**:
+
 - [ ] Set DATABASE_URL secret in repository
 - [ ] Run E2E workflow to verify seeding works
 - [ ] Verify deal-edit.spec.ts passes
@@ -283,12 +305,14 @@ This commit fixed **authentication-related E2E issues** but did **not** add the 
 ## Prevention
 
 ### For Future E2E Tests
+
 - [ ] Document data requirements in test files
 - [ ] Use seeded test data with fixed IDs
 - [ ] Provide helpful error messages
 - [ ] Test in isolation (don't depend on other tests)
 
 ### For Future Workflows
+
 - [ ] Add seeding steps before data-dependent tests
 - [ ] Handle missing secrets gracefully
 - [ ] Provide clear documentation about required secrets

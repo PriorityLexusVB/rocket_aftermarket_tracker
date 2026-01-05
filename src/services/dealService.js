@@ -1271,6 +1271,8 @@ async function attachOrCreateVehicleByStockNumber(
 // ✅ ENHANCED: Added schema preflight probe to detect missing columns before main query
 export async function getAllDeals() {
   try {
+    let includeNextPromisedIso = true
+
     // STEP 1: Schema preflight probe - detect missing columns BEFORE building main select
     // This prevents initial 400 errors on environments missing scheduled_* or vendor_id
     if (JOB_PARTS_HAS_PER_LINE_TIMES || JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
@@ -1359,6 +1361,7 @@ export async function getAllDeals() {
           id, dealer_id, created_at, job_status, service_type, color_code, title, job_number,
           customer_needs_loaner, assigned_to, delivery_coordinator_id, finance_manager_id,
           scheduled_start_time, scheduled_end_time,
+          ${includeNextPromisedIso ? 'next_promised_iso,' : ''}
           vehicle:vehicles(year, make, model, stock_number),
           vendor:vendors(id, name),
           ${salesConsultant},
@@ -1412,6 +1415,16 @@ export async function getAllDeals() {
         }
 
         const lower = msg.toLowerCase()
+
+        // Some environments don't have next_promised_iso on jobs yet.
+        if (includeNextPromisedIso && lower.includes('next_promised_iso')) {
+          console.warn(
+            `[dealService:getAllDeals] Classified as ${errorCode}; next_promised_iso missing on jobs; retrying without it...`
+          )
+          includeNextPromisedIso = false
+          continue
+        }
+
         // Detect missing per-line time columns on job_parts and disable that capability
         if (
           lower.includes('job_parts') &&
@@ -1973,8 +1986,65 @@ export async function createDeal(formState) {
     // 2) Sync parts using identity-based sync (prevents resurrection bugs)
     if ((normalizedLineItems || []).length > 0) {
       await syncJobPartsForJob(job?.id, normalizedLineItems, {
-        includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
+        // Prefer explicitly sending null scheduled_* to avoid environments with DB defaults
+        // turning promise-only items into scheduled windows.
+        includeTimes: true,
       })
+    }
+
+    // Some environments have DB triggers/defaults that materialize a scheduled window
+    // from promised dates even when the user did not set schedule times.
+    // If the user provided no schedule window, force the job (and optionally job_parts)
+    // to remain unscheduled so the UI renders "Promise:" + "Not scheduled".
+    try {
+      const userProvidedJobTimes = !!(payload?.scheduled_start_time || payload?.scheduled_end_time)
+      const userProvidedLineTimes = (normalizedLineItems || []).some(
+        (it) =>
+          !!(
+            it?.scheduled_start_time ||
+            it?.scheduled_end_time ||
+            it?.scheduledStartTime ||
+            it?.scheduledEndTime
+          )
+      )
+      const hasPromiseOnlyLine = (normalizedLineItems || []).some(
+        (it) => !!it?.requires_scheduling && !!it?.promised_date
+      )
+      const shouldForceUnscheduled =
+        hasPromiseOnlyLine && !userProvidedJobTimes && !userProvidedLineTimes
+
+      if (shouldForceUnscheduled && job?.id) {
+        const { error: clearJobErr } = await supabase
+          ?.from('jobs')
+          ?.update({ scheduled_start_time: null, scheduled_end_time: null })
+          ?.eq('id', job.id)
+        if (clearJobErr) {
+          console.warn(
+            '[dealService:create] Failed to clear job scheduled_* (non-fatal):',
+            clearJobErr.message
+          )
+        }
+
+        // If per-line time columns are in play, also clear them to prevent UI fallback.
+        if (JOB_PARTS_HAS_PER_LINE_TIMES) {
+          const { error: clearPartsErr } = await supabase
+            ?.from('job_parts')
+            ?.update({ scheduled_start_time: null, scheduled_end_time: null })
+            ?.eq('job_id', job.id)
+
+          if (clearPartsErr && isMissingColumnError(clearPartsErr)) {
+            disableJobPartsTimeCapability()
+            incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
+          } else if (clearPartsErr) {
+            console.warn(
+              '[dealService:create] Failed to clear job_parts scheduled_* (non-fatal):',
+              clearPartsErr.message
+            )
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[dealService:create] schedule clear step skipped (non-fatal):', e?.message)
     }
 
     // A3: Handle loaner assignment for new deals
@@ -2515,7 +2585,7 @@ export async function updateDeal(id, formState) {
 
   // 3) Sync job_parts with identity-based sync (prevents resurrection bugs)
   await syncJobPartsForJob(id, normalizedLineItems, {
-    includeTimes: JOB_PARTS_HAS_PER_LINE_TIMES,
+    includeTimes: true,
   })
 
   // A3: Handle loaner assignment updates

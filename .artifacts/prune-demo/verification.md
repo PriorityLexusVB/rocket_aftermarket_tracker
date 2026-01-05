@@ -67,7 +67,7 @@ Example output:
 
 ```csv
 ID,Job Number,Title,Customer Name,Customer Email,VIN,Created At,Status,Reason
-test-1,TEST-001,Test Job 1,Test Customer,test@test.com,TEST123456,2025-01-01T00:00:00Z,pending,job_number matches demo pattern; customer_name matches demo pattern
+test-1,TEST-001,Test Job 1,Test Customer,test-user@example.com,TEST123456,2025-01-01T00:00:00Z,pending,job_number matches demo pattern; customer_name matches demo pattern
 ```
 
 #### JSON Report

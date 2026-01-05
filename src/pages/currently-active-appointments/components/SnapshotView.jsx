@@ -258,6 +258,11 @@ export default function SnapshotView() {
           rangeStart: start,
           rangeEnd: end,
         })
+
+        if (import.meta.env.DEV) {
+          // More reliable than the "Source Debug" UI line (which can be truncated in a11y snapshots)
+          console.log('[Snapshot needs_scheduling debug]', res?.debug || null)
+        }
         setItems(res.items || [])
 
         if (import.meta.env.DEV) {
@@ -502,7 +507,12 @@ export default function SnapshotView() {
           >
             <button
               type="button"
-              onClick={() => setWindowMode('today')}
+              onClick={() => {
+                setWindowMode('today')
+                const next = new URLSearchParams(searchParams)
+                next.delete('window')
+                setSearchParams(next, { replace: true })
+              }}
               className={
                 windowMode === 'today'
                   ? 'px-3 py-1.5 text-sm font-medium btn-primary'
@@ -514,7 +524,12 @@ export default function SnapshotView() {
             </button>
             <button
               type="button"
-              onClick={() => setWindowMode('next7')}
+              onClick={() => {
+                setWindowMode('next7')
+                const next = new URLSearchParams(searchParams)
+                next.delete('window')
+                setSearchParams(next, { replace: true })
+              }}
               className={
                 windowMode === 'next7'
                   ? 'px-3 py-1.5 text-sm font-medium btn-primary'
@@ -559,11 +574,20 @@ export default function SnapshotView() {
         <div className="text-[11px] text-muted-foreground" aria-label="Source Debug">
           DEV • window:{sourceDebug?.effectiveFilters?.window} • org:
           {sourceDebug?.effectiveFilters?.org_id} • vendor:
-          {sourceDebug?.effectiveFilters?.vendor} • scheduled-RPC:
-          {sourceDebug?.totals?.scheduledRpcUnique ?? 0} • unscheduled:
+          {sourceDebug?.effectiveFilters?.vendor}
+          {sourceDebug?.effectiveFilters?.window === 'needs_scheduling'
+            ? ` • needs:${JSON.stringify(sourceDebug?.needsScheduling || null)}`
+            : ''}
+          • scheduled-RPC:{sourceDebug?.totals?.scheduledRpcUnique ?? 0} • unscheduled:
           {sourceDebug?.totals?.unscheduledQuery ?? 0} • state:
           {JSON.stringify(sourceDebug?.counts?.scheduleState || {})} • source:
           {JSON.stringify(sourceDebug?.counts?.scheduleSource || {})}
+        </div>
+      ) : null}
+
+      {import.meta.env.DEV && sourceDebug?.effectiveFilters?.window === 'needs_scheduling' ? (
+        <div className="text-[11px] text-muted-foreground" aria-label="Needs Scheduling Debug">
+          needs:{JSON.stringify(sourceDebug?.needsScheduling || null)}
         </div>
       ) : null}
 

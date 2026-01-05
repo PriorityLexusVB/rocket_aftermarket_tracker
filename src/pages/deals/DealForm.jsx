@@ -544,25 +544,11 @@ export default function DealForm({
 
       const inferScheduledWindowFromLineItems = (lineItems) => {
         try {
-          const dates = (lineItems || [])
-            .filter((li) => li?.requires_scheduling && li?.promised_date)
-            .map((li) => String(li.promised_date))
-            .filter(Boolean)
-            .sort()
-
-          const first = dates?.[0]
-          if (!first) return { start: null, end: null }
-
-          // If we only have a date (YYYY-MM-DD), infer a small visible appointment window.
-          if (!first.includes('T')) {
-            return {
-              start: `${first}T12:00:00`,
-              end: `${first}T12:30:00`,
-            }
-          }
-
-          // Already has a time component; don't infer an end.
-          return { start: first, end: null }
+          // Promise dates are not a scheduled window.
+          // Scheduling must be explicitly set (either at the deal level or per-line) to avoid
+          // “promise-only” deals silently becoming scheduled.
+          void lineItems
+          return { start: null, end: null }
         } catch {
           return { start: null, end: null }
         }
@@ -573,6 +559,9 @@ export default function DealForm({
       // Avoid passing legacy org_id to service layer; dealer_id is the tenant key.
       const formWithoutOrgId = { ...(form || {}) }
       delete formWithoutOrgId.org_id
+      // Deal service prefers `line_items` when present. Drop any legacy/denormalized copy so we
+      // always persist the normalized `lineItems` we build below.
+      delete formWithoutOrgId.line_items
 
       const payload = {
         ...formWithoutOrgId,

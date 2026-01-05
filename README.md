@@ -9,6 +9,7 @@ This project is a React 18 + Vite app using TailwindCSS and Supabase (Auth/Postg
 - `pnpm serve` – preview the production build
 - `pnpm test` – run unit tests (Vitest)
 - `pnpm e2e` – run end-to-end tests (Playwright)
+- `pnpm exec playwright test --list` – list discovered Playwright tests
 
 ## Agent Run
 
@@ -126,7 +127,8 @@ Key features:
 ## Testing
 
 - Unit tests: `pnpm test`
-- E2E tests: `pnpm e2e` (requires environment-based auth configured for the e2e user)
+- E2E tests: `pnpm e2e` (requires `E2E_EMAIL`/`E2E_PASSWORD` for the E2E user)
+- List E2E tests: `pnpm exec playwright test --list`
 - Error handling tests: `pnpm test src/tests/schemaErrorClassifier.test.js src/tests/capabilityTelemetry.test.js`
 
 To view the last Playwright report:
@@ -179,6 +181,11 @@ E2E test auth
   - Or environment-based login. Set:
     - `E2E_EMAIL`
     - `E2E_PASSWORD`
+
+Recommended local setup for E2E (to avoid accidentally mixing dev/prod-ish env with tests):
+
+- Put E2E-only settings in `.env.e2e.local` (preferred). Playwright loads it first and overrides `.env.local`.
+- If you change E2E credentials, delete `e2e/storageState.json` before rerunning `pnpm e2e`.
 
 Optional Playwright settings:
 

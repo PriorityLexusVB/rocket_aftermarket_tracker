@@ -59,7 +59,7 @@ Comprehensive idempotent script that:
 
 1. **Organization Setup**:
    - Upserts `Priority Lexus VB` organization
-   - Attaches E2E user (rob.brasco@priorityautomotive.com) to organization
+   - Attaches E2E user (`e2e-user@example.com`) to organization
    - Sets user profile as active with department='Sales Consultants' and role='staff'
 
 2. **Optional Schema Remediation**:
@@ -133,7 +133,7 @@ After applying the database script, verify the following:
 ```sql
 SELECT id, email, org_id, department, role, is_active
 FROM public.user_profiles
-WHERE email = 'rob.brasco@priorityautomotive.com';
+WHERE email = 'e2e-user@example.com';
 ```
 
 Expected: `org_id` should be a valid UUID (not NULL)

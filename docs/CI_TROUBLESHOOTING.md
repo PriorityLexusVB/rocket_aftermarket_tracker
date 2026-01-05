@@ -9,17 +9,20 @@ This guide helps diagnose and fix common CI/CD pipeline failures in the Rocket A
 ### 1. Secrets Not Accessible
 
 **Symptom:**
+
 ```
 Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in repo secrets
 Missing E2E_EMAIL or E2E_PASSWORD in repo secrets; required for full E2E on main
 ```
 
 **Root Causes:**
+
 - Repository secrets not configured in GitHub Settings
 - Secrets configured but not accessible from the workflow
 - Typo in secret names (case-sensitive!)
 
 **Resolution:**
+
 1. Verify secrets are configured:
    - Go to GitHub repo → Settings → Secrets and variables → Actions
    - Ensure these secrets exist:
@@ -39,35 +42,42 @@ Missing E2E_EMAIL or E2E_PASSWORD in repo secrets; required for full E2E on main
 ### 2. Database Schema Mismatch
 
 **Symptom:**
+
 ```
 PostgrestError: column user_profiles.name does not exist
 ```
 
 **Root Causes:**
+
 - This is actually EXPECTED behavior!
 - The `user_profiles` table only has `full_name`, not `name` or `display_name`
 - The health endpoint probes for columns by attempting to query them
 - A "column does not exist" error is caught and results in `false` for that capability
 
 **Why This Isn't a Problem:**
+
 - The capability detection system is designed to handle missing columns
 - The health endpoint returns `{ name: false, full_name: true, display_name: false }`
 - The application then uses only the available columns
 
 **When It IS a Problem:**
+
 - If ALL capabilities return `false` (including `full_name`)
 - If the application crashes trying to use a missing column
 - If RLS policies block the health check query
 
 **Resolution:**
+
 1. Verify `full_name` exists in the schema:
+
    ```sql
-   SELECT column_name, data_type 
-   FROM information_schema.columns 
+   SELECT column_name, data_type
+   FROM information_schema.columns
    WHERE table_name = 'user_profiles';
    ```
 
 2. Check RLS policies allow reads:
+
    ```sql
    SELECT * FROM pg_policies WHERE tablename = 'user_profiles';
    ```
@@ -80,33 +90,38 @@ PostgrestError: column user_profiles.name does not exist
 ### 3. Test Timeouts
 
 **Symptom:**
+
 ```
 Test timeout of 30000ms exceeded
 expect(locator).toHaveCount(expected) failed
 ```
 
 **Root Causes:**
+
 - Slow CI environment
 - Network latency to Supabase
 - Missing wait conditions in tests
 - App not loading properly
 
 **Resolution (Already Implemented):**
+
 1. **Increased Timeout**: CI tests now have 45-second timeout (vs 30s locally)
 2. **Retries**: Tests retry once in CI to handle transient failures
 3. **Better Tracing**: Traces captured on every run in CI for debugging
 
 **If Still Failing:**
+
 1. Check the uploaded test artifacts:
    - Screenshots show what the page looked like at failure
    - Traces show detailed timeline of actions
    - HTML report shows full test output
 
 2. Look for stuck navigation:
+
    ```typescript
    // Bad: No timeout specified
    await page.goto('/deals')
-   
+
    // Good: Explicit timeout and wait condition
    await page.goto('/deals', { waitUntil: 'networkidle', timeout: 15000 })
    ```
@@ -119,15 +134,18 @@ expect(locator).toHaveCount(expected) failed
 ### 4. E2E Test Init Script Issues
 
 **Symptom:**
+
 - Tests that should mock capabilities are failing
 - SessionStorage values not persisting
 - Route mocks not being applied
 
 **Root Cause:**
+
 - `addInitScript()` called AFTER `goto()`
 - Init scripts must be added before any navigation
 
 **Resolution (Fixed in profile-name-fallback.spec.ts):**
+
 ```typescript
 // Bad:
 await page.goto('/')
@@ -142,10 +160,12 @@ await page.goto('/')
 ### 5. Missing Test Artifacts
 
 **Symptom:**
+
 - No screenshots or traces in CI logs
 - "if-no-files-found: ignore" hiding issues
 
 **Resolution (Already Implemented):**
+
 - Test results uploaded to `test-results-full` and `test-results-smoke` artifacts
 - Includes:
   - `test-results/` directory
@@ -154,6 +174,7 @@ await page.goto('/')
 - Retention: 7 days
 
 **To Download:**
+
 1. Go to failed workflow run
 2. Scroll to "Artifacts" section at bottom
 3. Download `test-results-full` or `test-results-smoke`
@@ -178,18 +199,17 @@ await page.goto('/')
 ### Playwright Config (playwright.config.ts)
 
 **CI-Specific Settings:**
+
 - Timeout: 45s (vs 30s local)
 - Retries: 1 (vs 0 local)
 - Trace: 'on' (vs 'on-first-retry' local)
 - Workers: 1 (sequential)
 
-**Fallback Credentials:**
-The config includes hardcoded test credentials as fallback:
-```typescript
-E2E_EMAIL: process.env.E2E_EMAIL || 'rob.brasco@priorityautomotive.com',
-E2E_PASSWORD: process.env.E2E_PASSWORD || 'Rocket123!',
-```
-These are used when no env vars are set (e.g., local dev).
+**E2E Credentials (No Defaults):**
+
+- The Playwright runner is intentionally configured to **avoid** defaulting Supabase or E2E auth credentials.
+- In CI and locally, set `E2E_EMAIL` and `E2E_PASSWORD` explicitly (or let auth-dependent tests skip when they are not set).
+- In GitHub Actions, ensure the secrets exist and are passed to the E2E workflow steps.
 
 ## Debugging Checklist
 
@@ -214,9 +234,12 @@ pnpm install
 # Install Playwright browsers
 pnpm exec playwright install chromium --with-deps
 
-# Set up .env.local with your credentials
-cp .env.example .env.local
-# Edit .env.local with real values
+# Set up E2E credentials (preferred)
+cp .env.example .env.e2e.local
+# Edit .env.e2e.local with real values
+
+# Confirm Playwright is discovering tests
+pnpm exec playwright test --list
 
 # Run all E2E tests
 pnpm e2e

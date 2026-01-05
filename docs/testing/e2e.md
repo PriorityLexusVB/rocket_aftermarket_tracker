@@ -13,14 +13,18 @@ This document describes how to run end-to-end (E2E) tests locally and in CI for 
 
 The following environment variables are required for E2E tests to run successfully:
 
-| Variable | Description | Required for |
-|----------|-------------|--------------|
-| `VITE_SUPABASE_URL` | Supabase project URL | App runtime |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key | App runtime |
-| `E2E_EMAIL` | Email address for E2E test user | Authentication |
-| `E2E_PASSWORD` | Password for E2E test user | Authentication |
-| `VITE_ORG_SCOPED_DROPDOWNS` | Set to `true` for org-scoped dropdown behavior | App runtime |
-| `PLAYWRIGHT_BASE_URL` | Base URL for tests (default: `http://localhost:5173`) | Test execution |
+| Variable                 | Description                                           | Required for   |
+| ------------------------ | ----------------------------------------------------- | -------------- |
+| `VITE_SUPABASE_URL`      | Supabase project URL                                  | App runtime    |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key                         | App runtime    |
+| `E2E_EMAIL`              | Email address for E2E test user                       | Authentication |
+| `E2E_PASSWORD`           | Password for E2E test user                            | Authentication |
+| `PLAYWRIGHT_BASE_URL`    | Base URL for tests (default: `http://localhost:5173`) | Test execution |
+
+Notes:
+
+- Playwright prefers `.env.e2e.local` (if present) and will override values from `.env.local`.
+- `VITE_ORG_SCOPED_DROPDOWNS` is deprecated/ignored by the app (safe to omit). The Playwright web server currently sets it, but it does not change behavior.
 
 ## Running E2E Tests Locally
 
@@ -38,19 +42,21 @@ pnpm exec playwright install --with-deps
 
 ### 3. Set Environment Variables
 
-Create a `.env.local` file in the project root or export environment variables:
+Create a `.env.e2e.local` file in the project root (preferred) or export environment variables:
 
 ```bash
 export VITE_SUPABASE_URL="your-supabase-url"
 export VITE_SUPABASE_ANON_KEY="your-supabase-anon-key"
 export E2E_EMAIL="test-user@example.com"
 export E2E_PASSWORD="your-test-password"
-export VITE_ORG_SCOPED_DROPDOWNS="true"
 ```
 
 ### 4. Run Tests
 
 ```bash
+# List discovered tests (use this when "No tests found" is suspected)
+pnpm exec playwright test --list
+
 # Run all E2E tests
 pnpm e2e
 
@@ -113,9 +119,15 @@ const __dirname = path.dirname(__filename)
 **Symptom**: Tests fail because `e2e/storageState.json` doesn't exist.
 
 **Solution**: The `global.setup.ts` file handles authentication and creates the storage state file automatically. If login fails, check:
+
 1. `E2E_EMAIL` and `E2E_PASSWORD` are correct
 2. The test user exists in Supabase
 3. The auth page selectors match the current UI
+
+If you changed credentials or the file is stale/corrupted:
+
+1. Delete `e2e/storageState.json`
+2. Re-run `pnpm e2e`
 
 ### Port Conflicts
 
@@ -127,13 +139,13 @@ const __dirname = path.dirname(__filename)
 
 Key E2E test files:
 
-| File | Description |
-|------|-------------|
+| File                                | Description                                          |
+| ----------------------------------- | ---------------------------------------------------- |
 | `e2e/profile-name-fallback.spec.ts` | Tests profile name display with capability fallbacks |
-| `e2e/deal-form-dropdowns.spec.ts` | Tests dropdown population and line item behavior |
-| `e2e/deal-edit.spec.ts` | Tests deal creation and editing flows |
-| `e2e/smoke.spec.ts` | Basic app loading test |
-| `e2e/debug-auth.spec.ts` | Authentication verification |
+| `e2e/deal-form-dropdowns.spec.ts`   | Tests dropdown population and line item behavior     |
+| `e2e/deal-edit.spec.ts`             | Tests deal creation and editing flows                |
+| `e2e/smoke.spec.ts`                 | Basic app loading test                               |
+| `e2e/debug-auth.spec.ts`            | Authentication verification                          |
 
 ## Configuration Files
 

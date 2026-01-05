@@ -1,5 +1,6 @@
 import { calendarService } from '@/services/calendarService'
 import { jobService } from '@/services/jobService'
+import { getCapabilities } from '@/services/dealService'
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 
@@ -269,29 +270,116 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
   if (!startKey || !endKey) return { items: [], debug: { reason: 'invalid_range' } }
 
   try {
+    const caps = getCapabilities?.() || {}
     let q = supabase
       ?.from('job_parts')
       ?.select('job_id, promised_date')
       ?.eq('requires_scheduling', true)
       ?.not('promised_date', 'is', null)
-      ?.is('scheduled_start_time', null)
-      ?.is('scheduled_end_time', null)
       ?.gte('promised_date', startKey)
       ?.lt('promised_date', endKey)
 
-    // Back-compat: orgId param is treated as dealer_id.
-    if (orgId) q = q?.eq('dealer_id', orgId)
+    // Some environments don't have per-line scheduled_* columns yet.
+    // When absent, treat job_parts as inherently lacking per-line time windows and rely on the
+    // canonical effective schedule window check below to exclude truly scheduled jobs.
+    if (caps?.jobPartsHasTimes) {
+      q = q?.is('scheduled_start_time', null)?.is('scheduled_end_time', null)
+    }
 
-    const data = await safeSelect(q, 'scheduleItems:needsScheduling:partIds')
-    const jobIds = Array.from(
+    // Tenant scoping: orgId param is treated as dealer_id (canonical tenant key in this app).
+    // Fall back to org_id only for environments that haven't adopted dealer_id.
+    let data
+    if (orgId) {
+      try {
+        data = await safeSelect(
+          q?.eq('dealer_id', orgId),
+          'scheduleItems:needsScheduling:partIds:dealer_id'
+        )
+      } catch (e) {
+        if (e?.type === 'missing_column' && e?.details?.column === 'dealer_id') {
+          data = await safeSelect(
+            q?.eq('org_id', orgId),
+            'scheduleItems:needsScheduling:partIds:org_id'
+          )
+        } else {
+          throw e
+        }
+      }
+    } else {
+      data = await safeSelect(q, 'scheduleItems:needsScheduling:partIds')
+    }
+    let jobIds = Array.from(
       new Set((Array.isArray(data) ? data : []).map((r) => r?.job_id).filter(Boolean))
     )
+
+    // Some environments don't populate job_parts.dealer_id consistently (jobs are the canonical tenant).
+    // Always attempt a jobs + inner join job_parts candidate discovery and union ids.
+    if (orgId) {
+      try {
+        let jq = supabase
+          ?.from('jobs')
+          ?.select('id, job_parts!inner(job_id, promised_date, requires_scheduling)')
+          ?.eq('dealer_id', orgId)
+          ?.eq('job_parts.requires_scheduling', true)
+          ?.not('job_parts.promised_date', 'is', null)
+          ?.gte('job_parts.promised_date', startKey)
+          ?.lt('job_parts.promised_date', endKey)
+
+        if (caps?.jobPartsHasTimes) {
+          jq = jq
+            ?.is('job_parts.scheduled_start_time', null)
+            ?.is('job_parts.scheduled_end_time', null)
+        }
+
+        const viaJobs = await safeSelect(jq, 'scheduleItems:needsScheduling:candidates:jobsJoin')
+        const viaJobIds = (Array.isArray(viaJobs) ? viaJobs : []).map((r) => r?.id).filter(Boolean)
+        if (viaJobIds.length) {
+          jobIds = Array.from(new Set([...jobIds, ...viaJobIds]))
+        }
+      } catch {
+        // Keep graceful behavior; downstream will return empty if no candidates.
+      }
+    }
 
     if (!jobIds.length) {
       return { items: [], debug: { candidateJobs: 0, hydrated: 0, kept: 0 } }
     }
 
-    const jobs = await jobService.getJobsByIds(jobIds, { orgId })
+    // Hydrate jobs. Prefer the shared service, but fall back to a minimal select if it yields no rows.
+    // This helps in environments where expanded selects (profiles/relationships) are restricted.
+    let hydratePath = 'jobService'
+    let jobs = await jobService.getJobsByIds(jobIds, { orgId })
+
+    if (orgId && (!Array.isArray(jobs) || jobs.length === 0)) {
+      try {
+        let jq = supabase
+          ?.from('jobs')
+          ?.select(
+            '*, job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,scheduled_start_time,scheduled_end_time,requires_scheduling,no_schedule_reason,is_off_site)'
+          )
+          ?.in('id', jobIds)
+
+        // Keep tenant scoping consistent with the rest of the app (dealer_id). If missing, fall back.
+        try {
+          jq = jq?.eq('dealer_id', orgId)
+        } catch (e) {
+          if (e?.type === 'missing_column' && e?.details?.column === 'dealer_id') {
+            jq = jq?.eq('org_id', orgId)
+          } else {
+            throw e
+          }
+        }
+
+        const fallbackJobs = await safeSelect(jq, 'scheduleItems:needsScheduling:hydrate:fallback')
+        if (Array.isArray(fallbackJobs) && fallbackJobs.length > 0) {
+          hydratePath = 'fallback'
+          jobs = fallbackJobs
+        }
+      } catch {
+        // Leave jobs as-is; downstream will return empty.
+      }
+    }
+
     const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
 
     const now = new Date()
@@ -324,6 +412,9 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
       items,
       debug: {
         candidateJobs: jobIds.length,
+        hydratePath,
+        sampleJobId: jobIds[0] ?? null,
+        sampleJobIdType: jobIds[0] == null ? 'null' : typeof jobIds[0],
         hydrated: withLoaners.length,
         kept: items.length,
       },

@@ -338,8 +338,8 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
     })
   }
 
-  const includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
-  const includeVendor = opts?.includeVendor ?? JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
+  let includeTimes = opts?.includeTimes ?? JOB_PARTS_HAS_PER_LINE_TIMES
+  let includeVendor = opts?.includeVendor ?? JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE
 
   // Step 1: Fetch existing job_parts for this job
   const { data: existingParts, error: fetchErr } = await supabase
@@ -403,26 +403,80 @@ export async function syncJobPartsForJob(jobId, lineItems = [], opts = {}) {
       const row = buildJobPartsPayload(jobId, [item], { includeTimes, includeVendor })[0]
       if (!row) continue
 
-      const { data: updatedRows, error: updErr } = await supabase
+      const baseUpdate = {
+        product_id: row.product_id,
+        quantity_used: row.quantity_used,
+        unit_price: row.unit_price,
+        promised_date: row.promised_date,
+        requires_scheduling: row.requires_scheduling,
+        no_schedule_reason: row.no_schedule_reason,
+        is_off_site: row.is_off_site,
+      }
+
+      let updatePayload = {
+        ...baseUpdate,
+        ...(includeTimes
+          ? {
+              scheduled_start_time: row.scheduled_start_time,
+              scheduled_end_time: row.scheduled_end_time,
+            }
+          : {}),
+        ...(includeVendor ? { vendor_id: row.vendor_id } : {}),
+      }
+
+      let { data: updatedRows, error: updErr } = await supabase
         .from('job_parts')
-        .update({
-          product_id: row.product_id,
-          quantity_used: row.quantity_used,
-          unit_price: row.unit_price,
-          promised_date: row.promised_date,
-          requires_scheduling: row.requires_scheduling,
-          no_schedule_reason: row.no_schedule_reason,
-          is_off_site: row.is_off_site,
-          ...(includeTimes
-            ? {
-                scheduled_start_time: row.scheduled_start_time,
-                scheduled_end_time: row.scheduled_end_time,
-              }
-            : {}),
-          ...(includeVendor ? { vendor_id: row.vendor_id } : {}),
-        })
+        .update(updatePayload)
         .eq('id', item.id)
         .select('id')
+
+      // Missing-column fallback retry (mirrors INSERT fallback)
+      if (updErr && isMissingColumnError(updErr)) {
+        const errorCode = classifySchemaError(updErr)
+        const lower = String(updErr?.message || '').toLowerCase()
+
+        if (includeVendor && lower.includes('vendor_id')) {
+          console.warn(
+            `[syncJobPartsForJob] ${errorCode}: vendor_id missing on UPDATE, retrying without it`
+          )
+          disableJobPartsVendorIdCapability()
+          incrementTelemetry?.(TelemetryKey?.VENDOR_ID_FALLBACK)
+          includeVendor = false
+          updatePayload = {
+            ...baseUpdate,
+            ...(includeTimes
+              ? {
+                  scheduled_start_time: row.scheduled_start_time,
+                  scheduled_end_time: row.scheduled_end_time,
+                }
+              : {}),
+          }
+          ;({ data: updatedRows, error: updErr } = await supabase
+            .from('job_parts')
+            .update(updatePayload)
+            .eq('id', item.id)
+            .select('id'))
+        } else if (
+          includeTimes &&
+          (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
+        ) {
+          console.warn(
+            `[syncJobPartsForJob] ${errorCode}: scheduled_* missing on UPDATE, retrying without them`
+          )
+          disableJobPartsTimeCapability()
+          incrementTelemetry?.(TelemetryKey?.SCHEDULED_TIMES_FALLBACK)
+          includeTimes = false
+          updatePayload = {
+            ...baseUpdate,
+            ...(includeVendor ? { vendor_id: row.vendor_id } : {}),
+          }
+          ;({ data: updatedRows, error: updErr } = await supabase
+            .from('job_parts')
+            .update(updatePayload)
+            .eq('id', item.id)
+            .select('id'))
+        }
+      }
 
       if (updErr) {
         console.error('[syncJobPartsForJob] UPDATE failed for id:', item.id, updErr)

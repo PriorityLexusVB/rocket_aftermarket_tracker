@@ -1,7 +1,7 @@
 import { chromium } from '@playwright/test'
 import fs from 'fs/promises'
 import path from 'path'
-// Ensure env vars (E2E_EMAIL/E2E_PASSWORD, PLAYWRIGHT_BASE_URL) load from .env.local/.env
+// Ensure env vars (E2E_EMAIL/E2E_PASSWORD, PLAYWRIGHT_BASE_URL) load from .env.e2e.local/.env.local/.env
 import dotenv from 'dotenv'
 import dns from 'dns/promises'
 import { existsSync } from 'fs'
@@ -104,6 +104,7 @@ export default async function globalSetup() {
 
   // If storage exists and debug-auth shows both testids, skip login
   let hasValidState = false
+  let sessionUserId: string | null = null
   try {
     const up = await waitForServer()
     if (!up) {
@@ -126,6 +127,7 @@ export default async function globalSetup() {
     const hasSession = sessionText !== '' && sessionText !== '—'
     const hasOrg = orgText !== '' && orgText !== 'undefined' && orgText !== 'null'
     hasValidState = hasSession && hasOrg
+    if (hasSession) sessionUserId = sessionText
   } catch {}
 
   if (!hasValidState) {
@@ -184,6 +186,12 @@ export default async function globalSetup() {
           const s = (sid?.textContent ?? '').trim()
           return s !== '' && s !== '—'
         })
+
+        sessionUserId = await page
+          .getByTestId('session-user-id')
+          .textContent()
+          .then((t) => (t ?? '').trim())
+          .catch(() => null)
         verified = true
       } catch {
         // If still redirected to /auth, wait a bit and retry
@@ -220,7 +228,7 @@ export default async function globalSetup() {
   // Give Supabase trigger a moment to write the profile row, then force org association
   await page.waitForTimeout(2000)
   try {
-    await associateUserWithE2EOrg()
+    await associateUserWithE2EOrg(sessionUserId ?? undefined)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.warn('[global.setup] Warning: org association failed:', message)
@@ -258,7 +266,7 @@ export default async function globalSetup() {
   await browser.close()
 }
 
-async function associateUserWithE2EOrg() {
+async function associateUserWithE2EOrg(userId?: string) {
   const connStr =
     process.env.E2E_DATABASE_URL ||
     process.env.DATABASE_URL ||
@@ -269,6 +277,7 @@ async function associateUserWithE2EOrg() {
     process.env.SUPABASE_DATABASE_URL ||
     process.env.SUPABASE_POSTGRES_URL
   const e2eEmail = process.env.E2E_EMAIL
+  const resolvedUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : null
   const configuredOrg = process.env.E2E_ORG_ID
 
   if (!connStr) {
@@ -410,8 +419,10 @@ async function associateUserWithE2EOrg() {
     const client = await connectWithIpv4Fallback(connStr)
     try {
       const check = await client.query(
-        'select id, org_id from public.user_profiles where email = $1',
-        [e2eEmail]
+        resolvedUserId
+          ? 'select id, org_id from public.user_profiles where id = $1'
+          : 'select id, org_id from public.user_profiles where email = $1',
+        resolvedUserId ? [resolvedUserId] : [e2eEmail]
       )
 
       if (check.rowCount === 0) {
@@ -436,21 +447,21 @@ async function associateUserWithE2EOrg() {
                $2::uuid as org_id,
                true as is_active
              from auth.users au
-             where au.email = $1
+             where ${resolvedUserId ? 'au.id = $1::uuid' : 'au.email = $1'}
              on conflict (id) do update
              set org_id = excluded.org_id,
                  is_active = excluded.is_active
              returning id`,
-            [e2eEmail, targetOrgForInsert]
+            [resolvedUserId ?? e2eEmail, targetOrgForInsert]
           )
 
           if (upsert.rowCount && upsert.rowCount > 0) {
             console.log(
-              `[global.setup] Attempt ${attempt}/${maxAttempts}: created user_profiles row from auth.users (email=${e2eEmail}).`
+              `[global.setup] Attempt ${attempt}/${maxAttempts}: created user_profiles row from auth.users (id=${resolvedUserId ?? 'n/a'} email=${e2eEmail}).`
             )
           } else {
             console.log(
-              `[global.setup] Attempt ${attempt}/${maxAttempts}: auth.users row not found yet for ${e2eEmail}; retrying...`
+              `[global.setup] Attempt ${attempt}/${maxAttempts}: auth.users row not found yet for ${resolvedUserId ?? e2eEmail}; retrying...`
             )
           }
         } catch (innerErr) {
@@ -482,11 +493,16 @@ async function associateUserWithE2EOrg() {
       // If the profile already has an org, keep it unless E2E_ORG_ID overrides.
       // This avoids foreign key violations when the hard-coded E2E org doesn't exist in the DB.
       const update = await client.query(
-        `update public.user_profiles
-         set org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
-         where email = $2
-         returning org_id`,
-        [targetOrg, e2eEmail]
+        resolvedUserId
+          ? `update public.user_profiles
+               set org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
+               where id = $2
+               returning org_id`
+          : `update public.user_profiles
+               set org_id = $1, is_active = true, updated_at = CURRENT_TIMESTAMP
+               where email = $2
+               returning org_id`,
+        resolvedUserId ? [targetOrg, resolvedUserId] : [targetOrg, e2eEmail]
       )
 
       const newOrg = update.rows[0]?.org_id
