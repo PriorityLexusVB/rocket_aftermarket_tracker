@@ -3,8 +3,25 @@
 		"github/github-mcp-server": {
 			"type": "http",
 			"url": "https://api.githubcopilot.com/mcp",
-			"gallery": "https://api.mcp.github.com/2025-09-15/v0/servers/ab12cd34-5678-90ef-1234-567890abcdef",
 			"version": "0.13.0"
+		},
+		"supabase": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"@supabase/mcp-server-supabase@0.5.10",
+				"--project-ref",
+				"ntpoblmjxfivomcwmjrj",
+				"--features",
+				"account,docs,database,debugging,development,functions,storage,branching",
+				"--api-url",
+				"https://api.supabase.com"
+			],
+			"env": {
+				"SUPABASE_ACCESS_TOKEN": "${input:SUPABASE_ACCESS_TOKEN}",
+				"npm_config_yes": "true"
+			},
+			"version": "0.5.10"
 		},
 		"microsoft/playwright-mcp": {
 			"type": "stdio",
@@ -15,15 +32,15 @@
 			"env": {
 				"npm_config_yes": "true"
 			},
-			"gallery": "https://api.mcp.github.com/2025-09-15/v0/servers/41b79849-7e6c-4fc7-82c0-5a611ea21523",
 			"version": "0.0.1-seed"
-		},
-		"cognitionai/deepwiki": {
-			"type": "http",
-			"url": "https://mcp.deepwiki.com/sse",
-			"gallery": "https://api.mcp.github.com",
-			"version": "1.0.0"
 		}
 	},
-	"inputs": []
+	"inputs": [
+		{
+			"id": "SUPABASE_ACCESS_TOKEN",
+			"type": "promptString",
+			"description": "Personal access token for Supabase API",
+			"password": true
+		}
+	]
 }
