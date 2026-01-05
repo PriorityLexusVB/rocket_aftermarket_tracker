@@ -1,54 +1,59 @@
-# MCP Notes — Aftermarket Tracker
+# MCP Notes (VS Code)
 
-Purpose: Document how to use Model Context Protocol (MCP) servers in this workspace to accelerate Supabase + GitHub operations while keeping production code untouched.
+This repo uses VS Code MCP (Model Context Protocol) servers to help Copilot/agents access GitHub and Supabase safely.
 
-## Servers
+## Source of truth
 
-- Supabase MCP (HTTP): Provides schema inspection, querying, migration introspection.
-- GitHub MCP (HTTP): Enables PR / issue metadata access and code search.
+- ✅ **Workspace MCP config (portable):** `.vscode/mcp.json`
+  - This file is tracked in git and travels with the repo across machines.
+  - Repo-specific servers belong here (Supabase, Playwright, etc.).
 
-## Usage Principles
+- ⚠️ **Global User MCP config (per machine):**
+  - `C:\Users\<YOU>\AppData\Roaming\Code\User\mcp.json`
+  - Keep this **empty** (or GitHub-only) to avoid duplicate server definitions across repos.
 
-1. Read-only first: Prefer non-mutating operations (schema list, policy read) before generating migrations.
-2. Guardrails: Never write production migrations from agent tasks without an explicit approval step.
-3. Stale cache remediation: If relationship queries fail ("Could not find a relationship"), run NOTIFY pgrst, 'reload schema'; wait 5s, retry.
-4. Evidence collection: For performance tuning, gather BEFORE and AFTER EXPLAIN ANALYZE output and index presence.
+### Why this matters
+Defining the same server in multiple places (global + workspace) causes:
+- duplicates in the MCP list
+- servers fighting each other
+- “process exited with code 1”
+- connecting to the wrong Supabase project
 
-## Common Supabase MCP Tasks
+**Rule:** Workspace `.vscode/mcp.json` is the single source of truth for this repo.
 
-| Task                       | MCP Action      | Notes                                            |
-| -------------------------- | --------------- | ------------------------------------------------ |
-| List tables                | list_tables     | Use to confirm presence before building queries. |
-| Inspect RLS policies       | list_policies   | Ensure each table has tenant scoping.            |
-| Verify extension (pg_trgm) | list_extensions | Must contain pg_trgm before trigram INDEX usage. |
-| Explain query              | explain         | Capture buffer hits + row counts (attach to PR). |
+---
 
-## Performance Verification Checklist
+## Servers used in this repo
 
-- Covering indexes present (see `PERFORMANCE_INDEXES.md`).
-- pg_trgm enabled for fuzzy search columns.
-- Optional MV created & refreshed (document refresh cadence).
-- Slow queries reduced (< 50ms target for common list endpoints under test dataset size).
+### GitHub MCP
+- Purpose: repo search, PR/issue metadata, workflow inspection
+- Safe to run always
+- Configured in `.vscode/mcp.json`
 
-## Coding Agent Prompt Integration
+### Supabase MCP
+- Purpose: schema/RLS inspection, query explain, migration planning support
+- Repo-specific: must not be configured globally (prevents wrong project connections)
 
-Embed this checklist in agent prompts so every performance change yields artifacts: index DDL, EXPLAIN BEFORE, EXPLAIN AFTER, elapsed time.
+### Playwright MCP (optional)
+- Purpose: E2E debugging, UI reproduction flows
+- Only needed when actively working on E2E tests
 
-## Failure Patterns & Remedies
+---
 
-| Symptom                             | Likely Cause                        | Remedy                                             |
-| ----------------------------------- | ----------------------------------- | -------------------------------------------------- |
-| 400/403 on REST relationship select | Stale schema cache                  | NOTIFY pgrst, 'reload schema'; wait and retry.     |
-| Missing FK expansion                | FK not created or named incorrectly | Verify constraint naming; re-run migration.        |
-| Slow COUNT(\*)                      | Missing WHERE + index               | Add selective index or approximate count strategy. |
+## Supabase token setup (recommended)
 
-## Do / Don't
+The workspace config references `SUPABASE_ACCESS_TOKEN`.
 
-- DO isolate workspace guardrail changes on dedicated branches.
-- DO capture artifacts in `.artifacts/` when running performance tests.
-- DON'T modify application runtime code while setting up MCP.
-- DON'T assume cache reload worked; verify by re-running the failing query.
+### Option A (prompt per machine)
+If `.vscode/mcp.json` uses `${input:SUPABASE_ACCESS_TOKEN}`, VS Code will prompt you when the server starts.
 
-## Next Steps
+### Option B (no prompts; easiest across multiple computers)
+Switch `.vscode/mcp.json` to use env:
+- `SUPABASE_ACCESS_TOKEN: "${env:SUPABASE_ACCESS_TOKEN}"`
 
-If expanding MCP usage: add custom server for local analysis (e.g., `localhost:PORT/mcp`) and extend instructions with authentication tokens management.
+Then set once per machine in WSL:
+
+```bash
+echo 'export SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"' >> ~/.bashrc
+source ~/.bashrc
+```

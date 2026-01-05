@@ -12,24 +12,6 @@ function isDateOnlyValue(input) {
   return /^\d{4}-\d{2}-\d{2}$/.test(str) || /^\d{4}-\d{2}-\d{2}T00:00:00$/.test(str)
 }
 
-function toUtcDayKey(input) {
-  if (!input) return ''
-  try {
-    // Date-only promise values
-    const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(String(input).trim())
-    if (m) return `${m[1]}-${m[2]}-${m[3]}`
-
-    const d = input instanceof Date ? input : new Date(String(input))
-    if (Number.isNaN(d.getTime())) return ''
-    const y = d.getUTCFullYear()
-    const mo = String(d.getUTCMonth() + 1).padStart(2, '0')
-    const day = String(d.getUTCDate()).padStart(2, '0')
-    return `${y}-${mo}-${day}`
-  } catch {
-    return ''
-  }
-}
-
 function isPromisePlaceholderWindow(start, end, promiseDate, timeZone = TZ) {
   if (!start || !end || !promiseDate) return false
   if (isDateOnlyValue(start) || isDateOnlyValue(end)) return false
