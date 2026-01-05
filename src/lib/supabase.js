@@ -57,9 +57,9 @@ if (isTest) {
   // Production mode - original implementation
   // Environment variables with enhanced validation
   // Support both Vite import.meta.env and injected process.env (e.g., Playwright webServer env)
-  const supabaseUrl = import.meta?.env?.VITE_SUPABASE_URL || process?.env?.VITE_SUPABASE_URL
-  const supabaseAnonKey =
-    import.meta?.env?.VITE_SUPABASE_ANON_KEY || process?.env?.VITE_SUPABASE_ANON_KEY
+  const procEnv = globalThis.process?.env
+  const supabaseUrl = import.meta?.env?.VITE_SUPABASE_URL || procEnv?.VITE_SUPABASE_URL
+  const supabaseAnonKey = import.meta?.env?.VITE_SUPABASE_ANON_KEY || procEnv?.VITE_SUPABASE_ANON_KEY
 
   // Only log environment check in development mode
   if (import.meta?.env?.DEV) {
