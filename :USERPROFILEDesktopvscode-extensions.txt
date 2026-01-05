@@ -1,0 +1,12 @@
+bradlc.vscode-tailwindcss
+dbaeumer.vscode-eslint
+eamodio.gitlens
+editorconfig.editorconfig
+esbenp.prettier-vscode
+github.copilot
+github.copilot-chat
+github.vscode-pull-request-github
+humao.rest-client
+ms-playwright.playwright
+prisma.prisma
+vitest.explorer
