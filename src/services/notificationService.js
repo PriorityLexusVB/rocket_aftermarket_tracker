@@ -5,6 +5,8 @@ import {
   disableNotificationOutboxCapability,
 } from '@/utils/capabilityTelemetry'
 
+let pendingOutboxFetchPromise = null
+
 export const notificationService = {
   // Get pending/recent communications as notifications
   async getNotifications(userId, opts = {}) {
@@ -60,15 +62,36 @@ export const notificationService = {
         return { data: [], error: null, count: 0 }
       }
 
-      let q = supabase
-        ?.from('notification_outbox')
-        ?.select('id, status, created_at, message_template, phone_e164')
-        ?.eq('status', 'pending')
-      if (opts?.orgId) q = q?.eq('dealer_id', opts.orgId)
+      if (pendingOutboxFetchPromise) {
+        const data = await pendingOutboxFetchPromise
+        return { data: data || [], error: null, count: data?.length || 0 }
+      }
 
-      q = q?.order('created_at', { ascending: false })?.limit(5)
+      pendingOutboxFetchPromise = (async () => {
+        try {
+          let q = supabase
+            ?.from('notification_outbox')
+            ?.select('id, status, created_at, message_template, phone_e164')
+            ?.eq('status', 'pending')
+          if (opts?.orgId) q = q?.eq('dealer_id', opts.orgId)
 
-      const data = await safeSelect(q, 'notification_outbox:notificationService:getPending')
+          q = q?.order('created_at', { ascending: false })?.limit(5)
+
+          const data = await safeSelect(q, 'notification_outbox:notificationService:getPending')
+          return data || []
+        } catch (error) {
+          const msg = String(error?.message || error || '').toLowerCase()
+          if (msg.includes('notification_outbox') && msg.includes('could not find the table')) {
+            disableNotificationOutboxCapability()
+            return []
+          }
+          throw error
+        } finally {
+          pendingOutboxFetchPromise = null
+        }
+      })()
+
+      const data = await pendingOutboxFetchPromise
 
       return {
         data: data || [],
@@ -124,23 +147,32 @@ export const notificationService = {
         }
       )
 
-      // Only subscribe to outbox changes if the table is known to exist for this session.
-      if (NOTIFICATION_OUTBOX_TABLE_AVAILABLE !== false) {
-        channel.on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notification_outbox',
-          },
-          () => {
-            // Refresh notifications when SMS outbox changes
-            this.getNotificationCount(userId)?.then(callback)
-          }
-        )
-      }
+      const service = this
+      ;(async () => {
+        // Only subscribe to outbox changes if the table is verified for this session.
+        // (If the table is missing, getPendingSMSNotifications will disable the capability.)
+        if (NOTIFICATION_OUTBOX_TABLE_AVAILABLE !== false) {
+          await service.getPendingSMSNotifications()
 
-      channel?.subscribe?.()
+          if (NOTIFICATION_OUTBOX_TABLE_AVAILABLE !== false) {
+            channel.on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'notification_outbox',
+              },
+              () => {
+                // Refresh notifications when SMS outbox changes
+                service.getNotificationCount(userId)?.then(callback)
+              }
+            )
+          }
+        }
+
+        channel?.subscribe?.()
+      })()
+
       // Return a cleanup function (awaitable) to avoid leaking realtime subscriptions.
       return async () => {
         await this.unsubscribeFromNotifications(channel)

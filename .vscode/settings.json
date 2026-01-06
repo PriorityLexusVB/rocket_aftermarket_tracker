@@ -45,6 +45,9 @@
   },
   "github.copilot.chat.codeGeneration.useInstructionFiles": true,
   "chat.useAgentsMdFile": true,
+  "chat.promptFilesLocations": {
+    ".github/prompts": true
+  },
   "chat.mcp.access": "all",
   "chat.mcp.gallery.enabled": true,
   "dev.containers.openRepositoryInContainer": "never",
@@ -91,7 +94,7 @@
     "rocket_aftermarket_tracker/.vscode/mcp.json: supabase": {
       "allowedModels": ["copilot/gpt-5.1-codex-max", "copilot/gpt-5.2"]
     },
-    "rocket_aftermarket_tracker/.vscode/mcp.json: github": {
+    "rocket_aftermarket_tracker/.vscode/mcp.json: github/github-mcp-server": {
       "allowedModels": ["copilot/gpt-5.1-codex-max", "copilot/gpt-5.2"]
     }
   }

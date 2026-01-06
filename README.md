@@ -124,6 +124,23 @@ Key features:
 - Health endpoints for proactive monitoring
 - Migration guidance for permanent fixes
 
+## Optional tables (capability gating)
+
+Some Supabase tables are treated as optional for local/dev environments (for example, when you are connected to a Supabase project that has not had the repo migrations applied yet). To avoid repeated `PGRST205` / missing-table spam, the app will disable the related feature for the remainder of the browser tab session after the first missing-table error.
+
+Lifecycle / source of truth:
+
+- Storage: `sessionStorage` (per-tab, cleared when the tab/browser session ends)
+- Keys:
+  - `cap_smsTemplatesTable`
+  - `cap_notificationOutboxTable`
+- Set when: a PostgREST missing-table error is detected for that table (first failure disables the feature)
+- Behavior when disabled: queries short-circuit to empty results and related UI is hidden/soft-disabled
+
+Reset (manual):
+
+- In DevTools → Application → Session Storage, delete the keys above (or run `sessionStorage.clear()` in the console), then refresh.
+
 ## Testing
 
 - Unit tests: `pnpm test`

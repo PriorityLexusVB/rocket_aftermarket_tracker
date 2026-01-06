@@ -1,12 +1,34 @@
 {
+  "_note": "INFORMATIONAL ONLY. Authoritative repo MCP config lives in .vscode/mcp.json (servers) and .vscode/settings.json (prompt + instruction wiring). See docs/MCP-NOTES.md.",
+  "_authoritative": {
+    "mcpServers": ".vscode/mcp.json",
+    "vscodeSettings": ".vscode/settings.json",
+    "mcpNotes": "docs/MCP-NOTES.md",
+    "agentGuardrails": ".github/copilot-instructions.md",
+    "workspaceGuardrails": ".github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md",
+    "agentWorkflow": "AGENTS.md"
+  },
   "mcpServers": {
     "supabase": {
-      "type": "http",
-      "url": "https://mcp.supabase.com/mcp",
-      "description": "Supabase Model Context Protocol server for database schema inspection, querying, and migration management",
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@supabase/mcp-server-supabase@0.5.10",
+        "--project-ref",
+        "ntpoblmjxfivomcwmjrj",
+        "--features",
+        "account,docs,database,debugging,development,functions,storage,branching",
+        "--api-url",
+        "https://api.supabase.com"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${input:SUPABASE_ACCESS_TOKEN}",
+        "npm_config_yes": "true"
+      },
+      "description": "Supabase MCP server (stdio via npx) for schema/RLS inspection and migration planning",
       "capabilities": [
         "list_tables",
-        "list_policies", 
+        "list_policies",
         "list_extensions",
         "explain_query",
         "get_table_schema",
@@ -29,7 +51,7 @@
         "Capture EXPLAIN ANALYZE output for performance tuning"
       ],
       "authenticationRequired": true,
-      "authenticationMethod": "Supabase project credentials (configured via environment or VS Code)"
+      "authenticationMethod": "SUPABASE_ACCESS_TOKEN (prompted via VS Code input or provided via env)"
     },
     "github": {
       "type": "http",
@@ -170,10 +192,7 @@
       ".github/workflows/ci.yml",
       ".github/workflows/e2e.yml"
     ],
-    "healthEndpoints": [
-      "api/health-*",
-      "src/api/health/*"
-    ]
+    "healthEndpoints": ["api/health-*", "src/api/health/*"]
   },
   "vscodeIntegration": {
     "settingsFile": ".vscode/mcp.json",
@@ -181,12 +200,7 @@
     "notes": "MCP servers are configured in .vscode/mcp.json for VS Code integration. The GitHub Copilot extension will automatically use these servers when available."
   },
   "securityConsiderations": {
-    "secrets": [
-      "VITE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY",
-      "E2E_EMAIL",
-      "E2E_PASSWORD"
-    ],
+    "secrets": ["VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY", "E2E_EMAIL", "E2E_PASSWORD"],
     "sensitiveData": [
       "Never commit Supabase credentials to repository",
       "Use GitHub secrets for CI/CD workflows",

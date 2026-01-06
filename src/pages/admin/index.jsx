@@ -293,7 +293,7 @@ const AdminPage = () => {
 
   const loadSmsTemplates = useCallback(async () => {
     try {
-      if (SMS_TEMPLATES_TABLE_AVAILABLE === false || smsTemplatesAvailable === false) {
+      if (smsTemplatesAvailable === false) {
         setSmsTemplates([])
         setSmsTemplatesAvailable(false)
         return
@@ -307,7 +307,6 @@ const AdminPage = () => {
 
       console.log(`SMS templates query result: ${data?.length || 0} records`)
       setSmsTemplates(data || [])
-      setSmsTemplatesAvailable(SMS_TEMPLATES_TABLE_AVAILABLE !== false)
     } catch (error) {
       const msg = String(error?.message || error || '').toLowerCase()
       if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
