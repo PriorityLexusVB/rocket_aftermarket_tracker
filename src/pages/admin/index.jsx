@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../../contexts/AuthContext'
-import { supabase } from '../../lib/supabase'
 import useTenant from '../../hooks/useTenant'
 import AppLayout from '../../components/layouts/AppLayout'
 import UIButton from '../../components/ui/Button'
@@ -23,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useLogger } from '../../hooks/useLogger'
 import { clearDropdownCache } from '../../services/dropdownService'
+import adminService from '../../services/adminService'
 import { vendorService } from '../../services/vendorService'
 import { vendorInsertSchema } from '../../db/schemas'
 
@@ -159,14 +159,12 @@ const AdminPage = () => {
     console.log('=== ADMIN ACCESS DEBUG ===')
 
     try {
-      // Get current session
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase?.auth?.getSession()
+      const res = await adminService.debugAuthState()
+
+      const session = res?.session
       console.log('Current session:', {
         hasSession: !!session,
-        sessionError,
+        sessionError: res?.sessionError,
         userId: session?.user?.id,
         userEmail: session?.user?.email,
       })
@@ -178,24 +176,16 @@ const AdminPage = () => {
           role: session?.user?.role,
         })
 
-        // Try to fetch user profile directly with detailed error logging
-        console.log('Attempting to fetch user profile...')
-        const { data: profile, error: profileError } = await supabase
-          ?.from('user_profiles')
-          ?.select('*')
-          ?.eq('id', session?.user?.id)
-          ?.single()
-
         console.log('Direct profile fetch result:', {
-          profile: profile,
-          profileError: profileError,
-          hasProfile: !!profile,
+          profile: res?.profile,
+          profileError: res?.profileError,
+          hasProfile: !!res?.profile,
         })
 
         setDebugInfo({
           authUser: session?.user,
-          userProfile: profile,
-          profileLoadError: profileError,
+          userProfile: res?.profile,
+          profileLoadError: res?.profileError,
           showDebug: true,
         })
       } else {
@@ -203,23 +193,12 @@ const AdminPage = () => {
         setDebugInfo({
           authUser: null,
           userProfile: null,
-          profileLoadError: { message: 'No authenticated user' },
+          profileLoadError: res?.sessionError || { message: 'No authenticated user' },
           showDebug: true,
         })
       }
 
-      // Test basic database access
-      console.log('Testing database access...')
-      const { data: testData, error: testError } = await supabase
-        ?.from('user_profiles')
-        ?.select('id, full_name, role')
-        ?.limit(5)
-
-      console.log('Database access test:', {
-        canAccess: !testError,
-        recordCount: testData?.length || 0,
-        error: testError,
-      })
+      console.log('Database access test:', res?.test)
     } catch (error) {
       console.error('Debug error:', error)
       setDebugInfo((prev) => ({
@@ -234,19 +213,12 @@ const AdminPage = () => {
     try {
       console.log('Loading user accounts...')
 
-      let q = supabase
-        ?.from('user_profiles')
-        ?.select('*', { count: 'exact' })
-        ?.in('role', ['admin', 'manager'])
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
-      q = q?.order('created_at', { ascending: false })
+      const { data, error } = await adminService.listUserAccounts({
+        orgId: effectiveOrgId,
+        onlyMyOrg,
+      })
 
-      const { data, error } = await q
-
-      if (error) {
-        console.error('User accounts query error:', error)
-        throw error
-      }
+      if (error) throw new Error(error?.message || 'Failed to load user accounts')
 
       console.log(`User accounts: ${data?.length || 0} records`)
       setUserAccounts(data || [])
@@ -259,16 +231,12 @@ const AdminPage = () => {
     try {
       console.log('Loading staff records...')
 
-      let q = supabase?.from('user_profiles')?.select('*', { count: 'exact' })?.eq('role', 'staff')
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
-      q = q?.order('created_at', { ascending: false })
+      const { data, error } = await adminService.listStaffRecords({
+        orgId: effectiveOrgId,
+        onlyMyOrg,
+      })
 
-      const { data, error } = await q
-
-      if (error) {
-        console.error('Staff records query error:', error)
-        throw error
-      }
+      if (error) throw new Error(error?.message || 'Failed to load staff records')
 
       console.log(`Staff records: ${data?.length || 0} staff members found`)
       setStaffRecords(data || [])
@@ -281,16 +249,9 @@ const AdminPage = () => {
     try {
       console.log('Loading vendors...')
 
-      let q = supabase?.from('vendors')?.select('*', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
-      q = q?.order('created_at', { ascending: false })
+      const { data, error } = await adminService.listVendors({ orgId: effectiveOrgId, onlyMyOrg })
 
-      const { data, error } = await q
-
-      if (error) {
-        console.error('Vendors query error:', error)
-        throw error
-      }
+      if (error) throw new Error(error?.message || 'Failed to load vendors')
 
       console.log(`Vendors query result: ${data?.length || 0} records`)
       setVendors(data || [])
@@ -303,16 +264,9 @@ const AdminPage = () => {
     try {
       console.log('Loading products...')
 
-      let q = supabase?.from('products')?.select('*, vendors(name)', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('dealer_id', effectiveOrgId)
-      q = q?.order('created_at', { ascending: false })
+      const { data, error } = await adminService.listProducts({ orgId: effectiveOrgId, onlyMyOrg })
 
-      const { data, error } = await q
-
-      if (error) {
-        console.error('Products query error:', error)
-        throw error
-      }
+      if (error) throw new Error(error?.message || 'Failed to load products')
 
       console.log(`Products query result: ${data?.length || 0} records`)
       setProducts(data || [])
@@ -325,15 +279,9 @@ const AdminPage = () => {
     try {
       console.log('Loading SMS templates...')
 
-      const { data, error } = await supabase
-        ?.from('sms_templates')
-        ?.select('*', { count: 'exact' })
-        ?.order('created_at', { ascending: false })
+      const { data, error } = await adminService.listSmsTemplates()
 
-      if (error) {
-        console.error('SMS templates query error:', error)
-        throw error
-      }
+      if (error) throw new Error(error?.message || 'Failed to load SMS templates')
 
       console.log(`SMS templates query result: ${data?.length || 0} records`)
       setSmsTemplates(data || [])
@@ -346,16 +294,12 @@ const AdminPage = () => {
     try {
       console.log('Loading organizations...')
 
-      let q = supabase?.from('organizations')?.select('*', { count: 'exact' })
-      if (onlyMyOrg && effectiveOrgId) q = q?.eq('id', effectiveOrgId)
-      q = q?.order('created_at', { ascending: false })
+      const { data, error } = await adminService.listOrganizations({
+        orgId: effectiveOrgId,
+        onlyMyOrg,
+      })
 
-      const { data, error } = await q
-
-      if (error) {
-        console.error('Organizations query error:', error)
-        throw error
-      }
+      if (error) throw new Error(error?.message || 'Failed to load organizations')
 
       console.log(`Organizations: ${data?.length || 0} records`)
       setOrganizations(data || [])
@@ -416,22 +360,18 @@ const AdminPage = () => {
           userProfile: !!userProfile,
         })
 
-        // First check if Supabase is available
-        if (!supabase) {
+        const conn = await adminService.checkConnection()
+
+        // Hard fail only when client itself is unavailable
+        if (!conn?.ok && String(conn?.error?.message || '').includes('unavailable')) {
           setError('Database connection unavailable. Please refresh the page.')
           setLoading(false)
           return
         }
 
-        // Test database connection
-        const { error: connectionError } = await supabase
-          ?.from('user_profiles')
-          ?.select('id')
-          ?.limit(1)
-
         // Connection check is best-effort; warn but allow UI to render so tests can proceed
-        if (connectionError) {
-          console.warn('Database connection check failed (non-blocking):', connectionError)
+        if (!conn?.ok) {
+          console.warn('Database connection check failed (non-blocking):', conn?.error)
         }
 
         await loadAllData()
@@ -458,11 +398,7 @@ const AdminPage = () => {
     }
     try {
       setSubmitting(true)
-      const { error } = await supabase
-        ?.from('user_profiles')
-        ?.update({ dealer_id: orgId, is_active: true })
-        ?.eq('id', profileId)
-      if (error) throw error
+      await adminService.attachProfileToOrg({ profileId, orgId })
       await Promise.all([loadUserAccounts(), loadStaffRecords()])
       try {
         await logBusinessAction?.(
@@ -493,12 +429,7 @@ const AdminPage = () => {
     }
     try {
       setSubmitting(true)
-      const { error } = await supabase
-        ?.from('user_profiles')
-        ?.update({ dealer_id: orgId, is_active: true })
-        ?.is('dealer_id', null)
-        ?.eq('role', 'staff')
-      if (error) throw error
+      await adminService.assignOrgToActiveStaff({ orgId })
       setStaffActionMsg('Assigned org to active staff without org.')
       await loadStaffRecords()
       try {
@@ -530,12 +461,7 @@ const AdminPage = () => {
     }
     try {
       setSubmitting(true)
-      const { error } = await supabase
-        ?.from('user_profiles')
-        ?.update({ dealer_id: orgId, is_active: true })
-        ?.is('dealer_id', null)
-        ?.in('role', ['admin', 'manager'])
-      if (error) throw error
+      await adminService.assignOrgToAccounts({ orgId })
       setAccountsActionMsg('Assigned org to admin/manager accounts without org.')
       await loadUserAccounts()
     } catch (e) {
@@ -563,11 +489,7 @@ const AdminPage = () => {
     }
     try {
       setSubmitting(true)
-      const { error } = await supabase
-        ?.from('vendors')
-        ?.update({ dealer_id: orgId })
-        ?.is('dealer_id', null)
-      if (error) throw error
+      await adminService.assignOrgToVendors({ orgId })
       setVendorsActionMsg('Assigned org to vendors without org.')
       await loadVendors()
       try {
@@ -599,11 +521,7 @@ const AdminPage = () => {
     }
     try {
       setSubmitting(true)
-      const { error } = await supabase
-        ?.from('products')
-        ?.update({ dealer_id: orgId })
-        ?.is('dealer_id', null)
-      if (error) throw error
+      await adminService.assignOrgToProducts({ orgId })
       setProductsActionMsg('Assigned org to products without org.')
       await loadProducts()
       try {
@@ -765,45 +683,32 @@ const AdminPage = () => {
         if (!doReassign) {
           throw new Error('Edit cancelled. User belongs to another organization.')
         }
-        const { error: reassignErr } = await supabase
-          ?.from('user_profiles')
-          ?.update({ dealer_id: orgId, is_active: true })
-          ?.eq('id', editingItem?.id)
-        if (reassignErr) throw reassignErr
+        await adminService.attachProfileToOrg({ profileId: editingItem?.id, orgId })
       }
       // Update existing user
-      const { error } = await supabase
-        ?.from('user_profiles')
-        ?.update({
-          full_name: userAccountForm?.full_name,
-          email: userAccountForm?.email,
-          role: userAccountForm?.role,
-          department: userAccountForm?.department,
-          phone: userAccountForm?.phone,
-        })
-        ?.eq('id', editingItem?.id)
-
-      if (error) throw error
+      await adminService.updateUserProfile(editingItem?.id, {
+        full_name: userAccountForm?.full_name,
+        email: userAccountForm?.email,
+        role: userAccountForm?.role,
+        department: userAccountForm?.department,
+        phone: userAccountForm?.phone,
+      })
     } else {
       // Create new user with auth account
       if (!userAccountForm?.password) {
         throw new Error('Password is required for new users')
       }
 
-      const { error: authError } = await supabase?.auth?.signUp({
+      await adminService.createUserAccountWithLogin({
         email: userAccountForm?.email,
         password: userAccountForm?.password,
-        options: {
-          data: {
-            full_name: userAccountForm?.full_name,
-            role: userAccountForm?.role,
-            department: userAccountForm?.department,
-            phone: userAccountForm?.phone,
-          },
+        metadata: {
+          full_name: userAccountForm?.full_name,
+          role: userAccountForm?.role,
+          department: userAccountForm?.department,
+          phone: userAccountForm?.phone,
         },
       })
-
-      if (authError) throw authError
     }
 
     await loadUserAccounts()
@@ -833,51 +738,22 @@ const AdminPage = () => {
         if (!doReassign) {
           throw new Error('Edit cancelled. Staff belongs to another organization.')
         }
-        const { error: reassignErr } = await supabase
-          ?.from('user_profiles')
-          ?.update({ dealer_id: orgId, is_active: true })
-          ?.eq('id', editingItem?.id)
-        if (reassignErr) throw reassignErr
+        await adminService.attachProfileToOrg({ profileId: editingItem?.id, orgId })
       }
-      const { error } = await supabase
-        ?.from('user_profiles')
-        ?.update(staffData)
-        ?.eq('id', editingItem?.id)
 
-      if (error) throw error
+      await adminService.updateUserProfile(editingItem?.id, staffData)
     } else {
       // If an email is provided, provision an auth account so the trigger creates the profile
       if (staffData.email) {
         const autoPassword = generateStrongPassword()
-        const { data: authData, error: authError } = await supabase?.auth?.signUp({
-          email: staffData.email,
-          password: autoPassword,
-          options: {
-            data: {
-              full_name: staffData.full_name,
-              role: 'staff',
-              department: staffData.department,
-            },
-          },
-        })
-        if (authError) throw authError
 
-        // Best-effort: update org/phone on the newly created profile row
-        const createdUserId = authData?.user?.id
-        if (createdUserId) {
-          const { error: upErr } = await supabase
-            ?.from('user_profiles')
-            ?.update({ dealer_id: staffData.dealer_id, phone: staffData.phone, is_active: true })
-            ?.or(`id.eq.${createdUserId},auth_user_id.eq.${createdUserId}`)
-          if (upErr) {
-            // Non-fatal; log and continue
-            console.warn('Post-signUp profile update failed:', upErr?.message)
-          }
-        }
+        await adminService.createStaffWithOptionalLogin({
+          ...staffData,
+          autoPassword,
+        })
       } else {
         // No email: create a directory-only staff profile (no login) — allowed by relaxed schema
-        const { error } = await supabase?.from('user_profiles')?.insert([staffData])
-        if (error) throw error
+        await adminService.createStaffWithOptionalLogin(staffData)
       }
     }
 
@@ -921,18 +797,7 @@ const AdminPage = () => {
       dealer_id: productForm?.dealer_id || productForm?.org_id || effectiveOrgId || null,
     }
 
-    if (editingItem) {
-      const { error } = await supabase
-        ?.from('products')
-        ?.update(productData)
-        ?.eq('id', editingItem?.id)
-
-      if (error) throw error
-    } else {
-      const { error } = await supabase?.from('products')?.insert([productData])
-
-      if (error) throw error
-    }
+    await adminService.saveProduct({ editingId: editingItem?.id ?? null, productData })
 
     await loadProducts()
     try {
@@ -957,18 +822,7 @@ const AdminPage = () => {
       template_type: templateForm?.template_type,
     }
 
-    if (editingItem) {
-      const { error } = await supabase
-        ?.from('sms_templates')
-        ?.update(templateData)
-        ?.eq('id', editingItem?.id)
-
-      if (error) throw error
-    } else {
-      const { error } = await supabase?.from('sms_templates')?.insert([templateData])
-
-      if (error) throw error
-    }
+    await adminService.saveSmsTemplate({ editingId: editingItem?.id ?? null, templateData })
 
     await loadSmsTemplates()
   }
@@ -992,98 +846,11 @@ const AdminPage = () => {
     try {
       console.log(`Deleting from ${table} with id: ${id}`)
 
-      // For user_profiles, clean up foreign key dependencies
       if (table === 'user_profiles') {
         console.log('Cleaning up foreign key dependencies...')
-
-        const safeCleanupDelete = async (cleanupTable, whereColumn, whereValue) => {
-          try {
-            const { error } = await supabase
-              ?.from(cleanupTable)
-              ?.delete({ count: 'exact' })
-              ?.eq(whereColumn, whereValue)
-
-            if (error) {
-              console.warn(`[admin] Cleanup delete failed for ${cleanupTable}:`, error?.message)
-            }
-          } catch (e) {
-            console.warn(
-              `[admin] Cleanup delete threw for ${cleanupTable}:`,
-              e?.message || String(e)
-            )
-          }
-        }
-
-        // Clean up foreign key references
-        const cleanupPromises = [
-          supabase
-            ?.from('jobs')
-            ?.update({
-              assigned_to: null,
-              created_by: null,
-              delivery_coordinator_id: null,
-            })
-            ?.or(`assigned_to.eq.${id},created_by.eq.${id},delivery_coordinator_id.eq.${id}`),
-        ]
-
-        cleanupPromises?.push(
-          supabase?.from('transactions')?.update({ processed_by: null })?.eq('processed_by', id)
-        )
-
-        cleanupPromises?.push(
-          supabase?.from('vehicles')?.update({ created_by: null })?.eq('created_by', id)
-        )
-
-        cleanupPromises?.push(
-          supabase?.from('vendors')?.update({ created_by: null })?.eq('created_by', id)
-        )
-
-        cleanupPromises?.push(
-          supabase?.from('products')?.update({ created_by: null })?.eq('created_by', id)
-        )
-
-        cleanupPromises?.push(
-          supabase?.from('sms_templates')?.update({ created_by: null })?.eq('created_by', id)
-        )
-
-        // Clean up dependent records (best-effort). These can be RLS-restricted; log failures.
-        cleanupPromises?.push(safeCleanupDelete('filter_presets', 'user_id', id))
-        cleanupPromises?.push(safeCleanupDelete('notification_preferences', 'user_id', id))
-        cleanupPromises?.push(safeCleanupDelete('activity_history', 'performed_by', id))
-        cleanupPromises?.push(safeCleanupDelete('communications', 'sent_by', id))
-
-        // Wait for all cleanup operations
-        await Promise.allSettled(cleanupPromises)
-        console.log('Foreign key cleanup completed')
-      }
-
-      // Perform the actual deletion
-      const { data: deleted, error: deleteError } = await supabase
-        ?.from(table)
-        ?.delete()
-        ?.eq('id', id)
-        ?.select('id')
-
-      if (deleteError) {
-        console.error('Delete operation failed:', deleteError)
-        throw deleteError
-      }
-
-      if (Array.isArray(deleted) && deleted.length === 0) {
-        const { data: stillThere, error: checkErr } = await supabase
-          ?.from(table)
-          ?.select('id')
-          ?.eq('id', id)
-          ?.limit(1)
-
-        if (checkErr) {
-          console.error('Failed to verify delete:', checkErr)
-          throw checkErr
-        }
-
-        if (Array.isArray(stillThere) && stillThere.length > 0) {
-          throw new Error('Delete was blocked by permissions (RLS).')
-        }
+        await adminService.deleteUserProfileWithCleanup(id)
+      } else {
+        await adminService.deleteRow(table, id)
       }
 
       console.log('Delete operation successful')

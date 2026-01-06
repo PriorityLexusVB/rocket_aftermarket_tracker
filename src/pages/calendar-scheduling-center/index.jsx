@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { calendarService } from '../../services/calendarService'
+import { listActiveVendorsLite } from '../../services/vendorService'
 
 const CalendarSchedulingCenter = () => {
   // State management
@@ -53,66 +54,24 @@ const CalendarSchedulingCenter = () => {
         end: dateRange?.end?.toISOString(),
       })
 
-      // Try RPC function first
-      let jobsResult
-      try {
-        const { data, error } = await supabase?.rpc('get_jobs_by_date_range', {
-          start_date: dateRange?.start?.toISOString(),
-          end_date: dateRange?.end?.toISOString(),
-          vendor_filter: selectedVendors?.length > 0 ? selectedVendors?.[0] : null,
-          status_filter: null,
-        })
+      const vendorId = selectedVendors?.length > 0 ? selectedVendors?.[0] : null
+      const res = await calendarService.getJobsByDateRangeWithFallback(
+        dateRange?.start,
+        dateRange?.end,
+        {
+          vendorId,
+          status: null,
+        }
+      )
 
-        if (error) throw error
-        jobsResult = data || []
-        setDebugInfo(`RPC function returned ${jobsResult?.length} jobs`)
-      } catch (rpcError) {
-        console.warn('RPC failed, using direct query:', rpcError)
+      setDebugInfo(res?.debugInfo || '')
 
-        // Fallback to direct database query with proper joins
-        const { data, error } = await supabase
-          ?.from('jobs')
-          ?.select(
-            `
-            id,
-            title,
-            description,
-            scheduled_start_time,
-            scheduled_end_time,
-            job_status,
-            vendor_id,
-            vehicle_id,
-            color_code,
-            priority,
-            estimated_hours,
-            job_number,
-            location,
-            calendar_notes,
-            vendors:vendor_id(id, name, specialty),
-            vehicles:vehicle_id(id, make, model, year, owner_name, stock_number)
-          `
-          )
-          ?.not('scheduled_start_time', 'is', null)
-          ?.gte('scheduled_start_time', dateRange?.start?.toISOString())
-          ?.lte('scheduled_start_time', dateRange?.end?.toISOString())
-          ?.order('scheduled_start_time', { ascending: true })
-
-        if (error) throw error
-
-        // Transform the data to match expected structure
-        jobsResult = (data || [])?.map((job) => ({
-          ...job,
-          vendor_name: job?.vendors?.name || 'Unassigned',
-          vehicle_info: job?.vehicles
-            ? `${job?.vehicles?.year} ${job?.vehicles?.make} ${job?.vehicles?.model}`?.trim()
-            : 'No Vehicle',
-        }))
-
-        setDebugInfo(`Direct query returned ${jobsResult?.length} jobs`)
+      if (res?.error) {
+        throw res.error
       }
 
-      setJobs(jobsResult)
-      console.log('Jobs loaded successfully:', jobsResult)
+      setJobs(res?.data || [])
+      console.log('Jobs loaded successfully:', (res?.data || [])?.length)
     } catch (error) {
       console.error('Error loading calendar data:', error)
       setError(`Failed to load calendar data: ${error?.message}`)
@@ -125,15 +84,9 @@ const CalendarSchedulingCenter = () => {
 
   const loadVendors = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('vendors')
-        ?.select('id, name, is_active, specialty')
-        ?.eq('is_active', true)
-        ?.order('name')
-
-      if (error) throw error
+      const data = await listActiveVendorsLite()
       setVendors(data || [])
-      console.log('Vendors loaded:', data?.length || 0)
+      console.log('Vendors loaded:', (data || [])?.length)
     } catch (error) {
       console.error('Error loading vendors:', error)
       setVendors([])

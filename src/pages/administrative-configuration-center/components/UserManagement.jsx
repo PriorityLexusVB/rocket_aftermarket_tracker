@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../../contexts/AuthContext'
-import { supabase } from '../../../lib/supabase'
 import Button from '../../../components/ui/Button'
+import { userManagementService } from '../../../services/userManagementService'
 
 const UserManagement = () => {
   const { userProfile, isAdmin } = useAuth()
@@ -48,38 +48,12 @@ const UserManagement = () => {
     try {
       setLoading(true)
 
-      // Load users with vendor information
-      const { data: usersData, error: usersError } = await supabase
-        ?.from('user_profiles')
-        ?.select(
-          `
-          *,
-          vendor:vendors(id, name)
-        `
-        )
-        ?.order('created_at', { ascending: false })
+      const { data, error } = await userManagementService.loadUserManagementData()
+      if (error) throw error
 
-      if (usersError) throw usersError
-
-      // Load vendors for the dropdown
-      const { data: vendorsData, error: vendorsError } = await supabase
-        ?.from('vendors')
-        ?.select('id, name, is_active')
-        ?.eq('is_active', true)
-        ?.order('name')
-
-      if (vendorsError) throw vendorsError
-
-      // Load organizations for org selection
-      const { data: orgsData, error: orgsError } = await supabase
-        ?.from('organizations')
-        ?.select('id, name')
-        ?.order('name')
-      if (orgsError) throw orgsError
-
-      setUsers(usersData || [])
-      setVendors(vendorsData || [])
-      setOrganizations(orgsData || [])
+      setUsers(data?.users || [])
+      setVendors(data?.vendors || [])
+      setOrganizations(data?.organizations || [])
       // Default org selection to current user's org if available
       setFormData((prev) => ({ ...prev, org_id: userProfile?.org_id || null }))
     } catch (error) {
@@ -148,59 +122,31 @@ const UserManagement = () => {
       setError(null)
 
       if (formData?.needs_login) {
-        // Create user with authentication
-        const { data: authUser, error: authError } = await supabase?.auth?.signUp({
+        const profile = await userManagementService.createUserWithLogin({
           email: formData?.email,
           password: formData?.password,
+          profile: {
+            full_name: formData?.full_name,
+            role: formData?.role,
+            vendor_id: formData?.vendor_id,
+            phone: formData?.phone,
+            department: formData?.job_title,
+            org_id: formData?.org_id || null,
+          },
         })
-
-        if (authError) throw authError
-
-        // Create user profile with login access
-        const { data: profile, error: profileError } = await supabase
-          ?.from('user_profiles')
-          ?.insert([
-            {
-              id: authUser?.user?.id,
-              email: formData?.email,
-              full_name: formData?.full_name,
-              role: formData?.role,
-              vendor_id: formData?.role === 'vendor' ? formData?.vendor_id : null,
-              phone: formData?.phone,
-              department: formData?.job_title,
-              is_active: true,
-              org_id: formData?.org_id || null,
-            },
-          ])
-          ?.select()
-          ?.single()
-
-        if (profileError) throw profileError
 
         setUsers((prev) => [profile, ...prev])
         setSuccess(`${formData?.full_name} created with login access!`)
       } else {
-        // Create staff-only record (no authentication needed)
-        const { data: staffRecord, error: staffError } = await supabase
-          ?.from('user_profiles')
-          ?.insert([
-            {
-              id: crypto.randomUUID(),
-              full_name: formData?.full_name,
-              email: null, // No email for staff-only
-              phone: formData?.phone || null,
-              role: 'staff',
-              department: formData?.job_title,
-              is_active: true,
-              vendor_id: null,
-              org_id: formData?.org_id || null,
-            },
-          ])
-          ?.select()
-          ?.single()
-
-        if (staffError) throw staffError
-
+        const staffRecord = await userManagementService.createStaffProfile({
+          id: crypto.randomUUID(),
+          profile: {
+            full_name: formData?.full_name,
+            phone: formData?.phone || null,
+            department: formData?.job_title,
+            org_id: formData?.org_id || null,
+          },
+        })
         setUsers((prev) => [staffRecord, ...prev])
         setSuccess(`${formData?.full_name} added to staff!`)
       }
@@ -218,12 +164,7 @@ const UserManagement = () => {
     if (!isAdmin) return
 
     try {
-      const { error } = await supabase
-        ?.from('user_profiles')
-        ?.update({ is_active: !currentStatus })
-        ?.eq('id', userId)
-
-      if (error) throw error
+      await userManagementService.setUserActive({ userId, isActive: !currentStatus })
 
       setSuccess(`User status updated successfully`)
       loadData()

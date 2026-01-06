@@ -22,6 +22,36 @@ export function withCustomerFields(row) {
  */
 export const kanbanService = {
   /**
+   * Subscribe to jobs table changes for kanban UI.
+   * Returns an unsubscribe function.
+   */
+  subscribeToJobChanges(onChange) {
+    try {
+      const channel = supabase
+        ?.channel('jobs_kanban')
+        ?.on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
+          try {
+            onChange?.(payload)
+          } catch (e) {
+            console.warn('kanbanService.subscribeToJobChanges callback failed', e)
+          }
+        })
+        ?.subscribe()
+
+      return () => {
+        try {
+          if (channel) supabase?.removeChannel(channel)
+        } catch (e) {
+          console.warn('kanbanService.subscribeToJobChanges cleanup failed', e)
+        }
+      }
+    } catch (e) {
+      console.warn('kanbanService.subscribeToJobChanges setup failed', e)
+      return () => {}
+    }
+  },
+
+  /**
    * Get all jobs with full details for kanban board
    */
   async getAllJobsForKanban(filters = {}, orgId = null) {
@@ -33,7 +63,8 @@ export const kanbanService = {
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
           assigned_user:user_profiles!jobs_assigned_to_fkey${profileFrag},
           created_user:user_profiles!jobs_created_by_fkey${profileFrag},
-          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
+          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status),
+          job_parts:job_parts(id, is_off_site, requires_scheduling, promised_date)
         `)
       if (orgId) query = query?.eq('dealer_id', orgId)
 
@@ -148,7 +179,8 @@ export const kanbanService = {
           vendor:vendors(id, name, specialty),
           vehicle:vehicles(id, make, model, year, owner_name, stock_number),
           assigned_user:user_profiles!jobs_assigned_to_fkey${profileFrag},
-          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status)
+          transaction:transactions(customer_name, customer_email, customer_phone, total_amount, transaction_status),
+          job_parts:job_parts(id, is_off_site, requires_scheduling, promised_date)
         `
         )
         ?.single()

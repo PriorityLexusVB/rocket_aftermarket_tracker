@@ -12,9 +12,13 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { supabase } from '../../../lib/supabase'
 import { toUTC } from '../../../lib/time'
 import { syncJobPartsForJob } from '../../../services/jobPartsService'
+import calendarService from '../../../services/calendarService'
+import productService from '../../../services/productService'
+import staffService from '../../../services/staffService'
+import { vehicleService } from '../../../services/vehicleService'
+import { jobService } from '../../../services/jobService'
 import Checkbox from '../../../components/ui/Checkbox'
 
 const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue }) => {
@@ -128,117 +132,10 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
     }
 
     try {
-      // Normalize phone number for search (digits only)
-      const phoneQuery = query?.replace(/\D/g, '')
+      const { data, error } = await calendarService.searchDealsForCreateModal(query)
+      if (error) throw new Error(error?.message || 'Failed to search deals')
 
-      // Search across vehicles and transactions for existing deals
-      // Priority: Stock Number (exact) > Customer Phone (normalized) > Customer Name (partial)
-      let dealResults = []
-
-      // 1. Search by stock number (exact match first, then partial)
-      const { data: stockMatches } = await supabase
-        ?.from('vehicles')
-        ?.select(
-          `
-          *,
-          transactions!inner(
-            id,
-            transaction_number,
-            customer_name,
-            customer_phone,
-            customer_email,
-            created_at
-          ),
-          jobs!inner(
-            id,
-            job_number,
-            title,
-            assigned_to,
-            delivery_coordinator_id,
-            vendor_id,
-            customer_needs_loaner
-          )
-        `
-        )
-        ?.or(`stock_number.eq.${query},stock_number.ilike.%${query}%`)
-        ?.limit(10)
-
-      if (stockMatches?.length > 0) {
-        dealResults = [...dealResults, ...stockMatches]
-      }
-
-      // 2. Search by customer phone (normalized digits only)
-      if (phoneQuery?.length >= 4) {
-        const { data: phoneMatches } = await supabase
-          ?.from('vehicles')
-          ?.select(
-            `
-            *,
-            transactions!inner(
-              id,
-              transaction_number,
-              customer_name,
-              customer_phone,
-              customer_email,
-              created_at
-            ),
-            jobs!inner(
-              id,
-              job_number,
-              title,
-              assigned_to,
-              delivery_coordinator_id,
-              vendor_id,
-              customer_needs_loaner
-            )
-          `
-          )
-          ?.or(`owner_phone.like.%${phoneQuery}%,transactions.customer_phone.like.%${phoneQuery}%`)
-          ?.limit(10)
-
-        if (phoneMatches?.length > 0) {
-          dealResults = [...dealResults, ...phoneMatches]
-        }
-      }
-
-      // 3. Search by customer name (case-insensitive, partial)
-      const { data: nameMatches } = await supabase
-        ?.from('vehicles')
-        ?.select(
-          `
-          *,
-          transactions!inner(
-            id,
-            transaction_number,
-            customer_name,
-            customer_phone,
-            customer_email,
-            created_at
-          ),
-          jobs!inner(
-            id,
-            job_number,
-            title,
-            assigned_to,
-            delivery_coordinator_id,
-            vendor_id,
-            customer_needs_loaner
-          )
-        `
-        )
-        ?.or(`owner_name.ilike.%${query}%,transactions.customer_name.ilike.%${query}%`)
-        ?.limit(10)
-
-      if (nameMatches?.length > 0) {
-        dealResults = [...dealResults, ...nameMatches]
-      }
-
-      // Remove duplicates and format results
-      const uniqueDeals = dealResults?.filter(
-        (deal, index, self) => index === self?.findIndex((d) => d?.id === deal?.id)
-      )
-
-      setDealSuggestions(uniqueDeals || [])
+      setDealSuggestions(data || [])
       setShowDealSuggestions(true)
     } catch (error) {
       console.error('Deal search error:', error)
@@ -308,13 +205,9 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
   // Load products for dropdown
   const loadProducts = async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('products')
-        ?.select('*')
-        ?.eq('is_active', true)
-        ?.order('name')
+      const { data, error } = await productService.listRaw({ orgId: null, activeOnly: true })
+      if (error) throw new Error(error?.message || 'Failed to load products')
 
-      if (error) throw error
       setProducts(data || [])
     } catch (error) {
       console.error('Error loading products:', error)
@@ -324,15 +217,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
   // Load staff members by department
   const loadStaffMembers = async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('user_profiles')
-        ?.select('*')
-        ?.eq('is_active', true)
-        ?.order('full_name')
-
-      if (error) throw error
-
-      const staff = data || []
+      const staff = (await staffService.listStaffByOrg(null, { activeOnly: true })) || []
       setStaffMembers({
         sales_people: staff?.filter((s) => s?.department === 'Sales'),
         delivery_coordinators: staff?.filter((s) => s?.department === 'Delivery Coordinator'),
@@ -376,25 +261,20 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
 
       try {
         // First try exact stock match
-        const { data: exactMatch } = await supabase
-          ?.from('vehicles')
-          ?.select('*')
-          ?.ilike('stock_number', query)
-          ?.limit(1)
+        const { data: exactVehicle } = await vehicleService.findVehicleByExactStockNumber(query)
 
-        if (exactMatch && exactMatch?.length > 0) {
-          const vehicle = exactMatch?.[0]
+        if (exactVehicle) {
+          const vehicle = exactVehicle
           handleVehicleSelect(vehicle)
           return
         }
 
         // Fallback to partial search (stock-first ordering)
-        const { data: partialMatches } = await supabase
-          ?.from('vehicles')
-          ?.select('*')
-          ?.or(`stock_number.ilike.%${query}%,vin.ilike.%${query}%,owner_name.ilike.%${query}%`)
-          ?.order('stock_number')
-          ?.limit(20)
+        const { data: partialMatches, error } = await vehicleService.searchVehiclesStockFirst(
+          query,
+          { limit: 20 }
+        )
+        if (error) throw new Error(error?.message || 'Failed to search vehicles')
 
         setVehicleSuggestions(partialMatches || [])
         setShowSuggestions(true)
@@ -520,24 +400,18 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
       let vehicleId = selectedVehicle?.id
       if (!vehicleId) {
         // Create new vehicle record
-        const { data: newVehicle, error: vehicleError } = await supabase
-          ?.from('vehicles')
-          ?.insert([
-            {
-              stock_number: vehicleData?.stock_number,
-              year: parseInt(vehicleData?.year),
-              make: vehicleData?.make,
-              model: vehicleData?.model,
-              owner_name: customerData?.name,
-              owner_phone: customerData?.phone || null,
-              owner_email: customerData?.email || null,
-              vehicle_status: 'active',
-            },
-          ])
-          ?.select()
-          ?.single()
+        const { data: newVehicle, error: vehicleError } = await vehicleService.createVehicle({
+          stock_number: vehicleData?.stock_number,
+          year: parseInt(vehicleData?.year),
+          make: vehicleData?.make,
+          model: vehicleData?.model,
+          owner_name: customerData?.name,
+          owner_phone: customerData?.phone || null,
+          owner_email: customerData?.email || null,
+          vehicle_status: 'active',
+        })
 
-        if (vehicleError) throw vehicleError
+        if (vehicleError) throw new Error(vehicleError?.message || 'Failed to create vehicle')
         vehicleId = newVehicle?.id
       }
 
@@ -577,13 +451,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
           calendar_notes: notes,
         }
 
-        const { data: job, error: jobError } = await supabase
-          ?.from('jobs')
-          ?.insert([jobData])
-          ?.select()
-          ?.single()
-
-        if (jobError) throw jobError
+        const job = await jobService.createJob(jobData)
 
         // Create job_parts entry for line item using identity-based sync
         await syncJobPartsForJob(job?.id, [

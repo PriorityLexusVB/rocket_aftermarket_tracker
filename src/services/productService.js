@@ -26,6 +26,24 @@ export const productService = {
     return toOptions(rows, { labelKey: 'name', valueKey: 'id' })
   },
 
+  /**
+   * Raw product rows (not option-shaped). Useful for UIs that need cost/vendor fields.
+   * Returns { data, error }.
+   */
+  async listRaw({ orgId = null, activeOnly = true } = {}) {
+    try {
+      let q = supabase.from('products').select('*').order('name', { ascending: true })
+      if (activeOnly) q = q.eq('is_active', true)
+      if (orgId) q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
+
+      const rows = await safeSelect(q, 'products:listRaw')
+      return { data: rows || [], error: null }
+    } catch (error) {
+      console.error('[products:listRaw] failed', error)
+      return { data: [], error: { message: error?.message || 'Failed to load products' } }
+    }
+  },
+
   async getById(id, orgId = null) {
     if (!id) return null
     try {

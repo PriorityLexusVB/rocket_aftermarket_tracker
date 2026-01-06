@@ -6,6 +6,185 @@ import { safeSelect } from '@/lib/supabase/safeSelect'
  */
 export const calendarService = {
   /**
+   * Scheduling Center: load jobs with RPC first, then fallback to a direct query.
+   * Returns { data, error, debugInfo }.
+   */
+  async getJobsByDateRangeWithFallback(startDate, endDate, filters = {}) {
+    try {
+      const startIso = startDate?.toISOString?.() ? startDate.toISOString() : null
+      const endIso = endDate?.toISOString?.() ? endDate.toISOString() : null
+
+      if (!startIso || !endIso) {
+        return { data: [], error: new Error('Invalid date range'), debugInfo: 'Invalid date range' }
+      }
+
+      // 1) Prefer RPC
+      try {
+        const { data, error } = await supabase?.rpc('get_jobs_by_date_range', {
+          start_date: startIso,
+          end_date: endIso,
+          vendor_filter: filters?.vendorId || null,
+          status_filter: filters?.status || null,
+        })
+        if (error) throw error
+        return {
+          data: data || [],
+          error: null,
+          debugInfo: `RPC function returned ${(data || [])?.length} jobs`,
+        }
+      } catch (rpcError) {
+        console.warn(
+          '[calendar] getJobsByDateRangeWithFallback: RPC failed, using direct query:',
+          rpcError
+        )
+
+        // 2) Fallback query
+        let q = supabase
+          ?.from('jobs')
+          ?.select(
+            `
+            id,
+            title,
+            description,
+            scheduled_start_time,
+            scheduled_end_time,
+            job_status,
+            vendor_id,
+            vehicle_id,
+            color_code,
+            priority,
+            estimated_hours,
+            job_number,
+            location,
+            calendar_notes,
+            vendors:vendor_id(id, name, specialty),
+            vehicles:vehicle_id(id, make, model, year, owner_name, stock_number)
+          `
+          )
+          ?.not('scheduled_start_time', 'is', null)
+          ?.gte('scheduled_start_time', startIso)
+          ?.lte('scheduled_start_time', endIso)
+          ?.order('scheduled_start_time', { ascending: true })
+
+        if (filters?.vendorId) {
+          q = q?.eq('vendor_id', filters.vendorId)
+        }
+
+        const rows = await safeSelect(q, 'calendar:getJobsByDateRangeWithFallback:fallback', {
+          allowRLS: true,
+        })
+
+        const transformed = (rows || []).map((job) => ({
+          ...job,
+          vendor_name: job?.vendors?.name || 'Unassigned',
+          vehicle_info: job?.vehicles
+            ? `${job?.vehicles?.year} ${job?.vehicles?.make} ${job?.vehicles?.model}`.trim()
+            : 'No Vehicle',
+        }))
+
+        return {
+          data: transformed,
+          error: null,
+          debugInfo: `Direct query returned ${transformed?.length} jobs`,
+        }
+      }
+    } catch (error) {
+      console.error('[calendar] getJobsByDateRangeWithFallback failed:', error)
+      return { data: [], error, debugInfo: `Error: ${error?.message || error}` }
+    }
+  },
+
+  /**
+   * Scheduling Center: get detailed conflict info (for UI warning banner).
+   */
+  async getVendorConflictDetails(vendorId, startTime, endTime, excludeJobId = null) {
+    try {
+      if (!vendorId || !startTime || !endTime) {
+        return { hasConflict: false, conflict: null, error: null }
+      }
+
+      const startUtc = startTime?.toISOString?.()
+        ? startTime.toISOString()
+        : new Date(startTime).toISOString()
+      const endUtc = endTime?.toISOString?.()
+        ? endTime.toISOString()
+        : new Date(endTime).toISOString()
+
+      let q = supabase
+        ?.from('jobs')
+        ?.select(
+          `
+          id,
+          title,
+          scheduled_start_time,
+          scheduled_end_time,
+          transactions!inner(customer_name)
+        `
+        )
+        ?.eq('vendor_id', vendorId)
+        ?.lt('scheduled_start_time', endUtc)
+        ?.gt('scheduled_end_time', startUtc)
+        ?.limit(1)
+
+      if (excludeJobId) {
+        q = q?.neq('id', excludeJobId)
+      }
+
+      const conflicts = await safeSelect(q, 'calendar:getVendorConflictDetails', { allowRLS: true })
+
+      if (Array.isArray(conflicts) && conflicts.length > 0) {
+        const conflict = conflicts[0]
+
+        const startLocal = new Date(conflict.scheduled_start_time)?.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+
+        const endLocal = new Date(conflict.scheduled_end_time)?.toLocaleString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+
+        return {
+          hasConflict: true,
+          conflict: {
+            id: conflict?.id,
+            customer_name: conflict?.transactions?.[0]?.customer_name || 'Other job',
+            start_local: startLocal,
+            end_local: endLocal,
+            timeRange: `${startLocal}–${endLocal}`,
+          },
+          error: null,
+        }
+      }
+
+      return { hasConflict: false, conflict: null, error: null }
+    } catch (error) {
+      console.error('[calendar] getVendorConflictDetails failed:', error)
+      return { hasConflict: false, conflict: null, error }
+    }
+  },
+
+  /**
+   * Best-effort activity log (non-blocking for UX).
+   */
+  async logActivity(payload) {
+    try {
+      if (!payload) return { ok: true }
+      const { error } = await supabase?.rpc('log_activity', payload)
+      if (error) throw error
+      return { ok: true }
+    } catch (error) {
+      console.warn('[calendar] logActivity failed:', error)
+      return { ok: false, error }
+    }
+  },
+
+  /**
    * Get jobs within a date range for calendar display
    */
   async getJobsByDateRange(startDate, endDate, filters = {}) {
@@ -280,6 +459,100 @@ export const calendarService = {
     } catch (error) {
       console.error('[calendar] getVendorAvailability failed:', error)
       return { available: false, conflictingJobs: [], error }
+    }
+  },
+
+  /**
+   * Calendar CreateModal omnibox: search existing deals by stock, phone, or name.
+   * Mirrors the UI's current priority and join shape: vehicles + inner transactions + inner jobs.
+   */
+  async searchDealsForCreateModal(query) {
+    const q = query?.trim?.() || ''
+    if (q.length < 2) return { data: [], error: null }
+
+    try {
+      const phoneQuery = q.replace(/\D/g, '')
+      const select = `
+          *,
+          transactions!inner(
+            id,
+            transaction_number,
+            customer_name,
+            customer_phone,
+            customer_email,
+            created_at
+          ),
+          jobs!inner(
+            id,
+            job_number,
+            title,
+            assigned_to,
+            delivery_coordinator_id,
+            vendor_id,
+            customer_needs_loaner
+          )
+        `
+
+      let dealResults = []
+
+      // 1) Stock number exact then partial
+      try {
+        const q1 = supabase
+          ?.from('vehicles')
+          ?.select(select)
+          ?.or(`stock_number.eq.${q},stock_number.ilike.%${q}%`)
+          ?.limit(10)
+        const rows1 = await safeSelect(q1, 'calendar:searchDealsForCreateModal:stock', {
+          allowRLS: true,
+        })
+        if (rows1?.length) dealResults = [...dealResults, ...rows1]
+      } catch (e) {
+        console.warn('[calendar] searchDealsForCreateModal stock search failed', e?.message)
+      }
+
+      // 2) Phone (digits) across vehicle owner_phone and transaction customer_phone
+      if (phoneQuery?.length >= 4) {
+        try {
+          const q2 = supabase
+            ?.from('vehicles')
+            ?.select(select)
+            ?.or(
+              `owner_phone.like.%${phoneQuery}%,transactions.customer_phone.like.%${phoneQuery}%`
+            )
+            ?.limit(10)
+          const rows2 = await safeSelect(q2, 'calendar:searchDealsForCreateModal:phone', {
+            allowRLS: true,
+          })
+          if (rows2?.length) dealResults = [...dealResults, ...rows2]
+        } catch (e) {
+          console.warn('[calendar] searchDealsForCreateModal phone search failed', e?.message)
+        }
+      }
+
+      // 3) Name across vehicle owner_name and transaction customer_name
+      try {
+        const q3 = supabase
+          ?.from('vehicles')
+          ?.select(select)
+          ?.or(`owner_name.ilike.%${q}%,transactions.customer_name.ilike.%${q}%`)
+          ?.limit(10)
+        const rows3 = await safeSelect(q3, 'calendar:searchDealsForCreateModal:name', {
+          allowRLS: true,
+        })
+        if (rows3?.length) dealResults = [...dealResults, ...rows3]
+      } catch (e) {
+        console.warn('[calendar] searchDealsForCreateModal name search failed', e?.message)
+      }
+
+      // De-dupe by vehicle id
+      const unique = (dealResults || []).filter(
+        (deal, index, self) => index === self.findIndex((d) => d?.id === deal?.id)
+      )
+
+      return { data: unique || [], error: null }
+    } catch (error) {
+      console.error('[calendar] searchDealsForCreateModal failed:', error)
+      return { data: [], error: { message: error?.message || 'Failed to search deals' } }
     }
   },
 }

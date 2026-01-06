@@ -23,6 +23,25 @@ export async function listVendorsByOrg(orgId) {
 }
 
 /**
+ * Lightweight vendor list for scheduling/filters (raw rows, not options).
+ */
+export async function listActiveVendorsLite() {
+  try {
+    const q = supabase
+      ?.from('vendors')
+      ?.select('id, name, is_active, specialty')
+      ?.eq('is_active', true)
+      ?.order('name', { ascending: true })
+
+    const rows = await safeSelect(q, 'vendors:listActiveVendorsLite')
+    return rows || []
+  } catch (e) {
+    console.error('listActiveVendorsLite failed', e)
+    return []
+  }
+}
+
+/**
  * Internal helpers to centralize Supabase writes
  * These throw on error and return the row data.
  */

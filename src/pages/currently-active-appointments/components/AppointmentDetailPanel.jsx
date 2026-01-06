@@ -15,7 +15,7 @@ import {
   MapPin,
   CalendarClock,
 } from 'lucide-react'
-import { supabase } from '../../../lib/supabase'
+import { appointmentsService } from '../../../services/appointmentsService'
 
 const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
   const [communications, setCommunications] = useState([])
@@ -35,33 +35,16 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
     try {
       setLoading(true)
 
-      // Load communications
-      const { data: commsData, error: commsError } = await supabase
-        ?.from('communications')
-        ?.select(
-          `
-          *,
-          sent_by_profile:user_profiles!sent_by (full_name, email)
-        `
-        )
-        ?.eq('job_id', appointment?.id)
-        ?.order('sent_at', { ascending: false })
+      const [{ data: commsData, error: commsError }, { data: partsData, error: partsError }] =
+        await Promise.all([
+          appointmentsService.listCommunicationsForJob({ jobId: appointment?.id }),
+          appointmentsService.listJobPartsWithProductsForJob({ jobId: appointment?.id }),
+        ])
 
       if (commsError) throw commsError
-      setCommunications(commsData || [])
-
-      // Load job parts/products
-      const { data: partsData, error: partsError } = await supabase
-        ?.from('job_parts')
-        ?.select(
-          `
-          *,
-          products (name, estimated_cost, vendor_id)
-        `
-        )
-        ?.eq('job_id', appointment?.id)
-
       if (partsError) throw partsError
+
+      setCommunications(commsData || [])
       setJobParts(partsData || [])
     } catch (error) {
       console.error('Error loading appointment details:', error)
@@ -76,14 +59,10 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
 
   const handleSaveNotes = async () => {
     try {
-      const { error } = await supabase
-        ?.from('jobs')
-        ?.update({
-          calendar_notes: notes,
-          updated_at: new Date()?.toISOString(),
-        })
-        ?.eq('id', appointment?.id)
-
+      const { error } = await appointmentsService.updateJobCalendarNotes({
+        jobId: appointment?.id,
+        calendarNotes: notes,
+      })
       if (error) throw error
 
       setEditingNotes(false)
@@ -99,15 +78,11 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
     try {
       setSendingMessage(true)
 
-      const { error } = await supabase?.from('communications')?.insert({
-        job_id: appointment?.id,
-        vehicle_id: appointment?.vehicle_id,
-        communication_type: 'note',
-        message: newCommunication?.trim(),
-        sent_at: new Date()?.toISOString(),
-        is_successful: true,
+      const { error } = await appointmentsService.createCommunicationNote({
+        jobId: appointment?.id,
+        vehicleId: appointment?.vehicle_id,
+        message: newCommunication,
       })
-
       if (error) throw error
 
       setNewCommunication('')

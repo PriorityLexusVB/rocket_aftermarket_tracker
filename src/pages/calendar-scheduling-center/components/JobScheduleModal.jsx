@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { X, Clock, User, MapPin, AlertTriangle, Save, Trash2 } from 'lucide-react'
-import { supabase } from '../../../lib/supabase'
+import { calendarService } from '../../../services/calendarService'
+import { jobService } from '../../../services/jobService'
 
 const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -118,58 +119,24 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
     }
 
     try {
-      const startUtc = new Date(formData.scheduled_start_time)?.toISOString()
-      const endUtc = new Date(formData.scheduled_end_time)?.toISOString()
+      const startDate = new Date(formData.scheduled_start_time)
+      const endDate = new Date(formData.scheduled_end_time)
 
-      // Enhanced conflict check with detailed information
-      const { data: conflicts, error } = await supabase
-        ?.from('jobs')
-        ?.select(
-          `
-          id,
-          title,
-          scheduled_start_time,
-          scheduled_end_time,
-          transactions!inner(customer_name)
-        `
-        )
-        ?.eq('vendor_id', formData?.vendor_id)
-        ?.neq('id', job?.id || '')
-        ?.lt('scheduled_start_time', endUtc)
-        ?.gt('scheduled_end_time', startUtc)
-        ?.limit(1)
+      const res = await calendarService.getVendorConflictDetails(
+        formData?.vendor_id,
+        startDate,
+        endDate,
+        job?.id || null
+      )
 
-      if (error) {
-        console.error('Error checking conflicts:', error)
+      if (res?.error) {
+        console.error('Error checking conflicts:', res.error)
         return
       }
 
-      if (conflicts?.length > 0) {
+      if (res?.hasConflict) {
         setHasConflict(true)
-        const conflict = conflicts?.[0]
-
-        // Format conflict details nicely
-        const startLocal = new Date(conflict.scheduled_start_time)?.toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        })
-
-        const endLocal = new Date(conflict.scheduled_end_time)?.toLocaleString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        })
-
-        setConflictDetails({
-          id: conflict?.id,
-          customer_name: conflict?.transactions?.[0]?.customer_name || 'Other job',
-          start_local: startLocal,
-          end_local: endLocal,
-          timeRange: `${startLocal}–${endLocal}`,
-        })
+        setConflictDetails(res?.conflict)
       } else {
         setHasConflict(false)
         setConflictDetails(null)
@@ -290,27 +257,7 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
 
     setLoading(true)
     try {
-      const { data: deleted, error } = await supabase
-        ?.from('jobs')
-        ?.delete()
-        ?.eq('id', job?.id)
-        ?.select('id')
-
-      if (error) {
-        throw error
-      }
-
-      if (Array.isArray(deleted) && deleted.length === 0) {
-        const { data: stillThere, error: checkErr } = await supabase
-          ?.from('jobs')
-          ?.select('id')
-          ?.eq('id', job?.id)
-          ?.limit(1)
-        if (checkErr) throw checkErr
-        if (Array.isArray(stillThere) && stillThere.length > 0) {
-          throw new Error('Delete was blocked by permissions (RLS).')
-        }
-      }
+      await jobService.deleteJob(job?.id)
 
       onClose?.()
     } catch (error) {

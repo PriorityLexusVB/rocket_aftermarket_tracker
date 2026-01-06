@@ -94,6 +94,21 @@ export const vehicleService = {
     }
   },
 
+  async listActiveVehiclesLite() {
+    try {
+      const q = supabase
+        ?.from('vehicles')
+        ?.select('id, make, model, year, owner_name, stock_number')
+        ?.eq('vehicle_status', 'active')
+        ?.order('make', { ascending: true })
+
+      const rows = await safeSelect(q, 'vehicles:listActiveVehiclesLite')
+      return { data: rows || [], error: null }
+    } catch (error) {
+      return { data: [], error }
+    }
+  },
+
   // Get all vehicles with optional filtering
   async getVehicles(filters = {}, orgId = null) {
     try {
@@ -480,6 +495,49 @@ export const vehicleService = {
   // Get all vehicles (alias for getVehicles for consistent API usage)
   async getAllVehicles(filters = {}) {
     return await this.getVehicles(filters)
+  },
+
+  /**
+   * Calendar CreateModal helper: exact stock match, case-insensitive.
+   */
+  async findVehicleByExactStockNumber(stockNumber) {
+    if (!stockNumber?.trim()) return { data: null, error: null }
+    try {
+      const q = supabase
+        ?.from('vehicles')
+        ?.select('*')
+        ?.ilike('stock_number', stockNumber?.trim())
+        ?.limit(1)
+
+      const { data, error } = await q
+      if (error) throw error
+      return { data: (data && data[0]) || null, error: null }
+    } catch (error) {
+      console.error('[vehicles:findVehicleByExactStockNumber] failed', error)
+      return { data: null, error: { message: error?.message || 'Failed to search vehicles' } }
+    }
+  },
+
+  /**
+   * Calendar CreateModal helper: partial search ordered by stock number.
+   */
+  async searchVehiclesStockFirst(query, { limit = 20 } = {}) {
+    if (!query?.trim() || query?.trim()?.length < 2) return { data: [], error: null }
+    try {
+      const q = supabase
+        ?.from('vehicles')
+        ?.select('*')
+        ?.or(`stock_number.ilike.%${query}%,vin.ilike.%${query}%,owner_name.ilike.%${query}%`)
+        ?.order('stock_number')
+        ?.limit(limit)
+
+      const { data, error } = await q
+      if (error) throw error
+      return { data: data || [], error: null }
+    } catch (error) {
+      console.error('[vehicles:searchVehiclesStockFirst] failed', error)
+      return { data: [], error: { message: error?.message || 'Failed to search vehicles' } }
+    }
   },
 }
 

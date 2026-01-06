@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Activity, Filter, Search, ChevronDown } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { kanbanService } from '../../services/kanbanService'
+import vendorService from '../../services/vendorService'
 
 // Kanban components
 import KanbanColumn from './components/KanbanColumn'
@@ -73,15 +74,12 @@ const KanbanStatusBoard = () => {
 
   // Real-time subscription for job updates
   useEffect(() => {
-    const channel = supabase
-      ?.channel('jobs_kanban')
-      ?.on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, (payload) => {
-        console.log('Job update received:', payload)
-        loadJobs() // Refresh jobs on any change
-      })
-      ?.subscribe()
+    const unsubscribe = kanbanService.subscribeToJobChanges((payload) => {
+      console.log('Job update received:', payload)
+      loadJobs() // Refresh jobs on any change
+    })
 
-    return () => supabase?.removeChannel(channel)
+    return unsubscribe
   }, [])
 
   // Apply filters whenever jobs, searchTerm, or filters change
@@ -161,18 +159,7 @@ const KanbanStatusBoard = () => {
     try {
       setLoading(true)
 
-      const { data, error } = await supabase
-        ?.from('jobs')
-        ?.select(
-          `
-          *,
-          vendor:vendors(id, name, specialty),
-          vehicle:vehicles(id, make, model, year, owner_name, stock_number),
-          assigned_user:user_profiles!jobs_assigned_to_fkey(id, full_name),
-          job_parts:job_parts(id, is_off_site, requires_scheduling, promised_date)
-        `
-        )
-        ?.order('created_at', { ascending: false })
+      const { data, error } = await kanbanService.getAllJobsForKanban()
 
       if (error) {
         console.error('Error loading jobs:', error)
@@ -190,17 +177,14 @@ const KanbanStatusBoard = () => {
 
   const loadVendors = async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('vendors')
-        ?.select('id, name, specialty')
-        ?.order('name', { ascending: true })
-
-      if (error) {
-        console.error('Error loading vendors:', error)
-        return
-      }
-
-      setVendors(data || [])
+      const rows = await vendorService.getAllVendors()
+      setVendors(
+        (rows || [])?.map((v) => ({
+          id: v?.id,
+          name: v?.name,
+          specialty: v?.specialty,
+        }))
+      )
     } catch (err) {
       console.error('Error in loadVendors:', err)
     }
@@ -217,43 +201,18 @@ const KanbanStatusBoard = () => {
 
   const handleStatusChange = async (jobId, newStatus) => {
     try {
-      // Validate status progression
-      const job = jobs?.find((j) => j?.id === jobId)
-      if (!job) return false
-
-      const { data: isValid } = await supabase?.rpc('validate_status_progression', {
-        current_status: job?.job_status,
-        new_status: newStatus,
-      })
-
-      if (!isValid) {
-        alert(`Invalid status progression from ${job?.job_status} to ${newStatus}`)
-        return false
-      }
-
-      // Update job status
-      const { error } = await supabase
-        ?.from('jobs')
-        ?.update({
-          job_status: newStatus,
-          updated_at: new Date()?.toISOString(),
-        })
-        ?.eq('id', jobId)
+      const { error } = await kanbanService.updateJobStatus(jobId, newStatus)
 
       if (error) {
+        const message = error?.message || String(error)
+        if (message?.includes('Invalid status progression')) {
+          alert(message)
+          return false
+        }
         console.error('Error updating job status:', error)
         return false
       }
 
-      // Log activity
-      await supabase?.rpc('log_activity', {
-        entity_type: 'job',
-        entity_id: jobId,
-        action: 'status_changed',
-        description: `Status changed from ${job?.job_status} to ${newStatus}`,
-      })
-
-      // Refresh jobs
       loadJobs()
       return true
     } catch (error) {

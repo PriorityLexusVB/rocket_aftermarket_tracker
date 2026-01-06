@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { X, Clock, User, Plus } from 'lucide-react'
-import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/AuthContext'
+import { vehicleService } from '../../../services/vehicleService'
+import { calendarService } from '../../../services/calendarService'
 
 const QuickAddModal = ({ vendors = [], onClose, onSuccess }) => {
   const { user } = useAuth()
@@ -41,17 +42,11 @@ const QuickAddModal = ({ vendors = [], onClose, onSuccess }) => {
 
   const loadVehicles = async () => {
     try {
-      const { data, error } = await supabase
-        ?.from('vehicles')
-        ?.select('id, make, model, year, owner_name, stock_number')
-        ?.eq('vehicle_status', 'active')
-        ?.order('make', { ascending: true })
-
+      const { data, error } = await vehicleService.listActiveVehiclesLite()
       if (error) {
         console.error('Error loading vehicles:', error)
         return
       }
-
       setVehicles(data || [])
     } catch (error) {
       console.error('Error in loadVehicles:', error)
@@ -137,40 +132,28 @@ const QuickAddModal = ({ vendors = [], onClose, onSuccess }) => {
 
     setLoading(true)
     try {
-      // Generate job number
-      const { data: jobNumber, error: jobNumberError } = await supabase?.rpc('generate_job_number')
-
-      if (jobNumberError) {
-        throw jobNumberError
-      }
-
-      // Create the job
-      const jobData = {
-        job_number: jobNumber,
+      const created = await calendarService.createScheduledJob({
         title: formData?.title,
         description: formData?.description,
-        vehicle_id: formData?.vehicle_id,
-        vendor_id: formData?.vendor_id,
-        scheduled_start_time: new Date(formData.scheduled_start_time)?.toISOString(),
-        scheduled_end_time: new Date(formData.scheduled_end_time)?.toISOString(),
-        estimated_hours: formData?.estimated_hours,
+        vehicleId: formData?.vehicle_id,
+        vendorId: formData?.vendor_id,
+        startTime: new Date(formData.scheduled_start_time),
+        endTime: new Date(formData.scheduled_end_time),
+        estimatedHours: formData?.estimated_hours,
         location: formData?.location,
         priority: formData?.priority,
-        job_status: 'scheduled',
-        color_code: '#3b82f6', // Default blue
-        created_by: user?.id,
+        colorCode: '#3b82f6',
+        createdBy: user?.id,
+      })
+
+      if (created?.error) {
+        throw created.error
       }
 
-      const { data, error } = await supabase?.from('jobs')?.insert([jobData])?.select()?.single()
-
-      if (error) {
-        throw error
-      }
-
-      // Log activity
-      await supabase?.rpc('log_activity', {
+      // Best-effort activity log (non-blocking)
+      await calendarService.logActivity({
         entity_type: 'job',
-        entity_id: data?.id,
+        entity_id: created?.data?.id,
         action: 'created',
         description: `Job "${formData?.title}" scheduled for ${new Date(formData.scheduled_start_time)?.toLocaleDateString()}`,
       })

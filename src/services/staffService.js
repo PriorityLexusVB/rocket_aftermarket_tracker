@@ -27,6 +27,7 @@ export async function listStaffByOrg(orgId, { activeOnly = true } = {}) {
   return (rows || []).map((r) => ({
     ...r,
     display_name: resolveUserProfileName(r) ?? r[nameCol] ?? r.email ?? String(r.id),
+    full_name: r?.full_name ?? resolveUserProfileName(r) ?? r[nameCol] ?? r?.email ?? String(r?.id),
   }))
 }
 

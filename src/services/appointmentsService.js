@@ -13,6 +13,107 @@ async function safeRun(query, label) {
 
 export const appointmentsService = {
   /**
+   * Appointment detail panel: list communications for a job.
+   * Note: No tenant scoping applied here because not all schemas include dealer_id on communications.
+   */
+  async listCommunicationsForJob({ jobId } = {}) {
+    try {
+      if (!jobId) return { data: [], error: null }
+
+      const q = supabase
+        ?.from('communications')
+        ?.select(
+          `
+          *,
+          sent_by_profile:user_profiles!sent_by (full_name, email)
+        `
+        )
+        ?.eq('job_id', jobId)
+        ?.order('sent_at', { ascending: false })
+
+      return await safeRun(q, 'appointments:listCommunicationsForJob')
+    } catch (error) {
+      console.error('[appointments] listCommunicationsForJob failed:', error)
+      return { data: [], error: null }
+    }
+  },
+
+  /**
+   * Appointment detail panel: list job parts including product info.
+   * Note: No tenant scoping applied here because not all schemas include dealer_id on job_parts.
+   */
+  async listJobPartsWithProductsForJob({ jobId } = {}) {
+    try {
+      if (!jobId) return { data: [], error: null }
+
+      const q = supabase
+        ?.from('job_parts')
+        ?.select(
+          `
+          *,
+          products (name, estimated_cost, vendor_id)
+        `
+        )
+        ?.eq('job_id', jobId)
+
+      return await safeRun(q, 'appointments:listJobPartsWithProductsForJob')
+    } catch (error) {
+      console.error('[appointments] listJobPartsWithProductsForJob failed:', error)
+      return { data: [], error: null }
+    }
+  },
+
+  /**
+   * Appointment detail panel: update calendar notes on jobs.
+   */
+  async updateJobCalendarNotes({ jobId, calendarNotes } = {}) {
+    try {
+      if (!jobId) return { data: null, error: null }
+
+      const { data, error } = await supabase
+        ?.from('jobs')
+        ?.update({
+          calendar_notes: calendarNotes,
+          updated_at: new Date()?.toISOString(),
+        })
+        ?.eq('id', jobId)
+        ?.select('id')
+        ?.maybeSingle?.()
+
+      if (error) throw error
+      return { data: data || null, error: null }
+    } catch (error) {
+      console.error('[appointments] updateJobCalendarNotes failed:', error)
+      return { data: null, error }
+    }
+  },
+
+  /**
+   * Appointment detail panel: create a note-type communication.
+   */
+  async createCommunicationNote({ jobId, vehicleId, message } = {}) {
+    try {
+      if (!jobId || !message?.trim()) return { data: null, error: null }
+
+      const payload = {
+        job_id: jobId,
+        vehicle_id: vehicleId,
+        communication_type: 'note',
+        message: message.trim(),
+        sent_at: new Date()?.toISOString(),
+        is_successful: true,
+      }
+
+      const { data, error } = await supabase?.from('communications')?.insert(payload)?.select('id')
+      if (error) throw error
+      return { data: data || null, error: null }
+    } catch (error) {
+      console.error('[appointments] createCommunicationNote failed:', error)
+      return { data: null, error }
+    }
+  },
+
+  /**
    * Active appointments list for /currently-active-appointments.
    * Returns rows shaped like the legacy page expects (vehicles/vendors/user_profiles aliases).
    */
