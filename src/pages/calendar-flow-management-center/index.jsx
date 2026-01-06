@@ -16,9 +16,11 @@ import {
   getNeedsSchedulingPromiseItems,
   getScheduledJobsByDateRange,
 } from '@/services/scheduleItemsService'
+import { jobService } from '@/services/jobService'
 import { vendorService } from '../../services/vendorService'
 import useTenant from '@/hooks/useTenant'
 import QuickFilters from './components/QuickFilters'
+import { useToast } from '@/components/ui/ToastProvider'
 
 import UnassignedQueue from './components/UnassignedQueue'
 import JobDrawer from './components/JobDrawer'
@@ -65,6 +67,7 @@ const CalendarFlowManagementCenter = () => {
 
   const { orgId, loading: tenantLoading } = useTenant()
   const navigate = useNavigate()
+  const toast = useToast()
 
   const getViewStartDate = useCallback(() => {
     const date = new Date(currentDate)
@@ -249,6 +252,7 @@ const CalendarFlowManagementCenter = () => {
       loadCalendarData() // Refresh data
     } catch (error) {
       console.error('Error updating job status:', error)
+      toast?.error?.(error?.message || 'Failed to update status')
     }
   }
 
@@ -264,20 +268,66 @@ const CalendarFlowManagementCenter = () => {
     if (!draggedJob) return
 
     try {
+      // Vendor lane drop (no explicit time slot): assign vendor/location only.
+      if (!timeSlot) {
+        await calendarService?.updateJobSchedule(draggedJob?.id, {
+          vendorId,
+          location: vendorId ? 'off_site' : undefined,
+        })
+        await loadCalendarData()
+        toast?.success?.('Updated vendor assignment')
+        return
+      }
+
       const startTime = new Date(timeSlot)
+      if (Number.isNaN(startTime?.getTime?.())) {
+        throw new Error('Invalid time slot')
+      }
       const endTime = new Date(startTime)
       endTime?.setHours(startTime?.getHours() + (draggedJob?.estimated_hours || 2))
 
+      // Canonical scheduling truth: write schedule times to job_parts.
+      // Keep a best-effort fallback to job-level schedule update for legacy schemas.
+      try {
+        await jobService.updateLineItemSchedules(draggedJob?.id, {
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        })
+      } catch (e) {
+        const msg = String(e?.message || '')
+        const msgLower = msg.toLowerCase()
+
+        // If the deal has no line items requiring scheduling, job-level schedule won't surface
+        // in the line-item calendar/RPC views. Make this actionable for the user.
+        if (msgLower.includes('no line items require scheduling')) {
+          toast?.error?.('Cannot schedule: no schedulable line items on this deal')
+          return
+        }
+
+        console.warn('[Flow Mgmt] updateLineItemSchedules failed; falling back to job schedule:', e)
+        toast?.info?.('Line-item scheduling unavailable; using legacy job schedule')
+        await calendarService?.updateJobSchedule(draggedJob?.id, {
+          vendorId,
+          startTime,
+          endTime,
+          location: vendorId ? 'off_site' : 'on_site',
+        })
+        await loadCalendarData()
+        return
+      }
+
+      // Still update the job row for vendor/location/status (but not job-level times).
       await calendarService?.updateJobSchedule(draggedJob?.id, {
         vendorId,
-        startTime,
-        endTime,
         location: vendorId ? 'off_site' : 'on_site',
+        status: 'scheduled',
       })
 
       loadCalendarData()
+      toast?.success?.('Scheduled')
     } catch (error) {
       console.error('Error updating job assignment:', error)
+      toast?.error?.(error?.message || 'Failed to update assignment')
     }
   }
 
