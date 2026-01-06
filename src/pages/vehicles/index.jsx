@@ -14,8 +14,8 @@ import {
   Award,
   TrendingUp,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import AppLayout from '../../components/layouts/AppLayout'
+import { vehicleService } from '../../services/vehicleService'
 import { useNavigate } from 'react-router-dom'
 
 const VehiclesPage = () => {
@@ -33,18 +33,8 @@ const VehiclesPage = () => {
     try {
       setLoading(true)
 
-      let query = supabase
-        ?.from('vehicles')
-        ?.select('*')
-        ?.order('stock_number', { ascending: true })
-
-      if (statusFilter !== 'all') {
-        query = query?.eq('vehicle_status', statusFilter)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
+      const { data, error } = await vehicleService.listVehiclesForVehiclesPage({ statusFilter })
+      if (error) throw new Error(error?.message || 'Failed to load vehicles')
 
       let filteredData = data || []
 
@@ -91,49 +81,10 @@ const VehiclesPage = () => {
 
   const loadVehicleHistory = async (vehicleId) => {
     try {
-      const [jobsResponse, communicationsResponse] = await Promise.all([
-        supabase
-          ?.from('jobs')
-          ?.select(
-            `
-            *,
-            vendors (name),
-            user_profiles (full_name)
-          `
-          )
-          ?.eq('vehicle_id', vehicleId)
-          ?.order('created_at', { ascending: false }),
+      const { data, error } = await vehicleService.getVehicleHistoryForVehiclesPage(vehicleId)
+      if (error) throw new Error(error?.message || 'Failed to load vehicle history')
 
-        supabase
-          ?.from('communications')
-          ?.select('*')
-          ?.eq('vehicle_id', vehicleId)
-          ?.order('sent_at', { ascending: false }),
-      ])
-
-      const jobs = jobsResponse?.data || []
-      const communications = communicationsResponse?.data || []
-
-      const history = [
-        ...jobs?.map((job) => ({
-          type: 'job',
-          date: job?.created_at,
-          title: job?.job_number || job?.transactions?.[0]?.customer_name || '—',
-          description: job?.description,
-          status: job?.job_status,
-          vendor: job?.vendors?.name,
-          assignee: job?.user_profiles?.full_name,
-        })),
-        ...communications?.map((comm) => ({
-          type: 'communication',
-          date: comm?.sent_at,
-          title: `${comm?.communication_type?.toUpperCase()} Message`,
-          description: comm?.message,
-          status: comm?.is_successful ? 'delivered' : 'failed',
-        })),
-      ]?.sort((a, b) => new Date(b.date) - new Date(a.date))
-
-      setVehicleHistory(history)
+      setVehicleHistory(data || [])
     } catch (error) {
       console.error('Error loading vehicle history:', error)
     }

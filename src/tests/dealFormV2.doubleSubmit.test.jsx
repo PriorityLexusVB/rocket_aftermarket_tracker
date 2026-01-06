@@ -1,6 +1,6 @@
 /**
  * Test: DealFormV2 Double-Submit Prevention
- * 
+ *
  * This test verifies that:
  * 1. The savingRef guard prevents duplicate submissions during rapid clicks
  * 2. The onSave callback is called exactly once even with rapid double-clicks
@@ -41,18 +41,19 @@ vi.mock('../services/dropdownService', () => ({
   getSalesConsultants: vi.fn(() => Promise.resolve([])),
   getDeliveryCoordinators: vi.fn(() => Promise.resolve([])),
   getFinanceManagers: vi.fn(() => Promise.resolve([])),
-  getVendors: vi.fn(() => Promise.resolve([
-    { id: 'vendor-1', name: 'Test Vendor', full_name: 'Test Vendor' }
-  ])),
-  getProducts: vi.fn(() => Promise.resolve([
-    { id: 'prod-1', label: 'Test Product', unit_price: 100 }
-  ])),
+  getVendors: vi.fn(() =>
+    Promise.resolve([{ id: 'vendor-1', name: 'Test Vendor', full_name: 'Test Vendor' }])
+  ),
+  getProducts: vi.fn(() =>
+    Promise.resolve([{ id: 'prod-1', label: 'Test Product', unit_price: 100 }])
+  ),
 }))
 
 // Mock deal service
 vi.mock('../services/dealService', () => ({
   default: {
     createDeal: vi.fn(() => Promise.resolve({ id: 'new-deal-id' })),
+    findJobIdByJobNumber: vi.fn(() => Promise.resolve(null)),
   },
   getCapabilities: () => ({ jobPartsHasTimes: true }),
 }))
@@ -94,7 +95,7 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
           unit_price: 100,
           requiresScheduling: false,
           noScheduleReason: 'Installed at delivery',
-        }
+        },
       ],
     }
 
@@ -113,7 +114,8 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
     // Wait for step 2 to render with line items
     await waitFor(() => {
       const saveButtons = screen.getAllByTestId('save-deal-btn')
-      const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
+      const saveButton =
+        saveButtons.find((btn) => btn.getAttribute('type') === 'button') || saveButtons[0]
       expect(saveButton).toBeInTheDocument()
       // Button should be enabled since we have all required data
       expect(saveButton).not.toBeDisabled()
@@ -121,16 +123,20 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
 
     // Get save button (handle multiple matches by finding the one with type="button")
     const saveButtons = screen.getAllByTestId('save-deal-btn')
-    const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
+    const saveButton =
+      saveButtons.find((btn) => btn.getAttribute('type') === 'button') || saveButtons[0]
 
     // Simulate rapid double-click by clicking twice in quick succession
     fireEvent.click(saveButton)
     fireEvent.click(saveButton)
 
     // Wait for the first (and only) save to complete
-    await waitFor(() => {
-      expect(mockOnSave).toHaveBeenCalled()
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(mockOnSave).toHaveBeenCalled()
+      },
+      { timeout: 3000 }
+    )
 
     // Assert onSave was called exactly once despite double-click
     expect(mockOnSave).toHaveBeenCalledTimes(1)
@@ -147,7 +153,7 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
     // Fill in required fields and navigate to step 2
     const customerNameInput = screen.getByTestId('customer-name-input')
     const dealNumberInput = screen.getByTestId('deal-number-input')
-    
+
     fireEvent.change(customerNameInput, { target: { value: 'Test Customer' } })
     fireEvent.change(dealNumberInput, { target: { value: 'DEAL-002' } })
 
@@ -161,8 +167,9 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
     })
 
     const saveButtons = screen.getAllByTestId('save-deal-btn')
-    const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
-    
+    const saveButton =
+      saveButtons.find((btn) => btn.getAttribute('type') === 'button') || saveButtons[0]
+
     // Verify button has explicit type="button"
     expect(saveButton).toHaveAttribute('type', 'button')
   })
@@ -170,7 +177,7 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
   it('should reset guard after save completes', async () => {
     // Test that verifies the guard is properly reset in the finally block
     // This is important for allowing subsequent saves if the form isn't closed
-    
+
     const mockJob = {
       id: 'test-job-2',
       customer_name: 'Test Customer 2',
@@ -185,7 +192,7 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
           unit_price: 100,
           requiresScheduling: false,
           noScheduleReason: 'Installed at delivery',
-        }
+        },
       ],
     }
 
@@ -203,24 +210,29 @@ describe('DealFormV2 - Double-Submit Prevention', () => {
 
     await waitFor(() => {
       const saveButtons = screen.getAllByTestId('save-deal-btn')
-      const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
+      const saveButton =
+        saveButtons.find((btn) => btn.getAttribute('type') === 'button') || saveButtons[0]
       expect(saveButton).not.toBeDisabled()
     })
 
     const saveButtons = screen.getAllByTestId('save-deal-btn')
-    const saveButton = saveButtons.find(btn => btn.getAttribute('type') === 'button') || saveButtons[0]
+    const saveButton =
+      saveButtons.find((btn) => btn.getAttribute('type') === 'button') || saveButtons[0]
 
     // First click - should work
     fireEvent.click(saveButton)
 
     // Wait for first save to complete
-    await waitFor(() => {
-      expect(mockOnSave).toHaveBeenCalledTimes(1)
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(mockOnSave).toHaveBeenCalledTimes(1)
+      },
+      { timeout: 3000 }
+    )
 
     // Verify exactly one call was made
     expect(mockOnSave).toHaveBeenCalledTimes(1)
-    
+
     // Note: In a real scenario, onCancel would close the form after save.
     // This test validates that the guard is reset in the finally block.
   })

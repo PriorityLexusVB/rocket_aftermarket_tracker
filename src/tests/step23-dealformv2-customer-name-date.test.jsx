@@ -56,6 +56,7 @@ vi.mock('../services/dealService', () => ({
   default: {
     createDeal: vi.fn(() => Promise.resolve({ id: 'new-deal-id' })),
     updateDeal: vi.fn(() => Promise.resolve({ id: 'updated-deal-id' })),
+    findJobIdByJobNumber: vi.fn(() => Promise.resolve(null)),
   },
   // Provide required named export used by DealFormV2 UI notices
   getCapabilities: () => ({ jobPartsHasTimes: true }),

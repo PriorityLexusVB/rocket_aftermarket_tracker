@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
 import Navbar from '../../components/ui/Navbar'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
-import { markLoanerReturned, saveLoanerAssignment } from '../../services/dealService'
+import {
+  markLoanerReturned,
+  saveLoanerAssignment,
+  listLoanerAssignmentsForDrawer,
+  listJobsNeedingLoanersForDrawer,
+} from '../../services/dealService'
 
 export default function LoanerManagementDrawer() {
   const [loaners, setLoaners] = useState([])
@@ -31,31 +35,7 @@ export default function LoanerManagementDrawer() {
       setError('')
 
       // Get all loaner assignments with job and customer data
-      const { data: assignments, error: assignmentsError } = await supabase
-        ?.from('loaner_assignments')
-        ?.select(
-          `
-          id,
-          job_id,
-          loaner_number,
-          eta_return_date,
-          returned_at,
-          notes,
-          created_at,
-          jobs (
-            id,
-            title,
-            customer_needs_loaner,
-            transactions (
-              customer_name,
-              customer_phone
-            )
-          )
-        `
-        )
-        ?.order('created_at', { ascending: false })
-
-      if (assignmentsError) throw assignmentsError
+      const assignments = await listLoanerAssignmentsForDrawer()
 
       // Calculate inventory stats
       const today = new Date()
@@ -83,34 +63,7 @@ export default function LoanerManagementDrawer() {
 
   const loadJobsNeedingLoaners = async () => {
     try {
-      const { data: jobs, error } = await supabase
-        ?.from('jobs')
-        ?.select(
-          `
-          id,
-          title,
-          customer_needs_loaner,
-          transactions (
-            customer_name,
-            customer_phone
-          ),
-          loaner_assignments (
-            id,
-            returned_at
-          )
-        `
-        )
-        ?.eq('customer_needs_loaner', true)
-        ?.in('job_status', ['pending', 'in_progress'])
-
-      if (error) throw error
-
-      // Filter jobs that don't have active loaner assignments
-      const jobsWithoutActiveLoaners = jobs?.filter((job) => {
-        const hasActiveLoaner = job?.loaner_assignments?.some((la) => !la?.returned_at)
-        return !hasActiveLoaner
-      })
-
+      const jobsWithoutActiveLoaners = await listJobsNeedingLoanersForDrawer()
       setJobsNeedingLoaners(jobsWithoutActiveLoaners || [])
     } catch (err) {
       console.error('Load jobs needing loaners error:', err)

@@ -3,6 +3,97 @@ import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/
 import { safeSelect } from '../lib/supabase/safeSelect'
 
 export const vehicleService = {
+  // Vehicles page helpers (guardrail: keep Supabase out of React pages)
+  async listVehiclesForVehiclesPage({ statusFilter } = {}) {
+    try {
+      let query = supabase
+        ?.from('vehicles')
+        ?.select('*')
+        ?.order('stock_number', { ascending: true })
+
+      if (statusFilter && statusFilter !== 'all') {
+        query = query?.eq('vehicle_status', statusFilter)
+      }
+
+      const data = await safeSelect(query, 'vehicles:listVehiclesForVehiclesPage')
+      return { data: data || [], error: null }
+    } catch (error) {
+      if (error?.message?.includes('Failed to fetch')) {
+        return {
+          data: [],
+          error: {
+            message:
+              'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.',
+          },
+        }
+      }
+      return { data: [], error: { message: 'Failed to load vehicles' } }
+    }
+  },
+
+  async getVehicleHistoryForVehiclesPage(vehicleId) {
+    try {
+      if (!vehicleId) return { data: [], error: null }
+
+      const [jobs, communications] = await Promise.all([
+        safeSelect(
+          supabase
+            ?.from('jobs')
+            ?.select(
+              `
+              *,
+              vendors (name),
+              user_profiles (full_name)
+            `
+            )
+            ?.eq('vehicle_id', vehicleId)
+            ?.order('created_at', { ascending: false }),
+          'vehicles:getVehicleHistoryForVehiclesPage:jobs'
+        ),
+        safeSelect(
+          supabase
+            ?.from('communications')
+            ?.select('*')
+            ?.eq('vehicle_id', vehicleId)
+            ?.order('sent_at', { ascending: false }),
+          'vehicles:getVehicleHistoryForVehiclesPage:communications'
+        ),
+      ])
+
+      const history = [
+        ...(jobs || []).map((job) => ({
+          type: 'job',
+          date: job?.created_at,
+          title: job?.job_number || job?.transactions?.[0]?.customer_name || '—',
+          description: job?.description,
+          status: job?.job_status,
+          vendor: job?.vendors?.name,
+          assignee: job?.user_profiles?.full_name,
+        })),
+        ...(communications || []).map((comm) => ({
+          type: 'communication',
+          date: comm?.sent_at,
+          title: `${comm?.communication_type?.toUpperCase()} Message`,
+          description: comm?.message,
+          status: comm?.is_successful ? 'delivered' : 'failed',
+        })),
+      ].sort((a, b) => new Date(b.date) - new Date(a.date))
+
+      return { data: history, error: null }
+    } catch (error) {
+      if (error?.message?.includes('Failed to fetch')) {
+        return {
+          data: [],
+          error: {
+            message:
+              'Cannot connect to database. Your Supabase project may be paused or deleted. Please visit your Supabase dashboard to check project status.',
+          },
+        }
+      }
+      return { data: [], error: { message: 'Failed to load vehicle history' } }
+    }
+  },
+
   // Get all vehicles with optional filtering
   async getVehicles(filters = {}, orgId = null) {
     try {

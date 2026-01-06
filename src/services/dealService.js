@@ -3042,6 +3042,148 @@ export async function markLoanerReturned(loanerAssignmentId) {
   }
 }
 
+// A3: Loaner Management Drawer helpers
+// - Centralize Supabase reads so React pages don't import the client directly.
+export async function listLoanerAssignmentsForDrawer() {
+  try {
+    const selectWithReturnedAt = `
+      id,
+      job_id,
+      loaner_number,
+      eta_return_date,
+      returned_at,
+      notes,
+      created_at,
+      jobs (
+        id,
+        title,
+        customer_needs_loaner,
+        transactions (
+          customer_name,
+          customer_phone
+        )
+      )
+    `
+
+    const selectWithoutReturnedAt = `
+      id,
+      job_id,
+      loaner_number,
+      eta_return_date,
+      notes,
+      created_at,
+      jobs (
+        id,
+        title,
+        customer_needs_loaner,
+        transactions (
+          customer_name,
+          customer_phone
+        )
+      )
+    `
+
+    let res = await supabase
+      ?.from('loaner_assignments')
+      ?.select(selectWithReturnedAt)
+      ?.order('created_at', { ascending: false })
+
+    if (res?.error && isMissingReturnedAtError(res.error)) {
+      res = await supabase
+        ?.from('loaner_assignments')
+        ?.select(selectWithoutReturnedAt)
+        ?.order('created_at', { ascending: false })
+
+      if (!res?.error) {
+        const rows = Array.isArray(res?.data) ? res.data : []
+        return rows.map((row) => ({ ...row, returned_at: null }))
+      }
+    }
+
+    if (res?.error) {
+      throw normalizeError(res.error)
+    }
+
+    return Array.isArray(res?.data) ? res.data : []
+  } catch (error) {
+    console.error('[dealService:listLoanerAssignmentsForDrawer] Failed:', error)
+    throw new Error(error?.message || 'Failed to load loaner assignments')
+  }
+}
+
+export async function listJobsNeedingLoanersForDrawer() {
+  try {
+    const selectWithReturnedAt = `
+      id,
+      title,
+      customer_needs_loaner,
+      job_status,
+      transactions (
+        customer_name,
+        customer_phone
+      ),
+      loaner_assignments (
+        id,
+        returned_at
+      )
+    `
+
+    const selectWithoutReturnedAt = `
+      id,
+      title,
+      customer_needs_loaner,
+      job_status,
+      transactions (
+        customer_name,
+        customer_phone
+      ),
+      loaner_assignments (
+        id
+      )
+    `
+
+    let res = await supabase
+      ?.from('jobs')
+      ?.select(selectWithReturnedAt)
+      ?.eq('customer_needs_loaner', true)
+      ?.in('job_status', ['pending', 'in_progress'])
+
+    if (res?.error && isMissingReturnedAtError(res.error)) {
+      res = await supabase
+        ?.from('jobs')
+        ?.select(selectWithoutReturnedAt)
+        ?.eq('customer_needs_loaner', true)
+        ?.in('job_status', ['pending', 'in_progress'])
+
+      if (!res?.error) {
+        const jobs = Array.isArray(res?.data) ? res.data : []
+        const jobsWithoutActiveLoaners = jobs.filter((job) => {
+          const assignments = Array.isArray(job?.loaner_assignments) ? job.loaner_assignments : []
+          // If we can't read returned_at, treat any assignment as active to avoid double-assigning.
+          return assignments.length === 0
+        })
+        return jobsWithoutActiveLoaners
+      }
+    }
+
+    if (res?.error) {
+      throw normalizeError(res.error)
+    }
+
+    const jobs = Array.isArray(res?.data) ? res.data : []
+    const jobsWithoutActiveLoaners = jobs.filter((job) => {
+      const assignments = Array.isArray(job?.loaner_assignments) ? job.loaner_assignments : []
+      const hasActiveLoaner = assignments.some((la) => !la?.returned_at)
+      return !hasActiveLoaner
+    })
+
+    return jobsWithoutActiveLoaners
+  } catch (error) {
+    console.error('[dealService:listJobsNeedingLoanersForDrawer] Failed:', error)
+    throw new Error(error?.message || 'Failed to load jobs needing loaners')
+  }
+}
+
 // A3: Fetch returned loaner assignments for a job (history)
 // - Used by the Loaner drawer "Returned" tab.
 // - Best-effort: returns [] on RLS denial or missing returned_at column.
@@ -3320,6 +3462,31 @@ export async function searchCustomers(searchTerm = '', limit = 10) {
   }
 }
 
+/**
+ * Find a job's id by job_number.
+ *
+ * Used to validate job_number uniqueness before create/update.
+ *
+ * @param {string} jobNumber
+ * @returns {Promise<string|null>} Job id if found, else null
+ */
+export async function findJobIdByJobNumber(jobNumber) {
+  const normalized = typeof jobNumber === 'string' ? jobNumber.trim() : ''
+  if (!normalized) return null
+
+  const { data, error } = await supabase
+    ?.from('jobs')
+    ?.select('id')
+    ?.eq('job_number', normalized)
+    ?.maybeSingle()
+
+  if (error) {
+    throw normalizeError(error)
+  }
+
+  return data?.id || null
+}
+
 // Back-compat default export (so both import styles work):
 export const dealService = {
   getAllDeals,
@@ -3328,6 +3495,7 @@ export const dealService = {
   updateDeal,
   deleteDeal,
   updateDealStatus,
+  findJobIdByJobNumber,
 }
 
 export default dealService

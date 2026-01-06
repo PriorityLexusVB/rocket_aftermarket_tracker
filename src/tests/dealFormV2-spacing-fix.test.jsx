@@ -1,6 +1,6 @@
 /**
  * Test: DealFormV2 customer name spacing fix
- * 
+ *
  * This test verifies that:
  * 1. Customer names with spaces are preserved during typing
  * 2. The normalization useEffect doesn't interfere with user input
@@ -48,6 +48,7 @@ vi.mock('../services/dropdownService', () => ({
 vi.mock('../services/dealService', () => ({
   default: {
     createDeal: vi.fn(() => Promise.resolve({ id: 'new-deal-id' })),
+    findJobIdByJobNumber: vi.fn(() => Promise.resolve(null)),
   },
   getCapabilities: () => ({ jobPartsHasTimes: true }),
 }))
@@ -147,7 +148,7 @@ describe('DealFormV2 - Customer Name Spacing Fix', () => {
 
     // Type a name with space
     fireEvent.change(customerNameInput, { target: { value: 'John Doe' } })
-    
+
     // Value should be exactly what was typed, no normalization yet
     expect(customerNameInput.value).toBe('John Doe')
   })
