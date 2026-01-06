@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   X,
   Car,
@@ -12,6 +13,7 @@ import {
   MessageSquare,
   Camera,
   Copy,
+  Eye,
   Play,
   CheckCircle,
   XCircle,
@@ -23,6 +25,7 @@ import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')
   const [notes, setNotes] = useState('')
+  const navigate = useNavigate()
 
   if (!isOpen || !job) return null
 
@@ -30,6 +33,13 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const overdue = isOverdue(job?.promised_date)
 
   const quickActions = [
+    {
+      id: 'open_deal',
+      label: 'Open Deal',
+      icon: Eye,
+      color: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
+      action: () => navigate(`/deals/${job?.id}/edit`),
+    },
     {
       id: 'start',
       label: 'Start',
@@ -57,8 +67,18 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
       icon: RotateCcw,
       color: 'bg-orange-600 hover:bg-orange-700 text-white',
       action: () => {
-        // Open reschedule modal
-        console.log('Open reschedule modal')
+        const useAgenda = String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true'
+
+        if (useAgenda) {
+          const qs = new URLSearchParams({ focus: String(job?.id || '') })
+          onClose?.()
+          navigate(`/calendar/agenda?${qs.toString()}`)
+          return
+        }
+
+        // Fallback: send user to deal edit where line items/times can be adjusted.
+        onClose?.()
+        navigate(`/deals/${job?.id}/edit`)
       },
     },
   ]

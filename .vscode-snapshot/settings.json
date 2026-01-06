@@ -21,6 +21,7 @@
     ".github/prompts": true
   },
   "chat.promptFilesRecommendations": {
+    "mcp-healthcheck": true,
     "mcp-preflight": true,
     "debug-router": true,
     "full-debug-sweep": true,

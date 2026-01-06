@@ -2,8 +2,7 @@
   "servers": {
     "github/github-mcp-server": {
       "type": "http",
-      "url": "https://api.githubcopilot.com/mcp",
-      "version": "0.13.0"
+      "url": "https://api.githubcopilot.com/mcp"
     },
     "supabase": {
       "type": "stdio",
@@ -20,8 +19,7 @@
       "env": {
         "SUPABASE_ACCESS_TOKEN": "${input:SUPABASE_ACCESS_TOKEN}",
         "npm_config_yes": "true"
-      },
-      "version": "0.5.10"
+      }
     },
     "microsoft/playwright-mcp": {
       "type": "stdio",
@@ -29,8 +27,7 @@
       "args": ["@playwright/mcp@latest"],
       "env": {
         "npm_config_yes": "true"
-      },
-      "version": "0.0.1-seed"
+      }
     }
   },
   "inputs": [

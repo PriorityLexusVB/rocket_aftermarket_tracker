@@ -5,6 +5,7 @@ import Input from '../../../components/ui/Input'
 import Select from '../../../components/ui/Select'
 import { advancedFeaturesService } from '../../../services/advancedFeaturesService'
 import { useAuth } from '../../../contexts/AuthContext'
+import { SMS_TEMPLATES_TABLE_AVAILABLE } from '../../../utils/capabilityTelemetry'
 
 const SmsTemplateManager = ({ className = '' }) => {
   const [templates, setTemplates] = useState([])
@@ -13,6 +14,8 @@ const SmsTemplateManager = ({ className = '' }) => {
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [error, setError] = useState('')
   const { userProfile } = useAuth()
+
+  const smsTemplatesAvailable = SMS_TEMPLATES_TABLE_AVAILABLE !== false
 
   const [formData, setFormData] = useState({
     name: '',
@@ -64,8 +67,22 @@ const SmsTemplateManager = ({ className = '' }) => {
   }
 
   useEffect(() => {
-    loadTemplates()
+    if (smsTemplatesAvailable) loadTemplates()
+    else setIsLoading(false)
   }, [])
+
+  if (!smsTemplatesAvailable) {
+    return (
+      <div className={className}>
+        <div className="p-4 border rounded">
+          <div className="font-medium">SMS Templates unavailable</div>
+          <div className="text-sm opacity-75">
+            This environment does not have the required database tables enabled.
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e) => {
     e?.preventDefault()

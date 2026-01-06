@@ -25,6 +25,10 @@ import { clearDropdownCache } from '../../services/dropdownService'
 import adminService from '../../services/adminService'
 import { vendorService } from '../../services/vendorService'
 import { vendorInsertSchema } from '../../db/schemas'
+import {
+  SMS_TEMPLATES_TABLE_AVAILABLE,
+  disableSmsTemplatesCapability,
+} from '../../utils/capabilityTelemetry'
 
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
@@ -60,6 +64,10 @@ const AdminPage = () => {
   const [products, setProducts] = useState([])
   const [organizations, setOrganizations] = useState([])
   const [smsTemplates, setSmsTemplates] = useState([])
+
+  const [smsTemplatesAvailable, setSmsTemplatesAvailable] = useState(
+    SMS_TEMPLATES_TABLE_AVAILABLE !== false
+  )
 
   // Loading states
   const [submitting, setSubmitting] = useState(false)
@@ -124,9 +132,17 @@ const AdminPage = () => {
     { id: 'staffRecords', label: 'Staff Records', icon: Users },
     { id: 'vendors', label: 'Vendors', icon: Building },
     { id: 'products', label: 'Aftermarket Products', icon: Package },
-    { id: 'smsTemplates', label: 'SMS Templates', icon: MessageSquare },
+    ...(smsTemplatesAvailable
+      ? [{ id: 'smsTemplates', label: 'SMS Templates', icon: MessageSquare }]
+      : []),
     { id: 'qrCodes', label: 'QR Code Generator', icon: QrCode },
   ]
+
+  useEffect(() => {
+    if (!smsTemplatesAvailable && activeTab === 'smsTemplates') {
+      setActiveTab('userAccounts')
+    }
+  }, [smsTemplatesAvailable, activeTab])
 
   const roleOptions = [
     { value: 'admin', label: 'Admin' },
@@ -277,6 +293,12 @@ const AdminPage = () => {
 
   const loadSmsTemplates = useCallback(async () => {
     try {
+      if (SMS_TEMPLATES_TABLE_AVAILABLE === false || smsTemplatesAvailable === false) {
+        setSmsTemplates([])
+        setSmsTemplatesAvailable(false)
+        return
+      }
+
       console.log('Loading SMS templates...')
 
       const { data, error } = await adminService.listSmsTemplates()
@@ -285,10 +307,18 @@ const AdminPage = () => {
 
       console.log(`SMS templates query result: ${data?.length || 0} records`)
       setSmsTemplates(data || [])
+      setSmsTemplatesAvailable(SMS_TEMPLATES_TABLE_AVAILABLE !== false)
     } catch (error) {
+      const msg = String(error?.message || error || '').toLowerCase()
+      if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+        disableSmsTemplatesCapability()
+        setSmsTemplates([])
+        setSmsTemplatesAvailable(false)
+        return
+      }
       console.error('Error loading SMS templates:', error)
     }
-  }, [])
+  }, [smsTemplatesAvailable])
 
   const loadOrganizations = useCallback(async () => {
     try {
@@ -313,24 +343,28 @@ const AdminPage = () => {
     console.log('Loading admin data...')
 
     try {
-      const results = await Promise.allSettled([
+      const tasks = [
         loadUserAccounts(),
         loadStaffRecords(),
         loadVendors(),
         loadProducts(),
-        loadSmsTemplates(),
         loadOrganizations(),
-      ])
+      ]
+      if (smsTemplatesAvailable) tasks.splice(4, 0, loadSmsTemplates())
+
+      const results = await Promise.allSettled(tasks)
 
       results?.forEach((result, index) => {
-        const sections = [
-          'User Accounts',
-          'Staff Records',
-          'Vendors',
-          'Products',
-          'SMS Templates',
-          'Organizations',
-        ]
+        const sections = smsTemplatesAvailable
+          ? [
+              'User Accounts',
+              'Staff Records',
+              'Vendors',
+              'Products',
+              'SMS Templates',
+              'Organizations',
+            ]
+          : ['User Accounts', 'Staff Records', 'Vendors', 'Products', 'Organizations']
         if (result?.status === 'rejected') {
           console.error(`Failed to load ${sections?.[index]}:`, result?.reason)
         } else {
@@ -348,6 +382,7 @@ const AdminPage = () => {
     loadStaffRecords,
     loadUserAccounts,
     loadVendors,
+    smsTemplatesAvailable,
   ])
 
   // Initialize admin panel - check auth and load data

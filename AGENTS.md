@@ -21,6 +21,8 @@ These instructions apply to all agents working in this repo.
 - pnpm run typecheck (if present)
 - pnpm build (if present)
 
+Tip: For a quick MCP PASS/FAIL across Chrome DevTools, Supabase, GitHub, and Playwright, use the prompt in [.github/prompts/mcp-healthcheck.prompt.md](.github/prompts/mcp-healthcheck.prompt.md).
+
 ---
 
 # Aftermarket Tracker — Runtime Debug Policy (DevTools MCP)

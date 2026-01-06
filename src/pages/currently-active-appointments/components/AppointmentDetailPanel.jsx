@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   X,
   Clock,
@@ -18,6 +19,7 @@ import {
 import { appointmentsService } from '../../../services/appointmentsService'
 
 const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
+  const navigate = useNavigate()
   const [communications, setCommunications] = useState([])
   const [jobParts, setJobParts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -141,12 +143,24 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
       <div className="p-6 border-b border-gray-200/50">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-gray-900">Appointment Details</h3>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all duration-200"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => appointment?.id && navigate(`/deals/${appointment.id}/edit`)}
+              disabled={!appointment?.id}
+              className="px-3 h-10 rounded-xl bg-white border border-gray-200 hover:bg-gray-50 text-sm font-semibold text-gray-800 flex items-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Edit3 className="w-4 h-4" />
+              Open Deal
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all duration-200"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
         </div>
 
         {/* Appointment Overview */}

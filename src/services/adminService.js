@@ -1,8 +1,21 @@
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/authService'
+import {
+  SMS_TEMPLATES_TABLE_AVAILABLE,
+  disableSmsTemplatesCapability,
+} from '@/utils/capabilityTelemetry'
 
 function asErrorMessage(e) {
   return e?.message || (typeof e === 'string' ? e : 'Unknown error')
+}
+
+function isMissingSmsTemplatesTableError(e) {
+  const msg = String(e?.message || e || '').toLowerCase()
+  const code = String(e?.code || '').toLowerCase()
+  return (
+    code === 'pgrst205' ||
+    (msg.includes('sms_templates') && msg.includes('could not find the table'))
+  )
 }
 
 export const adminService = {
@@ -137,6 +150,8 @@ export const adminService = {
 
   async listSmsTemplates() {
     try {
+      if (SMS_TEMPLATES_TABLE_AVAILABLE === false) return { data: [], error: null }
+
       const { data, error } = await supabase
         .from('sms_templates')
         .select('*', { count: 'exact' })
@@ -145,6 +160,10 @@ export const adminService = {
       if (error) throw error
       return { data: data || [], error: null }
     } catch (e) {
+      if (isMissingSmsTemplatesTableError(e)) {
+        disableSmsTemplatesCapability()
+        return { data: [], error: null }
+      }
       return { data: [], error: { message: asErrorMessage(e) } }
     }
   },
@@ -259,10 +278,29 @@ export const adminService = {
   },
 
   async saveSmsTemplate({ editingId = null, templateData }) {
+    if (SMS_TEMPLATES_TABLE_AVAILABLE === false) {
+      throw new Error('SMS Templates are unavailable in this environment')
+    }
     if (editingId) {
-      await supabase.from('sms_templates').update(templateData).eq('id', editingId).throwOnError()
+      try {
+        await supabase.from('sms_templates').update(templateData).eq('id', editingId).throwOnError()
+      } catch (e) {
+        if (isMissingSmsTemplatesTableError(e)) {
+          disableSmsTemplatesCapability()
+          throw new Error('SMS Templates are unavailable in this environment')
+        }
+        throw e
+      }
     } else {
-      await supabase.from('sms_templates').insert([templateData]).throwOnError()
+      try {
+        await supabase.from('sms_templates').insert([templateData]).throwOnError()
+      } catch (e) {
+        if (isMissingSmsTemplatesTableError(e)) {
+          disableSmsTemplatesCapability()
+          throw new Error('SMS Templates are unavailable in this environment')
+        }
+        throw e
+      }
     }
   },
 
@@ -314,12 +352,17 @@ export const adminService = {
       supabase.from('vehicles').update({ created_by: null }).eq('created_by', userId),
       supabase.from('vendors').update({ created_by: null }).eq('created_by', userId),
       supabase.from('products').update({ created_by: null }).eq('created_by', userId),
-      supabase.from('sms_templates').update({ created_by: null }).eq('created_by', userId),
       safeCleanupDelete('filter_presets', 'user_id', userId),
       safeCleanupDelete('notification_preferences', 'user_id', userId),
       safeCleanupDelete('activity_history', 'performed_by', userId),
       safeCleanupDelete('communications', 'sent_by', userId),
     ]
+
+    if (SMS_TEMPLATES_TABLE_AVAILABLE !== false) {
+      cleanupPromises.push(
+        supabase.from('sms_templates').update({ created_by: null }).eq('created_by', userId)
+      )
+    }
 
     await Promise.allSettled(cleanupPromises)
     await this.deleteRow('user_profiles', userId)

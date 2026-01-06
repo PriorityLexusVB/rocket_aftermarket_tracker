@@ -1,4 +1,11 @@
 // src/lib/supabase/safeSelect.js
+import {
+  SMS_TEMPLATES_TABLE_AVAILABLE,
+  NOTIFICATION_OUTBOX_TABLE_AVAILABLE,
+  disableSmsTemplatesCapability,
+  disableNotificationOutboxCapability,
+} from '@/utils/capabilityTelemetry'
+
 /**
  * Wrap a Postgrest query and make failures loud, with graceful RLS handling.
  * @param {any} q Postgrest query builder
@@ -9,12 +16,40 @@
 export async function safeSelect(q, label, opts = {}) {
   const { allowRLS = true } = opts
 
+  // Avoid repeated noise for optional sms_templates in environments where it's not present.
+  if (label?.includes('sms_templates') && SMS_TEMPLATES_TABLE_AVAILABLE === false) {
+    return []
+  }
+
+  // Avoid repeated noise for optional notification_outbox in environments where it's not present.
+  if (label?.includes('notification_outbox') && NOTIFICATION_OUTBOX_TABLE_AVAILABLE === false) {
+    return []
+  }
+
   try {
     const res = await q.throwOnError()
     // q.throwOnError() usually returns { data, error, count }
     return res.data ?? res
   } catch (e) {
     const errorType = classifyError(e)
+
+    // Optional table gating: sms_templates may not exist in some environments.
+    if (
+      errorType === 'missing_table' &&
+      (label?.includes('sms_templates') || isSmsTemplatesTableError(e))
+    ) {
+      disableSmsTemplatesCapability()
+      return []
+    }
+
+    // Optional table gating: notification_outbox may not exist in some environments.
+    if (
+      errorType === 'missing_table' &&
+      (label?.includes('notification_outbox') || isNotificationOutboxTableError(e))
+    ) {
+      disableNotificationOutboxCapability()
+      return []
+    }
 
     // Handle RLS/permission errors gracefully if allowed
     if (allowRLS && (errorType === 'rls' || errorType === 'permission')) {
@@ -53,6 +88,15 @@ function classifyError(error) {
   const msg = String(error?.message || '').toLowerCase()
   const code = String(error?.code || '').toLowerCase()
 
+  // Missing table errors (e.g., PostgREST PGRST205)
+  if (
+    code === 'pgrst205' ||
+    /could not find the table/i.test(msg) ||
+    (/schema cache/i.test(msg) && /\btable\b/i.test(msg) && /could not find/i.test(msg))
+  ) {
+    return 'missing_table'
+  }
+
   // Missing column errors
   if (
     /column .* does not exist/i.test(msg) ||
@@ -83,6 +127,16 @@ function classifyError(error) {
   }
 
   return 'unknown'
+}
+
+function isSmsTemplatesTableError(error) {
+  const msg = String(error?.message || '').toLowerCase()
+  return msg.includes('sms_templates') && msg.includes('could not find the table')
+}
+
+function isNotificationOutboxTableError(error) {
+  const msg = String(error?.message || '').toLowerCase()
+  return msg.includes('notification_outbox') && msg.includes('could not find the table')
 }
 
 /**

@@ -24,6 +24,51 @@ export const TelemetryKey = {
 export let JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE = true
 export let JOB_PARTS_HAS_PER_LINE_TIMES = true
 
+// Capability flags for optional SMS features
+// These can be dynamically disabled for the current session when missing-table errors are detected.
+export let SMS_TEMPLATES_TABLE_AVAILABLE = true
+export let NOTIFICATION_OUTBOX_TABLE_AVAILABLE = true
+
+const SMS_TEMPLATES_CAP_KEY = 'cap_smsTemplatesTable'
+const NOTIFICATION_OUTBOX_CAP_KEY = 'cap_notificationOutboxTable'
+
+try {
+  if (typeof sessionStorage !== 'undefined') {
+    const smsStored = sessionStorage.getItem(SMS_TEMPLATES_CAP_KEY)
+    if (smsStored === 'false') SMS_TEMPLATES_TABLE_AVAILABLE = false
+    const outboxStored = sessionStorage.getItem(NOTIFICATION_OUTBOX_CAP_KEY)
+    if (outboxStored === 'false') NOTIFICATION_OUTBOX_TABLE_AVAILABLE = false
+  }
+} catch {
+  // non-fatal
+}
+
+export function disableSmsTemplatesCapability() {
+  SMS_TEMPLATES_TABLE_AVAILABLE = false
+  try {
+    if (typeof sessionStorage !== 'undefined')
+      sessionStorage.setItem(SMS_TEMPLATES_CAP_KEY, 'false')
+  } catch {
+    // non-fatal
+  }
+  if (import.meta.env.MODE === 'development') {
+    console.warn('[capabilityTelemetry] Disabled SMS_TEMPLATES_TABLE_AVAILABLE capability')
+  }
+}
+
+export function disableNotificationOutboxCapability() {
+  NOTIFICATION_OUTBOX_TABLE_AVAILABLE = false
+  try {
+    if (typeof sessionStorage !== 'undefined')
+      sessionStorage.setItem(NOTIFICATION_OUTBOX_CAP_KEY, 'false')
+  } catch {
+    // non-fatal
+  }
+  if (import.meta.env.MODE === 'development') {
+    console.warn('[capabilityTelemetry] Disabled NOTIFICATION_OUTBOX_TABLE_AVAILABLE capability')
+  }
+}
+
 /**
  * Disable the vendor_id column capability for job_parts
  * Called when a missing column error is detected for vendor_id

@@ -1,4 +1,9 @@
 import { supabase } from '@/lib/supabase'
+import { safeSelect } from '@/lib/supabase/safeSelect'
+import {
+  NOTIFICATION_OUTBOX_TABLE_AVAILABLE,
+  disableNotificationOutboxCapability,
+} from '@/utils/capabilityTelemetry'
 
 export const notificationService = {
   // Get pending/recent communications as notifications
@@ -51,12 +56,19 @@ export const notificationService = {
   // Get pending SMS notifications from outbox
   async getPendingSMSNotifications(opts = {}) {
     try {
+      if (NOTIFICATION_OUTBOX_TABLE_AVAILABLE === false) {
+        return { data: [], error: null, count: 0 }
+      }
+
       let q = supabase
         ?.from('notification_outbox')
         ?.select('id, status, created_at, message_template, phone_e164')
         ?.eq('status', 'pending')
       if (opts?.orgId) q = q?.eq('dealer_id', opts.orgId)
-      const { data } = await q?.order('created_at', { ascending: false })?.limit(5)?.throwOnError()
+
+      q = q?.order('created_at', { ascending: false })?.limit(5)
+
+      const data = await safeSelect(q, 'notification_outbox:notificationService:getPending')
 
       return {
         data: data || [],
@@ -64,6 +76,11 @@ export const notificationService = {
         count: data?.length || 0,
       }
     } catch (error) {
+      const msg = String(error?.message || error || '').toLowerCase()
+      if (msg.includes('notification_outbox') && msg.includes('could not find the table')) {
+        disableNotificationOutboxCapability()
+        return { data: [], error: null, count: 0 }
+      }
       console.warn('[notify] getPendingSMSNotifications failed:', error?.message || error)
       return { data: [], error: 'Failed to load pending notifications', count: 0 }
     }
@@ -107,18 +124,21 @@ export const notificationService = {
         }
       )
 
-      channel.on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notification_outbox',
-        },
-        () => {
-          // Refresh notifications when SMS outbox changes
-          this.getNotificationCount(userId)?.then(callback)
-        }
-      )
+      // Only subscribe to outbox changes if the table is known to exist for this session.
+      if (NOTIFICATION_OUTBOX_TABLE_AVAILABLE !== false) {
+        channel.on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notification_outbox',
+          },
+          () => {
+            // Refresh notifications when SMS outbox changes
+            this.getNotificationCount(userId)?.then(callback)
+          }
+        )
+      }
 
       channel?.subscribe?.()
       // Return a cleanup function (awaitable) to avoid leaking realtime subscriptions.

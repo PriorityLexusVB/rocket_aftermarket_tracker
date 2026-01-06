@@ -2,6 +2,10 @@
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import { toOptions } from '@/lib/options'
+import {
+  SMS_TEMPLATES_TABLE_AVAILABLE,
+  disableSmsTemplatesCapability,
+} from '@/utils/capabilityTelemetry'
 
 export async function listVendorsByOrg(orgId, { activeOnly = true } = {}) {
   if (!orgId) return []
@@ -71,6 +75,7 @@ export async function listStaffByOrg(
 
 export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
   if (!orgId) return []
+  if (SMS_TEMPLATES_TABLE_AVAILABLE === false) return []
   try {
     let q = supabase
       .from('sms_templates')
@@ -78,9 +83,14 @@ export async function listSmsTemplatesByOrg(orgId, { activeOnly = true } = {}) {
       .order('created_at', { ascending: true })
     if (activeOnly) q = q.eq('is_active', true)
     q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
-    const data = await safeSelect(q)
+    const data = await safeSelect(q, 'sms_templates:tenantService:listByOrg')
     return toOptions(data, { labelKey: 'name', valueKey: 'id' })
   } catch (err) {
+    const msg = String(err?.message || err || '').toLowerCase()
+    if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+      disableSmsTemplatesCapability()
+      return []
+    }
     console.error('listSmsTemplatesByOrg error:', err?.message || err)
     return []
   }

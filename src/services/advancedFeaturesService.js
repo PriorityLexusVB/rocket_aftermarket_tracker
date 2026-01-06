@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getCapabilities } from '@/services/dealService'
+import { safeSelect } from '@/lib/supabase/safeSelect'
+import {
+  SMS_TEMPLATES_TABLE_AVAILABLE,
+  disableSmsTemplatesCapability,
+} from '@/utils/capabilityTelemetry'
 
 const safeString = (value, defaultValue = '') => {
   return value === null || value === undefined ? defaultValue : String(value)
@@ -28,18 +33,24 @@ export const advancedFeaturesService = {
   // SMS Template Service
   async getSmsTemplates() {
     try {
-      const { data, error } = await supabase
+      if (SMS_TEMPLATES_TABLE_AVAILABLE === false) {
+        return { data: [], error: null }
+      }
+
+      let q = supabase
         ?.from('sms_templates')
         ?.select('*')
         ?.eq('is_active', true)
         ?.order('created_at', { ascending: false })
 
-      if (error) {
-        return { data: [], error: { message: error?.message } }
-      }
-
+      const data = await safeSelect(q, 'sms_templates:advancedFeaturesService:getSmsTemplates')
       return { data: data || [], error: null }
     } catch (error) {
+      const msg = String(error?.message || error || '').toLowerCase()
+      if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+        disableSmsTemplatesCapability()
+        return { data: [], error: null }
+      }
       console.error('Error fetching SMS templates:', error)
       return { data: [], error: { message: 'Failed to fetch SMS templates' } }
     }
@@ -47,6 +58,13 @@ export const advancedFeaturesService = {
 
   async createSmsTemplate(template) {
     try {
+      if (SMS_TEMPLATES_TABLE_AVAILABLE === false) {
+        return {
+          data: null,
+          error: { message: 'SMS Templates are unavailable in this environment' },
+        }
+      }
+
       const currentUser = await supabase?.auth?.getUser()
       const { data, error } = await supabase
         ?.from('sms_templates')
@@ -65,6 +83,14 @@ export const advancedFeaturesService = {
 
       return { data, error: null }
     } catch (error) {
+      const msg = String(error?.message || error || '').toLowerCase()
+      if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+        disableSmsTemplatesCapability()
+        return {
+          data: null,
+          error: { message: 'SMS Templates are unavailable in this environment' },
+        }
+      }
       console.error('Error creating SMS template:', error)
       return { data: null, error: { message: 'Failed to create SMS template' } }
     }
@@ -72,6 +98,13 @@ export const advancedFeaturesService = {
 
   async updateSmsTemplate(id, updates) {
     try {
+      if (SMS_TEMPLATES_TABLE_AVAILABLE === false) {
+        return {
+          data: null,
+          error: { message: 'SMS Templates are unavailable in this environment' },
+        }
+      }
+
       const { data, error } = await supabase
         ?.from('sms_templates')
         ?.update({
@@ -88,6 +121,14 @@ export const advancedFeaturesService = {
 
       return { data, error: null }
     } catch (error) {
+      const msg = String(error?.message || error || '').toLowerCase()
+      if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+        disableSmsTemplatesCapability()
+        return {
+          data: null,
+          error: { message: 'SMS Templates are unavailable in this environment' },
+        }
+      }
       console.error('Error updating SMS template:', error)
       return { data: null, error: { message: 'Failed to update SMS template' } }
     }
@@ -95,6 +136,10 @@ export const advancedFeaturesService = {
 
   async deleteSmsTemplate(id) {
     try {
+      if (SMS_TEMPLATES_TABLE_AVAILABLE === false) {
+        return { error: { message: 'SMS Templates are unavailable in this environment' } }
+      }
+
       const { data: deleted, error } = await supabase
         ?.from('sms_templates')
         ?.delete()
@@ -118,6 +163,11 @@ export const advancedFeaturesService = {
 
       return { error: null }
     } catch (error) {
+      const msg = String(error?.message || error || '').toLowerCase()
+      if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+        disableSmsTemplatesCapability()
+        return { error: { message: 'SMS Templates are unavailable in this environment' } }
+      }
       console.error('Error deleting SMS template:', error)
       return { error: { message: 'Failed to delete SMS template' } }
     }

@@ -300,7 +300,7 @@ const CalendarFlowManagementCenter = () => {
         // If the deal has no line items requiring scheduling, job-level schedule won't surface
         // in the line-item calendar/RPC views. Make this actionable for the user.
         if (msgLower.includes('no line items require scheduling')) {
-          toast?.error?.('Cannot schedule: no schedulable line items on this deal')
+          toast?.error?.('Cannot schedule: add a line item that requires scheduling first')
           return
         }
 
