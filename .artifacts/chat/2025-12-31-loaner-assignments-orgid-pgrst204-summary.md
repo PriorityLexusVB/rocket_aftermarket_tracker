@@ -1,27 +1,38 @@
-# Chat Summary — 2025-12-31 — loaner_assignments org_id (PGRST204)
+# Chat Summary (2025-12-31)
 
-## What happened
+Topic: `loaner_assignments` insert/update accidentally sending `org_id` and triggering PostgREST `PGRST204`.
 
-- A Supabase/PostgREST request to `POST /rest/v1/loaner_assignments` was failing with:
-  - `PGRST204`: "Could not find the 'org_id' column of 'loaner_assignments' in the schema cache"
-- DevTools Network evidence showed the app sending:
-  - `columns="job_id","org_id","loaner_number","eta_return_date","notes"&select=id`
-  - JSON body including `org_id`
-- In this repo’s intended RLS model, `loaner_assignments` is typically scoped via `jobs.org_id` (policy join), and many environments do **not** have `loaner_assignments.org_id`.
+## TL;DR
+
+The app was sending `org_id` when writing `loaner_assignments`. In many environments that column does not exist (and tenant scoping is intended to be inferred via `jobs.org_id`), so PostgREST rejected the request. The fix is to omit `org_id` by default and only include it when capability detection confirms the column exists.
+
+## Symptom
+
+Request failed:
+
+- Endpoint: `POST /rest/v1/loaner_assignments`
+- Error: `PGRST204` — "Could not find the 'org_id' column of 'loaner_assignments' in the schema cache"
+
+Evidence (DevTools Network):
+
+```text
+columns="job_id","org_id","loaner_number","eta_return_date","notes"&select=id
+```
+
+Body included `org_id`.
 
 ## Root cause
 
-- The client/service layer was including `org_id` by default when inserting/updating `loaner_assignments`.
-- In environments where `loaner_assignments.org_id` does not exist (or the schema cache is stale), PostgREST rejects the request.
+- The client/service layer included `org_id` by default for `loaner_assignments` writes.
+- In environments where `loaner_assignments.org_id` does not exist (or the schema cache is stale), PostgREST rejects the request shape.
 
 ## Fixes applied
 
-### 1) Avoid emitting the failing request shape
+### 1) Emit a safe request shape by default
 
-- Change: loaner assignment insert/update now **omits `org_id` by default**.
-- `org_id` is only included when there is **positive capability evidence** (`cap_loanerAssignmentsOrgId === true`).
-- A small heuristic allows a retry **with** `org_id` only when it looks required (e.g., RLS denial patterns or explicit NOT NULL/org_id constraint signals).
-- Capability is persisted in `sessionStorage` via `cap_loanerAssignmentsOrgId`.
+- Loaner assignment insert/update now omits `org_id` by default.
+- `org_id` is only included when there is positive capability evidence: `cap_loanerAssignmentsOrgId === true`.
+- Capability is stored in `sessionStorage` under `cap_loanerAssignmentsOrgId`.
 
 Where:
 
@@ -29,13 +40,14 @@ Where:
   - `upsertLoanerAssignment(...)`
   - `saveLoanerAssignment(...)`
 
-### 2) Better remediation guidance for this specific error
+### 2) Improve remediation guidance for this specific schema error
 
-- Change: schema error guidance now special-cases missing-column errors for `loaner_assignments` + `org_id`.
-- Guidance explains:
-  - Don’t reference `loaner_assignments.org_id` in REST `columns=` or payload
-  - Tenant scoping is via `jobs.org_id`
-  - If the column was recently added, run `NOTIFY pgrst, 'reload schema';`
+The schema error guidance now special-cases missing-column errors for `loaner_assignments` + `org_id`:
+
+- Do not reference `loaner_assignments.org_id` in REST `columns=` or payload.
+- Tenant scoping is intended to be via `jobs.org_id`.
+- If the column was recently added, reload PostgREST schema cache:
+  - `NOTIFY pgrst, 'reload schema';`
 
 Where:
 
@@ -44,20 +56,20 @@ Where:
 ## Tests updated/added
 
 - `src/tests/schemaErrorClassifier.test.js`
-  - Added unit test for loaner/org_id remediation guidance.
+  - Unit test for loaner/org_id remediation guidance.
 - `src/tests/unit-dealService.test.js`
-  - Updated/added test verifying `saveLoanerAssignment(...)` omits `org_id` by default.
+  - Verifies `saveLoanerAssignment(...)` omits `org_id` by default.
 
-## Verification results
+## Verification
 
-- Stable Vitest suite (task: `pnpm -s vitest run`):
-  - 107/107 files passed
-  - 967 passed, 2 skipped
-- Targeted run:
+- Stable Vitest suite (`pnpm -s vitest run`)
+  - Test Files: 107/107 passed
+  - Tests: 974 passed, 2 skipped
+- Targeted run
   - `pnpm -s exec vitest run src/tests/unit-dealService.test.js src/tests/schemaErrorClassifier.test.js`
   - 2 files passed
 
-## Known follow-up
+## Follow-up
 
-- Runtime verification: confirm DevTools Network shows loaner POST no longer includes `org_id` in `columns=` or request JSON by default.
-- ESLint previously reported 2 unrelated warnings (unused imports) in `src/pages/deals/index.jsx`.
+- Runtime check: confirm DevTools Network shows loaner POST does not include `org_id` in `columns=` or request JSON by default.
+- Note: ESLint previously reported 2 unrelated warnings (unused imports) in `src/pages/deals/index.jsx`.

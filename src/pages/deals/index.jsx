@@ -1717,7 +1717,7 @@ export default function DealsPage() {
                       </div>
 
                       {/* Schedule */}
-                      <div className="col-span-12 lg:col-span-3 min-w-0">
+                      <div className="col-span-12 lg:col-span-2 min-w-0">
                         <ScheduleBlock
                           deal={deal}
                           promiseDate={promiseIso}
@@ -1774,22 +1774,31 @@ export default function DealsPage() {
                       </div>
 
                       {/* $ | Vendor | Location | Loaner */}
-                      <div className="col-span-12 lg:col-span-1 flex flex-wrap items-center justify-start lg:justify-end gap-2">
-                        <Pill className="tabular-nums">
-                          <ValueDisplay amount={deal?.total_amount} />
-                        </Pill>
-                        <Pill>Vendor: {deal?.vendor_name || 'Unassigned'}</Pill>
-                        <ServiceLocationTag jobParts={deal?.job_parts} />
-                        {deal?.loaner_number || deal?.has_active_loaner ? (
-                          <LoanerBadge deal={deal} />
-                        ) : (
-                          <Pill>Loaner: —</Pill>
-                        )}
+                      <div className="col-span-12 lg:col-span-2 min-w-0">
+                        <div className="flex flex-col items-start lg:items-end gap-2">
+                          <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                            <Pill className="tabular-nums whitespace-nowrap">
+                              <ValueDisplay amount={deal?.total_amount} />
+                            </Pill>
+                            {deal?.loaner_number || deal?.has_active_loaner ? (
+                              <LoanerBadge deal={deal} />
+                            ) : (
+                              <Pill className="whitespace-nowrap">Loaner: —</Pill>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                            <Pill className="max-w-full truncate">
+                              Vendor • {deal?.vendor_name || 'Unassigned'}
+                            </Pill>
+                            <ServiceLocationTag jobParts={deal?.job_parts} />
+                          </div>
+                        </div>
                       </div>
 
                       {/* Actions (icons only) */}
-                      <div className="col-span-12 lg:col-span-1 justify-self-end">
-                        <div className="flex items-center justify-end gap-1">
+                      <div className="col-span-12 lg:col-span-1 justify-self-end lg:w-44">
+                        <div className="inline-flex items-center justify-end gap-2 rounded-lg border border-slate-200 bg-slate-100/70 p-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -1810,11 +1819,11 @@ export default function DealsPage() {
                                 handleManageLoaner(deal)
                               }}
                               className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                              aria-label="Manage loaner"
-                              title="Manage loaner"
+                              aria-label={deal?.loaner_id ? 'Edit loaner' : 'Assign loaner'}
+                              title={deal?.loaner_id ? 'Edit loaner' : 'Assign loaner'}
                             >
                               <span className="sr-only">Loaner</span>
-                              <Icon name="Car" size={16} />
+                              <Icon name={deal?.loaner_id ? 'Edit' : 'Car'} size={16} />
                             </button>
                           )}
 
@@ -1833,9 +1842,13 @@ export default function DealsPage() {
                               title="Mark loaner returned"
                             >
                               <span className="sr-only">Mark returned</span>
-                              <Icon name="Car" size={16} />
+                              <Icon name="CheckCircle" size={16} />
                             </button>
                           )}
+
+                          {deal?.customer_needs_loaner || deal?.loaner_id ? (
+                            <span aria-hidden="true" className="mx-1 h-6 w-px bg-slate-200" />
+                          ) : null}
 
                           <button
                             onClick={(e) => {
