@@ -1,3 +1,5 @@
+# Agents
+
 These instructions apply to all agents working in this repo.
 
 ## Operating mode (never skip)
@@ -26,7 +28,7 @@ Tip: For a quick MCP PASS/FAIL across Chrome DevTools, Supabase, GitHub, and Pla
 
 ---
 
-# Aftermarket Tracker — Runtime Debug Policy (DevTools MCP)
+## Aftermarket Tracker — Runtime Debug Policy (DevTools MCP)
 
 When a user message indicates a runtime/browser issue, you MUST use browser evidence before proposing code changes.
 
@@ -65,3 +67,10 @@ DevTools remote debugging exposes full control of the attached browser instance.
 ## Hard Guardrail: Vite Client Env
 
 Browser-bundled code in `src/**` must never reference `process`, `process.env`, or `globalThis.process`. Use `import.meta.env.*` and run `pnpm guard:client-env`.
+
+## Supabase Access/RLS Rule (default)
+
+When the user mentions permissions, access, admin delete, RLS, or “can’t do X”:
+
+- First use Supabase MCP to inspect the target table/function and its RLS/policies before proposing code changes.
+- Output a policy matrix and the smallest migration needed (if any).

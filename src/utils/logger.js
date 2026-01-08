@@ -82,11 +82,7 @@ class AppLogger {
     } catch {
       // no-op
     }
-<<<<<<< HEAD
     this.consoleEnabled = Boolean(isDev || isVitest)
-=======
-    this.consoleEnabled = isDev
->>>>>>> origin/main
   }
 
   /**

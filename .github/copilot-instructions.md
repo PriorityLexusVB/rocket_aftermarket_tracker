@@ -69,6 +69,13 @@ Disallowed: Dropping existing primary/foreign keys, renaming columns outside a d
 - Supabase MCP / Supabase AI must never execute destructive SQL directly; all schema or function changes must be expressed as migrations under `supabase/migrations/` and reviewed via PR.
 - If any MCP action returns an unknown field error: abort modification & emit TODO.
 
+### Supabase Access/RLS Rule (default)
+
+When the user mentions permissions, access, admin delete, RLS, or “can’t do X”:
+
+- First use Supabase MCP to inspect the target table/function and its RLS/policies before proposing code changes.
+- Output a policy matrix and the smallest migration needed (if any).
+
 ## 8. Error Handling Guardrails
 
 Use existing error classifier; do not introduce broad `catch (e) {}` blocks swallowing specifics.

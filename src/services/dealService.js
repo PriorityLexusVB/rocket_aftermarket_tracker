@@ -49,6 +49,48 @@ function setLoanerAssignmentsDealerIdCapability(value) {
   }
 }
 
+function readSessionCap(key) {
+  if (typeof sessionStorage === 'undefined') return null
+  const stored = sessionStorage.getItem(key)
+  if (stored === 'false') return false
+  if (stored === 'true') return true
+  return null
+}
+
+function writeSessionCap(key, value) {
+  if (typeof sessionStorage === 'undefined') return
+  if (value === true) sessionStorage.setItem(key, 'true')
+  if (value === false) sessionStorage.setItem(key, 'false')
+}
+
+// Some environments may not have loaner_assignments.returned_at yet.
+// Cache after first detection to avoid repeated 400s on every page load.
+let loanerAssignmentsHasReturnedAt = readSessionCap('cap_loanerAssignmentsReturnedAt')
+function setLoanerAssignmentsReturnedAtCapability(value) {
+  loanerAssignmentsHasReturnedAt = value
+  writeSessionCap('cap_loanerAssignmentsReturnedAt', value)
+}
+
+// Some environments may not have jobs.next_promised_iso yet.
+let jobsHasNextPromisedIso = readSessionCap('cap_jobsNextPromisedIso')
+function setJobsNextPromisedIsoCapability(value) {
+  jobsHasNextPromisedIso = value
+  writeSessionCap('cap_jobsNextPromisedIso', value)
+}
+
+// Some environments have job_status as an enum that does NOT include "draft".
+let jobsJobStatusSupportsDraft = readSessionCap('cap_jobsJobStatusDraft')
+function setJobsJobStatusDraftCapability(value) {
+  jobsJobStatusSupportsDraft = value
+  writeSessionCap('cap_jobsJobStatusDraft', value)
+}
+
+function applyReturnedAtIsNullFilter(q) {
+  if (!q) return q
+  if (loanerAssignmentsHasReturnedAt === false) return q
+  return typeof q.is === 'function' ? q.is('returned_at', null) : q
+}
+
 function isTestLikeValue(value) {
   const str = value ? String(value) : ''
   return TEST_CUSTOMER_PATTERNS.some((pattern) => pattern.test(str))
@@ -859,8 +901,7 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
 
     {
       const base = supabase?.from('loaner_assignments')?.select('id')?.eq('job_id', jobId)
-      const withReturnedAt =
-        base && typeof base.is === 'function' ? base.is('returned_at', null) : base
+      const withReturnedAt = applyReturnedAtIsNullFilter(base)
       const res =
         withReturnedAt && typeof withReturnedAt.maybeSingle === 'function'
           ? await withReturnedAt.maybeSingle()
@@ -871,6 +912,7 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
       // Some E2E/staging DBs may not have loaner_assignments.returned_at yet.
       // Retry without the filter so loaner persistence can still work.
       if (selectError && isMissingReturnedAtError(selectError)) {
+        setLoanerAssignmentsReturnedAtCapability(false)
         const { data, error } = await supabase
           ?.from('loaner_assignments')
           ?.select('id')
@@ -939,14 +981,14 @@ async function upsertLoanerAssignment(jobId, loanerData, orgId) {
 
     const updateByJobId = async (data) => {
       const base = supabase?.from('loaner_assignments')?.update(data)?.eq('job_id', jobId)
-      const withReturnedAt =
-        base && typeof base.is === 'function' ? base.is('returned_at', null) : base
+      const withReturnedAt = applyReturnedAtIsNullFilter(base)
       const res =
         withReturnedAt && typeof withReturnedAt.select === 'function'
           ? await withReturnedAt.select('id')
           : null
 
       if (res?.error && isMissingReturnedAtError(res.error)) {
+        setLoanerAssignmentsReturnedAtCapability(false)
         return await supabase
           ?.from('loaner_assignments')
           ?.update(data)
@@ -1270,7 +1312,7 @@ async function attachOrCreateVehicleByStockNumber(
 // ✅ ENHANCED: Added schema preflight probe to detect missing columns before main query
 export async function getAllDeals() {
   try {
-    let includeNextPromisedIso = true
+    let includeNextPromisedIso = jobsHasNextPromisedIso !== false
 
     // STEP 1: Schema preflight probe - detect missing columns BEFORE building main select
     // This prevents initial 400 errors on environments missing scheduled_* or vendor_id
@@ -1332,7 +1374,10 @@ export async function getAllDeals() {
     // If we include an invalid enum value in an .in() filter, Postgres will hard-fail the query.
     // Start with the preferred list (includes draft for environments that support it) and retry
     // without draft if the database rejects it.
-    let jobStatusFilter = ['draft', 'pending', 'in_progress', 'completed']
+    let jobStatusFilter =
+      jobsJobStatusSupportsDraft === false
+        ? ['pending', 'in_progress', 'completed']
+        : ['draft', 'pending', 'in_progress', 'completed']
 
     // We may need up to 4 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
     for (let attempt = 1; attempt <= 4; attempt++) {
@@ -1379,6 +1424,8 @@ export async function getAllDeals() {
       jobsError = result?.error
 
       if (!jobsError) {
+        if (includeNextPromisedIso) setJobsNextPromisedIsoCapability(true)
+        if (jobStatusFilter.includes('draft')) setJobsJobStatusDraftCapability(true)
         // Mark capabilities successful on success
         // Only re-affirm vendor relationship capability if we actually used it in this attempt
         if (JOB_PARTS_VENDOR_REL_AVAILABLE) {
@@ -1398,6 +1445,7 @@ export async function getAllDeals() {
         console.warn(
           '[dealService:getAllDeals] job_status enum does not support "draft"; retrying without it'
         )
+        setJobsJobStatusDraftCapability(false)
         jobStatusFilter = jobStatusFilter.filter((s) => s !== 'draft')
         continue
       }
@@ -1420,6 +1468,7 @@ export async function getAllDeals() {
           console.warn(
             `[dealService:getAllDeals] Classified as ${errorCode}; next_promised_iso missing on jobs; retrying without it...`
           )
+          setJobsNextPromisedIsoCapability(false)
           includeNextPromisedIso = false
           continue
         }
@@ -1483,17 +1532,19 @@ export async function getAllDeals() {
           ?.from('loaner_assignments')
           ?.select('job_id, id, loaner_number, eta_return_date')
           ?.in('job_id', jobIds)
-        // Some mocked test environments may omit .is() helper; guard it.
-        return q && typeof q.is === 'function' ? q.is('returned_at', null) : q
+        return applyReturnedAtIsNullFilter(q)
       })(),
     ])
 
     let loanersResult = initialLoanersResult
     if (loanersResult?.error && isMissingReturnedAtError(loanersResult.error)) {
+      setLoanerAssignmentsReturnedAtCapability(false)
       loanersResult = await supabase
         ?.from('loaner_assignments')
         ?.select('job_id, id, loaner_number, eta_return_date')
         ?.in('job_id', jobIds)
+    } else if (!loanersResult?.error && loanerAssignmentsHasReturnedAt !== false) {
+      setLoanerAssignmentsReturnedAtCapability(true)
     }
 
     const transactions = transactionsResult?.data || []
@@ -1696,18 +1747,21 @@ export async function getDeal(id) {
           ?.from('loaner_assignments')
           ?.select('id, loaner_number, eta_return_date, notes')
           ?.eq('job_id', id)
-        const q2 = q && typeof q.is === 'function' ? q.is('returned_at', null) : q
+        const q2 = applyReturnedAtIsNullFilter(q)
         return q2 && typeof q2.maybeSingle === 'function' ? q2.maybeSingle() : q2
       })(),
     ])
 
     let loanerResult = initialLoanerResult
     if (loanerResult?.error && isMissingReturnedAtError(loanerResult.error)) {
+      setLoanerAssignmentsReturnedAtCapability(false)
       loanerResult = await supabase
         ?.from('loaner_assignments')
         ?.select('id, loaner_number, eta_return_date, notes')
         ?.eq('job_id', id)
         ?.maybeSingle()
+    } else if (!loanerResult?.error && loanerAssignmentsHasReturnedAt !== false) {
+      setLoanerAssignmentsReturnedAtCapability(true)
     }
 
     const transaction = transactionResult?.data
@@ -2598,17 +2652,25 @@ export async function updateDeal(id, formState) {
     try {
       const returnedAtIso = new Date().toISOString()
 
-      const { data: ended, error: endErr } = await supabase
-        ?.from('loaner_assignments')
-        ?.update({ returned_at: returnedAtIso })
-        ?.eq('job_id', id)
-        ?.is('returned_at', null)
-        ?.select('id')
+      // If returned_at is known-missing, skip straight to legacy fallback.
+      let ended = null
+      let endErr = null
+      if (loanerAssignmentsHasReturnedAt !== false) {
+        const base = supabase
+          ?.from('loaner_assignments')
+          ?.update({ returned_at: returnedAtIso })
+          ?.eq('job_id', id)
+        const q = applyReturnedAtIsNullFilter(base)
+        const res = await q?.select?.('id')
+        ended = res?.data ?? null
+        endErr = res?.error ?? null
+      }
 
       if (endErr) {
         // Back-compat: if returned_at doesn't exist in this environment,
         // fall back to the legacy behavior (best-effort delete).
         if (isMissingReturnedAtError(endErr)) {
+          setLoanerAssignmentsReturnedAtCapability(false)
           const { error: deleteErr } = await supabase
             ?.from('loaner_assignments')
             ?.delete()
@@ -2627,14 +2689,36 @@ export async function updateDeal(id, formState) {
             endErr.message
           )
         }
+      } else if (loanerAssignmentsHasReturnedAt === false) {
+        // returned_at is absent; legacy cleanup is best-effort delete.
+        const { error: deleteErr } = await supabase
+          ?.from('loaner_assignments')
+          ?.delete()
+          ?.eq('job_id', id)
+          ?.select('id')
+
+        if (deleteErr) {
+          console.warn(
+            '[dealService:update] Failed to delete loaner assignment (legacy):',
+            deleteErr.message
+          )
+        }
       } else if (Array.isArray(ended) && ended.length === 0) {
         // Under RLS, UPDATE may succeed with 0 rows affected; verify so we can surface a useful warning.
-        const { data: stillActive, error: checkErr } = await supabase
-          ?.from('loaner_assignments')
-          ?.select('id')
-          ?.eq('job_id', id)
-          ?.is('returned_at', null)
-          ?.limit(1)
+        let stillActive = null
+        let checkErr = null
+        if (loanerAssignmentsHasReturnedAt !== false) {
+          const base = supabase?.from('loaner_assignments')?.select('id')?.eq('job_id', id)
+          const q = applyReturnedAtIsNullFilter(base)
+          const res = await q?.limit?.(1)
+          stillActive = res?.data ?? null
+          checkErr = res?.error ?? null
+          if (checkErr && isMissingReturnedAtError(checkErr)) {
+            setLoanerAssignmentsReturnedAtCapability(false)
+            stillActive = null
+            checkErr = null
+          }
+        }
 
         if (!checkErr && Array.isArray(stillActive) && stillActive.length > 0) {
           console.warn(
@@ -3141,13 +3225,17 @@ export async function listJobsNeedingLoanersForDrawer() {
       )
     `
 
-    let res = await supabase
-      ?.from('jobs')
-      ?.select(selectWithReturnedAt)
-      ?.eq('customer_needs_loaner', true)
-      ?.in('job_status', ['pending', 'in_progress'])
+    let res = null
+    if (loanerAssignmentsHasReturnedAt !== false) {
+      res = await supabase
+        ?.from('jobs')
+        ?.select(selectWithReturnedAt)
+        ?.eq('customer_needs_loaner', true)
+        ?.in('job_status', ['pending', 'in_progress'])
+    }
 
     if (res?.error && isMissingReturnedAtError(res.error)) {
+      setLoanerAssignmentsReturnedAtCapability(false)
       res = await supabase
         ?.from('jobs')
         ?.select(selectWithoutReturnedAt)
@@ -3163,6 +3251,15 @@ export async function listJobsNeedingLoanersForDrawer() {
         })
         return jobsWithoutActiveLoaners
       }
+    }
+
+    if (!res) {
+      // returned_at is absent or we skipped the returned_at select; use the no-returned_at selector.
+      res = await supabase
+        ?.from('jobs')
+        ?.select(selectWithoutReturnedAt)
+        ?.eq('customer_needs_loaner', true)
+        ?.in('job_status', ['pending', 'in_progress'])
     }
 
     if (res?.error) {
@@ -3188,6 +3285,10 @@ export async function listJobsNeedingLoanersForDrawer() {
 // - Best-effort: returns [] on RLS denial or missing returned_at column.
 export async function getReturnedLoanerAssignmentsForJob(jobId, { limit = 25 } = {}) {
   if (!jobId) return []
+
+  if (loanerAssignmentsHasReturnedAt === false) {
+    return []
+  }
 
   try {
     const safeLimit = Number.isFinite(Number(limit))
@@ -3216,6 +3317,7 @@ export async function getReturnedLoanerAssignmentsForJob(jobId, { limit = 25 } =
     if (res?.error) {
       if (isMissingReturnedAtError(res.error)) {
         // Some environments may not have returned_at yet.
+        setLoanerAssignmentsReturnedAtCapability(false)
         return []
       }
 
@@ -3280,10 +3382,10 @@ export async function saveLoanerAssignment(jobId, loanerData) {
     let existingId = null
     {
       const base = supabase?.from('loaner_assignments')?.select('id')?.eq('job_id', jobId)
-      const withReturnedAt =
-        base && typeof base.is === 'function' ? base.is('returned_at', null) : base
+      const withReturnedAt = applyReturnedAtIsNullFilter(base)
       let res = await withReturnedAt?.limit?.(1)
       if (res?.error && isMissingReturnedAtError(res.error)) {
+        setLoanerAssignmentsReturnedAtCapability(false)
         res = await supabase
           ?.from('loaner_assignments')
           ?.select('id')

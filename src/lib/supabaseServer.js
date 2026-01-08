@@ -4,12 +4,12 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-<<<<<<< HEAD
-export const supabaseServer = ({ supabaseUrl, supabaseServiceKey }) => {
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error(
-      'supabaseServer requires explicit { supabaseUrl, supabaseServiceKey } (do not read process.env from client code)'
-    )
+export const supabaseServer = ({ supabaseUrl, supabaseServiceKey, url, serviceKey } = {}) => {
+  const resolvedUrl = supabaseUrl ?? url
+  const resolvedServiceKey = supabaseServiceKey ?? serviceKey
+
+  if (!resolvedUrl || !resolvedServiceKey) {
+    throw new Error('supabaseServer requires explicit { url, serviceKey } (server-only usage)')
   }
 
   // Guard against accidental browser usage.
@@ -17,15 +17,7 @@ export const supabaseServer = ({ supabaseUrl, supabaseServiceKey }) => {
     throw new Error('supabaseServer is server-only and must not be used in the browser')
   }
 
-  return createClient(supabaseUrl, supabaseServiceKey, {
+  return createClient(resolvedUrl, resolvedServiceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
-=======
-export const supabaseServer = ({ url, serviceKey } = {}) => {
-  if (!url || !serviceKey) {
-    throw new Error('supabaseServer requires { url, serviceKey } (server-only usage)')
-  }
-
-  return createClient(url, serviceKey, { auth: { persistSession: false } })
->>>>>>> origin/main
 }

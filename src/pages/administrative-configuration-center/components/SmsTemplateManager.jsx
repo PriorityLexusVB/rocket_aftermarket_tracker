@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
@@ -47,7 +47,7 @@ const SmsTemplateManager = ({ className = '' }) => {
     '{{days_overdue}}',
   ]
 
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       setIsLoading(true)
       let result = await advancedFeaturesService?.getSmsTemplates()
@@ -64,12 +64,12 @@ const SmsTemplateManager = ({ className = '' }) => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (smsTemplatesAvailable) loadTemplates()
     else setIsLoading(false)
-  }, [])
+  }, [loadTemplates, smsTemplatesAvailable])
 
   if (!smsTemplatesAvailable) {
     return (

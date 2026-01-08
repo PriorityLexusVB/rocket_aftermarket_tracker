@@ -93,8 +93,7 @@
     "e2e:schema:apply": "DOTENV_CONFIG_PATH=.env.e2e.local node -r dotenv/config scripts/applyLineItemSchedulingMigration.mjs",
     "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs",
     "drizzle:generate": "drizzle-kit generate",
-    "drizzle:studio": "drizzle-kit studio",
-    "guard:client-env": "node scripts/guardClientEnv.mjs"
+    "drizzle:studio": "drizzle-kit studio"
   },
   "eslintConfig": {
     "extends": [
