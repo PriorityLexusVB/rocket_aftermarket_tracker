@@ -71,13 +71,10 @@ export const ACTION_TYPES = {
 class AppLogger {
   constructor() {
     this.isEnabled = true
-    // Determine dev mode safely across Vite (browser) and Node (tests)
+    // Determine dev mode safely (Vite)
     let isDev = false
     let isVitest = false
     try {
-      // Vite exposes import.meta.env.DEV in the browser
-      // Guard in case import.meta is not available (older tooling)
-
       isDev = Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV)
       isVitest = Boolean(
         typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITEST
@@ -85,7 +82,11 @@ class AppLogger {
     } catch {
       // no-op
     }
+<<<<<<< HEAD
     this.consoleEnabled = Boolean(isDev || isVitest)
+=======
+    this.consoleEnabled = isDev
+>>>>>>> origin/main
   }
 
   /**

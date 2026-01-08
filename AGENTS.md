@@ -12,6 +12,7 @@ These instructions apply to all agents working in this repo.
 - Do not rename public APIs/routes without compatibility.
 - Do not change database/RLS behavior without explicitly listing impacts.
 - Prefer additive migrations; avoid destructive schema changes.
+- Vite client code guardrail: do NOT use `process` / `process.env` anywhere under `src/**` that can be executed in the browser. Use `import.meta.env`.
 
 ## Verification defaults (use repo scripts if they exist)
 
@@ -40,7 +41,7 @@ Trigger words (any): error, failed, 4xx/5xx, 401, 403, 409, CORS, cookie, blank 
    - list_network_requests (last 60–80)
    - For top 1–3 failures (>= 400): pull full request/response (headers + body + response body)
 2. Decide lane and smallest fix:
-   - Network/API mismatch → exact payload/headers to change
+   - Network/API mismatch → exact payload/headers change
    - Auth/RLS → exact token/cookie/claim mismatch
    - UI/state desync → correlate mutation vs refresh/list call (cache/optimistic update)
    - CORS/cookies → preflight/cookie attributes and required headers
