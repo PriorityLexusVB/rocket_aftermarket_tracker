@@ -1,14 +1,13 @@
-// src/lib/supabaseServer.js (server-only usage!)
+// src/lib/supabaseServer.js
+// NOTE: This helper must remain free of Node globals (like `process`) because anything
+// under `src/` may be imported into the Vite client bundle.
+
 import { createClient } from '@supabase/supabase-js'
 
-export const supabaseServer = () => {
-  // Important: never reference `process` directly in code that may be bundled
-  // for the browser. `globalThis.process?.env` is safe in browser (undefined)
-  // and works in Node.
-  const env = globalThis.process?.env
+export const supabaseServer = ({ url, serviceKey } = {}) => {
+  if (!url || !serviceKey) {
+    throw new Error('supabaseServer requires { url, serviceKey } (server-only usage)')
+  }
 
-  const url = env?.NEXT_PUBLIC_SUPABASE_URL
-  const service = env?.SUPABASE_SERVICE_KEY
-
-  return createClient(url, service, { auth: { persistSession: false } })
+  return createClient(url, serviceKey, { auth: { persistSession: false } })
 }

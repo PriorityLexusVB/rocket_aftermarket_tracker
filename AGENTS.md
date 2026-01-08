@@ -12,7 +12,7 @@ These instructions apply to all agents working in this repo.
 - Do not rename public APIs/routes without compatibility.
 - Do not change database/RLS behavior without explicitly listing impacts.
 - Prefer additive migrations; avoid destructive schema changes.
-- Vite client code guardrail: do NOT use `process` / `process.env` anywhere under `src/**` that can be executed in the browser. Use `import.meta.env` (preferred) or `globalThis.process?.env` only in Node-only paths.
+- Vite client code guardrail: do NOT use `process` / `process.env` anywhere under `src/**` that can be executed in the browser. Use `import.meta.env`.
 
 ## Verification defaults (use repo scripts if they exist)
 
