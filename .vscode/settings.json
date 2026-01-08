@@ -48,6 +48,9 @@
   "chat.promptFilesLocations": {
     ".github/prompts": true
   },
+  "chat.promptFilesRecommendations": {
+    "vite-env-sanity": true
+  },
   "chat.mcp.access": "all",
   "chat.mcp.gallery.enabled": true,
   "dev.containers.openRepositoryInContainer": "never",
