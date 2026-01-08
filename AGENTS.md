@@ -58,3 +58,9 @@ DevTools remote debugging exposes full control of the attached browser instance.
 - Assume all network activity from that profile (requests, headers, bodies, responses, cookies) is visible via the MCP interface and may be logged by tooling.
 - Never reuse an existing personal or production profile for debugging; create a fresh profile and delete it when you are done.
 - If an issue involves sensitive data, reproduce it in a sanitized test environment with scrubbed fixtures instead of real user data.
+
+---
+
+## Hard Guardrail: Vite Client Env
+
+Browser-bundled code in `src/**` must never reference `process`, `process.env`, or `globalThis.process`. Use `import.meta.env.*` and run `pnpm guard:client-env`.

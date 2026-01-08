@@ -66,6 +66,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "guard:client-env": "node scripts/guard-client-env.mjs",
     "test": "vitest run",
     "start": "vite",
     "start:runner": "node scripts/runVite.js",

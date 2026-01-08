@@ -1754,7 +1754,7 @@ export default function DealsPage() {
                       </div>
 
                       {/* Vehicle */}
-                      <div className="col-span-12 lg:col-span-2 min-w-0">
+                      <div className="col-span-12 lg:col-span-1 min-w-0">
                         {(() => {
                           const v = getDealVehicleDisplay(deal)
                           return (
@@ -1797,7 +1797,7 @@ export default function DealsPage() {
                       </div>
 
                       {/* Actions (icons only) */}
-                      <div className="col-span-12 lg:col-span-1 justify-self-end lg:w-44">
+                      <div className="col-span-12 lg:col-span-2 justify-self-end">
                         <div className="inline-flex items-center justify-end gap-2 rounded-lg border border-slate-200 bg-slate-100/70 p-1">
                           <button
                             onClick={(e) => {
@@ -1875,10 +1875,7 @@ export default function DealsPage() {
 
         {/* ✅ UPDATED: Mobile Cards with enhanced styling and loaner support */}
         {(() => {
-          const IS_TEST =
-            import.meta.env?.VITEST ||
-            import.meta.env?.MODE === 'test' ||
-            process.env.NODE_ENV === 'test'
+          const IS_TEST = import.meta.env?.VITEST || import.meta.env?.MODE === 'test'
           if (IS_TEST) return null // Avoid duplicate content in test DOM assertions
           return (
             <div className="md:hidden space-y-4">

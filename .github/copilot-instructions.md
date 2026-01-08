@@ -6,15 +6,15 @@ Authoritative workspace guardrails for any automated coding agent (Copilot Chat,
 
 Frontend: Vite 5 + React 18 + TailwindCSS.  
 Backend: Supabase (PostgREST + RLS + pg_trgm) accessed via service modules.  
-Data modeling & validation canon (NEW):  
-- Drizzle ORM for schema & types **only** (no direct runtime DB access in the browser).  
-- drizzle-zod to generate Zod schemas from Drizzle tables.  
+Data modeling & validation canon (NEW):
+
+- Drizzle ORM for schema & types **only** (no direct runtime DB access in the browser).
+- drizzle-zod to generate Zod schemas from Drizzle tables.
 - react-hook-form + zodResolver for all new/rewritten forms.
 
 Testing: Vitest (unit), optional Playwright (e2e), no Jest config changes.  
 Package manager: `pnpm` (version pinned in `package.json` + `.nvmrc` Node 20).  
 No dependency removals of critical packages noted under `rocketCritical` key.
-
 
 ## 2. Data & Access Rules
 
@@ -24,7 +24,6 @@ No dependency removals of critical packages noted under `rocketCritical` key.
 - RLS: preserve existing policies; when adding new tables ensure equivalent tenant isolation.
 - When adding or updating Supabase calls, prefer the typed service functions introduced in Section 20 (e.g., `vendorService.create`, `jobService.createTyped`, `createJobPartsTyped`) instead of inlining queries or introducing new ad-hoc services.
 
-
 ## 3. UI & State Rules
 
 - All form inputs controlled (`value` + `onChange`), no `defaultValue` reintroductions.
@@ -32,7 +31,6 @@ No dependency removals of critical packages noted under `rocketCritical` key.
 - Maintain dropdown caching TTL (5 minutes) and prefetch pattern in `App.jsx`.
 - Do not introduce new global stores without explicit approval.
 - All new or significantly refactored forms MUST use the Section 20 Schema & Forms Canon (Drizzle + drizzle-zod + Zod + react-hook-form).
-
 
 ## 4. Reliability / Observability Enhancements (Agent Allowed)
 
@@ -122,7 +120,6 @@ No UI redesigns; no state management rewrites; no switching test runners; no add
 - MCP Notes: `docs/MCP-NOTES.md`
 - Drizzle/Zod Canon: `docs/DRIZZLE_ZOD_USAGE.md`
 
-
 ## 15. Phased Execution (See MASTER_EXECUTION_PROMPT.md)
 
 **Phases 1-3 COMPLETED** (Permission mapping, Time normalization, Date display)
@@ -152,35 +149,35 @@ VITE_ORG_SCOPED_DROPDOWNS="true"     # Org-scoped dropdown queries
 
 ### Expected E2E Spec Manifest (27 Core Tests)
 
-| Spec File | Test Name | Category |
-|-----------|-----------|----------|
-| `agenda.spec.ts` | agenda view renders with flag enabled | Calendar |
-| `agenda.spec.ts` | agenda view handles focus parameter | Calendar |
-| `agenda.spec.ts` | agenda filters persist across navigation | Calendar |
-| `admin-crud.spec.ts` | create, edit, and delete a Vendor | Admin |
-| `admin-crud.spec.ts` | create, edit, and delete a Product | Admin |
-| `capability-fallbacks.spec.ts` | should handle vendor relationship fallback gracefully | Capability |
-| `capability-fallbacks.spec.ts` | should handle scheduled times column missing | Capability |
-| `capability-fallbacks.spec.ts` | should display diagnostics banner when fallbacks occur | Capability |
-| `capability-fallbacks.spec.ts` | should allow admin to reset capability flags | Capability |
-| `capability-fallbacks.spec.ts` | should export telemetry data | Capability |
-| `capability-fallbacks.spec.ts` | should persist telemetry to localStorage | Capability |
-| `deals-list-refresh.spec.ts` | should show updated vehicle description, stock, and loaner badge in deals list | Deals |
-| `deals-redirect.spec.ts` | saving a new deal redirects to /deals/:id/edit | Deals |
-| `scheduling-quick-assign.spec.ts` | new pending job appears in Unassigned and can be assigned | Scheduling |
-| `snapshot-smoke.spec.ts` | snapshot view loads successfully | Snapshot |
-| `snapshot-smoke.spec.ts` | snapshot view renders key components | Snapshot |
-| `snapshot-smoke.spec.ts` | snapshot view handles empty state gracefully | Snapshot |
-| `snapshot-smoke.spec.ts` | snapshot view navigation is accessible | Snapshot |
-| `deal-unsaved-guard.spec.ts` | Cancel prompts when form is dirty on New Deal | Deals |
-| `dealform-sticky-footer.spec.ts` | save button is visible and clickable at 390x844 | Deals |
-| `debug-auth.spec.ts` | debug-auth shows session + org counts | Debug |
-| `nav-smoke.spec.ts` | desktop navbar links navigate to expected routes | Navigation |
-| `nav-smoke.spec.ts` | mobile direct route visits resolve | Navigation |
-| `profile-name-fallback.spec.ts` | missing name -> falls back to full_name | Profile |
-| `profile-name-fallback.spec.ts` | missing name and full_name -> falls back to display_name | Profile |
-| `profile-name-fallback.spec.ts` | only email available -> email local-part used | Profile |
-| `smoke.spec.ts` | app loads | Smoke |
+| Spec File                         | Test Name                                                                      | Category   |
+| --------------------------------- | ------------------------------------------------------------------------------ | ---------- |
+| `agenda.spec.ts`                  | agenda view renders with flag enabled                                          | Calendar   |
+| `agenda.spec.ts`                  | agenda view handles focus parameter                                            | Calendar   |
+| `agenda.spec.ts`                  | agenda filters persist across navigation                                       | Calendar   |
+| `admin-crud.spec.ts`              | create, edit, and delete a Vendor                                              | Admin      |
+| `admin-crud.spec.ts`              | create, edit, and delete a Product                                             | Admin      |
+| `capability-fallbacks.spec.ts`    | should handle vendor relationship fallback gracefully                          | Capability |
+| `capability-fallbacks.spec.ts`    | should handle scheduled times column missing                                   | Capability |
+| `capability-fallbacks.spec.ts`    | should display diagnostics banner when fallbacks occur                         | Capability |
+| `capability-fallbacks.spec.ts`    | should allow admin to reset capability flags                                   | Capability |
+| `capability-fallbacks.spec.ts`    | should export telemetry data                                                   | Capability |
+| `capability-fallbacks.spec.ts`    | should persist telemetry to localStorage                                       | Capability |
+| `deals-list-refresh.spec.ts`      | should show updated vehicle description, stock, and loaner badge in deals list | Deals      |
+| `deals-redirect.spec.ts`          | saving a new deal redirects to /deals/:id/edit                                 | Deals      |
+| `scheduling-quick-assign.spec.ts` | new pending job appears in Unassigned and can be assigned                      | Scheduling |
+| `snapshot-smoke.spec.ts`          | snapshot view loads successfully                                               | Snapshot   |
+| `snapshot-smoke.spec.ts`          | snapshot view renders key components                                           | Snapshot   |
+| `snapshot-smoke.spec.ts`          | snapshot view handles empty state gracefully                                   | Snapshot   |
+| `snapshot-smoke.spec.ts`          | snapshot view navigation is accessible                                         | Snapshot   |
+| `deal-unsaved-guard.spec.ts`      | Cancel prompts when form is dirty on New Deal                                  | Deals      |
+| `dealform-sticky-footer.spec.ts`  | save button is visible and clickable at 390x844                                | Deals      |
+| `debug-auth.spec.ts`              | debug-auth shows session + org counts                                          | Debug      |
+| `nav-smoke.spec.ts`               | desktop navbar links navigate to expected routes                               | Navigation |
+| `nav-smoke.spec.ts`               | mobile direct route visits resolve                                             | Navigation |
+| `profile-name-fallback.spec.ts`   | missing name -> falls back to full_name                                        | Profile    |
+| `profile-name-fallback.spec.ts`   | missing name and full_name -> falls back to display_name                       | Profile    |
+| `profile-name-fallback.spec.ts`   | only email available -> email local-part used                                  | Profile    |
+| `smoke.spec.ts`                   | app loads                                                                      | Smoke      |
 
 ### Running Tests Locally
 
@@ -222,11 +219,13 @@ All Copilot agents acting on this repository must operate as a "Repo Foreman" ‚Ä
 ### Mode 1: PR / Diff Review
 
 **Intent:**
+
 - Analyze proposed changes for correctness, safety, and adherence to guardrails.
 - Identify potential issues before merge: RLS violations, tenant scoping gaps, migration conflicts, UI regressions.
 - Provide actionable feedback with minimal suggested diffs when issues are found.
 
 **Risk Areas to Check:**
+
 - **Auth & RLS**: Does the change respect tenant isolation? Are RLS policies preserved or equivalent policies added for new tables?
 - **Migrations**: Are migrations timestamped and non-destructive? Is schema cache reload documented if relationships change?
 - **Pricing & Schedules**: Do deal/job calculations preserve existing logic? Are scheduled times handled correctly with UTC/local conversions?
@@ -234,6 +233,7 @@ All Copilot agents acting on this repository must operate as a "Repo Foreman" ‚Ä
 - **Capability Gating**: Are feature flags checked before accessing gated features?
 
 **Workflow:**
+
 1. Read the diff and identify changed files.
 2. For each file, determine category: component, service, migration, config, test.
 3. Cross-reference against sections 1-16 above (Stack Lock, Data Rules, UI Rules, etc.).
@@ -241,6 +241,7 @@ All Copilot agents acting on this repository must operate as a "Repo Foreman" ‚Ä
 5. If acceptable: confirm adherence to guardrails and note any follow-up TODOs.
 
 **Output Format:**
+
 ```
 ## PR Review: [PR Title]
 
@@ -261,11 +262,13 @@ All Copilot agents acting on this repository must operate as a "Repo Foreman" ‚Ä
 ### Mode 2: Failing Tests / Runtime Errors
 
 **Intent:**
+
 - Diagnose test failures and runtime errors with precision.
 - Distinguish between app bugs, test issues, and environment mismatches.
 - Fix the root cause with the smallest possible change.
 
 **Diagnostic Workflow:**
+
 1. **Read error messages**: Examine stack traces, assertion failures, timeout errors.
 2. **Categorize the failure**:
    - **App bug**: Logic error in component/service code ‚Üí fix the code.
@@ -276,12 +279,14 @@ All Copilot agents acting on this repository must operate as a "Repo Foreman" ‚Ä
 5. **Re-run tests**: Verify fix with `pnpm test` (Vitest) or `pnpm e2e --project=chromium` (Playwright).
 
 **Risk Areas to Check:**
+
 - **RLS & Permissions**: Does the test user have correct RLS policies? Check "permission denied for table" errors.
 - **Schema Cache**: For "Could not find column/relationship" errors, recommend `NOTIFY pgrst, 'reload schema'`.
 - **Feature Flags**: Are required env vars set? (e.g., `VITE_SIMPLE_CALENDAR=true` for agenda route).
 - **Timing**: Are E2E tests waiting for elements/network? Use Playwright's auto-waiting, avoid arbitrary sleeps.
 
 **Output Format:**
+
 ```
 ## Test Failure Analysis: [Test Name]
 
@@ -303,21 +308,25 @@ Change: [description of minimal change]
 ### Mode 3: Repo Health & Branch Hygiene
 
 **Intent:**
+
 - Provide Git strategy guidance for branch management, merge conflicts, and sync issues.
 - **NEVER execute Git commands directly** ‚Äî always output a safe plan in text form for the user to review and execute.
 
 **Workflow:**
+
 1. **Assess current state**: Check branch status, divergence from main, merge conflicts.
 2. **Propose safe Git plan**: Provide step-by-step commands (fetch, checkout, rebase/merge) with explanations.
 3. **Highlight risks**: Warn about force-push requirements, potential data loss, or conflicts.
 4. **Output plan only**: Do not run `git` commands via bash; let the user execute them.
 
 **Risk Areas:**
+
 - **Force Push**: Not allowed (no `git reset`, no `git rebase` that rewrites history).
 - **Merge Conflicts**: Cannot resolve automatically; provide guidance and stop.
 - **Protected Files**: Migrations, package.json deps, env keys should not be changed without approval.
 
 **Output Format:**
+
 ```
 ## Repo Health Plan: [Task Description]
 
@@ -350,11 +359,13 @@ Every change ‚Äî whether code, config, docs, or tests ‚Äî must follow this 5-ste
 ### Step 1: Acknowledge Context
 
 **What to do:**
+
 - Explicitly state the stack: "This is a Vite + React + TailwindCSS + Supabase app, Node 20, pnpm."
 - Mention the feature area: deal form, agenda calendar, dropdown caching, E2E tests, migrations, etc.
 - Reference relevant guardrails sections (1-16) that apply to the change.
 
 **Example:**
+
 ```
 Acknowledged: Modifying the deal form autosave logic (Section 3: UI & State Rules).
 Stack: Vite + React + Tailwind + Supabase, Node 20, pnpm.
@@ -364,6 +375,7 @@ Relevant guardrails: Controlled inputs, 600ms debounce, tenant scoping.
 ### Step 2: Analyze
 
 **What to do:**
+
 - Open only the necessary files: changed files, failing tests, related components/services/config.
 - Inspect existing patterns:
   - How are similar features implemented?
@@ -373,6 +385,7 @@ Relevant guardrails: Controlled inputs, 600ms debounce, tenant scoping.
 - Check for recent changes via `git log` or blame to understand intent.
 
 **Key Files to Review (as needed):**
+
 - Components: `src/components/`, `src/pages/`
 - Services: `src/services/`, `src/api/`
 - Hooks: `src/hooks/`
@@ -382,12 +395,14 @@ Relevant guardrails: Controlled inputs, 600ms debounce, tenant scoping.
 ### Step 3: Plan
 
 **What to do:**
+
 - Output a short, numbered plan (3‚Äì7 steps).
 - State what will change, in which files, and how to confirm it worked.
 - Identify any tests that need to be added or updated.
 - Call out any rollback strategy if the change is risky.
 
 **Example:**
+
 ```
 Plan:
 1. Update `src/hooks/useAutosave.js`: increase debounce from 600ms to 800ms.
@@ -402,6 +417,7 @@ Plan:
 ### Step 4: Patch (Minimal Diffs)
 
 **What to do:**
+
 - Apply the **smallest possible change** to achieve the goal.
 - Preserve existing patterns:
   - Use existing hooks, services, utility functions.
@@ -411,6 +427,7 @@ Plan:
 - Do **NOT** delete/modify working code unless necessary for the fix.
 
 **Example (minimal diff):**
+
 ```diff
 // src/hooks/useAutosave.js
 - const DEBOUNCE_MS = 600;
@@ -418,6 +435,7 @@ Plan:
 ```
 
 **Anti-patterns (avoid these):**
+
 - Adding a new library when existing code can be extended.
 - Refactoring unrelated code "while you're there."
 - Changing global state management without approval.
@@ -426,6 +444,7 @@ Plan:
 ### Step 5: Verify & Report
 
 **What to do:**
+
 - Recommend concrete commands from this repo's scripts:
   - `pnpm test` (Vitest unit tests)
   - `pnpm lint` (ESLint)
@@ -442,6 +461,7 @@ Plan:
   - "Follow-up TODO: Monitor user feedback on autosave responsiveness."
 
 **Output Format:**
+
 ```
 ## Change Summary: [Brief Title]
 
@@ -485,6 +505,7 @@ All Copilot agents working in this repository should assume the following enviro
 ### Command Conventions
 
 Always use `pnpm` in all examples and instructions:
+
 ```bash
 # Install dependencies
 pnpm install
@@ -507,6 +528,7 @@ pnpm build
 ### Environment Variables
 
 See `.env.example` for required environment variables. Key variables for development:
+
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
 - `VITE_SIMPLE_CALENDAR=true` - Enables `/calendar/agenda` route
@@ -514,12 +536,14 @@ See `.env.example` for required environment variables. Key variables for develop
 - `VITE_ORG_SCOPED_DROPDOWNS=true` - Enables org-scoped dropdown queries
 
 For E2E tests, also set:
+
 - `E2E_EMAIL` - Test user email
 - `E2E_PASSWORD` - Test user password
 
 ### Setup References
 
 For initial setup and troubleshooting, refer to:
+
 - `README.md` - Main setup instructions
 - `DEPLOYMENT_GUIDE.md` - Deployment procedures
 - `RUNBOOK.md` - Operational runbook
@@ -558,7 +582,7 @@ This section defines the **only** allowed way to introduce or refactor Supabase-
 - Tables must correspond 1:1 with Supabase tables (same names, same columns, same nullability).
 - Example pattern (conceptual):
 
-```ts
+````ts
 import {
   pgTable,
   serial,
@@ -857,3 +881,19 @@ When the user reports any runtime/browser issue (keywords: error, failed, 4xx/5x
 
 ### Safety
 - Remote debugging exposes the browser instance. Assume a non-sensitive debug Chrome profile is used.
+
+## Hard Guardrail: Vite Client Env (NO `process`)
+
+**Rule (repo-wide, non-negotiable):** Browser-bundled code in `src/**` must never reference `process`, `process.env`, or `globalThis.process`.
+
+- Use Vite‚Äôs env APIs instead:
+  - `import.meta.env.VITE_*` for custom vars
+  - `import.meta.env.MODE`, `import.meta.env.DEV`, `import.meta.env.PROD`
+  - `import.meta.env.VITEST` for Vitest detection
+- Do **not** add Node polyfills to ‚Äúmake it work‚Äù. Fix the offending code instead.
+
+**Local enforcement:**
+
+- Run `pnpm guard:client-env` before pushing.
+- CI should treat any failure of this guard as a merge blocker.
+````

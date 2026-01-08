@@ -17,10 +17,9 @@ import { formatTime } from '@/utils/dateTimeUtils'
 import { syncJobPartsForJob } from './jobPartsService'
 
 const IS_TEST_ENV =
-  (typeof process !== 'undefined' && process?.env?.NODE_ENV === 'test') ||
-  (typeof import.meta !== 'undefined' &&
-    import.meta?.env &&
-    (import.meta.env?.MODE === 'test' || import.meta.env?.VITEST))
+  typeof import.meta !== 'undefined' &&
+  import.meta?.env &&
+  (import.meta.env?.MODE === 'test' || import.meta.env?.VITEST)
 
 const TEST_CUSTOMER_PATTERNS = [
   /\btest\b/i,

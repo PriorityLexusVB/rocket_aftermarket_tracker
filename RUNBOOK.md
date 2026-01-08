@@ -77,8 +77,6 @@ supabase db execute -f supabase/seed.sql
 pnpm dev
 ```
 
-### Application URLs
-
 - **Frontend**: http://localhost:5173
 - **Supabase Studio**: http://localhost:54323
 - **Supabase API**: http://localhost:54321
@@ -89,7 +87,6 @@ pnpm dev
 
 Use this as the final gate before considering Production “healthy”. It is optimized for the real failure modes we’ve seen in this repo:
 
-- PostgREST schema-cache drift (missing relationship/columns)
 - RLS deletes that affect 0 rows (silent no-op)
 - Schema drift in `user_profiles` display columns (e.g. missing `name`)
 
@@ -105,23 +102,16 @@ supabase db push
 - Verify the latest migration is present:
 
 ```sql
-select * from supabase_migrations.schema_migrations order by version desc;
-```
 
 ### 2) Reload PostgREST schema cache (critical after relationships/columns)
 
 Run this in Supabase SQL editor (Production):
 
-```sql
 NOTIFY pgrst, 'reload schema';
 ```
 
-This is the first step anytime you see errors like:
-
 - “Could not find a relationship … in the schema cache”
 - “column … does not exist” right after a migration
-
-### 3) Vercel environment variables
 
 Set in Vercel → Project Settings → Environment Variables (Production + Preview):
 
@@ -679,3 +669,24 @@ AND no.created_at > soo.opted_out_at;
 - **Supabase Dashboard**: https://supabase.com/dashboard
 - **Twilio Console**: https://console.twilio.com
 - **Deployment Platform**: [Netlify/Vercel dashboard]
+
+## Hard Guardrail: Vite Client Env (NO `process`)
+
+**Rule (repo-wide, non-negotiable):** Browser-bundled code in `src/**` must never reference `process`, `process.env`, or `globalThis.process`.
+
+- Use Vite’s env APIs instead:
+  - `import.meta.env.VITE_*` for custom vars
+  - `import.meta.env.MODE`, `import.meta.env.DEV`, `import.meta.env.PROD`
+  - `import.meta.env.VITEST` for Vitest detection
+- Do **not** add Node polyfills to “make it work”. Fix the offending code instead.
+
+**Local enforcement:**
+
+- Run `pnpm guard:client-env` before pushing.
+- CI should treat any failure of this guard as a merge blocker.
+
+---
+
+## Canonical Guardrail Notes (most recent)
+
+If this RUNBOOK contains older duplicated guardrail notes, treat the **most recent** “Vite client env rule (hard guardrail)” section near the end of this file as canonical.

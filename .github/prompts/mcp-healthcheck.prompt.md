@@ -1,13 +1,12 @@
 ---
 name: mcp-healthcheck
 agent: 'agent'
-description: Quick PASS/FAIL for MCP servers (Chrome DevTools, Supabase, GitHub, Playwright).
+description: Quick PASS/FAIL for MCP servers (Chrome DevTools, Supabase, GitHub).
 argument-hint: tabHint=<url-or-title>
 tools:
   - 'chrome-devtools/*'
   - 'supabase/*'
   - 'github/github-mcp-server/*'
-  - 'microsoft/playwright-mcp/*'
 ---
 
 Goal: produce a deterministic PASS/FAIL healthcheck across this repo’s MCP servers.
@@ -41,12 +40,6 @@ C) github (read-only proof)
 - Run one small repo query (list branches or search for "AGENTS.md")
 
 PASS criteria: can read repo metadata and complete one query.
-
-D) playwright (smoke proof)
-
-- List tests OR run a single minimal navigation/screenshot step (prefer repo-local if configured)
-
-PASS criteria: can enumerate tests or complete a minimal browser automation step.
 
 Output format:
 

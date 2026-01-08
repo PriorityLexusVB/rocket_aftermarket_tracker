@@ -73,19 +73,19 @@ class AppLogger {
     this.isEnabled = true
     // Determine dev mode safely across Vite (browser) and Node (tests)
     let isDev = false
+    let isVitest = false
     try {
       // Vite exposes import.meta.env.DEV in the browser
       // Guard in case import.meta is not available (older tooling)
 
       isDev = Boolean(typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV)
+      isVitest = Boolean(
+        typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITEST
+      )
     } catch {
       // no-op
     }
-    if (!isDev && typeof process !== 'undefined') {
-      // Fallback for Node/test environments
-      isDev = process.env?.NODE_ENV === 'development'
-    }
-    this.consoleEnabled = isDev
+    this.consoleEnabled = Boolean(isDev || isVitest)
   }
 
   /**

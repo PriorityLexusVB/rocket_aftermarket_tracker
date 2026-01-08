@@ -7,7 +7,6 @@ tools:
   - 'chrome-devtools/*'
   - 'supabase/*'
   - 'github/github-mcp-server/*'
-  - 'microsoft/playwright-mcp/*'
 ---
 
 Goal: verify the repo is correctly wired for MCP + prompts + instructions.
@@ -35,8 +34,6 @@ For each tool namespace below, attempt a harmless call. If tools are unavailable
    - run any safe read-only command (project info / list projects)
 3. github:
    - run a repo search for "AGENTS.md"
-4. playwright:
-   - navigate to https://example.com and take a screenshot (or equivalent)
 
 Output a table:
 Area | PASS/FAIL | Evidence | Fix steps (exact)
