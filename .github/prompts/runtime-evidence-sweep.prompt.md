@@ -7,7 +7,13 @@ tools:
   - 'chrome-devtools/*'
 ---
 
-Use ONLY chrome-devtools MCP. Do NOT use Playwright.
+Use ONLY chrome-devtools MCP.
+
+Hard rules:
+
+- Do NOT use Playwright.
+- Do NOT use any non-chrome browser MCP tools (including any `mcp_microsoft_pla_*` / Microsoft browser tools).
+- Console + network evidence must come from chrome-devtools MCP only.
 
 0. Preconditions:
 
