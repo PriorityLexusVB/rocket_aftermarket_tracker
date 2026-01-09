@@ -59,6 +59,9 @@ jobs:
       - name: Guard - client env usage
         run: pnpm -s guard:client-env
 
+      - name: Security - pnpm audit
+        run: pnpm -s audit
+
       - name: Lint
         run: pnpm --if-present lint
 

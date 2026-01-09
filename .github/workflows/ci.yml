@@ -68,6 +68,9 @@ jobs:
       - name: Guard - client env usage
         run: pnpm -s guard:client-env
 
+      - name: Security - pnpm audit
+        run: pnpm -s audit
+
       - name: Build
         env:
           VITE_SUPABASE_URL: http://localhost
@@ -127,6 +130,9 @@ jobs:
 
       - name: Guard - client env usage
         run: pnpm -s guard:client-env
+
+      - name: Security - pnpm audit
+        run: pnpm -s audit
 
       - name: Typecheck
         run: pnpm run typecheck
