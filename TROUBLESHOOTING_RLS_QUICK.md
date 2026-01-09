@@ -1,6 +1,7 @@
 # Quick Troubleshooting Guide: Transaction RLS Errors
 
 ## Error Message
+
 ```
 Failed to save: Failed to upsert transaction: new row violates row-level security policy for table "transactions"
 ```
@@ -10,6 +11,7 @@ Failed to save: Failed to upsert transaction: new row violates row-level securit
 ### 1. Is org_id in the form payload?
 
 **Check in browser console** (when saving):
+
 ```javascript
 // Look for: [DealFormV2] Saving deal with payload:
 // Should show: org_id: "123e4567-..."
@@ -21,6 +23,7 @@ Failed to save: Failed to upsert transaction: new row violates row-level securit
 ### 2. Is the user authenticated?
 
 **Check in browser console**:
+
 ```javascript
 // In AuthContext or useTenant hook
 console.log('Auth user:', user)
@@ -33,9 +36,10 @@ console.log('Org ID:', orgId)
 ### 3. Does the job have org_id?
 
 **Check in database**:
+
 ```sql
-SELECT id, org_id, job_number 
-FROM jobs 
+SELECT id, org_id, job_number
+FROM jobs
 WHERE id = '<your-job-id>';
 ```
 
@@ -45,6 +49,7 @@ WHERE id = '<your-job-id>';
 ### 4. Do RLS policies exist?
 
 **Check in database**:
+
 ```sql
 SELECT policyname, permissive, roles, cmd
 FROM pg_policies
@@ -60,27 +65,33 @@ AND schemaname = 'public';
 ## Common Causes & Solutions
 
 ### Cause 1: Editing Old Deals (Before Fix)
+
 **Symptom**: Edit works for new deals, fails for old ones  
 **Solution**: This fix resolves it - org_id now preserved in edit flow
 
 ### Cause 2: Session Expired
+
 **Symptom**: Works for a while, then starts failing  
 **Solution**: Refresh page to get new session token
 
 ### Cause 3: User Profile Missing org_id
+
 **Symptom**: Fails for specific user  
-**Solution**: 
+**Solution**:
+
 ```sql
-UPDATE user_profiles 
-SET org_id = '<correct-org-id>' 
+UPDATE user_profiles
+SET org_id = '<correct-org-id>'
 WHERE id = '<user-id>';
 ```
 
 ### Cause 4: Direct Database Changes
+
 **Symptom**: Manually created jobs fail  
 **Solution**: Always set org_id when creating jobs:
+
 ```sql
-INSERT INTO jobs (job_number, org_id, ...) 
+INSERT INTO jobs (job_number, org_id, ...)
 VALUES ('JOB-001', '<org-id>', ...);
 ```
 
@@ -89,11 +100,13 @@ VALUES ('JOB-001', '<org-id>', ...);
 ## Debug Mode
 
 Add this to your `.env.development`:
+
 ```
 VITE_DEBUG_RLS=true
 ```
 
 Then check console for detailed org_id flow:
+
 ```
 [dealService:update] org_id missing from payload, fetching from job record
 [dealService:update] Retrieved org_id from job: 123e4567-...
@@ -121,7 +134,7 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ## Verification After Fix
 
 1. **Create Deal**: Should work ✅
-2. **Edit Deal**: Should work ✅  
+2. **Edit Deal**: Should work ✅
 3. **Console**: No RLS errors ✅
 4. **Database**: `SELECT org_id FROM transactions` shows values, not NULL ✅
 
@@ -143,11 +156,11 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
 ```sql
 -- Check if transaction has org_id
-SELECT job_id, org_id, customer_name 
-FROM transactions 
+SELECT job_id, org_id, customer_name
+FROM transactions
 WHERE job_id = '<job-id>';
 
--- Check if job has org_id  
+-- Check if job has org_id
 SELECT id, org_id, job_number
 FROM jobs
 WHERE id = '<job-id>';

@@ -5,7 +5,7 @@
 **Problem**: E2E smoke tests are failing on PR #239 (`copilot/fix-action-failure-issue`)  
 **Root Cause**: The PR branch has "unrelated histories" (grafted) and is missing recent E2E authentication fixes from main  
 **Solution**: Rebase PR #239 changes on top of latest main OR force merge with `--allow-unrelated-histories`  
-**Impact**: Low risk - PR changes are minimal and don't affect E2E test code  
+**Impact**: Low risk - PR changes are minimal and don't affect E2E test code
 
 ---
 
@@ -16,6 +16,7 @@
 **GitHub Actions Run**: https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/actions/runs/20421679690/job/58674675224
 
 All 3 E2E smoke tests are failing:
+
 - `e2e/profile-name-fallback.spec.ts`
 - `e2e/deal-form-dropdowns.spec.ts`
 - `e2e/deal-edit.spec.ts`
@@ -67,10 +68,8 @@ Main has these critical E2E fixes that PR #239 doesn't have:
 
 1. **Commit `3506078`**: "chore: default missing e2e env to empty strings"
    - Fixes handling of missing `E2E_EMAIL`/`E2E_PASSWORD` environment variables
-   
 2. **Commit `04df601`**: "fix: skip e2e when auth env missing and harden health logging"
    - Improves E2E test skip logic when credentials are unavailable
-   
 3. **Commit `f178122`**: "refactor(e2e tests): streamline authentication handling..."
    - Major refactor of E2E authentication flow
 
@@ -117,12 +116,13 @@ git push origin fix/pr-239-rebased
 ```
 
 **Then**:
+
 1. Create a new PR from `fix/pr-239-rebased`
 2. Close PR #239
 3. Reference PR #239 in the new PR description
 
 **Pros**: Clean history, includes all main fixes  
-**Cons**: Requires closing old PR and creating new one  
+**Cons**: Requires closing old PR and creating new one
 
 ---
 
@@ -136,7 +136,7 @@ git push origin copilot/fix-action-failure-issue
 ```
 
 **Pros**: Keeps existing PR  
-**Cons**: Creates messy history, may have unexpected merge conflicts  
+**Cons**: Creates messy history, may have unexpected merge conflicts
 
 ---
 
@@ -145,6 +145,7 @@ git push origin copilot/fix-action-failure-issue
 If rebasing is too complex, manually apply the missing E2E fixes to the PR branch:
 
 1. Cherry-pick the E2E fix commits:
+
    ```bash
    git checkout copilot/fix-action-failure-issue
    git cherry-pick 3506078 04df601 f178122 --allow-unrelated-histories
@@ -153,7 +154,7 @@ If rebasing is too complex, manually apply the missing E2E fixes to the PR branc
 2. Or manually port the E2E authentication improvements from main.
 
 **Pros**: Keeps existing PR  
-**Cons**: May cause conflicts, still has messy history  
+**Cons**: May cause conflicts, still has messy history
 
 ---
 
@@ -177,11 +178,13 @@ After applying any solution:
 ### E2E Test Requirements
 
 All 3 failing tests require:
+
 1. **Authenticated session**: Test user must be logged in
 2. **Organization context**: Test user must have an `orgId`
 3. **Test data**: Products, vendors, staff members must exist in Supabase
 
 The tests use `global.setup.ts` to:
+
 1. Navigate to `/auth` and log in with `E2E_EMAIL`/`E2E_PASSWORD`
 2. Verify session on `/debug-auth`
 3. Save auth state to `e2e/storageState.json`
@@ -189,6 +192,7 @@ The tests use `global.setup.ts` to:
 ### Why Main's E2E Fixes Matter
 
 The missing commits from main improve:
+
 - **Error handling** when credentials are missing
 - **Retry logic** for flaky auth flows
 - **Timeout handling** for slow CI environments
@@ -203,6 +207,7 @@ Without these, tests fail silently or timeout during `global.setup.ts`.
 ✅ **Use Option 1: Rebase on latest main**
 
 This ensures:
+
 - Clean git history
 - All E2E improvements included
 - No merge conflicts

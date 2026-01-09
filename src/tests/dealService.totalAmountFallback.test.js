@@ -132,9 +132,7 @@ describe('dealService total_amount fallback', () => {
   it('falls back to summing job_parts when transactions are missing (getAllDeals)', async () => {
     supabase.__state.jobs.push({
       ...baseJob,
-      job_parts: [
-        { id: 'part-1', product_id: 'prod-1', unit_price: 25, quantity_used: 1 },
-      ],
+      job_parts: [{ id: 'part-1', product_id: 'prod-1', unit_price: 25, quantity_used: 1 }],
     })
 
     const deals = await getAllDeals()

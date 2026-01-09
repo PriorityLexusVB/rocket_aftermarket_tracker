@@ -6,13 +6,14 @@
 ✅ **Root Cause**: Identified  
 ✅ **Fix**: Prepared and ready  
 ✅ **Documentation**: Complete  
-✅ **Time to Fix**: ~5 minutes  
+✅ **Time to Fix**: ~5 minutes
 
 ---
 
 ## What Happened?
 
 PR #239 E2E tests are failing:
+
 - ❌ All 3 smoke tests failing
 - ❌ CI run: https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/actions/runs/20421679690
 
@@ -64,6 +65,7 @@ Read in this order:
 ## What You'll Get
 
 After applying the fix:
+
 - ✅ All 3 E2E tests will pass
 - ✅ Clean git history (no grafted commits)
 - ✅ All PR #239 changes preserved
@@ -114,6 +116,7 @@ git push origin fix/e2e-tests-pr-239-rebased
 ## Expected Results
 
 ### Before Fix ❌
+
 ```
 E2E Smoke (PR) - FAILED
 ├─ profile-name-fallback.spec.ts ❌
@@ -122,6 +125,7 @@ E2E Smoke (PR) - FAILED
 ```
 
 ### After Fix ✅
+
 ```
 E2E Smoke (PR) - PASSED
 ├─ profile-name-fallback.spec.ts ✅
@@ -135,7 +139,7 @@ E2E Smoke (PR) - PASSED
 
 **Problem**: PR branch missing E2E auth fixes from main  
 **Solution**: Start fresh from main with all fixes, then apply PR changes on top  
-**Result**: Clean history + all fixes + PR changes = tests pass  
+**Result**: Clean history + all fixes + PR changes = tests pass
 
 **Technical Details**: See `E2E_TEST_FAILURE_DIAGNOSIS.md` section "Root Cause Analysis"
 
@@ -144,16 +148,19 @@ E2E Smoke (PR) - PASSED
 ## Support
 
 ### If you need more context:
+
 - Read `RESOLUTION_SUMMARY.md` for visual overview
 - Read `E2E_TEST_FAILURE_DIAGNOSIS.md` for technical deep dive
 
 ### If something doesn't work:
+
 1. Try Path 2 (automated script) instead
 2. Check that you have latest main: `git pull origin main`
 3. Verify branch exists: `git branch | grep e2e-tests-pr-239-rebased`
 4. Review the comprehensive diagnosis document
 
 ### If you want to understand the git history issue:
+
 See `E2E_TEST_FAILURE_DIAGNOSIS.md` section "Why Can't We Merge Main into PR Branch?"
 
 ---
@@ -161,11 +168,13 @@ See `E2E_TEST_FAILURE_DIAGNOSIS.md` section "Why Can't We Merge Main into PR Bra
 ## Final Checklist
 
 Before you start:
+
 - [ ] You've read this README
 - [ ] You understand there are 3 paths to choose from
 - [ ] You've chosen your path
 
 After applying the fix:
+
 - [ ] Pushed the branch (or script created it)
 - [ ] Created new PR from the branch
 - [ ] CI shows E2E tests running
@@ -177,13 +186,13 @@ After applying the fix:
 
 ## Time Estimates
 
-| Step | Time |
-|------|------|
-| Reading this README | 2 min |
-| Applying the fix (Path 1) | 5 min |
-| Creating new PR | 2 min |
-| Waiting for CI | 5-8 min |
-| **Total** | **~15 min** |
+| Step                      | Time        |
+| ------------------------- | ----------- |
+| Reading this README       | 2 min       |
+| Applying the fix (Path 1) | 5 min       |
+| Creating new PR           | 2 min       |
+| Waiting for CI            | 5-8 min     |
+| **Total**                 | **~15 min** |
 
 ---
 
@@ -198,7 +207,7 @@ After applying the fix:
 
 **Ready to start?** → Go to `QUICK_FIX_GUIDE.md`  
 **Want more context?** → Go to `RESOLUTION_SUMMARY.md`  
-**Need technical details?** → Go to `E2E_TEST_FAILURE_DIAGNOSIS.md`  
+**Need technical details?** → Go to `E2E_TEST_FAILURE_DIAGNOSIS.md`
 
 ---
 

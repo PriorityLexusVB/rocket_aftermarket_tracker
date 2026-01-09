@@ -15,6 +15,7 @@ Implemented a database-level guardrail to prevent duplicate `job_parts` rows by 
 **File**: `supabase/migrations/20251218042008_job_parts_unique_constraint_vendor_time.sql`
 
 **Key Features**:
+
 - **Deduplication**: Removes existing duplicates using CTE with ROW_NUMBER
   - Keeps newest row (highest `created_at`)
   - Breaks ties by lowest `id`
@@ -27,6 +28,7 @@ Implemented a database-level guardrail to prevent duplicate `job_parts` rows by 
 - **Verification**: Built-in verification step to ensure success
 
 **Migration Structure**:
+
 ```
 STEP 1: Remove existing duplicates (keeping newest row)
 STEP 2: Create unique index on logical key
@@ -38,6 +40,7 @@ STEP 3: Verification (check index exists, confirm no duplicates)
 **File**: `docs/db-lint/job_parts_unique_constraint.md`
 
 **Contents**:
+
 - Overview of the constraint
 - Logical key components table
 - NULL handling explanation
@@ -54,6 +57,7 @@ STEP 3: Verification (check index exists, confirm no duplicates)
 **File**: `src/tests/migration.job_parts_unique_constraint.test.js`
 
 **Test Coverage** (10 test cases):
+
 1. ✅ Contains deduplication logic with ROW_NUMBER
 2. ✅ Creates unique index with exact name
 3. ✅ Includes all logical key columns
@@ -71,27 +75,29 @@ STEP 3: Verification (check index exists, confirm no duplicates)
 
 The unique constraint enforces uniqueness on this 6-column combination:
 
-| Column | Type | Nullable | Purpose |
-|--------|------|----------|---------|
-| job_id | UUID | NO | Link to jobs table |
-| product_id | UUID | NO | Link to products table |
-| vendor_id | UUID | YES | Per-line vendor override |
-| promised_date | DATE | YES | Promised completion date |
-| scheduled_start_time | TIMESTAMPTZ | YES | Time window start |
-| scheduled_end_time | TIMESTAMPTZ | YES | Time window end |
+| Column               | Type        | Nullable | Purpose                  |
+| -------------------- | ----------- | -------- | ------------------------ |
+| job_id               | UUID        | NO       | Link to jobs table       |
+| product_id           | UUID        | NO       | Link to products table   |
+| vendor_id            | UUID        | YES      | Per-line vendor override |
+| promised_date        | DATE        | YES      | Promised completion date |
+| scheduled_start_time | TIMESTAMPTZ | YES      | Time window start        |
+| scheduled_end_time   | TIMESTAMPTZ | YES      | Time window end          |
 
 ### NULL Handling Strategy
 
 **PostgreSQL 15+**:
+
 ```sql
 CREATE UNIQUE INDEX job_parts_unique_job_product_vendor_time
   ON public.job_parts (
-    job_id, product_id, vendor_id, 
+    job_id, product_id, vendor_id,
     promised_date, scheduled_start_time, scheduled_end_time
   ) NULLS NOT DISTINCT;
 ```
 
 **PostgreSQL <15**:
+
 ```sql
 CREATE UNIQUE INDEX job_parts_unique_job_product_vendor_time
   ON public.job_parts (
@@ -107,14 +113,14 @@ CREATE UNIQUE INDEX job_parts_unique_job_product_vendor_time
 
 ```sql
 WITH duplicates AS (
-  SELECT 
+  SELECT
     id,
     ROW_NUMBER() OVER (
-      PARTITION BY 
+      PARTITION BY
         job_id, product_id,
         COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid),
         promised_date, scheduled_start_time, scheduled_end_time
-      ORDER BY 
+      ORDER BY
         created_at DESC,  -- Keep newest
         id ASC            -- Break ties by lowest id
     ) AS rn
@@ -129,35 +135,40 @@ WHERE id IN (SELECT id FROM duplicates WHERE rn > 1);
 ### Post-Migration Checks
 
 **1. Verify no duplicates remain**:
+
 ```sql
 SELECT COUNT(*) FROM (
-  SELECT 
+  SELECT
     job_id, product_id,
     COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid),
     promised_date, scheduled_start_time, scheduled_end_time,
     COUNT(*) AS dup_count
   FROM public.job_parts
-  GROUP BY 
+  GROUP BY
     job_id, product_id,
     COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid),
     promised_date, scheduled_start_time, scheduled_end_time
   HAVING COUNT(*) > 1
 ) AS duplicates;
 ```
+
 **Expected**: 0
 
 **2. Verify index exists**:
+
 ```sql
-SELECT indexname 
-FROM pg_indexes 
-WHERE tablename = 'job_parts' 
+SELECT indexname
+FROM pg_indexes
+WHERE tablename = 'job_parts'
   AND indexname = 'job_parts_unique_job_product_vendor_time';
 ```
+
 **Expected**: 1 row
 
 ## Rollback
 
 If needed:
+
 ```sql
 DROP INDEX IF EXISTS public.job_parts_unique_job_product_vendor_time;
 ```
@@ -165,16 +176,19 @@ DROP INDEX IF EXISTS public.job_parts_unique_job_product_vendor_time;
 ## Impact
 
 ### Database
+
 - ✅ Prevents duplicate job_parts insertions
 - ✅ Improves data integrity
 - ✅ Provides query performance benefits (unique index)
 
 ### Application Code
+
 - ⚠️ Will fail if attempting to insert duplicate logical key
 - ℹ️ Should use upsert pattern or check-before-insert
 - ℹ️ Error: `duplicate key value violates unique constraint "job_parts_unique_job_product_vendor_time"`
 
 ### Performance
+
 - ✅ Minimal overhead (unique index already helps with lookups)
 - ✅ Deduplication runs once during migration
 

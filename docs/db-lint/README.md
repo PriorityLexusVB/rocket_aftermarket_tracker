@@ -28,6 +28,7 @@ This directory contains documentation about Supabase `db lint` results and decis
 ### Partially Fixed (Future Work Pending)
 
 #### RLS on `public.organizations` (ERROR → WARN)
+
 - Migration: `20251126161700_enable_rls_on_organizations.sql`
 - **Current state:** RLS enabled with basic org membership policies (SELECT/UPDATE)
 - **Remaining work:** Multi-tenant model design decision pending
@@ -40,9 +41,11 @@ This directory contains documentation about Supabase `db lint` results and decis
 ### Documented (Not Auto-Fixed)
 
 #### `users_leaked_password_protection` (auth.users)
+
 > Enable "Leaked password protection" in Supabase Auth settings for production environments.
 
 This is a Supabase Dashboard configuration, not a SQL migration. To enable:
+
 1. Go to Supabase Dashboard → Authentication → Settings → Security
 2. Enable "Leaked password protection"
 3. Choose the recommended protection level
@@ -51,12 +54,15 @@ This is a Supabase Dashboard configuration, not a SQL migration. To enable:
 **Tracked in:** `TODO_DEFERRED.md` → Supabase Security Lint Follow-ups
 
 #### `multiple_permissive_policies` (various tables)
+
 These warnings are **intentionally kept** as they reflect the designed authorization structure:
+
 - Multiple policies allow different access patterns (org-scoped, role-based, ownership-based)
 - Merging them could break intended behavior or reduce security granularity
 - A dedicated security review should be conducted before any policy consolidation
 
 Tables with multiple permissive policies (intentional):
+
 - `claims`
 - `filter_presets`
 - `jobs`
@@ -67,23 +73,28 @@ Tables with multiple permissive policies (intentional):
 - `sms_templates`
 
 #### `unused_index` (INFO level)
+
 Indexes reported as "unused" are **not automatically dropped** because:
+
 1. The dev/staging environment may have different query patterns than production
 2. Some indexes support infrequent but important queries (reports, exports)
 3. Dropping them could cause performance regression in production
 
 Only drop an index if:
+
 - It is confirmed as a **duplicate index** (handled separately)
 - Production `pg_stat_user_indexes` confirms zero usage over an extended period
 
 ## Verification
 
 After applying migrations, run:
+
 ```bash
 npx supabase@latest db lint
 ```
 
 Expected remaining warnings:
+
 - `multiple_permissive_policies` - Intentional, documented above
 - `unused_index` (INFO) - Intentional, documented above
 - `users_leaked_password_protection` - Dashboard configuration required

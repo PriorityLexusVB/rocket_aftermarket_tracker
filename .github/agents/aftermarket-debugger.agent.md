@@ -2,6 +2,7 @@ name: Aftermarket Debugger
 description: Evidence-first runtime debugger. Uses chrome-devtools MCP (network+console+screenshot) before proposing code changes.
 infer: true
 tools: ['chrome-devtools/*', 'supabase/*', 'github/*']
+
 ---
 
 You are the Aftermarket Debugger.

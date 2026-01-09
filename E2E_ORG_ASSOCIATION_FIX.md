@@ -13,11 +13,15 @@ E2E tests were timing out at the "Deal create + edit flow" test in `e2e/deal-edi
 3. **RLS Blocking Access**: Supabase RLS (Row Level Security) policies enforce tenant isolation, preventing users from seeing data in other organizations
 
 Result: The test user could not see any products in dropdowns, causing the test to timeout at:
+
 ```typescript
-await page.waitForFunction(() => {
-  const el = document.querySelector('[data-testid="product-select-0"]')
-  return !!el && el instanceof HTMLSelectElement && el.options.length > 1
-}, { timeout: 30_000 })
+await page.waitForFunction(
+  () => {
+    const el = document.querySelector('[data-testid="product-select-0"]')
+    return !!el && el instanceof HTMLSelectElement && el.options.length > 1
+  },
+  { timeout: 30_000 }
+)
 ```
 
 ## Solution
@@ -42,6 +46,7 @@ where email = $E2E_EMAIL$;
 #### 2. Seed Script Runner (`scripts/seedE2E.js`)
 
 Updated to:
+
 - Require `E2E_EMAIL` environment variable
 - Replace `$E2E_EMAIL$` placeholder with actual email (with SQL injection protection)
 - Log which user was associated with the E2E org
@@ -67,7 +72,7 @@ Added `E2E_EMAIL` to both seed steps (e2e-smoke and e2e-full jobs):
   env:
     DATABASE_URL: ${{ secrets.DATABASE_URL }}
     SUPABASE_DB_URL: ${{ secrets.DATABASE_URL }}
-    E2E_EMAIL: ${{ secrets.E2E_EMAIL }}  # Added
+    E2E_EMAIL: ${{ secrets.E2E_EMAIL }} # Added
   run: |
     if [ -z "$DATABASE_URL" ]; then
       echo "::warning::DATABASE_URL secret not set - E2E tests may fail if products don't exist"
@@ -83,6 +88,7 @@ Added `E2E_EMAIL` to both seed steps (e2e-smoke and e2e-full jobs):
 ### Expected Behavior After Fix
 
 1. **Seed step logs** should show:
+
    ```
    [seedE2E] Seed applied successfully. Test user (user@example.com) associated with E2E org.
    ```
@@ -151,16 +157,19 @@ This replaces `'` with `''` (SQL standard for escaping single quotes in string l
 If this fix causes issues, revert by:
 
 1. **Restore original seed SQL**:
+
    ```bash
    git checkout HEAD~1 -- scripts/sql/seed_e2e.sql
    ```
 
 2. **Restore original seed script**:
+
    ```bash
    git checkout HEAD~1 -- scripts/seedE2E.js
    ```
 
 3. **Restore original workflow**:
+
    ```bash
    git checkout HEAD~1 -- .github/workflows/e2e.yml
    ```
@@ -183,6 +192,7 @@ If this fix causes issues, revert by:
 ### For Future E2E Seeds
 
 1. **Always associate test users with test org**:
+
    ```sql
    UPDATE user_profiles SET org_id = 'test-org-id' WHERE email = $TEST_EMAIL$;
    ```
@@ -193,6 +203,7 @@ If this fix causes issues, revert by:
    - `E2E_PASSWORD` - Test user password
 
 3. **Test RLS policies** before seeding:
+
    ```sql
    SELECT * FROM products WHERE org_id = 'test-org-id';
    -- Should return seeded products
@@ -208,4 +219,5 @@ If this fix causes issues, revert by:
 ## Credit
 
 Fix implemented in response to user feedback:
+
 > @copilot it keeps getting stuck here: ✘ 1 [chromium] › e2e/deal-edit.spec.ts:8:3 › Deal create + edit flow › create a deal, then edit and persist changes (2.0m)

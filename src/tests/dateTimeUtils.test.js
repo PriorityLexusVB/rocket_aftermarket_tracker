@@ -127,9 +127,9 @@ describe('dateTimeUtils', () => {
     it('should handle spring forward DST transition (2024-03-10)', () => {
       // 2024-03-10 02:00 AM EST -> 03:00 AM EDT (spring forward)
       const beforeDST = '2024-03-10T06:00:00Z' // 01:00 EST
-      const afterDST = '2024-03-10T08:00:00Z'  // 04:00 EDT
+      const afterDST = '2024-03-10T08:00:00Z' // 04:00 EDT
       const result = formatScheduleRange(beforeDST, afterDST)
-      
+
       expect(result).toBeTruthy()
       expect(result).toContain('Mar')
       expect(result).toContain('10')
@@ -138,9 +138,9 @@ describe('dateTimeUtils', () => {
     it('should handle fall back DST transition (2024-11-03)', () => {
       // 2024-11-03 02:00 AM EDT -> 01:00 AM EST (fall back)
       const beforeDST = '2024-11-03T05:00:00Z' // 01:00 EDT
-      const afterDST = '2024-11-03T07:00:00Z'  // 02:00 EST
+      const afterDST = '2024-11-03T07:00:00Z' // 02:00 EST
       const result = formatScheduleRange(beforeDST, afterDST)
-      
+
       expect(result).toBeTruthy()
       expect(result).toContain('Nov')
       expect(result).toContain('3')
@@ -151,7 +151,7 @@ describe('dateTimeUtils', () => {
       const start = '2024-01-15T14:00:00Z'
       const end = '2024-01-17T16:00:00Z'
       const result = formatScheduleRange(start, end)
-      
+
       // Should show both dates when spanning multiple days
       expect(result).toBeTruthy()
       expect(result).toContain('Jan')
@@ -160,9 +160,9 @@ describe('dateTimeUtils', () => {
 
     it('should format same-day range correctly', () => {
       const start = '2024-06-20T13:00:00Z' // 09:00 EDT
-      const end = '2024-06-20T17:00:00Z'   // 13:00 EDT
+      const end = '2024-06-20T17:00:00Z' // 13:00 EDT
       const result = formatScheduleRange(start, end)
-      
+
       // Same day should show date once with time range
       expect(result).toBeTruthy()
       expect(result).toContain('Jun')
@@ -205,10 +205,10 @@ describe('dateTimeUtils', () => {
       // The function returns a result if Date parsing succeeds
       const result1 = fromLocalDateTimeFields({ date: '2024-13-45', time: '09:30' })
       expect(result1).toBeTruthy() // Date constructor is lenient
-      
+
       // Incomplete format (missing day) will fail
       expect(fromLocalDateTimeFields({ date: '2024-01', time: '09:30' })).toBe(null)
-      
+
       // Non-numeric date will fail
       expect(fromLocalDateTimeFields({ date: 'abc', time: '09:30' })).toBe(null)
     })
@@ -218,10 +218,10 @@ describe('dateTimeUtils', () => {
       // 25:30 becomes 01:30 next day
       const result1 = fromLocalDateTimeFields({ date: '2024-01-15', time: '25:30' })
       expect(result1).toBeTruthy() // Date constructor is lenient
-      
+
       // Incomplete time format (missing minutes) will fail
       expect(fromLocalDateTimeFields({ date: '2024-01-15', time: '09' })).toBe(null)
-      
+
       // Non-numeric time will fail
       expect(fromLocalDateTimeFields({ date: '2024-01-15', time: 'abc' })).toBe(null)
     })
@@ -231,14 +231,14 @@ describe('dateTimeUtils', () => {
       expect(validateScheduleRange(null, '2024-01-20T14:00:00Z')).toEqual({
         valid: false,
         errors: ['start_required'],
-        error: 'Start time is required'
+        error: 'Start time is required',
       })
 
       // Missing end
       expect(validateScheduleRange('2024-01-20T14:00:00Z', null)).toEqual({
         valid: false,
         errors: ['end_required'],
-        error: 'End time is required'
+        error: 'End time is required',
       })
 
       // Both missing
@@ -252,14 +252,14 @@ describe('dateTimeUtils', () => {
       expect(validateScheduleRange('2024-01-20T14:00:00Z', '2024-01-20T13:00:00Z')).toEqual({
         valid: false,
         errors: ['end_not_after_start'],
-        error: 'End time must be after start time'
+        error: 'End time must be after start time',
       })
 
       // Valid range
       expect(validateScheduleRange('2024-01-20T13:00:00Z', '2024-01-20T14:00:00Z')).toEqual({
         valid: true,
         errors: [],
-        error: ''
+        error: '',
       })
     })
 
@@ -274,13 +274,13 @@ describe('dateTimeUtils', () => {
       // Test timestamp around DST change
       const dstTimestamp = '2024-03-10T07:00:00Z' // Around spring DST
       const fields = toLocalDateTimeFields(dstTimestamp)
-      
+
       expect(fields.date).toMatch(/\d{4}-\d{2}-\d{2}/)
       expect(fields.time).toMatch(/\d{2}:\d{2}/)
-      
+
       const backToISO = fromLocalDateTimeFields(fields)
       expect(backToISO).toBeTruthy()
-      
+
       // Should be close (within same hour due to DST complexity)
       const original = new Date(dstTimestamp).getTime()
       const converted = new Date(backToISO).getTime()
@@ -372,10 +372,10 @@ describe('dateTimeUtils', () => {
       // with scheduledStartTime (from time picker)
       const dateScheduled = '2025-12-06'
       const scheduledStartTime = '13:07'
-      
+
       const result = combineDateAndTime(dateScheduled, scheduledStartTime)
       expect(result).toBeTruthy()
-      
+
       // Parse the result and verify the date component is preserved
       const parsed = new Date(result)
       // The result is in UTC, so we check it's valid and represents Dec 6, 2025
@@ -388,21 +388,21 @@ describe('dateTimeUtils', () => {
       // - User picks date "12/06/2025" via date picker (becomes "2025-12-06")
       // - User picks time "1:07 PM" via time picker (becomes "13:07")
       // - Result should be a proper ISO timestamp, not just "13:07"
-      
+
       const dateScheduled = '2025-12-06'
       const scheduledStartTime = '13:07'
       const scheduledEndTime = '14:30'
-      
+
       const startResult = combineDateAndTime(dateScheduled, scheduledStartTime)
       const endResult = combineDateAndTime(dateScheduled, scheduledEndTime)
-      
+
       expect(startResult).toBeTruthy()
       expect(endResult).toBeTruthy()
-      
+
       // Both should be valid ISO strings suitable for timestamptz
       expect(startResult).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
       expect(endResult).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
-      
+
       // End should be after start
       expect(new Date(endResult).getTime()).toBeGreaterThan(new Date(startResult).getTime())
     })
@@ -412,7 +412,7 @@ describe('dateTimeUtils', () => {
       // This should return null for both start and end times
       const dateScheduled = '' // cleared because not scheduling
       const scheduledStartTime = '13:07'
-      
+
       expect(combineDateAndTime(dateScheduled, scheduledStartTime)).toBe(null)
     })
   })

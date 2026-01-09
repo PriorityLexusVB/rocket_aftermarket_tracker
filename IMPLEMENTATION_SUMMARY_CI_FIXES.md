@@ -11,17 +11,20 @@ GitHub Actions workflow run #20197739913 was failing with multiple issues:
 ## Root Cause Analysis
 
 ### 1. Secrets Issue
+
 - Secrets WERE configured, but there was no visibility in workflow logs
 - No way to distinguish between "not configured" vs "not accessible" vs "incorrect name"
 - Error messages were not actionable
 
 ### 2. Schema Issue
+
 - The `user_profiles` table only has `full_name` column (not `name` or `display_name`)
 - The health endpoint probes for columns by attempting to query them
 - "Column does not exist" errors were expected but appeared as failures
 - The capability detection system was designed to handle this, but error messages were confusing
 
 ### 3. Test Flakiness
+
 - CI environments are slower than local development
 - 30-second timeout was insufficient for slow environments
 - No retries meant transient failures caused complete test suite failures
@@ -33,6 +36,7 @@ GitHub Actions workflow run #20197739913 was failing with multiple issues:
 ### 1. Enhanced Secrets Debugging (`.github/workflows/e2e.yml`)
 
 **Added Debug Step:**
+
 ```yaml
 - name: Debug Environment Variables
   run: |
@@ -45,11 +49,13 @@ GitHub Actions workflow run #20197739913 was failing with multiple issues:
 ```
 
 **Enhanced Secret Verification:**
+
 - Shows SET/NOT SET status for each required secret
 - Groups output for better readability
 - Provides actionable error messages
 
 **Benefits:**
+
 - Immediate visibility into which secrets are missing
 - Helps distinguish configuration issues from workflow issues
 - Values masked for security (shows only presence, not actual values)
@@ -57,6 +63,7 @@ GitHub Actions workflow run #20197739913 was failing with multiple issues:
 ### 2. Improved Health Endpoint Error Handling
 
 **Before:**
+
 ```javascript
 async function check(col) {
   try {
@@ -69,6 +76,7 @@ async function check(col) {
 ```
 
 **After:**
+
 ```javascript
 const ALLOWED_COLUMNS = ['name', 'full_name', 'display_name']
 
@@ -99,6 +107,7 @@ async function check(col) {
 ```
 
 **Benefits:**
+
 - Explicit detection of "column does not exist" errors
 - Returns `true` for exists, `false` for missing, `null` for other errors
 - Better logging distinguishes schema issues from RLS/network issues
@@ -107,21 +116,25 @@ async function check(col) {
 ### 3. Test Resilience Improvements (`playwright.config.ts`)
 
 **Timeout Increase:**
+
 ```typescript
 timeout: process.env.CI ? 45_000 : 30_000, // Longer timeout in CI
 ```
 
 **Retry Configuration:**
+
 ```typescript
 retries: process.env.CI ? 1 : 0, // Retry once in CI to handle flaky tests
 ```
 
 **Enhanced Tracing:**
+
 ```typescript
 trace: process.env.CI ? 'on' : 'on-first-retry', // Always capture traces in CI
 ```
 
 **Benefits:**
+
 - Handles slow CI environments gracefully
 - Transient failures don't cause complete test suite failure
 - Always captures traces for debugging (previously only on retry, but retries were disabled!)
@@ -131,6 +144,7 @@ trace: process.env.CI ? 'on' : 'on-first-retry', // Always capture traces in CI
 **Fixed Init Script Ordering:**
 
 Before (WRONG):
+
 ```typescript
 await page.goto('/')  // Navigate first
 await page.addInitScript(() => { ... })  // Too late! Already navigated
@@ -138,12 +152,14 @@ await page.goto('/')  // Navigate again
 ```
 
 After (CORRECT):
+
 ```typescript
 await page.addInitScript(() => { ... })  // Set up script before navigation
 await page.goto('/')  // Now the script runs on page load
 ```
 
 **Benefits:**
+
 - Init scripts execute correctly
 - Removes redundant navigation calls
 - Tests now work as intended
@@ -151,6 +167,7 @@ await page.goto('/')  // Now the script runs on page load
 ### 5. Enhanced Artifact Collection
 
 **Added Test Results Upload:**
+
 ```yaml
 - name: Upload test results and traces
   if: always()
@@ -166,6 +183,7 @@ await page.goto('/')  // Now the script runs on page load
 ```
 
 **Benefits:**
+
 - Screenshots show page state at failure
 - Traces provide detailed timeline of actions
 - HTML dumps help diagnose setup issues
@@ -192,6 +210,7 @@ await page.goto('/')  // Now the script runs on page load
    - Local testing instructions
 
 **Benefits:**
+
 - Self-service troubleshooting
 - Reduces support burden
 - Documents expected behavior vs actual bugs
@@ -221,6 +240,7 @@ src/api/health-user-profiles.js   |  18 +++++-
 ## Backward Compatibility
 
 All changes are backward compatible:
+
 - Health endpoints return same JSON structure
 - Capability detection logic unchanged
 - Test assertions unchanged
@@ -229,14 +249,17 @@ All changes are backward compatible:
 ## Expected Outcomes
 
 ### For Secrets Issues:
+
 - **Before**: "Missing VITE_SUPABASE_URL" with no additional info
 - **After**: Debug output shows which secrets are SET vs NOT SET, actionable next steps
 
 ### For Schema Issues:
+
 - **Before**: "PostgrestError: column user_profiles.name does not exist" appeared as test failure
 - **After**: Health endpoint returns `{ name: false, full_name: true, display_name: false }`, capability system handles gracefully
 
 ### For Test Flakiness:
+
 - **Before**: Single timeout or transient failure = entire test suite fails
 - **After**: 1 retry, longer timeout, always-on tracing = more resilient, better debugging
 

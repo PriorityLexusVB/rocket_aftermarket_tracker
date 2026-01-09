@@ -5,6 +5,7 @@ This guide explains how to use the typed data patterns introduced per Section 20
 ## Overview
 
 We now have a single source of truth for schema definitions:
+
 1. **Drizzle** defines table structure in `src/db/schema.ts` (mirrors Supabase exactly)
 2. **drizzle-zod** generates Zod schemas in `src/db/schemas.ts`
 3. **Service functions** validate data before Supabase calls
@@ -20,19 +21,19 @@ import {
   vendorSelectSchema,
   VendorInsert,
   Vendor,
-  
+
   // Jobs
   jobInsertSchema,
   jobSelectSchema,
   JobInsert,
   Job,
-  
+
   // Job Parts
   jobPartInsertSchema,
   jobPartSelectSchema,
   JobPartInsert,
   JobPart,
-} from '@/db/schemas';
+} from '@/db/schemas'
 ```
 
 ## Using Typed Service Functions
@@ -40,7 +41,7 @@ import {
 ### Vendor Operations
 
 ```javascript
-import vendorService from '@/services/vendorService';
+import vendorService from '@/services/vendorService'
 
 // Create a vendor (validated with Zod)
 const newVendor = await vendorService.create({
@@ -51,28 +52,28 @@ const newVendor = await vendorService.create({
   specialty: 'Window Tinting',
   rating: '4.5',
   orgId: currentOrgId,
-});
+})
 
 if (newVendor.error) {
-  console.error('Validation or DB error:', newVendor.error);
+  console.error('Validation or DB error:', newVendor.error)
 } else {
-  console.log('Created vendor:', newVendor.data);
+  console.log('Created vendor:', newVendor.data)
 }
 
 // Update a vendor
 const updated = await vendorService.update(vendorId, {
   rating: '5.0',
   notes: 'Excellent service',
-});
+})
 
 // Delete a vendor
-await vendorService.delete(vendorId);
+await vendorService.delete(vendorId)
 ```
 
 ### Job Operations
 
 ```javascript
-import jobService from '@/services/jobService';
+import jobService from '@/services/jobService'
 
 // Create a job (validated with Zod)
 const newJob = await jobService.createTyped({
@@ -85,19 +86,19 @@ const newJob = await jobService.createTyped({
   scheduledStartTime: '2025-01-15T09:00:00Z',
   scheduledEndTime: '2025-01-15T11:00:00Z',
   orgId: currentOrgId,
-});
+})
 
 // Update a job
 const updated = await jobService.updateTyped(jobId, {
   jobStatus: 'in_progress',
   startedAt: new Date().toISOString(),
-});
+})
 ```
 
 ### Job Parts Operations
 
 ```javascript
-import { createJobPartsTyped } from '@/services/jobPartsService';
+import { createJobPartsTyped } from '@/services/jobPartsService'
 
 // Create multiple job parts (validated with Zod)
 const result = await createJobPartsTyped([
@@ -113,12 +114,12 @@ const result = await createJobPartsTyped([
     quantityUsed: 1,
     unitPrice: 149.99,
   },
-]);
+])
 
 if (result.error) {
-  console.error('Failed to create job parts:', result.error);
+  console.error('Failed to create job parts:', result.error)
 } else {
-  console.log('Created job parts:', result.data);
+  console.log('Created job parts:', result.data)
 }
 ```
 
@@ -127,10 +128,10 @@ if (result.error) {
 ### Using with react-hook-form
 
 ```javascript
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { vendorInsertSchema } from '@/db/schemas';
-import vendorService from '@/services/vendorService';
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { vendorInsertSchema } from '@/db/schemas'
+import vendorService from '@/services/vendorService'
 
 function VendorForm() {
   const {
@@ -146,46 +147,33 @@ function VendorForm() {
       email: '',
       isActive: true,
     },
-  });
+  })
 
   const onSubmit = handleSubmit(async (data) => {
-    const result = await vendorService.create(data);
+    const result = await vendorService.create(data)
     if (result.error) {
-      alert('Error: ' + result.error.message);
+      alert('Error: ' + result.error.message)
     } else {
-      alert('Vendor created successfully!');
+      alert('Vendor created successfully!')
     }
-  });
+  })
 
   return (
     <form onSubmit={onSubmit}>
-      <input
-        {...register('name')}
-        placeholder="Vendor Name"
-      />
+      <input {...register('name')} placeholder="Vendor Name" />
       {errors.name && <span>{errors.name.message}</span>}
-      
-      <input
-        {...register('contactPerson')}
-        placeholder="Contact Person"
-      />
-      
-      <input
-        {...register('phone')}
-        placeholder="Phone"
-      />
-      
-      <input
-        {...register('email')}
-        type="email"
-        placeholder="Email"
-      />
-      
+
+      <input {...register('contactPerson')} placeholder="Contact Person" />
+
+      <input {...register('phone')} placeholder="Phone" />
+
+      <input {...register('email')} type="email" placeholder="Email" />
+
       <button type="submit" disabled={isSubmitting}>
         {isSubmitting ? 'Creating...' : 'Create Vendor'}
       </button>
     </form>
-  );
+  )
 }
 ```
 
@@ -196,17 +184,15 @@ function VendorForm() {
 ```javascript
 // Scattered validation logic
 if (!name || name.trim() === '') {
-  throw new Error('Name is required');
+  throw new Error('Name is required')
 }
 
 if (rating && (parseFloat(rating) < 0 || parseFloat(rating) > 5)) {
-  throw new Error('Rating must be between 0 and 5');
+  throw new Error('Rating must be between 0 and 5')
 }
 
 // Direct Supabase insert (no type safety)
-const { data, error } = await supabase
-  .from('vendors')
-  .insert([{ name, rating, /* ... */ }]);
+const { data, error } = await supabase.from('vendors').insert([{ name, rating /* ... */ }])
 ```
 
 ### After (Zod Validation)
@@ -217,7 +203,7 @@ const result = await vendorService.create({
   name,
   rating,
   // TypeScript/JSDoc provides autocomplete for all fields
-});
+})
 // Zod schema validates:
 // - name is required and non-empty
 // - rating is between 0 and 5

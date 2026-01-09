@@ -106,7 +106,7 @@ describe('Integration: date and time input values', () => {
     const iso = '2025-12-12T18:35:00+00:00'
     const date = toDateInputValue(iso)
     const time = toTimeInputValue(iso)
-    
+
     expect(date).toBe('2025-12-12')
     expect(time).toBe('13:35')
   })
@@ -115,7 +115,7 @@ describe('Integration: date and time input values', () => {
     const iso = '2025-12-12T00:00:00Z'
     const date = toDateInputValue(iso)
     const time = toTimeInputValue(iso)
-    
+
     expect(date).toBe('2025-12-11') // Previous day in ET
     expect(time).toBe('19:00') // 7 PM ET previous day
   })
@@ -124,7 +124,7 @@ describe('Integration: date and time input values', () => {
     const iso = '2025-12-12T23:59:00Z'
     const date = toDateInputValue(iso)
     const time = toTimeInputValue(iso)
-    
+
     expect(date).toBe('2025-12-12')
     expect(time).toBe('18:59') // ET
   })

@@ -5,52 +5,63 @@
 ## Issues Fixed
 
 ### Issue 1: RLS auth.users Permission Error
+
 **Problem**: The `loaner_assignments` table had RLS policies that directly referenced `auth.users` table, causing "permission denied for table users" errors when authenticated users tried to save deals with loaner information.
 
 **Root Cause**: Migration `20250117120000_add_loaner_assignments.sql` created the `managers_manage_loaner_assignments` policy with direct `auth.users` queries instead of using the approved helper function pattern.
 
 **Solution**: Created migration `20251115222458_fix_loaner_assignments_rls_auth_users.sql` that:
+
 - Drops the problematic policy
 - Recreates it using `public.is_admin_or_manager()` helper function
 - This helper only queries `public.user_profiles`, avoiding auth schema permission issues
 
 ### Issue 2: Total Display Shows 0/Blank
+
 **Problem**: Deal totals were showing as 0 or blank in the UI even when transactions had valid amounts in the database.
 
 **Root Cause**: Supabase returns `DECIMAL` database types as strings (e.g., "1234.56"), but the `ValueDisplay` component checks `typeof amount !== 'number'` before formatting, causing it to display "—" instead of the amount.
 
 **Solution**: Modified `dealService.js` to coerce `total_amount` to numeric using `parseFloat()`:
+
 - In `getAllDeals()`: `total_amount: parseFloat(transaction?.total_amount) || 0`
 - In `getDealById()`: `total_amount: parseFloat(transaction?.total_amount) || 0`
 
 ## Files Changed
 
 ### 1. Migration File
+
 **File**: `supabase/migrations/20251115222458_fix_loaner_assignments_rls_auth_users.sql`
 
 **Changes**:
+
 - Drops existing `managers_manage_loaner_assignments` policy
 - Recreates with `public.is_admin_or_manager()` helper
 - Includes verification and rollback SQL in comments
 - Follows the pattern from `RLS_AUTH_USERS_FIX.md`
 
 ### 2. Service File
+
 **File**: `src/services/dealService.js`
 
 **Changes** (2 locations):
+
 - Line ~1034: `total_amount: parseFloat(transaction?.total_amount) || 0`
 - Line ~1203: `total_amount: parseFloat(transaction?.total_amount) || 0`
 
 **Why `parseFloat()`**:
+
 - Handles both string and numeric inputs safely
 - Returns 0 for null/undefined/NaN values (via `|| 0` fallback)
 - Converts "1234.56" → 1234.56
 - Passes through 1234.56 → 1234.56 unchanged
 
 ### 3. Test File
+
 **File**: `src/tests/dealService.totalAmount.test.js` (new)
 
 **Tests**:
+
 1. `should convert total_amount from string to number in getAllDeals` - Verifies string "1234.56" becomes number 1234.56
 2. `should handle zero total_amount correctly` - Verifies numeric type and non-negative values
 
@@ -70,6 +81,7 @@
 ### Post-Deployment Verification (Manual)
 
 #### For RLS Fix:
+
 1. **Login as admin/manager user**
 2. **Navigate to Deals page**
 3. **Create or update a deal with loaner enabled**
@@ -77,6 +89,7 @@
 5. **Verify loaner data persists** in `loaner_assignments` table
 
 #### For Total Display Fix:
+
 1. **Navigate to Deals list page**
 2. **Check deals with transactions**
 3. **Expected**: Total amounts display as currency (e.g., "$1,235") instead of "—"
@@ -89,14 +102,14 @@ To verify the migration was applied successfully:
 
 ```sql
 -- Check that the policy exists and uses is_admin_or_manager()
-SELECT 
+SELECT
     schemaname,
-    tablename, 
+    tablename,
     policyname,
     qual,
     with_check
-FROM pg_policies 
-WHERE tablename = 'loaner_assignments' 
+FROM pg_policies
+WHERE tablename = 'loaner_assignments'
 AND policyname = 'managers_manage_loaner_assignments';
 
 -- Expected: qual and with_check should both contain 'is_admin_or_manager()'
@@ -108,6 +121,7 @@ AND policyname = 'managers_manage_loaner_assignments';
 If issues arise, the migration can be reverted:
 
 1. **Run the rollback SQL** (included in migration comments):
+
 ```sql
 DROP POLICY IF EXISTS "managers_manage_loaner_assignments" ON public.loaner_assignments;
 CREATE POLICY "managers_manage_loaner_assignments" ON public.loaner_assignments
@@ -115,7 +129,7 @@ FOR ALL TO authenticated
 USING (
     EXISTS (
         SELECT 1 FROM auth.users au
-        WHERE au.id = auth.uid() 
+        WHERE au.id = auth.uid()
         AND (au.raw_user_meta_data->>'role' IN ('admin', 'manager')
              OR au.raw_app_meta_data->>'role' IN ('admin', 'manager'))
     )
@@ -123,7 +137,7 @@ USING (
 WITH CHECK (
     EXISTS (
         SELECT 1 FROM auth.users au
-        WHERE au.id = auth.uid() 
+        WHERE au.id = auth.uid()
         AND (au.raw_user_meta_data->>'role' IN ('admin', 'manager')
              OR au.raw_app_meta_data->>'role' IN ('admin', 'manager'))
     )
@@ -131,6 +145,7 @@ WITH CHECK (
 ```
 
 2. **Revert code changes** in `dealService.js`:
+
 ```javascript
 // Change back from:
 total_amount: parseFloat(transaction?.total_amount) || 0
@@ -148,15 +163,18 @@ total_amount: transaction?.total_amount || 0
 ## Impact
 
 ### Security
+
 - ✅ **No security regressions**: Policy still enforces admin/manager role check
 - ✅ **Improved security**: Eliminates potential for auth schema privilege escalation
 - ✅ **Maintains tenant isolation**: org_id scoping remains enforced
 
 ### Performance
+
 - ✅ **No performance impact**: `is_admin_or_manager()` uses same indexes as before
 - ✅ **parseFloat() negligible overhead**: Simple type conversion, no I/O
 
 ### Compatibility
+
 - ✅ **Backward compatible**: No changes to API signatures or return types
 - ✅ **Works with legacy data**: Handles both string and numeric total_amount values
 - ✅ **No schema changes**: Only policy modification, no table/column changes
@@ -164,12 +182,15 @@ total_amount: transaction?.total_amount || 0
 ## Testing Coverage
 
 ### Unit Tests
+
 - ✅ `dealService.totalAmount.test.js` - Verifies numeric coercion
 
 ### Integration Tests
+
 - Existing tests continue to pass (with pre-existing failures unrelated to this change)
 
 ### Manual Testing Required
+
 - [ ] Admin/Manager can save deals with loaners
 - [ ] Deal totals display correctly in UI
 - [ ] Summary revenue calculations accurate
@@ -183,4 +204,4 @@ total_amount: transaction?.total_amount || 0
 
 ---
 
-*This fix addresses the root cause identified in the problem statement and follows all workspace guardrails for minimal, surgical changes.*
+_This fix addresses the root cause identified in the problem statement and follows all workspace guardrails for minimal, surgical changes._

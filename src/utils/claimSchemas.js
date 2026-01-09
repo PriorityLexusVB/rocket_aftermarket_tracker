@@ -43,7 +43,7 @@ export const guestClaimSchema = z
         () => {
           const currentYear = new Date().getFullYear()
           return { message: `Year must be between 1900 and ${currentYear + 1}` }
-        },
+        }
       ),
     vehicle_make: z
       .string()
@@ -83,7 +83,7 @@ export const guestClaimSchema = z
     {
       message: 'Please describe the other product',
       path: ['other_product_description'],
-    },
+    }
   )
 
 /**

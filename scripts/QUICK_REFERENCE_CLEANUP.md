@@ -3,17 +3,20 @@
 ## 🚀 Quick Start (3 Steps)
 
 ### 1. Get Your Organization ID
+
 ```sql
 -- Run in Supabase SQL Editor
 SELECT id, name FROM organizations;
 ```
 
 ### 2. Preview (Dry-Run)
+
 ```bash
 ORG_ID="your-org-uuid-here" pnpm run cleanup:old-deals
 ```
 
 ### 3. Execute (After Backup!)
+
 ```bash
 DRY_RUN=false ORG_ID="your-org-uuid-here" pnpm run cleanup:old-deals
 ```
@@ -23,6 +26,7 @@ DRY_RUN=false ORG_ID="your-org-uuid-here" pnpm run cleanup:old-deals
 ## 📋 What You Need
 
 ### Environment Variables
+
 Add to `.env.local` or export before running:
 
 ```bash
@@ -32,6 +36,7 @@ ORG_ID="550e8400-e29b-41d4-a716-446655440000"
 ```
 
 **Where to find:**
+
 - **SUPABASE_URL**: Supabase Dashboard → Settings → API → URL
 - **SERVICE_ROLE_KEY**: Supabase Dashboard → Settings → API → service_role (⚠️ NOT anon_key!)
 - **ORG_ID**: Run the SQL query above
@@ -41,6 +46,7 @@ ORG_ID="550e8400-e29b-41d4-a716-446655440000"
 ## ⚡ Commands
 
 ### Using npm/pnpm script
+
 ```bash
 # Preview only (safe)
 pnpm run cleanup:old-deals
@@ -53,11 +59,13 @@ ORG_ID="your-uuid" pnpm run cleanup:old-deals
 ```
 
 ### Direct execution
+
 ```bash
 node scripts/cleanupOldDeals.cjs
 ```
 
 ### SQL Version
+
 Use `scripts/sql/cleanup_old_deals.sql` in Supabase SQL Editor
 
 ---
@@ -67,8 +75,9 @@ Use `scripts/sql/cleanup_old_deals.sql` in Supabase SQL Editor
 **Keeps:** Newest job (by created_at)
 
 **Deletes:** All other jobs for your org, plus:
+
 - job_parts
-- loaner_assignments  
+- loaner_assignments
 - transactions
 
 **Never touches:** Jobs from other organizations
@@ -125,18 +134,23 @@ Related Records Summary:
 ## ⚠️ Troubleshooting
 
 ### "Missing SUPABASE_SERVICE_ROLE_KEY"
+
 → You need the **service_role** key from Settings → API, not the anon key
 
 ### "ORG_ID must be a valid UUID"
+
 → Format: `550e8400-e29b-41d4-a716-446655440000` (with hyphens)
 
 ### "No jobs found"
+
 → Check your ORG_ID is correct with:
+
 ```sql
 SELECT id, job_number, org_id FROM jobs LIMIT 10;
 ```
 
 ### "Permission denied"
+
 → Confirm you're using SERVICE_ROLE_KEY, not ANON_KEY
 
 ---
@@ -163,11 +177,13 @@ SELECT id, job_number, org_id FROM jobs LIMIT 10;
 ## 💡 When to Use
 
 ✅ Good:
+
 - Cleaning up test/dev data
 - Removing duplicate jobs
 - Resetting test environment
 
 ❌ Bad:
+
 - Production without review
 - Automated processes
 - Regular app operations

@@ -5,14 +5,14 @@ import { describe, it, expect } from 'vitest'
 
 /**
  * This test documents and verifies the fix for the schedule time display bug.
- * 
+ *
  * ISSUE: When editing a deal, the Start Time / End Time fields in line items
  * showed as blank (--:-- --) even though times were saved correctly in DB.
- * 
+ *
  * ROOT CAUSE: mapDbDealToForm() converts UTC timestamps to local HH:MM format
  * using formatTime(). DealFormV2 then incorrectly called toTimeInputValue() on
  * these already-formatted strings, which expects ISO datetime strings.
- * 
+ *
  * FIX: Remove toTimeInputValue() calls in DealFormV2 line item initialization
  * since mapDbDealToForm() already provides the correct HH:MM format.
  */
@@ -48,7 +48,7 @@ describe('DealFormV2 - Edit Deal Time Display Fix', () => {
     // Step 3: DealFormV2 should use these HH:MM values directly for <input type="time">
     // BEFORE FIX: Called toTimeInputValue('14:00') which expects ISO, returned ''
     // AFTER FIX: Uses '14:00' directly, which is correct for time inputs
-    
+
     // Verify the format is correct for HTML time inputs
     expect(lineItemFromMapper.scheduledStartTime).toBe('14:00')
     expect(lineItemFromMapper.scheduledEndTime).toBe('16:30')
@@ -97,7 +97,7 @@ describe('DealFormV2 - Edit Deal Time Display Fix', () => {
         {
           id: 'part-2',
           product_id: 'prod-2',
-          unit_price: 199.00,
+          unit_price: 199.0,
           promised_date: '2025-12-25',
           // No times set
           scheduled_start_time: '',
@@ -133,7 +133,7 @@ describe('DealFormV2 - Edit Deal Time Display Fix', () => {
     // DealFormV2 can use either convention
     const startTime1 = lineItem?.scheduled_start_time || ''
     const startTime2 = lineItem?.scheduledStartTime || ''
-    
+
     expect(startTime1).toBe('13:15')
     expect(startTime2).toBe('13:15')
     expect(startTime1).toBe(startTime2)
@@ -142,21 +142,21 @@ describe('DealFormV2 - Edit Deal Time Display Fix', () => {
 
 /**
  * VERIFICATION STEPS FOR MANUAL TESTING:
- * 
+ *
  * 1. Create a new deal with a line item that requires scheduling
  *    - Set Date Scheduled: 2025-12-15
  *    - Set Start Time: 2:00 PM
  *    - Set End Time: 4:30 PM
  *    - Save the deal
- * 
+ *
  * 2. Open the Edit Deal modal for the same deal
  *    - Verify Date Scheduled shows: 2025-12-15
  *    - Verify Start Time shows: 14:00 (or 2:00 PM if browser uses 12h format)
  *    - Verify End Time shows: 16:30 (or 4:30 PM if browser uses 12h format)
  *    - Previously, these would show as blank (--:-- --)
- * 
+ *
  * 3. Verify the times also appear correctly in the calendar view
- * 
+ *
  * 4. Verify no regressions:
  *    - Loaner assignments still work
  *    - Job parts don't duplicate on update

@@ -1,11 +1,11 @@
 /**
  * Test for line item duplication bug in deal edit flow
- * 
+ *
  * Bug description:
  * - When editing a deal and saving, job_parts are deleted then re-inserted
  * - After reopening the same deal, line items sometimes show duplicated in the UI
  * - Time fields sometimes come back blank
- * 
+ *
  * Root cause hypothesis:
  * - DealFormV2 component's useEffect (line 129-183) may be setting lineItems multiple times
  * - Or mapDbDealToForm may be producing duplicate entries
@@ -59,7 +59,7 @@ describe('Deal Edit - Line Items Duplication Bug', () => {
     expect(formDeal).toBeDefined()
     expect(formDeal.lineItems).toBeDefined()
     expect(formDeal.lineItems).toHaveLength(2)
-    
+
     // Verify each line item has the correct data
     expect(formDeal.lineItems[0].product_id).toBe('prod-1')
     expect(formDeal.lineItems[0].unit_price).toBe(100)
@@ -199,7 +199,7 @@ describe('Deal Edit - Line Items Duplication Bug', () => {
           unit_price: 100,
           quantity_used: 1,
           promised_date: '2025-01-20',
-          scheduled_start_time: '2025-01-20T09:30:00-05:00',  // ISO with TZ
+          scheduled_start_time: '2025-01-20T09:30:00-05:00', // ISO with TZ
           scheduled_end_time: '2025-01-20T17:00:00-05:00',
           requires_scheduling: true,
           is_off_site: false,
@@ -209,24 +209,24 @@ describe('Deal Edit - Line Items Duplication Bug', () => {
 
     // Step 2: Map to form (should use formatTime to convert to HH:MM)
     const formDeal = mapDbDealToForm(dbDeal)
-    
+
     // formatTime should produce HH:MM format
     expect(formDeal.lineItems[0].scheduled_start_time).toBeTruthy()
     expect(formDeal.lineItems[0].scheduled_end_time).toBeTruthy()
-    
+
     // Should be in HH:MM format (always two-digit hours, e.g., "09:30")
     const startTime = formDeal.lineItems[0].scheduled_start_time
     const endTime = formDeal.lineItems[0].scheduled_end_time
-    
+
     // Should be in HH:MM format (two-digit hours)
     expect(startTime).toMatch(/^\d{2}:\d{2}$/)
     expect(endTime).toMatch(/^\d{2}:\d{2}$/)
-    
+
     // Step 3: Convert back to DB rows (would happen in save)
     // In the actual save flow, combineDateAndTime would convert HH:MM back to ISO
     // For this test, we're just verifying the time values are preserved
     const rows = toJobPartRows(dbDeal.id, formDeal.lineItems, { includeTimes: true })
-    
+
     expect(rows).toHaveLength(1)
     // The times in rows would be ISO format after combineDateAndTime
     // For now, just verify they exist

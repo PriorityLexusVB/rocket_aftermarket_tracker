@@ -3,6 +3,7 @@
 These skills are loaded on-demand by GitHub Copilot when relevant.
 
 ## Skills
+
 - appcreation-repo-audit
   - Use for: “review”, “audit”, “optimize”, “recommend improvements”
 - appcreation-safe-changes
@@ -15,5 +16,6 @@ These skills are loaded on-demand by GitHub Copilot when relevant.
   - Use for: XP/points/challenges/leaderboards (prevents duplicate point systems)
 
 ## Repo baseline (always-on)
+
 - .github/copilot-instructions.md
 - AGENTS.md

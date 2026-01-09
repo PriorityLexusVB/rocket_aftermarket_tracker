@@ -3,6 +3,7 @@
 ## Current Repository State (After Fix)
 
 ### Statistics
+
 - **Total migration files:** 99
 - **Valid 14-digit timestamps:** 99 (100%) ✓
 - **Duplicate timestamps:** 0 ✓
@@ -10,11 +11,11 @@
 
 ### Fixed Migration Files
 
-| Old Timestamp | New Timestamp | Migration Name |
-|--------------|---------------|----------------|
-| `20251023_` (10 digits) | `20251023000000` (14 digits) | add_job_parts_no_schedule_reason_check |
-| `202510270001_` (12 digits) | `20251027000001` (14 digits) | add_loaner_indexes |
-| `20251212_` (8 digits) | `20251212200000` (14 digits) | job_parts_unique_job_product_schedule |
+| Old Timestamp               | New Timestamp                | Migration Name                         |
+| --------------------------- | ---------------------------- | -------------------------------------- |
+| `20251023_` (10 digits)     | `20251023000000` (14 digits) | add_job_parts_no_schedule_reason_check |
+| `202510270001_` (12 digits) | `20251027000001` (14 digits) | add_loaner_indexes                     |
+| `20251212_` (8 digits)      | `20251212200000` (14 digits) | job_parts_unique_job_product_schedule  |
 
 ### Most Recent Migrations (Last 10)
 
@@ -38,7 +39,7 @@ Run this in Supabase SQL Editor to see what's applied in production:
 
 ```sql
 -- Get all applied migrations
-SELECT 
+SELECT
   version,
   name,
   inserted_at
@@ -53,7 +54,7 @@ The three renamed migrations should appear with their new timestamps:
 
 ```sql
 -- Check for renamed migrations specifically
-SELECT 
+SELECT
   version,
   name,
   inserted_at
@@ -81,6 +82,7 @@ ORDER BY version;
 ```
 
 **What to Check:**
+
 1. Count should be 99 (or more if new migrations added after this PR)
 2. No gaps in timestamp sequence (relative to repo list)
 3. The three renamed timestamps (`20251023000000`, `20251027000001`, `20251212200000`) are present
@@ -92,7 +94,7 @@ If production has migrations not in the repo, this could indicate manual SQL was
 ```sql
 -- Find migrations in production that aren't in your repo
 -- (Compare manually against repo migration list)
-SELECT 
+SELECT
   version,
   name,
   inserted_at
@@ -139,6 +141,7 @@ comm -13 /tmp/repo_migrations.txt /tmp/prod_migrations.txt
 ```
 
 **Expected After This PR:**
+
 - **Before deployment:** 3 old timestamps in production that don't match repo
 - **After deployment:** Perfect match (or repo has more if newer migrations exist)
 
@@ -229,6 +232,7 @@ ls -1 supabase/migrations/*.sql | wc -l
 This means the old timestamp is still in production's `schema_migrations` table.
 
 **Fix:**
+
 ```sql
 -- Check if old timestamp exists
 SELECT version, name
@@ -245,6 +249,7 @@ WHERE version IN ('20251023', '202510270001', '20251212');
 All three renamed migrations are idempotent and use `IF NOT EXISTS`. This should not happen.
 
 **If it does:**
+
 1. Check that migration file content hasn't been modified
 2. Verify production schema state matches expectations
 3. Check Supabase CLI version (should be 2.65.5)
@@ -267,7 +272,7 @@ After the production workflow completes successfully:
 - [ ] Verify migration count in production matches repo (99)
 - [ ] Verify the 3 renamed migrations are present:
   - [ ] `20251023000000` - job_parts constraint
-  - [ ] `20251027000001` - loaner indexes  
+  - [ ] `20251027000001` - loaner indexes
   - [ ] `20251212200000` - job_parts unique index
 - [ ] Check that job_parts constraint exists: `job_parts_no_schedule_reason_chk`
 - [ ] Check that loaner indexes exist:
@@ -284,9 +289,10 @@ Use the SQL queries from the "Production Database Verification" section above to
 ✅ **Repository State:** All 99 migrations have valid 14-digit timestamps  
 ✅ **Idempotency:** All renamed migrations safe to re-run  
 ✅ **Workflows:** Enhanced with logging and error handling  
-✅ **Verification:** SQL queries and commands provided for validation  
+✅ **Verification:** SQL queries and commands provided for validation
 
 **Next Steps:**
+
 1. Run dry-run workflow to validate migrations
 2. Deploy to production via workflow or merge to main
 3. Run post-deployment verification queries

@@ -19,12 +19,12 @@ This guide covers deploying the line-item scheduling redesign, which removes job
 ```sql
 -- Check how many jobs have job-level scheduling
 SELECT COUNT(*) as jobs_with_schedule
-FROM jobs 
+FROM jobs
 WHERE scheduled_start_time IS NOT NULL;
 
 -- Check how many line items already have scheduling
 SELECT COUNT(*) as line_items_with_schedule
-FROM job_parts 
+FROM job_parts
 WHERE scheduled_start_time IS NOT NULL;
 
 -- Identify jobs that need data migration
@@ -33,8 +33,8 @@ SELECT j.id, j.job_number, j.scheduled_start_time, j.scheduled_end_time,
 FROM jobs j
 WHERE j.scheduled_start_time IS NOT NULL
   AND NOT EXISTS (
-    SELECT 1 FROM job_parts jp 
-    WHERE jp.job_id = j.id 
+    SELECT 1 FROM job_parts jp
+    WHERE jp.job_id = j.id
     AND jp.scheduled_start_time IS NOT NULL
   );
 ```
@@ -70,7 +70,7 @@ WITH job_schedules AS (
     AND scheduled_end_time IS NOT NULL
 )
 UPDATE job_parts jp
-SET 
+SET
   scheduled_start_time = js.scheduled_start_time,
   scheduled_end_time = js.scheduled_end_time,
   updated_at = NOW()
@@ -80,7 +80,7 @@ WHERE jp.job_id = js.id
   AND jp.requires_scheduling = true;   -- Only if scheduling is needed
 
 -- Verify the migration
-SELECT 
+SELECT
   COUNT(*) as migrated_line_items,
   MIN(scheduled_start_time) as earliest,
   MAX(scheduled_end_time) as latest
@@ -121,6 +121,7 @@ psql $DATABASE_URL < 20251114163000_calendar_line_item_scheduling.sql
 ```
 
 **Migration applies:**
+
 - Updates `get_jobs_by_date_range()` function
 - Updates `check_vendor_schedule_conflict()` function
 - Both functions now read from `job_parts` table
@@ -166,16 +167,19 @@ psql $DATABASE_URL -c "NOTIFY pgrst, 'reload schema';"
 ### 1. Smoke Tests
 
 **Test Calendar Display:**
+
 1. Navigate to calendar view
 2. Verify scheduled jobs appear
 3. Check that jobs with multiple line items show correct time span
 
 **Test Job Creation:**
+
 1. Create new job with line items
 2. Set "Date Scheduled" on line items
 3. Save and verify it appears on calendar
 
 **Test Job Editing:**
+
 1. Open existing job for editing
 2. Verify "Date Scheduled" field is populated
 3. Modify and save
@@ -252,12 +256,13 @@ psql $DATABASE_URL < backup_YYYYMMDD_HHMMSS.sql
 
 **Problem:** RescheduleModal component still tries to read/write job-level schedules.
 
-**Workaround:** 
+**Workaround:**
+
 - Edit jobs directly from the deals list
 - Update line items individually
 - Or apply the RescheduleModal fix (separate PR)
 
-**Long-term Fix:** 
+**Long-term Fix:**
 Update RescheduleModal to work with line items (tracked in separate issue).
 
 ### Issue 2: Jobs Don't Appear on Calendar
@@ -293,7 +298,7 @@ Update RescheduleModal to work with line items (tracked in separate issue).
 
 ```sql
 -- Daily scheduled jobs count
-SELECT 
+SELECT
   DATE(scheduled_start_time) as schedule_date,
   COUNT(DISTINCT job_id) as jobs_count,
   COUNT(*) as line_items_count
@@ -304,10 +309,10 @@ GROUP BY DATE(scheduled_start_time)
 ORDER BY schedule_date DESC;
 
 -- Scheduling adoption
-SELECT 
+SELECT
   COUNT(DISTINCT job_id) as total_jobs,
   COUNT(DISTINCT CASE WHEN scheduled_start_time IS NOT NULL THEN job_id END) as scheduled_jobs,
-  ROUND(100.0 * COUNT(DISTINCT CASE WHEN scheduled_start_time IS NOT NULL THEN job_id END) / 
+  ROUND(100.0 * COUNT(DISTINCT CASE WHEN scheduled_start_time IS NOT NULL THEN job_id END) /
         COUNT(DISTINCT job_id), 2) as scheduled_percentage
 FROM job_parts;
 ```
@@ -375,15 +380,18 @@ Deployment is successful when:
 ## Appendix: File Locations
 
 **Frontend Files:**
+
 - `src/components/deals/DealFormV2.jsx` - Main deal form
 - `src/pages/deals/DealForm.jsx` - Legacy form
 - `src/pages/calendar/components/CreateModal.jsx` - Calendar create
 - `src/services/calendarService.js` - Calendar API
 
 **Database Files:**
+
 - `supabase/migrations/20251114163000_calendar_line_item_scheduling.sql` - Migration
 
 **Documentation:**
+
 - `LINE_ITEM_SCHEDULING_REDESIGN_SUMMARY.md` - Technical summary
 - `DEPLOYMENT_GUIDE.md` - This file
 

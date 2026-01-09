@@ -1,11 +1,11 @@
 /**
  * Test suite for auth_user_id fallback in org_id lookup
- * 
+ *
  * This tests the enhanced getUserOrgIdWithFallback function that checks:
  * 1. user_profiles.id = auth.uid() (standard case)
  * 2. user_profiles.auth_user_id = auth.uid() (legacy/alternative linking)
  * 3. user_profiles.email = user.email (final fallback)
- * 
+ *
  * This aligns with the database function auth_user_org() behavior
  * (see migration 20251129231539_fix_auth_user_org_auth_user_id_fallback.sql)
  */
@@ -44,7 +44,7 @@ describe('dealService - auth_user_id fallback for org_id lookup', () => {
      * 1. Try user_profiles.id = auth.uid() (standard case where profile id equals auth user id)
      * 2. Try user_profiles.auth_user_id = auth.uid() (legacy case where profile is linked via auth_user_id)
      * 3. Try user_profiles.email = user.email (fallback when neither id match works)
-     * 
+     *
      * This ensures compatibility with:
      * - Standard users where profile.id = auth.uid()
      * - Legacy users where profile.auth_user_id = auth.uid() but profile.id is different
@@ -223,17 +223,17 @@ describe('dealService - auth_user_id fallback for org_id lookup', () => {
      * This test documents that the client-side getUserOrgIdWithFallback function
      * aligns with the database function public.auth_user_org() which was updated
      * in migration 20251129231539_fix_auth_user_org_auth_user_id_fallback.sql
-     * 
+     *
      * Both implementations:
      * 1. Check user_profiles.id = auth.uid() first
      * 2. Fall back to user_profiles.auth_user_id = auth.uid()
      * 3. Client-side also has email fallback for additional resilience
-     * 
+     *
      * This ensures consistent behavior between:
      * - Database RLS policies using auth_user_org()
      * - Client-side org_id resolution in dealService
      */
-    
+
     const databaseFunction = {
       name: 'auth_user_org',
       schema: 'public',
@@ -278,9 +278,25 @@ describe('dealService - auth_user_id fallback for org_id lookup', () => {
     vi.mocked(supabase.from).mockReturnValue(rlsErrorQueryMock)
 
     // Simulate all three lookups
-    const lookup1 = await supabase.from('user_profiles').select('org_id').eq('id', mockUserId).maybeSingle()
-    const lookup2 = await supabase.from('user_profiles').select('org_id').eq('auth_user_id', mockUserId).order('created_at', { ascending: false }).limit(1).maybeSingle()
-    const lookup3 = await supabase.from('user_profiles').select('org_id').eq('email', mockUserEmail).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    const lookup1 = await supabase
+      .from('user_profiles')
+      .select('org_id')
+      .eq('id', mockUserId)
+      .maybeSingle()
+    const lookup2 = await supabase
+      .from('user_profiles')
+      .select('org_id')
+      .eq('auth_user_id', mockUserId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const lookup3 = await supabase
+      .from('user_profiles')
+      .select('org_id')
+      .eq('email', mockUserEmail)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
     // All should fail with RLS error
     expect(lookup1.error?.code).toBe('42501')
@@ -298,19 +314,19 @@ describe('Transaction access denied error scenarios', () => {
   it('documents when Transaction access denied error occurs', () => {
     /**
      * The "Transaction access denied" error occurs when:
-     * 
+     *
      * 1. User's org_id cannot be determined:
      *    - user_profiles.id != auth.uid()
      *    - user_profiles.auth_user_id != auth.uid()
      *    - user_profiles.email lookup blocked by RLS
      *    - User profile doesn't exist
      *    - User profile has org_id = NULL
-     * 
+     *
      * 2. Transaction RLS policy fails:
      *    - auth_user_org() returns NULL
      *    - Transaction's org_id doesn't match user's org
      *    - Job's org_id doesn't match user's org (fallback policy)
-     * 
+     *
      * 3. Legacy data issues:
      *    - Deal was created before org scoping was enabled
      *    - Job and/or transaction have org_id = NULL
@@ -340,7 +356,7 @@ describe('Transaction access denied error scenarios', () => {
     ]
 
     expect(errorScenarios).toHaveLength(4)
-    errorScenarios.forEach(scenario => {
+    errorScenarios.forEach((scenario) => {
       expect(scenario.scenario).toBeTruthy()
       expect(scenario.cause).toBeTruthy()
       expect(scenario.solution).toBeTruthy()
@@ -349,7 +365,7 @@ describe('Transaction access denied error scenarios', () => {
 
   it('documents the enhanced error messages', () => {
     // Error message when org_id is missing
-    const noOrgIdMessage = 
+    const noOrgIdMessage =
       'Unable to determine your organization. This typically means:\n' +
       '• Your user profile may not be linked to an organization.\n' +
       '• Please contact your administrator to verify your account setup.'

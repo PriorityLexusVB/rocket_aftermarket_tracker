@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "supabase/migrations/**"
-      - "supabase/config.toml"
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
 
 jobs:
   dry-run:
@@ -72,7 +72,7 @@ jobs:
           echo "Local migrations detected: $(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l)"
           supabase migration list || echo "Warning: Could not list migrations"
 
-      - name: "Dry-run migrations"
+      - name: 'Dry-run migrations'
         if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "=== Dry-Run: Validating Migrations ==="

@@ -20,6 +20,7 @@ The nightly workflow `.github/workflows/rls-drift-nightly.yml` was failing consi
 ### Workflow Context
 
 The workflow performs these steps:
+
 1. Starts Vite dev server: `pnpm dev`
 2. Waits for server to be ready
 3. Checks `/api/health` endpoint
@@ -35,6 +36,7 @@ The workflow performs these steps:
 **Why**: In production (Vercel), `/api/*` routes are automatically mapped to serverless functions in the `/api/` directory. During development, Vite has no knowledge of this convention.
 
 **Evidence from logs**:
+
 ```
 Response: // Vercel serverless function: /api/health-deals-rel
 // Mirrors logic from src/api/health-deals-rel.js but runnable as a serverless endpoint.
@@ -53,11 +55,12 @@ import { createClient } from "/node_modules/.vite/deps/@supabase_supabase-js.js?
 ### Issue #3: Insufficient Schema Introspection
 
 **Problem**: Original functions just checked if a query succeeded:
+
 ```javascript
 // Old implementation - too simplistic
 async function checkColumnExists() {
   const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
-  return !error  // Returns true for ANY successful query
+  return !error // Returns true for ANY successful query
 }
 ```
 
@@ -76,12 +79,12 @@ export function apiPlugin() {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/api/')) return next()
-        
+
         const apiPath = req.url.replace('/api/', '')
         const handlerPath = `./api/${apiPath}.js`
         const module = await import(handlerPath)
         const handler = module.default
-        
+
         await handler(req, res)
       })
     },
@@ -90,6 +93,7 @@ export function apiPlugin() {
 ```
 
 **Benefits**:
+
 - Minimal code (44 lines)
 - No external dependencies
 - Works with existing handler structure
@@ -100,16 +104,19 @@ export function apiPlugin() {
 Enhanced both `/api/health-deals-rel.js` and `/src/api/health-deals-rel.js`:
 
 **Column Detection**:
+
 ```javascript
 async function checkColumnExists() {
   try {
     const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
     if (!error) return true
-    
+
     // Check for specific column error indicators
-    if (error.code === 'PGRST204' || 
-        error.message?.includes('column') || 
-        error.message?.includes('vendor_id')) {
+    if (
+      error.code === 'PGRST204' ||
+      error.message?.includes('column') ||
+      error.message?.includes('vendor_id')
+    ) {
       return false
     }
     return null // Unknown error
@@ -120,20 +127,17 @@ async function checkColumnExists() {
 ```
 
 **FK Relationship Detection**:
+
 ```javascript
 async function checkFkExists() {
   try {
     // Test actual FK relationship expansion via PostgREST
-    const { error } = await supabase
-      .from('job_parts')
-      .select('vendor:vendor_id(id)')
-      .limit(0)
-    
+    const { error } = await supabase.from('job_parts').select('vendor:vendor_id(id)').limit(0)
+
     if (!error) return true
-    
+
     // Check for relationship/FK error indicators
-    if (error.message?.includes('relationship') || 
-        error.message?.includes('foreign key')) {
+    if (error.message?.includes('relationship') || error.message?.includes('foreign key')) {
       return false
     }
     return null
@@ -148,13 +152,13 @@ async function checkFkExists() {
 Modified handler to support both Vercel and Node.js:
 
 ```javascript
-const response = { ok: true, classification: 'ok', /* ... */ }
+const response = { ok: true, classification: 'ok' /* ... */ }
 
 // Handle both Express-like and Node.js http response objects
 if (typeof res.status === 'function') {
-  return res.status(200).json(response)  // Vercel/Express
+  return res.status(200).json(response) // Vercel/Express
 } else {
-  res.statusCode = 200                   // Node.js
+  res.statusCode = 200 // Node.js
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(response))
 }
@@ -173,6 +177,7 @@ curl http://localhost:5173/api/health-deals-rel
 ```
 
 **Result**:
+
 ```json
 {
   "ok": true,
@@ -197,6 +202,7 @@ pnpm lint   # ✅ 0 errors, 312 warnings (pre-existing)
 ### Integration Tests
 
 Created `tests/integration/schema-drift.test.js` with tests for:
+
 - ✅ Healthy status detection
 - ✅ Error classification
 - ✅ Diagnostic information
@@ -204,14 +210,14 @@ Created `tests/integration/schema-drift.test.js` with tests for:
 
 ## Files Changed
 
-| File | Type | Lines | Description |
-|------|------|-------|-------------|
-| `vite-plugin-api.js` | NEW | 44 | Vite plugin for API routes |
-| `vite.config.mjs` | MODIFIED | +2 | Added API plugin |
-| `api/health-deals-rel.js` | MODIFIED | +40 | Improved checks + dual response |
-| `src/api/health-deals-rel.js` | MODIFIED | +30 | Improved checks |
-| `tests/integration/schema-drift.test.js` | NEW | 81 | Integration tests |
-| `docs/SCHEMA_DRIFT_FIX.md` | NEW | 226 | Comprehensive documentation |
+| File                                     | Type     | Lines | Description                     |
+| ---------------------------------------- | -------- | ----- | ------------------------------- |
+| `vite-plugin-api.js`                     | NEW      | 44    | Vite plugin for API routes      |
+| `vite.config.mjs`                        | MODIFIED | +2    | Added API plugin                |
+| `api/health-deals-rel.js`                | MODIFIED | +40   | Improved checks + dual response |
+| `src/api/health-deals-rel.js`            | MODIFIED | +30   | Improved checks                 |
+| `tests/integration/schema-drift.test.js` | NEW      | 81    | Integration tests               |
+| `docs/SCHEMA_DRIFT_FIX.md`               | NEW      | 226   | Comprehensive documentation     |
 
 **Total**: 6 files, ~423 lines added/modified
 
@@ -225,6 +231,7 @@ Created `tests/integration/schema-drift.test.js` with tests for:
 ## Workflow Impact
 
 ### Before Fix
+
 ```
 Check Deals Relationship Health Endpoint
 ⚠️ Deals relationship health warning
@@ -234,6 +241,7 @@ Response: // Vercel serverless function: /api/health-deals-rel
 ```
 
 ### After Fix
+
 ```
 Check Deals Relationship Health Endpoint
 ✅ Deals relationship health OK
@@ -244,6 +252,7 @@ Response: {"ok":true,"classification":"ok","hasColumn":true,...}
 ## Database Schema Verification
 
 The fix confirms these migrations are working correctly:
+
 - `20251106000000_add_job_parts_vendor_id.sql` - Adds `vendor_id` column
 - `20251107000000_fix_job_parts_vendor_fkey.sql` - Adds FK constraint
 - `20251107093000_verify_job_parts_vendor_fk.sql` - Comprehensive verification
@@ -261,6 +270,7 @@ All include `NOTIFY pgrst, 'reload schema'` to ensure PostgREST recognition.
 ## Minimal Change Principle
 
 This fix adheres to the minimal change principle:
+
 - ✅ No changes to database schema or migrations
 - ✅ No changes to core application logic
 - ✅ No new external dependencies
@@ -270,6 +280,7 @@ This fix adheres to the minimal change principle:
 ## Future Improvements
 
 1. **RPC Functions**: Add dedicated Postgres functions for schema introspection:
+
    ```sql
    CREATE FUNCTION check_column_exists(table_name TEXT, column_name TEXT)
    RETURNS BOOLEAN AS $$
@@ -293,6 +304,7 @@ This fix adheres to the minimal change principle:
 ## Rollback Plan
 
 If issues arise, rollback is straightforward:
+
 ```bash
 git revert 4d0fa5d 7d105e7 b43a53a
 ```
@@ -302,6 +314,7 @@ This removes the plugin and reverts to original handlers. No database changes to
 ## Conclusion
 
 The nightly RLS drift check workflow is now fully functional. The fix:
+
 1. ✅ Resolves the immediate CI failure
 2. ✅ Improves schema detection accuracy
 3. ✅ Adds test coverage for future changes

@@ -9,7 +9,9 @@ When editing a deal that had a loaner assignment, the loaner number would not pe
 The issue was caused by a data structure mismatch between the database layer and the UI layer:
 
 ### Database Layer (`getDeal()`)
+
 Returns loaner data as flat fields:
+
 ```javascript
 {
   loaner_number: 'L-2025-001',
@@ -19,7 +21,9 @@ Returns loaner data as flat fields:
 ```
 
 ### Transformation Layer (`mapDbDealToForm()`)
+
 **Before Fix**: Only mapped the flat `loaner_number` field
+
 ```javascript
 {
   loaner_number: normalized?.loaner_number || '',
@@ -28,12 +32,14 @@ Returns loaner data as flat fields:
 ```
 
 ### UI Layer (`DealForm.jsx`)
+
 Expects a nested `loanerForm` object:
+
 ```javascript
 form.loanerForm = {
   loaner_number: '',
   eta_return_date: '',
-  notes: ''
+  notes: '',
 }
 ```
 
@@ -57,6 +63,7 @@ loanerForm: {
 ```
 
 This ensures:
+
 - The nested `loanerForm` structure is properly populated from database fields
 - Backward compatibility is maintained with code that uses flat `loaner_number` field
 - All three loaner fields (number, return date, notes) are properly mapped
@@ -81,6 +88,7 @@ const [initialSnapshot] = useState(() =>
 ```
 
 This ensures:
+
 - The form's dirty state detection includes loaner data
 - Users won't see false "unsaved changes" warnings
 - The loaner data is properly tracked for form validation
@@ -148,6 +156,7 @@ upsertLoanerAssignment (handles persistence)
 ## Minimal Change Approach
 
 This fix follows the principle of minimal changes:
+
 - Only 2 files modified (plus 1 new test file)
 - Only 7 lines added to production code
 - No changes to existing API contracts
@@ -167,6 +176,7 @@ While this fix resolves the immediate persistence issue, consider these future i
 ## Related Code
 
 The loaner persistence mechanism uses:
+
 - `upsertLoanerAssignment()` in dealService.js (lines 601-645)
 - `updateDeal()` calls this function when `customer_needs_loaner` is true (line 1669-1671)
 - Database table: `loaner_assignments` with columns: `job_id`, `loaner_number`, `eta_return_date`, `notes`, `returned_at`

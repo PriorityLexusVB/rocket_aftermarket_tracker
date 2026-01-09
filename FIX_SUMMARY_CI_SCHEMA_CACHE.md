@@ -9,10 +9,12 @@
 ## Executive Summary
 
 The Nightly RLS Drift & Health Check workflow was failing due to **TWO issues**:
+
 1. **Incorrect secret names in workflow**: Workflow referenced `secrets.SUPABASE_URL` but actual secrets are named `VITE_SUPABASE_URL`
 2. **Missing schema cache reload**: Recent migrations modified `job_parts` schema without `NOTIFY pgrst, 'reload schema'`
 
-**Solution**: 
+**Solution**:
+
 1. Fixed workflow to use correct secret names (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
 2. Created migration to execute `NOTIFY pgrst, 'reload schema';`
 
@@ -21,6 +23,7 @@ The Nightly RLS Drift & Health Check workflow was failing due to **TWO issues**:
 ## Problem Analysis
 
 ### What Failed
+
 - **Workflow**: Nightly RLS Drift & Health Check
 - **Step**: 14 "Fail Workflow on Issues"
 - **Trigger**: At least one of these conditions was true:
@@ -29,6 +32,7 @@ The Nightly RLS Drift & Health Check workflow was failing due to **TWO issues**:
   - `/api/health-deals-rel` endpoint returned `ok: false`
 
 ### Root Cause 1: Incorrect Secret Names (PRIMARY ISSUE)
+
 **The workflow was using wrong secret names**, causing environment variables to be empty:
 
 - **Workflow referenced**: `secrets.SUPABASE_URL` and `secrets.SUPABASE_ANON_KEY`
@@ -39,6 +43,7 @@ This caused all Supabase API calls to fail because the health endpoints couldn't
 **Other workflows (e2e.yml, copilot-setup-steps.yml) use the correct names**, which is why they work.
 
 ### Root Cause 2: Missing Schema Cache Reload (SECONDARY ISSUE)
+
 Two recent migrations modified `job_parts` schema but omitted the required `NOTIFY pgrst, 'reload schema';` command:
 
 1. **20251218042008_job_parts_unique_constraint_vendor_time.sql**
@@ -52,6 +57,7 @@ Two recent migrations modified `job_parts` schema but omitted the required `NOTI
    - ❌ **Missing**: `NOTIFY pgrst, 'reload schema';`
 
 ### Why This Matters
+
 PostgREST caches the database schema for performance. When schema changes occur (constraints, policies, FK relationships), PostgREST must be notified to refresh its cache. Without this:
 
 - **Health endpoints fail**: `/api/health-deals-rel` can't recognize the `jobs → job_parts → vendors` relationship
@@ -67,6 +73,7 @@ PostgREST caches the database schema for performance. When schema changes occur 
 **Changed in**: `.github/workflows/rls-drift-nightly.yml`
 
 Updated all references from:
+
 ```yaml
 env:
   VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -74,6 +81,7 @@ env:
 ```
 
 To:
+
 ```yaml
 env:
   VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -87,16 +95,19 @@ env:
 **New Migration**: `20251222040813_notify_pgrst_reload_schema.sql`
 
 **What it does**:
+
 - Executes `NOTIFY pgrst, 'reload schema';` to refresh PostgREST's schema cache
 - Logs success with detailed explanation
 
 **Why it's safe**:
+
 - No schema changes (no DROP, ALTER, or DELETE)
 - Idempotent (can run multiple times without side effects)
 - Fast execution (< 1 second)
 - No data modifications
 
 **Content**:
+
 ```sql
 -- Trigger PostgREST schema cache reload
 NOTIFY pgrst, 'reload schema';
@@ -117,6 +128,7 @@ END$$;
 ### Documentation: `docs/CI_FIX_SCHEMA_CACHE_RELOAD_20251222.md`
 
 Comprehensive documentation including:
+
 - Root cause analysis
 - Impact assessment
 - Prevention guidelines for future migrations
@@ -129,6 +141,7 @@ Comprehensive documentation including:
 ## Verification
 
 ### Pre-Deployment ✅
+
 - [x] Migration syntax validated
 - [x] Build passes: `pnpm run build` (10.38s, no errors)
 - [x] Lint passes: `pnpm run lint` (0 errors)
@@ -137,19 +150,25 @@ Comprehensive documentation including:
 - [x] Comprehensive documentation included
 
 ### Post-Deployment (Pending)
+
 Once the migration is applied to Supabase:
 
 1. **Verify schema cache reload**:
+
    ```bash
    bash scripts/verify-schema-cache.sh
    ```
+
    Expected: `✅ All Verification Checks Passed`
 
 2. **Check health endpoints**:
+
    ```bash
    curl -s "${VITE_SUPABASE_URL}/api/health-deals-rel" | jq .
    ```
+
    Expected response:
+
    ```json
    {
      "ok": true,
@@ -172,6 +191,7 @@ Once the migration is applied to Supabase:
 ## Prevention: Future Migration Guidelines
 
 ### Required for Schema-Modifying Migrations
+
 All migrations that modify the database schema **MUST** include this at the end:
 
 ```sql
@@ -180,6 +200,7 @@ NOTIFY pgrst, 'reload schema';
 ```
 
 ### What Requires NOTIFY?
+
 - Adding/modifying/dropping **foreign key constraints**
 - Adding/modifying/dropping **unique constraints**
 - Adding/modifying/dropping **indexes** (performance impact)
@@ -188,7 +209,9 @@ NOTIFY pgrst, 'reload schema';
 - Creating/modifying **database functions** used in queries
 
 ### Code Review Checklist
+
 When reviewing migration PRs:
+
 - [ ] Does the migration modify schema (constraints, indexes, policies, tables)?
 - [ ] Does the migration include `NOTIFY pgrst, 'reload schema';` at the end?
 - [ ] Is the migration documented with purpose and affected tables?
@@ -208,24 +231,26 @@ When reviewing migration PRs:
 
 ## Timeline
 
-| Date | Event |
-|------|-------|
-| Dec 18, 2025 | Migration `20251218042008` applied (unique constraint) |
-| Dec 19, 2025 | Migration `20251219120000` applied (RLS policies) |
-| Dec 22, 2025 04:00 UTC | CI workflow detected schema drift (Run #20421300544) |
-| Dec 22, 2025 04:08 UTC | Fix migration created (`20251222040813`) |
-| Dec 22, 2025 | **Pending**: Merge PR and deploy |
+| Date                   | Event                                                  |
+| ---------------------- | ------------------------------------------------------ |
+| Dec 18, 2025           | Migration `20251218042008` applied (unique constraint) |
+| Dec 19, 2025           | Migration `20251219120000` applied (RLS policies)      |
+| Dec 22, 2025 04:00 UTC | CI workflow detected schema drift (Run #20421300544)   |
+| Dec 22, 2025 04:08 UTC | Fix migration created (`20251222040813`)               |
+| Dec 22, 2025           | **Pending**: Merge PR and deploy                       |
 
 ---
 
 ## Success Criteria
 
 ✅ **Before Deployment**:
+
 - Migration created with proper syntax
 - Build and lint pass
 - Documentation complete
 
 ⏳ **After Deployment**:
+
 - Migration applied successfully
 - Health endpoints return `ok: true`
 - CI workflow passes
@@ -236,6 +261,7 @@ When reviewing migration PRs:
 ## Commands Reference
 
 ### Local Testing
+
 ```bash
 # Verify schema cache (local)
 bash scripts/verify-schema-cache.sh
@@ -248,6 +274,7 @@ pnpm run lint
 ```
 
 ### Production Verification
+
 ```bash
 # Check health endpoint
 curl -s "${VITE_SUPABASE_URL}/api/health-deals-rel" | jq .
@@ -257,7 +284,9 @@ supabase db push
 ```
 
 ### Manual Schema Reload (Emergency)
+
 If needed, execute directly in Supabase SQL Editor:
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```

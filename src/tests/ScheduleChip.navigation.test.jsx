@@ -151,7 +151,7 @@ describe('ScheduleChip Navigation', () => {
 
     const chip = screen.getByTestId('schedule-chip')
     fireEvent.keyDown(chip, { key: 'Enter', code: 'Enter' })
-    
+
     // Button click handler will fire on Enter automatically
     expect(chip).toBeInTheDocument()
   })

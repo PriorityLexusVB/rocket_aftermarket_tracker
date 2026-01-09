@@ -2,7 +2,7 @@
 
 **Commit:** 30cdfdc  
 **Branch:** worktree-2025-12-24T18-33-44  
-**Date:** 2024-12-24  
+**Date:** 2024-12-24
 
 ---
 
@@ -11,12 +11,14 @@
 **Problem:** Line items deleted in the UI would "resurrect" after save/reopen.
 
 **Root causes:**
+
 1. Unstable React keys (Date.now() changed on every render)
 2. No DB id in save payload (sync couldn't distinguish UPDATE from INSERT)
 3. "Delete all + insert all" pattern (changed all ids, broke hydration)
 4. Silent RLS blocks (no error when deletes failed)
 
 **Solution:**
+
 1. ✅ Stable identity: `id` (DB) + `clientId` (client-side UUID)
 2. ✅ Sync by ids: fetch existing → diff → delete/update/insert
 3. ✅ RLS guard: throw error if expected deletes but none executed
@@ -29,6 +31,7 @@
 ### Test 1: Delete + Add Scenario (The Classic Resurrection Bug)
 
 **Before this fix:**
+
 1. Create deal with items A, B, C
 2. Save
 3. Reopen in edit mode
@@ -38,6 +41,7 @@
 7. Reopen → **BUG:** See A, B, C, D, E (B resurrected! 5 items instead of 4)
 
 **After this fix:**
+
 1. Create deal with items A, B, C
 2. Save
 3. Reopen in edit mode
@@ -49,6 +53,7 @@
 ### Test 2: Edit Existing Item
 
 **Expected behavior:**
+
 1. Create deal with item A (price $100)
 2. Save
 3. Reopen in edit mode
@@ -57,12 +62,14 @@
 6. Reopen → Item A still has same id, only price changed
 
 **Verification:**
+
 - Check console logs: `[syncJobPartsForJob] Updated 1 rows`
 - NOT: `Deleted 1 rows` + `Inserted 1 rows`
 
 ### Test 3: RLS Block Detection
 
 **Setup:** (Requires admin access to test)
+
 1. Temporarily remove DELETE permission for job_parts
 2. Create deal with items A, B
 3. Save
@@ -70,17 +77,20 @@
 5. Save
 
 **Expected result:**
+
 - ❌ Error: "Failed to delete 1 job_parts (RLS policy may be blocking)"
 - NOT: Silent failure with B resurrecting later
 
 ### Test 4: Default Date Behavior
 
 **Expected behavior:**
+
 1. Open "New Deal" form
 2. Navigate to "Line Items" step
 3. Click "Add Item"
 
 **Verification:**
+
 - "Date Scheduled" field should default to **tomorrow's date** (local timezone)
 - NOT: Empty string or "invalid date"
 
@@ -102,6 +112,7 @@ When saving a deal, you should see logs like:
 ```
 
 **Key indicators:**
+
 - `toDelete: 1` → One item was removed in UI
 - `toUpdate: 2` → Two items were modified
 - `toInsert: 1` → One new item was added
@@ -143,6 +154,7 @@ ORDER BY created_at;
 ```
 
 **Expected behavior:**
+
 - Items you didn't delete should keep the same `id` across saves
 - `updated_at` timestamp changes on edits, but `id` stays the same
 - Only newly added items get fresh ids
@@ -165,6 +177,7 @@ pnpm run build
 ```
 
 **Safe to rollback because:**
+
 - No schema changes (Drizzle types unchanged)
 - Old function `replaceJobPartsForJob` still exists (just deprecated)
 - clientId addition is backward-compatible (ignored by DB)
@@ -178,7 +191,7 @@ pnpm run build
 ✅ **Test 3 passed:** RLS blocks surface as errors (not silent failures)  
 ✅ **Test 4 passed:** New items default to tomorrow's date  
 ✅ **Build passed:** `pnpm run build` succeeds  
-✅ **Tests passed:** `pnpm test` shows 918 passed | 2 skipped  
+✅ **Tests passed:** `pnpm test` shows 918 passed | 2 skipped
 
 ---
 
@@ -187,6 +200,7 @@ pnpm run build
 ### If items still resurrect:
 
 1. **Check payload includes id:**
+
    ```js
    console.log('Line items payload:', payload.lineItems)
    // Should show: [{ id: '...', product_id: '...', ... }, ...]
@@ -194,6 +208,7 @@ pnpm run build
    ```
 
 2. **Check sync logs:**
+
    ```js
    // Look for: [syncJobPartsForJob] Diff computed: { toDelete: N, ... }
    // If toDelete is 0 when you deleted items → payload missing ids
@@ -208,6 +223,7 @@ pnpm run build
 ### If items duplicate:
 
 1. **Check dedupe logic:**
+
    ```js
    // buildJobPartsPayload should log merged duplicates in dev mode
    console.warn('[buildJobPartsPayload] Merged duplicate line item:', ...)

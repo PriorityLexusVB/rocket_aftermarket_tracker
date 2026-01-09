@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * Prune Demo Jobs Script
- * 
+ *
  * Safety-first utility to identify and optionally remove demo/test jobs from the database.
- * 
+ *
  * Usage:
  *   node scripts/pruneDemoJobs.js                    # Dry-run mode (default)
  *   node scripts/pruneDemoJobs.js --apply            # Apply changes (requires confirmation)
  *   node scripts/pruneDemoJobs.js --help             # Show help
- * 
+ *
  * Guardrails:
  *   - Dry-run is the default mode (no destructive operations)
  *   - --apply requires interactive confirmation
@@ -25,7 +25,7 @@ const readline = require('readline')
 const args = process.argv.slice(2)
 const isDryRun = !args.includes('--apply')
 const showHelp = args.includes('--help') || args.includes('-h')
-const orgIdArg = args.find(arg => arg.startsWith('--org-id='))
+const orgIdArg = args.find((arg) => arg.startsWith('--org-id='))
 const orgId = orgIdArg ? orgIdArg.split('=')[1] : null
 
 // Help text
@@ -89,24 +89,24 @@ function identifyDemoJobs(jobs) {
     /@example\.com$/i,
   ]
 
-  return jobs.filter(job => {
+  return jobs.filter((job) => {
     // Check job number
-    if (job.job_number && demoPatterns.some(p => p.test(job.job_number))) {
+    if (job.job_number && demoPatterns.some((p) => p.test(job.job_number))) {
       return true
     }
 
     // Check customer name
-    if (job.customer_name && demoPatterns.some(p => p.test(job.customer_name))) {
+    if (job.customer_name && demoPatterns.some((p) => p.test(job.customer_name))) {
       return true
     }
 
     // Check customer email
-    if (job.customer_email && demoPatterns.some(p => p.test(job.customer_email))) {
+    if (job.customer_email && demoPatterns.some((p) => p.test(job.customer_email))) {
       return true
     }
 
     // Check title
-    if (job.title && demoPatterns.some(p => p.test(job.title))) {
+    if (job.title && demoPatterns.some((p) => p.test(job.title))) {
       return true
     }
 
@@ -121,15 +121,17 @@ function identifyDemoJobs(jobs) {
  */
 function exportToCSV(candidates, filepath) {
   const header = 'id,job_number,customer_name,customer_email,title,created_at\n'
-  const rows = candidates.map(job => {
+  const rows = candidates.map((job) => {
     return [
       job.id,
       job.job_number || '',
       job.customer_name || '',
       job.customer_email || '',
       job.title || '',
-      job.created_at || ''
-    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+      job.created_at || '',
+    ]
+      .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+      .join(',')
   })
 
   const csv = header + rows.join('\n')
@@ -145,11 +147,11 @@ function exportToCSV(candidates, filepath) {
 async function promptConfirmation(question) {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   })
 
-  return new Promise(resolve => {
-    rl.question(question, answer => {
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
       rl.close()
       resolve(answer.toLowerCase() === 'yes')
     })
@@ -176,7 +178,7 @@ async function main() {
       customer_name: 'Test Customer',
       customer_email: 'test@example.com',
       title: 'Demo Job 1',
-      created_at: '2025-01-01T00:00:00Z'
+      created_at: '2025-01-01T00:00:00Z',
     },
     {
       id: 'real-1',
@@ -184,7 +186,7 @@ async function main() {
       customer_name: 'John Doe',
       customer_email: 'john@realdomain.com',
       title: 'Real Job',
-      created_at: '2025-01-02T00:00:00Z'
+      created_at: '2025-01-02T00:00:00Z',
     },
     {
       id: 'demo-2',
@@ -192,8 +194,8 @@ async function main() {
       customer_name: 'Sample Data',
       customer_email: 'sample@test.com',
       title: 'Example Job',
-      created_at: '2025-01-01T00:00:00Z'
-    }
+      created_at: '2025-01-01T00:00:00Z',
+    },
   ]
 
   console.log(`Total jobs: ${mockJobs.length}`)
@@ -210,7 +212,7 @@ async function main() {
 
   // Show sample
   console.log('Sample candidates (first 5):')
-  candidates.slice(0, 5).forEach(job => {
+  candidates.slice(0, 5).forEach((job) => {
     console.log(`  - ${job.job_number || job.id}: ${job.customer_name}`)
   })
   console.log('')
@@ -218,13 +220,13 @@ async function main() {
   // Export to CSV
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   const csvPath = path.join(__dirname, '..', '.artifacts', `demo-jobs-${timestamp}.csv`)
-  
+
   // Ensure .artifacts directory exists
   const artifactsDir = path.join(__dirname, '..', '.artifacts')
   if (!fs.existsSync(artifactsDir)) {
     fs.mkdirSync(artifactsDir, { recursive: true })
   }
-  
+
   exportToCSV(candidates, csvPath)
 
   if (isDryRun) {
@@ -237,7 +239,7 @@ async function main() {
   console.log('\n⚠️  WARNING: You are about to DELETE the jobs listed above.')
   console.log('This action cannot be undone.')
   console.log('')
-  
+
   const confirmed = await promptConfirmation('Type "yes" to confirm deletion: ')
 
   if (!confirmed) {
@@ -248,9 +250,9 @@ async function main() {
   // In production, this would execute the deletion
   console.log('\n🔄 Deleting demo jobs...')
   console.log('(In production, this would execute SQL DELETE statements)')
-  
+
   // Mock deletion
-  candidates.forEach(job => {
+  candidates.forEach((job) => {
     console.log(`  ✓ Deleted: ${job.job_number || job.id}`)
   })
 
@@ -259,7 +261,7 @@ async function main() {
 }
 
 // Run
-main().catch(err => {
+main().catch((err) => {
   console.error('ERROR:', err.message)
   process.exit(1)
 })

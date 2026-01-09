@@ -1,6 +1,6 @@
 /**
  * Test suite for getOrgContext helper in dealService
- * 
+ *
  * This tests the extraction of org context (org_id, user_id, user_email)
  * which is used for RLS compliance in DB operations.
  */
@@ -15,11 +15,11 @@ const mockUserEmail = 'test@example.com'
 // Create a configurable mock for testing different scenarios
 let mockAuthResponse = {
   data: { user: { id: mockUserId, email: mockUserEmail } },
-  error: null
+  error: null,
 }
 let mockProfileResponse = {
   data: { org_id: mockOrgId },
-  error: null
+  error: null,
 }
 
 vi.mock('../lib/supabase', () => {
@@ -31,7 +31,7 @@ vi.mock('../lib/supabase', () => {
     limit: vi.fn(() => mockChain()),
     maybeSingle: vi.fn(() => Promise.resolve(mockProfileResponse)),
   })
-  
+
   return {
     supabase: {
       from: vi.fn(() => mockChain()),
@@ -62,11 +62,11 @@ beforeEach(() => {
   // Reset mocks to default successful state before each test
   mockAuthResponse = {
     data: { user: { id: mockUserId, email: mockUserEmail } },
-    error: null
+    error: null,
   }
   mockProfileResponse = {
     data: { org_id: mockOrgId },
-    error: null
+    error: null,
   }
 })
 
@@ -74,12 +74,12 @@ describe('dealService - getOrgContext', () => {
   describe('getOrgContext Helper - Behavioral Tests', () => {
     it('should return org context with user_id and user_email from auth', async () => {
       const context = await getOrgContext('test')
-      
+
       // Should have all three fields
       expect(context).toHaveProperty('org_id')
       expect(context).toHaveProperty('user_id')
       expect(context).toHaveProperty('user_email')
-      
+
       // user_id and user_email should come from auth
       expect(context.user_id).toBe(mockUserId)
       expect(context.user_email).toBe(mockUserEmail)
@@ -88,9 +88,9 @@ describe('dealService - getOrgContext', () => {
     it('should return context object with null values when auth fails', async () => {
       // Simulate auth failure
       mockAuthResponse = { data: { user: null }, error: { message: 'Not authenticated' } }
-      
+
       const context = await getOrgContext('test-auth-fail')
-      
+
       // Should still return context object (never throws)
       expect(context).toHaveProperty('org_id')
       expect(context).toHaveProperty('user_id')
@@ -101,7 +101,7 @@ describe('dealService - getOrgContext', () => {
 
     it('should return context object structure matching documented interface', async () => {
       const context = await getOrgContext('test-structure')
-      
+
       // Verify exact structure as documented
       const expectedKeys = ['org_id', 'user_id', 'user_email']
       expect(Object.keys(context).sort()).toEqual(expectedKeys.sort())
@@ -115,7 +115,7 @@ describe('dealService - getOrgContext', () => {
         user_id: 'expect: string UUID or null',
         user_email: 'expect: string email or null',
       }
-      
+
       expect(Object.keys(expectedStructure)).toEqual(['org_id', 'user_id', 'user_email'])
     })
 
@@ -125,7 +125,7 @@ describe('dealService - getOrgContext', () => {
         { step: 2, method: 'user_profiles.email = auth.email', priority: 'fallback' },
         { step: 3, method: 'return null', priority: 'no-org' },
       ]
-      
+
       expect(resolutionOrder).toHaveLength(3)
       expect(resolutionOrder[0].method).toContain('id')
       expect(resolutionOrder[1].method).toContain('email')
@@ -138,7 +138,7 @@ describe('dealService - getOrgContext', () => {
         onOtherError: 'log warning, return null org_id',
         throwBehavior: 'never throws',
       }
-      
+
       expect(errorBehavior.throwBehavior).toBe('never throws')
     })
   })
@@ -175,7 +175,7 @@ describe('dealService - getOrgContext', () => {
         transactionPayload: 'org_id from job or inferred',
         vehiclePayload: 'org_id from context when creating',
       }
-      
+
       expect(createDealUsage.jobPayload).toBeTruthy()
     })
 
@@ -185,7 +185,7 @@ describe('dealService - getOrgContext', () => {
         rlsRecovery: 'set job.org_id from user profile when NULL',
         transactionUpsert: 'set org_id from job or user profile',
       }
-      
+
       expect(updateDealUsage.rlsRecovery).toContain('user profile')
     })
   })

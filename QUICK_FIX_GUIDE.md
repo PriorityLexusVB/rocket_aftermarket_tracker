@@ -5,6 +5,7 @@
 A fixed branch has been prepared locally: **`fix/e2e-tests-pr-239-rebased`**
 
 This branch contains:
+
 - ✅ All changes from PR #239 (workflow fix + migration + docs)
 - ✅ All recent E2E authentication fixes from main
 - ✅ Clean git history (properly based on latest main)
@@ -19,6 +20,7 @@ git push origin fix/e2e-tests-pr-239-rebased
 ```
 
 Then:
+
 1. Go to GitHub and create a new PR from `fix/e2e-tests-pr-239-rebased` → `main`
 2. Title: "Fix CI workflow: Correct secret names and add schema cache reload"
 3. Description: "Replaces PR #239. Rebased on latest main to include E2E authentication fixes."
@@ -59,7 +61,7 @@ supabase/migrations/20251222040813_notify_pgrst_reload_schema.sql |  40 +++
 The original PR #239 branch was "grafted" (disconnected from main's history) and was missing these critical E2E authentication improvements:
 
 - ✅ `3506078` - "chore: default missing e2e env to empty strings"
-- ✅ `04df601` - "fix: skip e2e when auth env missing and harden health logging"  
+- ✅ `04df601` - "fix: skip e2e when auth env missing and harden health logging"
 - ✅ `f178122` - "refactor(e2e tests): streamline authentication handling..."
 
 The fixed branch includes ALL of these improvements because it's properly based on the latest main branch.
@@ -88,4 +90,3 @@ After pushing and creating the new PR, check:
 **Status**: ✅ Fix ready to apply  
 **Risk**: Low (changes are minimal and well-tested on main)  
 **Estimated Time**: 5 minutes (push + create PR + wait for CI)
-

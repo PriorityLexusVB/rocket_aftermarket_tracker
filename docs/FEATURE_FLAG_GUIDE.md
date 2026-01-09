@@ -361,11 +361,13 @@ console.log(`Last calendar render: ${renderTime}ms`)
 ### Troubleshooting
 
 **Metric not appearing in exports:**
+
 - Ensure `VITE_TELEMETRY_CALENDAR_MS=true` in your `.env` file
 - Restart the dev server after changing the flag
 - Check `isCalendarTelemetryEnabled()` returns `true`
 
 **Values seem incorrect:**
+
 - The metric stores the most recent render time only
 - Negative or invalid values are filtered out
 - Decimal values are rounded to nearest integer

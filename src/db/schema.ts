@@ -9,16 +9,8 @@
  * Reference: .github/copilot-instructions.md Section 20
  */
 
-import {
-  pgTable,
-  uuid,
-  text,
-  integer,
-  decimal,
-  boolean,
-  timestamp,
-} from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+import { pgTable, uuid, text, integer, decimal, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 
 /**
  * Vendors table
@@ -26,7 +18,9 @@ import { sql } from 'drizzle-orm';
  */
 export const vendors = pgTable('vendors', {
   // PK
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
 
   // Core fields
   name: text('name').notNull(),
@@ -46,7 +40,7 @@ export const vendors = pgTable('vendors', {
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-});
+})
 
 /**
  * Jobs table
@@ -55,7 +49,9 @@ export const vendors = pgTable('vendors', {
  */
 export const jobs = pgTable('jobs', {
   // PK
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
 
   // Core identifiers
   jobNumber: text('job_number').notNull().unique(),
@@ -92,7 +88,7 @@ export const jobs = pgTable('jobs', {
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-});
+})
 
 /**
  * Job Parts junction table
@@ -101,7 +97,9 @@ export const jobs = pgTable('jobs', {
  */
 export const jobParts = pgTable('job_parts', {
   // PK
-  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  id: uuid('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
 
   // Relationships
   jobId: uuid('job_id').notNull(),
@@ -113,5 +111,4 @@ export const jobParts = pgTable('job_parts', {
 
   // Note: totalPrice is a GENERATED ALWAYS column in Supabase and is not modeled here
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
-  
+})

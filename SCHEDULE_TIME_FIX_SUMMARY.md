@@ -3,6 +3,7 @@
 ## Issue Description
 
 **Symptom**: When editing a deal in DealFormV2, the Start Time and End Time fields in line items displayed as blank (--:-- --) even though:
+
 - Times were saved correctly to Supabase
 - Times appeared correctly in the calendar view
 - The Date Scheduled field displayed correctly
@@ -14,6 +15,7 @@
 The issue occurred due to a **double conversion** of time values:
 
 ### Data Flow (BEFORE FIX)
+
 1. **Database**: Stores times as UTC timestamptz
    - Example: `scheduled_start_time: '2025-12-15T19:00:00Z'` (7:00 PM UTC)
 
@@ -22,9 +24,11 @@ The issue occurred due to a **double conversion** of time values:
    - Returns: `scheduledStartTime: '14:00'` (2:00 PM ET)
 
 3. **DealFormV2 Initialization** ❌ **BUG HERE**:
+
    ```javascript
    scheduledStartTime: toTimeInputValue(item?.scheduled_start_time) || ''
    ```
+
    - Called `toTimeInputValue()` on already-formatted `'14:00'` string
    - `toTimeInputValue()` expects ISO datetime, not HH:MM format
    - Result: Returns empty string `''`
@@ -32,6 +36,7 @@ The issue occurred due to a **double conversion** of time values:
 4. **HTML Time Input**: Received empty string → displayed as blank (--:-- --)
 
 ### Why This Was Confusing
+
 - Save functionality worked fine (used `combineDateAndTime()` correctly)
 - Calendar displayed times correctly (used DB values directly)
 - Only the Edit modal time inputs were broken
@@ -44,6 +49,7 @@ The issue occurred due to a **double conversion** of time values:
 **File**: `src/components/deals/DealFormV2.jsx`
 
 **Change 1** - Initial line items state (lines 70-86):
+
 ```javascript
 // BEFORE (incorrect):
 scheduledStartTime: toTimeInputValue(item?.scheduled_start_time) || '',
@@ -55,12 +61,14 @@ scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
 ```
 
 **Change 2** - Job prop change effect (lines 161-177):
+
 ```javascript
 // Same fix applied in the useEffect that reloads line items
 // when job prop changes (for async data loading scenarios)
 ```
 
 ### Data Flow (AFTER FIX)
+
 1. **Database**: Stores times as UTC timestamptz
    - `scheduled_start_time: '2025-12-15T19:00:00Z'`
 
@@ -68,9 +76,11 @@ scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
    - Returns: `scheduledStartTime: '14:00'` ✓
 
 3. **DealFormV2 Initialization**: Uses HH:MM directly
+
    ```javascript
    scheduledStartTime: item?.scheduledStartTime || ''
    ```
+
    - No conversion needed - already in correct format ✓
 
 4. **HTML Time Input**: Receives `'14:00'` → displays correctly ✓
@@ -80,32 +90,38 @@ scheduledEndTime: item?.scheduled_end_time || item?.scheduledEndTime || '',
 The fix maintains proper timezone handling throughout the stack:
 
 ### On Edit (DB → Form)
+
 ```
 UTC in DB → formatTime() → HH:MM in ET → Form Input
 '2025-12-15T19:00:00Z' → '14:00'
 ```
 
 ### On Save (Form → DB)
+
 ```
 Date + Time → combineDateAndTime() → UTC ISO → DB
 '2025-12-15' + '14:00' → '2025-12-15T19:00:00Z'
 ```
 
 ### Helper Functions Used
+
 - **formatTime()**: Converts ISO datetime (any timezone) → HH:MM in America/New_York
 - **toDateInputValue()**: Converts ISO datetime → YYYY-MM-DD in America/New_York
 - **toTimeInputValue()**: Converts ISO datetime → HH:MM in America/New_York
 - **combineDateAndTime()**: Converts YYYY-MM-DD + HH:MM → ISO UTC
 
 ### Key Insight
+
 The bug occurred because we called `toTimeInputValue()` on an already-formatted HH:MM string. The function expects ISO datetime input and uses `new Date()` to parse it, which fails on bare time strings like `'14:00'`.
 
 ## Testing
 
 ### New Test Added
+
 **File**: `src/tests/dealFormV2.editTimes.test.js`
 
 Includes:
+
 - Documentation of the time mapping flow
 - Verification of correct HH:MM format preservation
 - Tests for missing time handling
@@ -113,6 +129,7 @@ Includes:
 - Manual verification steps
 
 ### Test Results
+
 ```
 ✅ dealFormV2.editTimes.test.js (4 tests)
 ✅ dealFormV2.fieldMapping.test.js (18 tests)
@@ -174,11 +191,13 @@ No database changes required.
 ## Related Code References
 
 ### Key Files
+
 - `src/components/deals/DealFormV2.jsx` - Main form component (FIXED)
 - `src/services/dealService.js` - mapDbDealToForm(), mapFormToDb()
 - `src/utils/dateTimeUtils.js` - Time conversion helpers
 
 ### Related Functions
+
 - `mapDbDealToForm()` - Lines 2198-2291 in dealService.js
 - `formatTime()` - Lines 110-125 in dateTimeUtils.js
 - `combineDateAndTime()` - Lines 154-173 in dateTimeUtils.js
@@ -187,6 +206,7 @@ No database changes required.
 ## No Regressions
 
 The fix is surgical and does not affect:
+
 - ✅ Save functionality (already working)
 - ✅ Create deal flow (uses empty strings, no conversion)
 - ✅ Calendar display (uses DB values directly)
@@ -199,6 +219,7 @@ The fix is surgical and does not affect:
 ## Conclusion
 
 This was a **minimal, targeted fix** that:
+
 1. ✅ Resolved the blank time display issue
 2. ✅ Maintained correct timezone handling (America/New_York)
 3. ✅ Did not break any existing functionality

@@ -20,14 +20,14 @@ The unique constraint prevents duplicate `job_parts` rows with the same logical 
 
 ### Logical Key Components
 
-| Column | Type | Nullable | Description |
-|--------|------|----------|-------------|
-| `job_id` | UUID | NO | Foreign key to jobs table |
-| `product_id` | UUID | NO | Foreign key to products table |
-| `vendor_id` | UUID | YES | Foreign key to vendors table (per-line vendor override) |
-| `promised_date` | DATE | YES | Promised completion date for this line item |
-| `scheduled_start_time` | TIMESTAMPTZ | YES | Scheduled start time window |
-| `scheduled_end_time` | TIMESTAMPTZ | YES | Scheduled end time window |
+| Column                 | Type        | Nullable | Description                                             |
+| ---------------------- | ----------- | -------- | ------------------------------------------------------- |
+| `job_id`               | UUID        | NO       | Foreign key to jobs table                               |
+| `product_id`           | UUID        | NO       | Foreign key to products table                           |
+| `vendor_id`            | UUID        | YES      | Foreign key to vendors table (per-line vendor override) |
+| `promised_date`        | DATE        | YES      | Promised completion date for this line item             |
+| `scheduled_start_time` | TIMESTAMPTZ | YES      | Scheduled start time window                             |
+| `scheduled_end_time`   | TIMESTAMPTZ | YES      | Scheduled end time window                               |
 
 ### NULL Handling
 
@@ -47,6 +47,7 @@ The constraint handles NULL values safely using one of two approaches depending 
 **Type**: UNIQUE INDEX
 
 **Columns** (in order):
+
 1. `job_id`
 2. `product_id`
 3. `vendor_id` (with NULL handling)
@@ -75,7 +76,7 @@ Run this query to verify there are no duplicate rows:
 
 ```sql
 -- Should return 0 rows
-SELECT 
+SELECT
   job_id,
   product_id,
   COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid) AS vendor_id_norm,
@@ -84,7 +85,7 @@ SELECT
   scheduled_end_time,
   COUNT(*) AS dup_count
 FROM public.job_parts
-GROUP BY 
+GROUP BY
   job_id,
   product_id,
   COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'::uuid),
@@ -102,7 +103,7 @@ Run this query to verify the index was created:
 
 ```sql
 -- Should return 1 row with the index name
-SELECT 
+SELECT
   schemaname,
   tablename,
   indexname,
@@ -114,6 +115,7 @@ WHERE schemaname = 'public'
 ```
 
 **Expected Result**: 1 row showing:
+
 - `schemaname`: `public`
 - `tablename`: `job_parts`
 - `indexname`: `job_parts_unique_job_product_vendor_time`
@@ -166,11 +168,11 @@ Example upsert pattern (PostgreSQL 15+):
 
 ```sql
 INSERT INTO public.job_parts (
-  job_id, 
-  product_id, 
-  vendor_id, 
-  promised_date, 
-  scheduled_start_time, 
+  job_id,
+  product_id,
+  vendor_id,
+  promised_date,
+  scheduled_start_time,
   scheduled_end_time,
   quantity_used,
   unit_price
@@ -178,11 +180,11 @@ INSERT INTO public.job_parts (
   $1, $2, $3, $4, $5, $6, $7, $8
 )
 ON CONFLICT (
-  job_id, 
-  product_id, 
-  vendor_id, 
-  promised_date, 
-  scheduled_start_time, 
+  job_id,
+  product_id,
+  vendor_id,
+  promised_date,
+  scheduled_start_time,
   scheduled_end_time
 ) NULLS NOT DISTINCT
 DO UPDATE SET
@@ -217,6 +219,6 @@ If you encounter problems with this constraint:
 
 ## Changelog
 
-| Date | Change | Author |
-|------|--------|--------|
+| Date       | Change                                   | Author        |
+| ---------- | ---------------------------------------- | ------------- |
 | 2025-12-18 | Initial unique constraint implementation | Copilot Agent |

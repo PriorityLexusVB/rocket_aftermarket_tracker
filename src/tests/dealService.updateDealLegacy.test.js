@@ -1,11 +1,11 @@
 /**
  * Test suite for updateDeal with legacy data scenarios
- * 
+ *
  * This tests the update deal flow for:
  * 1. Modern deals with proper org_id
  * 2. Legacy deals created before org scoping was enabled
  * 3. Deals with missing/null org_id that need recovery
- * 
+ *
  * These tests verify the fix for the "Transaction access denied" error
  * that occurs when updating deals, especially legacy deals.
  */
@@ -59,7 +59,7 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
     it('should document org_id resolution flow for updateDeal', () => {
       /**
        * org_id Resolution Flow for updateDeal:
-       * 
+       *
        * 1. Check if formState contains org_id (from mapDbDealToForm)
        * 2. If missing, call getUserOrgIdWithFallback which:
        *    a. Tries user_profiles.id = auth.uid()
@@ -69,7 +69,7 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
        * 4. Include org_id in:
        *    - jobs.update() payload
        *    - transactions INSERT/UPDATE
-       *    
+       *
        * This ensures legacy deals can be updated by users with valid org_id.
        */
       const resolutionFlow = {
@@ -85,13 +85,13 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
     it('should document how formState gets org_id from getDeal', () => {
       /**
        * The org_id flow from load to save:
-       * 
+       *
        * 1. getDeal() fetches deal with org_id from database
        * 2. mapDbDealToForm() preserves org_id in form state
        * 3. UI stores org_id in component state
        * 4. On save, form state (with org_id) passed to updateDeal()
        * 5. updateDeal() uses org_id from formState or falls back
-       * 
+       *
        * This ensures org_id survives the load→edit→save cycle.
        */
       const orgIdFlow = {
@@ -110,12 +110,12 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
     it('should document scenario: legacy deal with NULL org_id', () => {
       /**
        * Scenario: User edits a deal created before org scoping
-       * 
+       *
        * Initial State:
        * - jobs.org_id = NULL (legacy)
        * - transactions.org_id = NULL (legacy)
        * - user_profiles.org_id = 'org-valid-123' (user has valid org)
-       * 
+       *
        * Expected Behavior:
        * 1. Form loads deal with org_id = NULL
        * 2. updateDeal detects missing org_id
@@ -139,12 +139,12 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
     it('should document scenario: legacy deal, user has no org_id', () => {
       /**
        * Scenario: User with no org_id tries to edit legacy deal
-       * 
+       *
        * Initial State:
        * - jobs.org_id = NULL (legacy)
        * - transactions.org_id = NULL (legacy)
        * - user_profiles.org_id = NULL (user also not assigned)
-       * 
+       *
        * Expected Behavior:
        * 1. Form loads deal with org_id = NULL
        * 2. updateDeal detects missing org_id
@@ -167,12 +167,12 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
     it('should document scenario: modern deal with valid org_id', () => {
       /**
        * Scenario: Normal edit of a deal created after org scoping
-       * 
+       *
        * Initial State:
        * - jobs.org_id = 'org-abc-123'
        * - transactions.org_id = 'org-abc-123'
        * - user_profiles.org_id = 'org-abc-123' (matching)
-       * 
+       *
        * Expected Behavior:
        * 1. Form loads deal with org_id = 'org-abc-123'
        * 2. mapDbDealToForm preserves org_id
@@ -197,9 +197,9 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
     it('should document the RLS recovery mechanism', () => {
       /**
        * RLS Recovery for Transaction Updates:
-       * 
+       *
        * When transaction SELECT is blocked by RLS (common for legacy data):
-       * 
+       *
        * 1. Detect RLS error on SELECT
        * 2. Fetch job's org_id (may also be NULL for legacy)
        * 3. If job.org_id is NULL:
@@ -207,7 +207,7 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
        *    b. Update job.org_id with user's org_id (fixes the legacy job)
        * 4. Update transaction with resolved org_id
        * 5. If UPDATE affects 0 rows, INSERT new transaction
-       * 
+       *
        * This "lazy migration" approach fixes legacy data as it's accessed.
        */
       const recoverySteps = [
@@ -225,7 +225,7 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
 
   describe('Error Message Quality', () => {
     it('should provide clear guidance when org_id is missing', () => {
-      const errorMessage = 
+      const errorMessage =
         'Unable to determine your organization. This typically means:\n' +
         '• Your user profile may not be linked to an organization.\n' +
         '• Please contact your administrator to verify your account setup.'
@@ -234,7 +234,7 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
       expect(errorMessage).not.toContain('org_id')
       expect(errorMessage).not.toContain('RLS')
       expect(errorMessage).not.toContain('policy')
-      
+
       // Actionable
       expect(errorMessage).toContain('administrator')
       expect(errorMessage).toContain('verify')
@@ -249,7 +249,7 @@ describe('dealService.updateDeal - Legacy Data Scenarios', () => {
       // Actionable
       expect(errorMessage).toContain('Refreshing')
       expect(errorMessage).toContain('administrator')
-      
+
       // Not scary technical jargon
       expect(errorMessage).not.toContain('RLS')
       expect(errorMessage).not.toContain('policy')
@@ -261,7 +261,7 @@ describe('dealService.updateDeal - Validation', () => {
   it('should log warning when org_id cannot be resolved', () => {
     // The function logs a warning but doesn't throw
     // This allows tests and fallback scenarios to work
-    const warningMessage = 
+    const warningMessage =
       '[dealService:update] ⚠️ CRITICAL: org_id is missing! This may cause RLS violations. ' +
       'Ensure UI passes org_id or user is properly authenticated.'
 

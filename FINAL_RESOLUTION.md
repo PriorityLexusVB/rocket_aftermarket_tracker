@@ -17,10 +17,12 @@ This caused all environment variables to be empty, preventing the health endpoin
 ## Root Cause Discovery
 
 **Credit to @PriorityLexusVB** for providing screenshots of the GitHub secrets configuration, which revealed:
+
 - Actual secret names: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
 - Also configured: `E2E_EMAIL`, `E2E_PASSWORD` (for Playwright tests)
 
 Cross-referencing with other workflows showed:
+
 - ✅ `e2e.yml` uses: `secrets.VITE_SUPABASE_URL` (works correctly)
 - ✅ `copilot-setup-steps.yml` uses: `secrets.VITE_SUPABASE_URL` (works correctly)
 - ❌ `rls-drift-nightly.yml` uses: `secrets.SUPABASE_URL` (INCORRECT - causing failure)
@@ -30,22 +32,26 @@ Cross-referencing with other workflows showed:
 ## What Was Fixed
 
 ### Primary Fix: Workflow Secret Names
+
 **File**: `.github/workflows/rls-drift-nightly.yml`  
 **Commit**: 0b779cb
 
 Changed 4 locations from:
+
 ```yaml
 secrets.SUPABASE_URL → secrets.VITE_SUPABASE_URL
 secrets.SUPABASE_ANON_KEY → secrets.VITE_SUPABASE_ANON_KEY
 ```
 
 **Affected steps**:
+
 1. "Run Schema Drift Script" (lines 46-47)
 2. "Start Development Server" (lines 65-66)
 3. "Check Health Endpoint" (line 90)
 4. "Check Deals Relationship Health Endpoint" (line 112)
 
 ### Secondary Fix: Schema Cache Migration
+
 **File**: `supabase/migrations/20251222040813_notify_pgrst_reload_schema.sql`  
 **Commit**: dda2738
 
@@ -64,12 +70,14 @@ Addresses missing `NOTIFY pgrst, 'reload schema';` in recent migrations as a pre
 ## Impact Analysis
 
 ### Before Fix
+
 - ❌ Health endpoints couldn't connect to Supabase (no credentials)
 - ❌ All relationship checks failed
 - ❌ CI workflow detected this as schema drift
 - ❌ Workflow failed at step 14
 
 ### After Fix
+
 - ✅ Health endpoints can connect with proper credentials
 - ✅ Relationship checks can execute
 - ✅ Schema cache reload ensures relationships are recognized
@@ -80,6 +88,7 @@ Addresses missing `NOTIFY pgrst, 'reload schema';` in recent migrations as a pre
 ## Verification Steps
 
 ### Immediate Testing (Recommended)
+
 1. **Manually trigger workflow**:
    - Navigate to: [Actions → Nightly RLS Drift & Health Check](https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/actions/workflows/rls-drift-nightly.yml)
    - Click "Run workflow"
@@ -95,6 +104,7 @@ Addresses missing `NOTIFY pgrst, 'reload schema';` in recent migrations as a pre
    - ✅ Overall: SUCCESS
 
 ### Post-Merge
+
 - Wait for next nightly run (3 AM UTC)
 - Verify no new issues are created
 - Monitor for any relationship errors in production
@@ -103,13 +113,13 @@ Addresses missing `NOTIFY pgrst, 'reload schema';` in recent migrations as a pre
 
 ## Files Changed
 
-| File | Type | Description |
-|------|------|-------------|
-| `.github/workflows/rls-drift-nightly.yml` | **CRITICAL** | Fixed 4 secret name references |
-| `FIX_SUMMARY_CI_SCHEMA_CACHE.md` | Documentation | Updated with dual root cause |
-| `supabase/migrations/20251222040813_notify_pgrst_reload_schema.sql` | Migration | Schema cache reload (preventive) |
-| `docs/CI_FIX_SCHEMA_CACHE_RELOAD_20251222.md` | Documentation | Detailed analysis |
-| `TEST_PLAN_CI_SCHEMA_CACHE.md` | Documentation | Verification plan |
+| File                                                                | Type          | Description                      |
+| ------------------------------------------------------------------- | ------------- | -------------------------------- |
+| `.github/workflows/rls-drift-nightly.yml`                           | **CRITICAL**  | Fixed 4 secret name references   |
+| `FIX_SUMMARY_CI_SCHEMA_CACHE.md`                                    | Documentation | Updated with dual root cause     |
+| `supabase/migrations/20251222040813_notify_pgrst_reload_schema.sql` | Migration     | Schema cache reload (preventive) |
+| `docs/CI_FIX_SCHEMA_CACHE_RELOAD_20251222.md`                       | Documentation | Detailed analysis                |
+| `TEST_PLAN_CI_SCHEMA_CACHE.md`                                      | Documentation | Verification plan                |
 
 ---
 
@@ -125,12 +135,14 @@ Addresses missing `NOTIFY pgrst, 'reload schema';` in recent migrations as a pre
 ## Prevention
 
 ### Code Review Checklist for Workflows
+
 - [ ] Are secret names consistent across all workflows?
 - [ ] Do secret names match actual GitHub secret configuration?
 - [ ] Are environment variables properly set in all relevant steps?
 - [ ] Has the workflow been compared with similar working workflows?
 
 ### Recommended Improvements
+
 1. Document standard secret naming conventions (e.g., always use `VITE_` prefix)
 2. Create workflow validation script that checks secret names exist
 3. Add environment variable validation step in workflows (echo and verify they're set)
@@ -148,22 +160,23 @@ Addresses missing `NOTIFY pgrst, 'reload schema';` in recent migrations as a pre
 
 ## Timeline
 
-| Date/Time | Event |
-|-----------|-------|
-| Dec 18-19, 2025 | Migrations applied without `NOTIFY pgrst` |
-| Dec 22, 2025 04:00 UTC | CI workflow failed (Run #20421300544) |
-| Dec 22, 2025 04:08 UTC | Initial investigation: identified schema cache issue |
-| Dec 22, 2025 04:08 UTC | Created migration to reload schema cache |
-| Dec 22, 2025 04:17 UTC | **@PriorityLexusVB provided secret screenshots** |
+| Date/Time              | Event                                                     |
+| ---------------------- | --------------------------------------------------------- |
+| Dec 18-19, 2025        | Migrations applied without `NOTIFY pgrst`                 |
+| Dec 22, 2025 04:00 UTC | CI workflow failed (Run #20421300544)                     |
+| Dec 22, 2025 04:08 UTC | Initial investigation: identified schema cache issue      |
+| Dec 22, 2025 04:08 UTC | Created migration to reload schema cache                  |
+| Dec 22, 2025 04:17 UTC | **@PriorityLexusVB provided secret screenshots**          |
 | Dec 22, 2025 04:18 UTC | **Identified primary root cause: incorrect secret names** |
-| Dec 22, 2025 04:19 UTC | Fixed workflow secret names (commit 0b779cb) |
-| Dec 22, 2025 | **Pending**: Test workflow, merge PR, deploy |
+| Dec 22, 2025 04:19 UTC | Fixed workflow secret names (commit 0b779cb)              |
+| Dec 22, 2025           | **Pending**: Test workflow, merge PR, deploy              |
 
 ---
 
 ## Success Metrics
 
 ✅ **Completed**:
+
 - Root cause identified (incorrect secret names)
 - Workflow configuration fixed
 - Documentation updated
@@ -171,6 +184,7 @@ Addresses missing `NOTIFY pgrst, 'reload schema';` in recent migrations as a pre
 - All tests passed (build, lint)
 
 ⏳ **Pending**:
+
 - Manual workflow trigger to validate fix
 - Merge to main branch
 - Migration deployment

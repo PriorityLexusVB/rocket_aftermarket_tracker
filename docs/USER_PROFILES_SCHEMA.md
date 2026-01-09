@@ -75,6 +75,7 @@ E2E tests verify the capability system works correctly:
 ### Test Strategy
 
 Tests use two approaches:
+
 1. **Mock Route**: Override the health endpoint to simulate different schemas
 2. **Init Script**: Pre-set capability flags before app initialization
 
@@ -104,6 +105,7 @@ ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS display_name TEXT;
 ### Environment Variables
 
 Required for E2E tests:
+
 - `VITE_SUPABASE_URL`: Supabase project URL
 - `VITE_SUPABASE_ANON_KEY`: Supabase anonymous key
 - `E2E_EMAIL`: Test user email
@@ -112,6 +114,7 @@ Required for E2E tests:
 ### Health Check Failures
 
 If the health endpoint returns errors:
+
 - Check that Supabase is accessible
 - Verify RLS policies allow reads from `user_profiles`
 - Check that at least one name column exists

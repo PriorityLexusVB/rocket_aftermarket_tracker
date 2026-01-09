@@ -17,6 +17,7 @@ When editing an existing deal and clicking "Update Deal", line items would somet
 The bug was in `src/components/deals/DealFormV2.jsx`:
 
 **Double initialization of lineItems state:**
+
 1. Line 71-88: `useState` initialized `lineItems` from the `job` prop
 2. Line 129-183: `useEffect` also set `lineItems` when `job.id` changed
 3. Result: lineItems were set **twice** on first render
@@ -24,6 +25,7 @@ The bug was in `src/components/deals/DealFormV2.jsx`:
 ### Why This Caused Duplication
 
 When EditDealModal opened:
+
 1. DealFormV2 mounted with `job={dealData}` (loaded data)
 2. `useState` set lineItems from `job.lineItems` → **[A, B]**
 3. `useEffect` ran and set lineItems from `job.lineItems` again → **[A, B]** (replacing, not duplicating)
@@ -37,9 +39,7 @@ The duplication happened if the `job` object reference changed while the compone
 ```javascript
 // BEFORE (BUGGY):
 const [lineItems, setLineItems] = useState(
-  job?.lineItems?.length
-    ? job.lineItems.map((item) => ({ ...item, /* ... */ }))
-    : []
+  job?.lineItems?.length ? job.lineItems.map((item) => ({ ...item /* ... */ })) : []
 )
 
 // AFTER (FIXED):
@@ -47,6 +47,7 @@ const [lineItems, setLineItems] = useState([])
 ```
 
 **Let useEffect be the single source of truth:**
+
 - LineItems are now only set once by the useEffect when job data loads
 - The guard `initializedJobId.current !== job.id` ensures it runs exactly once per job
 - This guarantees fresh, non-duplicated data
@@ -54,6 +55,7 @@ const [lineItems, setLineItems] = useState([])
 ## Time Field Fix
 
 The time fields were handled correctly all along via `formatTime()` in `dateTimeUtils.js`:
+
 - Converts ISO timestamps from DB (e.g., `2025-01-20T09:30:00-05:00`)
 - To HH:MM format for time pickers (e.g., `09:30`)
 - Uses America/New_York timezone
@@ -73,12 +75,14 @@ The fix ensures time fields aren't lost during the load process.
 ## Verification Steps
 
 ### Unit Tests
+
 ```bash
 npm test -- deal-edit-line-items-duplication
 # Expected: 7 tests passing
 ```
 
 ### Full Test Suite
+
 ```bash
 npm test
 # Expected: 851 tests passing, 2 skipped
@@ -107,11 +111,13 @@ npm test
    - Verify: Still exactly 2 line items (no duplication)
 
 5. **Check database:**
+
    ```sql
    SELECT job_id, product_id, unit_price, scheduled_start_time, scheduled_end_time
    FROM job_parts
    WHERE job_id = '<your-job-id>';
    ```
+
    - Verify: Exactly 2 rows returned
    - Verify: Times are stored as timestamptz
 
@@ -140,11 +146,16 @@ The save pipeline (dealService.js `updateDeal` function):
 ## Monitoring
 
 Added development logging in useEffect:
+
 ```javascript
 console.log('[DealFormV2] Loaded line items:', {
   jobId: job.id,
   count: mappedLineItems.length,
-  sample: mappedLineItems[0] ? { /* ... */ } : null
+  sample: mappedLineItems[0]
+    ? {
+        /* ... */
+      }
+    : null,
 })
 ```
 
@@ -161,6 +172,7 @@ Look for this in browser console when opening edit modal to verify correct count
 ### Component Lifecycle
 
 **Before fix:**
+
 ```
 1. Modal opens
 2. DealFormV2 mounts
@@ -170,6 +182,7 @@ Look for this in browser console when opening edit modal to verify correct count
 ```
 
 **After fix:**
+
 ```
 1. Modal opens
 2. DealFormV2 mounts
@@ -190,6 +203,7 @@ useEffect(() => {
 ```
 
 The guard ensures:
+
 - Only runs in edit mode
 - Only runs when job data exists
 - Only runs once per job (checked by comparing IDs)
@@ -208,9 +222,11 @@ The guard ensures:
 ## Rollback Plan
 
 If issues arise, revert these commits:
+
 1. `cddc8c5` - "Fix duplicate line items in edit modal by removing useState initialization"
 
 The revert is safe because:
+
 - Only changes are to lineItems initialization
 - No database schema changes
 - No API changes

@@ -3,6 +3,7 @@
 ## Problem Statement
 
 When editing a deal multiple times in production, `job_parts` rows accumulate in the database:
+
 - Start with 1 row
 - Edit and save → 2 rows in DB
 - Edit and save again → 3 rows in DB
@@ -29,11 +30,13 @@ Despite the DELETE + INSERT pattern working correctly, extra rows keep getting a
 
 1. **Find a job with known line item count**
    - In Supabase, run:
+
    ```sql
-   SELECT job_id, product_id, unit_price 
-   FROM job_parts 
+   SELECT job_id, product_id, unit_price
+   FROM job_parts
    WHERE job_id = 'your-job-id';
    ```
+
    - Note the count (e.g., 1 row)
 
 2. **Edit the deal**
@@ -51,6 +54,7 @@ Despite the DELETE + INSERT pattern working correctly, extra rows keep getting a
 Look for these specific log messages:
 
 #### A. Loading Phase
+
 ```
 [DealFormV2] Loading line items into state: {
   jobId: "...",
@@ -61,11 +65,13 @@ Look for these specific log messages:
 ```
 
 **What to check:**
+
 - Are `fromJobProp` and `mappedCount` equal?
 - Do they match the DB row count?
 - If not, **duplicates entered during load**
 
 #### B. Save Phase - Form Payload
+
 ```
 [DealFormV2] Saving deal with payload: {
   mode: "edit",
@@ -76,11 +82,13 @@ Look for these specific log messages:
 ```
 
 **What to check:**
+
 - Are `lineItemsCount` and `lineItemsStateCount` equal?
 - Do they match the loaded count from step A?
 - If `lineItemsCount` > `lineItemsStateCount`, **duplication during payload build**
 
 #### C. Save Phase - Service Entry
+
 ```
 [dealService:updateDeal] ENTRY: {
   jobId: "...",
@@ -91,11 +99,13 @@ Look for these specific log messages:
 ```
 
 **What to check:**
+
 - Does `lineItemsCount` match the payload from step B?
 - Is `line_itemsCount` (snake_case) non-zero? (should be 0)
 - If count increased, **duplication in service call**
 
 #### D. Save Phase - After Normalization
+
 ```
 [dealService:updateDeal] AFTER mapFormToDb: {
   normalizedLineItemsCount: 1,  ← Should match ENTRY count
@@ -104,10 +114,12 @@ Look for these specific log messages:
 ```
 
 **What to check:**
+
 - Does `normalizedLineItemsCount` match ENTRY count?
 - If it increased, **duplication in mapFormToDb**
 
 #### E. Save Phase - Before INSERT
+
 ```
 [dealService:updateDeal] BEFORE INSERT: {
   normalizedLineItemsCount: 1,
@@ -117,10 +129,12 @@ Look for these specific log messages:
 ```
 
 **What to check:**
+
 - Does `rowsCount` match `normalizedLineItemsCount`?
 - If it increased, **duplication in toJobPartRows**
 
 #### F. Duplicate Detection Warning
+
 ```
 [toJobPartRows] ⚠️ DUPLICATE DETECTION: Multiple rows have the same product_id! {
   totalRows: 2,
@@ -130,6 +144,7 @@ Look for these specific log messages:
 ```
 
 **If you see this:**
+
 - **SMOKING GUN!** Duplicates are in the rows being inserted
 - The duplication happened in one of the earlier steps
 - Go back through logs A-E to find where count first increased
@@ -153,37 +168,47 @@ SELECT * FROM job_parts WHERE job_id = 'your-job-id';
 ## Common Patterns and Root Causes
 
 ### Pattern 1: Accumulation During Load
+
 ```
 Log A shows: fromJobProp: 2 (but DB has 1 row)
 ```
+
 **Root cause:** `getDeal()` or `mapDbDealToForm()` creating duplicates
 
 ### Pattern 2: Accumulation During Payload Build
+
 ```
 Log A: lineItemsStateCount: 1
 Log B: lineItemsCount: 2
 ```
+
 **Root cause:** DealFormV2.handleSave doubling the items
 
 ### Pattern 3: Accumulation During Normalization
+
 ```
 Log C: lineItemsCount: 1
 Log D: normalizedLineItemsCount: 2
 ```
+
 **Root cause:** `mapFormToDb()` processing items twice
 
 ### Pattern 4: Accumulation During Row Conversion
+
 ```
 Log D: normalizedLineItemsCount: 1
 Log E: rowsCount: 2
 ```
+
 **Root cause:** `toJobPartRows()` creating duplicate rows
 
 ### Pattern 5: DB Already Has Duplicates
+
 ```
 All logs show count: 1
 DB query shows: 2 rows
 ```
+
 **Root cause:** Previous bug instance left orphaned rows
 
 ## Reporting Findings
@@ -202,6 +227,7 @@ This will help pinpoint the exact location of the bug for a targeted fix.
 If you need an immediate workaround:
 
 ### Workaround 1: Manual DB Cleanup
+
 ```sql
 -- Find duplicates
 SELECT job_id, product_id, COUNT(*)
@@ -218,15 +244,18 @@ WHERE a.job_id = b.job_id
 ```
 
 ### Workaround 2: Hard Refresh
+
 ```
 Ctrl+Shift+R (Windows/Linux)
 Cmd+Shift+R (Mac)
 ```
+
 Clears any stale cached state.
 
 ## Next Steps
 
 Once you provide the console logs, I will:
+
 1. Identify the exact location where duplication occurs
 2. Implement a targeted fix
 3. Add a test that reproduces and prevents the issue

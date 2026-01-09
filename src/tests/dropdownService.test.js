@@ -1,6 +1,11 @@
 // dropdownService org+global scoping unit test
 import { describe, it, expect } from 'vitest'
-import { getVendors, getProducts, getUserProfiles, clearDropdownCache } from '../services/dropdownService'
+import {
+  getVendors,
+  getProducts,
+  getUserProfiles,
+  clearDropdownCache,
+} from '../services/dropdownService'
 
 describe('dropdownService org+global scoping', () => {
   it('should include org_id and NULL in queries for vendors', async () => {

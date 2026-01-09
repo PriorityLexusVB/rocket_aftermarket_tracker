@@ -4,13 +4,13 @@
 version: 2
 updates:
   # Root npm / pnpm dependencies (Next.js / React app)
-  - package-ecosystem: "npm"
-    directory: "/"  # location of package.json / lockfile
+  - package-ecosystem: 'npm'
+    directory: '/' # location of package.json / lockfile
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "05:00"
-      timezone: "America/New_York"
+      interval: 'weekly'
+      day: 'monday'
+      time: '05:00'
+      timezone: 'America/New_York'
 
     # Don't let Dependabot flood you
     open-pull-requests-limit: 3
@@ -18,36 +18,36 @@ updates:
     groups:
       # One PR for ALL security updates
       npm-security:
-        applies-to: "security-updates"
+        applies-to: 'security-updates'
         patterns:
-          - "*"
+          - '*'
 
       # One PR for ALL minor/patch version updates (prod + dev)
       npm-minor-patch:
-        applies-to: "version-updates"
+        applies-to: 'version-updates'
         update-types:
-          - "minor"
-          - "patch"
+          - 'minor'
+          - 'patch'
         patterns:
-          - "*"
+          - '*'
 
     # Ignore semver-major version updates
     ignore:
-      - dependency-name: "*"
+      - dependency-name: '*'
         update-types:
-          - "version-update:semver-major"
+          - 'version-update:semver-major'
 
     commit-message:
-      prefix: "chore(deps)"
+      prefix: 'chore(deps)'
 
   # GitHub Actions workflow updates
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "monthly"
-      day: "monday"
-      time: "05:00"
-      timezone: "America/New_York"
+      interval: 'monthly'
+      day: 'monday'
+      time: '05:00'
+      timezone: 'America/New_York'
 
     # At most one Actions PR at a time
     open-pull-requests-limit: 1
@@ -55,13 +55,13 @@ updates:
     groups:
       actions-all:
         patterns:
-          - "*"
+          - '*'
 
     # Ignore semver-major version updates for actions
     ignore:
-      - dependency-name: "*"
+      - dependency-name: '*'
         update-types:
-          - "version-update:semver-major"
+          - 'version-update:semver-major'
 
     commit-message:
-      prefix: "chore(ci)"
+      prefix: 'chore(ci)'

@@ -13,6 +13,7 @@ This occurred because the migration tried to drop the `pg_trgm` extension while 
 ## Root Cause
 
 The migration attempted to:
+
 1. Drop `pg_trgm` extension from the `public` schema
 2. Recreate it in the `extensions` schema
 3. Recreate the dependent indexes
@@ -55,7 +56,7 @@ After the migration applies successfully, you can validate with:
 
 ```sql
 -- Check extension location
-SELECT n.nspname as schema_name 
+SELECT n.nspname as schema_name
 FROM pg_extension e
 JOIN pg_namespace n ON n.oid = e.extnamespace
 WHERE e.extname = 'pg_trgm';
@@ -63,11 +64,12 @@ WHERE e.extname = 'pg_trgm';
 -- Count trigram indexes
 SELECT COUNT(*) as trigram_index_count
 FROM pg_indexes
-WHERE schemaname = 'public' 
+WHERE schemaname = 'public'
 AND indexdef LIKE '%gin_trgm_ops%';
 ```
 
 Expected results:
+
 - Extension should be in `extensions` schema
 - All 8 trigram indexes should be recreated successfully
 
@@ -78,6 +80,7 @@ Expected results:
 ## Migration Safety
 
 This fix is safe because:
+
 - Uses `DROP INDEX IF EXISTS` for idempotency
 - Uses `CREATE INDEX IF NOT EXISTS` for safe recreation
 - Does not change any data, only indexes and extension location
