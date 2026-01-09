@@ -49,12 +49,13 @@
     "drizzle-zod": "^0.8.3",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.556.0",
+    "next": "15.5.9",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
     "react-hook-form": "^7.68.0",
-    "react-router-dom": "6.28.0",
+    "react-router-dom": "6.30.2",
     "react-router-hash-link": "^2.4.3",
     "recharts": "^3.5.1",
     "redux": "^5.0.1",
@@ -147,6 +148,13 @@
     "vite": "5.4.21",
     "vite-tsconfig-paths": "3.6.0",
     "vitest": "^3.2.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.25.12",
+      "next": "15.5.9",
+      "@remix-run/router": "1.23.2"
+    }
   },
   "packageManager": "pnpm@10.15.0"
 }
