@@ -317,7 +317,14 @@ Change: [description of minimal change]
 **Intent:**
 
 - Provide Git strategy guidance for branch management, merge conflicts, and sync issues.
-- **NEVER execute Git commands directly** — always output a safe plan in text form for the user to review and execute.
+
+## GitOps Mode (Enabled)
+
+Agents may execute safe git commands to keep the tree clean and verification repeatable:
+- status/diff/restore/clean (with .env excludes), add/commit after verification.
+
+Do not run history-rewrite commands (reset --hard, rebase, force push) unless the user explicitly requests it.
+Always show status before/after cleanup.
 
 **Workflow:**
 
@@ -558,7 +565,7 @@ For initial setup and troubleshooting, refer to:
 
 ### Assumptions About Tooling
 
-- **Git**: Available and configured (but see Section 17, Mode 3: never execute Git commands directly without user approval).
+- **Git**: Available and configured (see GitOps Mode above for what’s allowed).
 - **Playwright Browsers**: Must be installed via `npx playwright install chromium --with-deps` before running E2E tests.
 - **Database Access**: Supabase project must be running and accessible; for schema changes, use migrations in `supabase/migrations/`.
 

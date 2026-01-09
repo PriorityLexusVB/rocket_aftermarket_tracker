@@ -35,7 +35,7 @@ const LoanerManagementDrawer = lazy(() => import('./pages/loaner-management-draw
 // Admin and utilities
 const AdminPage = lazy(() => import('./pages/admin'))
 const AdminCapabilities = lazy(() => import('./pages/AdminCapabilities'))
-const DebugAuthPage = lazy(() => import('./pages/debug-auth'))
+const DebugAuthPage = import.meta.env.DEV ? lazy(() => import('./pages/debug-auth')) : null
 const CommunicationsCenter = lazy(() => import('./pages/communications'))
 const ProfileSettings = lazy(() => import('./pages/profile'))
 

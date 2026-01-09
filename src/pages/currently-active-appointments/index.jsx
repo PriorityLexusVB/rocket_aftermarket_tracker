@@ -40,16 +40,18 @@ const NoOrgState = ({ onGoDebugAuth }) => {
               You’re signed in, but we couldn’t determine your organization. Ask an admin to assign
               your account to an org.
             </p>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={onGoDebugAuth}
-                className="inline-flex items-center gap-2 rounded-md bg-amber-700 px-3 py-2 text-sm font-medium text-white hover:bg-amber-800"
-              >
-                View debug auth
-                <ArrowUpRight className="h-4 w-4" />
-              </button>
-            </div>
+            {onGoDebugAuth ? (
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={onGoDebugAuth}
+                  className="inline-flex items-center gap-2 rounded-md bg-amber-700 px-3 py-2 text-sm font-medium text-white hover:bg-amber-800"
+                >
+                  View debug auth
+                  <ArrowUpRight className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -254,7 +256,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
   if (!orgId) {
     return (
       <AppLayout>
-        <NoOrgState onGoDebugAuth={() => navigate('/debug-auth')} />
+        <NoOrgState onGoDebugAuth={import.meta.env.DEV ? () => navigate('/debug-auth') : null} />
       </AppLayout>
     )
   }

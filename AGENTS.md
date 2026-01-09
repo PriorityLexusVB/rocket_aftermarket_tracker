@@ -24,6 +24,31 @@ These instructions apply to all agents working in this repo.
 - pnpm run typecheck (if present)
 - pnpm build (if present)
 
+## GitOps Mode (ENABLED)
+
+Agents are allowed to execute git commands directly in this repo to keep the working tree clean and to run verification.
+
+### Allowed git commands (agent may run without asking)
+- git status
+- git diff (and git diff --staged)
+- git restore --staged --worktree .
+- git clean -fd with explicit excludes for local env files:
+   - git clean -fd -e .env.local -e .env.e2e.local -e .env.*.local
+- git add <paths>
+- git commit -m "<message>" (only after tests/guards pass)
+
+### Restricted git commands (agent must ask first)
+- git reset --hard
+- git rebase (any form)
+- git push (any form), especially --force / --force-with-lease
+- git clean -fd with NO excludes
+- branch deletion or rewriting history
+
+### Safety defaults
+- Always show git status before and after cleanup commands.
+- Never delete local .env files.
+- Prefer additive commits. No history rewriting.
+
 Tip: For a quick MCP PASS/FAIL across Chrome DevTools, Supabase, GitHub, and Playwright, use the prompt in [.github/prompts/mcp-healthcheck.prompt.md](.github/prompts/mcp-healthcheck.prompt.md).
 
 ---
