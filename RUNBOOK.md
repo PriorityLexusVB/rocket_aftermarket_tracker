@@ -47,6 +47,21 @@ cp .env.example .env
 # Edit .env with your actual values
 ```
 
+Recommended local env files (never commit secrets):
+
+- `.env.local`: your normal local app settings (can point at Production if you intentionally want to view prod data).
+- `.env.e2e.local`: dedicated Playwright E2E settings (MUST be non-production). This file overrides `.env.local` for E2E runs.
+
+Key variables:
+
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`: Supabase client config used by the SPA.
+- `E2E_EMAIL`, `E2E_PASSWORD`: Playwright login credentials (only needed for E2E).
+
+Safety guard:
+
+- Playwright refuses to run E2E against Production Supabase.
+- Production is detected by the Supabase project ref `ogjtmtndgiqqdtwatsue` being present in `VITE_SUPABASE_URL`.
+
 3. **Start Supabase Local**
 
 ```bash
@@ -170,6 +185,18 @@ pnpm test
 pnpm build
 pnpm e2e --project=chromium
 ```
+
+### 8) Environment sanity check (avoid wrong-target accidents)
+
+Before any destructive actions (cleanup, migrations, seeding), confirm which Supabase you are targeting:
+
+- **Production Supabase** URL contains: `ogjtmtndgiqqdtwatsue.supabase.co`
+- **Non-production/E2E Supabase** should be a different `*.supabase.co` host.
+
+Recommended:
+
+- Keep Production values in Vercel **Production** environment variables.
+- Keep E2E values in `.env.e2e.local` so E2E cannot accidentally hit Production.
 
 ### Supabase Setup
 
