@@ -21,6 +21,14 @@ const IS_TEST_ENV =
   import.meta?.env &&
   (import.meta.env?.MODE === 'test' || import.meta.env?.VITEST)
 
+const SHOULD_LOG_SCHEMA_WARNINGS =
+  (typeof import.meta !== 'undefined' && import.meta?.env?.DEV) || IS_TEST_ENV
+
+function warnSchema(...args) {
+  if (!SHOULD_LOG_SCHEMA_WARNINGS) return
+  console.warn(...args)
+}
+
 // Some environments may not have loaner_assignments.dealer_id yet.
 // Cache the capability after first detection so we don't repeatedly trigger
 // PostgREST 400 responses on subsequent loaner saves.
@@ -1277,7 +1285,9 @@ async function attachOrCreateVehicleByStockNumber(
 // ✅ ENHANCED: Added schema preflight probe to detect missing columns before main query
 export async function getAllDeals() {
   try {
-    let includeNextPromisedIso = jobsHasNextPromisedIso !== false
+    // Safe default: do NOT request jobs.next_promised_iso unless we already know it exists.
+    // This avoids an initial PostgREST 400 on environments where the column is absent.
+    let includeNextPromisedIso = jobsHasNextPromisedIso === true
 
     // STEP 1: Schema preflight probe - detect missing columns BEFORE building main select
     // This prevents initial 400 errors on environments missing scheduled_* or vendor_id
@@ -1301,14 +1311,14 @@ export async function getAllDeals() {
           const msg = probeError.message.toLowerCase()
 
           if (msg.includes('scheduled_start_time') || msg.includes('scheduled_end_time')) {
-            console.warn(
+            warnSchema(
               `[dealService:getAllDeals] Preflight: classified as ${errorCode}; disabling capability`
             )
             disableJobPartsTimeCapability()
             incrementTelemetry(TelemetryKey.SCHEDULED_TIMES_FALLBACK)
           }
           if (msg.includes('vendor_id')) {
-            console.warn(
+            warnSchema(
               `[dealService:getAllDeals] Preflight: classified as ${errorCode}; disabling capability`
             )
             disableJobPartsVendorIdCapability()
@@ -1316,10 +1326,7 @@ export async function getAllDeals() {
           }
         }
       } catch (preflightError) {
-        console.warn(
-          '[dealService:getAllDeals] Preflight probe failed, continuing:',
-          preflightError
-        )
+        warnSchema('[dealService:getAllDeals] Preflight probe failed, continuing:', preflightError)
       }
     }
 
@@ -1407,7 +1414,7 @@ export async function getAllDeals() {
         msg.toLowerCase().includes('job_status') &&
         msg.includes('"draft"')
       ) {
-        console.warn(
+        warnSchema(
           '[dealService:getAllDeals] job_status enum does not support "draft"; retrying without it'
         )
         setJobsJobStatusDraftCapability(false)
@@ -1421,7 +1428,7 @@ export async function getAllDeals() {
         const errorCode = classifySchemaError(jobsError)
 
         if (/user_profiles/i.test(msg)) {
-          console.warn(`[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`)
+          warnSchema(`[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`)
           downgradeCapForErrorMessage(msg)
           continue // retry with degraded user profile fields
         }
@@ -1430,7 +1437,7 @@ export async function getAllDeals() {
 
         // Some environments don't have next_promised_iso on jobs yet.
         if (includeNextPromisedIso && lower.includes('next_promised_iso')) {
-          console.warn(
+          warnSchema(
             `[dealService:getAllDeals] Classified as ${errorCode}; next_promised_iso missing on jobs; retrying without it...`
           )
           setJobsNextPromisedIsoCapability(false)
@@ -1444,7 +1451,7 @@ export async function getAllDeals() {
           (lower.includes('scheduled_start_time') || lower.includes('scheduled_end_time'))
         ) {
           if (JOB_PARTS_HAS_PER_LINE_TIMES) {
-            console.warn(
+            warnSchema(
               `[dealService:getAllDeals] Classified as ${errorCode}; disabling per-line time capability and retrying...`
             )
             disableJobPartsTimeCapability()
@@ -1453,15 +1460,13 @@ export async function getAllDeals() {
           }
         }
 
-        console.warn(
+        warnSchema(
           `[dealService:getAllDeals] Missing column detected (${errorCode}), retrying if capability allows...`
         )
 
         if (lower.includes('job_parts') && lower.includes('vendor_id')) {
           if (JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE) {
-            console.warn(
-              `[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`
-            )
+            warnSchema(`[dealService:getAllDeals] Classified as ${errorCode}; degrading capability`)
             disableJobPartsVendorIdCapability()
             incrementTelemetry(TelemetryKey.VENDOR_ID_FALLBACK)
             continue
@@ -1470,7 +1475,7 @@ export async function getAllDeals() {
       }
       if (isMissingRelationshipError(jobsError) && JOB_PARTS_VENDOR_REL_AVAILABLE) {
         const errorCode = classifySchemaError(jobsError)
-        console.warn(
+        warnSchema(
           `[dealService:getAllDeals] Classified as ${errorCode}; disabling vendor relationship and retrying...`
         )
         disableJobPartsVendorRelCapability()
