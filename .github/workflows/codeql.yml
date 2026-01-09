@@ -2,16 +2,16 @@
 # Auto-generated for Rocket Aftermarket Tracker
 # Languages detected: JavaScript/TypeScript
 
-name: "CodeQL"
+name: 'CodeQL'
 
 on:
   push:
-    branches: ["main"]
+    branches: ['main']
   pull_request:
-    branches: ["main"]
+    branches: ['main']
   schedule:
     # Weekly security scan every Monday at 10:00 UTC (5:00 AM EST / 6:00 AM EDT)
-    - cron: "0 10 * * 1"
+    - cron: '0 10 * * 1'
 
 permissions:
   actions: read
@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["javascript-typescript"]
+        language: ['javascript-typescript']
         # CodeQL supports: 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'swift'
         # Only javascript-typescript is relevant for this repository
 
@@ -50,4 +50,4 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
-          category: "/language:${{ matrix.language }}"
+          category: '/language:${{ matrix.language }}'

@@ -183,17 +183,17 @@ export function validateScheduleRange(startIso, endIso) {
     if (isNaN(s.getTime()) || isNaN(e.getTime())) errors.push('invalid')
     else if (e.getTime() <= s.getTime()) errors.push('end_not_after_start')
   }
-  
+
   // Map error codes to user-friendly messages
   const errorMessages = {
     start_required: 'Start time is required',
     end_required: 'End time is required',
     invalid: 'Invalid date/time format',
-    end_not_after_start: 'End time must be after start time'
+    end_not_after_start: 'End time must be after start time',
   }
-  
+
   const error = errors.length > 0 ? errorMessages[errors[0]] || 'Invalid schedule' : ''
-  
+
   return { valid: errors.length === 0, errors, error }
 }
 
@@ -201,10 +201,10 @@ export function validateScheduleRange(startIso, endIso) {
  * Convert an ISO datetime string to a date input value (YYYY-MM-DD).
  * Handles full ISO strings like "2025-12-12T18:35:00+00:00" and converts them
  * to the format expected by <input type="date">.
- * 
+ *
  * @param {string|Date} isoOrDate - ISO datetime string or Date object
  * @returns {string} - Date string in YYYY-MM-DD format for date inputs
- * 
+ *
  * @example
  * toDateInputValue('2025-12-12T18:35:00+00:00') // => "2025-12-12"
  * toDateInputValue('2025-12-12') // => "2025-12-12"
@@ -231,10 +231,10 @@ export function toDateInputValue(isoOrDate) {
  * Convert an ISO datetime string to a time input value (HH:mm).
  * Handles full ISO strings like "2025-12-12T18:35:00+00:00" and converts them
  * to the format expected by <input type="time">.
- * 
+ *
  * @param {string|Date} isoOrDate - ISO datetime string or Date object
  * @returns {string} - Time string in HH:mm format for time inputs
- * 
+ *
  * @example
  * toTimeInputValue('2025-12-12T18:35:00+00:00') // => "13:35" (when ET is -05:00)
  * toTimeInputValue('2025-12-12T13:07:00Z') // => "08:07" (when ET is -05:00)

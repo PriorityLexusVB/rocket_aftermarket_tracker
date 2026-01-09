@@ -7,14 +7,16 @@
 **Build Status:** ✅ Passing (9.43s)
 
 ### User-Reported Problems
+
 1. ❌ Cannot type spaces in text boxes
-2. ❌ Update errors when saving deals  
+2. ❌ Update errors when saving deals
 3. ❌ Form flow/display/edit issues
 4. ❌ Potential file deployment issues
 
 ### Root Causes Identified
 
 #### 1. **TEST FAILURES - UUID Validation Too Strict**
+
 **Location:** `src/components/deals/DealFormV2.jsx` lines 322-328  
 **Issue:** Strict UUID format validation fails test mocks  
 **Impact:** 4 test failures, blocks valid org_ids like shortened formats
@@ -31,6 +33,7 @@ if (!uuidRegex.test(String(orgId))) {
 **Fix:** Relax validation or update mocks to use valid UUIDs
 
 #### 2. **CONTROLLED INPUT WARNINGS - Missing Fallbacks**
+
 **Location:** Throughout `DealFormV2.jsx`  
 **Issue:** Inputs use `value={field}` instead of `value={field || ''}`
 
@@ -50,10 +53,12 @@ if (!uuidRegex.test(String(orgId))) {
 **Fix:** Add `|| ''` fallback to all input value props
 
 #### 3. **SPACE INPUT ISSUES - Historical Pattern**
+
 **Location:** Customer name and related inputs  
 **Status:** ✅ PARTIALLY FIXED in PRs #153, #152, #140
 
 **Previous Fixes Applied:**
+
 - Removed autocomplete feature (PR #153)
 - Removed capitalize CSS (PR #140)
 - Added titleCase on blur (PRs #153, #152)
@@ -61,10 +66,12 @@ if (!uuidRegex.test(String(orgId))) {
 **Remaining Issue:** Controlled input fallbacks needed (see #2 above)
 
 #### 4. **ORG_ID PROPAGATION - Recurring Theme**
+
 **Location:** `dealService.js`, `DealFormV2.jsx`  
 **Status:** ✅ FIXED in PRs #155, #153, #142, #141
 
 **Previous Fixes:**
+
 - Added org_id to transactions (PR #141)
 - Strengthened org_id validation (PR #155, #153)
 - Added UUID format validation (PR #155)
@@ -79,11 +86,13 @@ if (!uuidRegex.test(String(orgId))) {
 ### Failed Tests (4 total)
 
 #### Test 1: `step16-deals-list-verification.test.jsx`
+
 **Test:** "should show scheduling status with proper indicators"
 **Root Cause:** TBD - needs investigation
 **Priority:** Medium
 
 #### Tests 2-4: `step23-dealformv2-customer-name-date.test.jsx`
+
 All failing due to same root cause:
 
 1. "should show vendor select per line item when is_off_site is true"
@@ -91,6 +100,7 @@ All failing due to same root cause:
 3. "should include vendor_id in line item payload when off-site"
 
 **Root Cause:** Invalid org_id mock
+
 ```javascript
 // Mock in test:
 default: () => ({ orgId: 'test-org-id' }) // ❌ NOT a valid UUID
@@ -119,31 +129,37 @@ C. Add environment variable to skip UUID validation in test mode
 ### PR Timeline & Themes
 
 **PR #155 (Nov 21):** Fix render-time side effects & org validation
+
 - Separated validation logic from side effects
 - Enhanced UUID format validation for org_id
 - Gated debug logs
 
 **PR #153 (Nov 20):** Remove autocomplete & strengthen org_id validation
+
 - **Solved space input issue:** Removed customer name autocomplete
 - Added tenant loading state check
 - Added UUID format validation
 - Gated console.log statements
 
-**PR #152 (Nov 20):** Remove autocomplete & strengthen org_id  validation (duplicate)
+**PR #152 (Nov 20):** Remove autocomplete & strengthen org_id validation (duplicate)
+
 - Similar changes to #153
 
 **PR #141 (Nov 18):** Fix RLS on transactions
+
 - **Solved update errors:** Added org_id to transaction records
 - Fixed RLS violations
 - Added comprehensive tests
 
 **PR #140 (No date):** Remove capitalize CSS
+
 - **Partially solved space input:** Removed capitalize CSS class
 - Relied on titleCase() on blur
 
 ### Recurring Pattern Detected
 
 **Problem Cycle:**
+
 1. User reports input/validation issue
 2. Fix applied (autocomplete, CSS, validation)
 3. Tests mock org_id with invalid format
@@ -158,6 +174,7 @@ C. Add environment variable to skip UUID validation in test mode
 ## Current Form Architecture
 
 ### DealFormV2.jsx Structure
+
 ```
 DealFormV2 (1,480 lines)
 ├── State Management
@@ -181,6 +198,7 @@ DealFormV2 (1,480 lines)
 ```
 
 ### Data Flow
+
 ```
 User Input → State Update → Validation → API Call → Database
           ↓                    ↓
@@ -189,6 +207,7 @@ User Input → State Update → Validation → API Call → Database
 ```
 
 ### Known Issues
+
 1. ✅ **Autocomplete:** FIXED - Removed in PR #153
 2. ✅ **Capitalize CSS:** FIXED - Removed in PR #140
 3. ⚠️ **Controlled Inputs:** PARTIAL - Need `|| ''` fallbacks
@@ -203,8 +222,10 @@ User Input → State Update → Validation → API Call → Database
 ### Immediate (Test Failures)
 
 #### Fix 1: Update Test Mocks with Valid UUIDs
+
 **File:** `src/tests/step23-dealformv2-customer-name-date.test.jsx`
 **Change:**
+
 ```javascript
 // Before:
 vi.mock('../hooks/useTenant', () => ({
@@ -218,8 +239,10 @@ vi.mock('../hooks/useTenant', () => ({
 ```
 
 #### Fix 2: Update User Mock with Valid UUID
+
 **File:** Same
 **Change:**
+
 ```javascript
 // Before:
 vi.mock('../contexts/AuthContext', () => ({
@@ -233,12 +256,14 @@ vi.mock('../contexts/AuthContext', () => ({
 ```
 
 #### Fix 3: Investigate step16 Test Failure
+
 **File:** `src/tests/step16-deals-list-verification.test.jsx`
 **Action:** Debug scheduling status indicator logic
 
 ### Short-term (Controlled Inputs)
 
 #### Fix 4: Add Fallbacks to All Input Values
+
 **File:** `src/components/deals/DealFormV2.jsx`
 **Changes:** Add `|| ''` to all input value props
 
@@ -263,12 +288,14 @@ vi.mock('../contexts/AuthContext', () => ({
 ## Deal Form V3 Proposal
 
 ### Goals
+
 1. Eliminate recurring issues
 2. Improve maintainability
 3. Better test coverage
 4. Cleaner architecture
 
 ### Proposed Structure
+
 ```
 DealFormV3/
 ├── DealFormV3.jsx (main component, 200 lines)
@@ -287,6 +314,7 @@ DealFormV3/
 ```
 
 ### Key Improvements
+
 1. **All inputs use FormInput component:** Enforces `|| ''` pattern
 2. **Validation hooks return objects:** No side effects on render
 3. **State reducer pattern:** Cleaner state updates
@@ -294,6 +322,7 @@ DealFormV3/
 5. **Error boundaries:** Graceful error handling
 
 ### Migration Strategy
+
 1. Create V3 alongside V2
 2. Feature flag: `VITE_DEAL_FORM_V3=true`
 3. Test thoroughly in parallel
@@ -305,30 +334,35 @@ DealFormV3/
 ## Action Plan
 
 ### Phase 1: Fix Test Failures (CURRENT)
+
 - [x] Analyze 4 failing tests
 - [ ] Update test mocks with valid UUIDs
 - [ ] Fix step16 test failure
 - [ ] Verify all tests passing
 
 ### Phase 2: Fix Controlled Inputs
+
 - [ ] Audit all input elements
 - [ ] Add `|| ''` fallbacks
 - [ ] Test controlled input behavior
 - [ ] Verify no warnings
 
 ### Phase 3: V3 Planning
+
 - [ ] Design detailed architecture
 - [ ] Create proof of concept
 - [ ] Get stakeholder approval
 - [ ] Set timeline
 
 ### Phase 4: V3 Implementation
+
 - [ ] Create hooks
 - [ ] Create sub-components
 - [ ] Add comprehensive tests
 - [ ] Feature flag integration
 
 ### Phase 5: Migration & Cleanup
+
 - [ ] Parallel testing
 - [ ] Gradual rollout
 - [ ] Monitor production
@@ -339,12 +373,14 @@ DealFormV3/
 ## Metrics
 
 ### Current State
+
 - **Lines of Code:** 1,480 (DealFormV2.jsx)
 - **Test Coverage:** 99.1% passing (674/680)
 - **Build Time:** 9.43s
 - **Known Issues:** 4 test failures, controlled input warnings
 
 ### Target State (V3)
+
 - **Lines of Code:** ~800 (split across files)
 - **Test Coverage:** 100% (680/680)
 - **Build Time:** <10s
@@ -355,16 +391,19 @@ DealFormV3/
 ## Conclusion
 
 The deal form has undergone significant improvements through recent PRs, solving most core issues:
+
 - ✅ Space input issues (autocomplete, CSS)
 - ✅ RLS errors (org_id in transactions)
 - ✅ Org validation (UUID format, loading state)
 
 **Remaining Issues:**
+
 1. Test failures due to strict UUID validation
 2. Controlled input warnings need `|| ''` fallbacks
 3. One scheduling indicator test failure
 
-**Recommendation:** 
+**Recommendation:**
+
 - **Immediate:** Fix 4 test failures (1-2 hour effort)
 - **Short-term:** Add controlled input fallbacks (2-3 hour effort)
 - **Long-term:** Consider V3 refactor for maintainability (1-2 week effort)

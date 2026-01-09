@@ -3,21 +3,23 @@
 ## Issue 1: Customer Name Spacing Problem
 
 ### Before Fix ❌
+
 ```
 User types: "R" → "o" → "b" → " " → "B" → "r" → "a" → "s" → "c" → "o"
                                   ↑
                             useEffect runs here (and on EVERY keystroke!)
                             This could interfere with the space character
-                            
+
 Result: "robbrasco" (space lost!)
 ```
 
 ### After Fix ✅
+
 ```
 User types: "R" → "o" → "b" → " " → "B" → "r" → "a" → "s" → "c" → "o"
                                   ↑
                             Input is preserved as-is
-                            
+
 User clicks away (blur event) → titleCase applied
 Result: "Rob Brasco" ✓
 ```
@@ -25,6 +27,7 @@ Result: "Rob Brasco" ✓
 ## Issue 2: RLS Policy Violation
 
 ### Before Fix ❌
+
 ```
 Form loads → useTenant starts fetching orgId (takes ~100ms)
                 ↓
@@ -38,6 +41,7 @@ Form loads → useTenant starts fetching orgId (takes ~100ms)
 ```
 
 ### After Fix ✅
+
 ```
 Form loads → useTenant starts fetching orgId
                 ↓
@@ -57,6 +61,7 @@ Form loads → useTenant starts fetching orgId
 ### DealFormV2.jsx - useEffect Fix
 
 **BEFORE:**
+
 ```javascript
 useEffect(() => {
   if (mode === 'edit' && customerData.customerName) {
@@ -71,6 +76,7 @@ useEffect(() => {
 ```
 
 **AFTER:**
+
 ```javascript
 useEffect(() => {
   if (mode === 'edit' && job?.id && initializedJobId.current === job.id) {
@@ -80,37 +86,41 @@ useEffect(() => {
     // ... normalization logic
   }
 }, [mode, job?.id])
-//         ^^^^^^^ 
+//         ^^^^^^^
 //         FIXED: Only runs when job initially loads!
 ```
 
 ### DealFormV2.jsx - Loading Check Fix
 
 **BEFORE:**
+
 ```javascript
 <Button
   onClick={handleNext}
   disabled={!hasRequiredFields() || isSubmitting}
-//          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//          PROBLEM: Doesn't check if orgId is loaded!
+  //          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  //          PROBLEM: Doesn't check if orgId is loaded!
 >
   Next → Line Items
 </Button>
 ```
 
 **AFTER:**
-```javascript
-{tenantLoading && (
-  <div className="mb-4 p-3 bg-blue-50 border border-blue-200">
-    <strong>Loading:</strong> Initializing organization context...
-  </div>
-)}
 
-<Button
+```javascript
+{
+  tenantLoading && (
+    <div className="mb-4 p-3 bg-blue-50 border border-blue-200">
+      <strong>Loading:</strong> Initializing organization context...
+    </div>
+  )
+}
+
+;<Button
   onClick={handleNext}
   disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
-//          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//          FIXED: Now checks tenantLoading!
+  //          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  //          FIXED: Now checks tenantLoading!
 >
   Next → Line Items
 </Button>
@@ -121,6 +131,7 @@ useEffect(() => {
 ### New Test: dealFormV2-spacing-fix.test.jsx
 
 **Test 1: Preserve spaces during typing**
+
 ```javascript
 // Type "Rob Brasco" character by character
 input.value = "R" → "Ro" → "Rob" → "Rob " → "Rob B" → ... → "Rob Brasco"
@@ -128,6 +139,7 @@ input.value = "R" → "Ro" → "Rob" → "Rob " → "Rob B" → ... → "Rob Bra
 ```
 
 **Test 2: Apply titleCase on blur**
+
 ```javascript
 // Type lowercase
 input.value = "rob brasco"
@@ -138,13 +150,15 @@ expect(input.value).toBe("Rob Brasco") ✓
 ```
 
 **Test 3: No normalization in create mode**
+
 ```javascript
 // In create mode, normalization useEffect should NOT run on keystroke
-input.value = "John Doe"
-expect(input.value).toBe("John Doe") // Exactly as typed ✓
+input.value = 'John Doe'
+expect(input.value).toBe('John Doe') // Exactly as typed ✓
 ```
 
 **Test 4: Normalize once in edit mode**
+
 ```javascript
 // In edit mode with job data
 job = { customer_name: "john doe" }
@@ -155,23 +169,25 @@ expect(input.value).toBe("John Doe") ✓
 ## Impact Analysis
 
 ### User Experience
-| Aspect | Before | After |
-|--------|--------|-------|
-| Typing customer names with spaces | ❌ May lose spaces | ✅ Preserved |
-| Form submission timing | ❌ Can proceed too early | ✅ Waits for orgId |
-| Error messages | ❌ Cryptic RLS errors | ✅ Clear loading indicator |
-| Data integrity | ❌ Incorrect names saved | ✅ Names saved correctly |
+
+| Aspect                            | Before                   | After                      |
+| --------------------------------- | ------------------------ | -------------------------- |
+| Typing customer names with spaces | ❌ May lose spaces       | ✅ Preserved               |
+| Form submission timing            | ❌ Can proceed too early | ✅ Waits for orgId         |
+| Error messages                    | ❌ Cryptic RLS errors    | ✅ Clear loading indicator |
+| Data integrity                    | ❌ Incorrect names saved | ✅ Names saved correctly   |
 
 ### Technical Metrics
-| Metric | Result |
-|--------|--------|
-| Tests passing | ✅ 682/682 (100%) |
-| Test coverage added | ✅ 4 new tests |
-| Build status | ✅ Success |
-| Linter | ✅ Pass |
-| Security scan (CodeQL) | ✅ 0 alerts |
-| Files modified | 3 (2 code, 1 test, 1 doc) |
-| Lines changed | ~50 |
+
+| Metric                 | Result                    |
+| ---------------------- | ------------------------- |
+| Tests passing          | ✅ 682/682 (100%)         |
+| Test coverage added    | ✅ 4 new tests            |
+| Build status           | ✅ Success                |
+| Linter                 | ✅ Pass                   |
+| Security scan (CodeQL) | ✅ 0 alerts               |
+| Files modified         | 3 (2 code, 1 test, 1 doc) |
+| Lines changed          | ~50                       |
 
 ## Validation Checklist
 
@@ -190,11 +206,11 @@ expect(input.value).toBe("John Doe") ✓
 ## Related Files
 
 - **Source Code**: `src/components/deals/DealFormV2.jsx`
-- **Tests**: 
+- **Tests**:
   - `src/tests/dealFormV2-spacing-fix.test.jsx` (NEW)
   - `src/tests/step23-dealformv2-customer-name-date.test.jsx` (existing)
 - **Documentation**: `FORM_BUGS_FIX_SUMMARY.md` (NEW)
-- **Utilities**: 
+- **Utilities**:
   - `src/lib/format.js` (titleCase function)
   - `src/hooks/useTenant.js` (orgId loading)
   - `src/services/dealService.js` (validation)

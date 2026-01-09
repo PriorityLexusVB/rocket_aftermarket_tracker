@@ -43,8 +43,8 @@ describe('Migration: job_parts unique constraint (20251218042008)', () => {
     const content = readFileSync(migrationPath, 'utf-8')
     // Should use either NULLS NOT DISTINCT or COALESCE
     expect(
-      content.includes('NULLS NOT DISTINCT') || 
-      content.includes("COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'")
+      content.includes('NULLS NOT DISTINCT') ||
+        content.includes("COALESCE(vendor_id, '00000000-0000-0000-0000-000000000000'")
     ).toBe(true)
   })
 

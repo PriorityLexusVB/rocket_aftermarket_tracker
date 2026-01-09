@@ -3,7 +3,9 @@
 ## When to Use These Helpers
 
 ### Problem: HTML date/time inputs showing blank values
+
 If you see this warning in console:
+
 ```
 The specified value '2025-12-12T18:35:00+00:00' does not conform to the required format
 ```
@@ -14,59 +16,67 @@ The specified value '2025-12-12T18:35:00+00:00' does not conform to the required
 
 ## Helper Functions
 
-### `toDateInputValue(isoOrDate)` 
+### `toDateInputValue(isoOrDate)`
+
 **Purpose**: Convert ISO datetime → YYYY-MM-DD format for `<input type="date">`
 
 **Import**:
+
 ```javascript
 import { toDateInputValue } from '../utils/dateTimeUtils'
 ```
 
 **Usage**:
+
 ```jsx
 // ❌ WRONG - Passing ISO string directly
-<input 
-  type="date" 
+<input
+  type="date"
   value={job?.eta_return_date}  // "2025-12-12T18:35:00+00:00"
 />
 
 // ✅ CORRECT - Convert to proper format
-<input 
-  type="date" 
+<input
+  type="date"
   value={toDateInputValue(job?.eta_return_date)}  // "2025-12-12"
 />
 ```
 
-**Returns**: 
+**Returns**:
+
 - `"YYYY-MM-DD"` format string
 - Empty string `""` if input is null/undefined/invalid
 
 ---
 
 ### `toTimeInputValue(isoOrDate)`
+
 **Purpose**: Convert ISO datetime → HH:mm format for `<input type="time">`
 
 **Import**:
+
 ```javascript
 import { toTimeInputValue } from '../utils/dateTimeUtils'
 ```
 
 **Usage**:
+
 ```jsx
 // ❌ WRONG - Passing ISO string directly
-<input 
-  type="time" 
+<input
+  type="time"
   value={item?.scheduled_start_time}  // "2025-12-12T18:35:00Z"
 />
 
 // ✅ CORRECT - Convert to proper format
-<input 
-  type="time" 
+<input
+  type="time"
   value={toTimeInputValue(item?.scheduled_start_time)}  // "13:35" (in ET)
 />
 ```
 
-**Returns**: 
+**Returns**:
+
 - `"HH:mm"` format string in America/New_York timezone
 - Empty string `""` if input is null/undefined/invalid
 
@@ -75,33 +85,32 @@ import { toTimeInputValue } from '../utils/dateTimeUtils'
 ## Reverse Conversion (Form → Database)
 
 ### `combineDateAndTime(dateStr, timeStr)`
+
 **Purpose**: Merge separate date and time inputs back into ISO datetime for database
 
 **Import**:
+
 ```javascript
 import { combineDateAndTime } from '../utils/dateTimeUtils'
 ```
 
 **Usage**:
+
 ```javascript
 // Form state
-const dateScheduled = "2025-12-12"     // From <input type="date">
-const scheduledStartTime = "13:35"     // From <input type="time">
+const dateScheduled = '2025-12-12' // From <input type="date">
+const scheduledStartTime = '13:35' // From <input type="time">
 
 // Convert for database save
-const scheduledStartIso = combineDateAndTime(
-  dateScheduled, 
-  scheduledStartTime
-)
+const scheduledStartIso = combineDateAndTime(dateScheduled, scheduledStartTime)
 // Returns: "2025-12-12T18:35:00.000Z" (UTC)
 
 // Save to database
-await supabase
-  .from('job_parts')
-  .update({ scheduled_start_time: scheduledStartIso })
+await supabase.from('job_parts').update({ scheduled_start_time: scheduledStartIso })
 ```
 
 **Returns**:
+
 - ISO datetime string in UTC
 - `null` if either input is missing/invalid
 
@@ -110,6 +119,7 @@ await supabase
 ## Common Use Cases
 
 ### 1. Editing a Deal with Loaner
+
 ```javascript
 // Load from database
 const [loanerReturnDate, setLoanerReturnDate] = useState(
@@ -117,7 +127,7 @@ const [loanerReturnDate, setLoanerReturnDate] = useState(
 )
 
 // Render
-<input 
+<input
   type="date"
   value={loanerReturnDate}
   onChange={(e) => setLoanerReturnDate(e.target.value)}
@@ -130,6 +140,7 @@ await saveDeal({
 ```
 
 ### 2. Editing Line Item Schedule
+
 ```javascript
 // Load from database
 const [dateScheduled, setDateScheduled] = useState(
@@ -160,6 +171,7 @@ await supabase
 ```
 
 ### 3. Appointment Window
+
 ```javascript
 // Load appointment data
 const apptDate = toDateInputValue(appointment?.scheduled_start_time)
@@ -177,20 +189,22 @@ const apptEndTime = toTimeInputValue(appointment?.scheduled_end_time)
 ## Timezone Handling
 
 **Storage**: All datetimes stored in **UTC** in database  
-**Display**: Times shown in **America/New_York** (Eastern Time)  
+**Display**: Times shown in **America/New_York** (Eastern Time)
 
 **Conversion happens automatically**:
+
 - `toTimeInputValue()` converts UTC → ET
 - `combineDateAndTime()` converts ET → UTC
 
 **Example**:
+
 ```javascript
 // Database: "2025-12-12T18:35:00Z" (UTC)
-toTimeInputValue("2025-12-12T18:35:00Z")
+toTimeInputValue('2025-12-12T18:35:00Z')
 // → "13:35" (ET, which is UTC-5 in winter)
 
 // User enters: date="2025-12-12", time="13:35" (ET)
-combineDateAndTime("2025-12-12", "13:35")
+combineDateAndTime('2025-12-12', '13:35')
 // → "2025-12-12T18:35:00.000Z" (UTC)
 ```
 
@@ -201,22 +215,23 @@ combineDateAndTime("2025-12-12", "13:35")
 All helpers return safe defaults:
 
 ```javascript
-toDateInputValue(null)          // ""
-toDateInputValue(undefined)     // ""
-toDateInputValue("invalid")     // ""
+toDateInputValue(null) // ""
+toDateInputValue(undefined) // ""
+toDateInputValue('invalid') // ""
 
-toTimeInputValue(null)          // ""
-toTimeInputValue(undefined)     // ""
-toTimeInputValue("invalid")     // ""
+toTimeInputValue(null) // ""
+toTimeInputValue(undefined) // ""
+toTimeInputValue('invalid') // ""
 
-combineDateAndTime("", "13:35")      // null
-combineDateAndTime("2025-12-12", "") // null
+combineDateAndTime('', '13:35') // null
+combineDateAndTime('2025-12-12', '') // null
 ```
 
 **Safe to use with controlled inputs**:
+
 ```jsx
-<input 
-  type="date" 
+<input
+  type="date"
   value={toDateInputValue(someValue) || ''} // Always string, never undefined
 />
 ```
@@ -228,11 +243,13 @@ combineDateAndTime("2025-12-12", "") // null
 Test file: `src/tests/dateTimeUtils.inputHelpers.test.js`
 
 Run tests:
+
 ```bash
 pnpm test src/tests/dateTimeUtils.inputHelpers.test.js
 ```
 
 Example tests:
+
 ```javascript
 test('converts ISO datetime to YYYY-MM-DD format', () => {
   const result = toDateInputValue('2025-12-12T18:35:00+00:00')
@@ -253,7 +270,7 @@ When adding a new date or time input field:
 
 - [ ] Import helper function(s) at top of file
 - [ ] Use `toDateInputValue()` for date columns
-- [ ] Use `toTimeInputValue()` for time/timestamp columns  
+- [ ] Use `toTimeInputValue()` for time/timestamp columns
 - [ ] Use `combineDateAndTime()` when saving separate date+time
 - [ ] Test with actual data from database
 - [ ] Check browser console for format warnings
@@ -264,12 +281,14 @@ When adding a new date or time input field:
 ## Common Mistakes to Avoid
 
 ### ❌ Don't pass ISO strings directly
+
 ```jsx
 <input type="date" value={job?.eta_return_date} />
 // Will show blank if value is "2025-12-12T18:35:00Z"
 ```
 
 ### ❌ Don't forget timezone conversion
+
 ```javascript
 // Wrong: Treating UTC time as local time
 const time = isoString.split('T')[1].slice(0, 5)
@@ -277,6 +296,7 @@ const time = isoString.split('T')[1].slice(0, 5)
 ```
 
 ### ❌ Don't use deprecated helpers
+
 ```javascript
 // Old way (don't use):
 const date = new Date(iso).toISOString().split('T')[0]
@@ -287,9 +307,10 @@ const date = toDateInputValue(iso)
 ```
 
 ### ✅ Do handle null/undefined gracefully
+
 ```jsx
-<input 
-  type="date" 
+<input
+  type="date"
   value={toDateInputValue(job?.eta_return_date) || ''}
   // Fallback to empty string for controlled input
 />
@@ -299,12 +320,12 @@ const date = toDateInputValue(iso)
 
 ## Browser Support
 
-| Feature | Chrome | Firefox | Safari | Edge |
-|---------|--------|---------|--------|------|
-| `<input type="date">` | ✅ 20+ | ✅ 57+ | ✅ 14.1+ | ✅ 12+ |
-| `<input type="time">` | ✅ 20+ | ✅ 57+ | ✅ 14.1+ | ✅ 12+ |
-| Format YYYY-MM-DD | ✅ | ✅ | ✅ | ✅ |
-| Format HH:mm | ✅ | ✅ | ✅ | ✅ |
+| Feature               | Chrome | Firefox | Safari   | Edge   |
+| --------------------- | ------ | ------- | -------- | ------ |
+| `<input type="date">` | ✅ 20+ | ✅ 57+  | ✅ 14.1+ | ✅ 12+ |
+| `<input type="time">` | ✅ 20+ | ✅ 57+  | ✅ 14.1+ | ✅ 12+ |
+| Format YYYY-MM-DD     | ✅     | ✅      | ✅       | ✅     |
+| Format HH:mm          | ✅     | ✅      | ✅       | ✅     |
 
 **All modern browsers fully supported** ✅
 
@@ -321,32 +342,35 @@ const date = toDateInputValue(iso)
 ## Quick Copy-Paste Templates
 
 ### Template: Date Input
+
 ```jsx
 import { toDateInputValue } from '../utils/dateTimeUtils'
 
 const [date, setDate] = useState(toDateInputValue(initialValue) || '')
 
-<input 
-  type="date" 
+<input
+  type="date"
   value={date}
   onChange={(e) => setDate(e.target.value)}
 />
 ```
 
 ### Template: Time Input
+
 ```jsx
 import { toTimeInputValue } from '../utils/dateTimeUtils'
 
 const [time, setTime] = useState(toTimeInputValue(initialValue) || '')
 
-<input 
-  type="time" 
+<input
+  type="time"
   value={time}
   onChange={(e) => setTime(e.target.value)}
 />
 ```
 
 ### Template: Date + Time to ISO
+
 ```jsx
 import { combineDateAndTime } from '../utils/dateTimeUtils'
 
@@ -357,6 +381,7 @@ const iso = combineDateAndTime(dateValue, timeValue)
 ---
 
 **Need help?** Check the implementation in:
+
 - `src/components/deals/DealFormV2.jsx` (lines 13, 66, 80-82, 157, 171-173)
 - `src/pages/deals/components/LoanerDrawer.jsx` (lines 4, 22)
 

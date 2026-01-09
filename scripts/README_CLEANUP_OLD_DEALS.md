@@ -9,6 +9,7 @@
 ## What It Does
 
 The script:
+
 1. Finds the newest job for your organization (by `created_at`, with `updated_at` as fallback)
 2. **Keeps** that one job and all its related data
 3. **Deletes** all other jobs for that organization, including:
@@ -100,6 +101,7 @@ ORG_ID="your-org-uuid" pnpm run cleanup:old-deals
 ```
 
 Review the output carefully:
+
 - Check which job will be kept
 - Verify the list of jobs to be deleted
 - Review the count of related records that will be deleted
@@ -122,6 +124,7 @@ DRY_RUN=false ORG_ID="your-org-uuid" pnpm run cleanup:old-deals
 ```
 
 The script will:
+
 - Show a warning message
 - Wait 3 seconds (giving you time to cancel with Ctrl+C)
 - Perform the deletions
@@ -277,12 +280,14 @@ COMMIT;
 ## When to Use This Script
 
 ✅ **Appropriate use cases:**
+
 - Cleaning up after development/testing
 - Removing accidentally created duplicate jobs
 - Resetting a test environment
 - One-time data maintenance
 
 ❌ **DO NOT use for:**
+
 - Normal application flow
 - Automated processes or cron jobs
 - Production data without thorough review
@@ -293,16 +298,19 @@ COMMIT;
 ### Issue: "Missing SUPABASE_SERVICE_ROLE_KEY"
 
 **Solution**: Make sure you're using the SERVICE ROLE key, not the anon key. Find it in:
+
 - Supabase Dashboard → Settings → API → service_role key (secret)
 
 ### Issue: "ORG_ID must be a valid UUID"
 
 **Solution**: Ensure your ORG_ID is in UUID format:
+
 ```
 550e8400-e29b-41d4-a716-446655440000
 ```
 
 Not:
+
 ```
 priority-lexus-vb  ❌
 550e8400e29b41d4a716446655440000  ❌ (missing hyphens)
@@ -310,7 +318,8 @@ priority-lexus-vb  ❌
 
 ### Issue: Script says "No jobs found" but I have jobs
 
-**Solution**: 
+**Solution**:
+
 - Verify the ORG_ID is correct
 - Check if your jobs have `org_id` set:
   ```sql
@@ -339,6 +348,7 @@ priority-lexus-vb  ❌
 ## Support
 
 For issues or questions:
+
 1. Review this README
 2. Check the script comments in `cleanupOldDeals.cjs`
 3. Review error messages carefully

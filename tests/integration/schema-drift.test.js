@@ -18,7 +18,7 @@ describe('Schema Drift Detection', () => {
     expect(response.status).toBe(200)
 
     const data = await response.json()
-    
+
     // Should have correct structure
     expect(data).toHaveProperty('ok')
     expect(data).toHaveProperty('classification')
@@ -57,7 +57,7 @@ describe('Schema Drift Detection', () => {
 
     // Should always include diagnostics
     expect(data.fkName).toBe('job_parts_vendor_id_fkey')
-    
+
     // These fields can be boolean or null (when state is unknown)
     expect(data.hasColumn === null || typeof data.hasColumn === 'boolean').toBe(true)
     expect(data.hasFk === null || typeof data.hasFk === 'boolean').toBe(true)

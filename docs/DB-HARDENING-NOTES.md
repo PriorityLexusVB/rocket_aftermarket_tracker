@@ -13,9 +13,10 @@ This hardening effort addresses safety concerns in database functions identified
 1. **Permission tightening** for high-risk SECURITY DEFINER functions
 2. **NOT IN → NOT EXISTS** conversion to handle NULL values correctly
 3. **Sequence verification** and generator function error handling
-4. **SELECT * elimination** and NULL guard additions
+4. **SELECT \* elimination** and NULL guard additions
 
 All changes follow strict guardrails:
+
 - ✅ No destructive SQL executed directly
 - ✅ All changes via timestamped migrations under `supabase/migrations/`
 - ✅ No schema changes (only function logic updates)
@@ -31,13 +32,13 @@ All changes follow strict guardrails:
 
 Revoked broad EXECUTE permissions from high-risk SECURITY DEFINER functions:
 
-| Function | Risk Level | Previous Access | New Access | Rationale |
-|----------|------------|-----------------|------------|-----------|
-| `cleanup_orphaned_profiles()` | High | public, anon, authenticated | Revoked | Deletes user_profiles; admin-only |
-| `cleanup_illegitimate_users()` | High | public, anon, authenticated | Revoked | Bulk deletes across tables; admin-only |
-| `cleanup_priority_automotive_admins()` | High | public, anon, authenticated | Revoked | Deletes from auth.users; admin-only |
-| `delete_job_cascade(uuid)` | High | authenticated | Revoked | Cascading deletes; needs RLS check |
-| `create_user_with_profile(...)` | High | public, anon, authenticated | Revoked | Inserts auth.users; admin-only |
+| Function                               | Risk Level | Previous Access             | New Access | Rationale                              |
+| -------------------------------------- | ---------- | --------------------------- | ---------- | -------------------------------------- |
+| `cleanup_orphaned_profiles()`          | High       | public, anon, authenticated | Revoked    | Deletes user_profiles; admin-only      |
+| `cleanup_illegitimate_users()`         | High       | public, anon, authenticated | Revoked    | Bulk deletes across tables; admin-only |
+| `cleanup_priority_automotive_admins()` | High       | public, anon, authenticated | Revoked    | Deletes from auth.users; admin-only    |
+| `delete_job_cascade(uuid)`             | High       | authenticated               | Revoked    | Cascading deletes; needs RLS check     |
+| `create_user_with_profile(...)`        | High       | public, anon, authenticated | Revoked    | Inserts auth.users; admin-only         |
 
 ### Impact
 
@@ -48,6 +49,7 @@ Revoked broad EXECUTE permissions from high-risk SECURITY DEFINER functions:
 ### Rationale
 
 These functions are SECURITY DEFINER (run with elevated privileges) and perform destructive or sensitive operations. They should only be:
+
 - Called by admin tooling with explicit permission
 - Invoked via trusted server-side logic (not client API)
 - Used in maintenance scripts or migrations
@@ -64,7 +66,7 @@ These functions are SECURITY DEFINER (run with elevated privileges) and perform 
 
 ```sql
 -- UNSAFE: Returns no rows if any auth.users.id is NULL
-DELETE FROM user_profiles 
+DELETE FROM user_profiles
 WHERE id NOT IN (SELECT id FROM auth.users);
 
 -- SAFE: Handles NULLs correctly
@@ -89,6 +91,7 @@ WHERE NOT EXISTS (
 ```
 
 **Benefits**:
+
 - Handles NULL values correctly (no false negatives)
 - Often faster execution (better query plan)
 - More explicit correlation (easier to understand)
@@ -99,6 +102,7 @@ WHERE NOT EXISTS (
 **After**: Uses array-based deletion with `ANY()` (NULL-safe)
 
 **Improvements**:
+
 - Collects user IDs into array first (explicit list)
 - Uses `= ANY(array)` for deletions (NULL-safe)
 - Added proper array length validation
@@ -110,6 +114,7 @@ WHERE NOT EXISTS (
 **After**: Added explicit NULL/empty array checks
 
 **Improvements**:
+
 - Validates array is not NULL before use
 - Checks array length before deletion
 - Provides clear notice when no users found
@@ -150,7 +155,7 @@ CREATE SEQUENCE IF NOT EXISTS public.transaction_number_seq
 **Before**: Simple SQL function with no error handling
 
 ```sql
-SELECT 'JOB-' || TO_CHAR(CURRENT_DATE, 'YYYY') || '-' || 
+SELECT 'JOB-' || TO_CHAR(CURRENT_DATE, 'YYYY') || '-' ||
   LPAD(NEXTVAL('job_number_seq')::TEXT, 6, '0');
 ```
 
@@ -161,23 +166,24 @@ DECLARE
   seq_value BIGINT;
 BEGIN
   seq_value := NEXTVAL('public.job_number_seq');
-  
+
   IF seq_value IS NULL THEN
     RAISE EXCEPTION 'job_number_seq returned NULL';
   END IF;
-  
+
   -- Build and validate job number
   -- ...
-  
+
   IF job_number IS NULL OR LENGTH(job_number) < 16 THEN
     RAISE EXCEPTION 'Generated invalid job number: %', job_number;
   END IF;
-  
+
   RETURN job_number;
 END;
 ```
 
 **Benefits**:
+
 - Detects sequence corruption
 - Validates output format
 - Raises clear errors (no silent failures)
@@ -186,6 +192,7 @@ END;
 #### 3. `generate_transaction_number()` Hardening
 
 Same improvements as `generate_job_number()`:
+
 - NULL checks on sequence value
 - Output validation (length, format)
 - Clear error messages
@@ -199,6 +206,7 @@ SELECT * FROM public.check_sequence_health();
 ```
 
 Returns:
+
 - Current sequence value
 - Max value
 - Usage percentage
@@ -218,11 +226,12 @@ Revert to original SQL-based functions from `20250922170950_automotive_aftermark
 
 ### Changes
 
-#### 1. `validate_deal_line_items()` - SELECT * Elimination
+#### 1. `validate_deal_line_items()` - SELECT \* Elimination
 
 **Problem**: `SELECT * INTO record` breaks when table schema changes
 
 **Before**:
+
 ```sql
 SELECT * INTO job_record FROM public.jobs WHERE id = NEW.job_id;
 -- No NULL check
@@ -230,8 +239,9 @@ IF job_record.vendor_id IS NOT NULL THEN ...
 ```
 
 **After**:
+
 ```sql
-SELECT 
+SELECT
   j.id,
   j.vendor_id,
   j.scheduled_start_time,
@@ -247,6 +257,7 @@ END IF;
 ```
 
 **Benefits**:
+
 - Explicit column list (schema-change resilient)
 - NOT FOUND check catches missing records
 - Clear error messages with context
@@ -257,16 +268,18 @@ END IF;
 **Problem**: Calling `TO_CHAR()` on NULL timestamps causes errors
 
 **Before**:
+
 ```sql
 to_char(NEW.scheduled_start_time AT TIME ZONE 'America/New_York', 'Mon DD')
 -- Crashes if scheduled_start_time is NULL
 ```
 
 **After**:
+
 ```sql
 IF NEW.scheduled_start_time IS NOT NULL THEN
   scheduled_start := TO_CHAR(
-    NEW.scheduled_start_time AT TIME ZONE 'America/New_York', 
+    NEW.scheduled_start_time AT TIME ZONE 'America/New_York',
     'Mon DD'
   );
 ELSE
@@ -281,6 +294,7 @@ END IF;
 ```
 
 **Benefits**:
+
 - No crashes on NULL timestamps
 - Graceful degradation (shows 'TBD' instead)
 - Function doesn't break job status updates
@@ -289,6 +303,7 @@ END IF;
 #### 3. `set_deal_dates_and_calendar()` - NULL Guards
 
 **Improvements**:
+
 - NULL check before setting `promised_date`
 - NULL check before generating `calendar_event_id`
 - Safe timestamp extraction with EXTRACT (not vulnerable to NULL)
@@ -334,7 +349,7 @@ SELECT public.generate_job_number();
 SELECT public.generate_transaction_number();
 
 -- Verify format consistency
-SELECT 
+SELECT
   public.generate_job_number() ~ '^JOB-[0-9]{4}-[0-9]{6}$' as job_format_valid,
   public.generate_transaction_number() ~ '^TXN-[0-9]{8}-[0-9]{4}$' as txn_format_valid;
 ```
@@ -348,7 +363,7 @@ VALUES ('00000000-0000-0000-0000-000000000000', NULL, 1);
 -- Should raise: "Job ... not found"
 
 -- Test auto_enqueue_status_sms with NULL scheduled times
-UPDATE jobs 
+UPDATE jobs
 SET job_status = 'scheduled', scheduled_start_time = NULL
 WHERE id = '<test_job_id>';
 -- Should not crash, should log notice about missing phone/time
@@ -357,8 +372,9 @@ WHERE id = '<test_job_id>';
 ### Manual Verification
 
 1. **Check function permissions**:
+
    ```sql
-   SELECT 
+   SELECT
      p.proname,
      pg_catalog.pg_get_function_identity_arguments(p.oid) as args,
      p.prosecdef as is_security_definer
@@ -390,6 +406,7 @@ WHERE id = '<test_job_id>';
 ### 1. Trigger Functions Still SECURITY DEFINER
 
 Functions like `handle_new_user()`, `validate_user_legitimacy()`, and other trigger functions remain SECURITY DEFINER. This is necessary for:
+
 - Cross-schema access (auth.users)
 - Consistent execution context
 
@@ -400,9 +417,10 @@ Functions like `handle_new_user()`, `validate_user_legitimacy()`, and other trig
 `auto_enqueue_status_sms()` assumes `public.sms_opt_outs` table exists. If missing, function will fail.
 
 **Mitigation**: Migration includes existence check. Consider adding:
+
 ```sql
-IF NOT EXISTS (SELECT 1 FROM information_schema.tables 
-               WHERE table_schema = 'public' 
+IF NOT EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema = 'public'
                AND table_name = 'sms_opt_outs') THEN
   RETURN NEW;
 END IF;
@@ -413,6 +431,7 @@ END IF;
 Revoking EXECUTE permissions prevents direct PostgREST calls, but application code calling these functions via service role will still work.
 
 **Next Steps**:
+
 - Add admin-only wrappers for cleanup functions
 - Implement audit logging for sensitive function calls
 - Consider adding RLS-like checks within functions (check `auth.uid()` role)
@@ -422,6 +441,7 @@ Revoking EXECUTE permissions prevents direct PostgREST calls, but application co
 Sequences use `NO CYCLE`, so they'll fail when maxvalue is reached (default: 9223372036854775807).
 
 **Monitoring**:
+
 - Use `check_sequence_health()` to track usage
 - Alert when usage_percent > 80%
 - Plan for sequence reset strategy if needed (requires downtime)
@@ -481,13 +501,13 @@ See individual migration file headers for detailed rollback SQL.
 
 ## Security Improvements Summary
 
-| Category | Before | After | Benefit |
-|----------|--------|-------|---------|
+| Category                 | Before                                                   | After                                  | Benefit                                    |
+| ------------------------ | -------------------------------------------------------- | -------------------------------------- | ------------------------------------------ |
 | **Function Permissions** | 5 high-risk functions callable by any authenticated user | Permissions revoked; admin-only access | Prevents accidental/malicious bulk deletes |
-| **NULL Handling** | NOT IN queries fail silently with NULLs | NOT EXISTS handles NULLs correctly | Reliable cleanup operations |
-| **Error Detection** | Silent failures in generators | Explicit exceptions with context | Early detection of sequence issues |
-| **Schema Stability** | SELECT * breaks on schema changes | Explicit columns + NULL checks | Resilient to migrations |
-| **Timestamp Safety** | Crashes on NULL timestamps | Graceful fallbacks (TBD) | Functions don't break operations |
+| **NULL Handling**        | NOT IN queries fail silently with NULLs                  | NOT EXISTS handles NULLs correctly     | Reliable cleanup operations                |
+| **Error Detection**      | Silent failures in generators                            | Explicit exceptions with context       | Early detection of sequence issues         |
+| **Schema Stability**     | SELECT \* breaks on schema changes                       | Explicit columns + NULL checks         | Resilient to migrations                    |
+| **Timestamp Safety**     | Crashes on NULL timestamps                               | Graceful fallbacks (TBD)               | Functions don't break operations           |
 
 ---
 
@@ -497,7 +517,7 @@ See individual migration file headers for detailed rollback SQL.
 
 1. **Default to NOT SECURITY DEFINER** unless cross-schema access required
 2. **Revoke EXECUTE permissions** immediately after creation for sensitive functions
-3. **Use explicit column lists** (never SELECT *)
+3. **Use explicit column lists** (never SELECT \*)
 4. **Add NULL checks** for all external inputs
 5. **Document rollback** in migration header
 
@@ -531,11 +551,12 @@ This hardening effort improves database function safety without breaking existin
 ✅ **Permissions tightened** on 5 high-risk SECURITY DEFINER functions  
 ✅ **NOT IN patterns replaced** with NULL-safe NOT EXISTS in 3 cleanup functions  
 ✅ **Sequences verified** and generator functions hardened with error handling  
-✅ **SELECT * eliminated** from validation functions with explicit columns + NULL checks  
+✅ **SELECT \* eliminated** from validation functions with explicit columns + NULL checks  
 ✅ **All changes via migrations** with documented rollback plans  
-✅ **No schema modifications** - only function logic improvements  
+✅ **No schema modifications** - only function logic improvements
 
 The database is now more resilient to:
+
 - NULL values in subqueries
 - Schema changes
 - Missing/malformed data

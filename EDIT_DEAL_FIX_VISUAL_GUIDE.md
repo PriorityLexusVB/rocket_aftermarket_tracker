@@ -3,6 +3,7 @@
 ## Issue 1: Date/Time Input Display
 
 ### BEFORE (❌ Broken)
+
 ```
 Browser Console Warning:
 ┌────────────────────────────────────────────────────────────┐
@@ -21,6 +22,7 @@ Edit Deal Form:
 ```
 
 ### AFTER (✅ Fixed)
+
 ```
 Browser Console:
 ┌────────────────────────────────────────────────────────────┐
@@ -36,6 +38,7 @@ Edit Deal Form:
 ```
 
 ### Technical Fix
+
 ```javascript
 // BEFORE: Passing raw ISO string to input
 <input type="date" value={job?.eta_return_date} />
@@ -51,6 +54,7 @@ Edit Deal Form:
 ## Issue 2: Loaner Assignment RLS Conflicts
 
 ### BEFORE (❌ Broken)
+
 ```
 Network Activity:
 ┌─────────────────────────────────────────────────────────────┐
@@ -72,6 +76,7 @@ SELECT (blocked by RLS) → treated as "no row"
 ```
 
 ### AFTER (✅ Fixed)
+
 ```
 Network Activity:
 ┌─────────────────────────────────────────────────────────────┐
@@ -92,6 +97,7 @@ SELECT (.maybeSingle()) → returns existing row or null
 ```
 
 ### Technical Fix
+
 ```javascript
 // BEFORE: .single() throws on RLS block
 const { data: existing } = await supabase
@@ -110,7 +116,8 @@ const { data: existing } = await supabase
   .maybeSingle() // ✅ Returns null on RLS block, no error
 
 // PLUS: Fallback UPDATE on 409 conflict
-if (error?.code === '23505') { // Duplicate key
+if (error?.code === '23505') {
+  // Duplicate key
   await supabase
     .from('loaner_assignments')
     .update(assignmentData)
@@ -124,6 +131,7 @@ if (error?.code === '23505') { // Duplicate key
 ## Issue 3: Duplicate Submit
 
 ### BEFORE (❌ Broken)
+
 ```
 User Action: *Click Save button rapidly*
 
@@ -139,6 +147,7 @@ Result: Data inconsistencies, race conditions ❌
 ```
 
 ### AFTER (✅ Fixed)
+
 ```
 User Action: *Click Save button rapidly*
 
@@ -154,6 +163,7 @@ Result: Single save operation, no duplicates ✓
 ```
 
 ### Technical Fix
+
 ```javascript
 // BEFORE: No guard
 const handleSave = async () => {
@@ -251,23 +261,27 @@ const handleSave = async () => {
 ### Manual Test Checklist
 
 ✅ **Date/Time Display**
+
 1. Open existing deal in Edit mode
 2. Verify loaner return date shows correctly
 3. Verify line item scheduled times show correctly
 4. Check browser console - no format warnings
 
 ✅ **Loaner Assignment**
+
 1. Create new deal with loaner
 2. Edit existing deal with loaner
 3. Change loaner number
 4. Check network tab - no 406 or 409 errors
 
 ✅ **Duplicate Submit**
+
 1. Edit deal, click Save rapidly multiple times
 2. Check network tab - only one DELETE and one POST
 3. Verify no duplicate data created
 
 ### Automated Tests
+
 ```bash
 # Run all tests
 pnpm test
@@ -290,12 +304,12 @@ pnpm lint
 
 ## Browser Compatibility
 
-| Browser | Date Input | Time Input | Status |
-|---------|-----------|------------|--------|
-| Chrome 90+ | ✅ | ✅ | Fully supported |
-| Firefox 80+ | ✅ | ✅ | Fully supported |
-| Safari 14+ | ✅ | ✅ | Fully supported |
-| Edge 90+ | ✅ | ✅ | Fully supported |
+| Browser     | Date Input | Time Input | Status          |
+| ----------- | ---------- | ---------- | --------------- |
+| Chrome 90+  | ✅         | ✅         | Fully supported |
+| Firefox 80+ | ✅         | ✅         | Fully supported |
+| Safari 14+  | ✅         | ✅         | Fully supported |
+| Edge 90+    | ✅         | ✅         | Fully supported |
 
 All modern browsers support `<input type="date">` and `<input type="time">` with YYYY-MM-DD and HH:mm formats.
 

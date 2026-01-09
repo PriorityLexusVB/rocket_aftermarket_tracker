@@ -20,16 +20,19 @@ Supabase's database linter flags the following items that require future attenti
 **Migration:** `20251126161700_enable_rls_on_organizations.sql`
 
 **Current State:**
+
 - RLS is enabled on `public.organizations` with basic org membership policies
 - Users can SELECT/UPDATE their own organization via `user_profiles.org_id`
 
 **Future Work Required:**
+
 - Design decision needed: `owner_id` vs `tenant_id` vs membership table approach
 - Consider role-based permissions for organization management (admin-only updates)
 - Evaluate INSERT/DELETE policy requirements for multi-org scenarios
 - Document the chosen multi-tenant model in architecture docs
 
 **Why Deferred:**
+
 - Current single-org implementation works for existing use cases
 - Requires stakeholder input on multi-tenant requirements
 - Low risk with RLS already enabled; policies can be refined later
@@ -40,15 +43,18 @@ Supabase's database linter flags the following items that require future attenti
 **Documentation:** `docs/security.md`
 
 **Current State:**
+
 - This is a Supabase Auth configuration setting, not a SQL migration
 - Production environments should have this enabled
 
 **Future Work Required:**
+
 - Enable "Leaked password protection" in Supabase Dashboard → Authentication → Settings
 - Choose appropriate protection level (Medium or High for production)
 - Document the setting in deployment runbook
 
 **Why Deferred:**
+
 - Requires manual Dashboard configuration per environment
 - Will be addressed as part of production hardening checklist
 - Does not affect development/staging functionality
@@ -56,6 +62,7 @@ Supabase's database linter flags the following items that require future attenti
 ### Proposed Follow-up Timeline
 
 These items will be addressed in a dedicated "Supabase Hardening" change after:
+
 1. Multi-tenant model design decision is made for organizations
 2. Production deployment checklist is finalized
 3. Security review is scheduled
@@ -69,28 +76,35 @@ These items will be addressed in a dedicated "Supabase Hardening" change after:
 **Severity:** Low
 
 ### Current TODO Comment
+
 ```javascript
 // TODO: These tests need enhanced mocks to support the full chain of updateDeal operations
 ```
 
 ### Context
+
 The existing tests for `updateDeal` in `dealService` adequately cover the primary behavior and edge cases. However, the full chain of internal operations (e.g., version checks, conflict resolution, line item updates) could benefit from more granular mocking.
 
 ### Why Deferred
+
 - Current test coverage is sufficient for production use
 - No known bugs or gaps in updateDeal behavior
 - Enhanced mocks are a "nice-to-have" improvement
 - Higher-priority work takes precedence
 
 ### Proposed Future Action
+
 When expanding test coverage in a future sprint:
+
 1. Add detailed mocks for Supabase client responses
 2. Test version conflict scenarios more thoroughly
 3. Add tests for line item update edge cases
 4. Consider integration tests with real Supabase instance
 
 ### Priority
+
 **Low** — Defer indefinitely unless:
+
 - Bugs discovered in updateDeal that tests don't catch
 - Test coverage metrics show gaps
 - Team prioritizes test enhancement sprint
@@ -99,10 +113,10 @@ When expanding test coverage in a future sprint:
 
 ## Summary
 
-| Category | Count | Priority | Status |
-|----------|-------|----------|--------|
-| Supabase Security Lint | 2 | Medium | Pending design/config |
-| Test Enhancement | 1 | Low | Deferred |
+| Category               | Count | Priority | Status                |
+| ---------------------- | ----- | -------- | --------------------- |
+| Supabase Security Lint | 2     | Medium   | Pending design/config |
+| Test Enhancement       | 1     | Low      | Deferred              |
 
 **Total Deferred TODOs:** 3  
 **Blocking TODOs:** 0  
@@ -114,4 +128,4 @@ All deferred items are non-blocking. Security items have partial mitigations in 
 
 ---
 
-*For urgent TODOs that need immediate attention, search codebase for "TODO(urgent)" or "FIXME(critical)" (none found as of 2025-11-28).*
+_For urgent TODOs that need immediate attention, search codebase for "TODO(urgent)" or "FIXME(critical)" (none found as of 2025-11-28)._

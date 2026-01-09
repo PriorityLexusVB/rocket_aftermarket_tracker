@@ -5,8 +5,8 @@
 Users were encountering an error message when creating or editing deals:
 
 ```
-Failed to create deal: permission denied while evaluating RLS (auth.users). 
-Please update RLS policies to reference public.user_profiles instead of auth.users, 
+Failed to create deal: permission denied while evaluating RLS (auth.users).
+Please update RLS policies to reference public.user_profiles instead of auth.users,
 or apply the migration 20250107150001_fix_claims_rls_policies.sql.
 ```
 
@@ -29,6 +29,7 @@ Upon investigation, we discovered that:
 #### 1. Updated `src/services/dealService.js` (Lines 1468-1474)
 
 **Before:**
+
 ```javascript
 if (/permission denied for table users/i.test(msg)) {
   throw new Error(
@@ -38,12 +39,13 @@ if (/permission denied for table users/i.test(msg)) {
 ```
 
 **After:**
+
 ```javascript
 if (/permission denied for table users/i.test(msg)) {
   throw new Error(
     'Failed to create deal: permission denied while evaluating RLS policies. ' +
       'This may indicate a database schema cache issue. ' +
-      'Try reloading the schema with: NOTIFY pgrst, \'reload schema\'; ' +
+      "Try reloading the schema with: NOTIFY pgrst, 'reload schema'; " +
       'If the issue persists, verify that all RLS policies use public.user_profiles instead of auth.users. ' +
       'See migrations 20251104221500 and 20251115222458 for reference.'
   )
@@ -53,6 +55,7 @@ if (/permission denied for table users/i.test(msg)) {
 #### 2. Updated `src/tests/dealService.fallbacks.test.js` (Lines 159-171)
 
 **Before:**
+
 ```javascript
 it('documents RLS error guidance', () => {
   // When error contains "permission denied for table users":
@@ -69,6 +72,7 @@ it('documents RLS error guidance', () => {
 ```
 
 **After:**
+
 ```javascript
 it('documents RLS error guidance', () => {
   // When error contains "permission denied for table users":
@@ -108,38 +112,45 @@ it('documents RLS error guidance', () => {
 
 ### Migration Timeline
 
-| Date | Migration | Purpose |
-|------|-----------|---------|
+| Date       | Migration      | Purpose                                             |
+| ---------- | -------------- | --------------------------------------------------- |
 | 2025-01-01 | 20250101000001 | First introduced auth.users reference (problematic) |
-| 2025-01-07 | 20250107150001 | Fixed by using only public.user_profiles |
-| 2025-01-10 | 20250110120000 | Re-introduced auth.users reference (regression) |
-| 2025-11-04 | 20251104221500 | ✅ Fixed is_admin_or_manager() function |
-| 2025-11-05 | 20251105000000 | ✅ Fixed write permissions |
-| 2025-11-06 | 20251106210000 | ✅ Multi-tenant RLS hardening |
-| 2025-11-07 | 20251107103000 | ✅ RLS write policies completion |
-| 2025-11-15 | 20251115222458 | ✅ Fixed loaner assignments RLS |
+| 2025-01-07 | 20250107150001 | Fixed by using only public.user_profiles            |
+| 2025-01-10 | 20250110120000 | Re-introduced auth.users reference (regression)     |
+| 2025-11-04 | 20251104221500 | ✅ Fixed is_admin_or_manager() function             |
+| 2025-11-05 | 20251105000000 | ✅ Fixed write permissions                          |
+| 2025-11-06 | 20251106210000 | ✅ Multi-tenant RLS hardening                       |
+| 2025-11-07 | 20251107103000 | ✅ RLS write policies completion                    |
+| 2025-11-15 | 20251115222458 | ✅ Fixed loaner assignments RLS                     |
 
 ## Verification
 
 ### Build Status
+
 ✅ Application builds successfully with no errors
 
 ### Test Status
+
 ✅ All dealService tests pass (9/9 tests)
 
 ### Linting Status
+
 ✅ No linting errors (only unrelated warnings)
 
 ## User-Facing Impact
 
 ### Before Fix
+
 Users seeing outdated error message were confused because:
+
 - Message referenced old migration that was already superseded
 - Message suggested policies needed fixing when they were already correct
 - No clear guidance on actual troubleshooting steps
 
 ### After Fix
+
 Users now receive:
+
 - Accurate error message reflecting current database state
 - Clear guidance on schema cache reload (actual solution)
 - Reference to current migrations for verification
@@ -150,24 +161,29 @@ Users now receive:
 If users still encounter "permission denied for table users" errors:
 
 1. **Reload Schema Cache** (most common fix):
+
    ```sql
    NOTIFY pgrst, 'reload schema';
    ```
 
 2. **Verify is_admin_or_manager() function**:
+
    ```sql
-   SELECT prosrc FROM pg_proc 
+   SELECT prosrc FROM pg_proc
    WHERE proname = 'is_admin_or_manager';
    ```
+
    Should NOT contain "auth.users", only "public.user_profiles"
 
 3. **Check RLS policies**:
+
    ```sql
-   SELECT policyname, qual, with_check 
-   FROM pg_policies 
+   SELECT policyname, qual, with_check
+   FROM pg_policies
    WHERE tablename IN ('jobs', 'loaner_assignments', 'claims')
    AND schemaname = 'public';
    ```
+
    Policies should use `public.is_admin_or_manager()`, not direct auth.users queries
 
 4. **Verify migrations applied**:

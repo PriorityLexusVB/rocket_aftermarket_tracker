@@ -8,7 +8,7 @@
 
 **Problem**: Customer names with spaces (e.g., "Rob Brasco") were being saved without spaces as "robbrasco"
 
-**Root Cause**: 
+**Root Cause**:
 The normalization useEffect in `DealFormV2.jsx` (lines 169-186) had `customerData.customerName` and `customerData.vehicleDescription` in its dependency array:
 
 ```javascript
@@ -33,6 +33,7 @@ useEffect(() => {
 ```
 
 **Result**:
+
 - User input is now preserved during typing
 - titleCase normalization is still applied via the `onBlur` handler
 - No interference with user input during typing
@@ -42,25 +43,31 @@ useEffect(() => {
 
 **Problem**: Transaction saves failing with error: "new row violates row-level security policy for table 'transactions'"
 
-**Root Cause**: 
+**Root Cause**:
 The "Next" button in Step 1 was not disabled while `tenantLoading` was true, allowing users to proceed to Step 2 before `orgId` was populated from the `useTenant` hook. While validation would eventually catch this (line 318-321), it would only happen after the user tried to proceed, creating a poor UX.
 
 **Solution**:
+
 1. Added `tenantLoading` check to the Next button's disabled condition:
+
 ```javascript
 disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
 ```
 
 2. Added a loading indicator to inform users when organization context is being initialized:
+
 ```javascript
-{tenantLoading && (
-  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
-    <strong>Loading:</strong> Initializing organization context...
-  </div>
-)}
+{
+  tenantLoading && (
+    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+      <strong>Loading:</strong> Initializing organization context...
+    </div>
+  )
+}
 ```
 
 **Result**:
+
 - Users can no longer proceed to Step 2 until orgId is loaded
 - Better UX with loading indicator
 - Prevents RLS violations at the database level
@@ -83,10 +90,12 @@ disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
 ## Test Results
 
 ### Before Fix
+
 - Customer names with spaces could be saved incorrectly
 - RLS violations possible if orgId not loaded
 
 ### After Fix
+
 ✅ All 69 test files pass (682 tests)
 ✅ New spacing test passes (4/4 tests)
 ✅ Existing customer name test passes (7/7 tests)
@@ -96,20 +105,26 @@ disabled={!hasRequiredFields() || isSubmitting || tenantLoading}
 ## Technical Details
 
 ### titleCase Function
+
 The `titleCase` function in `src/lib/format.js` correctly preserves spaces:
+
 - Uses `.split(/\s+/)` to split by whitespace
 - Uses `.join(' ')` to rejoin with single spaces
 - Handles multiple spaces correctly
 
 ### useTenant Hook
+
 The `useTenant` hook in `src/hooks/useTenant.js`:
+
 - Fetches orgId from user_profiles table
 - Returns `{ orgId, loading, session }`
 - Handles multiple column name variations (org_id, organization_id, tenant_id)
 - Includes retry logic for network errors
 
 ### Validation Flow
+
 The validation in `DealFormV2.jsx` ensures:
+
 1. Wait for tenantLoading to complete (line 318-321)
 2. Verify orgId is present (line 323-327)
 3. Validate orgId is a valid UUID format (line 329-333)
@@ -118,16 +133,19 @@ The validation in `DealFormV2.jsx` ensures:
 ## Impact Assessment
 
 ### User Experience
+
 - ✅ Improved: No more lost spaces in customer names
 - ✅ Improved: Clear loading indicator for organization context
 - ✅ Improved: Button disabled until ready, preventing errors
 
 ### Database Integrity
+
 - ✅ Improved: RLS violations prevented by proper orgId validation
 - ✅ Maintained: All existing RLS policies still enforced
 - ✅ Maintained: Multi-tenant isolation preserved
 
 ### Code Quality
+
 - ✅ Improved: Removed problematic dependency in useEffect
 - ✅ Improved: Better separation of concerns (normalization vs user input)
 - ✅ Improved: Added comprehensive test coverage
@@ -143,6 +161,7 @@ The validation in `DealFormV2.jsx` ensures:
 ## Conclusion
 
 Both issues have been successfully resolved with minimal code changes:
+
 - Customer name spacing issue: Fixed by adjusting useEffect dependencies
 - RLS policy violation: Fixed by adding tenantLoading check to button
 

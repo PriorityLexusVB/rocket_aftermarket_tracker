@@ -1,6 +1,6 @@
 /**
  * Step 25: Admin links verification - Ensure all staff dropdowns have "Open Admin" links
- * 
+ *
  * Goal: Verify that Sales, Finance, and Delivery Coordinator dropdowns all have
  * consistent "Open Admin" links for editing staff.
  */

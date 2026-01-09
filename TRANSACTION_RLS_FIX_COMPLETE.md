@@ -9,15 +9,19 @@
 ## Executive Summary
 
 ### Problem
+
 Users encountered the error `"Failed to save: Failed to upsert transaction: new row violates row-level security policy for table 'transactions'"` when **editing existing deals**.
 
 ### Root Cause
+
 The `mapDbDealToForm()` function in `dealService.js` did not include `org_id` when mapping database records to form state. This caused the edit flow to lose the organization context, resulting in RLS policy violations.
 
 ### Solution
+
 Added `org_id` to the `mapDbDealToForm()` function and implemented safety fallbacks to ensure `org_id` is always available during transaction updates.
 
 ### Impact
+
 - ✅ **Create Deal**: Already working (was unaffected)
 - ✅ **Edit Deal**: Now works correctly (previously failing)
 - ✅ **RLS Security**: Maintained and enhanced
@@ -36,26 +40,26 @@ The `transactions` table has RLS policies that require one of two conditions:
 WITH CHECK (
   org_id = public.auth_user_org() OR
   EXISTS (
-    SELECT 1 FROM public.jobs j 
-    WHERE j.id = transactions.job_id 
+    SELECT 1 FROM public.jobs j
+    WHERE j.id = transactions.job_id
     AND j.org_id = public.auth_user_org()
   )
 );
 
--- UPDATE Policy  
+-- UPDATE Policy
 USING (
   org_id = public.auth_user_org() OR
   EXISTS (
-    SELECT 1 FROM public.jobs j 
-    WHERE j.id = transactions.job_id 
+    SELECT 1 FROM public.jobs j
+    WHERE j.id = transactions.job_id
     AND j.org_id = public.auth_user_org()
   )
 )
 WITH CHECK (
   org_id = public.auth_user_org() OR
   EXISTS (
-    SELECT 1 FROM public.jobs j 
-    WHERE j.id = transactions.job_id 
+    SELECT 1 FROM public.jobs j
+    WHERE j.id = transactions.job_id
     AND j.org_id = public.auth_user_org()
   )
 );
@@ -376,24 +380,28 @@ To verify the fix works:
 ### If RLS Error Still Occurs
 
 1. **Check org_id in form state**:
+
    ```javascript
    // In DealFormV2, add console.log
    console.log('Form org_id:', customerData?.org_id)
    ```
 
 2. **Check org_id in payload**:
+
    ```javascript
    // In handleSave, before calling service
    console.log('Payload org_id:', payload.org_id)
    ```
 
 3. **Check org_id in database**:
+
    ```sql
    SELECT id, org_id FROM jobs WHERE id = '<job_id>';
    SELECT org_id FROM transactions WHERE job_id = '<job_id>';
    ```
 
 4. **Check auth_user_org()**:
+
    ```sql
    SELECT public.auth_user_org();
    -- Should return your organization UUID
@@ -468,6 +476,7 @@ Edit `src/services/dealService.js`:
 ### Re-enable After Investigation
 
 Once root cause identified:
+
 1. Reapply this fix
 2. Add additional logging if needed
 3. Test thoroughly before deployment

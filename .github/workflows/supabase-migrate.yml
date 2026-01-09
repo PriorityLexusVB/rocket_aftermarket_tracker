@@ -2,10 +2,10 @@ name: Supabase Migrate Production
 
 on:
   push:
-    branches: ["main"]
+    branches: ['main']
     paths:
-      - "supabase/migrations/**"
-      - "supabase/config.toml"
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
   workflow_dispatch:
 
 concurrency:

@@ -9,6 +9,7 @@
 ## Problem
 
 Users encountered this error when editing existing deals:
+
 ```
 Failed to save: Failed to upsert transaction: new row violates row-level security policy for table "transactions"
 ```
@@ -42,20 +43,22 @@ Code Review: ✓ Addressed all feedback
 
 ## Files Changed
 
-| File | Lines | Description |
-|------|-------|-------------|
-| dealService.js | +28 | Core fix + safety fallback |
-| dealService.editOrgId.test.js | +137 | 6 comprehensive tests |
-| formAdapters.orgId.test.js | +81 | 5 adapter tests |
-| TRANSACTION_RLS_FIX_COMPLETE.md | +496 | Technical documentation |
-| TROUBLESHOOTING_RLS_QUICK.md | +127 | Quick reference |
+| File                            | Lines | Description                |
+| ------------------------------- | ----- | -------------------------- |
+| dealService.js                  | +28   | Core fix + safety fallback |
+| dealService.editOrgId.test.js   | +137  | 6 comprehensive tests      |
+| formAdapters.orgId.test.js      | +81   | 5 adapter tests            |
+| TRANSACTION_RLS_FIX_COMPLETE.md | +496  | Technical documentation    |
+| TROUBLESHOOTING_RLS_QUICK.md    | +127  | Quick reference            |
 
 **Total**: 5 files, 879 lines added
 
 ## Documentation
 
 ### Complete Technical Documentation
+
 See: `TRANSACTION_RLS_FIX_COMPLETE.md`
+
 - Root cause analysis
 - Solution details
 - Flow diagrams
@@ -63,7 +66,9 @@ See: `TRANSACTION_RLS_FIX_COMPLETE.md`
 - Rollback procedures
 
 ### Quick Troubleshooting
+
 See: `TROUBLESHOOTING_RLS_QUICK.md`
+
 - Quick diagnostic steps
 - Common issues and solutions
 - SQL queries for debugging
@@ -112,11 +117,13 @@ To verify the fix:
 ## Rollback Plan
 
 If needed, revert with:
+
 ```bash
 git revert c1b1081
 ```
 
 Or manually remove:
+
 - Line 1972 in dealService.js: `org_id: normalized?.org_id,`
 - Lines 1638-1659: Safety fallback code
 - Lines 1772-1787: Enhanced error messages

@@ -53,7 +53,7 @@ describe('Deal Edit Flow - Issue Reproduction', () => {
     // The issue: customer_name should be preserved in the transaction table
     // Expected: transaction.customer_name = 'Rob Brasco'
     // Actual: transaction.customer_name might be 'Unknown Customer' or empty
-    
+
     expect(editPayload.customer_name).toBe('Rob Brasco')
   })
 
@@ -63,7 +63,13 @@ describe('Deal Edit Flow - Issue Reproduction', () => {
       customer_name: 'Test Customer',
       job_number: 'TEST-002',
       lineItems: [
-        { product_id: 'prod-1', unit_price: 100, quantity_used: 1, requires_scheduling: false, no_schedule_reason: 'Test' },
+        {
+          product_id: 'prod-1',
+          unit_price: 100,
+          quantity_used: 1,
+          requires_scheduling: false,
+          no_schedule_reason: 'Test',
+        },
       ],
     }
 
@@ -71,8 +77,20 @@ describe('Deal Edit Flow - Issue Reproduction', () => {
       customer_name: 'Test Customer',
       job_number: 'TEST-002',
       lineItems: [
-        { product_id: 'prod-1', unit_price: 100, quantity_used: 1, requires_scheduling: false, no_schedule_reason: 'Test' },
-        { product_id: 'prod-2', unit_price: 200, quantity_used: 1, requires_scheduling: false, no_schedule_reason: 'Test' },
+        {
+          product_id: 'prod-1',
+          unit_price: 100,
+          quantity_used: 1,
+          requires_scheduling: false,
+          no_schedule_reason: 'Test',
+        },
+        {
+          product_id: 'prod-2',
+          unit_price: 200,
+          quantity_used: 1,
+          requires_scheduling: false,
+          no_schedule_reason: 'Test',
+        },
       ],
     }
 

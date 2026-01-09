@@ -65,10 +65,10 @@ describe('mapDbDealToForm', () => {
     expect(formData.customer_needs_loaner).toBe(true)
     expect(formData.loaner_number).toBe('LOANER-001')
     expect(formData.loanerNumber).toBe('LOANER-001')
-    
+
     // Check top-level eta_return_date field for DealFormV2 compatibility
     expect(formData.eta_return_date).toBe('2025-12-20')
-    
+
     // Check loanerForm nested object
     expect(formData.loanerForm).toBeDefined()
     expect(formData.loanerForm.loaner_number).toBe('LOANER-001')

@@ -7,12 +7,7 @@ const path = require('path')
 
 // Expected RLS policy names (from code and docs)
 const EXPECTED_POLICIES = {
-  jobs: [
-    'select_jobs_by_org',
-    'insert_jobs_by_org',
-    'update_jobs_by_org',
-    'delete_jobs_by_org',
-  ],
+  jobs: ['select_jobs_by_org', 'insert_jobs_by_org', 'update_jobs_by_org', 'delete_jobs_by_org'],
   job_parts: [
     'select_job_parts_by_org',
     'insert_job_parts_by_org',

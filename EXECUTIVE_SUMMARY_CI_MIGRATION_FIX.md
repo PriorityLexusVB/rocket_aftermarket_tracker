@@ -7,17 +7,20 @@ Three migration files had invalid timestamp formats that could cause ordering is
 ## Solution Delivered
 
 ### 1. Migration Timestamp Standardization ✅
+
 - Fixed 3 migrations to use correct 14-digit timestamp format (YYYYMMDDHHmmss)
 - All 99 migrations now follow standard naming convention
 - Zero duplicate timestamps, zero ordering issues
 
 ### 2. Workflow Enhancement ✅
+
 - Added migration count logging (visibility into what's being deployed)
 - Added explicit command logging (shows exact CLI command executed)
 - Enhanced error messages (clear success/failure indicators)
 - Improved config.toml restore logic (only runs when needed)
 
 ### 3. Comprehensive Documentation ✅
+
 - **CI_MIGRATION_WORKFLOW_FIX.md** - Complete fix summary (10.8KB)
 - **MIGRATION_STATE_VERIFICATION.md** - Production verification guide (8.5KB)
 - SQL queries for post-deployment validation
@@ -26,12 +29,14 @@ Three migration files had invalid timestamp formats that could cause ordering is
 ## Impact
 
 ### Zero Breaking Changes
+
 - ✅ All migrations are idempotent (safe to re-run)
 - ✅ No schema changes, only file renames
 - ✅ No data modifications
 - ✅ Workflows preserve all existing safety features
 
 ### Quality Assurance
+
 - ✅ YAML syntax validated (both workflows)
 - ✅ Build succeeded (pnpm build)
 - ✅ All tests passed (887/889 tests, 2 skipped)
@@ -40,24 +45,26 @@ Three migration files had invalid timestamp formats that could cause ordering is
 
 ## Files Changed (7 total)
 
-| File | Type | Change |
-|------|------|--------|
-| `20251023_...` → `20251023000000_...` | Migration | Renamed (timestamp fix) |
-| `202510270001_...` → `20251027000001_...` | Migration | Renamed (timestamp fix) |
-| `20251212_...` → `20251212200000_...` | Migration | Renamed (timestamp fix) |
-| `supabase-migrate.yml` | Workflow | Enhanced (logging/errors) |
-| `supabase-migrate-dry-run.yml` | Workflow | Enhanced (logging/errors) |
-| `CI_MIGRATION_WORKFLOW_FIX.md` | Docs | New (verification guide) |
-| `MIGRATION_STATE_VERIFICATION.md` | Docs | New (SQL queries) |
+| File                                      | Type      | Change                    |
+| ----------------------------------------- | --------- | ------------------------- |
+| `20251023_...` → `20251023000000_...`     | Migration | Renamed (timestamp fix)   |
+| `202510270001_...` → `20251027000001_...` | Migration | Renamed (timestamp fix)   |
+| `20251212_...` → `20251212200000_...`     | Migration | Renamed (timestamp fix)   |
+| `supabase-migrate.yml`                    | Workflow  | Enhanced (logging/errors) |
+| `supabase-migrate-dry-run.yml`            | Workflow  | Enhanced (logging/errors) |
+| `CI_MIGRATION_WORKFLOW_FIX.md`            | Docs      | New (verification guide)  |
+| `MIGRATION_STATE_VERIFICATION.md`         | Docs      | New (SQL queries)         |
 
 ## How to Deploy
 
 ### Option 1: Automatic (Recommended)
+
 1. Merge this PR to `main`
 2. Workflow auto-triggers if migrations changed
 3. Monitor in GitHub Actions tab
 
 ### Option 2: Manual
+
 1. Go to Actions → "Supabase Migrate Production"
 2. Click "Run workflow"
 3. Select `main` branch
@@ -66,6 +73,7 @@ Three migration files had invalid timestamp formats that could cause ordering is
 ## Verification Steps
 
 ### Before Deployment
+
 ```bash
 # Run dry-run workflow
 Actions → "Supabase Migrate Dry Run" → Run workflow
@@ -74,6 +82,7 @@ Actions → "Supabase Migrate Dry Run" → Run workflow
 ```
 
 ### After Deployment
+
 ```sql
 -- In Supabase SQL Editor
 SELECT version, name
@@ -89,9 +98,11 @@ See `MIGRATION_STATE_VERIFICATION.md` for complete verification procedures.
 ## Rollback Plan
 
 ### If Migration Fails
+
 **Recommended:** Fix forward (create new migration)
 
 **Last Resort:** Revert merge commit
+
 ```bash
 git revert -m 1 <merge-commit-hash>
 git push origin main
@@ -101,16 +112,17 @@ git push origin main
 
 ## Non-Negotiables Compliance ✅
 
-| Requirement | Status |
-|------------|--------|
-| No destructive SQL in Supabase UI | ✅ All changes in `supabase/migrations/` |
-| No hardcoded org IDs | ✅ No app code changes |
-| Minimal diffs | ✅ Only essential changes (3 renames, 2 workflows) |
-| Idempotency | ✅ All migrations use IF EXISTS/IF NOT EXISTS |
+| Requirement                       | Status                                             |
+| --------------------------------- | -------------------------------------------------- |
+| No destructive SQL in Supabase UI | ✅ All changes in `supabase/migrations/`           |
+| No hardcoded org IDs              | ✅ No app code changes                             |
+| Minimal diffs                     | ✅ Only essential changes (3 renames, 2 workflows) |
+| Idempotency                       | ✅ All migrations use IF EXISTS/IF NOT EXISTS      |
 
 ## What Changed in Workflows
 
 ### Production Workflow (`supabase-migrate.yml`)
+
 ```diff
 + echo "Local migrations detected: $(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l)"
 + echo "Command: supabase db push --yes"
@@ -123,6 +135,7 @@ git push origin main
 ```
 
 ### Dry-Run Workflow (`supabase-migrate-dry-run.yml`)
+
 ```diff
 + echo "Local migrations detected: $(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l)"
 + echo "Command: supabase db push --dry-run"
@@ -142,6 +155,7 @@ git push origin main
 ## Expected Workflow Output
 
 ### Production Workflow (Success)
+
 ```
 === Supabase CLI Version ===
 supabase version 2.65.5
@@ -165,6 +179,7 @@ Command: supabase db push --yes
 ```
 
 ### Dry-Run Workflow (Success)
+
 ```
 === Supabase CLI Version ===
 supabase version 2.65.5
@@ -205,14 +220,14 @@ Command: supabase db push --dry-run
 
 ## Success Metrics
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Valid timestamps | 96/99 (97%) | 99/99 (100%) ✅ |
-| Migration count logging | ❌ | ✅ |
-| Command visibility | ❌ | ✅ |
-| Error messages | Generic | Explicit ✅ |
-| Restore conditions | Always | Conditional ✅ |
-| Documentation | Minimal | Comprehensive ✅ |
+| Metric                  | Before      | After            |
+| ----------------------- | ----------- | ---------------- |
+| Valid timestamps        | 96/99 (97%) | 99/99 (100%) ✅  |
+| Migration count logging | ❌          | ✅               |
+| Command visibility      | ❌          | ✅               |
+| Error messages          | Generic     | Explicit ✅      |
+| Restore conditions      | Always      | Conditional ✅   |
+| Documentation           | Minimal     | Comprehensive ✅ |
 
 ## Risk Assessment
 
@@ -239,6 +254,7 @@ Command: supabase db push --dry-run
 ## Questions?
 
 **Where are the renamed migrations?**
+
 - `supabase/migrations/20251023000000_add_job_parts_no_schedule_reason_check.sql`
 - `supabase/migrations/20251027000001_add_loaner_indexes.sql`
 - `supabase/migrations/20251212200000_job_parts_unique_job_product_schedule.sql`
@@ -260,6 +276,6 @@ Yes: `supabase db reset && supabase db push`
 ✅ **Problem:** Invalid migration timestamps → **Fixed**  
 ✅ **Problem:** Poor workflow diagnostics → **Enhanced**  
 ✅ **Validation:** Build + Tests + Security → **Passed**  
-✅ **Documentation:** Verification guides → **Complete**  
+✅ **Documentation:** Verification guides → **Complete**
 
 **Ready for deployment with zero risk.**

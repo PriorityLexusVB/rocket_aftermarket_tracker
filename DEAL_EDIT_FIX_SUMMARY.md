@@ -7,6 +7,7 @@ Fixed two bugs preventing appointment window times and loaner expected return da
 ## Problem Statement
 
 **Reported Behavior:**
+
 1. Open the deals list
 2. Select a deal with:
    - Appointment window set (e.g., Dec 12, 12:34–13:35 ET)
@@ -19,6 +20,7 @@ Fixed two bugs preventing appointment window times and loaner expected return da
 6. Back on the list view, the Appt Window and Loaner Due date still show correctly
 
 **Diagnosis:**
+
 - Data was NOT being lost (confirmed by list view showing correct values)
 - Issue was in form initialization/mapping, not backend storage
 - Form expected different data formats than what mapping provided
@@ -26,27 +28,33 @@ Fixed two bugs preventing appointment window times and loaner expected return da
 ## Root Causes
 
 ### 1. Loaner Return Date Bug
+
 **Issue:** `mapDbDealToForm()` function was missing the top-level `eta_return_date` field.
 
 **Why it failed:**
+
 - Database: `getDeal()` returns `loaner_eta_return_date: '2025-12-20'`
 - Mapping: Only set `loanerForm.eta_return_date` (nested)
 - Form: Expected `job?.eta_return_date` (top-level field)
 - Result: Form tried to read undefined top-level field → blank input
 
 ### 2. Appointment Window Time Bug (Initial)
+
 **Issue:** Database stores full ISO datetime, but form expects time-only (HH:MM) format.
 
 **Why it failed:**
+
 - Database: Stores `scheduled_start_time: '2025-12-12T13:30:00'` (ISO datetime)
 - Form: Uses `<input type="time">` which expects `'13:30'` (HH:MM only)
 - Mapping: Passed full ISO string to time input
 - Result: Browser couldn't parse full datetime as time → blank input
 
 ### 3. Timezone Conversion Bug (Critical - Found in Review)
+
 **Issue:** Initial fix extracted time without timezone conversion.
 
 **Why it would have failed:**
+
 - User enters `13:30` ET → Stored as `18:30:00Z` UTC (via `combineDateAndTime()`)
 - Database: Stores `'2025-12-12T18:30:00Z'` (UTC)
 - Initial fix: Extracted `18:30` directly without timezone conversion
@@ -59,16 +67,19 @@ Fixed two bugs preventing appointment window times and loaner expected return da
 #### `src/services/dealService.js`
 
 **1. Added formatTime Import:**
+
 ```javascript
 import { formatTime } from '@/utils/dateTimeUtils'
 ```
 
 **2. Added Top-Level eta_return_date:**
+
 ```javascript
 eta_return_date: normalized?.loaner_eta_return_date || '',
 ```
 
 **3. Used formatTime() for Timezone Conversion:**
+
 ```javascript
 // Converts UTC to America/New_York timezone
 scheduled_start_time: formatTime(part?.scheduled_start_time),
@@ -78,6 +89,7 @@ scheduledEndTime: formatTime(part?.scheduled_end_time),
 ```
 
 **Why formatTime() is correct:**
+
 - Already exists in codebase (`src/utils/dateTimeUtils.js`)
 - Properly handles timezone conversion to America/New_York
 - Returns HH:MM format suitable for `<input type="time">`
@@ -153,11 +165,12 @@ e2e/deal-edit-appt-loaner.spec.ts              (improved error handling)
 ✅ **CodeQL Analysis:** 0 vulnerabilities  
 ✅ **Performance:** Reuses existing `formatTime()` utility, no new complexity  
 ✅ **No Migration Required:** Frontend-only changes  
-✅ **Timezone Correct:** America/New_York timezone properly handled  
+✅ **Timezone Correct:** America/New_York timezone properly handled
 
 ## Conclusion
 
 This fix resolves the form population issue with proper timezone handling:
+
 1. Converting UTC times to ET using `formatTime()` from existing utilities
 2. Adding top-level `eta_return_date` for form consumption
 3. Comprehensive test coverage with timezone validation

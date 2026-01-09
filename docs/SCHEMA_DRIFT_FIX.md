@@ -21,6 +21,7 @@ The nightly RLS drift check workflow was failing with the following issues:
 ### 1. Vite API Plugin (`vite-plugin-api.js`)
 
 Created a Vite plugin that:
+
 - Intercepts requests to `/api/*` routes
 - Dynamically imports and executes the corresponding handler from the `/api/` directory
 - Properly handles errors and returns JSON responses
@@ -46,13 +47,18 @@ export function apiPlugin() {
 Modified both `/api/health-deals-rel.js` and `/src/api/health-deals-rel.js` to:
 
 **Improved Column Detection:**
+
 ```javascript
 async function checkColumnExists() {
   try {
     const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
     if (!error) return true
     // Check if it's a column not found error
-    if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('vendor_id')) {
+    if (
+      error.code === 'PGRST204' ||
+      error.message?.includes('column') ||
+      error.message?.includes('vendor_id')
+    ) {
       return false
     }
     return null // Unknown - other error
@@ -63,14 +69,12 @@ async function checkColumnExists() {
 ```
 
 **Improved FK Detection:**
+
 ```javascript
 async function checkFkExists() {
   try {
     // Test actual FK relationship expansion
-    const { error } = await supabase
-      .from('job_parts')
-      .select('vendor:vendor_id(id)')
-      .limit(0)
+    const { error } = await supabase.from('job_parts').select('vendor:vendor_id(id)').limit(0)
     if (!error) return true
     // Check if it's a relationship/FK error
     if (error.message?.includes('relationship') || error.message?.includes('foreign key')) {
@@ -84,6 +88,7 @@ async function checkFkExists() {
 ```
 
 **Dual Response Object Support:**
+
 ```javascript
 // Handle both Express-like and Node.js http response objects
 if (typeof res.status === 'function') {
@@ -98,6 +103,7 @@ if (typeof res.status === 'function') {
 ### 3. Updated Vite Configuration
 
 Added the API plugin to `vite.config.mjs`:
+
 ```javascript
 import { apiPlugin } from './vite-plugin-api.js'
 
@@ -110,6 +116,7 @@ export default defineConfig({
 ## Verification
 
 ### Local Testing
+
 ```bash
 # Start dev server
 pnpm dev
@@ -119,6 +126,7 @@ curl http://localhost:5173/api/health-deals-rel
 ```
 
 Expected response:
+
 ```json
 {
   "ok": true,
@@ -136,6 +144,7 @@ Expected response:
 ### CI Testing
 
 The workflow now properly executes the health endpoint and checks for:
+
 - `"ok":true` - Overall health status
 - Column existence detection
 - FK relationship detection
@@ -145,6 +154,7 @@ The workflow now properly executes the health endpoint and checks for:
 ## Test Automation
 
 Added integration tests at `tests/integration/schema-drift.test.js` to verify:
+
 - Endpoint returns correct JSON structure
 - Healthy state is properly detected
 - Error classifications are correct
@@ -152,6 +162,7 @@ Added integration tests at `tests/integration/schema-drift.test.js` to verify:
 - Response time is reasonable
 
 Run tests with:
+
 ```bash
 # Requires dev server running
 pnpm test tests/integration/schema-drift.test.js
@@ -168,6 +179,7 @@ pnpm test tests/integration/schema-drift.test.js
 ## Migration Notes
 
 The migrations that add the `vendor_id` column and FK constraint are:
+
 - `20251106000000_add_job_parts_vendor_id.sql`
 - `20251107000000_fix_job_parts_vendor_fkey.sql`
 - `20251107093000_verify_job_parts_vendor_fk.sql`
@@ -180,14 +192,14 @@ If the health check still fails:
 
 1. **Check Supabase Connection**: Ensure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set
 2. **Verify Migrations**: Run `NOTIFY pgrst, 'reload schema';` in Supabase SQL editor
-3. **Check Column Exists**: 
+3. **Check Column Exists**:
    ```sql
-   SELECT column_name FROM information_schema.columns 
+   SELECT column_name FROM information_schema.columns
    WHERE table_name = 'job_parts' AND column_name = 'vendor_id';
    ```
 4. **Check FK Exists**:
    ```sql
-   SELECT conname FROM pg_constraint 
+   SELECT conname FROM pg_constraint
    WHERE conname = 'job_parts_vendor_id_fkey';
    ```
 

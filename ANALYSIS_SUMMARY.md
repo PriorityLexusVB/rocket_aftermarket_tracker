@@ -22,11 +22,13 @@
 See detailed visual flows in `PR_ANALYSIS_AND_IMPROVEMENTS.md`. Summary:
 
 **Customer Name:**
+
 ```
 User types: "john doe" → Live: "john doe" → On blur: "John Doe" → Saved: "John Doe" ✅
 ```
 
 **Deal Creation:**
+
 ```
 Form → Payload with org_id ✅ → Job created ✅ → Transaction created ✅ → RLS validates ✅ → Success ✅
 ```
@@ -55,6 +57,7 @@ No issues found. Properly removes capitalize CSS, uses titleCase on blur.
 ### 1. **DealFormV2.jsx** - Add org_id to Payload
 
 **Change:**
+
 ```javascript
 const payload = {
   // ... existing fields ...
@@ -63,6 +66,7 @@ const payload = {
 ```
 
 **Impact:**
+
 - ⚡ Eliminates database lookup on every save (~100-200ms faster)
 - 🛡️ More reliable (no dependency on fallback)
 - 🎯 Clearer data flow
@@ -70,16 +74,16 @@ const payload = {
 ### 2. **dealService.js** - Add Validation Warnings (2 locations)
 
 **Changes:**
+
 ```javascript
 // In createDeal() and updateDeal():
 if (!payload?.org_id) {
-  console.warn(
-    '⚠️ CRITICAL: org_id is missing! This may cause RLS violations.'
-  )
+  console.warn('⚠️ CRITICAL: org_id is missing! This may cause RLS violations.')
 }
 ```
 
 **Impact:**
+
 - 🔍 Clear visibility when org_id missing
 - 🐛 Easier debugging in logs
 - 🧪 Preserves test compatibility
@@ -105,6 +109,7 @@ Layer 4: Clear warnings in logs
 ## Testing & Verification
 
 ### Tests
+
 ```
 ✅ Test Files: 68 passed (68)
 ✅ Tests: 678 passed | 2 skipped (680)
@@ -113,6 +118,7 @@ Layer 4: Clear warnings in logs
 ```
 
 ### Build
+
 ```
 ✅ vite build --sourcemap
 ✅ Duration: 9.11s
@@ -120,12 +126,14 @@ Layer 4: Clear warnings in logs
 ```
 
 ### Security
+
 ```
 ✅ CodeQL: 0 alerts found
 ✅ No security vulnerabilities
 ```
 
 ### Lint
+
 ```
 ✅ 0 errors
 ℹ️ 382 warnings (pre-existing, non-critical)
@@ -136,11 +144,13 @@ Layer 4: Clear warnings in logs
 ## Performance Impact
 
 ### Before (PR #141 Only)
+
 - Every create/update: UI → Service → DB lookup for org_id → Create job → Create transaction
 - Latency: +100-200ms per operation
 - Failure point: If user_profiles lookup fails
 
 ### After (With Our Fixes)
+
 - Every create/update: UI → Service (org_id already in payload) → Create job → Create transaction
 - Latency: No additional DB lookup ⚡
 - Failure point: Only if user not logged in (appropriate)
@@ -149,18 +159,19 @@ Layer 4: Clear warnings in logs
 
 ## Files Changed
 
-| File | Lines Changed | Purpose |
-|------|---------------|---------|
-| `DealFormV2.jsx` | +1 | Add org_id to payload |
-| `dealService.js` | +22 | Add validation warnings (2 locations) |
-| `PR_ANALYSIS_AND_IMPROVEMENTS.md` | +420 | Complete technical analysis |
-| **Total** | **+443** | **3 files** |
+| File                              | Lines Changed | Purpose                               |
+| --------------------------------- | ------------- | ------------------------------------- |
+| `DealFormV2.jsx`                  | +1            | Add org_id to payload                 |
+| `dealService.js`                  | +22           | Add validation warnings (2 locations) |
+| `PR_ANALYSIS_AND_IMPROVEMENTS.md` | +420          | Complete technical analysis           |
+| **Total**                         | **+443**      | **3 files**                           |
 
 ---
 
 ## Documentation Created
 
 ### PR_ANALYSIS_AND_IMPROVEMENTS.md (420 lines)
+
 - Complete analysis of PRs #140 and #141
 - Identification of 4 critical gaps
 - Visual flow diagrams
@@ -169,6 +180,7 @@ Layer 4: Clear warnings in logs
 - Future recommendations
 
 ### This Document (150 lines)
+
 - Executive summary
 - Quick answers
 - Test results
@@ -195,14 +207,17 @@ Layer 4: Clear warnings in logs
 ## Recommendations
 
 ### Immediate (This PR)
+
 ✅ Merge these fixes - they make the system bulletproof
 
 ### Short Term (Next Sprint)
+
 1. Add integration tests with real Supabase
 2. Add monitoring/alerting for org_id warnings in production
 3. Audit other forms for similar issues
 
 ### Long Term (Future)
+
 1. Make org_id required in TypeScript types
 2. Consider database transactions for atomicity
 3. Add health check for RLS policies
@@ -265,9 +280,10 @@ Benefit: Multiple defense layers, faster, more reliable
 
 ## Conclusion
 
-The original PR #141 implementation was **not bulletproof** due to missing org_id from the UI layer and silent failure handling. 
+The original PR #141 implementation was **not bulletproof** due to missing org_id from the UI layer and silent failure handling.
 
 **After our improvements, it is now truly bulletproof** with:
+
 - ✅ Primary path: UI passes org_id directly (fastest, most reliable)
 - ✅ Fallback path: Database lookup if needed (backward compatible)
 - ✅ Defense in depth: RLS policies enforce at DB level (security)

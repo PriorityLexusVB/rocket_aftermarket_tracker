@@ -17,13 +17,17 @@ Validate that the `rocket_aftermarket_tracker` codebase follows Rob's business r
 ## 📄 Audit Documents
 
 ### For Quick Review (Start Here)
+
 👉 **[SCHEDULING_AUDIT_EXECUTIVE_SUMMARY.md](./SCHEDULING_AUDIT_EXECUTIVE_SUMMARY.md)** (5KB)
+
 - 2-page quick summary
-- Risk prioritization  
+- Risk prioritization
 - Immediate action items
 
 ### For Deep Dive
+
 📚 **[SCHEDULING_ASSIGNMENTS_AUDIT_REPORT.md](./SCHEDULING_ASSIGNMENTS_AUDIT_REPORT.md)** (27KB)
+
 - Complete 676-line technical analysis
 - Schema validation (Task A)
 - RPC function analysis (Task B)
@@ -37,9 +41,11 @@ Validate that the `rocket_aftermarket_tracker` codebase follows Rob's business r
 ## ✅ Key Findings
 
 ### Overall Result
+
 **🟢 COMPLIANT** - The system correctly implements vendor-only scheduling.
 
 ### What's Working
+
 - ✅ Database: `job_parts` table correctly stores vendor_id + time windows for scheduling
 - ✅ RPCs: Both calendar functions use ONLY vendor_id + time for queries and conflicts
 - ✅ Forms: All 3 forms treat people assignments as optional (no validation requires them)
@@ -49,13 +55,16 @@ Validate that the `rocket_aftermarket_tracker` codebase follows Rob's business r
 ### Issues Found
 
 #### 🟡 Medium Priority (1)
+
 **"Quick Assign" Status Bug**
+
 - **File**: `src/pages/currently-active-appointments/index.jsx:443`
 - **Issue**: Sets `status='scheduled'` without adding actual scheduling data (vendor + time)
 - **Impact**: Creates jobs with "scheduled" status that aren't on the calendar
 - **Fix**: Change status to 'assigned' or require actual scheduling data
 
 #### 🟢 Low Priority (4)
+
 1. **Deprecated Fields**: Job-level scheduling fields still exist (should document or drop)
 2. **Held Migration**: `delivery_coordinator_id` in `_hold_dec2025/` but referenced in code
 3. **Documentation**: Unclear which `vendor_id` (jobs vs job_parts) is used for conflicts
@@ -65,31 +74,34 @@ Validate that the `rocket_aftermarket_tracker` codebase follows Rob's business r
 
 ## 📊 Analysis Statistics
 
-| Metric | Count |
-|--------|-------|
-| Files Analyzed | 85+ |
-| Migrations Reviewed | 20+ |
-| Code References | 161 total |
-| - delivery_coordinator_id | 43 |
-| - finance_manager_id | 29 |
-| - assigned_to | 89 |
-| Forms Validated | 3 (all compliant) |
-| Views Reviewed | 3 (all compliant) |
-| RPCs Analyzed | 2 (both compliant) |
+| Metric                    | Count              |
+| ------------------------- | ------------------ |
+| Files Analyzed            | 85+                |
+| Migrations Reviewed       | 20+                |
+| Code References           | 161 total          |
+| - delivery_coordinator_id | 43                 |
+| - finance_manager_id      | 29                 |
+| - assigned_to             | 89                 |
+| Forms Validated           | 3 (all compliant)  |
+| Views Reviewed            | 3 (all compliant)  |
+| RPCs Analyzed             | 2 (both compliant) |
 
 ---
 
 ## 🎯 Recommendations
 
 ### Immediate (Do Now)
+
 - [ ] Fix "Quick Assign" to not set 'scheduled' status without actual scheduling
 
 ### Short-Term (This Sprint)
+
 - [ ] Apply `delivery_coordinator_id` migration OR add feature flag
 - [ ] Document vendor_id relationships (jobs vs job_parts)
 - [ ] Add deprecation comments to old scheduling fields
 
 ### Long-Term (Next Quarter)
+
 - [ ] Drop deprecated job-level scheduling columns (after testing)
 - [ ] Review assignment default behavior
 
@@ -130,18 +142,22 @@ Validate that the `rocket_aftermarket_tracker` codebase follows Rob's business r
 ## 🔧 Held Migration: delivery_coordinator_id
 
 ### Current Status
+
 - **Location**: `supabase/migrations/_hold_dec2025/20251222181000_add_delivery_coordinator.sql`
 - **Applied**: ❌ **NO** - Migration is held and not applied to live schema
 - **Column**: `jobs.delivery_coordinator_id` (UUID, references `user_profiles.id`)
 
 ### Important Considerations
+
 1. **Optional Field**: `jobs.delivery_coordinator_id` should be treated as **optional metadata only**
 2. **Environment Compatibility**: This column may not exist in older environments or deployments
 3. **Code References**: 43 instances in codebase reference this field, but must handle cases where it doesn't exist
 4. **No Blocking**: Absence of this field does not block scheduling or core functionality
 
 ### Future Action (When Needed)
+
 If this field needs to be used in production:
+
 1. Promote migration from `_hold_dec2025/` to main `supabase/migrations/` folder
 2. Create dedicated PR with:
    - Migration promotion
@@ -157,9 +173,11 @@ If this field needs to be used in production:
 ## 🏢 Vendor IDs and Scheduling
 
 ### Overview
+
 Two vendor ID fields exist in the schema, each serving different purposes:
 
 ### `jobs.vendor_id` (Primary Vendor for Scheduling)
+
 - **Purpose**: Primary vendor assigned to the entire job
 - **Used For**:
   - Calendar conflict detection via `check_vendor_schedule_conflict()`
@@ -169,6 +187,7 @@ Two vendor ID fields exist in the schema, each serving different purposes:
 - **Required**: Yes (for scheduled jobs)
 
 ### `job_parts.vendor_id` (Optional Per-Line Vendor)
+
 - **Purpose**: Optional per-line-item vendor override
 - **Used For**:
   - Off-site work with different vendors per part
@@ -178,6 +197,7 @@ Two vendor ID fields exist in the schema, each serving different purposes:
 - **Required**: No (optional override)
 
 ### Calendar Function Behavior
+
 The calendar RPCs aggregate scheduling data as follows:
 
 1. **`get_jobs_by_date_range()`**:
@@ -191,6 +211,7 @@ The calendar RPCs aggregate scheduling data as follows:
    - This ensures conflicts are detected at the job level, not per-line-item
 
 ### Implementation Reference
+
 See migration `20251114163000_calendar_line_item_scheduling.sql` for complete RPC implementations.
 
 **Note**: If future requirements need per-line-item vendor conflict detection, the `check_vendor_schedule_conflict()` function would need to be updated to consider `job_parts.vendor_id` in addition to `jobs.vendor_id`.
@@ -225,14 +246,17 @@ See migration `20251114163000_calendar_line_item_scheduling.sql` for complete RP
 ### 📋 Recommendations Status
 
 #### ✅ Immediate Actions (COMPLETE)
+
 - [x] Fix "Quick Assign" to not set 'scheduled' status without actual scheduling
 
 #### 🔄 Short-Term Actions (COMPLETE)
+
 - [x] Document vendor_id relationships (jobs vs job_parts) → See `docs/SCHEDULING_ARCHITECTURE.md`
 - [x] Add deprecation comments to old scheduling fields → Added to migration files
 - [ ] Apply delivery_coordinator_id migration OR add feature flag (deferred - see notes below)
 
 #### 📅 Long-Term Actions (Backlog)
+
 - [ ] Drop deprecated job-level scheduling columns (after full testing)
 - [ ] Review assignment defaults (null vs current user)
 

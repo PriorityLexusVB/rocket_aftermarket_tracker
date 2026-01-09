@@ -10,13 +10,14 @@ The CI migration workflows needed improvements to ensure reliability and predict
 
 Three migration files had non-standard timestamps (not 14-digit YYYYMMDDHHmmss format):
 
-| Old Filename | Issue | New Filename | Fix |
-|--------------|-------|--------------|-----|
+| Old Filename                                          | Issue     | New Filename                                                | Fix                     |
+| ----------------------------------------------------- | --------- | ----------------------------------------------------------- | ----------------------- |
 | `20251023_add_job_parts_no_schedule_reason_check.sql` | 10 digits | `20251023000000_add_job_parts_no_schedule_reason_check.sql` | Added 6 digits for time |
-| `202510270001_add_loaner_indexes.sql` | 12 digits | `20251027000001_add_loaner_indexes.sql` | Corrected to 14 digits |
-| `20251212_job_parts_unique_job_product_schedule.sql` | 8 digits | `20251212200000_job_parts_unique_job_product_schedule.sql` | Added 6 digits for time |
+| `202510270001_add_loaner_indexes.sql`                 | 12 digits | `20251027000001_add_loaner_indexes.sql`                     | Corrected to 14 digits  |
+| `20251212_job_parts_unique_job_product_schedule.sql`  | 8 digits  | `20251212200000_job_parts_unique_job_product_schedule.sql`  | Added 6 digits for time |
 
 **Result:**
+
 - All 99 migration files now have valid 14-digit timestamps
 - No duplicate timestamps detected
 - Migrations are properly ordered chronologically
@@ -24,6 +25,7 @@ Three migration files had non-standard timestamps (not 14-digit YYYYMMDDHHmmss f
 ### 2. Workflow Enhancements ✅
 
 #### Production Workflow (`.github/workflows/supabase-migrate.yml`)
+
 - ✅ Added migration count logging before push
 - ✅ Added explicit command logging (shows `supabase db push --yes`)
 - ✅ Enhanced error handling with clear success/failure messages
@@ -34,6 +36,7 @@ Three migration files had non-standard timestamps (not 14-digit YYYYMMDDHHmmss f
   - `if: always()` ensures config restoration
 
 #### Dry-Run Workflow (`.github/workflows/supabase-migrate-dry-run.yml`)
+
 - ✅ Added migration count logging before validation
 - ✅ Added explicit command logging (shows `supabase db push --dry-run`)
 - ✅ Enhanced error handling with clear success/failure messages
@@ -46,13 +49,13 @@ Three migration files had non-standard timestamps (not 14-digit YYYYMMDDHHmmss f
 
 ## Files Changed
 
-| File | Change Type | Description |
-|------|-------------|-------------|
-| `supabase/migrations/20251023_add_job_parts_no_schedule_reason_check.sql` | Renamed → `20251023000000_add_job_parts_no_schedule_reason_check.sql` | Fixed timestamp to 14-digit format |
-| `supabase/migrations/202510270001_add_loaner_indexes.sql` | Renamed → `20251027000001_add_loaner_indexes.sql` | Fixed timestamp to 14-digit format |
-| `supabase/migrations/20251212_job_parts_unique_job_product_schedule.sql` | Renamed → `20251212200000_job_parts_unique_job_product_schedule.sql` | Fixed timestamp to 14-digit format |
-| `.github/workflows/supabase-migrate.yml` | Modified | Enhanced logging and error handling |
-| `.github/workflows/supabase-migrate-dry-run.yml` | Modified | Enhanced logging, error handling, and restore conditions |
+| File                                                                      | Change Type                                                           | Description                                              |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------- |
+| `supabase/migrations/20251023_add_job_parts_no_schedule_reason_check.sql` | Renamed → `20251023000000_add_job_parts_no_schedule_reason_check.sql` | Fixed timestamp to 14-digit format                       |
+| `supabase/migrations/202510270001_add_loaner_indexes.sql`                 | Renamed → `20251027000001_add_loaner_indexes.sql`                     | Fixed timestamp to 14-digit format                       |
+| `supabase/migrations/20251212_job_parts_unique_job_product_schedule.sql`  | Renamed → `20251212200000_job_parts_unique_job_product_schedule.sql`  | Fixed timestamp to 14-digit format                       |
+| `.github/workflows/supabase-migrate.yml`                                  | Modified                                                              | Enhanced logging and error handling                      |
+| `.github/workflows/supabase-migrate-dry-run.yml`                          | Modified                                                              | Enhanced logging, error handling, and restore conditions |
 
 ## Migration Idempotency Verification ✅
 
@@ -74,41 +77,53 @@ All three renamed migrations are already idempotent:
 ## Validation Performed ✅
 
 ### YAML Validation
+
 ```bash
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/supabase-migrate.yml'))"
 python3 -c "import yaml; yaml.safe_load(open('.github/workflows/supabase-migrate-dry-run.yml'))"
 ```
+
 **Result:** Both files are valid YAML ✓
 
 ### Migration Timestamp Validation
+
 ```bash
 ls -1 supabase/migrations/*.sql | sed 's/.*\///' | grep -v '^[0-9]\{14\}_'
 ```
+
 **Result:** No invalid timestamps found ✓
 
 ### Migration Ordering Validation
+
 ```bash
 ls -1 supabase/migrations/*.sql | sed 's/.*\///' | sed 's/_.*//' | sort -c
 ```
+
 **Result:** All migrations properly ordered ✓
 
 ### Duplicate Detection
+
 ```bash
 ls -1 supabase/migrations/*.sql | sed 's/.*\///' | sed 's/_.*//' | sort | uniq -d
 ```
+
 **Result:** No duplicates found ✓
 
 ### Build Validation
+
 ```bash
 pnpm install
 pnpm build
 ```
+
 **Result:** Build succeeded ✓
 
 ### Test Validation
+
 ```bash
 pnpm test
 ```
+
 **Result:** 887 tests passed, 2 skipped (89 test files) ✓
 
 ## How to Verify in GitHub
@@ -116,11 +131,13 @@ pnpm test
 ### 1. Dry-Run Workflow (Manual)
 
 **Steps:**
+
 1. Go to Actions → "Supabase Migrate Dry Run"
 2. Click "Run workflow" → Select branch → "Run workflow"
 3. Monitor workflow execution
 
 **Expected Output:**
+
 ```
 === Supabase CLI Version ===
 supabase version 2.65.5
@@ -146,6 +163,7 @@ Command: supabase db push --dry-run
 ### 2. Dry-Run Workflow (Automatic on PR)
 
 **Steps:**
+
 1. Create a PR that modifies migration files
 2. Workflow runs automatically
 3. If secrets unavailable (forks/external PRs):
@@ -155,11 +173,13 @@ Command: supabase db push --dry-run
 ### 3. Production Workflow (Manual)
 
 **Steps:**
+
 1. Go to Actions → "Supabase Migrate Production"
 2. Click "Run workflow" → "Run workflow"
 3. Monitor workflow execution
 
 **Expected Output:**
+
 ```
 === Check required secrets ===
 [Secrets verified]
@@ -188,6 +208,7 @@ Command: supabase db push --yes
 ### 4. Production Workflow (Automatic on Push to Main)
 
 **Steps:**
+
 1. Merge PR to main branch
 2. Workflow triggers automatically if migrations changed
 3. Monitor workflow in Actions tab
@@ -195,6 +216,7 @@ Command: supabase db push --yes
 ### What to Look For
 
 **Success Indicators:**
+
 - ✓ All steps show green checkmarks
 - ✓ "Successfully linked to project" message appears
 - ✓ "Migrations applied successfully" or "Dry-run completed successfully"
@@ -202,6 +224,7 @@ Command: supabase db push --yes
 - ✓ No error messages in logs
 
 **Failure Indicators:**
+
 - ✗ Any step shows red X
 - ✗ "Migration failed" or "Dry-run validation failed" message
 - ✗ Error messages in logs with SQLSTATE codes
@@ -212,6 +235,7 @@ Command: supabase db push --yes
 ### If Migration Fails During Apply
 
 **Option 1: Investigate and Fix Forward**
+
 1. Check workflow logs for specific error message
 2. If migration SQL issue:
    - Create new migration to fix issue (forward-only)
@@ -222,6 +246,7 @@ Command: supabase db push --yes
 4. Push fix to trigger new workflow run
 
 **Option 2: Revert This PR (Last Resort)**
+
 ```bash
 # Identify the merge commit
 git log --oneline | head -5
@@ -236,11 +261,13 @@ git push origin main
 ### If Workflow Configuration Fails
 
 **Option 1: Fix YAML Syntax**
+
 1. Validate YAML locally: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/supabase-migrate.yml'))"`
 2. Fix syntax errors
 3. Push correction
 
 **Option 2: Revert Workflow Changes**
+
 ```bash
 # Revert only workflow files
 git checkout HEAD~1 .github/workflows/supabase-migrate.yml
@@ -254,6 +281,7 @@ git push origin main
 After migrations apply successfully in production, verify in Supabase SQL Editor:
 
 ### 1. Check Migration History
+
 ```sql
 SELECT version, name, inserted_at
 FROM supabase_migrations.schema_migrations
@@ -262,12 +290,14 @@ LIMIT 10;
 ```
 
 **Expected:**
+
 - `20251212200000` → `job_parts_unique_job_product_schedule` (renamed)
 - `20251212194500` → `fix_user_profiles_policy_and_grants`
 - `20251212190000` → `job_parts_dedupe_and_unique`
 - ... (earlier migrations)
 
 ### 2. Verify Renamed Migrations Applied
+
 ```sql
 SELECT version, name
 FROM supabase_migrations.schema_migrations
@@ -282,6 +312,7 @@ ORDER BY version;
 **Expected:** All three versions present with correct names.
 
 ### 3. Verify Job Parts Constraint
+
 ```sql
 SELECT con.conname, pg_get_constraintdef(con.oid)
 FROM pg_constraint con
@@ -293,6 +324,7 @@ WHERE rel.relname = 'job_parts'
 **Expected:** Constraint exists and is defined correctly.
 
 ### 4. Verify Loaner Indexes
+
 ```sql
 SELECT indexname, indexdef
 FROM pg_indexes
@@ -306,6 +338,7 @@ WHERE tablename = 'loaner_assignments'
 **Expected:** Both indexes exist.
 
 ### 5. Verify Job Parts Unique Index
+
 ```sql
 SELECT indexname, indexdef
 FROM pg_indexes
@@ -341,6 +374,6 @@ WHERE tablename = 'job_parts'
 ✅ **Enhanced:** Production and dry-run workflows with better logging  
 ✅ **Validated:** YAML syntax, migration ordering, build, tests  
 ✅ **Verified:** Idempotency of all changed migrations  
-✅ **Documented:** Verification procedures and rollback plan  
+✅ **Documented:** Verification procedures and rollback plan
 
 **Impact:** Zero breaking changes. All migrations maintain backward compatibility. Workflows now provide clearer diagnostics for troubleshooting.

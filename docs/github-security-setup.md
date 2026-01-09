@@ -12,18 +12,20 @@ Automatically creates pull requests to update dependencies.
 
 **Configured Ecosystems:**
 
-| Ecosystem | Directory | Schedule | Purpose |
-|-----------|-----------|----------|---------|
-| `npm` | `/` | Weekly (Monday, 6:00 AM EST) | JavaScript/TypeScript dependencies |
-| `github-actions` | `/` | Monthly (Monday, 6:00 AM EST) | GitHub Actions workflow dependencies |
+| Ecosystem        | Directory | Schedule                      | Purpose                              |
+| ---------------- | --------- | ----------------------------- | ------------------------------------ |
+| `npm`            | `/`       | Weekly (Monday, 6:00 AM EST)  | JavaScript/TypeScript dependencies   |
+| `github-actions` | `/`       | Monthly (Monday, 6:00 AM EST) | GitHub Actions workflow dependencies |
 
 **Grouping Strategy:**
+
 - **Security updates**: All security patches grouped together for expedited review
 - **Minor and patch**: Non-breaking updates grouped to reduce PR noise
 - **Major updates**: Breaking changes kept separate for careful review
 - **GitHub Actions**: All action updates grouped together
 
 **Labels Applied:**
+
 - `dependencies` - All dependency PRs
 - `automated` - Identifies automated PRs
 - `github-actions` - Specifically for workflow updates
@@ -33,10 +35,11 @@ Automatically creates pull requests to update dependencies.
 Static analysis security scanning for code vulnerabilities.
 
 **Configuration:**
+
 - **Languages**: `javascript-typescript`
 - **Triggers**:
   - Push to `main` branch
-  - Pull requests targeting `main` branch  
+  - Pull requests targeting `main` branch
   - Weekly scheduled scan (Monday, 10:00 UTC / 5:00 AM EST)
 - **Query Suites**: `security-extended` + `security-and-quality`
 
@@ -50,15 +53,15 @@ Some security features require manual activation in the GitHub UI. Navigate to y
 
 Go to: `https://github.com/<your-org-or-username>/<your-repo>/settings/security_analysis`
 
-| Feature | Status | Action Required |
-|---------|--------|-----------------|
-| **Dependency graph** | Required | ✅ Enable - Allows GitHub to analyze dependencies |
-| **Dependabot alerts** | Required | ✅ Enable - Alerts for vulnerable dependencies |
-| **Dependabot security updates** | Recommended | ✅ Enable - Auto-creates PRs for security patches |
-| **Dependabot version updates** | Optional | ⚡ Enable - Uses `dependabot.yml` config for version PRs |
-| **Code scanning** | Required | ✅ Enable - Uses CodeQL workflow for security analysis |
-| **Secret scanning** | Recommended | ✅ Enable - Detects secrets committed to code |
-| **Push protection** | Recommended | ✅ Enable - Blocks commits containing secrets |
+| Feature                         | Status      | Action Required                                          |
+| ------------------------------- | ----------- | -------------------------------------------------------- |
+| **Dependency graph**            | Required    | ✅ Enable - Allows GitHub to analyze dependencies        |
+| **Dependabot alerts**           | Required    | ✅ Enable - Alerts for vulnerable dependencies           |
+| **Dependabot security updates** | Recommended | ✅ Enable - Auto-creates PRs for security patches        |
+| **Dependabot version updates**  | Optional    | ⚡ Enable - Uses `dependabot.yml` config for version PRs |
+| **Code scanning**               | Required    | ✅ Enable - Uses CodeQL workflow for security analysis   |
+| **Secret scanning**             | Recommended | ✅ Enable - Detects secrets committed to code            |
+| **Push protection**             | Recommended | ✅ Enable - Blocks commits containing secrets            |
 
 ### Step-by-Step Instructions
 

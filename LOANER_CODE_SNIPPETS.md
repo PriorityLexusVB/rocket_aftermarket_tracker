@@ -5,8 +5,10 @@
 **File:** `/src/components/deals/DealFormV2.jsx` (lines 589-606)
 
 ```jsx
-{/* Loaner checkbox */}
-<section className="flex items-center gap-3">
+{
+  /* Loaner checkbox */
+}
+;<section className="flex items-center gap-3">
   <input
     id="needsLoaner"
     data-testid="loaner-checkbox"
@@ -31,24 +33,24 @@
 **File:** `/src/components/deals/DealFormV2.jsx` (lines 608-625)
 
 ```jsx
-{customerData?.needsLoaner && (
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-    <div>
-      <label className="block text-sm font-medium text-slate-700">Loaner #</label>
-      <input
-        ref={loanerRef}
-        data-testid="loaner-number-input"
-        className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
-        placeholder="Enter loaner vehicle number"
-        value={customerData?.loanerNumber ?? ''}
-        onChange={(e) =>
-          setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))
-        }
-        required
-      />
+{
+  customerData?.needsLoaner && (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-slate-700">Loaner #</label>
+        <input
+          ref={loanerRef}
+          data-testid="loaner-number-input"
+          className="mt-1 input-mobile w-full p-3 border border-gray-300 rounded-lg"
+          placeholder="Enter loaner vehicle number"
+          value={customerData?.loanerNumber ?? ''}
+          onChange={(e) => setCustomerData((prev) => ({ ...prev, loanerNumber: e.target.value }))}
+          required
+        />
+      </div>
     </div>
-  </div>
-)}
+  )
+}
 ```
 
 ## 3. Edit Mode Loaner State Loading
@@ -60,7 +62,7 @@
 useEffect(() => {
   if (job && mode === 'edit' && job.id && initializedJobId.current !== job.id) {
     initializedJobId.current = job.id
-    
+
     setCustomerData({
       customerName: job?.customer_name || job?.customerName || '',
       dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
@@ -353,6 +355,7 @@ it('should map loaner data to nested loanerForm structure', () => {
 **Location:** `/src/services/dealService.js` around line 1697
 
 **Current Code:**
+
 ```javascript
 if (payload?.customer_needs_loaner && loanerForm) {
   await upsertLoanerAssignment(id, loanerForm)
@@ -360,14 +363,12 @@ if (payload?.customer_needs_loaner && loanerForm) {
 ```
 
 **Missing Code (Should be added):**
+
 ```javascript
 // MISSING: Handle loaner deletion when toggle is turned OFF
 if (!payload?.customer_needs_loaner) {
   // Delete existing loaner assignments when toggle is turned off
-  const { error } = await supabase
-    ?.from('loaner_assignments')
-    ?.delete()
-    ?.eq('job_id', id)
+  const { error } = await supabase?.from('loaner_assignments')?.delete()?.eq('job_id', id)
   if (error) throw wrapDbError(error, 'delete loaner assignments')
 }
 ```

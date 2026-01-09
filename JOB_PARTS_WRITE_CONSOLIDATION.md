@@ -10,10 +10,11 @@ Previously, multiple code paths wrote to `job_parts` independently:
 
 1. **dealService.createDeal** - Direct INSERT after job creation
 2. **dealService.updateDeal** - DELETE + INSERT on deal edit
-3. **jobService.updateJob** - DELETE + custom insertLineItems  
+3. **jobService.updateJob** - DELETE + custom insertLineItems
 4. **CreateModal** (calendar) - Direct INSERT for calendar appointments
 
 Each had its own retry logic for missing columns, creating opportunities for:
+
 - Double-writes if handlers fired twice
 - Missed DELETEs if errors occurred mid-transaction
 - Accumulation (1→2→3→4) on repeated edits
@@ -25,16 +26,19 @@ Each had its own retry logic for missing columns, creating opportunities for:
 **Location:** `src/services/jobPartsService.js`
 
 **Signature:**
+
 ```javascript
 async function replaceJobPartsForJob(jobId, lineItems = [], opts = {})
 ```
 
 **Behavior:**
+
 1. DELETE all existing job_parts for the given job_id
 2. Transform lineItems to job_parts row format
 3. INSERT new rows (with retry logic for missing columns)
 
 **Why This Works:**
+
 - DELETE always removes ALL existing parts first
 - INSERT happens exactly once per call
 - No accumulation possible - each save replaces parts completely
@@ -42,6 +46,7 @@ async function replaceJobPartsForJob(jobId, lineItems = [], opts = {})
 ### Updated Call Sites
 
 **1. dealService.createDeal** (line ~1604)
+
 ```javascript
 // Before:
 const rows = toJobPartRows(job?.id, normalizedLineItems, {...})
@@ -52,6 +57,7 @@ await replaceJobPartsForJob(job?.id, normalizedLineItems, {...})
 ```
 
 **2. dealService.updateDeal** (line ~2068)
+
 ```javascript
 // Before:
 await supabase.from('job_parts').delete().eq('job_id', id)
@@ -63,6 +69,7 @@ await replaceJobPartsForJob(id, normalizedLineItems, {...})
 ```
 
 **3. jobService.updateJob** (line ~248)
+
 ```javascript
 // Before:
 await supabase.from('job_parts').delete().eq('job_id', jobId)
@@ -73,6 +80,7 @@ await replaceJobPartsForJob(jobId, dealData.lineItems)
 ```
 
 **4. CreateModal** (calendar, line ~587)
+
 ```javascript
 // Before:
 await supabase.from('job_parts').insert([{...}])
@@ -86,6 +94,7 @@ await replaceJobPartsForJob(job?.id, [{...}])
 ### Unit Tests: `src/tests/jobPartsService.test.js`
 
 Tests verify:
+
 - DELETE called exactly once per save ✓
 - INSERT called exactly once per save ✓
 - Multiple saves don't accumulate (1→1→1) ✓
@@ -95,6 +104,7 @@ Tests verify:
 ### Integration Tests
 
 Existing tests in `deal-edit-accumulation-bug.test.js` verify:
+
 - Full edit cycle: load → edit → save → reload
 - Count remains constant across saves
 - No duplication in payload at any stage
@@ -104,6 +114,7 @@ Existing tests in `deal-edit-accumulation-bug.test.js` verify:
 ### Backward Compatibility
 
 `toJobPartRows()` is still exported from `dealService.js` for test compatibility:
+
 ```javascript
 // Tests can still import this way:
 import { toJobPartRows } from '../services/dealService'
@@ -114,6 +125,7 @@ The implementation is in `jobPartsService.js`, but `dealService` re-exports for 
 ### What NOT to Do
 
 ❌ **DO NOT** write to `job_parts` directly:
+
 ```javascript
 // WRONG - bypasses centralized logic
 await supabase.from('job_parts').insert([...])
@@ -121,6 +133,7 @@ await supabase.from('job_parts').delete().eq('job_id', id)
 ```
 
 ✅ **DO** use the helper:
+
 ```javascript
 // CORRECT - centralized, tested, safe
 await replaceJobPartsForJob(jobId, lineItems, opts)
@@ -131,6 +144,7 @@ await replaceJobPartsForJob(jobId, lineItems, opts)
 ### Development Logs
 
 The helper logs extensively in development mode:
+
 ```
 [replaceJobPartsForJob] Starting replacement: { jobId, lineItemsCount }
 [replaceJobPartsForJob] DELETE successful
@@ -141,6 +155,7 @@ The helper logs extensively in development mode:
 ### Duplicate Detection
 
 If somehow duplicates get into the payload:
+
 ```
 [replaceJobPartsForJob] ⚠️ DUPLICATE DETECTION: Multiple rows have the same product_id!
 { totalRows: 2, uniqueProducts: 1, productIds: [...] }
@@ -151,6 +166,7 @@ If somehow duplicates get into the payload:
 After deploying, test this flow:
 
 1. **Initial state:**
+
    ```sql
    SELECT COUNT(*) FROM job_parts WHERE job_id = 'xxx';
    -- Should return: 1
@@ -163,7 +179,7 @@ After deploying, test this flow:
 
 3. **Second edit:**
    - Change something else
-   - Click "Update Deal"  
+   - Click "Update Deal"
    - Check DB: Still 1 row (not 3)
 
 4. **Multiple edits:**
@@ -182,6 +198,7 @@ After deploying, test this flow:
 ## Future Enhancements
 
 Potential improvements:
+
 - Add transaction wrapper for atomicity
 - Add optimistic locking (check version before DELETE)
 - Add batch operations for multiple jobs

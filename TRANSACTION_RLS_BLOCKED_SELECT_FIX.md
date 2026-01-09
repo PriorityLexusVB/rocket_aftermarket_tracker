@@ -38,9 +38,11 @@ const { data: existingTxn } = await supabase
 1. **Legacy Data Issue**: Existing transactions might have `org_id = NULL` or a mismatched org_id (from before migration 20251106120000 added the org_id column)
 
 2. **RLS SELECT Policy**: The SELECT policy on transactions (from migration 20251022180000) only allows:
+
    ```sql
    USING (org_id = (SELECT org_id FROM public.user_profiles p WHERE p.id = auth.uid()))
    ```
+
    This means users can only SELECT transactions where the transaction's org_id matches their profile's org_id.
 
 3. **Silent Failure**: When the SELECT query failed due to RLS (transaction's org_id didn't match user's org_id), the error was ignored and `existingTxn` was `undefined/null`.
@@ -52,6 +54,7 @@ const { data: existingTxn } = await supabase
 ### RLS Policies Reference
 
 **SELECT Policy** (20251022180000):
+
 ```sql
 CREATE POLICY "org read transactions" ON public.transactions
 FOR SELECT TO authenticated
@@ -59,6 +62,7 @@ USING (org_id = (SELECT org_id FROM public.user_profiles p WHERE p.id = auth.uid
 ```
 
 **INSERT Policy** (20251105000000):
+
 ```sql
 CREATE POLICY "org can insert transactions" ON public.transactions
 FOR INSERT TO authenticated
@@ -69,6 +73,7 @@ WITH CHECK (
 ```
 
 **UPDATE Policy** (20251105000000):
+
 ```sql
 CREATE POLICY "org can update transactions" ON public.transactions
 FOR UPDATE TO authenticated
@@ -91,6 +96,7 @@ WITH CHECK (
 #### Change 1: updateDeal - Add Error Checking and RLS Recovery (lines ~1628-1710)
 
 **Before**:
+
 ```javascript
 try {
   const { data: existingTxn } = await supabase
@@ -117,6 +123,7 @@ try {
 ```
 
 **After** (Revised after code review):
+
 ```javascript
 try {
   // ✅ FIX: Check for errors and handle RLS-blocked SELECTs
@@ -133,7 +140,7 @@ try {
   if (selectErr) {
     const errMsg = String(selectErr?.message || '').toLowerCase()
     const errCode = selectErr?.code
-    
+
     // Check for RLS/permission errors using both error code and message
     const isRlsError =
       errCode === '42501' ||
@@ -144,8 +151,10 @@ try {
       errMsg.includes('row-level security')
 
     if (isRlsError) {
-      console.warn('[dealService:update] RLS blocked transaction SELECT, attempting UPDATE by job_id')
-      
+      console.warn(
+        '[dealService:update] RLS blocked transaction SELECT, attempting UPDATE by job_id'
+      )
+
       // Get the job's org_id to use for the transaction
       let jobOrgId = baseTransactionData.org_id
       if (!jobOrgId) {
@@ -154,7 +163,7 @@ try {
           ?.select('org_id')
           ?.eq('id', id)
           ?.single()
-        
+
         if (jobErr) throw jobErr
         jobOrgId = jobData?.org_id
       }
@@ -165,7 +174,7 @@ try {
 
       // Set the transaction's org_id and UPDATE by job_id
       baseTransactionData.org_id = jobOrgId
-      
+
       // Attempt UPDATE by job_id (RLS policy allows this via job relationship)
       const { data: updateResult, error: updErr } = await supabase
         ?.from('transactions')
@@ -192,7 +201,7 @@ try {
       if (!baseTransactionData.org_id && existingTxn.org_id) {
         baseTransactionData.org_id = existingTxn.org_id
       }
-      
+
       const { error: updErr } = await supabase
         ?.from('transactions')
         ?.update(baseTransactionData)
@@ -211,6 +220,7 @@ try {
 ```
 
 **Key Differences from Initial Implementation**:
+
 1. When RLS blocks SELECT, perform UPDATE by `job_id` instead of setting up for INSERT
 2. Check if UPDATE affected any rows using `.select('id')`
 3. Only proceed to normal INSERT/UPDATE flow if RLS recovery didn't handle it
@@ -219,6 +229,7 @@ try {
 #### Change 2: createDeal - Improve Error Handling (lines ~1431-1487)
 
 **Before**:
+
 ```javascript
 try {
   const baseTransaction = {
@@ -244,6 +255,7 @@ try {
 ```
 
 **After** (Revised after code review):
+
 ```javascript
 try {
   // ✅ Ensure org_id is set, fallback to job's org_id if not in payload
@@ -269,12 +281,18 @@ try {
   // If SELECT failed due to RLS, skip INSERT to avoid potential duplicates
   if (selectErr) {
     const errMsg = String(selectErr?.message || '').toLowerCase()
-    const isRlsError = errMsg.includes('policy') || errMsg.includes('permission') || errMsg.includes('rls')
-    
+    const isRlsError =
+      errMsg.includes('policy') || errMsg.includes('permission') || errMsg.includes('rls')
+
     if (isRlsError) {
-      console.warn('[dealService:create] RLS blocked transaction SELECT; skipping INSERT to avoid duplicates')
+      console.warn(
+        '[dealService:create] RLS blocked transaction SELECT; skipping INSERT to avoid duplicates'
+      )
     } else {
-      console.warn('[dealService:create] Transaction SELECT failed (non-fatal):', selectErr?.message)
+      console.warn(
+        '[dealService:create] Transaction SELECT failed (non-fatal):',
+        selectErr?.message
+      )
     }
   } else if (!existingTxn?.id) {
     // Only INSERT if SELECT succeeded and found no transaction
@@ -289,18 +307,19 @@ try {
 ```
 
 **Key Differences from Initial Implementation**:
+
 1. Skip INSERT when RLS blocks SELECT to avoid creating duplicate transactions
 2. Transaction likely exists but is inaccessible; updateDeal will fix it properly
 3. Simplified org_id fallback logic using chained OR operators
 
 ### Key Improvements
 
-1. **Error Detection**: Check for SELECT errors using error codes (42501, PGRST*) and message patterns
+1. **Error Detection**: Check for SELECT errors using error codes (42501, PGRST\*) and message patterns
 2. **RLS Recovery via UPDATE**: When RLS blocks SELECT in updateDeal, perform UPDATE by `job_id` instead of INSERT
 3. **Duplicate Prevention**: Skip INSERT in createDeal when RLS blocks SELECT
 4. **Better Logging**: Log specific errors for easier debugging
 5. **Validation**: Throw error if job has no org_id after RLS recovery attempt
-5. **Fallback to Job**: Use job's org_id when payload doesn't have it
+6. **Fallback to Job**: Use job's org_id when payload doesn't have it
 
 ## Testing
 
@@ -329,6 +348,7 @@ No vulnerabilities detected
 ### Code Review ✅
 
 **Initial Review** (Comments 2553607745-2553607777):
+
 - ❌ Logic unreachable when RLS blocks SELECT
 - ❌ Code doesn't UPDATE existing transaction - attempts INSERT instead
 - ❌ Inconsistent case handling in RLS error detection
@@ -336,6 +356,7 @@ No vulnerabilities detected
 - ❌ createDeal could create duplicates when RLS blocks SELECT
 
 **Revised Implementation** (Addresses all critical issues):
+
 - ✅ RLS recovery now performs UPDATE by `job_id` instead of INSERT
 - ✅ Prevents duplicate transactions when no unique constraint exists
 - ✅ Case-insensitive error code detection (`.toUpperCase()`)
@@ -383,6 +404,7 @@ To verify the fix works:
 If issues arise:
 
 1. **Revert commits**:
+
    ```bash
    git revert 54e2d10  # Fix optional chaining bug
    git revert fe809b2  # Address code review feedback

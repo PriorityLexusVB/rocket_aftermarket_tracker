@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { entityToDraft, draftToCreatePayload, draftToUpdatePayload } from '../components/deals/formAdapters'
+import {
+  entityToDraft,
+  draftToCreatePayload,
+  draftToUpdatePayload,
+} from '../components/deals/formAdapters'
 
 describe('formAdapters - org_id preservation', () => {
   it('draftToCreatePayload should preserve org_id', () => {

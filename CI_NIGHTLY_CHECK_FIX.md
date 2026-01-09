@@ -1,24 +1,29 @@
 # CI Nightly Check Fix - Schema Cache Verification
 
 ## Issue
+
 GitHub Actions workflow "Nightly RLS Drift & Health Check" was failing at Step 1 of the schema verification script.
 
 **Workflow Run**: Actions run #20220018851  
 **Reference**: `.github/workflows/rls-drift-nightly.yml`
 
 **Error**:
+
 ```
 Step 1: Checking if vendor_id column exists in job_parts...
 ❌ Schema cache verification failed
 ```
 
 ## Root Cause
+
 The `scripts/verify-schema-cache.sh` script was attempting to execute SQL queries using the Supabase CLI:
+
 ```bash
 npx supabase db execute --sql "SELECT ..."
 ```
 
 This requires:
+
 1. A linked Supabase project (via `supabase link`)
 2. Local `.supabase/` directory with auth config
 3. Direct database access
@@ -26,10 +31,13 @@ This requires:
 In CI environments (GitHub Actions), none of these prerequisites exist, causing the script to fail immediately.
 
 ## Solution
+
 Modified `scripts/verify-schema-cache.sh` to detect CI mode and adjust its behavior:
 
 ### 1. CI Mode Detection
+
 The script now detects when running in CI:
+
 ```bash
 IS_CI_MODE=false
 if [ "${CI}" = "true" ] || [ "${GITHUB_ACTIONS}" = "true" ]; then
@@ -38,13 +46,17 @@ fi
 ```
 
 ### 2. Conditional Logic
+
 In CI mode, the script:
+
 - **Skips Steps 1-3**: Column check, FK check, index check, schema reload (all require CLI)
 - **Runs Step 4**: REST API test (if environment variables are set)
 - **Passes gracefully**: If env vars not set (health endpoints will validate instead)
 
 ### 3. Environment Variables
+
 The workflow sets these from secrets:
+
 ```yaml
 env:
   VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -52,19 +64,21 @@ env:
 ```
 
 When set, the script validates the schema by querying the Supabase REST API directly:
+
 ```bash
 curl "${VITE_SUPABASE_URL}/rest/v1/job_parts?select=id,vendor_id,vendor:vendors(id,name)&limit=1"
 ```
 
 ## Script Behavior Matrix
 
-| Mode | Env Vars | Behavior | Exit Code |
-|------|----------|----------|-----------|
-| Local | Any | Runs all CLI checks (Steps 1-3) + REST API test (Step 4) | 0 or 1 |
-| CI | Set | Skips CLI checks, runs REST API test | 0 if API succeeds, 1 if fails |
-| CI | Not set | Skips CLI checks, skips REST API test | 0 (passes) |
+| Mode  | Env Vars | Behavior                                                 | Exit Code                     |
+| ----- | -------- | -------------------------------------------------------- | ----------------------------- |
+| Local | Any      | Runs all CLI checks (Steps 1-3) + REST API test (Step 4) | 0 or 1                        |
+| CI    | Set      | Skips CLI checks, runs REST API test                     | 0 if API succeeds, 1 if fails |
+| CI    | Not set  | Skips CLI checks, skips REST API test                    | 0 (passes)                    |
 
 ## Workflow Integration
+
 The nightly workflow now works as follows:
 
 1. **Run Schema Drift Script** (Step 6)
@@ -90,12 +104,14 @@ The nightly workflow now works as follows:
 ## Key Changes
 
 ### Version Update
+
 ```diff
 - echo "Version: 2.0 (Enhanced for CI/CD)"
 + echo "Version: 2.1 (CI/CD Compatible)"
 ```
 
 ### CI Mode Detection
+
 ```bash
 # Detect CI environment
 IS_CI_MODE=false
@@ -107,6 +123,7 @@ fi
 ```
 
 ### Conditional Checks
+
 ```bash
 # Step 1: Check if column exists (skip in CI mode)
 if [ "$IS_CI_MODE" = false ]; then
@@ -117,6 +134,7 @@ fi
 ```
 
 ### Graceful Env Var Handling
+
 ```bash
 if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
     if [ "$IS_CI_MODE" = true ]; then
@@ -130,34 +148,42 @@ fi
 ## Testing
 
 ### Local Development (No Change)
+
 ```bash
 # Requires linked Supabase project
 bash scripts/verify-schema-cache.sh
 ```
+
 - Runs all CLI checks (Steps 1-3)
 - Runs REST API test (Step 4)
 - Full validation
 
 ### CI Mode (New Behavior)
+
 ```bash
 # Simulates CI environment
 CI=true bash scripts/verify-schema-cache.sh
 ```
+
 - Skips CLI checks
 - Runs REST API test (if env vars set)
 - Exits 0 if no env vars (graceful pass)
 
 ## Expected Outcome
+
 The nightly workflow will now:
+
 1. ✅ Pass the schema drift script step (no longer fails at Step 1)
 2. ✅ Validate schema via REST API (if env vars set) OR health endpoints (always run)
 3. ✅ Detect real drift issues through health endpoint checks
 4. ✅ Report actionable failures when schema issues exist
 
 ## Files Modified
+
 - `scripts/verify-schema-cache.sh` - Added CI mode detection and conditional logic
 
 ## Verification
+
 To verify the fix works:
 
 1. **Manual Trigger**: Go to Actions → "Nightly RLS Drift & Health Check" → Run workflow
@@ -165,6 +191,7 @@ To verify the fix works:
 3. **Check Results**: Should see "Schema cache verification passed" at Step 6
 
 ## Related Documentation
+
 - `.github/workflows/rls-drift-nightly.yml` - Nightly workflow configuration
 - `docs/TASK_6_NIGHTLY_RLS_DRIFT_CI.md` - Workflow documentation
 - `docs/TROUBLESHOOTING_SCHEMA_CACHE.md` - Schema troubleshooting guide

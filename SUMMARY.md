@@ -8,14 +8,14 @@
 
 ## Quick Status
 
-| Check | Status |
-|-------|--------|
-| Lint | ✅ 0 errors |
-| Tests | ✅ 63 passing |
-| TypeCheck | ✅ No errors |
-| Build | ✅ Success |
-| Documentation | ✅ Complete |
-| Deployment Ready | ✅ Yes |
+| Check            | Status        |
+| ---------------- | ------------- |
+| Lint             | ✅ 0 errors   |
+| Tests            | ✅ 63 passing |
+| TypeCheck        | ✅ No errors  |
+| Build            | ✅ Success    |
+| Documentation    | ✅ Complete   |
+| Deployment Ready | ✅ Yes        |
 
 ---
 
@@ -47,14 +47,14 @@
 
 ## Closure Tasks (A-F) Status
 
-| Task | Description | Status |
-|------|-------------|--------|
-| A | Fix ESLint/tooling | ✅ 0 errors |
-| B | Playwright e2e tests | ✅ Added optional tests |
-| C | Documentation updates | ✅ Verified |
-| D | Telemetry enhancements | ✅ Previously done |
-| E | RLS audit script | ✅ Previously done |
-| F | Final closure summary | ✅ Complete |
+| Task | Description            | Status                  |
+| ---- | ---------------------- | ----------------------- |
+| A    | Fix ESLint/tooling     | ✅ 0 errors             |
+| B    | Playwright e2e tests   | ✅ Added optional tests |
+| C    | Documentation updates  | ✅ Verified             |
+| D    | Telemetry enhancements | ✅ Previously done      |
+| E    | RLS audit script       | ✅ Previously done      |
+| F    | Final closure summary  | ✅ Complete             |
 
 ---
 

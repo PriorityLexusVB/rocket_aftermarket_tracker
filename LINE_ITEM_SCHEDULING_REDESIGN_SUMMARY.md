@@ -17,6 +17,7 @@ This PR implements the line-item scheduling redesign as specified in the problem
 #### 1. DealFormV2.jsx (Primary Deal Form)
 
 **Removed:**
+
 - Entire job-level scheduling section from Customer (Step 1) tab
   - Removed fields: `scheduledStartTime`, `scheduledEndTime`, `location`, `calendarNotes`, `colorCode`
   - Removed `scheduleValidationError` state
@@ -25,6 +26,7 @@ This PR implements the line-item scheduling redesign as specified in the problem
 - Removed unused imports: `toLocalDateTimeFields`, `fromLocalDateTimeFields`, `validateScheduleRange`
 
 **Updated Line-Item Scheduling:**
+
 - Changed label: "Promised Date" → **"Date Scheduled"**
 - Changed field name: `promisedDate` → `dateScheduled`
 - Added new field: `isMultiDay` (boolean) with checkbox UI
@@ -34,6 +36,7 @@ This PR implements the line-item scheduling redesign as specified in the problem
 - Updated test IDs for consistency
 
 **Code Changes:**
+
 ```javascript
 // Before
 promisedDate: '',
@@ -46,12 +49,14 @@ isMultiDay: false,
 #### 2. DealForm.jsx (Legacy Deal Form)
 
 **Updated:**
+
 - Changed label: "Promised Date" → **"Date Scheduled"**
 - Field name remains `promised_date` for backward compatibility with existing database queries
 
 #### 3. CreateModal.jsx (Calendar Component)
 
 **Updated:**
+
 - Changed label: "Promised Date (no time component)" → **"Date Scheduled (no time component)"**
 - Changed label: "Per-line Promised Date (optional)" → **"Per-line Date Scheduled (optional)"**
 - Updated error message: "Promised Date is required" → **"Date Scheduled is required"**
@@ -60,12 +65,12 @@ isMultiDay: false,
 
 ## Field Mapping
 
-| Old Field | New Field | Location | Status |
-|-----------|-----------|----------|--------|
-| `promisedDate` | `dateScheduled` | DealFormV2 line items | ✅ Updated |
-| N/A | `isMultiDay` | DealFormV2 line items | ✅ Added |
-| "Promised Date" | "Date Scheduled" | All UI labels | ✅ Updated |
-| `promised_date` | `promised_date` | DealForm (legacy) | ⚠️ Label only |
+| Old Field       | New Field        | Location              | Status        |
+| --------------- | ---------------- | --------------------- | ------------- |
+| `promisedDate`  | `dateScheduled`  | DealFormV2 line items | ✅ Updated    |
+| N/A             | `isMultiDay`     | DealFormV2 line items | ✅ Added      |
+| "Promised Date" | "Date Scheduled" | All UI labels         | ✅ Updated    |
+| `promised_date` | `promised_date`  | DealForm (legacy)     | ⚠️ Label only |
 
 ---
 
@@ -150,16 +155,17 @@ Duration: ~4.5s
 **File:** `supabase/migrations/20251114163000_calendar_line_item_scheduling.sql`
 
 **Changes:**
+
 1. **Updated `get_jobs_by_date_range()` function** to read from `job_parts` table
    - Uses CTE to aggregate line item schedules per job
    - Shows earliest start time and latest end time across all line items
    - Only shows jobs that have at least one scheduled line item
-   
 2. **Updated `check_vendor_schedule_conflict()` function** to read from `job_parts` table
    - Prevents double-booking vendors based on line-item schedules
    - Checks for time overlaps at the line-item level
 
 **Strategy:**
+
 - **Aggregation:** If a job has multiple line items with different schedules, the calendar shows:
   - Start time: Earliest `scheduled_start_time` across all line items
   - End time: Latest `scheduled_end_time` across all line items
@@ -167,6 +173,7 @@ Duration: ~4.5s
 - **Conflicts:** Vendor conflict checking now operates at line-item level
 
 **Example:**
+
 ```sql
 -- Job with 2 line items:
 -- Line item 1: 9:00 AM - 11:00 AM
@@ -175,6 +182,7 @@ Duration: ~4.5s
 ```
 
 **Edge Cases Handled:**
+
 - ✅ Job with multiple line items at different times (aggregated)
 - ✅ Job with mix of scheduled/unscheduled line items (only scheduled shown)
 - ✅ Multi-day line items (date range filtering works correctly)
@@ -185,11 +193,13 @@ Duration: ~4.5s
 ## User Experience Changes
 
 ### Before
+
 - Users scheduled at the **job level** in the Customer tab
 - Line items had optional "Promised Date" field
 - Scheduling was scattered between job and line items
 
 ### After
+
 - ✅ **No job-level scheduling** - removed entirely from Customer tab
 - ✅ Line items have **"Date Scheduled"** field (required if scheduling is needed)
 - ✅ New **"Multi-Day Scheduling"** checkbox for extended work
@@ -236,6 +246,7 @@ Updated the calendar RescheduleModal to read and write line-item scheduling inst
 ### Changes Made
 
 **Files Modified (4):**
+
 1. `src/services/jobService.js`
    - Added `updateLineItemSchedules(jobId, scheduleData)` method
    - Updates all line items with `requires_scheduling = true`
@@ -264,28 +275,31 @@ Updated the calendar RescheduleModal to read and write line-item scheduling inst
 ### Implementation Strategy
 
 **Reading Schedules:**
+
 ```javascript
 // Compute aggregated schedule from line items
 const scheduledItems = job.job_parts.filter(
-  item => item.scheduled_start_time && item.scheduled_end_time
+  (item) => item.scheduled_start_time && item.scheduled_end_time
 )
 
 if (scheduledItems.length > 0) {
   // Aggregate: earliest start, latest end
-  const starts = scheduledItems.map(item => new Date(item.scheduled_start_time))
-  const ends = scheduledItems.map(item => new Date(item.scheduled_end_time))
+  const starts = scheduledItems.map((item) => new Date(item.scheduled_start_time))
+  const ends = scheduledItems.map((item) => new Date(item.scheduled_end_time))
   start = new Date(Math.min(...starts)).toISOString()
   end = new Date(Math.max(...ends)).toISOString()
 }
 ```
 
 **Writing Schedules:**
+
 ```javascript
 // Update all line items with requires_scheduling = true
-const scheduledItems = lineItems.filter(item => item.requires_scheduling)
+const scheduledItems = lineItems.filter((item) => item.requires_scheduling)
 
 for (const item of scheduledItems) {
-  await supabase.from('job_parts')
+  await supabase
+    .from('job_parts')
     .update({
       scheduled_start_time: scheduleData.startTime,
       scheduled_end_time: scheduleData.endTime,
@@ -317,7 +331,8 @@ Lint        0 errors, 380 warnings (all pre-existing)
 
 **Before:** RescheduleModal read from and wrote to job-level `scheduled_start_time`/`scheduled_end_time` fields.
 
-**After:** 
+**After:**
+
 - RescheduleModal reads from line-item schedules (aggregated)
 - Updates are written back to all scheduled line items
 - Calendar continues to show aggregated spans
@@ -354,6 +369,7 @@ A: Yes. Click on a job in the calendar agenda, click "Reschedule", adjust the ti
 **Estimated Effort:** Small (1-2 hours)
 
 **Tasks:**
+
 1. ✅ Create and test database migration
 2. ✅ Implement calendar reschedule integration
 3. [ ] Apply migration to development/staging environment
@@ -363,6 +379,7 @@ A: Yes. Click on a job in the calendar agenda, click "Reschedule", adjust the ti
 7. [ ] User acceptance testing
 
 **Validation Checklist:**
+
 - [ ] Create job with single line item schedule → appears on calendar
 - [ ] Create job with multiple line items at different times → calendar shows aggregated span
 - [ ] Create job with mix of scheduled/unscheduled items → only scheduled appear
@@ -389,6 +406,7 @@ A: Yes. It's been updated with the new label but maintains the same field struct
 
 **Q: How does calendar aggregation work?**
 A: When a job has multiple line items with different schedules, the calendar shows:
+
 - Start time = earliest start across all line items
 - End time = latest end across all line items
 - This creates a visual "span" showing the job's full scheduling window

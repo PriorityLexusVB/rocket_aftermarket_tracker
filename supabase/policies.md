@@ -31,37 +31,37 @@ public.is_admin_or_manager() -> boolean
 
 ### user_profiles
 
-| Policy Name | Operation | Expression |
-|-------------|-----------|------------|
-| user_profiles_read_active | SELECT | `coalesce(is_active, true)` |
-| user_profiles_update_self | UPDATE | `id = auth.uid()` (USING and WITH CHECK) |
+| Policy Name               | Operation | Expression                               |
+| ------------------------- | --------- | ---------------------------------------- |
+| user_profiles_read_active | SELECT    | `coalesce(is_active, true)`              |
+| user_profiles_update_self | UPDATE    | `id = auth.uid()` (USING and WITH CHECK) |
 
 **IMPORTANT:** These policies do NOT use `auth_user_org()` to prevent infinite recursion (error 42P17).
 
 ### products
 
-| Policy Name | Operation | Expression |
-|-------------|-----------|------------|
-| app_org_staff_can_read_products | SELECT | `is_active AND (org_id = auth_user_org() OR org_id IS NULL OR auth_user_org() IS NULL)` |
-| org can insert products | INSERT | `org_id = auth_user_org() OR is_admin_or_manager()` |
-| org can update products | UPDATE | `org_id = auth_user_org() OR is_admin_or_manager()` |
+| Policy Name                     | Operation | Expression                                                                              |
+| ------------------------------- | --------- | --------------------------------------------------------------------------------------- |
+| app_org_staff_can_read_products | SELECT    | `is_active AND (org_id = auth_user_org() OR org_id IS NULL OR auth_user_org() IS NULL)` |
+| org can insert products         | INSERT    | `org_id = auth_user_org() OR is_admin_or_manager()`                                     |
+| org can update products         | UPDATE    | `org_id = auth_user_org() OR is_admin_or_manager()`                                     |
 
 ### vendors
 
-| Policy Name | Operation | Expression |
-|-------------|-----------|------------|
-| app_org_staff_can_read_vendors | SELECT | `is_active AND (org_id = auth_user_org() OR org_id IS NULL OR auth_user_org() IS NULL)` |
-| org can insert vendors | INSERT | `org_id = auth_user_org() OR is_admin_or_manager()` |
-| org can update vendors | UPDATE | `org_id = auth_user_org() OR is_admin_or_manager()` |
+| Policy Name                    | Operation | Expression                                                                              |
+| ------------------------------ | --------- | --------------------------------------------------------------------------------------- |
+| app_org_staff_can_read_vendors | SELECT    | `is_active AND (org_id = auth_user_org() OR org_id IS NULL OR auth_user_org() IS NULL)` |
+| org can insert vendors         | INSERT    | `org_id = auth_user_org() OR is_admin_or_manager()`                                     |
+| org can update vendors         | UPDATE    | `org_id = auth_user_org() OR is_admin_or_manager()`                                     |
 
 ### loaner_assignments
 
-| Policy Name | Operation | Expression |
-|-------------|-----------|------------|
-| org can select loaner_assignments via jobs | SELECT | `EXISTS(job with org_id = auth_user_org()) OR is_admin_or_manager()` |
-| org can insert loaner_assignments via jobs | INSERT | `EXISTS(job with org_id = auth_user_org())` |
-| org can update loaner_assignments via jobs | UPDATE | `EXISTS(job with org_id = auth_user_org())` |
-| managers_manage_loaner_assignments | ALL | `is_admin_or_manager()` |
+| Policy Name                                | Operation | Expression                                                           |
+| ------------------------------------------ | --------- | -------------------------------------------------------------------- |
+| org can select loaner_assignments via jobs | SELECT    | `EXISTS(job with org_id = auth_user_org()) OR is_admin_or_manager()` |
+| org can insert loaner_assignments via jobs | INSERT    | `EXISTS(job with org_id = auth_user_org())`                          |
+| org can update loaner_assignments via jobs | UPDATE    | `EXISTS(job with org_id = auth_user_org())`                          |
+| managers_manage_loaner_assignments         | ALL       | `is_admin_or_manager()`                                              |
 
 ## Verification Queries
 
@@ -88,6 +88,7 @@ AND (qual ILIKE '%auth_user_org%' OR qual ILIKE '%app_current_org_id%');
 ## Testing
 
 Run the full RLS smoke test:
+
 ```bash
 # In Supabase SQL Editor, run:
 -- See supabase/rls_smoke_test.sql
@@ -95,15 +96,16 @@ Run the full RLS smoke test:
 
 ## Troubleshooting
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| 42P17: Infinite recursion | user_profiles policy uses auth_user_org() | Replace with auth.uid() |
-| 401 Unauthorized | auth_user_org() returns NULL | Add fallback condition |
-| Permission denied for table users | Policy queries auth.users | Use auth.uid() or helper |
+| Error                             | Cause                                     | Fix                      |
+| --------------------------------- | ----------------------------------------- | ------------------------ |
+| 42P17: Infinite recursion         | user_profiles policy uses auth_user_org() | Replace with auth.uid()  |
+| 401 Unauthorized                  | auth_user_org() returns NULL              | Add fallback condition   |
+| Permission denied for table users | Policy queries auth.users                 | Use auth.uid() or helper |
 
 ## After Changes
 
 Always run:
+
 ```sql
 NOTIFY pgrst, 'reload schema';
 ```
