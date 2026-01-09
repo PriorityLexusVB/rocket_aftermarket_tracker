@@ -70,11 +70,10 @@ function useTenant() {
         try {
           if (!user?.id) break // Skip id-based lookup if no id
 
-          const { data, error } = await supabase
-            .from('user_profiles')
-            .select(col)
-            .eq('id', user.id)
-            .single()
+          const idQuery = supabase.from('user_profiles').select(col).eq('id', user.id)
+          const { data, error } = idQuery.maybeSingle
+            ? await idQuery.maybeSingle()
+            : await idQuery.single()
 
           if (!error && data && Object.prototype.hasOwnProperty.call(data, col)) {
             resolvedOrg = data[col] ?? null

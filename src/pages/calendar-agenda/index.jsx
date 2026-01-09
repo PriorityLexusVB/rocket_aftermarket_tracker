@@ -374,7 +374,8 @@ export default function CalendarAgenda() {
         }
 
         // Toast with undo action (10s timeout)
-        toast.success('Marked completed', {
+        toast.success({
+          message: 'Marked completed',
           action: { label: 'Undo', onClick: undo },
           duration: 10000,
         })

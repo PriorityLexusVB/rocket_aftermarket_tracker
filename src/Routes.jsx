@@ -41,7 +41,12 @@ const ProfileSettings = lazy(() => import('./pages/profile'))
 
 const Routes = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <ErrorBoundary>
         <ThemeProvider>
           <ScrollToTop />

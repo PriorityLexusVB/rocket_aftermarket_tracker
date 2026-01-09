@@ -6,7 +6,12 @@ import { MemoryRouter } from 'react-router-dom'
 describe('ScheduleChip', () => {
   it('renders nothing without start time', () => {
     const { container } = render(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <ScheduleChip scheduledStartTime={null} scheduledEndTime={null} jobId="1" />
       </MemoryRouter>
     )
@@ -15,7 +20,12 @@ describe('ScheduleChip', () => {
 
   it('renders with start time only', () => {
     const { container } = render(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <ScheduleChip scheduledStartTime="2025-11-13T09:00:00Z" jobId="deal-1" />
       </MemoryRouter>
     )
@@ -30,7 +40,12 @@ describe('ScheduleChip', () => {
       scheduled_end_time: '2025-11-13T17:00:00Z',
     }
     const { container } = render(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <ScheduleChip deal={deal} />
       </MemoryRouter>
     )
@@ -53,7 +68,12 @@ describe('ScheduleChip', () => {
       ],
     }
     const { container } = render(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <ScheduleChip deal={deal} />
       </MemoryRouter>
     )
@@ -69,7 +89,12 @@ describe('ScheduleChip', () => {
       appt_end: '2025-11-13T15:00:00Z',
     }
     const { container } = render(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <ScheduleChip deal={deal} />
       </MemoryRouter>
     )
@@ -80,7 +105,12 @@ describe('ScheduleChip', () => {
   it('renders nothing when deal has no scheduling info', () => {
     const deal = { id: 'deal-4' }
     const { container } = render(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <ScheduleChip deal={deal} />
       </MemoryRouter>
     )

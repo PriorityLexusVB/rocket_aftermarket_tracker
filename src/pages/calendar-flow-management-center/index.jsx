@@ -29,6 +29,8 @@ import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 import { useNavigate } from 'react-router-dom'
 
 const CalendarFlowManagementCenter = () => {
+  const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
+
   // State management
   const [loading, setLoading] = useState(true)
   const [jumpLoading, setJumpLoading] = useState(false)
@@ -921,9 +923,17 @@ const CalendarFlowManagementCenter = () => {
                         </button>
                       )}
                       <button
-                        onClick={() =>
-                          navigate('/currently-active-appointments?window=needs_scheduling')
-                        }
+                        onClick={() => {
+                          if (SNAPSHOT_ON) {
+                            navigate('/currently-active-appointments?window=needs_scheduling')
+                            return
+                          }
+
+                          toast?.info(
+                            'Needs Scheduling view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
+                          )
+                          navigate('/currently-active-appointments')
+                        }}
                         className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
                       >
                         Go to Needs Scheduling
