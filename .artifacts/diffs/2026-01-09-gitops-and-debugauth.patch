@@ -1,0 +1,120 @@
+diff --git a/.github/copilot-instructions.md b/.github/copilot-instructions.md
+index 00ebb83..2498c8e 100644
+--- a/.github/copilot-instructions.md
++++ b/.github/copilot-instructions.md
+@@ -317,7 +317,14 @@ Change: [description of minimal change]
+ **Intent:**
+ 
+ - Provide Git strategy guidance for branch management, merge conflicts, and sync issues.
+-- **NEVER execute Git commands directly** — always output a safe plan in text form for the user to review and execute.
++
++## GitOps Mode (Enabled)
++
++Agents may execute safe git commands to keep the tree clean and verification repeatable:
++- status/diff/restore/clean (with .env excludes), add/commit after verification.
++
++Do not run history-rewrite commands (reset --hard, rebase, force push) unless the user explicitly requests it.
++Always show status before/after cleanup.
+ 
+ **Workflow:**
+ 
+@@ -558,7 +565,7 @@ For initial setup and troubleshooting, refer to:
+ 
+ ### Assumptions About Tooling
+ 
+-- **Git**: Available and configured (but see Section 17, Mode 3: never execute Git commands directly without user approval).
++- **Git**: Available and configured (see GitOps Mode above for what’s allowed).
+ - **Playwright Browsers**: Must be installed via `npx playwright install chromium --with-deps` before running E2E tests.
+ - **Database Access**: Supabase project must be running and accessible; for schema changes, use migrations in `supabase/migrations/`.
+ 
+diff --git a/AGENTS.md b/AGENTS.md
+index e348b92..08bbd43 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -24,6 +24,31 @@ These instructions apply to all agents working in this repo.
+ - pnpm run typecheck (if present)
+ - pnpm build (if present)
+ 
++## GitOps Mode (ENABLED)
++
++Agents are allowed to execute git commands directly in this repo to keep the working tree clean and to run verification.
++
++### Allowed git commands (agent may run without asking)
++- git status
++- git diff (and git diff --staged)
++- git restore --staged --worktree .
++- git clean -fd with explicit excludes for local env files:
++   - git clean -fd -e .env.local -e .env.e2e.local -e .env.*.local
++- git add <paths>
++- git commit -m "<message>" (only after tests/guards pass)
++
++### Restricted git commands (agent must ask first)
++- git reset --hard
++- git rebase (any form)
++- git push (any form), especially --force / --force-with-lease
++- git clean -fd with NO excludes
++- branch deletion or rewriting history
++
++### Safety defaults
++- Always show git status before and after cleanup commands.
++- Never delete local .env files.
++- Prefer additive commits. No history rewriting.
++
+ Tip: For a quick MCP PASS/FAIL across Chrome DevTools, Supabase, GitHub, and Playwright, use the prompt in [.github/prompts/mcp-healthcheck.prompt.md](.github/prompts/mcp-healthcheck.prompt.md).
+ 
+ ---
+diff --git a/src/Routes.jsx b/src/Routes.jsx
+index b2b4b23..3e501a8 100644
+--- a/src/Routes.jsx
++++ b/src/Routes.jsx
+@@ -35,7 +35,7 @@ const LoanerManagementDrawer = lazy(() => import('./pages/loaner-management-draw
+ // Admin and utilities
+ const AdminPage = lazy(() => import('./pages/admin'))
+ const AdminCapabilities = lazy(() => import('./pages/AdminCapabilities'))
+-const DebugAuthPage = lazy(() => import('./pages/debug-auth'))
++const DebugAuthPage = import.meta.env.DEV ? lazy(() => import('./pages/debug-auth')) : null
+ const CommunicationsCenter = lazy(() => import('./pages/communications'))
+ const ProfileSettings = lazy(() => import('./pages/profile'))
+ 
+diff --git a/src/pages/currently-active-appointments/index.jsx b/src/pages/currently-active-appointments/index.jsx
+index 9e9edd6..16aeb73 100644
+--- a/src/pages/currently-active-appointments/index.jsx
++++ b/src/pages/currently-active-appointments/index.jsx
+@@ -40,16 +40,18 @@ const NoOrgState = ({ onGoDebugAuth }) => {
+               You’re signed in, but we couldn’t determine your organization. Ask an admin to assign
+               your account to an org.
+             </p>
+-            <div className="mt-4 flex gap-2">
+-              <button
+-                type="button"
+-                onClick={onGoDebugAuth}
+-                className="inline-flex items-center gap-2 rounded-md bg-amber-700 px-3 py-2 text-sm font-medium text-white hover:bg-amber-800"
+-              >
+-                View debug auth
+-                <ArrowUpRight className="h-4 w-4" />
+-              </button>
+-            </div>
++            {onGoDebugAuth ? (
++              <div className="mt-4 flex gap-2">
++                <button
++                  type="button"
++                  onClick={onGoDebugAuth}
++                  className="inline-flex items-center gap-2 rounded-md bg-amber-700 px-3 py-2 text-sm font-medium text-white hover:bg-amber-800"
++                >
++                  View debug auth
++                  <ArrowUpRight className="h-4 w-4" />
++                </button>
++              </div>
++            ) : null}
+           </div>
+         </div>
+       </div>
+@@ -254,7 +256,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
+   if (!orgId) {
+     return (
+       <AppLayout>
+-        <NoOrgState onGoDebugAuth={() => navigate('/debug-auth')} />
++        <NoOrgState onGoDebugAuth={import.meta.env.DEV ? () => navigate('/debug-auth') : null} />
+       </AppLayout>
+     )
+   }
