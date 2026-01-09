@@ -65,6 +65,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Guard - client env usage
+        run: pnpm -s guard:client-env
+
       - name: Build
         env:
           VITE_SUPABASE_URL: http://localhost
@@ -121,6 +124,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Guard - client env usage
+        run: pnpm -s guard:client-env
 
       - name: Typecheck
         run: pnpm run typecheck

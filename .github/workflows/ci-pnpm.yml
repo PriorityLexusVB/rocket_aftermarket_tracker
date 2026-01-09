@@ -56,6 +56,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Guard - client env usage
+        run: pnpm -s guard:client-env
+
       - name: Lint
         run: pnpm --if-present lint
 
