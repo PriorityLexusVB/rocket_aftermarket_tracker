@@ -45,7 +45,7 @@ const VehicleManagementHub = () => {
   const [lastUpdated, setLastUpdated] = useState(new Date())
   const [vehicles, setVehicles] = useState([])
 
-  // Mock stats data
+  // Stats derived from loaded vehicles
   const stats = {
     total: vehicles?.length || 0,
     active: vehicles?.filter((v) => v?.vehicle_status === 'active')?.length || 0,

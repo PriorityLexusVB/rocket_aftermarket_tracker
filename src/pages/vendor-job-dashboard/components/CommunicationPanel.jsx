@@ -136,17 +136,6 @@ const CommunicationPanel = ({ messages, onSendMessage }) => {
             Send SMS
           </Button>
         </form>
-
-        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Icon name="Smartphone" size={14} />
-            <span>SMS delivery via Twilio</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Icon name="Clock" size={14} />
-            <span>Responses tracked automatically</span>
-          </div>
-        </div>
       </div>
     </div>
   )

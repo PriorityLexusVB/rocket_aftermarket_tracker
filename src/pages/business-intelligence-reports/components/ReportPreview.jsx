@@ -7,113 +7,11 @@ const ReportPreview = ({ filters, isExporting, exportProgress }) => {
   const [recordCount, setRecordCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Mock data based on report type
-  const generateMockData = (reportType) => {
-    const baseData = {
-      sales_summary: [
-        {
-          date: '2024-09-20',
-          vehicle: '2023 Honda Accord - VIN: 1HGCV1F30PA123456',
-          product: 'ToughGuard Protection',
-          vendor: 'ToughGuard Pro Services',
-          salePrice: 1299.99,
-          cost: 899.99,
-          profit: 400.0,
-          status: 'Completed',
-        },
-        {
-          date: '2024-09-19',
-          vehicle: '2024 Toyota Camry - VIN: 4T1C11AK5PU234567',
-          product: 'Ceramic Coating',
-          vendor: 'Evernew Solutions LLC',
-          salePrice: 899.99,
-          cost: 599.99,
-          profit: 300.0,
-          status: 'In Progress',
-        },
-        {
-          date: '2024-09-18',
-          vehicle: '2023 Ford F-150 - VIN: 1FTFW1E50PFC345678',
-          product: 'Window Tinting',
-          vendor: 'Premium Tint Masters',
-          salePrice: 549.99,
-          cost: 349.99,
-          profit: 200.0,
-          status: 'Completed',
-        },
-      ],
-      vendor_performance: [
-        {
-          vendor: 'ToughGuard Pro Services',
-          totalJobs: 45,
-          completedJobs: 42,
-          avgCompletionTime: '3.2 days',
-          totalRevenue: 58499.55,
-          avgRating: 4.8,
-          overdueJobs: 1,
-        },
-        {
-          vendor: 'Evernew Solutions LLC',
-          totalJobs: 38,
-          completedJobs: 35,
-          avgCompletionTime: '2.8 days',
-          totalRevenue: 34199.62,
-          avgRating: 4.6,
-          overdueJobs: 2,
-        },
-        {
-          vendor: 'Premium Tint Masters',
-          totalJobs: 52,
-          completedJobs: 48,
-          avgCompletionTime: '1.5 days',
-          totalRevenue: 28599.48,
-          avgRating: 4.9,
-          overdueJobs: 0,
-        },
-      ],
-      product_profitability: [
-        {
-          product: 'ToughGuard Protection',
-          totalSales: 67,
-          totalRevenue: 87099.33,
-          totalCost: 60269.31,
-          totalProfit: 26830.02,
-          avgProfitMargin: '30.8%',
-          topVendor: 'ToughGuard Pro Services',
-        },
-        {
-          product: 'Ceramic Coating',
-          totalSales: 43,
-          totalRevenue: 38699.57,
-          totalCost: 25789.71,
-          totalProfit: 12909.86,
-          avgProfitMargin: '33.4%',
-          topVendor: 'Evernew Solutions LLC',
-        },
-        {
-          product: 'Window Tinting',
-          totalSales: 89,
-          totalRevenue: 48949.11,
-          totalCost: 31166.49,
-          totalProfit: 17782.62,
-          avgProfitMargin: '36.3%',
-          topVendor: 'Premium Tint Masters',
-        },
-      ],
-    }
-
-    return baseData?.[reportType] || baseData?.sales_summary
-  }
-
   useEffect(() => {
     setIsLoading(true)
-    // Simulate API call delay
-    setTimeout(() => {
-      const mockData = generateMockData(filters?.reportType)
-      setPreviewData(mockData)
-      setRecordCount(mockData?.length * 15) // Simulate larger dataset
-      setIsLoading(false)
-    }, 500)
+    setPreviewData([])
+    setRecordCount(0)
+    setIsLoading(false)
   }, [filters])
 
   const getColumnHeaders = () => {

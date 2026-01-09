@@ -43,11 +43,7 @@ class SalesTrackerService {
       if (orgId) tQuery = tQuery?.eq('dealer_id', orgId)
       const { data: transactions } = await tQuery.throwOnError()
 
-      // If no transactions, return sample data for demo purposes
-      if (!transactions || transactions?.length === 0) {
-        console.log('No transactions found, returning sample data')
-        return this.getSampleSalesData()
-      }
+      if (!transactions || transactions?.length === 0) return []
 
       // Get related data separately to avoid complex join issues
       const jobIds = transactions?.map((t) => t?.job_id)?.filter(Boolean)
@@ -123,26 +119,20 @@ class SalesTrackerService {
         return {
           id: transaction?.id,
           stockNumber: vehicle?.stock_number || `STK-${transaction?.id?.slice(0, 8)}`,
-          year: vehicle?.year || 2023,
-          make: vehicle?.make || 'Honda',
-          model: vehicle?.model || 'Civic',
-          color: vehicle?.color || 'Silver',
+          year: vehicle?.year ?? null,
+          make: vehicle?.make ?? '',
+          model: vehicle?.model ?? '',
+          color: vehicle?.color ?? '',
           customer: {
-            name: transaction?.customer_name || vehicle?.owner_name || 'John Doe',
-            email: transaction?.customer_email || vehicle?.owner_email || 'customer@example.com',
-            phone: transaction?.customer_phone || vehicle?.owner_phone || '555-0123',
+            name: transaction?.customer_name || vehicle?.owner_name || '',
+            email: transaction?.customer_email || vehicle?.owner_email || '',
+            phone: transaction?.customer_phone || vehicle?.owner_phone || '',
           },
-          deliveryCoordinator: coordinator?.display_name || 'Sarah Johnson',
+          deliveryCoordinator: coordinator?.display_name || '',
           status: transaction?.transaction_status || 'pending',
-          services: {
-            Interior: Math.random() > 0.5,
-            Exterior: Math.random() > 0.5,
-            Tint: Math.random() > 0.7,
-            PPF: Math.random() > 0.8,
-            Ceramic: Math.random() > 0.6,
-          },
-          total: parseFloat(transaction?.total_amount || 2500),
-          created_at: transaction?.created_at || new Date()?.toISOString(),
+          services: {},
+          total: parseFloat(transaction?.total_amount || 0),
+          created_at: transaction?.created_at || null,
           transaction_number: transaction?.transaction_number,
           job: job,
           vehicle: vehicle,
@@ -175,87 +165,8 @@ class SalesTrackerService {
 
       console.error('Error fetching sales:', error)
 
-      // Return sample data as fallback
-      return this.getSampleSalesData()
+      return []
     }
-  }
-
-  // Sample data for demo purposes when database is empty or has issues
-  getSampleSalesData() {
-    return [
-      {
-        id: 'sample-1',
-        stockNumber: 'STK-001',
-        year: 2023,
-        make: 'Toyota',
-        model: 'Camry',
-        color: 'Silver',
-        customer: {
-          name: 'John Smith',
-          email: 'john.smith@email.com',
-          phone: '555-0123',
-        },
-        deliveryCoordinator: 'Sarah Johnson',
-        status: 'pending',
-        services: {
-          Interior: true,
-          Exterior: true,
-          Tint: true,
-          PPF: false,
-          Ceramic: true,
-        },
-        total: 2850,
-        created_at: new Date(Date.now() - 86400000)?.toISOString(), // Yesterday
-      },
-      {
-        id: 'sample-2',
-        stockNumber: 'STK-002',
-        year: 2022,
-        make: 'Honda',
-        model: 'Civic',
-        color: 'Black',
-        customer: {
-          name: 'Maria Rodriguez',
-          email: 'maria.r@email.com',
-          phone: '555-0124',
-        },
-        deliveryCoordinator: 'Mike Chen',
-        status: 'completed',
-        services: {
-          Interior: false,
-          Exterior: true,
-          Tint: true,
-          PPF: true,
-          Ceramic: false,
-        },
-        total: 3200,
-        created_at: new Date(Date.now() - 172800000)?.toISOString(), // 2 days ago
-      },
-      {
-        id: 'sample-3',
-        stockNumber: 'STK-003',
-        year: 2024,
-        make: 'BMW',
-        model: '330i',
-        color: 'White',
-        customer: {
-          name: 'David Kim',
-          email: 'david.kim@email.com',
-          phone: '555-0125',
-        },
-        deliveryCoordinator: 'Alex Rodriguez',
-        status: 'in_progress',
-        services: {
-          Interior: true,
-          Exterior: false,
-          Tint: false,
-          PPF: true,
-          Ceramic: true,
-        },
-        total: 4500,
-        created_at: new Date(Date.now() - 259200000)?.toISOString(), // 3 days ago
-      },
-    ]
   }
 
   // Enhanced createSale with comprehensive logging
@@ -642,12 +553,7 @@ class SalesTrackerService {
       return transformedStaff
     } catch (error) {
       console.error('Error fetching staff members:', error)
-      // Return fallback sample data
-      return [
-        { id: 'staff-1', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Coordinator' },
-        { id: 'staff-2', name: 'Mike Chen', email: 'mike@company.com', role: 'Coordinator' },
-        { id: 'staff-3', name: 'Alex Rodriguez', email: 'alex@company.com', role: 'Manager' },
-      ]
+      return []
     }
   }
 }

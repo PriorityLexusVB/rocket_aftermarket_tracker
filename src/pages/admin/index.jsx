@@ -2288,7 +2288,7 @@ const AdminPage = () => {
                 <div>
                   <span className="font-medium">Auth Status:</span>
                   <span className={`ml-1 ${user ? 'text-green-600' : 'text-orange-600'}`}>
-                    {user ? 'Authenticated' : 'Demo Mode'}
+                    {user ? 'Authenticated' : 'Unauthenticated'}
                   </span>
                 </div>
                 <div>

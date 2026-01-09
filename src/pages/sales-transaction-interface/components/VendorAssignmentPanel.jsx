@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import Icon from '../../../components/AppIcon'
 import Select from '../../../components/ui/Select'
 import Button from '../../../components/ui/Button'
+import { getVendors as getVendorsDropdown } from '../../../services/dropdownService'
 
 const VendorAssignmentPanel = ({
   selectedProducts,
@@ -12,107 +13,68 @@ const VendorAssignmentPanel = ({
   const [bulkVendor, setBulkVendor] = useState('')
   const [estimatedCompletion, setEstimatedCompletion] = useState('')
 
-  // Mock vendor data
-  const mockVendors = [
-    {
-      id: 'vendor_001',
-      name: 'Premium Auto Detailing',
-      specialties: ['Paint Protection', 'Ceramic Coating', 'Premium Detailing'],
-      rating: 4.9,
-      completedJobs: 156,
-      averageTime: '4.2 hours',
-      status: 'Available',
-      phone: '+1 (555) 123-4567',
-      email: 'contact@premiumautodetailing.com',
-      currentWorkload: 3,
-      maxCapacity: 8,
-    },
-    {
-      id: 'vendor_002',
-      name: 'Crystal Clear Tinting',
-      specialties: ['Window Tinting', 'Glass Work', 'Installation'],
-      rating: 4.7,
-      completedJobs: 89,
-      averageTime: '2.8 hours',
-      status: 'Available',
-      phone: '+1 (555) 234-5678',
-      email: 'info@crystalcleartinting.com',
-      currentWorkload: 2,
-      maxCapacity: 5,
-    },
-    {
-      id: 'vendor_003',
-      name: 'Wrap Masters Studio',
-      specialties: ['Vinyl Installation', 'Custom Graphics', 'Vehicle Wraps'],
-      rating: 4.8,
-      completedJobs: 67,
-      averageTime: '8.5 hours',
-      status: 'Busy',
-      phone: '+1 (555) 345-6789',
-      email: 'studio@wrapmasters.com',
-      currentWorkload: 4,
-      maxCapacity: 4,
-    },
-    {
-      id: 'vendor_004',
-      name: 'Guardian Coatings',
-      specialties: ['Undercoating', 'Rust Prevention', 'Paint Protection'],
-      rating: 4.6,
-      completedJobs: 134,
-      averageTime: '3.1 hours',
-      status: 'Available',
-      phone: '+1 (555) 456-7890',
-      email: 'service@guardiancoatings.com',
-      currentWorkload: 1,
-      maxCapacity: 6,
-    },
-    {
-      id: 'vendor_005',
-      name: 'Elite Auto Services',
-      specialties: ['General', 'Installation', 'Maintenance'],
-      rating: 4.4,
-      completedJobs: 203,
-      averageTime: '3.8 hours',
-      status: 'Available',
-      phone: '+1 (555) 567-8901',
-      email: 'contact@eliteautoservices.com',
-      currentWorkload: 2,
-      maxCapacity: 10,
-    },
-  ]
+  const [vendors, setVendors] = useState([])
+  const [vendorsLoading, setVendorsLoading] = useState(false)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setVendorsLoading(true)
+        const rows = await getVendorsDropdown({ activeOnly: true })
+        setVendors(Array.isArray(rows) ? rows : [])
+      } catch (e) {
+        console.error('VendorAssignmentPanel: failed to load vendors', e)
+        setVendors([])
+      } finally {
+        setVendorsLoading(false)
+      }
+    }
+
+    // Only load when panel is relevant
+    if (selectedProducts?.length > 0) {
+      load()
+    }
+  }, [selectedProducts?.length])
 
   const getRecommendedVendors = (product) => {
-    return mockVendors
-      ?.filter((vendor) =>
-        product?.vendorSpecialties?.some((specialty) => vendor?.specialties?.includes(specialty))
-      )
-      ?.sort((a, b) => {
-        // Sort by availability, then rating, then workload
-        if (a?.status === 'Available' && b?.status !== 'Available') return -1
-        if (a?.status !== 'Available' && b?.status === 'Available') return 1
-        if (b?.rating !== a?.rating) return b?.rating - a?.rating
-        return a?.currentWorkload - b?.currentWorkload
-      })
+    const desired = Array.isArray(product?.vendorSpecialties) ? product.vendorSpecialties : []
+    const matches = vendors.filter((v) => {
+      if (!desired.length) return true
+      const specialty = String(v?.specialty || '').toLowerCase()
+      return desired.some((s) => specialty.includes(String(s).toLowerCase()))
+    })
+
+    return matches.sort((a, b) => {
+      // Prefer active vendors, then higher rating
+      const aActive = a?.is_active !== false
+      const bActive = b?.is_active !== false
+      if (aActive && !bActive) return -1
+      if (!aActive && bActive) return 1
+
+      const ar = Number(a?.rating ?? 0)
+      const br = Number(b?.rating ?? 0)
+      return br - ar
+    })
   }
 
   const getVendorOptions = (product) => {
     const recommended = getRecommendedVendors(product)
-    const others = mockVendors?.filter((vendor) => !recommended?.includes(vendor))
+    const others = vendors?.filter((vendor) => !recommended?.includes(vendor))
 
     const options = [
       { value: '', label: 'Select Vendor' },
       ...recommended?.map((vendor) => ({
         value: vendor?.id,
-        label: `${vendor?.name} (${vendor?.rating}⭐) - ${vendor?.status}`,
-        description: `${vendor?.specialties?.join(', ')} • ${vendor?.currentWorkload}/${vendor?.maxCapacity} jobs`,
+        label: `${vendor?.name ?? vendor?.label}${vendor?.rating ? ` (${vendor?.rating}⭐)` : ''}`,
+        description: vendor?.specialty ? String(vendor.specialty) : undefined,
       })),
       ...(others?.length > 0
         ? [{ value: 'divider', label: '--- Other Vendors ---', disabled: true }]
         : []),
       ...others?.map((vendor) => ({
         value: vendor?.id,
-        label: `${vendor?.name} (${vendor?.rating}⭐) - ${vendor?.status}`,
-        description: `${vendor?.specialties?.join(', ')} • ${vendor?.currentWorkload}/${vendor?.maxCapacity} jobs`,
+        label: `${vendor?.name ?? vendor?.label}${vendor?.rating ? ` (${vendor?.rating}⭐)` : ''}`,
+        description: vendor?.specialty ? String(vendor.specialty) : undefined,
       })),
     ]
 
@@ -120,13 +82,13 @@ const VendorAssignmentPanel = ({
   }
 
   const handleVendorSelect = (productId, vendorId) => {
-    const vendor = mockVendors?.find((v) => v?.id === vendorId)
+    const vendor = vendors?.find((v) => v?.id === vendorId)
     onVendorAssign(productId, vendor)
   }
 
   const handleBulkAssign = () => {
     if (bulkVendor) {
-      const vendor = mockVendors?.find((v) => v?.id === bulkVendor)
+      const vendor = vendors?.find((v) => v?.id === bulkVendor)
       selectedProducts?.forEach((product) => {
         if (!vendorAssignments?.[product?.id]) {
           onVendorAssign(product?.id, vendor)
@@ -141,7 +103,8 @@ const VendorAssignmentPanel = ({
     const totalHours = selectedProducts?.reduce((total, product) => {
       const vendor = vendorAssignments?.[product?.id]
       if (vendor) {
-        const avgHours = parseFloat(vendor?.averageTime?.split(' ')?.[0])
+        const avgHours = parseFloat(String(vendor?.averageTime || '').split(' ')?.[0])
+        if (!Number.isFinite(avgHours)) return total
         return total + avgHours
       }
       return total
@@ -166,10 +129,10 @@ const VendorAssignmentPanel = ({
 
   const bulkVendorOptions = [
     { value: '', label: 'Select vendor for all products' },
-    ...mockVendors?.map((vendor) => ({
+    ...vendors?.map((vendor) => ({
       value: vendor?.id,
-      label: `${vendor?.name} (${vendor?.rating}⭐) - ${vendor?.status}`,
-      description: `${vendor?.currentWorkload}/${vendor?.maxCapacity} current jobs`,
+      label: `${vendor?.name ?? vendor?.label}${vendor?.rating ? ` (${vendor?.rating}⭐)` : ''}`,
+      description: vendor?.specialty ? String(vendor.specialty) : undefined,
     })),
   ]
 
@@ -178,6 +141,13 @@ const VendorAssignmentPanel = ({
       setEstimatedCompletion(calculateEstimatedCompletion())
     }
   }, [calculateEstimatedCompletion, vendorAssignments])
+
+  useEffect(() => {
+    // If vendors are loading or unavailable, hide any stale estimate.
+    if (vendorsLoading || vendors.length === 0) {
+      setEstimatedCompletion('')
+    }
+  }, [vendorsLoading, vendors.length])
 
   if (selectedProducts?.length === 0) {
     return (

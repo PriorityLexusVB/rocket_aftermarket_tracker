@@ -119,16 +119,30 @@ describe('dealService - capability flag and retry logic', () => {
   })
 
   it('should set capability flag to true when vendor relationship query succeeds', async () => {
-    const mockSelect = vi.fn().mockReturnValue({
+    const mockPreflightSelect = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    })
+
+    const mockJobsSelect = vi.fn().mockReturnValue({
       in: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({
-          data: [],
-          error: null,
-        }),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
       }),
     })
 
-    mockSupabase.from.mockReturnValue({ select: mockSelect })
+    const mockTransactionsSelect = vi.fn().mockReturnValue({
+      in: vi.fn().mockResolvedValue({ data: [], error: null }),
+    })
+
+    const mockLoanersSelect = vi.fn().mockReturnValue({
+      in: vi.fn().mockReturnValue({
+        is: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    })
+
+    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
+    mockSupabase.from.mockReturnValueOnce({ select: mockJobsSelect }) // jobs
+    mockSupabase.from.mockReturnValueOnce({ select: mockTransactionsSelect }) // transactions
+    mockSupabase.from.mockReturnValueOnce({ select: mockLoanersSelect }) // loaner_assignments
 
     try {
       await getAllDeals()

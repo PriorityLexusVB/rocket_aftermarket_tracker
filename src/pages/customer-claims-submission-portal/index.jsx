@@ -97,32 +97,10 @@ const CustomerClaimsSubmissionPortal = () => {
       setLoading(true)
       setErrors({})
 
-      // For now, we'll simulate the search functionality
-      // In a real implementation, you would call a search service
-      console.log(`Searching for ${searchType}:`, searchTerm)
-
-      // Mock customer data based on search
-      const mockCustomer = {
-        customer_name: 'John Smith',
-        customer_email: 'john.smith@email.com',
-        customer_phone: '555-0123',
-        vehicle: {
-          id: 'mock-vehicle-id',
-          make: 'Honda',
-          model: 'Civic',
-          year: 2018,
-          vin: '1HGBH41JXMN109186',
-        },
-      }
-
-      // Auto-populate form with found customer data
-      setFormData((prev) => ({
-        ...prev,
-        customer_name: mockCustomer?.customer_name,
-        customer_email: mockCustomer?.customer_email,
-        customer_phone: mockCustomer?.customer_phone,
-        vehicle_id: mockCustomer?.vehicle?.id,
-      }))
+      setErrors({
+        search:
+          'Search is not available yet. Please enter your email and vehicle information manually.',
+      })
     } catch (error) {
       console.error('Error searching customer records:', error)
       setErrors({ search: 'Error searching customer records' })

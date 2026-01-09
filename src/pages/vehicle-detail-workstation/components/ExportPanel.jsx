@@ -31,15 +31,11 @@ const ExportPanel = ({ vehicleData, workItems, onExport }) => {
         format: exportFormat,
         type: exportType,
         generatedAt: new Date()?.toISOString(),
-        generatedBy: 'Current User', // This would come from auth context
+        generatedBy: null,
       }
 
       await onExport(exportData)
-
-      // Simulate export process
-      setTimeout(() => {
-        setIsExporting(false)
-      }, 2000)
+      setIsExporting(false)
     } catch (error) {
       console.error('Export failed:', error)
       setIsExporting(false)

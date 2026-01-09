@@ -3,65 +3,7 @@ import Icon from '../../../components/AppIcon'
 import Input from '../../../components/ui/Input'
 import Button from '../../../components/ui/Button'
 import Select from '../../../components/ui/Select'
-
-const mockVehicles = [
-  {
-    id: 1,
-    vin: '1HGBH41JXMN109186',
-    stockNumber: 'ST2024001',
-    year: 2024,
-    make: 'Honda',
-    model: 'Civic',
-    trim: 'LX',
-    color: 'Silver',
-    mileage: 15420,
-    status: 'Available',
-    ownerName: 'John Smith',
-    ownerPhone: '(555) 123-4567',
-  },
-  {
-    id: 2,
-    vin: '2T1BURHE0JC123456',
-    stockNumber: 'ST2024002',
-    year: 2023,
-    make: 'Toyota',
-    model: 'Corolla',
-    trim: 'LE',
-    color: 'White',
-    mileage: 22100,
-    status: 'Available',
-    ownerName: 'Sarah Johnson',
-    ownerPhone: '(555) 987-6543',
-  },
-  {
-    id: 3,
-    vin: '3VW2B7AJ8KM123789',
-    stockNumber: 'ST2024003',
-    year: 2024,
-    make: 'Volkswagen',
-    model: 'Jetta',
-    trim: 'S',
-    color: 'Black',
-    mileage: 8900,
-    status: 'Available',
-    ownerName: 'Michael Brown',
-    ownerPhone: '(555) 456-7890',
-  },
-  {
-    id: 4,
-    vin: '1FA6P8TH5J5123456',
-    stockNumber: 'ST2024004',
-    year: 2023,
-    make: 'Ford',
-    model: 'Mustang',
-    trim: 'GT',
-    color: 'Red',
-    mileage: 12500,
-    status: 'Available',
-    ownerName: 'Lisa Davis',
-    ownerPhone: '(555) 321-9876',
-  },
-]
+import { vehicleService } from '../../../services/vehicleService'
 
 const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
   const [searchType, setSearchType] = useState('stock')
@@ -71,7 +13,9 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
   const [yearFilter, setYearFilter] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
   const [showAddVehicleForm, setShowAddVehicleForm] = useState(false)
+  const [isCreatingVehicle, setIsCreatingVehicle] = useState(false)
   const [newVehicleData, setNewVehicleData] = useState({
     stockNumber: '',
     vin: '',
@@ -86,86 +30,117 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
     ownerEmail: '',
   })
 
-  // Mock vehicle data
   const searchTypeOptions = [
     { value: 'stock', label: 'Stock Number' },
     { value: 'make_model', label: 'Make/Model' },
     { value: 'vin', label: 'VIN Number' },
   ]
 
-  const makeOptions = [
-    { value: '', label: 'All Makes' },
-    { value: 'Honda', label: 'Honda' },
-    { value: 'Toyota', label: 'Toyota' },
-    { value: 'Ford', label: 'Ford' },
-    { value: 'Volkswagen', label: 'Volkswagen' },
-  ]
+  const normalizeVehicle = useCallback((v) => {
+    if (!v) return null
+    return {
+      ...v,
+      stockNumber: v?.stockNumber ?? v?.stock_number ?? '',
+      ownerName: v?.ownerName ?? v?.owner_name ?? '',
+      ownerPhone: v?.ownerPhone ?? v?.owner_phone ?? '',
+      ownerEmail: v?.ownerEmail ?? v?.owner_email ?? '',
+      status: v?.status ?? v?.vehicle_status ?? '—',
+    }
+  }, [])
 
-  const yearOptions = [
-    { value: '', label: 'All Years' },
-    { value: '2024', label: '2024' },
-    { value: '2023', label: '2023' },
-    { value: '2022', label: '2022' },
-    { value: '2021', label: '2021' },
-  ]
-
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback(async () => {
     setIsSearching(true)
+    setSearchError('')
 
-    setTimeout(() => {
-      let results = mockVehicles
+    try {
+      if (searchType === 'stock') {
+        const q = (searchQuery || '')?.trim()
+        if (!q) {
+          setSearchResults([])
+          return
+        }
 
-      if (searchType === 'stock' && searchQuery) {
-        results = mockVehicles?.filter((vehicle) =>
-          vehicle?.stockNumber?.toLowerCase()?.includes(searchQuery?.toLowerCase())
-        )
-      } else if (searchType === 'vin' && searchQuery) {
-        results = mockVehicles?.filter((vehicle) =>
-          vehicle?.vin?.toLowerCase()?.includes(searchQuery?.toLowerCase())
-        )
-      } else if (searchType === 'make_model') {
-        results = mockVehicles?.filter((vehicle) => {
-          const makeMatch = !makeFilter || vehicle?.make === makeFilter
-          const modelMatch =
-            !modelFilter || vehicle?.model?.toLowerCase()?.includes(modelFilter?.toLowerCase())
-          const yearMatch = !yearFilter || vehicle?.year?.toString() === yearFilter
-          return makeMatch && modelMatch && yearMatch
+        const { data, error } = await vehicleService.searchVehiclesStockFirst(q, {
+          limit: 25,
+          status: 'active',
         })
+        if (error) throw new Error(error?.message || 'Failed to search vehicles')
+        setSearchResults((data || []).map(normalizeVehicle).filter(Boolean))
+        return
       }
 
-      setSearchResults(results)
+      if (searchType === 'vin') {
+        const q = (searchQuery || '')?.trim()
+        if (!q) {
+          setSearchResults([])
+          return
+        }
+
+        const { data, error } = await vehicleService.searchVehiclesStockFirst(q, {
+          limit: 25,
+          status: 'active',
+        })
+        if (error) throw new Error(error?.message || 'Failed to search vehicles')
+        setSearchResults((data || []).map(normalizeVehicle).filter(Boolean))
+        return
+      }
+
+      // make/model/year search
+      const make = (makeFilter || '')?.trim()
+      const model = (modelFilter || '')?.trim()
+      const year = (yearFilter || '')?.trim()
+
+      const yearNum = year ? Number.parseInt(year, 10) : undefined
+      const { data, error } = await vehicleService.getVehicles({
+        status: 'active',
+        make: make || undefined,
+        year: Number.isFinite(yearNum) ? yearNum : undefined,
+        search: model || undefined,
+      })
+
+      if (error) throw new Error(error?.message || 'Failed to search vehicles')
+      setSearchResults((data || []).map(normalizeVehicle).filter(Boolean))
+    } catch (err) {
+      setSearchResults([])
+      setSearchError(err?.message || 'Search failed')
+    } finally {
       setIsSearching(false)
-    }, 800)
-  }, [makeFilter, modelFilter, searchQuery, searchType, yearFilter])
+    }
+  }, [makeFilter, modelFilter, normalizeVehicle, searchQuery, searchType, yearFilter])
 
   const handleVehicleSelect = (vehicle) => {
     onVehicleSelect(vehicle)
   }
 
-  const handleAddNewVehicle = () => {
-    if (newVehicleData?.year && newVehicleData?.make && newVehicleData?.model) {
-      const newVehicle = {
-        id: `new_${Date.now()}`,
-        vin: newVehicleData?.vin || `NEW${Date.now()}`,
-        stockNumber:
-          newVehicleData?.stockNumber ||
-          `STK-${new Date()?.getFullYear()}-${String(Date.now())?.slice(-3)}`,
-        year: parseInt(newVehicleData?.year),
-        make: newVehicleData?.make,
-        model: newVehicleData?.model,
-        trim: newVehicleData?.trim || '',
-        color: newVehicleData?.color || '',
-        mileage: parseInt(newVehicleData?.mileage) || 0,
-        status: 'Available',
-        ownerName: newVehicleData?.ownerName || '',
-        ownerPhone: newVehicleData?.ownerPhone || '',
-        ownerEmail: newVehicleData?.ownerEmail || '',
-        isNew: true,
-      }
+  const handleAddNewVehicle = async () => {
+    if (!newVehicleData?.year || !newVehicleData?.make || !newVehicleData?.model) return
 
-      onVehicleSelect(newVehicle)
+    setIsCreatingVehicle(true)
+    setSearchError('')
+    try {
+      const yearNum = Number.parseInt(newVehicleData?.year, 10)
+      if (!Number.isFinite(yearNum)) throw new Error('Year must be a number')
 
-      // Reset form
+      const { data: createdVehicle, error } = await vehicleService.createVehicle({
+        stock_number: newVehicleData?.stockNumber?.trim() || null,
+        vin: newVehicleData?.vin?.trim() || null,
+        year: yearNum,
+        make: newVehicleData?.make?.trim(),
+        model: newVehicleData?.model?.trim(),
+        trim: newVehicleData?.trim?.trim() || null,
+        color: newVehicleData?.color?.trim() || null,
+        mileage: newVehicleData?.mileage ? Number.parseInt(newVehicleData?.mileage, 10) : null,
+        owner_name: newVehicleData?.ownerName?.trim() || null,
+        owner_phone: newVehicleData?.ownerPhone?.trim() || null,
+        owner_email: newVehicleData?.ownerEmail?.trim() || null,
+        vehicle_status: 'active',
+      })
+
+      if (error) throw new Error(error?.message || 'Failed to create vehicle')
+      if (!createdVehicle?.id) throw new Error('Vehicle created but missing id')
+
+      onVehicleSelect({ ...normalizeVehicle(createdVehicle), isNew: true })
+
       setNewVehicleData({
         stockNumber: '',
         vin: '',
@@ -180,6 +155,10 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
         ownerEmail: '',
       })
       setShowAddVehicleForm(false)
+    } catch (err) {
+      setSearchError(err?.message || 'Failed to create vehicle')
+    } finally {
+      setIsCreatingVehicle(false)
     }
   }
 
@@ -193,13 +172,13 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
     setModelFilter('')
     setYearFilter('')
     setSearchResults([])
+    setSearchError('')
   }
 
   useEffect(() => {
-    if (searchType === 'make_model') {
-      handleSearch()
-    }
-  }, [handleSearch, searchType])
+    setSearchResults([])
+    setSearchError('')
+  }, [searchType])
 
   return (
     <div className="bg-card border border-border rounded-lg p-6">
@@ -247,7 +226,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
             <Input
               label="Stock Number"
               type="text"
-              placeholder="STK-2024-001 (auto-generated if blank)"
+              placeholder="Optional"
               value={newVehicleData?.stockNumber}
               onChange={(e) => handleNewVehicleInputChange('stockNumber', e?.target?.value)}
             />
@@ -315,7 +294,7 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
               <Input
                 label="Owner Name"
                 type="text"
-                placeholder="John Smith"
+                placeholder="Owner name"
                 value={newVehicleData?.ownerName}
                 onChange={(e) => handleNewVehicleInputChange('ownerName', e?.target?.value)}
               />
@@ -345,11 +324,23 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
               onClick={handleAddNewVehicle}
               iconName="Plus"
               iconPosition="left"
-              disabled={!newVehicleData?.year || !newVehicleData?.make || !newVehicleData?.model}
+              loading={isCreatingVehicle}
+              disabled={
+                isCreatingVehicle ||
+                !newVehicleData?.year ||
+                !newVehicleData?.make ||
+                !newVehicleData?.model
+              }
             >
               Add Vehicle
             </Button>
           </div>
+        </div>
+      )}
+
+      {searchError && (
+        <div className="mb-4 p-3 bg-error/10 border border-error/20 rounded-lg text-sm text-error">
+          {searchError}
         </div>
       )}
 
@@ -416,26 +407,39 @@ const VehicleLookupPanel = ({ onVehicleSelect, selectedVehicle }) => {
         )}
 
         {searchType === 'make_model' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <Input
               label="Make"
-              options={makeOptions}
+              type="text"
+              placeholder="e.g., Honda"
               value={makeFilter}
-              onChange={setMakeFilter}
+              onChange={(e) => setMakeFilter(e?.target?.value)}
             />
             <Input
               label="Model"
               type="text"
-              placeholder="Enter model name"
+              placeholder="e.g., Civic"
               value={modelFilter}
               onChange={(e) => setModelFilter(e?.target?.value)}
             />
-            <Select
+            <Input
               label="Year"
-              options={yearOptions}
+              type="number"
+              min="1980"
+              max="2025"
+              placeholder="e.g., 2024"
               value={yearFilter}
-              onChange={setYearFilter}
+              onChange={(e) => setYearFilter(e?.target?.value)}
             />
+            <Button
+              variant="outline"
+              onClick={handleSearch}
+              loading={isSearching}
+              iconName="Search"
+              className="h-10"
+            >
+              Search
+            </Button>
           </div>
         )}
       </div>

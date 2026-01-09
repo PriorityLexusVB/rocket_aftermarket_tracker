@@ -2,147 +2,29 @@ import React, { useState } from 'react'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 
-const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
+const RecentTransactions = ({ transactions = [], onEditTransaction, onViewTransaction }) => {
   const [filter, setFilter] = useState('all')
 
-  // Mock recent transactions data
-  const mockTransactions = [
-    {
-      id: 'TXN-2024-001',
-      date: '2024-09-22',
-      time: '14:30',
-      vehicle: {
-        year: 2024,
-        make: 'Honda',
-        model: 'Civic',
-        vin: '1HGBH41JXMN109186',
-        stockNumber: 'ST2024001',
-      },
-      products: [
-        { name: 'ToughGuard Protection', price: 1299.99, cost: 650.0 },
-        { name: 'Window Tinting', price: 449.99, cost: 225.0 },
-      ],
-      totalSale: 1749.98,
-      totalCost: 875.0,
-      profit: 874.98,
-      margin: 50.0,
-      status: 'Pending',
-      vendorsCount: 2,
-      priority: 'normal',
-      createdBy: 'Sarah Johnson',
-    },
-    {
-      id: 'TXN-2024-002',
-      date: '2024-09-22',
-      time: '13:15',
-      vehicle: {
-        year: 2023,
-        make: 'Toyota',
-        model: 'Corolla',
-        vin: '2T1BURHE0JC123456',
-        stockNumber: 'ST2024002',
-      },
-      products: [{ name: 'Evernew Coating', price: 899.99, cost: 450.0 }],
-      totalSale: 899.99,
-      totalCost: 450.0,
-      profit: 449.99,
-      margin: 50.0,
-      status: 'In Progress',
-      vendorsCount: 1,
-      priority: 'high',
-      createdBy: 'Mike Rodriguez',
-    },
-    {
-      id: 'TXN-2024-003',
-      date: '2024-09-22',
-      time: '11:45',
-      vehicle: {
-        year: 2024,
-        make: 'Ford',
-        model: 'Mustang',
-        vin: '1FA6P8TH5J5123456',
-        stockNumber: 'ST2024004',
-      },
-      products: [
-        { name: 'Vehicle Wraps', price: 2499.99, cost: 1250.0 },
-        { name: 'Windshield Protection', price: 299.99, cost: 150.0 },
-      ],
-      totalSale: 2799.98,
-      totalCost: 1400.0,
-      profit: 1399.98,
-      margin: 50.0,
-      status: 'Complete',
-      vendorsCount: 2,
-      priority: 'normal',
-      createdBy: 'Sarah Johnson',
-    },
-    {
-      id: 'TXN-2024-004',
-      date: '2024-09-21',
-      time: '16:20',
-      vehicle: {
-        year: 2023,
-        make: 'Volkswagen',
-        model: 'Jetta',
-        vin: '3VW2B7AJ8KM123789',
-        stockNumber: 'ST2024003',
-      },
-      products: [{ name: 'Undercoating Protection', price: 599.99, cost: 300.0 }],
-      totalSale: 599.99,
-      totalCost: 300.0,
-      profit: 299.99,
-      margin: 50.0,
-      status: 'Pending',
-      vendorsCount: 1,
-      priority: 'low',
-      createdBy: 'Alex Chen',
-    },
-    {
-      id: 'TXN-2024-005',
-      date: '2024-09-21',
-      time: '14:10',
-      vehicle: {
-        year: 2024,
-        make: 'Honda',
-        model: 'Civic',
-        vin: '1HGBH41JXMN109187',
-        stockNumber: 'ST2024005',
-      },
-      products: [
-        { name: 'ToughGuard Protection', price: 1299.99, cost: 650.0 },
-        { name: 'Evernew Coating', price: 899.99, cost: 450.0 },
-      ],
-      totalSale: 2199.98,
-      totalCost: 1100.0,
-      profit: 1099.98,
-      margin: 50.0,
-      status: 'In Progress',
-      vendorsCount: 2,
-      priority: 'urgent',
-      createdBy: 'Sarah Johnson',
-    },
-  ]
-
   const filterOptions = [
-    { value: 'all', label: 'All Transactions', count: mockTransactions?.length },
+    { value: 'all', label: 'All Transactions', count: transactions?.length },
     {
       value: 'pending',
       label: 'Pending',
-      count: mockTransactions?.filter((t) => t?.status === 'Pending')?.length,
+      count: transactions?.filter((t) => t?.status === 'Pending')?.length,
     },
     {
       value: 'in_progress',
       label: 'In Progress',
-      count: mockTransactions?.filter((t) => t?.status === 'In Progress')?.length,
+      count: transactions?.filter((t) => t?.status === 'In Progress')?.length,
     },
     {
       value: 'complete',
       label: 'Complete',
-      count: mockTransactions?.filter((t) => t?.status === 'Complete')?.length,
+      count: transactions?.filter((t) => t?.status === 'Complete')?.length,
     },
   ]
 
-  const filteredTransactions = mockTransactions?.filter((transaction) => {
+  const filteredTransactions = transactions?.filter((transaction) => {
     if (filter === 'all') return true
     if (filter === 'pending') return transaction?.status === 'Pending'
     if (filter === 'in_progress') return transaction?.status === 'In Progress'
@@ -205,7 +87,13 @@ const RecentTransactions = ({ onEditTransaction, onViewTransaction }) => {
             <p className="text-sm text-muted-foreground">View and manage recent sales entries</p>
           </div>
         </div>
-        <Button variant="outline" size="sm" iconName="Download" iconPosition="left">
+        <Button
+          variant="outline"
+          size="sm"
+          iconName="Download"
+          iconPosition="left"
+          onClick={() => alert('Export is not implemented yet.')}
+        >
           Export
         </Button>
       </div>

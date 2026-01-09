@@ -614,7 +614,15 @@ export async function getProducts({ activeOnly = true } = {}) {
         id: p.id,
         value: p.id,
         label: p.brand ? `${p.name} - ${p.brand}` : p.name,
+        // Back-compat: existing consumers rely on unit_price
         unit_price: p.unit_price,
+        // Additional fields for UIs that need to render richer rows
+        name: p.name,
+        brand: p.brand,
+        category: p.category,
+        op_code: p.op_code,
+        cost: p.cost,
+        is_active: p.is_active,
       }))
       _setCache(key, opts)
       return opts

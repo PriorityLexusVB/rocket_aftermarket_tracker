@@ -9,187 +9,92 @@ import ActionHistoryPanel from './components/ActionHistoryPanel'
 import ExportPanel from './components/ExportPanel'
 import Icon from '../../components/AppIcon'
 import Button from '../../components/ui/Button'
+import { vehicleService } from '../../services/vehicleService'
 
 const VehicleDetailWorkstation = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const userRole = 'manager' // Mock user role
   const [vehicleData, setVehicleData] = useState(null)
   const [workItems, setWorkItems] = useState([])
   const [actionHistory, setActionHistory] = useState([])
   const [availableVendors, setAvailableVendors] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
-  // Mock data initialization
   useEffect(() => {
-    const initializeData = () => {
-      // Mock vehicle data
-      const mockVehicle = {
-        id: id || 'VH001',
-        vin: '1HGBH41JXMN109186',
-        year: 2023,
-        make: 'Honda',
-        model: 'Accord',
-        color: 'Pearl White',
-        mileage: 15420,
-        stockNumber: 'ST-2023-001',
-        status: 'Available',
-        lastUpdated: '2025-01-20T10:30:00Z',
+    let isMounted = true
+
+    const load = async () => {
+      setIsLoading(true)
+      setLoadError('')
+      setVehicleData(null)
+      setWorkItems([])
+      setAvailableVendors([])
+      setActionHistory([])
+
+      try {
+        if (!id) throw new Error('Missing vehicle id')
+
+        const [{ data: vehicle, error: vehicleErr }, { data: history, error: historyErr }] =
+          await Promise.all([
+            vehicleService.getVehicleById(id),
+            vehicleService.getVehicleHistoryForVehiclesPage(id),
+          ])
+
+        if (vehicleErr) throw new Error(vehicleErr?.message || 'Failed to load vehicle')
+        if (!vehicle) throw new Error('Vehicle not found')
+
+        if (!isMounted) return
+
+        setVehicleData({
+          ...vehicle,
+          stockNumber: vehicle?.stockNumber ?? vehicle?.stock_number ?? '',
+        })
+
+        if (historyErr) {
+          setActionHistory([])
+        } else {
+          const mapped = (history || []).map((h, idx) => {
+            const timestamp = h?.date || new Date().toISOString()
+            const baseUser = h?.assignee || h?.vendor || 'System'
+            if (h?.type === 'job') {
+              return {
+                id: `job-${idx}-${timestamp}`,
+                type: 'created',
+                user: baseUser,
+                description: `created job ${h?.title || ''}`.trim(),
+                details: h?.description || '',
+                timestamp,
+              }
+            }
+            return {
+              id: `comm-${idx}-${timestamp}`,
+              type: 'updated',
+              user: baseUser,
+              description: h?.title || 'updated communication',
+              details: h?.description || '',
+              timestamp,
+            }
+          })
+          setActionHistory(mapped)
+        }
+      } catch (err) {
+        if (!isMounted) return
+        setLoadError(err?.message || 'Failed to load vehicle')
+      } finally {
+        if (isMounted) setIsLoading(false)
       }
-
-      // Mock work items
-      const mockWorkItems = [
-        {
-          id: 'WI001',
-          productType: 'ToughGuard Protection',
-          productDescription: 'Premium paint protection film - full front end',
-          vendorId: 'V001',
-          vendorName: 'Elite Auto Protection',
-          status: 'In Progress',
-          dateAdded: '2025-01-18T09:00:00Z',
-          estimatedCost: 450.0,
-          salePrice: 899.0,
-          profit: 449.0,
-        },
-        {
-          id: 'WI002',
-          productType: 'Window Tint',
-          productDescription: 'Ceramic window tint - all windows',
-          vendorId: 'V002',
-          vendorName: 'Crystal Clear Tinting',
-          status: 'Complete',
-          dateAdded: '2025-01-15T14:30:00Z',
-          estimatedCost: 180.0,
-          salePrice: 350.0,
-          profit: 170.0,
-        },
-        {
-          id: 'WI003',
-          productType: 'Evernew Coating',
-          productDescription: 'Ceramic coating system - 5 year protection',
-          vendorId: 'V003',
-          vendorName: 'Premium Detailing Co',
-          status: 'Pending',
-          dateAdded: '2025-01-10T11:15:00Z',
-          estimatedCost: 320.0,
-          salePrice: 650.0,
-          profit: 330.0,
-        },
-      ]
-
-      // Mock vendors
-      const mockVendors = [
-        {
-          id: 'V001',
-          name: 'Elite Auto Protection',
-          specialties: ['Paint Protection', 'Clear Bra', 'PPF'],
-          rating: 4.8,
-          status: 'Active',
-        },
-        {
-          id: 'V002',
-          name: 'Crystal Clear Tinting',
-          specialties: ['Window Tinting', 'Ceramic Tint'],
-          rating: 4.9,
-          status: 'Active',
-        },
-        {
-          id: 'V003',
-          name: 'Premium Detailing Co',
-          specialties: ['Ceramic Coating', 'Paint Correction'],
-          rating: 4.7,
-          status: 'Active',
-        },
-        {
-          id: 'V004',
-          name: 'Wrap Masters',
-          specialties: ['Vehicle Wraps', 'Graphics', 'Vinyl'],
-          rating: 4.6,
-          status: 'Active',
-        },
-        {
-          id: 'V005',
-          name: 'Glass Guard Pro',
-          specialties: ['Glass Protection', 'Windshield Film'],
-          rating: 4.5,
-          status: 'Active',
-        },
-      ]
-
-      // Mock action history
-      const mockActionHistory = [
-        {
-          id: 'AH001',
-          type: 'created',
-          user: 'Sarah Johnson',
-          description: 'added ToughGuard Protection work item',
-          details: 'Assigned to Elite Auto Protection',
-          timestamp: '2025-01-18T09:00:00Z',
-        },
-        {
-          id: 'AH002',
-          type: 'status_changed',
-          user: 'Mike Chen',
-          description: 'updated Window Tint status',
-          details: 'Changed from In Progress to Complete',
-          changes: {
-            status: { from: 'In Progress', to: 'Complete' },
-          },
-          timestamp: '2025-01-17T16:45:00Z',
-        },
-        {
-          id: 'AH003',
-          type: 'price_updated',
-          user: 'Sarah Johnson',
-          description: 'updated pricing for Evernew Coating',
-          details: 'Adjusted sale price based on market rates',
-          changes: {
-            salePrice: { from: '$600.00', to: '$650.00' },
-          },
-          timestamp: '2025-01-16T13:20:00Z',
-        },
-        {
-          id: 'AH004',
-          type: 'created',
-          user: 'David Wilson',
-          description: 'created vehicle record',
-          details: 'Initial vehicle setup completed',
-          timestamp: '2025-01-15T08:30:00Z',
-        },
-        {
-          id: 'AH005',
-          type: 'exported',
-          user: 'Sarah Johnson',
-          description: 'exported customer summary report',
-          details: 'PDF format - sent to customer',
-          timestamp: '2025-01-14T11:10:00Z',
-        },
-      ]
-
-      setVehicleData(mockVehicle)
-      setWorkItems(mockWorkItems)
-      setAvailableVendors(mockVendors)
-      setActionHistory(mockActionHistory)
-      setIsLoading(false)
     }
 
-    initializeData()
+    load()
+    return () => {
+      isMounted = false
+    }
   }, [id])
 
   const handleVehicleUpdate = (updatedVehicle) => {
     setVehicleData(updatedVehicle)
-
-    // Add to action history
-    const newAction = {
-      id: `AH${Date.now()}`,
-      type: 'updated',
-      user: 'Current User',
-      description: 'updated vehicle information',
-      details: 'Vehicle details modified',
-      timestamp: new Date()?.toISOString(),
-    }
-    setActionHistory((prev) => [newAction, ...prev])
   }
 
   const handleAddProduct = (productData) => {
@@ -200,67 +105,19 @@ const VehicleDetailWorkstation = () => {
     }
 
     setWorkItems((prev) => [...prev, newWorkItem])
-
-    // Add to action history
-    const newAction = {
-      id: `AH${Date.now()}`,
-      type: 'created',
-      user: 'Current User',
-      description: `added ${productData?.productType} work item`,
-      details: `Assigned to ${productData?.vendorName}`,
-      timestamp: new Date()?.toISOString(),
-    }
-    setActionHistory((prev) => [newAction, ...prev])
   }
 
   const handleUpdateWorkItem = (updatedItem) => {
     setWorkItems((prev) => prev?.map((item) => (item?.id === updatedItem?.id ? updatedItem : item)))
-
-    // Add to action history
-    const newAction = {
-      id: `AH${Date.now()}`,
-      type: 'updated',
-      user: 'Current User',
-      description: `updated ${updatedItem?.productType}`,
-      details: 'Work item details modified',
-      timestamp: new Date()?.toISOString(),
-    }
-    setActionHistory((prev) => [newAction, ...prev])
   }
 
   const handleDeleteWorkItem = (itemId) => {
-    const item = workItems?.find((w) => w?.id === itemId)
     setWorkItems((prev) => prev?.filter((w) => w?.id !== itemId))
-
-    // Add to action history
-    const newAction = {
-      id: `AH${Date.now()}`,
-      type: 'deleted',
-      user: 'Current User',
-      description: `removed ${item?.productType || 'work item'}`,
-      details: 'Work item deleted from vehicle',
-      timestamp: new Date()?.toISOString(),
-    }
-    setActionHistory((prev) => [newAction, ...prev])
   }
 
   const handleExport = async (exportData) => {
-    console.log('Exporting data:', exportData)
-
-    // Add to action history
-    const newAction = {
-      id: `AH${Date.now()}`,
-      type: 'exported',
-      user: 'Current User',
-      description: `exported ${exportData?.type} report`,
-      details: `${exportData?.format?.toUpperCase()} format generated`,
-      timestamp: new Date()?.toISOString(),
-    }
-    setActionHistory((prev) => [newAction, ...prev])
-
-    // Simulate file download
-    const filename = `vehicle-${vehicleData?.stockNumber}-${exportData?.type}-${new Date()?.toISOString()?.split('T')?.[0]}.${exportData?.format}`
-    console.log(`Download initiated: ${filename}`)
+    console.warn('Export not implemented:', exportData)
+    alert('Export is not implemented yet.')
   }
 
   if (isLoading) {
@@ -293,7 +150,7 @@ const VehicleDetailWorkstation = () => {
               <Icon name="AlertCircle" size={48} className="text-error mx-auto mb-4" />
               <h2 className="text-xl font-semibold text-foreground mb-2">Vehicle Not Found</h2>
               <p className="text-muted-foreground mb-4">
-                The requested vehicle could not be found.
+                {loadError || 'The requested vehicle could not be found.'}
               </p>
               <Button
                 variant="default"
@@ -368,7 +225,7 @@ const VehicleDetailWorkstation = () => {
               <VehicleInfoPanel
                 vehicle={vehicleData}
                 onUpdate={handleVehicleUpdate}
-                userRole={userRole}
+                userRole={null}
               />
 
               <ActionHistoryPanel vehicleId={vehicleData?.id} actionHistory={actionHistory} />
@@ -391,7 +248,7 @@ const VehicleDetailWorkstation = () => {
                 workItems={workItems}
                 onUpdateItem={handleUpdateWorkItem}
                 onDeleteItem={handleDeleteWorkItem}
-                userRole={userRole}
+                userRole={null}
               />
             </div>
           </div>

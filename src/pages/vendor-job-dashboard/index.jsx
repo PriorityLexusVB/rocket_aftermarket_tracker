@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
@@ -9,6 +9,7 @@ import StatusWorkflow from './components/StatusWorkflow'
 import QuickStats from './components/QuickStats'
 import Icon from '../../components/AppIcon'
 import Button from '../../components/ui/Button'
+import vendorService, { getVendorJobs } from '../../services/vendorService'
 
 const VendorJobDashboard = () => {
   const { vendorId } = useParams()
@@ -17,193 +18,156 @@ const VendorJobDashboard = () => {
   const [selectedJobs, setSelectedJobs] = useState([])
   const [viewMode, setViewMode] = useState('table') // 'table' or 'workflow'
 
-  // Mock vendor data
-  const vendor = {
-    id: vendorId || 'VND001',
-    name: 'Premium Auto Detailing',
-    email: 'contact@premiumautodetailing.com',
-    phone: '(555) 123-4567',
-    location: 'Downtown Service Center',
-    status: 'Active',
-    joinDate: 'Jan 2023',
-    unreadMessages: 2,
-    metrics: {
-      totalJobs: 156,
-      completedJobs: 142,
-      performanceScore: 94,
-      avgCompletionTime: 18,
-    },
+  const [vendorRow, setVendorRow] = useState(null)
+  const [jobs, setJobs] = useState([])
+  const [messages, setMessages] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
+
+  const normalizeStatus = (status) => {
+    if (!status) return ''
+    const s = String(status).toLowerCase()
+    if (s.includes('progress')) return 'In Progress'
+    if (s.startsWith('complete')) return 'Complete'
+    if (s.startsWith('pending')) return 'Pending'
+    // Title-case fallback
+    return String(status)
+      .split(/[_\s]+/)
+      .filter(Boolean)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ')
   }
 
-  // Mock jobs data
-  const [jobs, setJobs] = useState([
-    {
-      id: 'JOB001',
-      jobId: 'AF-2024-001',
-      vehicle: {
-        year: '2023',
-        make: 'Toyota',
-        model: 'Camry',
-        vin: '1HGBH41JXMN109186',
-      },
-      product: 'ToughGuard Paint Protection',
-      assignedDate: '2024-01-15',
-      dueDate: '2024-01-20',
-      status: 'In Progress',
-      priority: 'High',
-    },
-    {
-      id: 'JOB002',
-      jobId: 'AF-2024-002',
-      vehicle: {
-        year: '2024',
-        make: 'Honda',
-        model: 'Accord',
-        vin: '2HGBH41JXMN109187',
-      },
-      product: 'Windshield Protection Film',
-      assignedDate: '2024-01-18',
-      dueDate: '2024-01-22',
-      status: 'Pending',
-      priority: 'Medium',
-    },
-    {
-      id: 'JOB003',
-      jobId: 'AF-2024-003',
-      vehicle: {
-        year: '2023',
-        make: 'Ford',
-        model: 'F-150',
-        vin: '3HGBH41JXMN109188',
-      },
-      product: 'Ceramic Window Tint',
-      assignedDate: '2024-01-10',
-      dueDate: '2024-01-19',
-      status: 'Complete',
-      priority: 'Low',
-    },
-    {
-      id: 'JOB004',
-      jobId: 'AF-2024-004',
-      vehicle: {
-        year: '2024',
-        make: 'BMW',
-        model: 'X5',
-        vin: '4HGBH41JXMN109189',
-      },
-      product: 'Full Vehicle Wrap',
-      assignedDate: '2024-01-12',
-      dueDate: '2024-01-18',
-      status: 'Pending',
-      priority: 'High',
-    },
-  ])
+  useEffect(() => {
+    let cancelled = false
 
-  // Mock communication messages
-  const [messages, setMessages] = useState([
-    {
-      id: 'MSG001',
-      sender: 'You',
-      content:
-        'Hi! Job AF-2024-001 has been assigned to you. Please confirm receipt and estimated completion time.',
-      timestamp: new Date('2024-01-15T09:00:00'),
-      status: 'delivered',
-      jobReference: 'AF-2024-001',
-    },
-    {
-      id: 'MSG002',
-      sender: 'Premium Auto Detailing',
-      content: 'Received! Will start on the Toyota Camry today. Estimated completion by Friday.',
-      timestamp: new Date('2024-01-15T09:15:00'),
-      status: 'read',
-    },
-    {
-      id: 'MSG003',
-      sender: 'You',
-      content:
-        'Great! Please update status when you begin work. Customer is expecting Friday delivery.',
-      timestamp: new Date('2024-01-15T09:20:00'),
-      status: 'delivered',
-    },
-  ])
+    const load = async () => {
+      if (!vendorId) {
+        setVendorRow(null)
+        setJobs([])
+        setMessages([])
+        setLoadError('')
+        return
+      }
 
-  // Mock stats data
-  const stats = {
-    totalJobs: jobs?.length,
-    pendingJobs: jobs?.filter((job) => job?.status === 'Pending')?.length,
-    inProgressJobs: jobs?.filter((job) => job?.status === 'In Progress')?.length,
-    completedJobs: jobs?.filter((job) => job?.status === 'Complete')?.length,
-    overdueJobs: jobs?.filter(
-      (job) => new Date(job.dueDate) < new Date() && job?.status !== 'Complete'
-    )?.length,
-    avgCompletionTime: 18,
-    totalJobsChange: 5,
-    pendingJobsChange: -2,
-    inProgressJobsChange: 1,
-    completedJobsChange: 3,
-    overdueJobsChange: -1,
-    avgCompletionTimeChange: -2,
-  }
+      setIsLoading(true)
+      setLoadError('')
+
+      try {
+        const row = await vendorService.getById(vendorId)
+        if (!cancelled) setVendorRow(row)
+      } catch (e) {
+        console.error('VendorJobDashboard: vendor load failed', e)
+      }
+
+      try {
+        const rows = await getVendorJobs(vendorId)
+        const mapped = (rows || []).map((r) => {
+          const assignedDate = r?.scheduled_start ?? r?.created_at ?? null
+          const dueDate = r?.scheduled_end ?? null
+          return {
+            id: r?.job_id ?? r?.id,
+            jobId: r?.job_number ?? r?.job_id ?? '',
+            vehicle: {
+              year: '',
+              make: r?.vehicle_info ?? '',
+              model: '',
+              vin: '',
+            },
+            product: r?.job_title ?? '',
+            assignedDate: assignedDate ? new Date(assignedDate).toISOString().slice(0, 10) : '',
+            dueDate: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : '',
+            status: normalizeStatus(r?.job_status),
+            priority: undefined,
+          }
+        })
+
+        if (!cancelled) setJobs(mapped)
+      } catch (e) {
+        console.error('VendorJobDashboard: jobs load failed', e)
+        if (!cancelled) setLoadError('Unable to load vendor jobs.')
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [vendorId])
+
+  const vendor = useMemo(() => {
+    const joinDate = vendorRow?.created_at
+      ? new Date(vendorRow.created_at).toLocaleDateString('en-US', {
+          month: 'short',
+          year: 'numeric',
+        })
+      : null
+
+    const completedJobs = jobs?.filter((j) => j?.status === 'Complete')?.length ?? 0
+
+    return {
+      id: vendorId || vendorRow?.id || null,
+      name: vendorRow?.name || 'Vendor',
+      email: vendorRow?.email || null,
+      phone: vendorRow?.phone || null,
+      location: vendorRow?.address || null,
+      status: vendorRow?.is_active === false ? 'Inactive' : 'Active',
+      joinDate: joinDate,
+      unreadMessages: 0,
+      metrics: {
+        totalJobs: jobs?.length ?? 0,
+        completedJobs,
+        performanceScore: null,
+        avgCompletionTime: null,
+      },
+    }
+  }, [jobs, vendorId, vendorRow])
+
+  const stats = useMemo(() => {
+    const totalJobs = jobs?.length ?? 0
+    const pendingJobs = jobs?.filter((job) => job?.status === 'Pending')?.length ?? 0
+    const inProgressJobs = jobs?.filter((job) => job?.status === 'In Progress')?.length ?? 0
+    const completedJobs = jobs?.filter((job) => job?.status === 'Complete')?.length ?? 0
+    const overdueJobs =
+      jobs?.filter(
+        (job) => job?.dueDate && new Date(job.dueDate) < new Date() && job?.status !== 'Complete'
+      )?.length ?? 0
+
+    return {
+      totalJobs,
+      pendingJobs,
+      inProgressJobs,
+      completedJobs,
+      overdueJobs,
+      avgCompletionTime: null,
+    }
+  }, [jobs])
 
   const handleStatusUpdate = (jobId, newStatus) => {
-    setJobs((prevJobs) =>
-      prevJobs?.map((job) => (job?.id === jobId ? { ...job, status: newStatus } : job))
-    )
-
-    // Add system message for status update
-    const job = jobs?.find((j) => j?.id === jobId)
-    if (job) {
-      const newMessage = {
-        id: `MSG${Date.now()}`,
-        sender: 'System',
-        content: `Job ${job?.jobId} status updated to: ${newStatus}`,
-        timestamp: new Date(),
-        status: 'system',
-        jobReference: job?.jobId,
-      }
-      setMessages((prev) => [...prev, newMessage])
-    }
+    console.warn('VendorJobDashboard: status update not implemented', { jobId, newStatus })
   }
 
   const handleBulkUpdate = (jobIds, newStatus) => {
-    setJobs((prevJobs) =>
-      prevJobs?.map((job) => (jobIds?.includes(job?.id) ? { ...job, status: newStatus } : job))
-    )
-
-    // Clear selection after bulk update
     setSelectedJobs([])
-
-    // Add system message for bulk update
-    const newMessage = {
-      id: `MSG${Date.now()}`,
-      sender: 'System',
-      content: `${jobIds?.length} jobs updated to: ${newStatus}`,
-      timestamp: new Date(),
-      status: 'system',
-    }
-    setMessages((prev) => [...prev, newMessage])
+    console.warn('VendorJobDashboard: bulk update not implemented', { jobIds, newStatus })
   }
 
   const handleSendMessage = (messageContent) => {
+    console.warn('VendorJobDashboard: SMS sending not implemented')
     const newMessage = {
       id: `MSG${Date.now()}`,
       sender: 'You',
       content: messageContent,
       timestamp: new Date(),
-      status: 'sent',
+      status: 'failed',
     }
     setMessages((prev) => [...prev, newMessage])
-
-    // Simulate delivery status update
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev?.map((msg) => (msg?.id === newMessage?.id ? { ...msg, status: 'delivered' } : msg))
-      )
-    }, 1000)
   }
 
   const handleSendSMS = () => {
-    console.log('Opening SMS composer for vendor:', vendor?.name)
+    console.warn('VendorJobDashboard: SMS composer not implemented', { vendorId })
   }
 
   const handleCallVendor = () => {
@@ -216,7 +180,6 @@ const VendorJobDashboard = () => {
 
   const handleExportReport = () => {
     console.log('Exporting vendor job report...')
-    // Mock export functionality
     const csvContent = jobs
       ?.map(
         (job) =>
@@ -295,6 +258,16 @@ const VendorJobDashboard = () => {
             onCallVendor={handleCallVendor}
             onEmailVendor={handleEmailVendor}
           />
+
+          {loadError ? (
+            <div className="bg-error/10 border border-error/20 text-error rounded-lg p-4">
+              {loadError}
+            </div>
+          ) : null}
+
+          {isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading vendor data…</div>
+          ) : null}
 
           {/* Quick Stats */}
           <QuickStats stats={stats} />

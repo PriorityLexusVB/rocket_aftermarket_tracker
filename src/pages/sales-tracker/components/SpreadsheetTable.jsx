@@ -311,9 +311,6 @@ const SpreadsheetTable = ({ data = [], onEdit, onDelete }) => {
               className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             >
               <option value="">All Coordinators</option>
-              <option value="Sarah Johnson">Sarah Johnson</option>
-              <option value="Mike Chen">Mike Chen</option>
-              <option value="Alex Rodriguez">Alex Rodriguez</option>
               <option value="Unassigned">Unassigned</option>
             </select>
           </div>

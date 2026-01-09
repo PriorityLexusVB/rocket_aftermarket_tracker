@@ -5,6 +5,7 @@ import Button from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
 import Select from '../../../components/ui/Select'
 import Checkbox from '../../../components/ui/Checkbox'
+import { getProducts, getVendors } from '../../../services/dropdownService'
 
 const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -51,24 +52,21 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
   useEffect(() => {
     const loadVendorsAndProducts = async () => {
       try {
-        // Mock vendors data (replace with actual API call)
-        const mockVendors = [
-          { id: '1', name: 'Premium Auto Parts', specialty: 'Engine Components' },
-          { id: '2', name: 'Elite Motors', specialty: 'Body Work' },
-          { id: '3', name: 'Speed Tech', specialty: 'Performance Upgrades' },
-        ]
+        const [vendorOptions, productOptions] = await Promise.all([
+          getVendors({ activeOnly: true }),
+          getProducts({ activeOnly: true }),
+        ])
 
-        // Mock products data (replace with actual API call)
-        const mockProducts = [
-          { id: '1', name: 'Brake Pads Set', category: 'Braking System', unit_price: 89.99 },
-          { id: '2', name: 'Air Filter', category: 'Engine', unit_price: 24.99 },
-          { id: '3', name: 'LED Headlights', category: 'Lighting', unit_price: 159.99 },
-          { id: '4', name: 'Performance Exhaust', category: 'Exhaust System', unit_price: 299.99 },
-          { id: '5', name: 'Ceramic Coating', category: 'Protection', unit_price: 199.99 },
-        ]
+        setVendors(vendorOptions || [])
 
-        setVendors(mockVendors)
-        setProducts(mockProducts)
+        // Normalize to the shape this modal expects
+        const normalizedProducts = (productOptions || []).map((p) => ({
+          ...p,
+          name: p?.name ?? p?.label,
+          category: p?.category ?? null,
+          unit_price: p?.unit_price ?? null,
+        }))
+        setProducts(normalizedProducts)
         setLoadingProducts(false)
       } catch (error) {
         console.error('Error loading vendors and products:', error)
@@ -132,7 +130,9 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
     { value: '', label: 'Select Vendor (Optional)' },
     ...vendors?.map((vendor) => ({
       value: vendor?.id,
-      label: `${vendor?.name} - ${vendor?.specialty}`,
+      label: vendor?.specialty
+        ? `${vendor?.name ?? vendor?.label} - ${vendor?.specialty}`
+        : (vendor?.name ?? vendor?.label),
     })),
   ]
 
@@ -572,7 +572,7 @@ const AddVehicleModal = ({ isOpen, onClose, onSubmit }) => {
                 <Input
                   label="Owner Name"
                   type="text"
-                  placeholder="e.g., John Smith"
+                  placeholder="e.g., Owner name"
                   {...register('owner_name')}
                   error={errors?.owner_name?.message}
                 />

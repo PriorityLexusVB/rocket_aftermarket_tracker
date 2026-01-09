@@ -288,29 +288,64 @@ export const vehicleService = {
     try {
       console.log('Creating vehicle with products:', vehicleData)
 
-      // In a real implementation, this would:
-      // 1. Create the vehicle record in the vehicles table
-      // 2. Create vehicle_products records for each selected product
-      // 3. Optionally create initial job records if vendor is assigned
-      // 4. Return the created vehicle with all relationships
+      const { initial_products, total_initial_product_value, ...vehicleInsert } = vehicleData || {}
+      const initialProducts = Array.isArray(initial_products) ? initial_products : []
 
-      // Mock implementation for now
-      const mockVehicleId = `vehicle_${Date.now()}`
+      const userId = (await supabase?.auth?.getUser?.())?.data?.user?.id
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // 1) Create vehicle
+      const { data: createdVehicle, error: vehicleErr } = await supabase
+        ?.from('vehicles')
+        ?.insert([
+          {
+            ...vehicleInsert,
+            created_by: userId ?? vehicleInsert?.created_by ?? null,
+          },
+        ])
+        ?.select('*')
+        ?.single()
 
-      // Mock successful response
-      const createdVehicle = {
-        id: mockVehicleId,
-        ...vehicleData,
-        created_at: new Date()?.toISOString(),
-        initial_products_count: vehicleData?.initial_products?.length || 0,
-        estimated_aftermarket_value: vehicleData?.total_initial_product_value || 0,
+      if (vehicleErr) {
+        throw new Error(vehicleErr?.message || 'Failed to create vehicle')
       }
 
-      console.log('Vehicle created successfully:', createdVehicle)
-      return createdVehicle
+      // 2) Create vehicle_products for initial products
+      if (createdVehicle?.id && initialProducts.length > 0) {
+        const rows = initialProducts
+          .map((p) => {
+            const productId = p?.product_id ?? p?.productId ?? p?.id
+            if (!productId) return null
+            return {
+              vehicle_id: createdVehicle.id,
+              product_id: productId,
+              quantity: Number.isFinite(Number(p?.quantity)) ? Number(p.quantity) : 1,
+              unit_price:
+                p?.price !== undefined && p?.price !== null
+                  ? Number(p.price)
+                  : p?.unit_price !== undefined && p?.unit_price !== null
+                    ? Number(p.unit_price)
+                    : null,
+              is_initial_assignment: true,
+              notes: p?.notes ?? null,
+              created_by: userId ?? null,
+            }
+          })
+          .filter(Boolean)
+
+        if (rows.length > 0) {
+          const { error: vpErr } = await supabase?.from('vehicle_products')?.insert(rows)
+          if (vpErr) {
+            // Vehicle already exists; surface clear error so UI can retry/handle.
+            throw new Error(vpErr?.message || 'Failed to create vehicle products')
+          }
+        }
+      }
+
+      return {
+        ...createdVehicle,
+        initial_products_count: initialProducts.length,
+        estimated_aftermarket_value: total_initial_product_value ?? 0,
+      }
     } catch (error) {
       console.error('Error creating vehicle with products:', error)
       throw error
@@ -600,8 +635,8 @@ export const getVendorAccessibleVehicles = async (vendorId) => {
   }
 }
 function createVehicleWithProducts(...args) {
-  console.warn('Placeholder: createVehicleWithProducts is not implemented yet.', args)
-  return null
+  // Back-compat named export: delegate to the service implementation.
+  return vehicleService.createVehicleWithProducts(...args)
 }
 
 export { createVehicleWithProducts }

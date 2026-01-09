@@ -149,8 +149,7 @@ const getDealVehicleDisplay = (deal) => {
     !rawDesc ||
     (title && descLower === title.toLowerCase()) ||
     (jobNumber &&
-      (descLower === jobNumber.toLowerCase() || descLower.includes(jobNumber.toLowerCase()))) ||
-    /e2e\s*loaner\s*job/i.test(rawDesc)
+      (descLower === jobNumber.toLowerCase() || descLower.includes(jobNumber.toLowerCase())))
 
   // Vehicle-first:
   // 1) Prefer structured year/make/model

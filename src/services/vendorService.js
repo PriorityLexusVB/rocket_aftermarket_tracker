@@ -366,3 +366,46 @@ export const vendorService = {
 }
 
 export default vendorService
+
+// ---------------------------------------------------------------------------
+// Vendor Operations Center helpers (no mock data)
+
+/**
+ * Get vendors for management views.
+ * Returns raw rows (callers can map to UI shape).
+ */
+export async function getVendors(orgId = null) {
+  let q = supabase
+    .from('vendors')
+    .select(
+      'id, name, phone, email, address, specialty, is_active, rating, contact_person, dealer_id'
+    )
+    .order('name', { ascending: true })
+
+  if (orgId) {
+    q = q.or(`dealer_id.eq.${orgId},dealer_id.is.null`)
+  }
+
+  const rows = await safeSelect(q, 'vendors:getVendors')
+  return rows || []
+}
+
+/** Vendor-scoped vehicles via RPC (see get_vendor_vehicles) */
+export async function getVendorVehicles(vendorId) {
+  if (!vendorId) return []
+  const { data, error } = await supabase?.rpc?.('get_vendor_vehicles', {
+    vendor_uuid: vendorId,
+  })
+  if (error) throw error
+  return data || []
+}
+
+/** Vendor-scoped jobs via RPC (see get_vendor_jobs) */
+export async function getVendorJobs(vendorId) {
+  if (!vendorId) return []
+  const { data, error } = await supabase?.rpc?.('get_vendor_jobs', {
+    vendor_uuid: vendorId,
+  })
+  if (error) throw error
+  return data || []
+}

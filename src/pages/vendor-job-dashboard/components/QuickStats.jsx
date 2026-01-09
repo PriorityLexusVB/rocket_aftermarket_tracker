@@ -9,8 +9,6 @@ const QuickStats = ({ stats }) => {
       value: stats?.totalJobs,
       icon: 'Briefcase',
       color: 'primary',
-      change: stats?.totalJobsChange,
-      changeType: stats?.totalJobsChange >= 0 ? 'positive' : 'negative',
     },
     {
       id: 'pending',
@@ -18,8 +16,6 @@ const QuickStats = ({ stats }) => {
       value: stats?.pendingJobs,
       icon: 'Clock',
       color: 'warning',
-      change: stats?.pendingJobsChange,
-      changeType: stats?.pendingJobsChange >= 0 ? 'negative' : 'positive',
     },
     {
       id: 'inProgress',
@@ -27,8 +23,6 @@ const QuickStats = ({ stats }) => {
       value: stats?.inProgressJobs,
       icon: 'Play',
       color: 'primary',
-      change: stats?.inProgressJobsChange,
-      changeType: stats?.inProgressJobsChange >= 0 ? 'positive' : 'negative',
     },
     {
       id: 'completed',
@@ -36,8 +30,6 @@ const QuickStats = ({ stats }) => {
       value: stats?.completedJobs,
       icon: 'CheckCircle',
       color: 'success',
-      change: stats?.completedJobsChange,
-      changeType: stats?.completedJobsChange >= 0 ? 'positive' : 'negative',
     },
     {
       id: 'overdue',
@@ -45,17 +37,16 @@ const QuickStats = ({ stats }) => {
       value: stats?.overdueJobs,
       icon: 'AlertTriangle',
       color: 'error',
-      change: stats?.overdueJobsChange,
-      changeType: stats?.overdueJobsChange >= 0 ? 'negative' : 'positive',
     },
     {
       id: 'avgTime',
       title: 'Avg Completion',
-      value: `${stats?.avgCompletionTime}h`,
+      value:
+        stats?.avgCompletionTime === null || stats?.avgCompletionTime === undefined
+          ? '—'
+          : `${stats?.avgCompletionTime}h`,
       icon: 'Timer',
       color: 'secondary',
-      change: stats?.avgCompletionTimeChange,
-      changeType: stats?.avgCompletionTimeChange <= 0 ? 'positive' : 'negative',
     },
   ]
 

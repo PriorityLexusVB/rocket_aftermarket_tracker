@@ -49,6 +49,13 @@ describe('Vehicle Description and Vendor Aggregation', () => {
       const mockLoaners = []
 
       supabase.from.mockImplementation((table) => {
+        if (table === 'job_parts') {
+          return {
+            select: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }
+        }
         if (table === 'jobs') {
           return {
             select: vi.fn().mockReturnThis(),
@@ -96,6 +103,13 @@ describe('Vehicle Description and Vendor Aggregation', () => {
       ]
 
       supabase.from.mockImplementation((table) => {
+        if (table === 'job_parts') {
+          return {
+            select: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }
+        }
         if (table === 'jobs') {
           return {
             select: vi.fn().mockReturnThis(),
@@ -160,6 +174,13 @@ describe('Vehicle Description and Vendor Aggregation', () => {
       ]
 
       supabase.from.mockImplementation((table) => {
+        if (table === 'job_parts') {
+          return {
+            select: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }
+        }
         if (table === 'jobs') {
           return {
             select: vi.fn().mockReturnThis(),
@@ -222,6 +243,13 @@ describe('Vehicle Description and Vendor Aggregation', () => {
       ]
 
       supabase.from.mockImplementation((table) => {
+        if (table === 'job_parts') {
+          return {
+            select: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }
+        }
         if (table === 'jobs') {
           return {
             select: vi.fn().mockReturnThis(),
@@ -277,6 +305,13 @@ describe('Vehicle Description and Vendor Aggregation', () => {
       ]
 
       supabase.from.mockImplementation((table) => {
+        if (table === 'job_parts') {
+          return {
+            select: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
+          }
+        }
         if (table === 'jobs') {
           return {
             select: vi.fn().mockReturnThis(),

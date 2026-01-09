@@ -319,7 +319,7 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
                 required
                 value={customerData?.name}
                 onChange={(e) => handleCustomerChange('name', e?.target?.value)}
-                placeholder="John Smith"
+                placeholder="Customer name"
                 helperText=""
                 maxLength={100}
                 className=""

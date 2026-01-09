@@ -3,6 +3,11 @@ import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 
 const VendorHeader = ({ vendor, onSendMessage, onCallVendor, onEmailVendor }) => {
+  const fmt = (value, suffix = '') => {
+    if (value === null || value === undefined || value === '') return '—'
+    return `${value}${suffix}`
+  }
+
   const getPerformanceColor = (score) => {
     if (score >= 90) return 'text-success'
     if (score >= 70) return 'text-warning'
@@ -44,19 +49,19 @@ const VendorHeader = ({ vendor, onSendMessage, onCallVendor, onEmailVendor }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Icon name="Phone" size={16} />
-                <span>{vendor?.phone}</span>
+                <span>{fmt(vendor?.phone)}</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Icon name="Mail" size={16} />
-                <span>{vendor?.email}</span>
+                <span>{fmt(vendor?.email)}</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Icon name="MapPin" size={16} />
-                <span>{vendor?.location}</span>
+                <span>{fmt(vendor?.location)}</span>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Icon name="Calendar" size={16} />
-                <span>Joined {vendor?.joinDate}</span>
+                <span>Joined {fmt(vendor?.joinDate)}</span>
               </div>
             </div>
           </div>
@@ -65,12 +70,14 @@ const VendorHeader = ({ vendor, onSendMessage, onCallVendor, onEmailVendor }) =>
         {/* Performance Metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-foreground">{vendor?.metrics?.totalJobs}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {fmt(vendor?.metrics?.totalJobs)}
+            </div>
             <div className="text-sm text-muted-foreground">Total Jobs</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-foreground">
-              {vendor?.metrics?.completedJobs}
+              {fmt(vendor?.metrics?.completedJobs)}
             </div>
             <div className="text-sm text-muted-foreground">Completed</div>
           </div>
@@ -78,13 +85,19 @@ const VendorHeader = ({ vendor, onSendMessage, onCallVendor, onEmailVendor }) =>
             <div
               className={`text-2xl font-bold ${getPerformanceColor(vendor?.metrics?.performanceScore)}`}
             >
-              {vendor?.metrics?.performanceScore}%
+              {vendor?.metrics?.performanceScore === null ||
+              vendor?.metrics?.performanceScore === undefined
+                ? '—'
+                : `${vendor?.metrics?.performanceScore}%`}
             </div>
             <div className="text-sm text-muted-foreground">Performance</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-foreground">
-              {vendor?.metrics?.avgCompletionTime}h
+              {vendor?.metrics?.avgCompletionTime === null ||
+              vendor?.metrics?.avgCompletionTime === undefined
+                ? '—'
+                : `${vendor?.metrics?.avgCompletionTime}h`}
             </div>
             <div className="text-sm text-muted-foreground">Avg Time</div>
           </div>

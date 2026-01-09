@@ -17,6 +17,7 @@ import { claimsService } from '../../services/claimsService'
 import ClaimSubmissionForm from './components/ClaimSubmissionForm'
 
 import ClaimDetailsModal from './components/ClaimDetailsModal'
+import { useAuth } from '../../contexts/AuthContext'
 
 const CustomerClaimsPortal = () => {
   const [claims, setClaims] = useState([])
@@ -26,22 +27,31 @@ const CustomerClaimsPortal = () => {
   const [error, setError] = useState(null)
   const [showNewClaimForm, setShowNewClaimForm] = useState(false)
   const [selectedClaim, setSelectedClaim] = useState(null)
-  const customerEmail = 'john.smith@email.com' // Demo customer
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
+  const { user } = useAuth()
+  const customerEmail = (user?.email || '').trim()
+
   useEffect(() => {
-    loadCustomerData()
+    if (!customerEmail) {
+      setClaims([])
+      setVehicles([])
+      setProducts([])
+      setLoading(false)
+      return
+    }
+    loadCustomerData(customerEmail)
   }, [customerEmail])
 
-  const loadCustomerData = async () => {
+  const loadCustomerData = async (email) => {
     try {
       setLoading(true)
       setError(null)
 
       const [claimsData, vehiclesData, productsData] = await Promise.all([
-        claimsService?.getCustomerClaims(customerEmail),
-        claimsService?.getCustomerVehicles(customerEmail),
+        claimsService?.getCustomerClaims(email),
+        claimsService?.getCustomerVehicles(email),
         claimsService?.getProducts(),
       ])
 
@@ -56,6 +66,10 @@ const CustomerClaimsPortal = () => {
   }
 
   const handleSubmitClaim = async (claimData) => {
+    if (!customerEmail) {
+      setError('Please sign in to submit a claim.')
+      return
+    }
     try {
       const newClaim = await claimsService?.createClaim({
         ...claimData,

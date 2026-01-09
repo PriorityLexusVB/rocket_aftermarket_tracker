@@ -21,15 +21,6 @@ const IS_TEST_ENV =
   import.meta?.env &&
   (import.meta.env?.MODE === 'test' || import.meta.env?.VITEST)
 
-const TEST_CUSTOMER_PATTERNS = [
-  /\btest\b/i,
-  /\bdemo\b/i,
-  /\bsample\b/i,
-  /\bexample\b/i,
-  /\be2e\b/i,
-  /\bdummy\b/i,
-]
-
 // Some environments may not have loaner_assignments.dealer_id yet.
 // Cache the capability after first detection so we don't repeatedly trigger
 // PostgREST 400 responses on subsequent loaner saves.
@@ -89,32 +80,6 @@ function applyReturnedAtIsNullFilter(q) {
   if (!q) return q
   if (loanerAssignmentsHasReturnedAt === false) return q
   return typeof q.is === 'function' ? q.is('returned_at', null) : q
-}
-
-function isTestLikeValue(value) {
-  const str = value ? String(value) : ''
-  return TEST_CUSTOMER_PATTERNS.some((pattern) => pattern.test(str))
-}
-
-export function filterTestCustomersKeepFirst(deals = []) {
-  if (!Array.isArray(deals)) return []
-
-  let testDealKept = false
-  return deals.filter((deal) => {
-    const isTestDeal =
-      isTestLikeValue(deal?.customer_name) ||
-      isTestLikeValue(deal?.customer_email) ||
-      isTestLikeValue(deal?.title) ||
-      isTestLikeValue(deal?.job_number) ||
-      isTestLikeValue(deal?.description)
-
-    if (isTestDeal) {
-      if (testDealKept) return false
-      testDealKept = true
-    }
-
-    return true
-  })
 }
 
 // --- helpers -------------------------------------------------------------
@@ -1328,7 +1293,7 @@ export async function getAllDeals() {
 
         const { error: probeError } = await supabase
           .from('job_parts')
-          .select(probeFields.join(', '))
+          .select(probeFields.join(', '), { head: true })
           .limit(1)
 
         if (probeError && isMissingColumnError(probeError)) {
@@ -1703,15 +1668,8 @@ export async function getAllDeals() {
 
     if (IS_TEST_ENV) return mappedDeals
 
-    // In local development, show all rows (including multiple E2E/test records) so
-    // the Deals page reflects what the DB actually contains.
-    // Keep the existing de-noise behavior for production builds.
-    const isProd =
-      typeof import.meta !== 'undefined' &&
-      import.meta?.env &&
-      import.meta.env?.MODE === 'production'
-
-    return isProd ? filterTestCustomersKeepFirst(mappedDeals) : mappedDeals
+    // Show all deals by default. Any narrowing should come from the UI's filters/search.
+    return mappedDeals
   } catch (error) {
     console.error('Failed to load deals:', error)
     // Provide specific guidance for missing relationship errors using classifier
