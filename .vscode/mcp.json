@@ -10,7 +10,7 @@
       "args": [
         "@supabase/mcp-server-supabase@0.5.10",
         "--project-ref",
-        "ntpoblmjxfivomcwmjrj",
+        "ogjtmtndgiqqdtwatsue",
         "--features",
         "account,docs,database,debugging,development,functions,storage,branching",
         "--api-url",
