@@ -8,8 +8,9 @@ function isDateOnlyValue(input) {
   const str = String(input).trim()
   if (!str) return false
   // Treat bare dates (and a legacy local-midnight normalization) as NOT a scheduled window.
-  // These values are commonly used for promise dates and should render as "Promise:" + "Not scheduled".
-  return /^\d{4}-\d{2}-\d{2}$/.test(str) || /^\d{4}-\d{2}-\d{2}T00:00:00$/.test(str)
+  // These values are commonly used for promise dates and should render as "Promise:" + "Needs scheduling".
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return true
+  return /^\d{4}-\d{2}-\d{2}T00:00:00(?:\.0{1,3})?(?:Z|[+-]\d{2}:?\d{2})?$/.test(str)
 }
 
 function isPromisePlaceholderWindow(start, end, promiseDate, timeZone = TZ) {
@@ -83,9 +84,11 @@ function toSafeDateForTimeZone(input) {
     return Number.isNaN(dt.getTime()) ? null : dt
   }
 
-  // Legacy normalization sometimes appends a local midnight time.
-  // Treat it like a date-only value to prevent the same day-shift.
-  const m2 = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T00:00:00$/.exec(str)
+  // Legacy normalization sometimes appends a midnight time.
+  // Treat midnight ISO variants like date-only values to prevent the same day-shift.
+  const m2 = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T00:00:00(?:\.0{1,3})?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(
+    str
+  )
   if (m2) {
     const y = Number(m2[1])
     const mo = Number(m2[2])
@@ -203,7 +206,7 @@ function getEtDayKey(isoOrDate, timeZone = TZ) {
 /**
  * ScheduleBlock
  * - If scheduled start/end exist: primary "Tue Dec 30 • 4:30–6:30 PM ET"
- * - If no scheduled window: primary "Promise: Tue Dec 30" + "Not scheduled" badge
+ * - If no scheduled window: primary "Promise: Tue Dec 30" + "Needs scheduling" badge
  * - Promise shown as secondary only if present + meaningful (differs from scheduled day)
  */
 export default function ScheduleBlock({
@@ -302,7 +305,7 @@ export default function ScheduleBlock({
         </div>
         {!hasWindow && !hasDateOnlySchedule && promiseDate ? (
           <span className="shrink-0 inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-xs font-medium text-slate-700">
-            Not scheduled
+            Needs scheduling
           </span>
         ) : null}
       </div>

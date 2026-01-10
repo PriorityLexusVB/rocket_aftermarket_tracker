@@ -1,133 +1,136 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock supabase client to return total_amount as string (as PostgREST does for DECIMAL types)
-vi.mock('@/lib/supabase', () => {
-  const mockJobs = [
-    {
-      id: 'job-1',
-      job_number: 'JOB-001',
-      title: 'Test Deal',
-      job_status: 'pending',
-      created_at: '2025-01-15T10:00:00Z',
-      job_parts: [],
-    },
-  ]
+function mockSupabaseForTotalAmountTests() {
+  // Mock supabase client to return total_amount as string (as PostgREST does for DECIMAL types)
+  vi.doMock('@/lib/supabase', () => {
+    const mockJobs = [
+      {
+        id: 'job-1',
+        job_number: 'JOB-001',
+        title: 'Test Deal',
+        job_status: 'pending',
+        created_at: '2025-01-15T10:00:00Z',
+        job_parts: [],
+      },
+    ]
 
-  const mockTransactions = [
-    {
-      job_id: 'job-1',
-      customer_name: 'Test Customer',
-      customer_phone: '555-1234',
-      customer_email: 'test@example.com',
-      // Supabase returns DECIMAL as string
-      total_amount: '1234.56',
-    },
-  ]
+    const mockTransactions = [
+      {
+        job_id: 'job-1',
+        customer_name: 'Test Customer',
+        customer_phone: '555-1234',
+        customer_email: 'test@example.com',
+        // Supabase returns DECIMAL as string
+        total_amount: '1234.56',
+      },
+    ]
 
-  const mockLoaners = []
+    const mockLoaners = []
 
-  const supabase = {
-    auth: {
-      getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })),
-    },
-    from(table) {
-      if (table === 'jobs') {
-        return {
-          select() {
-            return {
-              in() {
-                return {
-                  order() {
-                    return Promise.resolve({ data: mockJobs, error: null })
-                  },
-                }
-              },
-              eq() {
-                return {
-                  async single() {
-                    return { data: mockJobs[0], error: null }
-                  },
-                }
-              },
-            }
-          },
+    const supabase = {
+      auth: {
+        getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })),
+      },
+      from(table) {
+        if (table === 'jobs') {
+          return {
+            select() {
+              return {
+                in() {
+                  return {
+                    order() {
+                      return Promise.resolve({ data: mockJobs, error: null })
+                    },
+                  }
+                },
+                eq() {
+                  return {
+                    async single() {
+                      return { data: mockJobs[0], error: null }
+                    },
+                  }
+                },
+              }
+            },
+          }
         }
-      }
-      if (table === 'transactions') {
-        return {
-          select() {
-            return {
-              in() {
-                return Promise.resolve({ data: mockTransactions, error: null })
-              },
-              eq() {
-                return {
-                  async maybeSingle() {
-                    return { data: mockTransactions[0], error: null }
-                  },
-                }
-              },
-            }
-          },
+        if (table === 'transactions') {
+          return {
+            select() {
+              return {
+                in() {
+                  return Promise.resolve({ data: mockTransactions, error: null })
+                },
+                eq() {
+                  return {
+                    async maybeSingle() {
+                      return { data: mockTransactions[0], error: null }
+                    },
+                  }
+                },
+              }
+            },
+          }
         }
-      }
-      if (table === 'loaner_assignments') {
-        return {
-          select() {
-            return {
-              in() {
-                return {
-                  is() {
-                    return Promise.resolve({ data: mockLoaners, error: null })
-                  },
-                }
-              },
-            }
-          },
+        if (table === 'loaner_assignments') {
+          return {
+            select() {
+              return {
+                in() {
+                  return {
+                    is() {
+                      return Promise.resolve({ data: mockLoaners, error: null })
+                    },
+                  }
+                },
+              }
+            },
+          }
         }
-      }
-      if (table === 'job_parts') {
-        return {
-          select() {
-            return {
-              limit() {
-                return Promise.resolve({ data: [], error: null })
-              },
-            }
-          },
+        if (table === 'job_parts') {
+          return {
+            select() {
+              return {
+                limit() {
+                  return Promise.resolve({ data: [], error: null })
+                },
+              }
+            },
+          }
         }
-      }
-      if (table === 'user_profiles') {
-        return {
-          select() {
-            return {
-              eq() {
-                return {
-                  async single() {
-                    return { data: { name: 'Test User' }, error: null }
-                  },
-                }
-              },
-            }
-          },
+        if (table === 'user_profiles') {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    async single() {
+                      return { data: { name: 'Test User' }, error: null }
+                    },
+                  }
+                },
+              }
+            },
+          }
         }
-      }
-      // Default fallback
-      return {
-        select: () => ({
-          limit: () => Promise.resolve({ data: [], error: null }),
-        }),
-      }
-    },
-  }
+        // Default fallback
+        return {
+          select: () => ({
+            limit: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      },
+    }
 
-  return { supabase }
-})
+    return { supabase }
+  })
+}
 
 describe('dealService - total_amount numeric coercion', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
+    mockSupabaseForTotalAmountTests()
   })
 
   it('should convert total_amount from string to number in getAllDeals', async () => {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
+import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import { createUndoEntry, canUndo } from './undoHelpers'
 import { formatTime } from '@/utils/dateTimeUtils'
 import {
@@ -590,6 +591,8 @@ export default function SnapshotView() {
           needs:{JSON.stringify(sourceDebug?.needsScheduling || null)}
         </div>
       ) : null}
+
+      <SupabaseConfigNotice />
 
       {windowMode !== 'needs_scheduling' &&
       split.upcoming.length === 0 &&

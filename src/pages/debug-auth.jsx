@@ -8,10 +8,16 @@ import {
   getUserProfiles as getUsersGlobal,
 } from '../services/dropdownService'
 import { isSupabaseConfigured, testSupabaseConnection } from '@/lib/supabase'
+import {
+  getNeedsSchedulingPromiseItems,
+  getScheduleItems,
+  getUnscheduledInProgressInHouseItems,
+} from '@/services/scheduleItemsService'
 
 export default function DebugAuthPage() {
   const { orgId, loading: tenantLoading, session } = useTenant()
   const [counts, setCounts] = useState({})
+  const [ops, setOps] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [conn, setConn] = useState({ configured: false, ok: null, last: null })
@@ -22,6 +28,12 @@ export default function DebugAuthPage() {
       setLoading(true)
       setError(null)
       try {
+        const addDays = (d, n) => {
+          const dt = d ? new Date(d) : new Date()
+          dt.setDate(dt.getDate() + n)
+          return dt
+        }
+
         // Unfiltered/global counts
         const [gVendors, gProducts, gUsers, gSms] = await Promise.all([
           getVendorsGlobal({ activeOnly: false }),
@@ -40,6 +52,44 @@ export default function DebugAuthPage() {
             : Promise.resolve([]),
         ])
 
+        // Operational counts for the pages that appear empty (Snapshot / Agenda / Flow Center)
+        let opsNext = null
+        if (orgId) {
+          const now = new Date()
+          const next7Start = now
+          const next7End = addDays(now, 7)
+
+          const [next7Res, overdueRes, needsRes, unscheduledRes] = await Promise.all([
+            getScheduleItems({ rangeStart: next7Start, rangeEnd: next7End, orgId }),
+            getScheduleItems({ rangeStart: addDays(now, -7), rangeEnd: now, orgId }),
+            getNeedsSchedulingPromiseItems({
+              orgId,
+              rangeStart: addDays(now, -365),
+              rangeEnd: next7End,
+            }),
+            getUnscheduledInProgressInHouseItems({ orgId }),
+          ])
+
+          opsNext = {
+            next7: {
+              count: Array.isArray(next7Res?.items) ? next7Res.items.length : 0,
+              debug: next7Res?.debug || null,
+            },
+            overdue7: {
+              count: Array.isArray(overdueRes?.items) ? overdueRes.items.length : 0,
+              debug: overdueRes?.debug || null,
+            },
+            needsScheduling: {
+              count: Array.isArray(needsRes?.items) ? needsRes.items.length : 0,
+              debug: needsRes?.debug || null,
+            },
+            unscheduledInProgressInHouse: {
+              count: Array.isArray(unscheduledRes?.items) ? unscheduledRes.items.length : 0,
+              debug: unscheduledRes?.debug || null,
+            },
+          }
+        }
+
         if (!mounted) return
         setCounts({
           global: {
@@ -55,6 +105,7 @@ export default function DebugAuthPage() {
             sms_templates: oSms.length,
           },
         })
+        setOps(opsNext)
       } catch (err) {
         console.error('debug-auth load error', err)
         if (mounted) setError(err?.message || String(err))
@@ -181,6 +232,49 @@ export default function DebugAuthPage() {
                 </span>
               </li>
             </ul>
+
+            <h3 className="mt-4">Operational (org-scoped)</h3>
+            {!orgId ? (
+              <div className="text-slate-600 text-sm">No orgId available.</div>
+            ) : !ops ? (
+              <div className="text-slate-600 text-sm">Loading operational counts...</div>
+            ) : (
+              <ul>
+                <li>
+                  Schedule items (next 7 days):{' '}
+                  <span data-testid="ops-schedule-next7-count">{ops?.next7?.count ?? 'N/A'}</span>
+                </li>
+                <li>
+                  Schedule items (previous 7 days):{' '}
+                  <span data-testid="ops-schedule-overdue7-count">
+                    {ops?.overdue7?.count ?? 'N/A'}
+                  </span>
+                </li>
+                <li>
+                  Needs scheduling (promise-only):{' '}
+                  <span data-testid="ops-needs-scheduling-count">
+                    {ops?.needsScheduling?.count ?? 'N/A'}
+                  </span>
+                </li>
+                <li>
+                  Unscheduled in-progress (in-house/on-site):{' '}
+                  <span data-testid="ops-unscheduled-inprogress-inhouse-count">
+                    {ops?.unscheduledInProgressInHouse?.count ?? 'N/A'}
+                  </span>
+                </li>
+              </ul>
+            )}
+
+            {import.meta.env.DEV && ops ? (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm text-slate-600">
+                  Operational debug details
+                </summary>
+                <pre className="bg-gray-100 p-2 rounded mt-2 text-xs overflow-auto">
+                  {JSON.stringify(ops, null, 2)}
+                </pre>
+              </details>
+            ) : null}
           </div>
         )}
       </section>

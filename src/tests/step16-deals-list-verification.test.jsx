@@ -386,17 +386,15 @@ describe('Step 16: Deals List Screen Verification', () => {
 
     await waitFor(() => {
       const row1 = screen?.getByTestId('deal-row-job-001')
-      expect(within(row1)?.getByText('Sale $850'))?.toBeInTheDocument()
-      expect(within(row1)?.getByText('Cost $725'))?.toBeInTheDocument()
+      expect(within(row1)?.getByText('S $850 / C $725'))?.toBeInTheDocument()
       // Profit is computed as Sale - Cost (850 - 724.50 = 125.50 -> $126)
-      expect(within(row1)?.getByText('Profit $126'))?.toBeInTheDocument()
+      expect(within(row1)?.getByText('P $126'))?.toBeInTheDocument()
 
       const row2 = screen?.getByTestId('deal-row-job-002')
       // 1200.50 -> $1,201 (money0)
-      expect(within(row2)?.getByText('Sale $1,201'))?.toBeInTheDocument()
-      expect(within(row2)?.getByText('Cost $1,020'))?.toBeInTheDocument()
+      expect(within(row2)?.getByText('S $1,201 / C $1,020'))?.toBeInTheDocument()
       // 1200.50 - 1020.25 = 180.25 -> $180
-      expect(within(row2)?.getByText('Profit $180'))?.toBeInTheDocument()
+      expect(within(row2)?.getByText('P $180'))?.toBeInTheDocument()
     })
 
     console.log('✅ Per-deal financials display: Sale vs Cost with Profit')

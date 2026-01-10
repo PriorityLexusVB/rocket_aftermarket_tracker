@@ -5,6 +5,7 @@ This project is a React 18 + Vite app using TailwindCSS and Supabase (Auth/Postg
 ## Scripts
 
 - `pnpm start` – start Vite dev server
+- `pnpm dev:5174` – start Vite on port 5174 (strict) to avoid conflicts
 - `pnpm build` – build for production
 - `pnpm serve` – preview the production build
 - `pnpm test` – run unit tests (Vitest)
@@ -65,11 +66,18 @@ This installs all dependencies and recommended extensions automatically.
 
 ## Dev server
 
-The app runs at <http://localhost:5173> in development.
+By default the app runs at <http://localhost:5173> in development.
+
+If you already have another app on 5173, use `pnpm dev:5174` to run this repo at <http://localhost:5174>.
 
 ## Environment
 
 Create a `.env.local` with your Supabase config and any feature flags.
+
+- Template: `.env.local.example` → copy to `.env.local`
+- Setup guide: [docs/LOCAL_DEV_SUPABASE.md](docs/LOCAL_DEV_SUPABASE.md)
+
+If `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing, the dev server intentionally falls back to an in-memory stub and data-driven screens may look empty.
 
 Optional feature flags:
 

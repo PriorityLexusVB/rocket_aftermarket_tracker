@@ -189,6 +189,13 @@ describe('dateTimeUtils', () => {
       expect(formatScheduleRange('', '')).toBe('')
       expect(formatScheduleRange('', '2024-01-20T14:00:00Z')).toBe('')
     })
+
+    it('should render date-only schedule as "Time TBD" (no day-shift)', () => {
+      const result = formatScheduleRange('2025-01-15', null)
+      expect(result).toContain('Jan')
+      expect(result).toContain('15')
+      expect(result).toContain('Time TBD')
+    })
   })
 
   // Additional edge case tests
@@ -268,6 +275,10 @@ describe('dateTimeUtils', () => {
       expect(formatTime(undefined)).toBe('')
       expect(formatTime('')).toBe('')
       expect(formatTime('invalid-date')).toBe('')
+    })
+
+    it('formatTime should render date-only values as "Time TBD"', () => {
+      expect(formatTime('2025-01-15')).toBe('Time TBD')
     })
 
     it('toLocalDateTimeFields roundtrip should preserve data across DST boundaries', () => {

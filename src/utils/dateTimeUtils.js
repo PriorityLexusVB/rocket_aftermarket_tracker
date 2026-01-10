@@ -2,6 +2,8 @@
 // Provides canonical helpers for converting, validating, and formatting scheduling datetimes.
 // NOTE: Do not introduce external date libraries per guardrails.
 
+import { isDateOnlyValue, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+
 const TZ = 'America/New_York'
 
 // Internal: build Date from local date + time (YYYY-MM-DD + HH:MM) in target timezone
@@ -79,6 +81,18 @@ export function fromLocalDateTimeFields(fields) {
 export function formatScheduleRange(startIso, endIso) {
   if (!startIso) return ''
   try {
+    if (isDateOnlyValue(startIso)) {
+      const startSafe = toSafeDateForTimeZone(startIso)
+      if (!startSafe) return ''
+      const dateFmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: TZ,
+        month: 'short',
+        day: 'numeric',
+      })
+      const startDateStr = dateFmt.format(startSafe)
+      return startDateStr ? `${startDateStr}, Time TBD` : ''
+    }
+
     const start = new Date(startIso)
     if (isNaN(start.getTime())) return ''
     const end = endIso ? new Date(endIso) : null
@@ -110,6 +124,7 @@ export function formatScheduleRange(startIso, endIso) {
 export function formatTime(iso) {
   if (!iso) return ''
   try {
+    if (isDateOnlyValue(iso)) return 'Time TBD'
     const d = new Date(iso)
     if (isNaN(d.getTime())) return ''
     const raw = new Intl.DateTimeFormat('en-US', {

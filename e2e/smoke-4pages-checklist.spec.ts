@@ -159,7 +159,7 @@ test.describe('4-page smoke checklist', () => {
     const firstCol = grid.locator('> div').first()
     await expect(firstCol).toContainText('Created')
 
-    // Schedule block is unified (promise-only shows a single Promise label + Not scheduled)
+    // Schedule block is unified (promise-only shows a single Promise label + Needs scheduling)
     const scheduleCol = grid.locator('> div').nth(1)
     const scheduleText = (await scheduleCol.innerText()).replace(/\s+/g, ' ').trim()
     // Different environments may materialize a default schedule window for promise-only jobs.

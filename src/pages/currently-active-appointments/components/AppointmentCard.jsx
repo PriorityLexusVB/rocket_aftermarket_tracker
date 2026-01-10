@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Check,
 } from 'lucide-react'
+import { getAppointmentScheduleDisplay } from '@/utils/scheduleDisplay'
 
 const AppointmentCard = ({
   appointment,
@@ -22,16 +23,7 @@ const AppointmentCard = ({
   const StatusIcon = appointment?.statusConfig?.icon
   const isOverdue = appointment?.isOverdue
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return 'Not scheduled'
-    return new Date(timestamp)?.toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  }
+  const scheduleDisplay = getAppointmentScheduleDisplay(appointment)
 
   const getTimeRemaining = () => {
     if (!appointment?.promised_date) return null
@@ -250,9 +242,14 @@ const AppointmentCard = ({
               <span>Schedule</span>
             </div>
             <div>
-              <div className="text-sm text-gray-900 font-medium">
-                {formatTime(appointment?.scheduled_start_time)}
-              </div>
+              <div className="text-sm text-gray-900 font-medium">{scheduleDisplay?.primary}</div>
+              {scheduleDisplay?.badge ? (
+                <div className="mt-1">
+                  <span className="inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-xs font-medium text-slate-700">
+                    {scheduleDisplay.badge}
+                  </span>
+                </div>
+              ) : null}
               {timeRemaining && (
                 <div
                   className={`text-xs font-semibold ${

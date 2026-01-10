@@ -5,7 +5,7 @@
  * which is used for RLS compliance in DB operations.
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock supabase for testing
 const mockOrgId = 'test-org-123'
@@ -48,17 +48,13 @@ vi.mock('../lib/supabase', () => {
   }
 })
 
-// Import functions after mocks are set up
+// Import functions after mocks are set up.
+// Note: This test file must be resilient to other test files importing dealService first
+// in the same worker. We re-import after vi.resetModules() so our mocks always apply.
 let isRlsError
 let getOrgContext
 
-beforeAll(async () => {
-  const dealService = await import('../services/dealService')
-  isRlsError = dealService.isRlsError
-  getOrgContext = dealService.getOrgContext
-})
-
-beforeEach(() => {
+beforeEach(async () => {
   // Reset mocks to default successful state before each test
   mockAuthResponse = {
     data: { user: { id: mockUserId, email: mockUserEmail } },
@@ -68,6 +64,11 @@ beforeEach(() => {
     data: { org_id: mockOrgId },
     error: null,
   }
+
+  vi.resetModules()
+  const dealService = await import('../services/dealService')
+  isRlsError = dealService.isRlsError
+  getOrgContext = dealService.getOrgContext
 })
 
 describe('dealService - getOrgContext', () => {

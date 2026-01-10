@@ -1805,13 +1805,11 @@ export default function DealsPage() {
                               return (
                                 <>
                                   <Pill className="tabular-nums whitespace-nowrap">
-                                    Sale {formatMoney0OrDash(fin.sale)}
-                                  </Pill>
-                                  <Pill className="tabular-nums whitespace-nowrap">
-                                    Cost {formatMoney0OrDash(fin.cost)}
+                                    S {formatMoney0OrDash(fin.sale)} / C{' '}
+                                    {formatMoney0OrDash(fin.cost)}
                                   </Pill>
                                   <Pill className={`tabular-nums whitespace-nowrap ${profitClass}`}>
-                                    Profit {formatMoney0OrDash(fin.profit)}
+                                    P {formatMoney0OrDash(fin.profit)}
                                   </Pill>
                                 </>
                               )
@@ -2040,13 +2038,11 @@ export default function DealsPage() {
                             return (
                               <>
                                 <Pill className="tabular-nums">
-                                  Sale {formatMoney0OrDash(fin.sale)}
-                                </Pill>
-                                <Pill className="tabular-nums">
-                                  Cost {formatMoney0OrDash(fin.cost)}
+                                  S {formatMoney0OrDash(fin.sale)} / C{' '}
+                                  {formatMoney0OrDash(fin.cost)}
                                 </Pill>
                                 <Pill className={`tabular-nums ${profitClass}`}>
-                                  Profit {formatMoney0OrDash(fin.profit)}
+                                  P {formatMoney0OrDash(fin.profit)}
                                 </Pill>
                               </>
                             )

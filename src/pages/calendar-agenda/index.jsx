@@ -11,6 +11,7 @@ import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
 import RescheduleModal from './RescheduleModal'
+import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 
 const TZ = 'America/New_York'
 
@@ -182,6 +183,9 @@ export default function CalendarAgenda() {
       ? localStorage.getItem('agendaFilter_vendor') || ''
       : ''
   })
+
+  // When Supabase env is missing, dev fallback returns empty rows. Make that explicit.
+  const supabaseNotice = <SupabaseConfigNotice className="mb-3" />
   const focusId = useMemo(
     () => new URLSearchParams(location.search).get('focus'),
     [location.search]
@@ -394,6 +398,8 @@ export default function CalendarAgenda() {
     <div className="p-4 space-y-4" aria-label="Scheduled Appointments Agenda">
       {/* Aria-live region for screen reader announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+      {supabaseNotice}
 
       {/* Header with always-visible search and date range */}
       <header className="space-y-3" aria-label="Agenda controls">

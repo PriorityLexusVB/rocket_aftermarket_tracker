@@ -49,34 +49,34 @@ describe('Promise Date Display - UI Safety', () => {
   })
 
   describe('formatTimeWindow', () => {
-    it('should display "Not scheduled" when start is null', () => {
-      expect(formatTimeWindow(null, '2025-01-15T10:00:00')).toBe('Not scheduled')
+    it('should display "Needs scheduling" when start is null', () => {
+      expect(formatTimeWindow(null, '2025-01-15T10:00:00')).toBe('Needs scheduling')
     })
 
-    it('should display "Not scheduled" when end is null', () => {
-      expect(formatTimeWindow('2025-01-15T09:00:00', null)).toBe('Not scheduled')
+    it('should display "Needs scheduling" when end is null', () => {
+      expect(formatTimeWindow('2025-01-15T09:00:00', null)).toBe('Needs scheduling')
     })
 
-    it('should display "Not scheduled" when both are null', () => {
-      expect(formatTimeWindow(null, null)).toBe('Not scheduled')
+    it('should display "Needs scheduling" when both are null', () => {
+      expect(formatTimeWindow(null, null)).toBe('Needs scheduling')
     })
 
-    it('should display "Not scheduled" when both are empty strings', () => {
-      expect(formatTimeWindow('', '')).toBe('Not scheduled')
+    it('should display "Needs scheduling" when both are empty strings', () => {
+      expect(formatTimeWindow('', '')).toBe('Needs scheduling')
     })
 
-    it('should display "Not scheduled" when start is invalid', () => {
-      expect(formatTimeWindow('invalid', '2025-01-15T10:00:00')).toBe('Not scheduled')
+    it('should display "Needs scheduling" when start is invalid', () => {
+      expect(formatTimeWindow('invalid', '2025-01-15T10:00:00')).toBe('Needs scheduling')
     })
 
-    it('should display "Not scheduled" when end is invalid', () => {
-      expect(formatTimeWindow('2025-01-15T09:00:00', 'invalid')).toBe('Not scheduled')
+    it('should display "Needs scheduling" when end is invalid', () => {
+      expect(formatTimeWindow('2025-01-15T09:00:00', 'invalid')).toBe('Needs scheduling')
     })
 
     it('should format valid time window', () => {
       const result = formatTimeWindow('2025-01-15T09:00:00', '2025-01-15T10:30:00')
       // Should contain time range (exact format may vary by locale)
-      expect(result).not.toBe('Not scheduled')
+      expect(result).not.toBe('Needs scheduling')
       expect(result).toContain('-')
     })
 
@@ -132,10 +132,10 @@ describe('Promise Date Display - UI Safety', () => {
         formatTimeWindow(appt.scheduled_start_time, appt.scheduled_end_time)
       )
 
-      expect(displayValues[0]).toBe('Not scheduled')
-      expect(displayValues[1]).toBe('Not scheduled')
-      expect(displayValues[2]).not.toBe('Not scheduled')
-      expect(displayValues[3]).toBe('Not scheduled')
+      expect(displayValues[0]).toBe('Needs scheduling')
+      expect(displayValues[1]).toBe('Needs scheduling')
+      expect(displayValues[2]).not.toBe('Needs scheduling')
+      expect(displayValues[3]).toBe('Needs scheduling')
 
       // Ensure no "Invalid Date" in any output
       displayValues.forEach((val) => {
@@ -157,7 +157,7 @@ describe('Promise Date Display - UI Safety', () => {
       const jobWindow = formatTimeWindow(deal.scheduled_start_time, deal.scheduled_end_time)
       const linePromises = deal.lineItems.map((item) => formatPromiseDate(item.promised_date))
 
-      expect(jobWindow).toBe('Not scheduled') // end time is missing
+      expect(jobWindow).toBe('Needs scheduling') // end time is missing
       expect(linePromises[0]).toMatch(/Jan 14, 2025/)
       expect(linePromises[1]).toBe('No promise date')
       expect(linePromises[2]).toBe('No promise date')
@@ -171,7 +171,7 @@ describe('Promise Date Display - UI Safety', () => {
   describe('Edge Cases', () => {
     it('should handle whitespace-only strings', () => {
       expect(formatPromiseDate('   ')).toBe('No promise date')
-      expect(formatTimeWindow('   ', '   ')).toBe('Not scheduled')
+      expect(formatTimeWindow('   ', '   ')).toBe('Needs scheduling')
     })
 
     it('should handle very old dates', () => {

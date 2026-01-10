@@ -17,6 +17,11 @@ import {
   CalendarClock,
 } from 'lucide-react'
 import { appointmentsService } from '../../../services/appointmentsService'
+import {
+  getAppointmentScheduleDisplay,
+  isDateOnlyValue,
+  toSafeDateForTimeZone,
+} from '@/utils/scheduleDisplay'
 
 const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
   const navigate = useNavigate()
@@ -96,17 +101,30 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
     }
   }
 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return 'Not scheduled'
-    return new Date(timestamp)?.toLocaleString('en-US', {
+  const TZ = 'America/New_York'
+
+  const formatDetailDateTime = (value) => {
+    if (!value) return '—'
+    const d = toSafeDateForTimeZone(value)
+    if (!d) return '—'
+
+    const dateOnly = isDateOnlyValue(value)
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ,
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
+      ...(dateOnly
+        ? {}
+        : {
+            hour: 'numeric',
+            minute: '2-digit',
+          }),
+    }).format(d)
   }
+
+  const scheduleDisplay = getAppointmentScheduleDisplay(appointment, { timeZone: TZ })
 
   const formatCurrency = (amount) => {
     if (!amount) return '$0.00'
@@ -324,22 +342,23 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
             </div>
 
             <div className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="font-medium text-gray-700">Scheduled Start:</span>
-                  <div className="text-gray-900">
-                    {formatTime(appointment?.scheduled_start_time)}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-700">Scheduled End:</span>
-                  <div className="text-gray-900">{formatTime(appointment?.scheduled_end_time)}</div>
+              <div>
+                <span className="font-medium text-gray-700">Schedule:</span>
+                <div className="text-gray-900">
+                  {scheduleDisplay?.primary || '—'}
+                  {scheduleDisplay?.badge ? (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-xs font-medium text-slate-700">
+                      {scheduleDisplay.badge}
+                    </span>
+                  ) : null}
                 </div>
               </div>
               {appointment?.promised_date && (
                 <div>
                   <span className="font-medium text-gray-700">Promised Completion:</span>
-                  <div className="text-gray-900">{formatTime(appointment?.promised_date)}</div>
+                  <div className="text-gray-900">
+                    {formatDetailDateTime(appointment?.promised_date)}
+                  </div>
                 </div>
               )}
               {appointment?.location && (
