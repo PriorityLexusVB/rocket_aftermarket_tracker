@@ -29,6 +29,7 @@ export default async function globalSetup() {
   // Prefer IPv4 loopback to avoid ::1/IPv6 routing issues in CI.
   const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173'
   const allowProd = process.env.ALLOW_E2E_ON_PROD === '1'
+  const allowNoLogin = process.env.E2E_ALLOW_NO_LOGIN === '1'
   const isProdVercel = /^https:\/\/rocket-aftermarket-tracker\.vercel\.app\b/i.test(base)
   if (isProdVercel && !allowProd) {
     throw new Error(
@@ -209,6 +210,18 @@ export default async function globalSetup() {
       }
     }
     if (!verified) {
+      if (allowNoLogin) {
+        console.warn(
+          '[global.setup] Unable to verify session on /debug-auth after login; continuing because E2E_ALLOW_NO_LOGIN=1'
+        )
+        try {
+          await fs.mkdir(storageDir, { recursive: true })
+          await context.storageState({ path: storagePath })
+        } catch {}
+        await browser.close()
+        return
+      }
+
       try {
         await page.screenshot({ path: path.join(storageDir, 'setup-final.png'), fullPage: true })
         const html = await page.content()
