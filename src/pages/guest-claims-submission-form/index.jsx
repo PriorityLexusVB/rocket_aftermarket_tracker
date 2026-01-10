@@ -109,7 +109,25 @@ const GuestClaimsSubmissionForm = () => {
   const handleFileUpload = async (event) => {
     const files = Array.from(event?.target?.files || [])
 
+    const MAX_FILES = 5
+    if (uploadedFiles.length >= MAX_FILES) {
+      setErrors((prev) => ({
+        ...prev,
+        files: `You can upload up to ${MAX_FILES} files.`,
+      }))
+      if (event?.target) event.target.value = ''
+      return
+    }
+
     for (const file of files) {
+      if (uploadedFiles.length >= MAX_FILES) {
+        setErrors((prev) => ({
+          ...prev,
+          files: `You can upload up to ${MAX_FILES} files.`,
+        }))
+        break
+      }
+
       if (file?.size > 10 * 1024 * 1024) {
         // 10MB limit
         setErrors((prev) => ({
@@ -127,7 +145,7 @@ const GuestClaimsSubmissionForm = () => {
         continue
       }
 
-      const fileId = `${Date.now()}-${file?.name}`
+      const fileId = `${Date.now()}-${Math.random().toString(16).slice(2)}-${file?.name}`
       setUploadedFiles((prev) => [
         ...prev,
         {
@@ -178,6 +196,11 @@ const GuestClaimsSubmissionForm = () => {
       }
 
       // Create the claim data
+      const vehicleInfoBlock = [
+        `Vehicle: ${formData?.vehicle_year} ${formData?.vehicle_make} ${formData?.vehicle_model}`,
+        `VIN: ${formData?.vehicle_vin}`,
+      ].join('\n')
+
       const claimData = {
         customer_name: formData?.customer_name?.trim(),
         customer_email: formData?.customer_email?.trim(),
@@ -185,6 +208,7 @@ const GuestClaimsSubmissionForm = () => {
         product_id: productId,
         issue_description:
           formData?.issue_description?.trim() +
+          `\n\n${vehicleInfoBlock}` +
           (formData?.product_selection === 'other'
             ? `\n\nProduct: ${formData?.other_product_description?.trim()}`
             : '') +
@@ -234,6 +258,9 @@ const GuestClaimsSubmissionForm = () => {
   }
 
   const resetForm = () => {
+    for (const f of uploadedFiles) {
+      if (f?.preview) URL.revokeObjectURL(f.preview)
+    }
     setFormData({
       customer_name: '',
       customer_email: '',
@@ -642,9 +669,7 @@ const GuestClaimsSubmissionForm = () => {
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
                 <div className="flex flex-col items-center">
                   <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                  <p className="text-gray-600 mb-2">
-                    Upload photos or documents to support your claim
-                  </p>
+                  <p className="text-gray-600 mb-2">Upload photos to support your claim</p>
                   <input
                     type="file"
                     multiple
@@ -660,7 +685,8 @@ const GuestClaimsSubmissionForm = () => {
                     Choose Files
                   </label>
                   <p className="text-xs text-gray-500 mt-2">
-                    Maximum file size: 10MB per file. Supported formats: JPG, PNG, GIF, WebP
+                    Maximum file size: 10MB per file. Supported formats: JPG, PNG, GIF, WebP (max
+                    5 files)
                   </p>
                 </div>
               </div>
