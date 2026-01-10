@@ -17,34 +17,28 @@ Constraints honored:
 
 Workspace MCP config: `.vscode/mcp.json`
 
-- Supabase MCP server configured with `--project-ref ntpoblmjxfivomcwmjrj`
+- Supabase MCP server configured with `--project-ref ogjtmtndgiqqdtwatsue`
 - Supabase API URL: `https://api.supabase.com`
 
 Supabase project URL (from MCP):
 
-- `https://ntpoblmjxfivomcwmjrj.supabase.co`
+- `https://ogjtmtndgiqqdtwatsue.supabase.co`
 
 ### App runtime env files (non-authoritative for MCP)
 
 This repo currently contains multiple Supabase targets depending on context:
 
-- `.env.local` points the browser app to **a different Supabase project** than MCP.
-  - `VITE_SUPABASE_URL` is `https://ogjtmtndgiqqdtwatsue.supabase.co`
+- `.env.local` points the browser app to `https://ogjtmtndgiqqdtwatsue.supabase.co`.
 - `.env.test` uses local Supabase (`http://localhost:54321`).
-- `.env.e2e.local` (found via grep) references `https://ntpoblmjxfivomcwmjrj.supabase.co`.
 
-**Important:** This report audits the MCP-configured project (`ntpoblmjxfivomcwmjrj`). If you want the same audit for the `.env.local` project, we should either (a) temporarily switch MCP project-ref, or (b) add a second Supabase MCP server entry.
+This report audits the MCP-configured project (`ogjtmtndgiqqdtwatsue`).
 
 ## DB Identity (evidence)
 
 SQL:
 
 ```sql
-select current_database() as db,
-       current_user as user,
-       inet_server_addr() as server_addr,
-       inet_server_port() as server_port,
-       version() as version;
+select current_database() as db, current_user as user, version() as version;
 ```
 
 Result (abridged):
@@ -67,19 +61,26 @@ where table_type='BASE TABLE'
 order by table_schema, table_name;
 ```
 
-Relevant application tables are under `public`:
+Relevant application tables are under `public` (19 tables):
 
 - `activity_history`
+- `claim_attachments`
+- `claims`
 - `communications`
+- `filter_presets`
 - `job_parts`
-- `job_photos`
 - `jobs`
 - `loaner_assignments`
+- `notification_outbox`
+- `notification_preferences`
 - `organizations`
 - `products`
+- `sms_opt_outs`
+- `sms_templates`
 - `transactions`
 - `user_profiles`
 - `vehicles`
+- `vendor_hours`
 - `vendors`
 
 ## `org_id` vs `dealer_id` evidence
@@ -100,7 +101,7 @@ order by column_name;
 
 Result:
 
-- `dealer_id` appears in **11** tables
+- `dealer_id` appears in **14** tables
 - `org_id` appears in **7** tables
 
 ### Which tables have which columns (evidence)
@@ -118,19 +119,22 @@ order by table_schema, table_name, column_name;
 In `public`, both columns exist together on:
 
 - `jobs`
-- `loaner_assignments`
 - `products`
+- `sms_templates`
 - `transactions`
+- `user_profiles`
 - `vehicles`
 - `vendors`
-- `user_profiles`
 
 And `dealer_id` exists without `org_id` on:
 
 - `activity_history`
+- `claim_attachments`
+- `claims`
 - `communications`
 - `job_parts`
-- `job_photos`
+- `loaner_assignments`
+- `sms_opt_outs`
 
 (See raw query output for full nullability and types; all are `uuid`.)
 
@@ -190,37 +194,38 @@ order by tablename, policyname;
 
 Key observation:
 
-- Policies consistently scope access using **`org_id`** and **`auth_user_org()`** (e.g., `jobs.org_id = auth_user_org()`, joins via jobs `org_id`, etc.).
-- A search for `dealer_id` in policy expressions returned **no matches**.
+- Policies consistently scope access using **`dealer_id`** and **`auth_dealer_id()`** (often with role gates like `is_admin_or_manager()`).
+- In this project, policy expressions reference `dealer_id` heavily and do not reference `org_id`.
 
 SQL:
 
 ```sql
-select tablename, policyname, cmd
-from pg_policies
-where schemaname='public'
-  and ((qual ilike '%dealer_id%') or (with_check ilike '%dealer_id%'))
-order by tablename, policyname;
+select
+  (select count(*) from pg_policies where schemaname='public' and (coalesce(qual,'') ilike '%org_id%' or coalesce(with_check,'') ilike '%org_id%')) as policies_mention_org_id,
+  (select count(*) from pg_policies where schemaname='public' and (coalesce(qual,'') ilike '%dealer_id%' or coalesce(with_check,'') ilike '%dealer_id%')) as policies_mention_dealer_id;
 ```
 
 Result:
 
-- no rows
+- policies mentioning `org_id`: **0**
+- policies mentioning `dealer_id`: **64**
 
-### `auth_user_org()` definition (evidence)
+### `auth_dealer_id()` and `auth_user_org()` definitions (evidence)
 
 SQL:
 
 ```sql
-select pg_get_functiondef(p.oid) as definition
+select p.proname, substr(pg_get_functiondef(p.oid), 1, 400) as def_snip
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
-where n.nspname='public' and p.proname='auth_user_org'
-limit 1;
+where n.nspname='public'
+  and p.proname in ('auth_dealer_id','auth_user_org')
+order by p.proname;
 ```
 
 Result (abridged):
 
+- `auth_dealer_id()` returns a `uuid` derived from JWT claim `dealer_id` when present (and not the all-zero UUID), falling back to `public.auth_user_org()`.
 - `auth_user_org()` returns `org_id` from `public.user_profiles` based on `auth.uid()`.
 
 ### Data consistency check (evidence)
@@ -230,104 +235,56 @@ For tables that have both columns, we checked:
 - how often each is non-null
 - whether `dealer_id` equals `org_id` when both are present
 
-Jobs:
+Results observed in this project:
 
-```sql
-select count(*) as total,
-       count(dealer_id) as dealer_id_nonnull,
-       count(org_id) as org_id_nonnull,
-       count(*) filter (where dealer_id is not null and org_id is not null and dealer_id <> org_id) as dealer_org_mismatch
-from public.jobs;
-```
+- `jobs`: total 0; dealer_id_nonnull 0; org_id_nonnull 0; mismatch 0
+- `user_profiles`: total 10; dealer_id_nonnull 10; org_id_nonnull 10; mismatch 0
+- `vendors`: total 2; dealer_id_nonnull 2; org_id_nonnull 2; mismatch 0
+- `vehicles`: total 0; dealer_id_nonnull 0; org_id_nonnull 0; mismatch 0
+- `products`: total 6; dealer_id_nonnull 6; org_id_nonnull 0; mismatch 0
+- `transactions`: total 162; dealer_id_nonnull 162; org_id_nonnull 0; mismatch 0
+- `sms_templates`: total 7; dealer_id_nonnull 0; org_id_nonnull 7; mismatch 0
 
-Result:
-
-- total: 174
-- dealer_id_nonnull: 174
-- org_id_nonnull: 174
-- mismatch: 0
-
-User profiles:
-
-```sql
-select count(*) as total,
-       count(dealer_id) as dealer_id_nonnull,
-       count(org_id) as org_id_nonnull,
-       count(*) filter (where dealer_id is not null and org_id is not null and dealer_id <> org_id) as dealer_org_mismatch
-from public.user_profiles;
-```
-
-Result:
-
-- total: 21
-- dealer_id_nonnull: 0
-- org_id_nonnull: 21
-
-Vendors:
-
-```sql
-select count(*) as total,
-       count(dealer_id) as dealer_id_nonnull,
-       count(org_id) as org_id_nonnull,
-       count(*) filter (where dealer_id is not null and org_id is not null and dealer_id <> org_id) as dealer_org_mismatch
-from public.vendors;
-```
-
-Result:
-
-- total: 10
-- dealer_id_nonnull: 2
-- org_id_nonnull: 10
-- mismatch: 0
-
-Vehicles:
-
-```sql
-select count(*) as total,
-       count(dealer_id) as dealer_id_nonnull,
-       count(org_id) as org_id_nonnull,
-       count(*) filter (where dealer_id is not null and org_id is not null and dealer_id <> org_id) as dealer_org_mismatch
-from public.vehicles;
-```
-
-Result:
-
-- total: 1
-- dealer_id_nonnull: 1
-- org_id_nonnull: 1
-- mismatch: 1
-
-This indicates there is at least one row in `vehicles` where `dealer_id != org_id`.
+Spot-check queries for actual mismatching rows (`... where org_id is not null and dealer_id is not null and org_id <> dealer_id limit 10`) returned no rows for these tables.
 
 ## Conclusion (decision)
 
-**Decision:** Treat **`org_id`** as the canonical tenant scoping field.
+**Decision:** Treat **`dealer_id`** as the canonical tenant scoping field for this project.
 
 Rationale:
 
-- RLS policies enforce access using `org_id` and `auth_user_org()`; there is no policy-based tenant enforcement using `dealer_id`.
-- `auth_user_org()` is explicitly derived from `user_profiles.org_id`.
-- Where both are populated (e.g., `jobs`), `dealer_id` and `org_id` are typically identical, suggesting `dealer_id` is a legacy alias for the same concept.
+- RLS policies overwhelmingly enforce tenant scope using `dealer_id` (64 policies mention `dealer_id`; 0 mention `org_id`).
+- `dealer_id` is present as `NOT NULL` on more tables, while `org_id` is always nullable.
+- `auth_dealer_id()` is the primary RLS helper, with a fallback path through `auth_user_org()`.
+
+Interpretation:
+
+- `org_id` exists and is used for profile-derived organization lookup, but it is not the authorization primitive used by policies.
+- If the long-term goal is to standardize on `org_id`, that requires an explicit, coordinated migration and RLS rewrite.
 
 ## Recommendations / Follow-ups (non-destructive)
 
-1. **Clarify and converge naming**
+1. **Align application scoping with RLS today**
 
-- Target end-state should be `org_id` everywhere (including tables that currently only have `dealer_id`).
-- Avoid adding new `dealer_id` usages in application code.
+- Avoid introducing new query filters that assume `org_id` is the policy-enforced tenant key.
+- When in doubt, use `dealer_id` for tenant filtering because RLS is already written that way.
 
-2. **Data drift check**
+2. **If moving toward `org_id`, plan a safe migration** (requires explicit approval)
 
-- Investigate and resolve the `vehicles` row where `dealer_id != org_id`.
-  - This may indicate a backfill gap or a mismapped org.
+- Backfill `org_id` to be `NOT NULL` everywhere and guarantee `org_id = dealer_id` (or deprecate one).
+- Update RLS policies to use `org_id` consistently.
+- Ensure the JWT custom claim (`dealer_id`) strategy is updated (or replaced) so `auth_dealer_id()` continues to work.
 
-3. **Future migration idea (requires explicit approval)**
+3. **Supabase advisor findings (optional hardening)**
 
-- Add constraints or triggers to keep `dealer_id` and `org_id` consistent (or deprecate `dealer_id`).
-- Backfill `org_id` into tables that only have `dealer_id`, then update RLS to rely exclusively on `org_id`.
+No changes were applied in this audit, but Supabase advisors reported:
+
+- Multiple warnings about functions with mutable `search_path` (security hardening opportunity).
+- RLS initplan performance warnings suggesting `(select auth.<fn>())` patterns.
+- Auth “leaked password protection” disabled.
 
 ---
 
 Appendix: Extensions
 
-Via `mcp_supabase_list_extensions`, `pg_trgm` is installed in schema `extensions` (version 1.6), along with other common Supabase extensions.
+Installed extensions include `pg_trgm`, `pgcrypto`, `uuid-ossp`, `pg_stat_statements`, `pg_graphql`, and `supabase_vault`.
