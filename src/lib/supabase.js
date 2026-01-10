@@ -134,6 +134,31 @@ if (isTest) {
   // Ensure single instance to prevent multiple GoTrueClient warnings
   let supabaseInstance = null
 
+  const clearPersistedAuthStorage = () => {
+    try {
+      if (typeof window === 'undefined') return
+      const host = String(supabaseUrl || '')
+        ?.split('//')
+        ?.pop()
+        ?.split('/')
+        ?.shift()
+
+      // Our configured auth storage key
+      window.localStorage?.removeItem?.('priority-automotive-auth')
+      window.sessionStorage?.removeItem?.('priority-automotive-auth')
+
+      // Common Supabase defaults (kept for backward compatibility with older builds)
+      window.localStorage?.removeItem?.('supabase.auth.token')
+      if (host) {
+        window.localStorage?.removeItem?.(`sb-${host}-auth-token`)
+        window.sessionStorage?.removeItem?.(`sb-${host}-auth-token`)
+      }
+    } catch (e) {
+      // Never block app startup on storage cleanup
+      console.warn('[Supabase] Failed to clear persisted auth storage:', e?.message)
+    }
+  }
+
   const createSupabaseClient = () => {
     if (!supabaseInstance) {
       try {
@@ -163,6 +188,35 @@ if (isTest) {
           },
           // Intentionally do NOT set global.headers here — let the SDK manage required headers.
         })
+
+        // If a stored refresh token has become invalid (revoked/expired), Supabase will attempt a
+        // refresh on boot and can spam the console. Auto-recover by clearing persisted auth and
+        // signing out locally.
+        try {
+          supabaseInstance?.auth?.onAuthStateChange?.((event) => {
+            if (event === 'TOKEN_REFRESH_FAILED') {
+              console.warn('[Supabase] Token refresh failed; clearing local session')
+              clearPersistedAuthStorage()
+              supabaseInstance?.auth?.signOut?.({ scope: 'local' })?.catch?.(() => {})
+            }
+          })
+        } catch (e) {
+          console.warn('[Supabase] Failed to attach auth state listener:', e?.message)
+        }
+
+        // One-time boot check: if the persisted session is corrupt, clear it.
+        // Avoid throwing — this is purely for UX hygiene.
+        supabaseInstance?.auth
+          ?.getSession?.()
+          ?.then(({ error }) => {
+            const msg = String(error?.message || '')
+            if (error && (msg.includes('Invalid Refresh Token') || msg.includes('refresh_token'))) {
+              console.warn('[Supabase] Invalid refresh token detected; resetting local session')
+              clearPersistedAuthStorage()
+              return supabaseInstance?.auth?.signOut?.({ scope: 'local' })
+            }
+          })
+          ?.catch?.(() => {})
 
         console.log('✅ Supabase client created successfully')
       } catch (error) {
@@ -289,8 +343,20 @@ if (isTest) {
 
   isNetworkOnlineFn = () => isOnline
 
-  recoverSessionFn = (...args) => {
-    console.warn('Placeholder: recoverSession is not implemented yet.', args)
+  // Clear a possibly-corrupted session (e.g. "Invalid Refresh Token") so the UI can recover.
+  // Returns null when no valid session remains.
+  recoverSessionFn = async () => {
+    try {
+      clearPersistedAuthStorage()
+      await supabaseClient?.auth?.signOut?.({ scope: 'local' })
+    } catch (e) {
+      // If it's a refresh token error during sign out, ignore it since we're clearing local state anyway.
+      const msg = String(e?.message || '')
+      if (msg.includes('Invalid Refresh Token') || msg.includes('refresh_token')) {
+        return null
+      }
+      console.warn('[Supabase] Session recovery signOut failed (non-fatal):', e?.message)
+    }
     return null
   }
 }

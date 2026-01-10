@@ -5,13 +5,11 @@ import {
   deleteDeal,
   getAllDeals,
   markLoanerReturned,
-  saveLoanerAssignment,
 } from '../../services/dealService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
-import LoanerDrawer from './components/LoanerDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 import ScheduleBlock from '../../components/deals/ScheduleBlock'
 
@@ -407,11 +405,6 @@ export default function DealsPage() {
     search: '',
   })
 
-  // ✅ ADDED: Loaner management state
-  const [showLoanerDrawer, setShowLoanerDrawer] = useState(false)
-  const [loanerDrawerTab, setLoanerDrawerTab] = useState('active')
-  const [selectedDealForLoaner, setSelectedDealForLoaner] = useState(null)
-  const [loanerLoading, setLoanerLoading] = useState(false)
   const [markReturnedModal, setMarkReturnedModal] = useState(null)
   const [returningLoaner, setReturningLoaner] = useState(false)
   const [searchDebounce, setSearchDebounce] = useState('')
@@ -524,13 +517,7 @@ export default function DealsPage() {
       // If any UI is currently open for this deal, close it before reloading.
       // This prevents confusing states where a drawer/modal appears to "come back" after deletion.
       const closedUiState = {
-        closedLoanerDrawer: false,
         closedDetailDrawer: false,
-      }
-      if (selectedDealForLoaner?.id === dealId) {
-        setShowLoanerDrawer(false)
-        setSelectedDealForLoaner(null)
-        closedUiState.closedLoanerDrawer = true
       }
       if (selectedDealForDetail?.id === dealId) {
         setShowDetailDrawer(false)
@@ -579,27 +566,6 @@ export default function DealsPage() {
     }
   }
 
-  // ✅ FIXED: Enhanced loaner assignment with better error handling and modal state management
-  const handleSaveLoaner = async (loanerData) => {
-    try {
-      setLoanerLoading(true)
-      setError('') // Clear previous errors
-
-      await saveLoanerAssignment(loanerData?.job_id, loanerData)
-
-      // ✅ FIXED: Properly close drawer and reset state
-      setShowLoanerDrawer(false)
-      setSelectedDealForLoaner(null)
-      await loadDeals(0, 'after-save-loaner') // Refresh data
-    } catch (e) {
-      const errorMessage = e?.message || 'Failed to save loaner assignment'
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setLoanerLoading(false)
-    }
-  }
-
   // ✅ FIXED: Enhanced mark returned with better error handling
   const handleMarkLoanerReturned = async (loanerData) => {
     try {
@@ -613,70 +579,6 @@ export default function DealsPage() {
       setError(`Failed to mark loaner as returned: ${e?.message}`)
       console.error('Mark returned error:', e)
       toast?.error?.(e?.message || 'Failed to mark loaner returned')
-    } finally {
-      setReturningLoaner(false)
-    }
-  }
-
-  const handleRemoveLoanerFromDrawer = async (loanerAssignmentId) => {
-    const startedAt = Date.now()
-    try {
-      if (!loanerAssignmentId) throw new Error('Missing loaner assignment id')
-      setReturningLoaner(true)
-      setError('')
-
-      if (isDealsDebugEnabled()) {
-        console.info(
-          '[Deals][loaner] remove start',
-          safeJsonStringify({ loanerAssignmentId, at: new Date().toISOString() })
-        )
-      }
-
-      await markLoanerReturned(loanerAssignmentId)
-
-      // Keep the drawer open and switch to Returned so it isn't on the same screen.
-      setLoanerDrawerTab('returned')
-
-      // Clear active-loaner fields immediately to avoid stale "active" display.
-      setSelectedDealForLoaner((prev) =>
-        prev
-          ? {
-              ...prev,
-              has_active_loaner: false,
-              loaner_id: null,
-              loaner_number: null,
-              loaner_eta_short: null,
-              loaner_eta_return_date: null,
-            }
-          : prev
-      )
-
-      if (isDealsDebugEnabled()) {
-        console.info(
-          '[Deals][loaner] remove success',
-          safeJsonStringify({ loanerAssignmentId, durationMs: Date.now() - startedAt })
-        )
-      }
-
-      toast?.success?.('Loaner removed')
-
-      await loadDeals(0, 'after-loaner-returned')
-    } catch (e) {
-      setError(`Failed to remove loaner: ${e?.message}`)
-      console.error('Remove loaner error:', e)
-
-      toast?.error?.(e?.message || 'Failed to remove loaner')
-
-      if (isDealsDebugEnabled()) {
-        console.info(
-          '[Deals][loaner] remove failed',
-          safeJsonStringify({
-            loanerAssignmentId,
-            durationMs: Date.now() - startedAt,
-            message: e?.message,
-          })
-        )
-      }
     } finally {
       setReturningLoaner(false)
     }
@@ -874,13 +776,6 @@ export default function DealsPage() {
 
     loadDeals(0, 'auth-mount')
   }, [user?.id, loadDeals])
-
-  // ✅ FIXED: Move handleManageLoaner function to proper location inside component
-  const handleManageLoaner = (deal) => {
-    setSelectedDealForLoaner(deal)
-    setLoanerDrawerTab('active')
-    setShowLoanerDrawer(true)
-  }
 
   const handleOpenDetail = (deal) => {
     setSelectedDealForDetail(deal)
@@ -1815,14 +1710,14 @@ export default function DealsPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                handleManageLoaner(deal)
+                                handleEditDeal(deal?.id)
                               }}
                               className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                              aria-label={deal?.loaner_id ? 'Edit loaner' : 'Assign loaner'}
-                              title={deal?.loaner_id ? 'Edit loaner' : 'Assign loaner'}
+                              aria-label="Edit deal (loaner)"
+                              title="Edit deal (loaner)"
                             >
-                              <span className="sr-only">Loaner</span>
-                              <Icon name={deal?.loaner_id ? 'Edit' : 'Car'} size={16} />
+                              <span className="sr-only">Edit deal (loaner)</span>
+                              <Icon name="Car" size={16} />
                             </button>
                           )}
 
@@ -2019,32 +1914,8 @@ export default function DealsPage() {
                       {/* ✅ FIXED: Loaner actions row with proper conditions */}
                       {(deal?.customer_needs_loaner || deal?.loaner_id) && (
                         <div className="grid grid-cols-2 gap-2">
-                          {deal?.customer_needs_loaner && !deal?.loaner_id && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleManageLoaner(deal)}
-                              className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
-                              aria-label="Manage loaner"
-                            >
-                              <Icon name="Car" size={16} className="mr-2" />
-                              Assign Loaner
-                            </Button>
-                          )}
-
                           {deal?.loaner_id && (
                             <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleManageLoaner(deal)}
-                                className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
-                                aria-label="Edit loaner"
-                              >
-                                <Icon name="Edit" size={16} className="mr-2" />
-                                Edit Loaner
-                              </Button>
-
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -2062,6 +1933,19 @@ export default function DealsPage() {
                                 Mark Returned
                               </Button>
                             </>
+                          )}
+
+                          {deal?.customer_needs_loaner && !deal?.loaner_id && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditDeal(deal?.id)}
+                              className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                              aria-label="Edit deal to assign loaner"
+                            >
+                              <Icon name="Car" size={16} className="mr-2" />
+                              Edit Deal
+                            </Button>
                           )}
                         </div>
                       )}
@@ -2143,24 +2027,6 @@ export default function DealsPage() {
             </div>
           </div>
         )}
-
-        {/* ✅ ADDED: Loaner Drawer with improved error handling */}
-        <LoanerDrawer
-          isOpen={showLoanerDrawer}
-          onClose={() => {
-            setShowLoanerDrawer(false)
-            setSelectedDealForLoaner(null)
-            setLoanerDrawerTab('active')
-            setError('') // Clear any drawer-related errors
-          }}
-          deal={selectedDealForLoaner}
-          onSave={handleSaveLoaner}
-          onRemove={handleRemoveLoanerFromDrawer}
-          loading={loanerLoading}
-          removing={returningLoaner}
-          tab={loanerDrawerTab}
-          onTabChange={setLoanerDrawerTab}
-        />
 
         {/* Deal Detail Drawer (read-only) */}
         <DealDetailDrawer

@@ -1,31 +1,23 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/ui/Navbar'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
 import {
   markLoanerReturned,
-  saveLoanerAssignment,
   listLoanerAssignmentsForDrawer,
   listJobsNeedingLoanersForDrawer,
 } from '../../services/dealService'
 
 export default function LoanerManagementDrawer() {
+  const navigate = useNavigate()
   const [loaners, setLoaners] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showAssignModal, setShowAssignModal] = useState(false)
-  const [selectedJob, setSelectedJob] = useState(null)
   const [inventory, setInventory] = useState({
     available: 0,
     assigned: 0,
     overdue: 0,
-  })
-
-  // Loaner assignment form state
-  const [assignmentForm, setAssignmentForm] = useState({
-    loaner_number: '',
-    eta_return_date: '',
-    notes: '',
   })
 
   // Load loaner data
@@ -70,38 +62,6 @@ export default function LoanerManagementDrawer() {
     }
   }
 
-  // Handle loaner assignment
-  const handleAssignLoaner = async () => {
-    if (
-      !selectedJob ||
-      !assignmentForm?.loaner_number?.trim() ||
-      !assignmentForm?.eta_return_date
-    ) {
-      setError('Please fill in all required fields')
-      return
-    }
-
-    try {
-      setError('')
-
-      await saveLoanerAssignment(selectedJob?.id, {
-        loaner_number: assignmentForm?.loaner_number,
-        eta_return_date: assignmentForm?.eta_return_date,
-        notes: assignmentForm?.notes,
-      })
-
-      // Reset form and close modal
-      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' })
-      setShowAssignModal(false)
-      setSelectedJob(null)
-
-      // Reload data
-      await Promise.all([loadLoaners(), loadJobsNeedingLoaners()])
-    } catch (err) {
-      setError(`Failed to assign loaner: ${err?.message}`)
-    }
-  }
-
   // Handle mark returned
   const handleMarkReturned = async (assignmentId) => {
     try {
@@ -109,7 +69,8 @@ export default function LoanerManagementDrawer() {
 
       await markLoanerReturned(assignmentId)
 
-      await loadLoaners()
+      // Refresh both lists: returning a loaner can make a job show up as "Pending"
+      await Promise.all([loadLoaners(), loadJobsNeedingLoaners()])
     } catch (err) {
       setError(`Failed to mark loaner as returned: ${err?.message}`)
     }
@@ -295,6 +256,9 @@ export default function LoanerManagementDrawer() {
                     {jobsNeedingLoaners?.length} job{jobsNeedingLoaners?.length !== 1 ? 's' : ''}{' '}
                     need loaner vehicles assigned
                   </p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Assignments are made from the Deal (Add/Edit Deal), not from this page.
+                  </p>
                 </div>
               </div>
             </div>
@@ -320,13 +284,11 @@ export default function LoanerManagementDrawer() {
                   </div>
                   <Button
                     onClick={() => {
-                      setSelectedJob(job)
-                      setShowAssignModal(true)
+                      navigate(`/deals/${job?.id}/edit`)
                     }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white h-11 px-6"
+                    className="bg-slate-900 hover:bg-slate-800 text-white h-11 px-6"
                   >
-                    <Icon name="Car" size={16} className="mr-2" />
-                    Assign Loaner
+                    Open Deal
                   </Button>
                 </div>
               ))}
@@ -445,123 +407,6 @@ export default function LoanerManagementDrawer() {
           )}
         </div>
 
-        {/* Assignment Modal */}
-        {showAssignModal && selectedJob && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-md">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Assign Loaner Vehicle</h3>
-                  <button
-                    onClick={() => {
-                      setShowAssignModal(false)
-                      setSelectedJob(null)
-                      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' })
-                    }}
-                    className="text-slate-400 hover:text-slate-600"
-                  >
-                    <Icon name="X" size={20} />
-                  </button>
-                </div>
-
-                {/* Job Info */}
-                <div className="mb-6 p-4 bg-slate-50 rounded-lg border">
-                  <h4 className="font-medium text-slate-900 mb-1">
-                    {selectedJob?.job_number ||
-                      selectedJob?.transactions?.[0]?.customer_name ||
-                      '—'}
-                  </h4>
-                  <p className="text-sm text-slate-600">
-                    {selectedJob?.transactions?.[0]?.customer_name}
-                  </p>
-                </div>
-
-                {/* Assignment Form */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Loaner Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={assignmentForm?.loaner_number}
-                      onChange={(e) =>
-                        setAssignmentForm((prev) => ({
-                          ...prev,
-                          loaner_number: e?.target?.value,
-                        }))
-                      }
-                      className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="e.g., L-001"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Expected Return Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={assignmentForm?.eta_return_date}
-                      onChange={(e) =>
-                        setAssignmentForm((prev) => ({
-                          ...prev,
-                          eta_return_date: e?.target?.value,
-                        }))
-                      }
-                      className="bg-white border border-slate-200 rounded-lg w-full h-11 px-3 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      min={new Date()?.toISOString()?.split('T')?.[0]}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Notes (optional)
-                    </label>
-                    <textarea
-                      value={assignmentForm?.notes}
-                      onChange={(e) =>
-                        setAssignmentForm((prev) => ({
-                          ...prev,
-                          notes: e?.target?.value,
-                        }))
-                      }
-                      className="bg-white border border-slate-200 rounded-lg w-full px-3 py-2 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      rows={3}
-                      placeholder="Any special instructions or notes..."
-                    />
-                  </div>
-                </div>
-
-                {/* Modal Actions */}
-                <div className="flex gap-3 mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowAssignModal(false)
-                      setSelectedJob(null)
-                      setAssignmentForm({ loaner_number: '', eta_return_date: '', notes: '' })
-                    }}
-                    className="flex-1 h-11"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleAssignLoaner}
-                    className="flex-1 h-11 bg-purple-600 hover:bg-purple-700 text-white"
-                    disabled={
-                      !assignmentForm?.loaner_number?.trim() || !assignmentForm?.eta_return_date
-                    }
-                  >
-                    Assign Loaner
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
