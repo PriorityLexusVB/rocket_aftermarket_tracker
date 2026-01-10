@@ -240,11 +240,38 @@ export default async function globalSetup() {
 
   // Give Supabase trigger a moment to write the profile row, then force org association
   await page.waitForTimeout(2000)
-  try {
-    await associateUserWithE2EOrg(sessionUserId ?? undefined)
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.warn('[global.setup] Warning: org association failed:', message)
+
+  // If orgId is already present in the UI, don't do any DB-based association.
+  // This avoids noisy warnings in environments where DB access to auth.users is restricted
+  // or where profile creation happens asynchronously but is already reflected by the app.
+  const hasOrgInUi = async (timeoutMs: number) => {
+    try {
+      await page.goto(base + '/debug-auth', { waitUntil: 'domcontentloaded', timeout: 30000 })
+      await page.waitForFunction(
+        () => {
+          const oid = document.querySelector('[data-testid="profile-org-id"]')
+          const o = (oid?.textContent ?? '').trim()
+          return o !== '' && o !== 'undefined' && o !== 'null' && o !== '—'
+        },
+        undefined,
+        { timeout: timeoutMs }
+      )
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // Give the UI a moment to hydrate orgId before attempting DB-level association.
+  const orgReady = await hasOrgInUi(8000)
+
+  if (!orgReady) {
+    try {
+      await associateUserWithE2EOrg(sessionUserId ?? undefined)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      console.warn('[global.setup] Warning: org association failed:', message)
+    }
   }
 
   // After org association attempt, verify /debug-auth reflects a real orgId.
