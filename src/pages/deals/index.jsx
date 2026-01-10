@@ -1,11 +1,7 @@
 // src/pages/deals/index.jsx
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  deleteDeal,
-  getAllDeals,
-  markLoanerReturned,
-} from '../../services/dealService'
+import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
@@ -121,6 +117,58 @@ const getDealPromiseIso = (deal) => {
   }
 
   return null
+}
+
+const normalizeProductName = (name) => {
+  if (!name) return ''
+  return String(name)
+    .replace(/\s*\([^)]*\)\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const abbreviateProductName = (name) => {
+  const raw = normalizeProductName(name)
+  if (!raw) return ''
+
+  const lower = raw.toLowerCase()
+  if (lower.includes('tint')) return 'Tint'
+  if (lower.includes('ceramic')) return 'Ceramic'
+  if (lower.includes('rust')) return 'Rust'
+  if (/(^|\b)ppf(\b|$)/i.test(raw)) return 'PPF'
+
+  const words = raw.split(' ').filter(Boolean)
+  if (words.length >= 2 && words[0].length <= 12) return titleCase(words[0])
+
+  const maxLen = 14
+  if (raw.length <= maxLen) return titleCase(raw)
+  return `${titleCase(raw.slice(0, maxLen - 1))}…`
+}
+
+const getDealProductLabelSummary = (deal, maxLabels = 3) => {
+  const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
+  const seen = new Set()
+  const labels = []
+
+  for (const part of parts) {
+    const name =
+      part?.product?.name ||
+      part?.product_name ||
+      part?.productLabel ||
+      part?.product?.label ||
+      ''
+
+    const abbr = abbreviateProductName(name)
+    if (!abbr) continue
+    const key = abbr.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    labels.push(abbr)
+  }
+
+  const clipped = labels.slice(0, maxLabels)
+  const extraCount = Math.max(0, labels.length - clipped.length)
+  return { labels: clipped, extraCount }
 }
 
 const getDealVehicleDisplay = (deal) => {
@@ -1665,6 +1713,31 @@ export default function DealsPage() {
                           )
                         })()}
                         <div className="mt-0.5 text-xs text-slate-500">{getDisplayPhone(deal)}</div>
+                        {(() => {
+                          const summary = getDealProductLabelSummary(deal, 3)
+                          if (!summary.labels.length) return null
+                          return (
+                            <div
+                              className="mt-1 flex flex-wrap items-center gap-1"
+                              aria-label={`Products: ${summary.labels.join(', ')}${summary.extraCount ? ` plus ${summary.extraCount} more` : ''}`}
+                            >
+                              {summary.labels.map((label) => (
+                                <span
+                                  key={label}
+                                  className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                                  title={label}
+                                >
+                                  {label}
+                                </span>
+                              ))}
+                              {summary.extraCount ? (
+                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                                  +{summary.extraCount}
+                                </span>
+                              ) : null}
+                            </div>
+                          )
+                        })()}
                       </div>
 
                       {/* $ | Vendor | Location | Loaner */}
@@ -1682,9 +1755,11 @@ export default function DealsPage() {
                           </div>
 
                           <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
-                            <Pill className="max-w-full truncate">
-                              Vendor • {deal?.vendor_name || 'Unassigned'}
-                            </Pill>
+                            {deal?.vendor_name || deal?.vendor_id ? (
+                              <Pill className="max-w-full truncate">
+                                Vendor • {deal?.vendor_name || 'Assigned'}
+                              </Pill>
+                            ) : null}
                             <ServiceLocationTag jobParts={deal?.job_parts} />
                           </div>
                         </div>
@@ -1867,7 +1942,15 @@ export default function DealsPage() {
                         />
 
                         <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          <Pill>Vendor: {deal?.vendor_name || 'Unassigned'}</Pill>
+                          {deal?.vendor_name || deal?.vendor_id ? (
+                            <Pill>Vendor: {deal?.vendor_name || 'Assigned'}</Pill>
+                          ) : null}
+                          {(() => {
+                            const summary = getDealProductLabelSummary(deal, 2)
+                            if (!summary.labels.length) return null
+                            const label = `${summary.labels.join(', ')}${summary.extraCount ? ` +${summary.extraCount}` : ''}`
+                            return <Pill>Items: {label}</Pill>
+                          })()}
                           <ServiceLocationTag jobParts={deal?.job_parts} />
                           {deal?.loaner_number || deal?.has_active_loaner ? (
                             <LoanerBadge deal={deal} />

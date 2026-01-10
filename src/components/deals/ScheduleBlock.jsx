@@ -40,6 +40,29 @@ function hasAnyPerLineWindow(deal) {
   )
 }
 
+function extractDateOnlyScheduleStart(deal) {
+  if (!deal) return null
+
+  // 1) Earliest date-only per-line schedule
+  if (Array.isArray(deal.job_parts)) {
+    const dateOnlyStarts = deal.job_parts
+      .map((p) => p?.scheduled_start_time)
+      .filter((v) => !!v && isDateOnlyValue(v))
+      .sort()
+    if (dateOnlyStarts.length > 0) return dateOnlyStarts[0]
+  }
+
+  // 2) Legacy appt fields (date-only)
+  if (deal.appt_start && isDateOnlyValue(deal.appt_start)) return deal.appt_start
+
+  // 3) Job-level schedule (deprecated; date-only)
+  if (deal.scheduled_start_time && isDateOnlyValue(deal.scheduled_start_time)) {
+    return deal.scheduled_start_time
+  }
+
+  return null
+}
+
 function toSafeDateForTimeZone(input) {
   if (!input) return null
   if (input instanceof Date) {
@@ -201,7 +224,14 @@ export default function ScheduleBlock({
 
   const hasWindow = !!effectiveStart && !isDateOnlyValue(effectiveStart)
 
-  const scheduleDayKey = hasWindow ? getEtDayKey(effectiveStart, timeZone) : ''
+  const dateOnlyScheduleStart = !hasWindow ? extractDateOnlyScheduleStart(deal) : null
+  const hasDateOnlySchedule = !!dateOnlyScheduleStart
+
+  const scheduleDayKey = hasWindow
+    ? getEtDayKey(effectiveStart, timeZone)
+    : hasDateOnlySchedule
+      ? getEtDayKey(dateOnlyScheduleStart, timeZone)
+      : ''
   const promiseDayKey = promiseDate ? getEtDayKey(promiseDate, timeZone) : ''
 
   const primary = (() => {
@@ -222,6 +252,11 @@ export default function ScheduleBlock({
       return `${dateLabel} • ${startLabel}–${endLabel} ET`
     }
 
+    if (hasDateOnlySchedule) {
+      const dateLabel = buildDateLabelET(dateOnlyScheduleStart, timeZone)
+      return dateLabel ? `${dateLabel} • Time TBD` : '—'
+    }
+
     if (promiseDate) {
       const promiseLabel = buildDateLabelET(promiseDate, timeZone)
       return promiseLabel ? `Promise: ${promiseLabel}` : 'Promise: —'
@@ -232,7 +267,7 @@ export default function ScheduleBlock({
 
   const showSecondaryPromise =
     !!promiseDate &&
-    !!hasWindow &&
+    (!!hasWindow || hasDateOnlySchedule) &&
     !!promiseDayKey &&
     !!scheduleDayKey &&
     promiseDayKey !== scheduleDayKey
@@ -265,7 +300,7 @@ export default function ScheduleBlock({
             <div className="mt-0.5 truncate text-xs text-slate-500">{secondary}</div>
           ) : null}
         </div>
-        {!hasWindow && promiseDate ? (
+        {!hasWindow && !hasDateOnlySchedule && promiseDate ? (
           <span className="shrink-0 inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-xs font-medium text-slate-700">
             Not scheduled
           </span>
