@@ -152,11 +152,7 @@ const getDealProductLabelSummary = (deal, maxLabels = 3) => {
 
   for (const part of parts) {
     const name =
-      part?.product?.name ||
-      part?.product_name ||
-      part?.productLabel ||
-      part?.product?.label ||
-      ''
+      part?.product?.name || part?.product_name || part?.productLabel || part?.product?.label || ''
 
     const abbr = abbreviateProductName(name)
     if (!abbr) continue
