@@ -132,6 +132,7 @@ const abbreviateProductName = (name) => {
   if (!raw) return ''
 
   const lower = raw.toLowerCase()
+  if (lower.includes('paint protection film')) return 'PPF'
   if (lower.includes('tint')) return 'Tint'
   if (lower.includes('ceramic')) return 'Ceramic'
   if (lower.includes('rust')) return 'Rust'
@@ -147,23 +148,46 @@ const abbreviateProductName = (name) => {
 
 const getDealProductLabelSummary = (deal, maxLabels = 3) => {
   const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
-  const seen = new Set()
-  const labels = []
 
+  const byKey = new Map()
   for (const part of parts) {
     const name =
-      part?.product?.name || part?.product_name || part?.productLabel || part?.product?.label || ''
+      part?.product?.name ||
+      part?.product_name ||
+      part?.productLabel ||
+      part?.product?.label ||
+      part?.product_id ||
+      ''
 
     const abbr = abbreviateProductName(name)
     if (!abbr) continue
-    const key = abbr.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
-    labels.push(abbr)
+
+    const keyRaw = part?.product?.id || part?.product_id || abbr
+    const key = String(keyRaw).toLowerCase()
+
+    const qtyRaw = part?.quantity_used ?? part?.quantity ?? 1
+    const qtyNum = Number(qtyRaw)
+    const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
+
+    const isOffSite = !!(part?.is_off_site || part?.service_type === 'vendor')
+
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, { label: abbr, qty, isOffSite })
+    } else {
+      existing.qty += qty
+      existing.isOffSite = existing.isOffSite || isOffSite
+    }
   }
 
-  const clipped = labels.slice(0, maxLabels)
-  const extraCount = Math.max(0, labels.length - clipped.length)
+  const items = Array.from(byKey.values()).sort((a, b) => {
+    if (a.isOffSite !== b.isOffSite) return a.isOffSite ? -1 : 1
+    return a.label.localeCompare(b.label)
+  })
+
+  const formatted = items.map((it) => (it.qty > 1 ? `${it.label}×${it.qty}` : it.label))
+  const clipped = formatted.slice(0, maxLabels)
+  const extraCount = Math.max(0, formatted.length - clipped.length)
   return { labels: clipped, extraCount }
 }
 
@@ -290,19 +314,42 @@ const getDealPrimaryRef = (deal) => {
   return fallbackId || 'Deal'
 }
 
-const ValueDisplay = ({ amount }) => {
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
+const toFiniteNumberOrNull = (value) => {
+  if (value == null) return null
+  const num = typeof value === 'number' ? value : Number.parseFloat(value)
+  return Number.isFinite(num) ? num : null
+}
 
-  if (typeof amount !== 'number' || Number.isNaN(amount)) {
-    return <span className="text-sm text-slate-700">—</span>
-  }
+const formatMoney0OrDash = (value) => {
+  const num = toFiniteNumberOrNull(value)
+  return num == null ? '—' : money0.format(num)
+}
 
-  return <span className="text-sm text-slate-700">{formatter.format(amount)}</span>
+const getDealFinancials = (deal) => {
+  const sale =
+    toFiniteNumberOrNull(deal?.total_amount) ??
+    (Array.isArray(deal?.job_parts)
+      ? deal.job_parts.reduce((sum, p) => sum + (toFiniteNumberOrNull(p?.total_price) || 0), 0)
+      : null)
+
+  const costDirect =
+    toFiniteNumberOrNull(deal?.actual_cost) ??
+    toFiniteNumberOrNull(deal?.estimated_cost) ??
+    toFiniteNumberOrNull(deal?.total_cost)
+
+  const profitDirect = toFiniteNumberOrNull(deal?.profit_amount)
+
+  let cost = costDirect
+  // If we don't have cost but we *do* have stored profit, infer cost.
+  if (cost == null && sale != null && profitDirect != null) cost = sale - profitDirect
+
+  // Profit is defined as Sale - Cost.
+  let profit = sale != null && cost != null ? sale - cost : profitDirect
+
+  if (typeof profit === 'number' && Math.abs(profit) < 0.005) profit = 0
+  if (typeof cost === 'number' && Math.abs(cost) < 0.005) cost = 0
+
+  return { sale, cost, profit }
 }
 
 // ✅ UPDATED: Service Location Tag with color styling per requirements
@@ -865,9 +912,13 @@ export default function DealsPage() {
       return sum + revenue
     }, 0)
 
-    // Estimate 25% profit margin
-    const totalProfit = totalRevenue * 0.25
-    const margin = totalRevenue > 0 ? 25.0 : 0
+    // Profit is Sale - Cost when cost exists; otherwise fallback to stored profit_amount.
+    const totalProfit = safeDeals?.reduce((sum, deal) => {
+      const fin = getDealFinancials(deal)
+      return sum + (toFiniteNumberOrNull(fin?.profit) || 0)
+    }, 0)
+
+    const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
 
     const pendingJobs = safeDeals?.filter((d) => d?.job_status === 'pending')?.length || 0
 
@@ -1740,9 +1791,31 @@ export default function DealsPage() {
                       <div className="col-span-12 lg:col-span-2 min-w-0">
                         <div className="flex flex-col items-start lg:items-end gap-2">
                           <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
-                            <Pill className="tabular-nums whitespace-nowrap">
-                              <ValueDisplay amount={deal?.total_amount} />
-                            </Pill>
+                            {(() => {
+                              const fin = getDealFinancials(deal)
+                              const profitClass =
+                                typeof fin.profit === 'number'
+                                  ? fin.profit > 0
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : fin.profit < 0
+                                      ? 'bg-red-50 text-red-800 border-red-200'
+                                      : ''
+                                  : ''
+
+                              return (
+                                <>
+                                  <Pill className="tabular-nums whitespace-nowrap">
+                                    Sale {formatMoney0OrDash(fin.sale)}
+                                  </Pill>
+                                  <Pill className="tabular-nums whitespace-nowrap">
+                                    Cost {formatMoney0OrDash(fin.cost)}
+                                  </Pill>
+                                  <Pill className={`tabular-nums whitespace-nowrap ${profitClass}`}>
+                                    Profit {formatMoney0OrDash(fin.profit)}
+                                  </Pill>
+                                </>
+                              )
+                            })()}
                             {deal?.loaner_number || deal?.has_active_loaner ? (
                               <LoanerBadge deal={deal} />
                             ) : (
@@ -1953,9 +2026,31 @@ export default function DealsPage() {
                           ) : (
                             <Pill>Loaner: —</Pill>
                           )}
-                          <Pill className="tabular-nums">
-                            <ValueDisplay amount={deal?.total_amount} />
-                          </Pill>
+                          {(() => {
+                            const fin = getDealFinancials(deal)
+                            const profitClass =
+                              typeof fin.profit === 'number'
+                                ? fin.profit > 0
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : fin.profit < 0
+                                    ? 'bg-red-50 text-red-800 border-red-200'
+                                    : ''
+                                : ''
+
+                            return (
+                              <>
+                                <Pill className="tabular-nums">
+                                  Sale {formatMoney0OrDash(fin.sale)}
+                                </Pill>
+                                <Pill className="tabular-nums">
+                                  Cost {formatMoney0OrDash(fin.cost)}
+                                </Pill>
+                                <Pill className={`tabular-nums ${profitClass}`}>
+                                  Profit {formatMoney0OrDash(fin.profit)}
+                                </Pill>
+                              </>
+                            )
+                          })()}
                         </div>
                       </div>
                     </div>

@@ -4,7 +4,7 @@
  * PASS criteria:
  * - Vehicle title shows <year> <make> <model>; Stock under it
  * - Customer shows the saved name (not N/A unless missing)
- * - Items area shows full product names (no OP codes alone; no Qty)
+ * - Items area shows compact product labels; quantity shown only when >1 (×N)
  * - Value equals sum(job_parts.total_price) for that job
  * - Service location pill shows Off-Site / On-Site (muted styling)
  * - Filter toggles between "all" and "pending" without errors
@@ -13,7 +13,7 @@
 
 import React from 'react'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, waitFor, cleanup, within } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import DealsPage from '../pages/deals/index.jsx'
 import * as dealService from '../services/dealService'
@@ -103,6 +103,7 @@ const mockDealsData = [
     title: '2024 Honda Accord Service',
     job_status: 'in_progress',
     total_amount: '850.00',
+    actual_cost: '724.50',
     profit_amount: '125.50',
     delivery_coordinator_name: 'Michael Johnson',
     sales_consultant_name: 'Jennifer Martinez',
@@ -117,6 +118,7 @@ const mockDealsData = [
       {
         id: 'part-001',
         product_name: 'Premium Paint Protection Film',
+        quantity_used: 2,
         total_price: '650.00',
         is_off_site: true,
         requires_scheduling: true,
@@ -138,6 +140,7 @@ const mockDealsData = [
     title: 'Paint Protection Package',
     job_status: 'scheduled',
     total_amount: '1200.50',
+    actual_cost: '1020.25',
     profit_amount: '180.25',
     delivery_coordinator_name: 'Robert Wilson',
     sales_consultant_name: null,
@@ -323,11 +326,11 @@ describe('Step 16: Deals List Screen Verification', () => {
     )
   })
 
-  it('should display full product names without OP codes or quantity', async () => {
+  it('should display product summary with qty only when >1', async () => {
     renderComponent()
 
     await waitFor(() => {
-      // Products should show full names, not abbreviations or codes
+      // Products render as compact labels; quantities only when >1
       const jobRows = screen?.getAllByTestId(/deal-row-/)
       expect(jobRows)?.toHaveLength(mockDealsData.length)
 
@@ -335,13 +338,19 @@ describe('Step 16: Deals List Screen Verification', () => {
       expect(screen?.queryByText(/Qty/i))?.not?.toBeInTheDocument()
       expect(screen?.queryByText(/Quantity/i))?.not?.toBeInTheDocument()
 
-      // Verify products show descriptive names
-      const mockData = mockDealsData
-      expect(mockData?.[0]?.job_parts?.[0]?.product_name)?.toBe('Premium Paint Protection Film')
-      expect(mockData?.[1]?.job_parts?.[0]?.product_name)?.toBe('Ceramic Coating Application')
+      // Qty is rendered as a multiplier only when > 1
+      expect(screen?.getByText('PPF×2'))?.toBeInTheDocument()
+      expect(screen?.queryByText(/\b×1\b/))?.not?.toBeInTheDocument()
+
+      // Single-quantity items should not show a multiplier
+      expect(screen?.getByText('Ceramic'))?.toBeInTheDocument()
+      expect(screen?.queryByText(/Ceramic×/))?.not?.toBeInTheDocument()
+
+      // Sanity-check quantity source on mock data
+      expect(mockDealsData?.[0]?.job_parts?.[0]?.quantity_used)?.toBe(2)
     })
 
-    console.log('✅ Product names display as full descriptions without OP codes or quantity labels')
+    console.log('✅ Product summary displays compact labels; qty shown only when >1 (×N)')
   })
 
   it('should calculate and display correct values matching sum of job_parts.total_price', async () => {
@@ -370,6 +379,27 @@ describe('Step 16: Deals List Screen Verification', () => {
     })
 
     console.log('✅ Deal values correctly calculated as sum of job_parts.total_price')
+  })
+
+  it('should display per-deal sale, cost, and profit', async () => {
+    renderComponent()
+
+    await waitFor(() => {
+      const row1 = screen?.getByTestId('deal-row-job-001')
+      expect(within(row1)?.getByText('Sale $850'))?.toBeInTheDocument()
+      expect(within(row1)?.getByText('Cost $725'))?.toBeInTheDocument()
+      // Profit is computed as Sale - Cost (850 - 724.50 = 125.50 -> $126)
+      expect(within(row1)?.getByText('Profit $126'))?.toBeInTheDocument()
+
+      const row2 = screen?.getByTestId('deal-row-job-002')
+      // 1200.50 -> $1,201 (money0)
+      expect(within(row2)?.getByText('Sale $1,201'))?.toBeInTheDocument()
+      expect(within(row2)?.getByText('Cost $1,020'))?.toBeInTheDocument()
+      // 1200.50 - 1020.25 = 180.25 -> $180
+      expect(within(row2)?.getByText('Profit $180'))?.toBeInTheDocument()
+    })
+
+    console.log('✅ Per-deal financials display: Sale vs Cost with Profit')
   })
 
   it('should display service location pills with correct labels (muted styling)', async () => {
@@ -491,7 +521,7 @@ console.log('')
 console.log('UI Assertions Verified:')
 console.log('• Vehicle title: ✅ <year> <make> <model> • Stock: <number> format')
 console.log('• Customer names: ✅ Available from vehicle.owner_name, null when missing')
-console.log('• Product names: ✅ Full descriptive names, no OP codes or Qty labels')
+console.log('• Product items: ✅ Compact labels; qty only when >1 (×N)')
 console.log('• Value calculation: ✅ Matches sum(job_parts.total_price)')
 console.log('• Service location: ✅ Off-Site and On-Site pills (muted)')
 console.log('• Filter functionality: ✅ No errors, handles all/filtered states')
