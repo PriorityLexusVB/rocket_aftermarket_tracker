@@ -685,8 +685,8 @@ const GuestClaimsSubmissionForm = () => {
                     Choose Files
                   </label>
                   <p className="text-xs text-gray-500 mt-2">
-                    Maximum file size: 10MB per file. Supported formats: JPG, PNG, GIF, WebP (max
-                    5 files)
+                    Maximum file size: 10MB per file. Supported formats: JPG, PNG, GIF, WebP (max 5
+                    files)
                   </p>
                 </div>
               </div>
