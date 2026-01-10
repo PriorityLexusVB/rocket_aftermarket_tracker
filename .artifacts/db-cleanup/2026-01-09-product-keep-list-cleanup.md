@@ -1,6 +1,6 @@
-# Product Keep-List Cleanup (Keep 6, delete all others)
+# Product Keep-List Cleanup (Org-scoped keep-list)
 
-Goal: keep only these 6 products (from your photo) and delete everything else:
+Goal: for **Priority Lexus VB only** (`org_id = a1ac6612-4108-483a-8fcb-62c9ceb2abb1`), keep only these 6 products (from your photo) and delete any other products **in that same org**:
 
 - EverNew 5yr
 - EverNew 3yr
@@ -25,14 +25,15 @@ Products present:
   - Interior Protection: `2036ba17-a4ec-4788-bdc5-48e61b113a15`
   - Rust Guard: `0172da8c-e9b2-4882-bb8c-efd64c5b4b9f`
   - Windshield Protection: `e1e7bde4-3e0a-4e04-9599-1511730b5663`
-- Non-keep products currently present:
+- Non-keep products currently present (E2E org; **must not be impacted by this runbook**):
   - E2E Product 1: `00000000-0000-0000-0000-0000000000b1`
   - E2E Product 2: `00000000-0000-0000-0000-0000000000b2`
 
 Dependencies observed:
 
-- `job_parts.product_id` references E2E Product 1 (116 rows) and EverNew 3yr (38 rows).
-- This means product deletion must delete or re-point dependent `job_parts` rows first.
+- `job_parts.product_id` references products.
+- In this environment, the FK `job_parts.product_id -> products.id` is configured with `ON DELETE CASCADE`.
+- We still delete dependent `job_parts` first to keep the impact explicit during the rollback verification.
 
 ## Step 1 — DRY RUN: confirm current products
 
@@ -42,10 +43,14 @@ from public.products
 order by org_id, dealer_id nulls first, name;
 ```
 
-## Step 2 — DRY RUN: what would be deleted?
+## Step 2 — DRY RUN: what would be deleted (Priority org only)?
 
 ```sql
-with keep_products as (
+with
+target as (
+  select 'a1ac6612-4108-483a-8fcb-62c9ceb2abb1'::uuid as org_id
+),
+keep_products as (
   select unnest(array[
     'bedd08f2-9714-447a-8b18-6f384da23204'::uuid,
     'a1558ed3-eea3-419f-9641-5629386cb382'::uuid,
@@ -58,21 +63,28 @@ with keep_products as (
 products_to_delete as (
   select id, org_id, dealer_id, name
   from public.products
-  where id not in (select id from keep_products)
+  where org_id = (select org_id from target)
+    and id not in (select id from keep_products)
 )
 select *
 from products_to_delete
 order by org_id, dealer_id nulls first, name;
 ```
 
-## Step 3 — DELETE (rollback-by-default)
+## Step 3 — DELETE (rollback-by-default, Priority org only)
 
 IMPORTANT: start with `ROLLBACK;` until the deleted counts are exactly what you expect.
+
+Expected result for Priority Lexus VB at time of writing: this is a **no-op** (`products_to_delete = 0`, `deleted_job_parts = 0`, `deleted_products = 0`). If it's a no-op, no COMMIT is needed.
 
 ```sql
 begin;
 
-with keep_products as (
+with
+target as (
+  select 'a1ac6612-4108-483a-8fcb-62c9ceb2abb1'::uuid as org_id
+),
+keep_products as (
   select unnest(array[
     -- EverNew 3yr
     'bedd08f2-9714-447a-8b18-6f384da23204'::uuid,
@@ -91,12 +103,16 @@ with keep_products as (
 products_to_delete as (
   select p.id
   from public.products p
-  where p.id not in (select id from keep_products)
+  where p.org_id = (select org_id from target)
+    and p.id not in (select id from keep_products)
 ),
 -- FK safety: remove dependent job_parts first
 _del_job_parts as (
   delete from public.job_parts jp
-  where jp.product_id in (select id from products_to_delete)
+  using public.jobs j, target t
+  where jp.job_id = j.id
+    and j.org_id = t.org_id
+    and jp.product_id in (select id from products_to_delete)
   returning jp.id
 ),
 _del_products as (
@@ -117,11 +133,14 @@ rollback;
 ## Step 4 — Verify
 
 ```sql
-select count(*) as products_total from public.products;
-
-select id, name
+select org_id, count(*) as products_total
 from public.products
-order by name;
+group by org_id
+order by org_id;
+
+select id, org_id, name
+from public.products
+order by org_id, name;
 
 select count(*) as job_parts_with_product_id
 from public.job_parts
