@@ -17,7 +17,8 @@ async function run() {
     console.error('Usage: node scripts/attachOrg.js <user-email>')
     process.exit(1)
   }
-  const conn = process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+  const conn =
+    process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
   if (!conn) {
     console.error('[attachOrg] Missing E2E_DATABASE_URL/DATABASE_URL/SUPABASE_DB_URL env variable')
     process.exit(1)
