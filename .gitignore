@@ -27,6 +27,11 @@ workspace.json
 .env.*
 !.env.example
 !.env.development
+
+# Explicit local-only env files (defense in depth)
+.env.local
+.env.test.local
+.env.e2e.local
 # VS Code chat/state
 .vscode_state/
 Code/

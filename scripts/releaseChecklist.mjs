@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import process from 'node:process'
 
 const PROD_REF = 'ogjtmtndgiqqdtwatsue'
@@ -22,6 +22,26 @@ function assertNotProdTarget() {
     throw new Error(
       `[release:check] Refusing to proceed: DB connection string (E2E_DATABASE_URL/DATABASE_URL/SUPABASE_DB_URL) contains production project ref ${PROD_REF}.`
     )
+  }
+}
+
+function assertNoTrackedLocalEnvFiles() {
+  // Prevent accidental commits of local secret files (keys/passwords).
+  // We keep this as a best-effort check (skips if git isn't available).
+  const candidates = ['.env.local', '.env.e2e.local', '.env.test.local']
+
+  for (const file of candidates) {
+    const res = spawnSync('git', ['ls-files', '--error-unmatch', file], {
+      stdio: 'ignore',
+    })
+
+    if (res.error) return
+    if (res.status === 0) {
+      throw new Error(
+        `[release:check] Refusing to proceed: ${file} is tracked by git. ` +
+          'These files may contain secrets; untrack it and keep it local-only.'
+      )
+    }
   }
 }
 
@@ -49,6 +69,7 @@ function run(cmd, args, { optional = false } = {}) {
 
 async function main() {
   console.log('[release:check] Starting production-readiness checklist...')
+  assertNoTrackedLocalEnvFiles()
   assertNotProdTarget()
 
   // Core gates (match repo guardrails: lint + unit tests + typecheck + build)
