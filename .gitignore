@@ -57,6 +57,9 @@ rocket-aftermarket-tracker@*/
 vite-err.log
 vite-out.log
 
+# Supabase CLI temp files (generated)
+supabase/.temp/
+
 # Drizzle generated migrations (we use supabase/migrations instead)
 drizzle/
 
