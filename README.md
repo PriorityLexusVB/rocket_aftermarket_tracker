@@ -240,7 +240,7 @@ Which Supabase project is “E2E” vs “production”?
 
 Optional Playwright settings:
 
-- `PLAYWRIGHT_BASE_URL` — defaults to `http://localhost:5173`.
+- `PLAYWRIGHT_BASE_URL` — defaults to `http://127.0.0.1:5174`.
 
 Notes:
 
@@ -292,7 +292,7 @@ Optional secrets:
 
 Notes:
 
-- Playwright uses `webServer` to start the app via `npm run start` on port 5173.
+- Playwright uses `webServer` to start the app via `pnpm start` on port 5174 (and does not reuse an existing server).
 - If you change the dev server port, update `PLAYWRIGHT_BASE_URL` in the workflow or `playwright.config.ts`.
 
 ## Environment Health Check (WSL)

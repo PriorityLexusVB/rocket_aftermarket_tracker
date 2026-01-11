@@ -19,7 +19,7 @@ The following environment variables are required for E2E tests to run successful
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key                         | App runtime    |
 | `E2E_EMAIL`              | Email address for E2E test user                       | Authentication |
 | `E2E_PASSWORD`           | Password for E2E test user                            | Authentication |
-| `PLAYWRIGHT_BASE_URL`    | Base URL for tests (default: `http://localhost:5173`) | Test execution |
+| `PLAYWRIGHT_BASE_URL`    | Base URL for tests (default: `http://127.0.0.1:5174`) | Test execution |
 
 Notes:
 
@@ -131,9 +131,9 @@ If you changed credentials or the file is stale/corrupted:
 
 ### Port Conflicts
 
-**Symptom**: Tests fail because the dev server can't start on port 5173.
+**Symptom**: Tests fail because the dev server can't start on port 5174.
 
-**Solution**: The Playwright config starts a fresh dev server on port 5173 with `reuseExistingServer: false`, which means it won't reuse an existing dev server. If you have a dev server running on port 5173, stop it before running E2E tests, or Playwright will fail to start its own server.
+**Solution**: The Playwright config starts a fresh dev server on port 5174 with `reuseExistingServer: false` and `--strictPort`, which means it will not reuse an existing dev server and it will not fall back to a different port. If you have another app running on port 5174, stop it before running E2E tests.
 
 ## Test Files Overview
 

@@ -48,7 +48,7 @@ pnpm run serve   # preview build output
 
 ```powershell
 # Optional env for auth flows
-$env:PLAYWRIGHT_BASE_URL = "http://localhost:5173"
+$env:PLAYWRIGHT_BASE_URL = "http://127.0.0.1:5174"
 $env:E2E_EMAIL = "tester@example.com"
 $env:E2E_PASSWORD = "your-password"
 

@@ -27,7 +27,7 @@ try {
 
 export default async function globalSetup() {
   // Prefer IPv4 loopback to avoid ::1/IPv6 routing issues in CI.
-  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173'
+  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5174'
   const allowProd = process.env.ALLOW_E2E_ON_PROD === '1'
   const allowNoLogin = process.env.E2E_ALLOW_NO_LOGIN === '1'
   const isProdVercel = /^https:\/\/rocket-aftermarket-tracker\.vercel\.app\b/i.test(base)
@@ -59,7 +59,17 @@ export default async function globalSetup() {
       const text = msg.text()
       if (/vite\b|favicon|dev server/i.test(text)) return
 
-      console.log(`[setup:console:${msg.type()}]`, text)
+      const loc = msg.location?.()
+      const hasLine = typeof loc?.lineNumber === 'number'
+      const hasCol = typeof loc?.columnNumber === 'number'
+      const hasAnyLocation = Boolean(loc && (loc.url || hasLine || hasCol))
+      const where = hasAnyLocation
+        ? ` (${loc?.url || '<unknown>'}${hasLine ? `:${loc?.lineNumber}` : ''}${
+            hasCol ? `:${loc?.columnNumber}` : ''
+          })`
+        : ''
+
+      console.log(`[setup:console:${msg.type()}]${where}`, text)
     } catch {}
   })
   page.on('response', (res) => {
@@ -103,6 +113,32 @@ export default async function globalSetup() {
     return false
   }
 
+  // Sanity check: make sure base URL is actually this app.
+  // This prevents confusing runs if some other dev server is bound to the port.
+  const assertLooksLikeThisApp = async () => {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 4000)
+      const res = await fetch(base, { signal: controller.signal })
+      clearTimeout(timeout)
+      const html = await res.text()
+
+      // Stable markers from this repo's index.html.
+      const hasTitle = html.includes('Rocket Aftermarket Tracker')
+      const hasRoot = html.includes('id="root"')
+      const hasDhiwiseRoot = html.includes('class="dhiwise-code"')
+      if (!hasTitle || !hasRoot || !hasDhiwiseRoot) {
+        throw new Error(
+          `[global.setup] PLAYWRIGHT_BASE_URL (${base}) does not look like Rocket Aftermarket Tracker. ` +
+            `Are you pointing at the wrong dev server?`
+        )
+      }
+    } catch (err) {
+      // Let existing waitForServer logging still help, but fail early if we got HTML back and it doesn't match.
+      throw err
+    }
+  }
+
   // If storage exists and debug-auth shows both testids, skip login
   let hasValidState = false
   let sessionUserId: string | null = null
@@ -111,6 +147,9 @@ export default async function globalSetup() {
     if (!up) {
       console.error('[global.setup] Server at %s did not become reachable within timeout.', base)
     }
+
+    await assertLooksLikeThisApp()
+
     await page.goto(base + '/debug-auth', { waitUntil: 'load', timeout: 15000 })
     // Important: these elements are always visible. Validate actual values.
     const sessionText = await page

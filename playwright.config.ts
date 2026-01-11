@@ -28,7 +28,8 @@ try {
 // IMPORTANT: Do NOT default Supabase credentials here.
 // If these are missing, it is safer to fail fast than to accidentally run E2E against a real environment.
 // Prefer IPv4 loopback in CI to avoid ::1/IPv6 resolution issues.
-const DEFAULT_BASE_URL = 'http://127.0.0.1:5173'
+// Use a dedicated port for E2E to avoid accidentally reusing some other app's dev server.
+const DEFAULT_BASE_URL = 'http://127.0.0.1:5174'
 const PROD_REF = 'ogjtmtndgiqqdtwatsue'
 
 process.env.PLAYWRIGHT_BASE_URL ||= DEFAULT_BASE_URL
@@ -79,7 +80,7 @@ export default defineConfig({
       : 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? DEFAULT_BASE_URL,
     trace: process.env.CI ? 'on' : 'on-first-retry', // Always capture traces in CI
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -90,11 +91,14 @@ export default defineConfig({
   webServer: {
     // Launch a fresh Vite dev server with explicit env vars so no .env.local is required in CI/agent
     // Bind to IPv4 to avoid localhost resolving to ::1 in CI.
-    command: 'pnpm start -- --host 127.0.0.1 --port 5173',
-    port: 5173,
+    command: 'pnpm start -- --host 127.0.0.1 --port 5174 --strictPort',
+    port: 5174,
     // CI runners can be slow to install deps + boot Vite (and Playwright will kill the server if it times out).
     timeout: process.env.CI ? 120_000 : 60_000,
-    reuseExistingServer: !process.env.CI, // Avoid stale state in CI but allow reuse locally
+    // IMPORTANT: Never reuse an existing server locally.
+    // If another app is running on this port, reusing it can lead to debugging the wrong project
+    // (e.g., unexpected Firebase logs from a different codebase).
+    reuseExistingServer: false,
     // Surface server output in CI logs for diagnosing startup crashes (e.g., ERR_HTTP_HEADERS_SENT).
     stdout: 'pipe',
     stderr: 'pipe',
