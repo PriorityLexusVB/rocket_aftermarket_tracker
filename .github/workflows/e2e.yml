@@ -177,7 +177,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_ORG_SCOPED_DROPDOWNS: true
           # Playwright/global.setup auth and base URL
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5174
           E2E_EMAIL: ${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}
           # Database access for global.setup / helpers
@@ -349,7 +349,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_VITE_SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_ORG_SCOPED_DROPDOWNS: true
           # Playwright/global.setup auth and base URL
-          PLAYWRIGHT_BASE_URL: http://localhost:5173
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5174
           E2E_EMAIL: ${{ secrets.E2E_EMAIL || secrets.E2E_TEST_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD || secrets.E2E_TEST_PASSWORD }}
           # Database access for global.setup / helpers
