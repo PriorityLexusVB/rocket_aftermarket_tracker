@@ -137,6 +137,11 @@ postgres://user:password@host:5432/database?options
 3. Copy "Connection String" (choose "Direct connection" or "Session pooler")
 4. Replace `[YOUR-PASSWORD]` with actual password
 
+**Local development note**:
+
+- For local scripts (like `scripts/seedE2E.js`, `scripts/reportE2E.js`, `scripts/cleanupE2E.js`), you can set `E2E_DATABASE_URL` in `.env.e2e.local`.
+- If you’re on WSL or a network that can’t reach IPv6, prefer the Supabase "Session pooler" connection string (IPv4-friendly).
+
 **Example**:
 
 ```

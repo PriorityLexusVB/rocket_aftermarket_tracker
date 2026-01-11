@@ -10,7 +10,7 @@ import { Client } from 'pg'
 // Never log env values.
 {
   const root = process.cwd()
-  const envFiles = ['.env.local', '.env']
+  const envFiles = ['.env.e2e.local', '.env.local', '.env']
   for (const filename of envFiles) {
     const fullPath = path.join(root, filename)
     if (fs.existsSync(fullPath)) {

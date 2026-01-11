@@ -2,7 +2,7 @@
 /**
  * Upsert organization "Priority Lexus VB" and attach a user profile by email to it.
  * Usage:
- *   DATABASE_URL=postgres://user:pass@host:5432/db node scripts/attachOrg.js rob.brasco@priorityautomotive.com
+ *   E2E_DATABASE_URL=postgres://user:pass@host:5432/db?sslmode=require node scripts/attachOrg.js rob.brasco@priorityautomotive.com
  *
  * The script:
  *  - Creates org if missing
@@ -17,9 +17,9 @@ async function run() {
     console.error('Usage: node scripts/attachOrg.js <user-email>')
     process.exit(1)
   }
-  const conn = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+  const conn = process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
   if (!conn) {
-    console.error('[attachOrg] Missing DATABASE_URL or SUPABASE_DB_URL env variable')
+    console.error('[attachOrg] Missing E2E_DATABASE_URL/DATABASE_URL/SUPABASE_DB_URL env variable')
     process.exit(1)
   }
   // Ensure sslmode=require is present (Supabase Postgres requires SSL)

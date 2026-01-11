@@ -169,7 +169,7 @@ const main = async () => {
   const connStr =
     process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
   if (!connStr) {
-    console.error('[seedE2E] Missing DATABASE_URL or SUPABASE_DB_URL environment variable.')
+    console.error('[seedE2E] Missing E2E_DATABASE_URL/DATABASE_URL/SUPABASE_DB_URL environment variable.')
     console.error('Set a Postgres connection string, e.g. postgres://user:pass@host:5432/dbname')
     process.exit(1)
   }

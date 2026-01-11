@@ -20,7 +20,7 @@ function assertNotProdTarget() {
 
   if (dbUrl.includes(PROD_REF)) {
     throw new Error(
-      `[release:check] Refusing to proceed: DATABASE_URL contains production project ref ${PROD_REF}.`
+      `[release:check] Refusing to proceed: DB connection string (E2E_DATABASE_URL/DATABASE_URL/SUPABASE_DB_URL) contains production project ref ${PROD_REF}.`
     )
   }
 }

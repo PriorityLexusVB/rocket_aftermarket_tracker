@@ -15,6 +15,7 @@ pnpm release:check
 What it does:
 
 - Refuses to run if `VITE_SUPABASE_URL` or `DATABASE_URL` contains the production Supabase project ref `ogjtmtndgiqqdtwatsue`.
+- Refuses to run if `VITE_SUPABASE_URL` or any configured DB connection string (`E2E_DATABASE_URL`/`DATABASE_URL`/`SUPABASE_DB_URL`) contains the production Supabase project ref `ogjtmtndgiqqdtwatsue`.
 - Runs: `pnpm lint` → `pnpm -s vitest run` → `pnpm typecheck` → `pnpm build`.
 - Runs Playwright E2E only if `E2E_EMAIL`, `E2E_PASSWORD`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY` are present.
 

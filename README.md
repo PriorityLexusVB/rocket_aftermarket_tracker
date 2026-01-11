@@ -186,7 +186,8 @@ E2E seed (Node-based)
 
 Environment variables accepted by the seed runner:
 
-- `DATABASE_URL` or `SUPABASE_DB_URL` — a direct Postgres connection string with credentials that can create/insert into your Supabase database.
+- `E2E_DATABASE_URL` (preferred for local E2E), or `DATABASE_URL`, or `SUPABASE_DB_URL` — a Postgres connection string with credentials that can create/insert into your Supabase database.
+- Tip (WSL/network-restricted): prefer the Supabase "Session pooler" connection string and include `sslmode=require`.
 
 Run locally:
 
@@ -198,6 +199,23 @@ Run in CI (examples):
 
 - GitHub Actions: set `DATABASE_URL` as an encrypted repository secret and call `pnpm run db:seed-e2e` in a step before E2E.
 - Vercel/other: not required for deployments; this seed is only for test data.
+
+E2E reporting/cleanup (local)
+
+- Report what E2E-ish rows exist:
+  - `pnpm -s db:report-e2e`
+- Preview what would be deleted (no changes):
+  - `pnpm -s db:cleanup-e2e -- --dry-run`
+
+Both scripts accept `E2E_DATABASE_URL` (preferred), `DATABASE_URL`, or `SUPABASE_DB_URL`.
+
+If you have pre-exported env vars in your shell, force dotenv to win:
+
+```bash
+env -u E2E_DATABASE_URL -u DATABASE_URL -u SUPABASE_DB_URL \
+  DOTENV_CONFIG_PATH=.env.e2e.local DOTENV_CONFIG_OVERRIDE=true \
+  node -r dotenv/config scripts/reportE2E.js
+```
 
 E2E test auth
 

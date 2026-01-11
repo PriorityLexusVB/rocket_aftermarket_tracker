@@ -17,7 +17,7 @@ const getArgValue = (flag) => {
 // Never log env values.
 {
   const root = process.cwd()
-  const envFiles = ['.env.local', '.env']
+  const envFiles = ['.env.e2e.local', '.env.local', '.env']
   for (const filename of envFiles) {
     const fullPath = path.join(root, filename)
     if (fs.existsSync(fullPath)) {
@@ -26,9 +26,10 @@ const getArgValue = (flag) => {
   }
 }
 
-const DATABASE_URL = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+const DATABASE_URL =
+  process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
 if (!DATABASE_URL) {
-  console.error('[printOrgId] DATABASE_URL (or SUPABASE_DB_URL) is missing.')
+  console.error('[printOrgId] DATABASE_URL (or SUPABASE_DB_URL/E2E_DATABASE_URL) is missing.')
   process.exit(1)
 }
 
