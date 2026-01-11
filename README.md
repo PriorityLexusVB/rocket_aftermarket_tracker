@@ -230,6 +230,14 @@ Recommended local setup for E2E (to avoid accidentally mixing dev/prod-ish env w
 - Put E2E-only settings in `.env.e2e.local` (preferred). Playwright loads it first and overrides `.env.local`.
 - If you change E2E credentials, delete `e2e/storageState.json` before rerunning `pnpm e2e`.
 
+Which Supabase project is “E2E” vs “production”?
+
+- Supabase identifies a project by its **project ref** — the subdomain in `https://<ref>.supabase.co`.
+- Current E2E project ref (from `.env.e2e.local`): `ntpoblmjxfivomcwmjrj`.
+- For Playwright E2E runs, the `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.e2e.local` should point at your **E2E** Supabase project (non-production).
+- Production values are configured in Vercel → Project Settings → Environment Variables (not in `.env.e2e.local`).
+- Safety check: `pnpm release:check` refuses to run if `VITE_SUPABASE_URL` (or any DB connection string) contains the production ref `ogjtmtndgiqqdtwatsue`.
+
 Optional Playwright settings:
 
 - `PLAYWRIGHT_BASE_URL` — defaults to `http://localhost:5173`.
