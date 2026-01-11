@@ -205,13 +205,11 @@ test.describe('4-page smoke checklist', () => {
 
     // Needs Scheduling shows promise-only item we just created.
     const promiseOnlyRow = page.getByText(unique, { exact: false }).first()
-    let foundInNeedsScheduling = true
     try {
       await expect(promiseOnlyRow).toBeVisible({ timeout: 20_000 })
     } catch {
       // In some environments, the needs-scheduling hydration path can be transiently empty
       // (e.g., DB/network blip). Treat the explicit empty-state as acceptable for this smoke flow.
-      foundInNeedsScheduling = false
       await expect(page.getByText(/No items need scheduling/i).first()).toBeVisible({
         timeout: 10_000,
       })

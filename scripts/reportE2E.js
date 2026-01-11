@@ -31,10 +31,11 @@ function hasFlag(flag) {
   return process.argv.includes(flag)
 }
 
-const DATABASE_URL = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
+const DATABASE_URL =
+  process.env.E2E_DATABASE_URL || process.env.DATABASE_URL || process.env.SUPABASE_DB_URL
 
 if (!DATABASE_URL) {
-  console.error('[reportE2E] DATABASE_URL (or SUPABASE_DB_URL) is missing.')
+  console.error('[reportE2E] DATABASE_URL (or SUPABASE_DB_URL/E2E_DATABASE_URL) is missing.')
   process.exit(1)
 }
 
@@ -101,9 +102,28 @@ const connectWithIpv4Fallback = async (connectionString) => {
 
     if (!looksLikeIpv6Unreach) throw err
 
-    const fallback = new Client(await buildClientConfigWithIpv4Host(connectionString))
-    await fallback.connect()
-    return fallback
+    try {
+      const fallback = new Client(await buildClientConfigWithIpv4Host(connectionString))
+      await fallback.connect()
+      return fallback
+    } catch (fallbackErr) {
+      let hostname = null
+      try {
+        hostname = new URL(connectionString).hostname
+      } catch {}
+
+      const fallbackCode = fallbackErr?.code
+      const hint =
+        fallbackCode === 'ENOTFOUND'
+          ? `No IPv4 DNS record found${hostname ? ` for ${hostname}` : ''}. ` +
+            'If your network cannot reach IPv6, use the Supabase “Session pooler” connection string (it typically has IPv4).'
+          : 'Check that your network can reach the database host and that the connection string is correct.'
+
+      throw new Error(
+        `[reportE2E] DB connect failed: IPv6 appears unreachable, and IPv4 fallback failed. ${hint}`,
+        { cause: fallbackErr }
+      )
+    }
   }
 }
 
