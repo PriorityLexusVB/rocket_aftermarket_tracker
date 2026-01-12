@@ -7,6 +7,26 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+check_only="false"
+env_file_arg=".env.e2e.local"
+
+for arg in "$@"; do
+  case "$arg" in
+    --check)
+      check_only="true"
+      ;;
+    -h|--help)
+      echo "Usage: scripts/mcp/supabase-mcp.sh [path-to-env-file] [--check]" >&2
+      echo "  Defaults to: .env.e2e.local" >&2
+      echo "  --check: validates env + safety guards, then exits 0" >&2
+      exit 0
+      ;;
+    *)
+      env_file_arg="$arg"
+      ;;
+  esac
+done
+
 # Load local env file if present (gitignored)
 # Usage:
 #   scripts/mcp/supabase-mcp.sh [path-to-env-file]
@@ -69,6 +89,11 @@ case "$project_ref" in
     exit 3
     ;;
 esac
+
+if [[ "$check_only" = "true" ]]; then
+  echo "OK: Supabase MCP env validated (project_ref=$project_ref)" >&2
+  exit 0
+fi
 
 exec npx @supabase/mcp-server-supabase@0.5.10 \
   --project-ref "$project_ref" \

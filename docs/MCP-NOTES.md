@@ -71,6 +71,44 @@ This repo defines **two** Supabase MCP servers in [.vscode/mcp.json](.vscode/mcp
 
 Pick the one you want in the MCP server list in VS Code; no env toggling required.
 
+#### Quick verification (don’t guess)
+
+1) Ensure your local env files exist (both are gitignored):
+
+- `.env.e2e.local` for `supabase-e2e`
+- `.env.local` for `supabase-dev`
+
+2) In whichever env file you’re using, set:
+
+```bash
+SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"
+SUPABASE_PROJECT_REF="your_non_prod_project_ref"
+```
+
+3) Run the wrapper smoke-check:
+
+```bash
+bash scripts/mcp/supabase-mcp.sh .env.e2e.local --check
+```
+
+Expected: `OK: Supabase MCP env validated ...`
+
+4) In VS Code, select the matching MCP server (`supabase-e2e` or `supabase-dev`) and ask Copilot to run a harmless read-only call (examples):
+
+- “List Supabase migrations”
+- “Show Supabase security advisors”
+
+If it fails:
+- Re-run the `--check` command above.
+- Confirm you are not accidentally pointing at production.
+- Restart the MCP server after editing env vars.
+
+#### Don’t mess this up again (rules of thumb)
+
+- Do **not** hardcode project refs or tokens in `.vscode/mcp.json`.
+- Do **not** change `.vscode/mcp.json` to switch environments; switch by choosing `supabase-e2e` vs `supabase-dev`, or by editing the gitignored env files.
+- If you need to rotate tokens, rotate only in `.env.e2e.local` / `.env.local` or your shell env (never commit secrets).
+
 #### Canonical flow (how changes reach production)
 
 - Use Supabase MCP against **non-production** (dev/e2e/staging) to inspect schema/RLS and to plan the smallest safe change.
