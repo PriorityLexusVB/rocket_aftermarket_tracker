@@ -41,7 +41,10 @@ Defining the same server in multiple places (global + workspace) causes:
 
 #### Supabase project selection (dev/E2E only)
 
-This repo auto-loads the Supabase project ref for MCP from `.env.e2e.local` via `scripts/mcp/supabase-mcp.sh`.
+This repo supports **two Supabase MCP styles**:
+
+- **Wrapper-based** servers that auto-load config from `.env.local` / `.env.e2e.local` via `scripts/mcp/supabase-mcp.sh`.
+- A **prompt-based** server (the “old-style” UX) that prompts for project ref + token when you start it.
 
 - Add this to `.env.e2e.local` (gitignored):
 
@@ -62,30 +65,32 @@ SUPABASE_PROJECT_REF_STAGING="<your_staging_project_ref>"
 
 - Known production refs are **hard-blocked** by the script to prevent accidental prod access.
 
-#### Two MCP options (no switching)
+#### MCP options (pick your UX)
 
-This repo defines **two** Supabase MCP servers in [.vscode/mcp.json](.vscode/mcp.json):
+This repo defines multiple Supabase MCP servers in [.vscode/mcp.json](.vscode/mcp.json):
 
-- `supabase-e2e` → loads `.env.e2e.local`
-- `supabase-dev` → loads `.env.local`
+- `supabase` → **prompt-based** (prompts for `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF`)
+- `supabase-e2e` → wrapper-based, loads `.env.e2e.local`
+- `supabase-dev` → wrapper-based, loads `.env.local`
+- `supabase-wrapper` → wrapper-based alias of `.env.e2e.local` (kept for convenience)
 
-Pick the one you want in the MCP server list in VS Code; no env toggling required.
+Pick the one you want in the MCP server list in VS Code.
 
 #### Quick verification (don’t guess)
 
-1) Ensure your local env files exist (both are gitignored):
+1. Ensure your local env files exist (both are gitignored):
 
 - `.env.e2e.local` for `supabase-e2e`
 - `.env.local` for `supabase-dev`
 
-2) In whichever env file you’re using, set:
+2. In whichever env file you’re using, set:
 
 ```bash
 SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"
 SUPABASE_PROJECT_REF="your_non_prod_project_ref"
 ```
 
-3) Run the wrapper smoke-check:
+3. If you’re using a wrapper-based server (`supabase-e2e`, `supabase-dev`, `supabase-wrapper`), run the wrapper smoke-check:
 
 ```bash
 bash scripts/mcp/supabase-mcp.sh .env.e2e.local --check
@@ -93,12 +98,18 @@ bash scripts/mcp/supabase-mcp.sh .env.e2e.local --check
 
 Expected: `OK: Supabase MCP env validated ...`
 
-4) In VS Code, select the matching MCP server (`supabase-e2e` or `supabase-dev`) and ask Copilot to run a harmless read-only call (examples):
+If you’re using the prompt-based server (`supabase`), start it in VS Code and enter:
+
+- `SUPABASE_ACCESS_TOKEN` (non-prod token)
+- `SUPABASE_PROJECT_REF` (NON-PROD ONLY)
+
+4. In VS Code, select the matching MCP server (`supabase-e2e` or `supabase-dev`) and ask Copilot to run a harmless read-only call (examples):
 
 - “List Supabase migrations”
 - “Show Supabase security advisors”
 
 If it fails:
+
 - Re-run the `--check` command above.
 - Confirm you are not accidentally pointing at production.
 - Restart the MCP server after editing env vars.
@@ -108,6 +119,7 @@ If it fails:
 - Do **not** hardcode project refs or tokens in `.vscode/mcp.json`.
 - Do **not** change `.vscode/mcp.json` to switch environments; switch by choosing `supabase-e2e` vs `supabase-dev`, or by editing the gitignored env files.
 - If you need to rotate tokens, rotate only in `.env.e2e.local` / `.env.local` or your shell env (never commit secrets).
+- If you use the prompt-based server, do **not** paste production refs/tokens into the prompt.
 
 #### Canonical flow (how changes reach production)
 
@@ -166,4 +178,8 @@ Set once per machine in WSL:
 ```bash
 echo 'export SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"' >> ~/.bashrc
 source ~/.bashrc
+
+### Option C (prompt-based)
+
+Use the `supabase` MCP server and paste the token into the prompt when starting the server.
 ```
