@@ -20,8 +20,14 @@ jobs:
     steps:
       - name: Check required secrets
         run: |
-          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ] || [ -z "${{ secrets.SUPABASE_DB_PASSWORD }}" ] || [ -z "${{ secrets.SUPABASE_PROJECT_REF }}" ]; then
-            echo "Required Supabase secrets are missing. Aborting migration."
+          set -euo pipefail
+          missing=()
+          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then missing+=("SUPABASE_ACCESS_TOKEN"); fi
+          if [ -z "${{ secrets.SUPABASE_DB_PASSWORD }}" ]; then missing+=("SUPABASE_DB_PASSWORD"); fi
+          if [ -z "${{ secrets.SUPABASE_PROJECT_REF }}" ]; then missing+=("SUPABASE_PROJECT_REF"); fi
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Required Supabase secrets are missing: ${missing[*]}"
+            echo "Fix: Configure these in GitHub -> Settings -> Environments -> supabase-production -> Environment secrets."
             exit 1
           fi
 
@@ -52,8 +58,10 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
+          set -euo pipefail
           echo "=== Linking to Supabase Project ==="
-          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          echo "Project ref: $SUPABASE_PROJECT_REF"
+          supabase --debug link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
           echo "✓ Successfully linked to project"
 
       - name: List pending migrations
@@ -61,6 +69,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
+          set -euo pipefail
           echo "=== Migration Status ==="
           echo "Local migrations detected: $(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l)"
           supabase migration list || echo "Warning: Could not list migrations"
@@ -71,9 +80,10 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
+          set -euo pipefail
           echo "=== Applying Migrations to Production ==="
-          echo "Command: supabase db push --yes"
-          if supabase db push --yes; then
+          echo "Command: supabase --debug db push --yes"
+          if supabase --debug db push --yes; then
             echo "✓ Migrations applied successfully"
           else
             echo "✗ Migration failed - check logs above for details"
