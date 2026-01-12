@@ -5,3 +5,6 @@ node_modules
 supabase/.temp
 .artifacts
 _tmp_*
+
+# Generated
+pnpm-lock.yaml

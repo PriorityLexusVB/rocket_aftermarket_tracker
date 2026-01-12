@@ -406,7 +406,6 @@ export default function LoanerManagementDrawer() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   )

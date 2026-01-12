@@ -169,6 +169,16 @@ jobs:
             pnpm run db:seed-e2e || echo "::warning::Seed failed, continuing anyway"
           fi
 
+      - name: Debug - effective PLAYWRIGHT_BASE_URL
+        if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5174
+        run: |
+          set -euo pipefail
+          echo "::group::Playwright base URL"
+          echo "PLAYWRIGHT_BASE_URL=${PLAYWRIGHT_BASE_URL}"
+          echo "::endgroup::"
+
       - name: Run E2E smoke tests (fast subset)
         if: steps.changes.outputs.run_e2e == 'true' && steps.check-secrets.outputs.secrets_available == 'true'
         env:
@@ -340,6 +350,16 @@ jobs:
             echo "Seeding E2E test data (products, vendors, etc.)"
             pnpm run db:seed-e2e || echo "::warning::Seed failed, continuing anyway"
           fi
+
+      - name: Debug - effective PLAYWRIGHT_BASE_URL
+        if: steps.check-secrets.outputs.secrets_available == 'true'
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5174
+        run: |
+          set -euo pipefail
+          echo "::group::Playwright base URL"
+          echo "PLAYWRIGHT_BASE_URL=${PLAYWRIGHT_BASE_URL}"
+          echo "::endgroup::"
 
       - name: Run E2E tests (full suite)
         if: steps.check-secrets.outputs.secrets_available == 'true'

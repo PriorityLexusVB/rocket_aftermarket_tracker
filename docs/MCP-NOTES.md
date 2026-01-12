@@ -39,6 +39,46 @@ Defining the same server in multiple places (global + workspace) causes:
 - Purpose: schema/RLS inspection, query explain, migration planning support
 - Repo-specific: must not be configured globally (prevents wrong project connections)
 
+#### Supabase project selection (dev/E2E only)
+
+This repo auto-loads the Supabase project ref for MCP from `.env.e2e.local` via `scripts/mcp/supabase-mcp.sh`.
+
+- Add this to `.env.e2e.local` (gitignored):
+
+```bash
+SUPABASE_PROJECT_REF="<your_non_prod_project_ref>"
+```
+
+Optional (if you want quick switching without editing values):
+
+```bash
+# Choose one at runtime: e2e (default) | dev | staging
+MCP_ENV="e2e"
+
+SUPABASE_PROJECT_REF_E2E="<your_e2e_project_ref>"
+SUPABASE_PROJECT_REF_DEV="<your_dev_project_ref>"
+SUPABASE_PROJECT_REF_STAGING="<your_staging_project_ref>"
+```
+
+- Known production refs are **hard-blocked** by the script to prevent accidental prod access.
+
+#### Two MCP options (no switching)
+
+This repo defines **two** Supabase MCP servers in [.vscode/mcp.json](.vscode/mcp.json):
+
+- `supabase-e2e` → loads `.env.e2e.local`
+- `supabase-dev` → loads `.env.local`
+
+Pick the one you want in the MCP server list in VS Code; no env toggling required.
+
+#### Canonical flow (how changes reach production)
+
+- Use Supabase MCP against **non-production** (dev/e2e/staging) to inspect schema/RLS and to plan the smallest safe change.
+- Implement code changes + any required **new** migration file under `supabase/migrations/`.
+- Open PR → review → merge → your normal CI/deploy process applies migrations to production.
+
+MCP is intentionally **not** the “push to prod” mechanism.
+
 ### Playwright MCP (optional)
 
 - Purpose: E2E debugging, UI reproduction flows
@@ -71,19 +111,19 @@ VS Code validates `.vscode/mcp.json` against its own schema.
 
 ## Supabase token setup (recommended)
 
-The workspace config references `SUPABASE_ACCESS_TOKEN`.
+The workspace Supabase MCP wrapper (`scripts/mcp/supabase-mcp.sh`) loads `SUPABASE_ACCESS_TOKEN`.
 
-### Option A (prompt per machine)
+### Option A (recommended: no prompts)
 
-If `.vscode/mcp.json` uses `${input:SUPABASE_ACCESS_TOKEN}`, VS Code will prompt you when the server starts.
+Put your token in `.env.e2e.local` (gitignored):
 
-### Option B (no prompts; easiest across multiple computers)
+```bash
+SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"
+```
 
-Switch `.vscode/mcp.json` to use env:
+### Option B (no prompts; machine-global)
 
-- `SUPABASE_ACCESS_TOKEN: "${env:SUPABASE_ACCESS_TOKEN}"`
-
-Then set once per machine in WSL:
+Set once per machine in WSL:
 
 ```bash
 echo 'export SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"' >> ~/.bashrc

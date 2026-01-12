@@ -4,20 +4,36 @@
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp"
     },
-    "supabase": {
+    "supabase-e2e": {
       "type": "stdio",
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "@supabase/mcp-server-supabase@0.5.10",
-        "--project-ref",
-        "ogjtmtndgiqqdtwatsue",
-        "--features",
-        "account,docs,database,debugging,development,functions,storage,branching",
-        "--api-url",
-        "https://api.supabase.com"
+        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
+        ".env.e2e.local"
       ],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "${input:SUPABASE_ACCESS_TOKEN}",
+        "npm_config_yes": "true"
+      }
+    },
+    "supabase-dev": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
+        ".env.local"
+      ],
+      "env": {
+        "npm_config_yes": "true"
+      }
+    },
+    "supabase": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
+        ".env.e2e.local"
+      ],
+      "env": {
         "npm_config_yes": "true"
       }
     },
@@ -30,12 +46,5 @@
       }
     }
   },
-  "inputs": [
-    {
-      "id": "SUPABASE_ACCESS_TOKEN",
-      "type": "promptString",
-      "description": "Personal access token for Supabase API",
-      "password": true
-    }
-  ]
+  "inputs": []
 }

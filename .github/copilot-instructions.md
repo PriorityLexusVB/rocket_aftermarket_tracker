@@ -321,6 +321,7 @@ Change: [description of minimal change]
 ## GitOps Mode (Enabled)
 
 Agents may execute safe git commands to keep the tree clean and verification repeatable:
+
 - status/diff/restore/clean (with .env excludes), add/commit after verification.
 
 Do not run history-rewrite commands (reset --hard, rebase, force push) unless the user explicitly requests it.
