@@ -7,7 +7,10 @@
     "supabase-e2e": {
       "type": "stdio",
       "command": "bash",
-      "args": ["${workspaceFolder}/scripts/mcp/supabase-mcp.sh", ".env.e2e.local"],
+      "args": [
+        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
+        ".env.e2e.local"
+      ],
       "env": {
         "npm_config_yes": "true"
       }
@@ -15,7 +18,10 @@
     "supabase-dev": {
       "type": "stdio",
       "command": "bash",
-      "args": ["${workspaceFolder}/scripts/mcp/supabase-mcp.sh", ".env.local"],
+      "args": [
+        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
+        ".env.local"
+      ],
       "env": {
         "npm_config_yes": "true"
       }
@@ -23,7 +29,10 @@
     "supabase": {
       "type": "stdio",
       "command": "bash",
-      "args": ["${workspaceFolder}/scripts/mcp/supabase-mcp.sh", ".env.e2e.local"],
+      "args": [
+        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
+        ".env.e2e.local"
+      ],
       "env": {
         "npm_config_yes": "true"
       }
