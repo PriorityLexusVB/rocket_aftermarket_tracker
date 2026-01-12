@@ -96,19 +96,31 @@ export function getEffectiveScheduleWindow(job) {
 }
 
 // Derive filtered list
-export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: nowOverride } = {}) {
+export function applyFilters(
+  rows,
+  { q, status, dateRange, vendorFilter, assignee, deliveryCoordinatorId, now: nowOverride } = {}
+) {
   const now = nowOverride instanceof Date ? nowOverride : new Date()
   const rangeStart = zonedStartOfDay(now, TZ)
   const rangeEnd =
     dateRange === 'today'
       ? zonedStartOfNextDay(now, TZ, 1)
-      : dateRange === 'next7days'
-        ? zonedStartOfNextDay(now, TZ, 7)
-        : null
+      : dateRange === 'next3days'
+        ? zonedStartOfNextDay(now, TZ, 3)
+        : dateRange === 'next7days'
+          ? zonedStartOfNextDay(now, TZ, 7)
+          : null
 
   return rows.filter((r) => {
-    const jobStatus = r?.raw?.job_status ?? r?.job_status
+    const raw = r?.raw || r
+    const jobStatus = raw?.job_status ?? r?.job_status
     if (status && jobStatus !== status) return false
+
+    if (assignee === 'me') {
+      if (!deliveryCoordinatorId) return false
+      const dcId = raw?.delivery_coordinator_id ?? r?.delivery_coordinator_id
+      if (dcId !== deliveryCoordinatorId) return false
+    }
 
     const vendorId = r?.vendorId ?? r?.vendor_id ?? r?.raw?.vendor_id
     if (vendorFilter && vendorId !== vendorFilter) return false
@@ -148,7 +160,7 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
 }
 
 export default function CalendarAgenda() {
-  const { orgId } = useTenant()
+  const { orgId, session } = useTenant()
   const toast = useToast?.()
   const navigate = useNavigate()
   const location = useLocation()
@@ -181,6 +193,14 @@ export default function CalendarAgenda() {
     if (urlParam) return urlParam
     return typeof localStorage !== 'undefined'
       ? localStorage.getItem('agendaFilter_vendor') || ''
+      : ''
+  })
+
+  const [assignee, setAssignee] = useState(() => {
+    const urlParam = new URLSearchParams(location.search).get('assignee')
+    if (urlParam) return urlParam
+    return typeof localStorage !== 'undefined'
+      ? localStorage.getItem('agendaFilter_assignee') || ''
       : ''
   })
 
@@ -218,6 +238,9 @@ export default function CalendarAgenda() {
 
       if (vendorFilter) localStorage.setItem('agendaFilter_vendor', vendorFilter)
       else localStorage.removeItem('agendaFilter_vendor')
+
+      if (assignee) localStorage.setItem('agendaFilter_assignee', assignee)
+      else localStorage.removeItem('agendaFilter_assignee')
     }
 
     const params = new URLSearchParams(location.search)
@@ -229,11 +252,18 @@ export default function CalendarAgenda() {
     else params.delete('dateRange')
     if (vendorFilter) params.set('vendor', vendorFilter)
     else params.delete('vendor')
+    if (assignee) params.set('assignee', assignee)
+    else params.delete('assignee')
     if (focusId) params.set('focus', focusId)
     const next = params.toString()
     const current = location.search.replace(/^\?/, '')
     if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
-  }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search])
+  }, [q, status, dateRange, vendorFilter, assignee, focusId, navigate, location.search])
+
+  // If the URL/localStorage pins assignee=me but we're not authenticated, clear it.
+  useEffect(() => {
+    if (assignee === 'me' && !session?.user?.id) setAssignee('')
+  }, [assignee, session?.user?.id])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -305,8 +335,16 @@ export default function CalendarAgenda() {
 
   // Group
   const filtered = useMemo(
-    () => applyFilters(jobs, { q, status, dateRange, vendorFilter }),
-    [jobs, q, status, dateRange, vendorFilter]
+    () =>
+      applyFilters(jobs, {
+        q,
+        status,
+        dateRange,
+        vendorFilter,
+        assignee,
+        deliveryCoordinatorId: session?.user?.id || null,
+      }),
+    [jobs, q, status, dateRange, vendorFilter, assignee, session?.user?.id]
   )
   const groups = useMemo(() => {
     const map = new Map()
@@ -420,8 +458,23 @@ export default function CalendarAgenda() {
           >
             <option value="all">All Dates</option>
             <option value="today">Today</option>
+            <option value="next3days">Next 3 Days</option>
             <option value="next7days">Next 7 Days</option>
           </select>
+
+          <button
+            type="button"
+            className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
+            aria-label="Show my next 3 days"
+            onClick={() => {
+              setAssignee('me')
+              setDateRange('next3days')
+            }}
+            disabled={!session?.user?.id}
+            title={session?.user?.id ? 'Filter to your upcoming items' : 'Sign in to use this'}
+          >
+            My Next 3 Days
+          </button>
 
           {/* Filter toggle button */}
           <button
@@ -437,6 +490,17 @@ export default function CalendarAgenda() {
         {/* Collapsible filters panel */}
         {filtersExpanded && (
           <div className="flex items-center gap-4 flex-wrap p-3 bg-gray-50 rounded border">
+            <select
+              aria-label="Filter by assignment"
+              className="border rounded px-2 py-1 bg-white"
+              value={assignee}
+              onChange={(e) => setAssignee(e.target.value)}
+              disabled={!session?.user?.id}
+              title={session?.user?.id ? '' : 'Sign in to filter by assignment'}
+            >
+              <option value="">All Assignments</option>
+              <option value="me">My Items</option>
+            </select>
             <select
               aria-label="Filter by status"
               className="border rounded px-2 py-1 bg-white"
