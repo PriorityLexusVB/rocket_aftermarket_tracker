@@ -22,31 +22,33 @@ let mockProfileResponse = {
   error: null,
 }
 
-vi.mock('../lib/supabase', () => {
-  const mockChain = () => ({
-    from: vi.fn(() => mockChain()),
-    select: vi.fn(() => mockChain()),
-    eq: vi.fn(() => mockChain()),
-    order: vi.fn(() => mockChain()),
-    limit: vi.fn(() => mockChain()),
-    maybeSingle: vi.fn(() => Promise.resolve(mockProfileResponse)),
-  })
+function registerSupabaseMock() {
+  vi.doMock('@/lib/supabase', () => {
+    const mockChain = () => ({
+      from: vi.fn(() => mockChain()),
+      select: vi.fn(() => mockChain()),
+      eq: vi.fn(() => mockChain()),
+      order: vi.fn(() => mockChain()),
+      limit: vi.fn(() => mockChain()),
+      maybeSingle: vi.fn(() => Promise.resolve(mockProfileResponse)),
+    })
 
-  return {
-    supabase: {
-      from: vi.fn(() => mockChain()),
-      auth: {
-        getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
+    return {
+      supabase: {
+        from: vi.fn(() => mockChain()),
+        auth: {
+          getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
+        },
       },
-    },
-    default: {
-      from: vi.fn(() => mockChain()),
-      auth: {
-        getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
+      default: {
+        from: vi.fn(() => mockChain()),
+        auth: {
+          getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
+        },
       },
-    },
-  }
-})
+    }
+  })
+}
 
 // Import functions after mocks are set up.
 // Note: This test file must be resilient to other test files importing dealService first
@@ -66,6 +68,7 @@ beforeEach(async () => {
   }
 
   vi.resetModules()
+  registerSupabaseMock()
   const dealService = await import('../services/dealService')
   isRlsError = dealService.isRlsError
   getOrgContext = dealService.getOrgContext
