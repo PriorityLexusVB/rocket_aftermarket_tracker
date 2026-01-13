@@ -1,6 +1,7 @@
 // src/services/jobService.js
 import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
+import { toDateInputValue } from '@/utils/dateTimeUtils'
 import { syncJobPartsForJob } from './jobPartsService'
 import { z } from 'zod'
 // Typed schemas from Drizzle + Zod (Section 20)
@@ -408,9 +409,7 @@ export const jobService = {
       // More complex: could preserve relative offsets if needed
 
       // Extract date from scheduled_start_time for promised_date field
-      const promisedDate = scheduleData.startTime
-        ? new Date(scheduleData.startTime).toISOString().split('T')[0]
-        : null
+      const promisedDate = scheduleData.startTime ? toDateInputValue(scheduleData.startTime) : null
 
       const updates = scheduledItems.map((item) => ({
         id: item.id,

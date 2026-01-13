@@ -1,6 +1,7 @@
 import React from 'react'
 import { Car, Clock, Calendar, AlertTriangle, Package } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
+import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
   const renderUnassignedJob = (job) => {
@@ -55,12 +56,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
             className={`flex items-center text-xs ${overdue ? 'text-red-600' : 'text-gray-600'}`}
           >
             <Calendar className="h-3 w-3 mr-1" />
-            Promise:{' '}
-            {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-            })}
+            Promise: {formatEtDateLabel(job?.promised_date) || '—'}
             {overdue && (
               <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
                 Overdue

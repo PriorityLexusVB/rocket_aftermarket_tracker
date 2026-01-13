@@ -12,7 +12,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { toUTC } from '../../../lib/time'
+import { combineDateAndTime, toDateInputValue } from '@/utils/dateTimeUtils'
 import { syncJobPartsForJob } from '../../../services/jobPartsService'
 import calendarService from '../../../services/calendarService'
 import productService from '../../../services/productService'
@@ -113,7 +113,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
     if (initialData?.startTime && initialData?.endTime) {
       setDateData((prev) => ({
         ...prev,
-        promised_date: format(new Date(initialData.startTime), 'yyyy-MM-dd'),
+        promised_date: toDateInputValue(initialData.startTime),
       }))
     }
 
@@ -420,26 +420,20 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
         // Create separate job for off-site work
         const isOffSite = item?.off_site_work
 
+        const promisedDate = item?.promised_date || dateData?.promised_date
+
         // Default schedule window when no explicit slot chosen
-        const defaultStartISO = toUTC(
-          new Date(`${item?.promised_date || dateData?.promised_date}T09:00:00`)
-        )
-        const defaultEndISO = toUTC(
-          new Date(`${item?.promised_date || dateData?.promised_date}T09:30:00`)
-        )
+        const defaultStartISO = combineDateAndTime(promisedDate, '09:00')
+        const defaultEndISO = combineDateAndTime(promisedDate, '09:30')
 
         const jobData = {
           title: `${vehicleData?.stock_number}: ${item?.product_name}`,
           description: `${vehicleData?.new_used === 'new' ? 'New' : 'Used'} ${vehicleData?.year} ${vehicleData?.make} ${vehicleData?.model}`,
           vehicle_id: vehicleId,
           vendor_id: isOffSite ? item?.vendor_id : null,
-          scheduled_start_time: initialData?.startTime
-            ? toUTC(new Date(initialData?.startTime))
-            : defaultStartISO,
-          scheduled_end_time: initialData?.endTime
-            ? toUTC(new Date(initialData?.endTime))
-            : defaultEndISO,
-          promised_date: item?.promised_date || dateData?.promised_date,
+          scheduled_start_time: initialData?.startTime || defaultStartISO,
+          scheduled_end_time: initialData?.endTime || defaultEndISO,
+          promised_date: promisedDate,
           job_status: 'pending',
           service_type: isOffSite ? 'off_site' : 'in_house',
           priority: 'medium',

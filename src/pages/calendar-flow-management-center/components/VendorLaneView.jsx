@@ -1,6 +1,7 @@
 import React from 'react'
 import { Building2, Clock, Car, Calendar, AlertTriangle } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
+import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   const renderEventChip = (job) => {
@@ -48,12 +49,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
               </div>
               <div className="flex items-center">
                 <Calendar className="h-3 w-3 mr-1" />
-                Promise:{' '}
-                {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                Promise: {formatEtDateLabel(job?.promised_date) || '—'}
               </div>
             </div>
           </div>

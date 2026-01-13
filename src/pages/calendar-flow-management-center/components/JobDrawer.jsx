@@ -21,6 +21,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
+import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')
@@ -198,7 +199,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
           <div className={`flex items-center ${overdue ? 'text-red-600' : ''}`}>
             <Calendar className="h-4 w-4 mr-2" />
             <span className="text-sm">
-              Promise Date: {new Date(job?.promised_date)?.toLocaleDateString()}
+              Promise Date: {formatEtDateLabel(job?.promised_date) || '—'}
             </span>
             {overdue && <AlertTriangle className="h-4 w-4 ml-2 text-red-500" />}
           </div>
@@ -369,12 +370,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               </div>
               <div className="flex items-center">
                 <Calendar className="h-4 w-4 mr-1" />
-                Promise:{' '}
-                {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+                Promise: {formatEtDateLabel(job?.promised_date) || '—'}
               </div>
             </div>
           </div>

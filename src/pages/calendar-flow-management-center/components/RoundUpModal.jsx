@@ -15,6 +15,7 @@ import {
   RotateCcw,
 } from 'lucide-react'
 import { formatTime, getStatusBadge } from '../../../lib/time'
+import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
@@ -166,10 +167,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           {/* Promise Date */}
           <div className="flex items-center text-gray-600">
             <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-            {new Date(job?.promised_date)?.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}
+            {formatEtDateLabel(job?.promised_date, { weekday: undefined }) || '—'}
           </div>
 
           {/* Location */}
