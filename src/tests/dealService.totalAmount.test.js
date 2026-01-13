@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { supabase } from '@/lib/supabase'
 
-function mockSupabaseForTotalAmountTests() {
-  // Mock supabase client to return total_amount as string (as PostgREST does for DECIMAL types)
-  vi.doMock('@/lib/supabase', () => {
+let originalFrom
+let originalGetUser
+
+describe('dealService - total_amount numeric coercion', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    originalFrom = supabase.from
+    originalGetUser = supabase.auth?.getUser
+
     const mockJobs = [
       {
         id: 'job-1',
@@ -11,6 +19,8 @@ function mockSupabaseForTotalAmountTests() {
         job_status: 'pending',
         created_at: '2025-01-15T10:00:00Z',
         job_parts: [],
+        vehicle: { year: 2025, make: 'Test', model: 'Car', stock_number: 'L25-001' },
+        vendor: null,
       },
     ]
 
@@ -20,123 +30,136 @@ function mockSupabaseForTotalAmountTests() {
         customer_name: 'Test Customer',
         customer_phone: '555-1234',
         customer_email: 'test@example.com',
-        // Supabase returns DECIMAL as string
+        // PostgREST returns DECIMAL as string
         total_amount: '1234.56',
       },
     ]
 
     const mockLoaners = []
 
-    const supabase = {
-      auth: {
-        getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })),
-      },
-      from(table) {
-        if (table === 'jobs') {
-          return {
-            select() {
-              return {
-                in() {
-                  return {
-                    order() {
-                      return Promise.resolve({ data: mockJobs, error: null })
-                    },
-                  }
-                },
-                eq() {
-                  return {
-                    async single() {
-                      return { data: mockJobs[0], error: null }
-                    },
-                  }
-                },
-              }
-            },
-          }
-        }
-        if (table === 'transactions') {
-          return {
-            select() {
-              return {
-                in() {
-                  return Promise.resolve({ data: mockTransactions, error: null })
-                },
-                eq() {
-                  return {
-                    async maybeSingle() {
-                      return { data: mockTransactions[0], error: null }
-                    },
-                  }
-                },
-              }
-            },
-          }
-        }
-        if (table === 'loaner_assignments') {
-          return {
-            select() {
-              return {
-                in() {
-                  return {
-                    is() {
-                      return Promise.resolve({ data: mockLoaners, error: null })
-                    },
-                  }
-                },
-              }
-            },
-          }
-        }
-        if (table === 'job_parts') {
-          return {
-            select() {
-              return {
-                limit() {
-                  return Promise.resolve({ data: [], error: null })
-                },
-              }
-            },
-          }
-        }
-        if (table === 'user_profiles') {
-          return {
-            select() {
-              return {
-                eq() {
-                  return {
-                    async single() {
-                      return { data: { name: 'Test User' }, error: null }
-                    },
-                  }
-                },
-              }
-            },
-          }
-        }
-        // Default fallback
+    // Patch the shared supabase instance so dealService sees these responses.
+    supabase.auth = supabase.auth || {}
+    supabase.auth.getUser = vi.fn(() =>
+      Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })
+    )
+
+    supabase.from = vi.fn((table) => {
+      if (table === 'jobs') {
         return {
-          select: () => ({
-            limit: () => Promise.resolve({ data: [], error: null }),
-          }),
+          select() {
+            return {
+              in() {
+                return {
+                  order() {
+                    return Promise.resolve({ data: mockJobs, error: null })
+                  },
+                }
+              },
+              eq() {
+                return {
+                  async single() {
+                    return { data: mockJobs[0], error: null }
+                  },
+                }
+              },
+            }
+          },
         }
-      },
-    }
+      }
 
-    return { supabase }
-  })
-}
+      if (table === 'transactions') {
+        return {
+          select() {
+            return {
+              in() {
+                return Promise.resolve({ data: mockTransactions, error: null })
+              },
+              eq() {
+                return {
+                  async maybeSingle() {
+                    return { data: mockTransactions[0], error: null }
+                  },
+                  async single() {
+                    return { data: mockTransactions[0], error: null }
+                  },
+                }
+              },
+            }
+          },
+        }
+      }
 
-describe('dealService - total_amount numeric coercion', () => {
-  beforeEach(() => {
-    vi.resetModules()
-    vi.clearAllMocks()
-    mockSupabaseForTotalAmountTests()
+      if (table === 'loaner_assignments') {
+        return {
+          select() {
+            return {
+              in() {
+                return {
+                  is() {
+                    return Promise.resolve({ data: mockLoaners, error: null })
+                  },
+                  // Some code paths may skip returned_at filtering.
+                  then: undefined,
+                }
+              },
+              eq() {
+                return {
+                  is() {
+                    return { maybeSingle: async () => ({ data: null, error: null }) }
+                  },
+                  async maybeSingle() {
+                    return { data: null, error: null }
+                  },
+                }
+              },
+            }
+          },
+        }
+      }
+
+      if (table === 'job_parts') {
+        return {
+          select() {
+            return {
+              limit() {
+                return Promise.resolve({ data: [], error: null })
+              },
+            }
+          },
+        }
+      }
+
+      if (table === 'user_profiles') {
+        return {
+          select() {
+            return {
+              limit() {
+                return Promise.resolve({ data: [], error: null })
+              },
+              eq() {
+                return {
+                  async single() {
+                    return { data: { name: 'Test User' }, error: null }
+                  },
+                }
+              },
+            }
+          },
+        }
+      }
+
+      // Default fallback
+      return {
+        select: () => ({
+          limit: () => Promise.resolve({ data: [], error: null }),
+        }),
+      }
+    })
   })
 
   afterEach(() => {
-    // Important: vi.doMock() persists across the worker unless explicitly undone.
-    // Without this, later tests can accidentally run against this file's supabase mock.
-    vi.unmock('@/lib/supabase')
+    if (originalFrom) supabase.from = originalFrom
+    if (supabase.auth && originalGetUser) supabase.auth.getUser = originalGetUser
   })
 
   it('should convert total_amount from string to number in getAllDeals', async () => {
