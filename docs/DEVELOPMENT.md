@@ -10,7 +10,7 @@ Create a file named `.env.local` at the repo root (same level as `package.json`)
 
 ```
 VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-VITE_SUPABASE_ANON_KEY=ey...YOUR-ANON-KEY
+VITE_SUPABASE_ANON_KEY=YOUR-ANON-KEY
 ```
 
 Notes:
@@ -24,7 +24,7 @@ If you prefer to test without creating the file:
 
 ```powershell
 $env:VITE_SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
-$env:VITE_SUPABASE_ANON_KEY = "ey...YOUR-ANON-KEY"
+$env:VITE_SUPABASE_ANON_KEY = "YOUR-ANON-KEY"
 ```
 
 ## 2) Install and run

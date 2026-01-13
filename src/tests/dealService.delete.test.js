@@ -1,19 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { supabase } from '@/lib/supabase'
+// Import via relative path to avoid the global partial mock in src/tests/setup.ts
+// that mocks '@/services/dealService'.
+import { deleteDeal } from '../services/dealService.js'
 
 describe('dealService.deleteDeal', () => {
-  let deleteDeal
-  let supabase
   let originalFrom
   let originalAuthGetUser
 
   beforeEach(async () => {
-    // Reset module cache so dealService re-imports using this file's supabase mock.
-    vi.resetModules()
-    ;({ supabase } = await import('@/lib/supabase'))
-
-    // Ensure the service and this test share the exact same instance.
-    // The global test setup provides a functional in-memory supabase; here we override
-    // specific methods so we can fully control the call chains and assertions.
+    // Override just the pieces we need for deterministic chain assertions.
     originalFrom = supabase.from
     originalAuthGetUser = supabase.auth?.getUser
 
@@ -22,19 +18,12 @@ describe('dealService.deleteDeal', () => {
     // deleteDeal() reads auth context for diagnostics; keep it harmless.
     supabase.auth.getUser = vi.fn(async () => ({ data: { user: null }, error: null }))
 
-    // Import via relative path to avoid the global partial mock in src/tests/setup.ts
-    // that mocks '@/services/dealService'.
-    ;({ deleteDeal } = await import('../services/dealService.js'))
-
     vi.clearAllMocks()
   })
 
   afterEach(() => {
-    // Restore the shared supabase mock so other test files in the same worker
-    // aren't affected by our local overrides.
-    if (!supabase) return
+    // Restore the shared supabase mock so other test files in the same worker aren't affected.
     supabase.from = originalFrom
-
     if (supabase.auth) {
       if (typeof originalAuthGetUser === 'undefined') {
         delete supabase.auth.getUser

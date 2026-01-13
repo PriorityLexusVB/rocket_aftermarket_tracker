@@ -99,7 +99,7 @@ CI=true bash scripts/verify-schema-cache.sh
 
 ```bash
 export VITE_SUPABASE_URL="https://..."
-export VITE_SUPABASE_ANON_KEY="eyJ..."
+export VITE_SUPABASE_ANON_KEY="YOUR-ANON-KEY"
 CI=true bash scripts/verify-schema-cache.sh
 ```
 

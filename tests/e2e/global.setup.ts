@@ -4,7 +4,7 @@ export default async function globalSetup() {
   const browser = await chromium.launch()
   const page = await browser.newPage()
 
-  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173'
+  const base = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5174'
   await page.goto(base)
 
   const loggedIn = await page
@@ -40,6 +40,6 @@ export default async function globalSetup() {
     await page.waitForLoadState('networkidle')
   }
 
-  await page.context().storageState({ path: 'storageState.json' })
+  await page.context().storageState({ path: 'e2e/storageState.json' })
   await browser.close()
 }

@@ -292,7 +292,7 @@ Optional secrets:
 
 Notes:
 
-- Playwright uses `webServer` to start the app via `pnpm start` on port 5174 (and does not reuse an existing server).
+- Playwright uses `webServer` to start Vite directly (via `pnpm exec vite`) on port 5174 (and does not reuse an existing server).
 - If you change the dev server port, update `PLAYWRIGHT_BASE_URL` in the workflow or `playwright.config.ts`.
 
 ## Environment Health Check (WSL)
