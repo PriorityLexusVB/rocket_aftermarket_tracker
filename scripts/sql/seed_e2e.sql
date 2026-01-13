@@ -62,9 +62,21 @@ set org_id = excluded.org_id,
 -- -----------------------------------------------------------
 
 -- Insert a vehicle (optional)
-insert into public.vehicles (id, stock_number, make, model, year)
-values ('00000000-0000-0000-0000-0000000000d1', 'E2E-STK-1', 'Toyota', 'Camry', 2022)
-on conflict (id) do update set stock_number = excluded.stock_number, make = excluded.make, model = excluded.model, year = excluded.year;
+insert into public.vehicles (id, stock_number, make, model, year, dealer_id)
+values (
+  '00000000-0000-0000-0000-0000000000d1',
+  'E2E-STK-1',
+  'Toyota',
+  'Camry',
+  2022,
+  '00000000-0000-0000-0000-0000000000e2'::uuid
+)
+on conflict (id) do update set
+  stock_number = excluded.stock_number,
+  make = excluded.make,
+  model = excluded.model,
+  year = excluded.year,
+  dealer_id = excluded.dealer_id;
 
 -- Insert a scheduled job within current week/day
 insert into public.jobs (
