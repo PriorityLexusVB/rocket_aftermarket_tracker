@@ -14,6 +14,7 @@ import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import DealFormV2 from '../components/deals/DealFormV2.jsx'
+import { toDateInputValue } from '../utils/dateTimeUtils.js'
 
 // Mock Auth context - use valid UUID format
 vi.mock('../contexts/AuthContext', () => ({
@@ -103,7 +104,7 @@ describe('Step 23: DealFormV2 - Customer Name + Deal Date at top; Vendor per lin
       expect(dealDateInput).toBeDefined()
 
       // Should have today's date as default
-      const today = new Date().toISOString().slice(0, 10)
+      const today = toDateInputValue(new Date())
       expect(dealDateInput.value).toBe(today)
     })
   })

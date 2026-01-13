@@ -13,15 +13,11 @@ describe('toDateInputValue', () => {
     expect(result).toBe('2025-12-12')
   })
 
-  test('handles already formatted YYYY-MM-DD dates (interprets as midnight UTC)', () => {
-    // Note: A date string without time is interpreted as midnight UTC,
-    // which becomes previous day in ET timezone (UTC-5).
-    // This behavior is expected due to timezone conversion, but typically won't occur in practice because:
-    // - Database DATE columns return values without timezone (e.g., "2025-12-12")
-    // - The function is primarily designed for TIMESTAMPTZ values
-    // This test documents the edge case for clarity.
+  test('handles already formatted YYYY-MM-DD dates (date-only; no timezone day-shift)', () => {
+    // Date-only values should remain stable when displayed in ET.
+    // This prevents UI regressions where saving 2026-01-14 shows 2026-01-13 on reload.
     const result = toDateInputValue('2025-12-12')
-    expect(result).toBe('2025-12-11')
+    expect(result).toBe('2025-12-12')
   })
 
   test('returns empty string for null input', () => {
@@ -47,6 +43,11 @@ describe('toDateInputValue', () => {
   test('converts Date object to YYYY-MM-DD format', () => {
     const date = new Date('2025-12-12T18:35:00Z')
     const result = toDateInputValue(date)
+    expect(result).toBe('2025-12-12')
+  })
+
+  test('treats midnight ISO variants as date-only', () => {
+    const result = toDateInputValue('2025-12-12T00:00:00Z')
     expect(result).toBe('2025-12-12')
   })
 })
@@ -116,8 +117,9 @@ describe('Integration: date and time input values', () => {
     const date = toDateInputValue(iso)
     const time = toTimeInputValue(iso)
 
-    expect(date).toBe('2025-12-11') // Previous day in ET
-    expect(time).toBe('19:00') // 7 PM ET previous day
+    // Midnight ISO variants are treated as date-only to avoid day-shift.
+    expect(date).toBe('2025-12-12')
+    expect(time).toBe('')
   })
 
   test('handles end of day UTC correctly', () => {

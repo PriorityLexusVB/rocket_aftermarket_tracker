@@ -228,8 +228,8 @@ export function validateScheduleRange(startIso, endIso) {
 export function toDateInputValue(isoOrDate) {
   if (!isoOrDate) return ''
   try {
-    const d = new Date(isoOrDate)
-    if (isNaN(d.getTime())) return ''
+    const d = toSafeDateForTimeZone(isoOrDate)
+    if (!d) return ''
     // Use en-CA locale which formats as YYYY-MM-DD in local timezone
     return new Intl.DateTimeFormat('en-CA', {
       timeZone: TZ,
@@ -258,6 +258,7 @@ export function toDateInputValue(isoOrDate) {
 export function toTimeInputValue(isoOrDate) {
   if (!isoOrDate) return ''
   try {
+    if (isDateOnlyValue(isoOrDate)) return ''
     const d = new Date(isoOrDate)
     if (isNaN(d.getTime())) return ''
     // Format as HH:mm in local timezone

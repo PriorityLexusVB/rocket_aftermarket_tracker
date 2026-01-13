@@ -69,7 +69,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
   // Customer form data
   const [customerData, setCustomerData] = useState({
     customerName: job?.customer_name || '',
-    dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
+    dealDate: job?.deal_date || toDateInputValue(new Date()),
     jobNumber: job?.job_number || '',
     stockNumber: job?.stock_number || '',
     vin: job?.vehicle?.vin || '',
@@ -169,7 +169,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
     setCustomerData({
       customerName: customerName ? titleCase(customerName) : '',
-      dealDate: job?.deal_date || new Date().toISOString().slice(0, 10),
+      dealDate: job?.deal_date || toDateInputValue(new Date()),
       jobNumber: job?.job_number || '',
       stockNumber: job?.stock_number || job?.stockNumber || '',
       vin: job?.vehicle?.vin || '',
@@ -252,7 +252,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
 
     hasHydratedRef.current = true
 
-    const todayStr = new Date().toISOString().slice(0, 10)
+    const todayStr = toDateInputValue(new Date())
     setLineItems((prev) =>
       prev.map((it) => {
         if (!it?.requiresScheduling) return it
@@ -326,7 +326,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
     // Generate tomorrow's date for default (local timezone, not UTC)
     const tomorrow = new Date()
     tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toLocaleDateString('en-CA') // YYYY-MM-DD format
+    const tomorrowStr = toDateInputValue(tomorrow)
 
     setLineItems((prev) => [
       ...prev,
