@@ -57,6 +57,7 @@ dist/
 build-output.log
 
 # Local temp/artifacts
+.artifacts/
 _tmp_*/
 rocket-aftermarket-tracker@*/
 vite-err.log
@@ -69,6 +70,8 @@ supabase/.temp/
 drizzle/
 
 # allow select VS Code files
+!/.vscode/
+/.vscode/*
 !.vscode/extensions.list
 !.vscode/profiles/
 !.vscode/settings.json

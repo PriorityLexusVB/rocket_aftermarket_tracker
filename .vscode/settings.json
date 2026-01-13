@@ -41,7 +41,7 @@
   "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
   "typescript.tsdk": "node_modules/typescript/lib",
   "testing.defaultGutterClickAction": "run",
-  "vitest.commandLine": "pnpm test -- --watch",
+  "vitest.commandLine": "pnpm test:watch",
   "search.exclude": {
     "dist": true,
     "coverage": true,

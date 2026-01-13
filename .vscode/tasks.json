@@ -19,6 +19,24 @@
       "group": "test"
     },
     {
+      "label": "Test: Vitest (Watch)",
+      "type": "shell",
+      "command": "pnpm test:watch",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": false
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
       "label": "Test: Vitest (Stable)",
       "type": "shell",
       "command": "pnpm -s vitest run",
@@ -96,6 +114,23 @@
       },
       "presentation": {
         "reveal": "never",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Verify: Repo (guard+lint+typecheck+test)",
+      "type": "shell",
+      "command": "pnpm -s verify",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
         "panel": "dedicated",
         "clear": true,
         "focus": false,
