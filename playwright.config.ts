@@ -91,7 +91,8 @@ export default defineConfig({
   webServer: {
     // Launch a fresh Vite dev server with explicit env vars so no .env.local is required in CI/agent
     // Bind to IPv4 to avoid localhost resolving to ::1 in CI.
-    command: 'pnpm start -- --host 127.0.0.1 --port 5174 --strictPort',
+    // Use `pnpm exec vite` so Vite receives flags directly (no extra `--` that can cause it to ignore --port).
+    command: 'pnpm exec vite --host 127.0.0.1 --port 5174 --strictPort',
     port: 5174,
     // CI runners can be slow to install deps + boot Vite (and Playwright will kill the server if it times out).
     timeout: process.env.CI ? 120_000 : 60_000,
