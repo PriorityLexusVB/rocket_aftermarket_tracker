@@ -1545,25 +1545,16 @@ export async function getAllDeals() {
         const transaction = transactions?.find((t) => t?.job_id === job?.id)
         const loaner = loaners?.find((l) => l?.job_id === job?.id)
 
-        // Calculate next promised date from job parts
-        // Normalize date-only strings to local time (no trailing Z) for consistent display
+        // Calculate next promised date from job parts.
+        // Keep this as a DATE-only key (YYYY-MM-DD) to avoid timezone/day-shift bugs.
         const schedulingParts =
           job?.job_parts?.filter((part) => part?.requires_scheduling && part?.promised_date) || []
         const nextPromisedDate =
           schedulingParts?.length > 0
             ? schedulingParts
-                ?.sort((a, b) => {
-                  // Normalize dates for comparison: date-only → local time
-                  const dateA = String(a.promised_date || '')
-                  const dateB = String(b.promised_date || '')
-                  const normA = dateA.includes('T') ? dateA : `${dateA}T00:00:00`
-                  const normB = dateB.includes('T') ? dateB : `${dateB}T00:00:00`
-                  return new Date(normA) - new Date(normB)
-                })
-                ?.map((p) => {
-                  const d = String(p.promised_date || '')
-                  return d.includes('T') ? d : `${d}T00:00:00`
-                })?.[0]
+                ?.map((p) => String(p?.promised_date || '').slice(0, 10))
+                .filter(Boolean)
+                .sort()?.[0]
             : null
 
         // Compute helpful display fields

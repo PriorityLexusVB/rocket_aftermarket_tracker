@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp"
     },
-    "supabase": {
+    "supabase-wrapper": {
       "type": "stdio",
       "command": "bash",
       "args": ["${workspaceFolder}/scripts/mcp/supabase-mcp.sh", ".env.e2e.local"],

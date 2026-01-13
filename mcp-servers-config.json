@@ -9,49 +9,19 @@
     "agentWorkflow": "AGENTS.md"
   },
   "mcpServers": {
-    "supabase": {
+    "supabase-wrapper": {
       "type": "stdio",
-      "command": "npx",
+      "command": "bash",
       "args": [
-        "@supabase/mcp-server-supabase@0.5.10",
-        "--project-ref",
-        "ntpoblmjxfivomcwmjrj",
-        "--features",
-        "account,docs,database,debugging,development,functions,storage,branching",
-        "--api-url",
-        "https://api.supabase.com"
+        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
+        ".env.e2e.local"
       ],
       "env": {
-        "SUPABASE_ACCESS_TOKEN": "${input:SUPABASE_ACCESS_TOKEN}",
         "npm_config_yes": "true"
       },
-      "description": "Supabase MCP server (stdio via npx) for schema/RLS inspection and migration planning",
-      "capabilities": [
-        "list_tables",
-        "list_policies",
-        "list_extensions",
-        "explain_query",
-        "get_table_schema",
-        "get_policy_details",
-        "list_functions",
-        "list_triggers"
-      ],
-      "useCases": [
-        "Schema introspection and validation",
-        "RLS policy verification and auditing",
-        "Query performance analysis with EXPLAIN",
-        "Extension verification (e.g., pg_trgm for full-text search)",
-        "Migration planning and validation",
-        "Relationship inspection for foreign keys"
-      ],
-      "bestPractices": [
-        "Always use read-only operations first before generating migrations",
-        "Run 'NOTIFY pgrst, reload schema' if relationship queries fail",
-        "Verify tenant isolation in RLS policies before deploying",
-        "Capture EXPLAIN ANALYZE output for performance tuning"
-      ],
+      "description": "Supabase MCP server (guarded wrapper) for schema/RLS inspection and migration planning",
       "authenticationRequired": true,
-      "authenticationMethod": "SUPABASE_ACCESS_TOKEN (prompted via VS Code input or provided via env)"
+      "authenticationMethod": "SUPABASE_ACCESS_TOKEN + SUPABASE_PROJECT_REF loaded from .env.e2e.local (gitignored)"
     },
     "github": {
       "type": "http",

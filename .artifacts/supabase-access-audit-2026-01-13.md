@@ -13,7 +13,40 @@ Update (post-audit, applied 2026-01-13):
 - Applied forward-only access alignment migration: `supabase/migrations/20260113213000_align_full_access_rls_and_storage.sql`.
 - Result: removed PUBLIC access to `claim-photos`, removed the `loaner_assignments` `roles={public}` policy, and simplified `vendors`/`products`/`loaner_assignments` to single authenticated full-access policies (org/dealer scoped).
 - Verified locally: `pnpm -s guard:client-env`, `pnpm -s lint`, `pnpm -s test`, `pnpm -s build` all pass.
-- Outstanding: none from the original audit list.
+- Outstanding:
+   - Reconcile the Step B/C “missing” rows below (they were captured pre-repair and are now stale).
+   - Optional decision: whether to revoke remaining `anon` EXECUTE on health/perf wrapper RPCs.
+
+## Post-repair reconciliation (2026-01-13)
+
+The Step B/C tables below originally recorded the **pre-repair** state.
+After applying the migrations listed above, the following previously-missing objects are expected to exist.
+
+### Previously-missing tables restored
+
+- `claims`
+- `claim_attachments`
+- `filter_presets`
+- `notification_outbox`
+- `notification_preferences`
+- `sms_templates`
+- `vehicle_products`
+
+Source: `supabase/migrations/20260113190000_repair_missing_feature_tables_and_health_rpcs.sql` and `supabase/migrations/20260113223000_grant_privileges_repaired_feature_tables.sql`.
+
+### Previously-missing RPCs restored
+
+- `bulk_update_jobs`
+- `check_auth_connection` (health wrapper)
+- `generate_claim_number`
+- `generate_export_data`
+- `get_overdue_jobs_enhanced`
+- `notify_schema_reload`
+- `pg_available_extensions` (wrapper)
+- `pg_indexes` (wrapper)
+- `pg_matviews` (wrapper)
+
+Source: `supabase/migrations/20260113190000_repair_missing_feature_tables_and_health_rpcs.sql`.
 
 ---
 

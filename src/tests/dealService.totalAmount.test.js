@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 function mockSupabaseForTotalAmountTests() {
   // Mock supabase client to return total_amount as string (as PostgREST does for DECIMAL types)
@@ -131,6 +131,12 @@ describe('dealService - total_amount numeric coercion', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockSupabaseForTotalAmountTests()
+  })
+
+  afterEach(() => {
+    // Important: vi.doMock() persists across the worker unless explicitly undone.
+    // Without this, later tests can accidentally run against this file's supabase mock.
+    vi.unmock('@/lib/supabase')
   })
 
   it('should convert total_amount from string to number in getAllDeals', async () => {

@@ -8,6 +8,7 @@ import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 import ScheduleBlock from '../../components/deals/ScheduleBlock'
+import { toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -117,6 +118,24 @@ const getDealPromiseIso = (deal) => {
   }
 
   return null
+}
+
+const getEtDayKey = (isoOrDate) => {
+  const d = toSafeDateForTimeZone(isoOrDate)
+  if (!d) return ''
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
+
+const getPromiseDayKey = (deal) => {
+  const iso = getDealPromiseIso(deal)
+  if (!iso) return ''
+  // Deal service may provide YYYY-MM-DD or an ISO string; normalize to day key.
+  return String(iso).slice(0, 10)
 }
 
 const normalizeProductName = (name) => {
@@ -956,9 +975,12 @@ export default function DealsPage() {
       const endOfToday = new Date(now)
       endOfToday.setHours(23, 59, 59, 999)
 
-      const apptStart = deal?.appt_start ? new Date(deal?.appt_start) : null
-      const promiseAt = deal?.next_promised_iso ? new Date(deal?.next_promised_iso) : null
-      const loanerDue = deal?.loaner_eta_return_date ? new Date(deal?.loaner_eta_return_date) : null
+      const todayKey = getEtDayKey(new Date())
+      const apptKey = deal?.appt_start ? getEtDayKey(deal?.appt_start) : ''
+      const promiseKey = getPromiseDayKey(deal)
+      const loanerKey = deal?.loaner_eta_return_date
+        ? getEtDayKey(deal?.loaner_eta_return_date)
+        : ''
       const hasSchedLine = Array.isArray(deal?.job_parts)
         ? deal?.job_parts?.some((p) => p?.requires_scheduling)
         : false
@@ -966,19 +988,24 @@ export default function DealsPage() {
 
       switch (filters?.presetView) {
         case 'Today':
-          if (!(apptStart && apptStart >= startOfToday && apptStart <= endOfToday)) return false
+          if (!(apptKey && apptKey === todayKey)) return false
           break
         case 'Past Due':
-          if (!(promiseAt && promiseAt < now)) return false
+          if (!(promiseKey && promiseKey < todayKey)) return false
           break
         case 'Unscheduled':
-          if (!(hasSchedLine && !apptStart)) return false
+          if (!(hasSchedLine && !apptKey)) return false
           break
         case 'Off-site Today': {
           const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
           const hasOff = parts.some((p) => p?.is_off_site)
-          const isToday = (d) => d && d >= startOfToday && d <= endOfToday
-          if (!(hasOff && (isToday(apptStart) || isToday(promiseAt)))) return false
+          if (
+            !(
+              hasOff &&
+              ((apptKey && apptKey === todayKey) || (promiseKey && promiseKey === todayKey))
+            )
+          )
+            return false
           break
         }
         case 'Awaiting Vendor/Parts': {
@@ -998,13 +1025,10 @@ export default function DealsPage() {
           if (!hasActiveLoaner) return false
           break
         case 'Loaners Due':
-          if (
-            !(hasActiveLoaner && loanerDue && loanerDue >= startOfToday && loanerDue <= endOfToday)
-          )
-            return false
+          if (!(hasActiveLoaner && loanerKey && loanerKey === todayKey)) return false
           break
         case 'Loaners Overdue':
-          if (!(hasActiveLoaner && loanerDue && loanerDue < startOfToday)) return false
+          if (!(hasActiveLoaner && loanerKey && loanerKey < todayKey)) return false
           break
         default:
           break
@@ -1078,18 +1102,12 @@ export default function DealsPage() {
       }
     }
 
-    // Promise date range filter
+    // Promise date range filter (date-only, YYYY-MM-DD)
     if (filters?.promiseStartDate || filters?.promiseEndDate) {
-      const promiseAt = deal?.next_promised_iso ? new Date(deal?.next_promised_iso) : null
-      if (!promiseAt) return false
-      if (filters?.promiseStartDate) {
-        const start = new Date(filters.promiseStartDate + 'T00:00:00')
-        if (promiseAt < start) return false
-      }
-      if (filters?.promiseEndDate) {
-        const end = new Date(filters.promiseEndDate + 'T23:59:59.999')
-        if (promiseAt > end) return false
-      }
+      const promiseKey = getPromiseDayKey(deal)
+      if (!promiseKey) return false
+      if (filters?.promiseStartDate && promiseKey < filters.promiseStartDate) return false
+      if (filters?.promiseEndDate && promiseKey > filters.promiseEndDate) return false
     }
 
     // ✅ UPDATED: Search filter with debounced search (matches stock, name, phone with stripped non-digits)
