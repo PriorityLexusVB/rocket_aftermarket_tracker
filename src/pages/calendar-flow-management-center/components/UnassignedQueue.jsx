@@ -5,7 +5,8 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
   const renderUnassignedJob = (job) => {
-    const overdue = isOverdue(job?.promised_date)
+    const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+    const overdue = isOverdue(promise)
     const statusBadge = getStatusBadge(job?.job_status)
 
     return (
@@ -56,7 +57,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
             className={`flex items-center text-xs ${overdue ? 'text-red-600' : 'text-gray-600'}`}
           >
             <Calendar className="h-3 w-3 mr-1" />
-            Promise: {formatEtDateLabel(job?.promised_date) || '—'}
+            Promise: {formatEtDateLabel(promise) || '—'}
             {overdue && (
               <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
                 Overdue

@@ -8,7 +8,8 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
     const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500'
     const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500'
-    const overdue = isOverdue(job?.promised_date)
+    const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+    const overdue = isOverdue(promise)
 
     return (
       <div
@@ -49,7 +50,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
               </div>
               <div className="flex items-center">
                 <Calendar className="h-3 w-3 mr-1" />
-                Promise: {formatEtDateLabel(job?.promised_date) || '—'}
+                Promise: {formatEtDateLabel(promise) || '—'}
               </div>
             </div>
           </div>

@@ -58,6 +58,23 @@ NOTIFY pgrst, 'reload schema';
 
 ### 1. Link to Production Supabase Project
 
+Recommended (safer) scripts:
+
+```bash
+# Show which project your CLI is currently targeting
+pnpm -s sb:whoami
+
+# PRODUCTION: requires explicit confirmation
+CONFIRM_PROD=YES pnpm -s sb:link:prod
+```
+
+Notes:
+
+- The `supabase/.temp/project-ref` file is local CLI state; you don’t edit it manually.
+- Any `sb:*:*:prod*` command requires `CONFIRM_PROD=YES` so PROD actions are intentional.
+
+Legacy (direct CLI):
+
 ```bash
 supabase link --project-ref <your-project-ref>
 ```

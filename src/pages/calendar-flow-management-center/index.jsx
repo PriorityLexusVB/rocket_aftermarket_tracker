@@ -186,7 +186,8 @@ const CalendarFlowManagementCenter = () => {
               return jobDate?.toDateString() === today?.toDateString()
             },
             in_progress: () => job?.job_status === 'in_progress',
-            overdue: () => isOverdue(job?.promised_date),
+            overdue: () =>
+              isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt || null),
             no_show: () => job?.job_status === 'no_show',
             completed: () => job?.job_status === 'completed',
           }
@@ -516,7 +517,9 @@ const CalendarFlowManagementCenter = () => {
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
     const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500'
     const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500'
-    const overdue = isOverdue(job?.promised_date)
+    const overdue = isOverdue(
+      job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+    )
 
     return (
       <div
@@ -865,7 +868,7 @@ const CalendarFlowManagementCenter = () => {
               (j) => j?.job_status === 'in_progress'
             )?.length,
             overdue: [...originalJobs, ...originalUnassignedJobs]?.filter((j) =>
-              isOverdue(j?.promised_date)
+              isOverdue(j?.next_promised_iso || j?.promised_date || j?.promisedAt || null)
             )?.length,
             noShow: [...originalJobs, ...originalUnassignedJobs]?.filter(
               (j) => j?.job_status === 'no_show'

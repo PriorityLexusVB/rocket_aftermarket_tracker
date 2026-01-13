@@ -135,6 +135,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
 
   const renderJobRow = (job) => {
     const statusBadge = getStatusBadge(job?.job_status)
+    const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
 
     return (
       <div
@@ -167,7 +168,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           {/* Promise Date */}
           <div className="flex items-center text-gray-600">
             <Calendar className="h-3 w-3 mr-1 text-gray-400" />
-            {formatEtDateLabel(job?.promised_date, { weekday: undefined }) || '—'}
+            {formatEtDateLabel(promise, { weekday: undefined }) || '—'}
           </div>
 
           {/* Location */}

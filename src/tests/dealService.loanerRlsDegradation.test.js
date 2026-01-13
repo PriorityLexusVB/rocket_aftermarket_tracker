@@ -35,6 +35,11 @@ vi.mock('@/lib/supabase', () => ({
 describe('dealService - loaner_assignments RLS degradation', () => {
   let mockSupabase
 
+  const makeThenable = (result, extra = {}) => ({
+    ...extra,
+    then: (onFulfilled, onRejected) => Promise.resolve(result).then(onFulfilled, onRejected),
+  })
+
   beforeEach(async () => {
     sessionStorageMock.clear()
     vi.resetModules()
@@ -56,6 +61,7 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     const mockRlsError = {
       message: 'permission denied for table loaner_assignments',
       code: '42501',
+      status: 403,
     }
 
     // Mock jobs query to succeed
@@ -89,14 +95,16 @@ describe('dealService - loaner_assignments RLS degradation', () => {
       }),
     })
 
-    // Mock loaner_assignments query to fail with RLS error
+    // Mock loaner_assignments query to fail with RLS error.
+    // Supabase query builders are Promise-like (awaitable). Our mock must be awaitable whether
+    // getAllDeals applies an additional `.is('returned_at', null)` filter or not.
+    const loanerResult = { data: null, error: mockRlsError }
     const mockLoanerSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockReturnValue({
-        is: vi.fn().mockResolvedValue({
-          data: null,
-          error: mockRlsError,
-        }),
-      }),
+      in: vi.fn().mockReturnValue(
+        makeThenable(loanerResult, {
+          is: vi.fn().mockReturnValue(makeThenable(loanerResult)),
+        })
+      ),
     })
 
     // Order of mock calls:

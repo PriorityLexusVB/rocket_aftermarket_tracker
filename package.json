@@ -98,7 +98,16 @@
     "e2e:schema:apply": "DOTENV_CONFIG_PATH=.env.e2e.local node -r dotenv/config scripts/applyLineItemSchedulingMigration.mjs",
     "cleanup:old-deals": "node scripts/cleanupOldDeals.cjs",
     "drizzle:generate": "drizzle-kit generate",
-    "drizzle:studio": "drizzle-kit studio"
+    "drizzle:studio": "drizzle-kit studio",
+    "sb:whoami": "bash scripts/supabase/whoami.sh",
+    "sb:link:test": "bash scripts/supabase/link-env.sh test",
+    "sb:link:prod": "bash scripts/supabase/link-env.sh prod",
+    "sb:migration:list:test": "bash scripts/supabase/with-env.sh test -- npx -y supabase@latest migration list --linked",
+    "sb:migration:list:prod": "bash scripts/supabase/with-env.sh prod -- npx -y supabase@latest migration list --linked",
+    "sb:db:push:test": "bash scripts/supabase/with-env.sh test -- npx -y supabase@latest db push",
+    "sb:db:push:test:all": "bash scripts/supabase/with-env.sh test -- npx -y supabase@latest db push --include-all",
+    "sb:db:push:prod": "bash scripts/supabase/with-env.sh prod -- npx -y supabase@latest db push",
+    "sb:db:push:prod:all": "bash scripts/supabase/with-env.sh prod -- npx -y supabase@latest db push --include-all"
   },
   "eslintConfig": {
     "extends": [

@@ -31,7 +31,8 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   if (!isOpen || !job) return null
 
   const statusBadge = getStatusBadge(job?.job_status)
-  const overdue = isOverdue(job?.promised_date)
+  const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+  const overdue = isOverdue(promise)
 
   const quickActions = [
     {
@@ -198,9 +199,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
 
           <div className={`flex items-center ${overdue ? 'text-red-600' : ''}`}>
             <Calendar className="h-4 w-4 mr-2" />
-            <span className="text-sm">
-              Promise Date: {formatEtDateLabel(job?.promised_date) || '—'}
-            </span>
+            <span className="text-sm">Promise Date: {formatEtDateLabel(promise) || '—'}</span>
             {overdue && <AlertTriangle className="h-4 w-4 ml-2 text-red-500" />}
           </div>
         </div>
@@ -370,7 +369,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               </div>
               <div className="flex items-center">
                 <Calendar className="h-4 w-4 mr-1" />
-                Promise: {formatEtDateLabel(job?.promised_date) || '—'}
+                Promise: {formatEtDateLabel(promise) || '—'}
               </div>
             </div>
           </div>
