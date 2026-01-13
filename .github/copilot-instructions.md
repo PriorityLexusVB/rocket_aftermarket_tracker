@@ -14,7 +14,13 @@ Before any multi-step work (especially anything involving Supabase):
 - Run `pnpm -s guard:client-env`.
 - Prefer `pnpm -s lint` and `pnpm -s test` before submitting any PR.
 
-If preflight fails, STOP and fix preflight first.
+See `.github/WORKFLOWS_AGENT_PREFLIGHT.md` for the full checklist.
+
+## 0.2 Supabase MCP Safety (NON-PROD ONLY)
+
+- Supabase MCP must point to non-production by default.
+- Use the wrapper-based server configured in `.vscode/mcp.json` (it reads `.env.e2e.local`).
+- Do not bypass wrapper guardrails (it blocks known production refs).
 
 ## 1. Stack Lock (DO NOT MODIFY)
 
@@ -29,12 +35,6 @@ Data modeling & validation canon (NEW):
 Testing: Vitest (unit), optional Playwright (e2e), no Jest config changes.  
 Package manager: `pnpm` (version pinned in `package.json` + `.nvmrc` Node 20).  
 No dependency removals of critical packages noted under `rocketCritical` key.
-
-## 1.1 Supabase MCP Safety (NON-PROD ONLY)
-
-- Supabase MCP **must** point to non-production by default.
-- Use the wrapper-based server configured in `.vscode/mcp.json` (it reads `.env.e2e.local`).
-- The wrapper hard-blocks known production refs; do not bypass this.
 
 ## 2. Data & Access Rules
 
@@ -156,7 +156,84 @@ For detailed phase descriptions, implementation status, and execution guidelines
 
 ## 16. E2E Testing with Playwright
 
-(unchanged)
+### Test Setup
+
+- **Config**: `playwright.config.ts`
+- **Test Directory**: `e2e/`
+- **Test Command**: `pnpm e2e --project=chromium`
+
+### Environment Variables (Required for E2E)
+
+```bash
+E2E_EMAIL="<supabase_test_user_email>"
+E2E_PASSWORD="<supabase_test_user_password>"
+VITE_SUPABASE_URL="<supabase_project_url>"
+VITE_SUPABASE_ANON_KEY="<supabase_anon_key>"
+VITE_SIMPLE_CALENDAR="true"          # Enables /calendar/agenda route
+VITE_DEAL_FORM_V2="true"             # Enables Deal Form V2
+VITE_ORG_SCOPED_DROPDOWNS="true"     # Org-scoped dropdown queries
+```
+
+### Expected E2E Spec Manifest (27 Core Tests)
+
+| Spec File                         | Test Name                                                                      | Category   |
+| --------------------------------- | ------------------------------------------------------------------------------ | ---------- |
+| `agenda.spec.ts`                  | agenda view renders with flag enabled                                          | Calendar   |
+| `agenda.spec.ts`                  | agenda view handles focus parameter                                            | Calendar   |
+| `agenda.spec.ts`                  | agenda filters persist across navigation                                       | Calendar   |
+| `admin-crud.spec.ts`              | create, edit, and delete a Vendor                                              | Admin      |
+| `admin-crud.spec.ts`              | create, edit, and delete a Product                                             | Admin      |
+| `capability-fallbacks.spec.ts`    | should handle vendor relationship fallback gracefully                          | Capability |
+| `capability-fallbacks.spec.ts`    | should handle scheduled times column missing                                   | Capability |
+| `capability-fallbacks.spec.ts`    | should display diagnostics banner when fallbacks occur                         | Capability |
+| `capability-fallbacks.spec.ts`    | should allow admin to reset capability flags                                   | Capability |
+| `capability-fallbacks.spec.ts`    | should export telemetry data                                                   | Capability |
+| `capability-fallbacks.spec.ts`    | should persist telemetry to localStorage                                       | Capability |
+| `deals-list-refresh.spec.ts`      | should show updated vehicle description, stock, and loaner badge in deals list | Deals      |
+| `deals-redirect.spec.ts`          | saving a new deal redirects to /deals/:id/edit                                 | Deals      |
+| `scheduling-quick-assign.spec.ts` | new pending job appears in Unassigned and can be assigned                      | Scheduling |
+| `snapshot-smoke.spec.ts`          | snapshot view loads successfully                                               | Snapshot   |
+| `snapshot-smoke.spec.ts`          | snapshot view renders key components                                           | Snapshot   |
+| `snapshot-smoke.spec.ts`          | snapshot view handles empty state gracefully                                   | Snapshot   |
+| `snapshot-smoke.spec.ts`          | snapshot view navigation is accessible                                         | Snapshot   |
+| `deal-unsaved-guard.spec.ts`      | Cancel prompts when form is dirty on New Deal                                  | Deals      |
+| `dealform-sticky-footer.spec.ts`  | save button is visible and clickable at 390x844                                | Deals      |
+| `debug-auth.spec.ts`              | debug-auth shows session + org counts                                          | Debug      |
+| `nav-smoke.spec.ts`               | desktop navbar links navigate to expected routes                               | Navigation |
+| `nav-smoke.spec.ts`               | mobile direct route visits resolve                                             | Navigation |
+| `profile-name-fallback.spec.ts`   | missing name -> falls back to full_name                                        | Profile    |
+| `profile-name-fallback.spec.ts`   | missing name and full_name -> falls back to display_name                       | Profile    |
+| `profile-name-fallback.spec.ts`   | only email available -> email local-part used                                  | Profile    |
+| `smoke.spec.ts`                   | app loads                                                                      | Smoke      |
+
+### Running Tests Locally
+
+```bash
+# Install dependencies
+pnpm install
+
+# Install Playwright browsers
+npx playwright install chromium --with-deps
+
+# Run all E2E tests (chromium)
+pnpm e2e --project=chromium
+
+# Run specific spec file
+pnpm e2e --project=chromium e2e/smoke.spec.ts
+
+# Run with UI mode for debugging
+pnpm e2e:ui
+
+# View test report
+npx playwright show-report
+```
+
+### Common Issues & Solutions
+
+1. **`storageState.json` not found**: Global setup failed authentication. Check `E2E_EMAIL`/`E2E_PASSWORD`.
+2. **"permission denied for table users"**: Supabase RLS policies need updating for the test user.
+3. **"Could not find column in schema cache"**: Run `NOTIFY pgrst, 'reload schema'` on Supabase.
+4. **Agenda route 404**: Set `VITE_SIMPLE_CALENDAR=true` to enable the `/calendar/agenda` route.
 
 ---
 
@@ -164,10 +241,694 @@ If any ambiguity arises, agents must prefer READ + PLAN over MODIFY. Provide a p
 
 ## 17. Repo Foreman Operating Modes
 
-(unchanged)
+All Copilot agents acting on this repository must operate as a "Repo Foreman" — a disciplined, safety-first agent that follows the environment canon, respects Aftermarket guardrails, and uses a clear step-based workflow for all changes.
+
+### Mode 1: PR / Diff Review
+
+**Intent:**
+
+- Analyze proposed changes for correctness, safety, and adherence to guardrails.
+- Identify potential issues before merge: RLS violations, tenant scoping gaps, migration conflicts, UI regressions.
+- Provide actionable feedback with minimal suggested diffs when issues are found.
+
+**Risk Areas to Check:**
+
+- **Auth & RLS**: Does the change respect tenant isolation? Are RLS policies preserved or equivalent policies added for new tables?
+- **Migrations**: Are migrations timestamped and non-destructive? Is schema cache reload documented if relationships change?
+- **Pricing & Schedules**: Do deal/job calculations preserve existing logic? Are scheduled times handled correctly with UTC/local conversions?
+- **Dropdowns & Caching**: Are dropdown queries org-scoped? Is the 5-minute TTL cache pattern maintained?
+- **Capability Gating**: Are feature flags checked before accessing gated features?
+
+**Workflow:**
+
+1. Read the diff and identify changed files.
+2. For each file, determine category: component, service, migration, config, test.
+3. Cross-reference against sections 1-16 above (Stack Lock, Data Rules, UI Rules, etc.).
+4. If violations found: output specific line references and minimal corrective diffs.
+5. If acceptable: confirm adherence to guardrails and note any follow-up TODOs.
+
+**Output Format:**
+
+```
+## PR Review: [PR Title]
+
+✅ Guardrails Check:
+- Stack Lock: Preserved
+- Data Rules: Tenant scoping verified in [file:line]
+- UI Rules: All inputs controlled
+- Testing: [test results summary]
+
+⚠️ Issues Found:
+1. [File:Line] - [Issue description]
+   Suggested fix: [minimal diff]
+
+📋 Follow-up TODOs (if any):
+- [ ] [TODO item]
+```
+
+### Mode 2: Failing Tests / Runtime Errors
+
+**Intent:**
+
+- Diagnose test failures and runtime errors with precision.
+- Distinguish between app bugs, test issues, and environment mismatches.
+- Fix the root cause with the smallest possible change.
+
+**Diagnostic Workflow:**
+
+1. **Read error messages**: Examine stack traces, assertion failures, timeout errors.
+2. **Categorize the failure**:
+   - **App bug**: Logic error in component/service code → fix the code.
+   - **Test issue**: Incorrect test expectations, missing mocks, flaky timing → fix the test.
+   - **Environment mismatch**: Missing env var, schema drift, RLS policy mismatch → fix config/schema or document setup steps.
+3. **Locate root cause**: Use git blame, search code for related patterns, check recent commits.
+4. **Apply minimal fix**: Change only the lines necessary to resolve the root cause.
+5. **Re-run tests**: Verify fix with `pnpm test` (Vitest) or `pnpm e2e --project=chromium` (Playwright).
+
+**Risk Areas to Check:**
+
+- **RLS & Permissions**: Does the test user have correct RLS policies? Check "permission denied for table" errors.
+- **Schema Cache**: For "Could not find column/relationship" errors, recommend `NOTIFY pgrst, 'reload schema'`.
+- **Feature Flags**: Are required env vars set? (e.g., `VITE_SIMPLE_CALENDAR=true` for agenda route).
+- **Timing**: Are E2E tests waiting for elements/network? Use Playwright's auto-waiting, avoid arbitrary sleeps.
+
+**Output Format:**
+
+```
+## Test Failure Analysis: [Test Name]
+
+🔍 Error Category: [App Bug | Test Issue | Environment Mismatch]
+
+🐛 Root Cause:
+[Description of the underlying issue]
+
+🔧 Fix Applied:
+File: [path]
+Lines: [line numbers]
+Change: [description of minimal change]
+
+✅ Verification:
+- Command: `pnpm test [spec-file]`
+- Result: [pass count / total]
+```
+
+### Mode 3: Repo Health & Branch Hygiene
+
+**Intent:**
+
+- Provide Git strategy guidance for branch management, merge conflicts, and sync issues.
+
+## GitOps Mode (Enabled)
+
+Agents may execute safe git commands to keep the tree clean and verification repeatable:
+
+- status/diff/restore/clean (with .env excludes), add/commit after verification.
+
+Do not run history-rewrite commands (reset --hard, rebase, force push) unless the user explicitly requests it.
+Always show status before/after cleanup.
+
+**Workflow:**
+
+1. **Assess current state**: Check branch status, divergence from main, merge conflicts.
+2. **Propose safe Git plan**: Provide step-by-step commands (fetch, checkout, rebase/merge) with explanations.
+3. **Highlight risks**: Warn about force-push requirements, potential data loss, or conflicts.
+4. **Output plan only**: Do not run `git` commands via bash; let the user execute them.
+
+**Risk Areas:**
+
+- **Force Push**: Not allowed (no `git reset`, no `git rebase` that rewrites history).
+- **Merge Conflicts**: Cannot resolve automatically; provide guidance and stop.
+- **Protected Files**: Migrations, package.json deps, env keys should not be changed without approval.
+
+**Output Format:**
+
+```
+## Repo Health Plan: [Task Description]
+
+📊 Current State:
+- Branch: [branch-name]
+- Status: [ahead/behind main by X commits]
+- Conflicts: [list files with conflicts, if any]
+
+🛠️ Recommended Git Plan (EXECUTE MANUALLY):
+1. git fetch origin
+2. git checkout [branch-name]
+3. git merge origin/main  # or: git rebase origin/main (if no force-push restrictions)
+4. # Resolve conflicts in: [list files]
+5. git add [resolved-files]
+6. git commit -m "Resolve merge conflicts"
+
+⚠️ Risks:
+- [Any force-push requirements or data loss warnings]
+
+🚫 Abort Conditions:
+- If conflicts cannot be resolved safely, stop and request user guidance.
+```
 
 ---
 
+## 18. Default Workflow for Any Change
+
+Every change — whether code, config, docs, or tests — must follow this 5-step workflow. This ensures consistency, safety, and traceability.
+
+### Step 1: Acknowledge Context
+
+**What to do:**
+
+- Explicitly state the stack: "This is a Vite + React + TailwindCSS + Supabase app, Node 20, pnpm."
+- Mention the feature area: deal form, agenda calendar, dropdown caching, E2E tests, migrations, etc.
+- Reference relevant guardrails sections (1-16) that apply to the change.
+
+**Example:**
+
+```
+Acknowledged: Modifying the deal form autosave logic (Section 3: UI & State Rules).
+Stack: Vite + React + Tailwind + Supabase, Node 20, pnpm.
+Relevant guardrails: Controlled inputs, 600ms debounce, tenant scoping.
+```
+
+### Step 2: Analyze
+
+**What to do:**
+
+- Open only the necessary files: changed files, failing tests, related components/services/config.
+- Inspect existing patterns:
+  - How are similar features implemented?
+  - What hooks/services are already in use? (e.g., `useDealForm`, `dropdownService`, `tenantService`)
+  - Are there capability flags or telemetry in play?
+- Respect tenant/RLS patterns: all queries must include `orgId` or profile context.
+- Check for recent changes via `git log` or blame to understand intent.
+
+**Key Files to Review (as needed):**
+
+- Components: `src/components/`, `src/pages/`
+- Services: `src/services/`, `src/api/`
+- Hooks: `src/hooks/`
+- Config: `vite.config.mjs`, `playwright.config.ts`, `package.json`, `.env.example`
+- Tests: `e2e/`, `tests/`, `src/**/*.test.jsx`
+
+### Step 3: Plan
+
+**What to do:**
+
+- Output a short, numbered plan (3–7 steps).
+- State what will change, in which files, and how to confirm it worked.
+- Identify any tests that need to be added or updated.
+- Call out any rollback strategy if the change is risky.
+
+**Example:**
+
+```
+Plan:
+1. Update `src/hooks/useAutosave.js`: increase debounce from 600ms to 800ms.
+2. Update `src/components/DealForm.jsx`: pass new debounce value to useAutosave.
+3. Update test `tests/useAutosave.test.js`: adjust timing expectations.
+4. Run `pnpm test` to verify no regressions.
+5. Run `pnpm build` to ensure no build errors.
+6. Manual verification: edit a deal, wait 800ms, confirm autosave triggers.
+7. Rollback: revert debounce to 600ms if autosave becomes sluggish.
+```
+
+### Step 4: Patch (Minimal Diffs)
+
+**What to do:**
+
+- Apply the **smallest possible change** to achieve the goal.
+- Preserve existing patterns:
+  - Use existing hooks, services, utility functions.
+  - Maintain telemetry calls (extend, don't break keys).
+  - Keep capability flag checks in place.
+- Do **NOT** add new dependencies, global state, or architectural changes unless explicitly requested.
+- Do **NOT** delete/modify working code unless necessary for the fix.
+
+**Example (minimal diff):**
+
+```diff
+// src/hooks/useAutosave.js
+- const DEBOUNCE_MS = 600;
++ const DEBOUNCE_MS = 800;
+```
+
+**Anti-patterns (avoid these):**
+
+- Adding a new library when existing code can be extended.
+- Refactoring unrelated code "while you're there."
+- Changing global state management without approval.
+- Removing tests or disabling lints to make code pass.
+
+### Step 5: Verify & Report
+
+**What to do:**
+
+- Recommend concrete commands from this repo's scripts:
+  - `pnpm test` (Vitest unit tests)
+  - `pnpm lint` (ESLint)
+  - `pnpm typecheck` (TypeScript)
+  - `pnpm build` (Vite build)
+  - `pnpm e2e --project=chromium` (Playwright E2E tests)
+  - `pnpm e2e --project=chromium e2e/[spec-file].spec.ts` (specific E2E test)
+- Describe at least one manual UI check relevant to the change:
+  - "Navigate to /deals/new, fill out the form, wait 800ms, check autosave indicator."
+  - "Open /calendar/agenda, verify filters persist across navigation."
+- Summarize what changed, why it's safe, and any follow-up TODOs:
+  - "Changed debounce from 600ms to 800ms in useAutosave.js (1 line)."
+  - "Safe because: existing autosave logic is preserved, only timing adjusted."
+  - "Follow-up TODO: Monitor user feedback on autosave responsiveness."
+
+**Output Format:**
+
+```
+## Change Summary: [Brief Title]
+
+📝 What Changed:
+- File: [path]
+- Lines: [line numbers]
+- Change: [description]
+
+🔒 Safety Rationale:
+- Guardrails respected: [list sections]
+- Existing patterns preserved: [list hooks/services/telemetry]
+- No architectural changes
+
+✅ Verification Commands:
+- `pnpm test` → [result]
+- `pnpm lint` → [result]
+- `pnpm build` → [result]
+- `pnpm e2e --project=chromium e2e/[spec].spec.ts` → [result]
+
+🖼️ Manual UI Check:
+- [Step-by-step instructions]
+- Expected result: [description]
+
+📋 Follow-up TODOs (if any):
+- [ ] [TODO item]
+```
+
+---
+
+## 19. Environment Assumptions
+
+All Copilot agents working in this repository should assume the following environment:
+
+### Standard Development Environment
+
+- **Node Version**: 20.x (locked via `.nvmrc`)
+- **Package Manager**: `pnpm` (required; do not use `npm` or `yarn`)
+- **Operating System**: WSL2 (Windows Subsystem for Linux) or native Linux/macOS Node environment
+- **Devcontainers**: Optional (never required; if present in `.devcontainer/`, treat as one possible setup, not mandatory)
+
+### Command Conventions
+
+Always use `pnpm` in all examples and instructions:
+
+```bash
+# Install dependencies
+pnpm install
+
+# Run dev server
+pnpm start
+
+# Run tests
+pnpm test                    # Vitest unit tests
+pnpm e2e --project=chromium  # Playwright E2E tests
+
+# Lint and typecheck
+pnpm lint
+pnpm typecheck
+
+# Build for production
+pnpm build
+```
+
+### Environment Variables
+
+See `.env.example` for required environment variables. Key variables for development:
+
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `VITE_SIMPLE_CALENDAR=true` - Enables `/calendar/agenda` route
+- `VITE_DEAL_FORM_V2=true` - Enables Deal Form V2
+- `VITE_ORG_SCOPED_DROPDOWNS=true` - Enables org-scoped dropdown queries
+
+For E2E tests, also set:
+
+- `E2E_EMAIL` - Test user email
+- `E2E_PASSWORD` - Test user password
+
+### Setup References
+
+For initial setup and troubleshooting, refer to:
+
+- `README.md` - Main setup instructions
+- `DEPLOYMENT_GUIDE.md` - Deployment procedures
+- `RUNBOOK.md` - Operational runbook
+- Section 16 above - E2E Testing with Playwright (common issues & solutions)
+
+### Assumptions About Tooling
+
+- **Git**: Available and configured (see GitOps Mode above for what’s allowed).
+- **Playwright Browsers**: Must be installed via `npx playwright install chromium --with-deps` before running E2E tests.
+- **Database Access**: Supabase project must be running and accessible; for schema changes, use migrations in `supabase/migrations/`.
+
+## 20. Schema & Forms Canon (Drizzle + drizzle-zod + Zod + RHF)
+
+This section defines the **only** allowed way to introduce or refactor Supabase-backed forms going forward.
+
+### 20.1 Source of Truth for Schema
+
+- Supabase remains the **authoritative database** and `supabase/migrations` remain the **authoritative migration history**.
+- Drizzle is used for:
+  - Table definitions and types in `src/db/schema.ts`.
+  - Generating Zod schemas from those tables in `src/db/schemas.ts`.
+- Drizzle **must NOT** be used to change production schema directly:
+  - Do not rely on `drizzle-kit push` to modify Supabase.
+  - All real schema changes STILL go through Supabase migrations per Sections 5–6.
+
+**Agent rules:**
+
+- When adding or updating an entity (`jobs`, `job_parts`, `vendors`, etc.):
+  1. Update Supabase schema via a new migration (per Sections 5–6).
+  2. Mirror that change in `src/db/schema.ts` (Drizzle).
+  3. Regenerate any affected Zod schemas in `src/db/schemas.ts`.
+
+### 20.2 Drizzle Schema Layout
+
+- Drizzle schema lives at: `src/db/schema.ts`.
+- Tables must correspond 1:1 with Supabase tables (same names, same columns, same nullability).
+- Example pattern (conceptual):
+
+````ts
+import {
+  pgTable,
+  serial,
+  text,
+  varchar,
+  integer,
+  boolean,
+  timestamp,
+} from "drizzle-orm/pg-core";
+
+export const jobs = pgTable("jobs", {
+  id: serial("id").primaryKey(),
+  orgId: varchar("org_id", { length: 36 }).notNull(),
+  title: text("title").notNull(),
+  jobNumber: varchar("job_number", { length: 64 }).notNull(),
+  customerNeedsLoaner: boolean("customer_needs_loaner").notNull().default(false),
+  scheduledStartTime: timestamp("scheduled_start_time", { withTimezone: true }),
+  scheduledEndTime: timestamp("scheduled_end_time", { withTimezone: true }),
+  // ... mirror any other existing Supabase columns
+});
+
+-20.3 Zod Schemas via drizzle-zod
+-
+-Zod schemas are generated from Drizzle tables in src/db/schemas.ts using drizzle-zod.
+-
+-Preferred pattern:
+-
+-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+-import { jobs, jobParts, vendors } from "./schema";
+-
+-export const jobInsertSchema = createInsertSchema(jobs);
+-export const jobSelectSchema = createSelectSchema(jobs);
+-export type JobInsert = typeof jobInsertSchema._type;
+-export type Job = typeof jobSelectSchema._type;
+-
+-// Repeat for job_parts, vendors, and any other core tables
+-
+-Agent rules:
+-
+-Do not hand-write new Zod schemas for entities that already have Drizzle tables.
+-
+-If a field changes in Supabase, update Drizzle in schema.ts, then rely on drizzle-zod for Zod.
+-
+-Existing hand-written Zod may remain temporarily, but any major refactor should migrate to this pattern.
+-
+-20.4 React Forms (react-hook-form + Zod)
+-
+-All new or significantly refactored forms must use:
+-
+-react-hook-form for form state.
+-
+-@hookform/resolvers/zod for validation.
+-
+-The generated Zod schemas from src/db/schemas.ts.
+-
+-Canonical pattern:
+-
+-import { useForm } from "react-hook-form";
+-import { zodResolver } from "@hookform/resolvers/zod";
+-import { jobInsertSchema, JobInsert } from "../db/schemas";
+-
+-export function JobForm(props) {
++### 20.3 Zod Schemas via drizzle-zod
++
++Zod schemas are generated from Drizzle tables in `src/db/schemas.ts` using `drizzle-zod`.
++
++**Preferred pattern:**
++
++```ts
++import { createInsertSchema, createSelectSchema } from "drizzle-zod";
++import { jobs, jobParts, vendors } from "./schema";
++
++export const jobInsertSchema = createInsertSchema(jobs);
++export const jobSelectSchema = createSelectSchema(jobs);
++export type JobInsert = typeof jobInsertSchema._type;
++export type Job = typeof jobSelectSchema._type;
++
++// Repeat for job_parts, vendors, and any other core tables
++```
++
++**Agent rules:**
++
++- Do not hand-write new Zod schemas for entities that already have Drizzle tables.
++- If a field changes in Supabase, update Drizzle in `schema.ts`, then rely on drizzle-zod for Zod.
++- Existing hand-written Zod may remain temporarily, but any major refactor should migrate to this pattern.
++
++### 20.4 React Forms (react-hook-form + Zod)
++
++All new or significantly refactored forms must use:
++
++- `react-hook-form` for form state.
++- `@hookform/resolvers/zod` for validation.
++- The generated Zod schemas from `src/db/schemas.ts`.
++
++**Canonical pattern:**
++
++```tsx
++import { useForm } from "react-hook-form";
++import { zodResolver } from "@hookform/resolvers/zod";
++import { jobInsertSchema, JobInsert } from "../db/schemas";
++
++export function JobForm(props) {
+   const {
+     register,
+     handleSubmit,
+     formState: { errors, isSubmitting },
+   } = useForm<JobInsert>({
+     resolver: zodResolver(jobInsertSchema),
+     defaultValues: {
+       customerNeedsLoaner: false,
+       ...props.initialValues,
+     },
+   });
+
+   const onSubmit = handleSubmit(async (data) => {
+     // Pass typed JobInsert to service layer
+     await props.onSave(data);
+   });
+
+   return (
+     <form onSubmit={onSubmit}>
+       {/* Controlled inputs required per Section 3 */}
+       <input {...register("title")} />
+       {errors.title && <span>{errors.title.message}</span>}
+       {/* ...other fields */}
+     </form>
+   );
+-}
+-
+-
+-Guardrails:
+-
+-Forms may not introduce custom adhoc TS interfaces when JobInsert / VendorInsert etc. exist.
+-
+-Validation logic must live in the Zod schema, not duplicated in component code.
+-
+-Keep Section 3 rules: controlled inputs only, respect existing debounce/caching patterns.
+-
+-20.5 Supabase Calls & Types
+-
+-Supabase CRUD continues to use the existing service/lib modules.
+-
+-Data flowing into Supabase must be typed via the Drizzle/Zod types:
+-
+-// services/jobsService.ts
+-import type { JobInsert } from "../db/schemas";
+-import { supabaseClient } from "../lib/supabase";
+-
+-export async function createJob(input: JobInsert) {
+-  const { error } = await supabaseClient.from("jobs").insert(input);
+-  if (error) throw error;
+-}
+-
+-
+-Agent rules:
+-
+-Do not import the Supabase client into React components (Section 2 still applies).
+-
+-Do not construct raw objects with stringly-typed fields when a *Insert type exists.
+-
+-Prefer JobInsert, JobPartInsert, VendorInsert, etc. everywhere you pass data into Supabase.
+-
+-20.6 Drizzle CLI Usage
+-
+-Allowed scripts (to be defined in package.json if not already):
+-
+-"drizzle:generate": "drizzle-kit generate"
+-
+-"drizzle:studio": "drizzle-kit studio"
+-
+-drizzle:generate is used to verify schema.ts is syntactically correct and aligned with Supabase.
+-
+-drizzle:push (or any schema-changing Drizzle command) is NOT allowed against production.
+-
+-All real schema changes go through Supabase migrations and follow Sections 5–6.
+-
+-20.7 Migration & Schema Drift Handling
+-
+-Source of truth for real database changes: supabase/migrations/.
+-
+-If Drizzle schema and Supabase drift:
+-
+-Update Drizzle to match the current Supabase schema.
+-
+-Do not retroactively modify historic migrations.
+-
+-Agents must treat any detected drift as an abort-and-TODO condition unless explicitly requested to resolve it as a dedicated migration PR.
++}
++```
++
++**Guardrails:**
++
++- Forms may not introduce custom adhoc TS interfaces when `JobInsert` / `VendorInsert` etc. exist.
++- Validation logic must live in the Zod schema, not duplicated in component code.
++- Keep Section 3 rules: controlled inputs only, respect existing debounce/caching patterns.
++
++### 20.5 Supabase Calls & Types
++
++Supabase CRUD continues to use the existing service/lib modules.
++
++Data flowing into Supabase must be typed via the Drizzle/Zod types:
++
++```ts
++// services/jobsService.ts
++import type { JobInsert } from "../db/schemas";
++import { supabaseClient } from "../lib/supabase";
++
++export async function createJob(input: JobInsert) {
++  const { error } = await supabaseClient.from("jobs").insert(input);
++  if (error) throw error;
++}
++```
++
++**Agent rules:**
++
++- Do not import the Supabase client into React components (Section 2 still applies).
++- Do not construct raw objects with stringly-typed fields when a `*Insert` type exists.
++- Prefer `JobInsert`, `JobPartInsert`, `VendorInsert`, etc. everywhere you pass data into Supabase.
++
++### 20.6 Drizzle CLI Usage
++
++- Allowed scripts (to be defined in `package.json` if not already):
++  - `"drizzle:generate": "drizzle-kit generate"`
++  - `"drizzle:studio": "drizzle-kit studio"`
++- `drizzle:generate` is used to verify `schema.ts` is syntactically correct and aligned with Supabase.
++- `drizzle:push` (or any schema-changing Drizzle command) is **NOT allowed** against production.
++  - All real schema changes go through Supabase migrations and follow Sections 5–6.
++
++### 20.7 Migration & Schema Drift Handling
++
++- Source of truth for real database changes: `supabase/migrations/`.
++- If Drizzle schema and Supabase drift:
++  - Update Drizzle to match the current Supabase schema.
++  - Do not retroactively modify historic migrations.
++- Agents must treat any detected drift as an **abort-and-TODO** condition unless explicitly requested to resolve it as a dedicated migration PR.
+
+---
+
+End of instructions.
+
+# Copilot Instructions — APP CREATION (Non-Negotiables)
+
+You are working in Rob’s APP CREATION ecosystem.
+
+## Hard rules
+- PR-sized changes only. No large refactors unless explicitly requested.
+- Diff-first: always propose a plan (files + commands) before edits.
+- Do NOT break existing behavior. Prefer additive/backward-compatible changes.
+- After ANY change, run verification commands and fix failures immediately.
+
+## Environment defaults (unless repo explicitly overrides)
+- WSL Ubuntu
+- Node 20 via `.nvmrc`
+- pnpm 10.15 via corepack
+- No Docker/devcontainers by default
+
+## App-wide rules
+- Forms: React Hook Form + Zod are the single source of validation truth.
+- Gamification: do NOT create a parallel points/XP system. Use shared patterns:
+  - game_events, game_profiles, streaks, challenges, achievements, leaderboards
+- Analytics: use analytics_events instead of ad-hoc logging.
+
+## Output format for recommendations
+Return:
+1) Must Fix (correctness/security/production risk)
+2) Should Fix (maintainability/DX)
+3) Nice to Have
+Each item must include:
+- Why it matters
+- Exact file paths
+- Minimal change approach
+- Verification commands
+- Rollback approach
+
+---
+
+## 21. Runtime Debug Default (Chrome DevTools MCP Evidence-First)
+
+When the user reports any runtime/browser issue (keywords: error, failed, 4xx/5xx, 401/403/409, CORS, cookie, blank screen, UI overlap, stale list, didn’t save, console, network):
+- DO NOT guess from source code alone if chrome-devtools MCP tools are available.
+- Collect browser evidence first, then propose the smallest fix.
+
+### Mandatory Evidence Steps (if chrome-devtools tools available)
+1) `list_pages` → select the app tab → `set_active_page`
+2) `take_screenshot`
+3) `list_console_messages` → summarize actionable only (ignore noise)
+4) `list_network_requests` (last 60–80) → table: method | status | url(trim)
+5) For top 1–3 failures (status >= 400): pull full request/response details:
+   - request headers + body
+   - response headers + body
+
+### Output Format (always)
+- Root cause (bullets)
+- Smallest fix (exact file paths + minimal diff)
+- Proof step (how to retest)
+
+### Safety
+- Remote debugging exposes the browser instance. Assume a non-sensitive debug Chrome profile is used.
+
 ## Hard Guardrail: Vite Client Env (NO `process`)
 
-(unchanged)
+**Rule (repo-wide, non-negotiable):** Browser-bundled code in `src/**` must never reference `process`, `process.env`, or `globalThis.process`.
+
+- Use Vite’s env APIs instead:
+  - `import.meta.env.VITE_*` for custom vars
+  - `import.meta.env.MODE`, `import.meta.env.DEV`, `import.meta.env.PROD`
+  - `import.meta.env.VITEST` for Vitest detection
+- Do **not** add Node polyfills to “make it work”. Fix the offending code instead.
+
+**Local enforcement:**
+
+- Run `pnpm guard:client-env` before pushing.
+- CI should treat any failure of this guard as a merge blocker.
+````
