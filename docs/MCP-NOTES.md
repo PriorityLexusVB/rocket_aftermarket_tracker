@@ -19,7 +19,7 @@ Defining the same server in multiple places (global + workspace) causes:
 
 - duplicates in the MCP list
 - servers fighting each other
-- “process exited with code 1”
+- “process exited with code 1/2”
 - connecting to the wrong Supabase project
 
 **Rule:** Workspace `.vscode/mcp.json` is the single source of truth for this repo.
@@ -41,56 +41,26 @@ Defining the same server in multiple places (global + workspace) causes:
 
 #### Supabase project selection (dev/E2E only)
 
-This repo supports **two Supabase MCP styles**:
+This repo uses a **single** Supabase MCP server in `.vscode/mcp.json` that runs the wrapper script:
 
-- **Wrapper-based** servers that auto-load config from `.env.local` / `.env.e2e.local` via `scripts/mcp/supabase-mcp.sh`.
-- A **prompt-based** server (the “old-style” UX) that prompts for project ref + token when you start it.
+- `scripts/mcp/supabase-mcp.sh`
 
-- Add this to `.env.e2e.local` (gitignored):
+That wrapper loads `SUPABASE_PROJECT_REF` and `SUPABASE_ACCESS_TOKEN` from a gitignored env file.
+
+**Recommended:** use `.env.e2e.local` so you never point MCP at production.
+
+Add these to `.env.e2e.local` (gitignored):
 
 ```bash
 SUPABASE_PROJECT_REF="<your_non_prod_project_ref>"
+SUPABASE_ACCESS_TOKEN="<your_supabase_personal_access_token>"
 ```
 
-Optional (if you want quick switching without editing values):
-
-```bash
-# Choose one at runtime: e2e (default) | dev | staging
-MCP_ENV="e2e"
-
-SUPABASE_PROJECT_REF_E2E="<your_e2e_project_ref>"
-SUPABASE_PROJECT_REF_DEV="<your_dev_project_ref>"
-SUPABASE_PROJECT_REF_STAGING="<your_staging_project_ref>"
-```
-
-- Known production refs are **hard-blocked** by the script to prevent accidental prod access.
-
-#### MCP options (pick your UX)
-
-This repo defines multiple Supabase MCP servers in [.vscode/mcp.json](.vscode/mcp.json):
-
-- `supabase` → **prompt-based** (prompts for `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF`)
-- `supabase-e2e` → wrapper-based, loads `.env.e2e.local`
-- `supabase-dev` → wrapper-based, loads `.env.local`
-- `supabase-wrapper` → wrapper-based alias of `.env.e2e.local` (kept for convenience)
-
-Pick the one you want in the MCP server list in VS Code.
+Known production project refs are hard-blocked by the wrapper.
 
 #### Quick verification (don’t guess)
 
-1. Ensure your local env files exist (both are gitignored):
-
-- `.env.e2e.local` for `supabase-e2e`
-- `.env.local` for `supabase-dev`
-
-2. In whichever env file you’re using, set:
-
-```bash
-SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"
-SUPABASE_PROJECT_REF="your_non_prod_project_ref"
-```
-
-3. If you’re using a wrapper-based server (`supabase-e2e`, `supabase-dev`, `supabase-wrapper`), run the wrapper smoke-check:
+Run the wrapper smoke-check:
 
 ```bash
 bash scripts/mcp/supabase-mcp.sh .env.e2e.local --check
@@ -98,28 +68,11 @@ bash scripts/mcp/supabase-mcp.sh .env.e2e.local --check
 
 Expected: `OK: Supabase MCP env validated ...`
 
-If you’re using the prompt-based server (`supabase`), start it in VS Code and enter:
-
-- `SUPABASE_ACCESS_TOKEN` (non-prod token)
-- `SUPABASE_PROJECT_REF` (NON-PROD ONLY)
-
-4. In VS Code, select the matching MCP server (`supabase-e2e` or `supabase-dev`) and ask Copilot to run a harmless read-only call (examples):
-
-- “List Supabase migrations”
-- “Show Supabase security advisors”
-
 If it fails:
 
-- Re-run the `--check` command above.
-- Confirm you are not accidentally pointing at production.
+- Confirm `.env.e2e.local` exists and includes `SUPABASE_PROJECT_REF` + `SUPABASE_ACCESS_TOKEN`.
+- Confirm you don’t have a **global** Supabase MCP server configured.
 - Restart the MCP server after editing env vars.
-
-#### Don’t mess this up again (rules of thumb)
-
-- Do **not** hardcode project refs or tokens in `.vscode/mcp.json`.
-- Do **not** change `.vscode/mcp.json` to switch environments; switch by choosing `supabase-e2e` vs `supabase-dev`, or by editing the gitignored env files.
-- If you need to rotate tokens, rotate only in `.env.e2e.local` / `.env.local` or your shell env (never commit secrets).
-- If you use the prompt-based server, do **not** paste production refs/tokens into the prompt.
 
 #### Canonical flow (how changes reach production)
 
@@ -137,7 +90,6 @@ MCP is intentionally **not** the “push to prod” mechanism.
 ### Chrome DevTools MCP (optional)
 
 - Purpose: evidence-first runtime debugging (console + network)
-- Typically used when chasing browser/runtime issues (4xx/5xx, auth, CORS, blank screens)
 
 #### WSL Remote + Windows Chrome (recommended)
 
@@ -146,8 +98,6 @@ If VS Code is running with the **WSL Remote** extension and Chrome is on **Windo
 - Put the `chrome-devtools` server in Windows user `mcp.json` so it starts from the **LocalProcess extension host**.
 - Use Windows-local debugging URL: `--browser-url=http://127.0.0.1:9222`.
 
-Fallback (only if you must): WSL can reach Windows Chrome via `netsh interface portproxy`, but this is more fragile and easy to misconfigure.
-
 ---
 
 ## Config schema notes
@@ -155,31 +105,4 @@ Fallback (only if you must): WSL can reach Windows Chrome via `netsh interface p
 VS Code validates `.vscode/mcp.json` against its own schema.
 
 - Prefer keeping the workspace config minimal: `type`, `url` (for http), and `command`/`args`/`env` (for stdio).
-- If you see editor warnings about unknown fields in `.vscode/mcp.json` (for example, per-server `version` fields), remove those fields rather than duplicating config elsewhere.
-
----
-
-## Supabase token setup (recommended)
-
-The workspace Supabase MCP wrapper (`scripts/mcp/supabase-mcp.sh`) loads `SUPABASE_ACCESS_TOKEN`.
-
-### Option A (recommended: no prompts)
-
-Put your token in `.env.e2e.local` (gitignored):
-
-```bash
-SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"
-```
-
-### Option B (no prompts; machine-global)
-
-Set once per machine in WSL:
-
-```bash
-echo 'export SUPABASE_ACCESS_TOKEN="PASTE_TOKEN_HERE"' >> ~/.bashrc
-source ~/.bashrc
-
-### Option C (prompt-based)
-
-Use the `supabase` MCP server and paste the token into the prompt when starting the server.
-```
+- If you see editor warnings about unknown fields in `.vscode/mcp.json`, remove those fields rather than duplicating config elsewhere.
