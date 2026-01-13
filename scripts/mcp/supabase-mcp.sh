@@ -87,7 +87,7 @@ fi
 # 1) If VITE_SUPABASE_URL looks like https://<ref>.supabase.co, ensure it matches SUPABASE_PROJECT_REF.
 vite_url_ref=""
 if [[ -n "${VITE_SUPABASE_URL:-}" ]]; then
-  if [[ "${VITE_SUPABASE_URL}" =~ ^https://([a-z0-9]+)\.supabase\.co/?$ ]]; then
+  if [[ "${VITE_SUPABASE_URL}" =~ ^https://([a-z0-9]+)\\.supabase\\.co/?$ ]]; then
     vite_url_ref="${BASH_REMATCH[1]}"
   fi
 fi
@@ -120,7 +120,7 @@ if [[ "$check_only" = "true" ]]; then
   exit 0
 fi
 
-exec npx @supabase/mcp-server-supabase@0.5.10 \
-  --project-ref "$project_ref" \
-  --features account,docs,database,debugging,development,functions,storage,branching \
+exec npx @supabase/mcp-server-supabase@0.5.10 \\
+  --project-ref "$project_ref" \\
+  --features account,docs,database,debugging,development,functions,storage,branching \\
   --api-url https://api.supabase.com
