@@ -8,12 +8,14 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 check_only="false"
+# Defaults to .env.e2e.local unless a different env file is passed.
 env_file_arg=".env.e2e.local"
 
-for arg in "$@"; do
-  case "$arg" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --check)
       check_only="true"
+      shift
       ;;
     -h|--help)
       echo "Usage: scripts/mcp/supabase-mcp.sh [path-to-env-file] [--check]" >&2
@@ -22,7 +24,8 @@ for arg in "$@"; do
       exit 0
       ;;
     *)
-      env_file_arg="$arg"
+      env_file_arg="$1"
+      shift
       ;;
   esac
 done
@@ -31,7 +34,6 @@ done
 # Usage:
 #   scripts/mcp/supabase-mcp.sh [path-to-env-file]
 # Defaults to .env.e2e.local
-env_file_arg="${1:-.env.e2e.local}"
 if [[ "$env_file_arg" = /* ]]; then
   env_file="$env_file_arg"
 else
