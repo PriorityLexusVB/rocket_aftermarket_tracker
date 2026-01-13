@@ -72,4 +72,25 @@ describe('calendar agenda delivery coordinator filter', () => {
 
     expect(out.map((r) => r.id)).toEqual(['job-in'])
   })
+
+  it('includes promised-only items (no scheduled time) in day ranges', () => {
+    const now = new Date('2025-01-01T12:00:00.000Z')
+    const rows = [
+      {
+        id: 'p1',
+        raw: { promised_date: '2025-01-02' },
+        scheduledStart: null,
+        scheduledEnd: null,
+      },
+      {
+        id: 'p2',
+        raw: { promised_date: '2025-02-01' },
+        scheduledStart: null,
+        scheduledEnd: null,
+      },
+    ]
+
+    const filtered = applyFilters(rows, { dateRange: 'next3days', now })
+    expect(filtered.map((r) => r.id)).toEqual(['p1'])
+  })
 })

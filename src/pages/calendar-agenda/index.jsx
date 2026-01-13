@@ -6,14 +6,25 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { jobService } from '@/services/jobService'
 import { calendarService } from '@/services/calendarService'
-import { getScheduleItems } from '@/services/scheduleItemsService'
-import useTenant from '@/hooks/useTenant'
+import { getNeedsSchedulingPromiseItems, getScheduleItems } from '@/services/scheduleItemsService'
+import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
 import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 
 const TZ = 'America/New_York'
+
+function toYmdInTz(date, timeZone) {
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return null
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d)
+}
 
 // Lightweight date key grouping (America/New_York)
 function toDateKey(ts) {
@@ -128,16 +139,30 @@ export function applyFilters(
     const { start: apptStartIso, end: apptEndIso } = r?.scheduledStart
       ? { start: r.scheduledStart, end: r.scheduledEnd }
       : getEffectiveScheduleWindow(r)
-    if (!apptStartIso) return false
+
+    // For day-based views, promised_date is treated as a pure day (no timezone shifting).
+    const promisedVal = raw?.promised_date ?? r?.promisedAt ?? r?.promised_date ?? null
+    const promisedKey = promisedVal ? String(promisedVal).slice(0, 10) : null
+
+    // If it has neither a schedule window nor a promised date, it can't be placed on the Agenda.
+    if (!apptStartIso && !promisedKey) return false
 
     // Date range filter
     if (rangeStart && rangeEnd) {
-      const apptStart = new Date(apptStartIso)
-      const apptEnd = apptEndIso ? new Date(apptEndIso) : apptStart
-      if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false
+      if (apptStartIso) {
+        const apptStart = new Date(apptStartIso)
+        const apptEnd = apptEndIso ? new Date(apptEndIso) : apptStart
+        if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false
 
-      // Overlap: appt_start < rangeEnd AND appt_end > rangeStart
-      if (!(apptStart < rangeEnd && apptEnd > rangeStart)) return false
+        // Overlap: appt_start < rangeEnd AND appt_end > rangeStart
+        if (!(apptStart < rangeEnd && apptEnd > rangeStart)) return false
+      } else if (promisedKey) {
+        const startKey = toYmdInTz(rangeStart, TZ)
+        const endKey = toYmdInTz(rangeEnd, TZ)
+        if (!startKey || !endKey) return false
+        if (promisedKey < startKey) return false
+        if (promisedKey >= endKey) return false
+      }
     }
 
     if (q) {
@@ -160,13 +185,22 @@ export function applyFilters(
 }
 
 export default function CalendarAgenda() {
-  const { orgId, session } = useTenant()
-  const toast = useToast?.()
+  const { orgId, session, userProfile, loading: authLoading, profileLoading } = useAuth()
+  const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
   const [loading, setLoading] = useState(true)
   const [jobs, setJobs] = useState([])
   const [conflicts, setConflicts] = useState(new Map()) // jobId -> boolean
+
+  const isDeliveryCoordinator = useMemo(() => {
+    const dept = String(userProfile?.department || '')
+      .trim()
+      .toLowerCase()
+    return dept === 'delivery coordinator'
+  }, [userProfile?.department])
+
+  const authIsLoading = authLoading || profileLoading
 
   // Initialize filters from URL params, with localStorage fallback
   const [q, setQ] = useState(() => {
@@ -203,6 +237,27 @@ export default function CalendarAgenda() {
       ? localStorage.getItem('agendaFilter_assignee') || ''
       : ''
   })
+
+  // Delivery coordinator view defaults: My items + next 3 days.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const urlDateRange = params.get('dateRange')
+    const urlAssignee = params.get('assignee')
+
+    const storedDateRange =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_dateRange') : null
+    const storedAssignee =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_assignee') : null
+
+    if (!isDeliveryCoordinator) return
+
+    if (!urlDateRange && !storedDateRange && (dateRange === 'all' || !dateRange)) {
+      setDateRange('next3days')
+    }
+    if (!urlAssignee && !storedAssignee && !assignee) {
+      setAssignee('me')
+    }
+  }, [location.search, dateRange, assignee, isDeliveryCoordinator])
 
   // When Supabase env is missing, dev fallback returns empty rows. Make that explicit.
   const supabaseNotice = <SupabaseConfigNotice className="mb-3" />
@@ -279,16 +334,26 @@ export default function CalendarAgenda() {
       const rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
       const rangeEnd = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
 
-      const res = await getScheduleItems({ rangeStart, rangeEnd, orgId })
-      const excluded = new Set(['draft', 'canceled', 'cancelled'])
-      const scheduled = (res?.items || [])
-        .filter(
-          (it) => !excluded.has(String(it?.raw?.job_status || it?.job_status || '').toLowerCase())
-        )
-        .filter((it) => !!(it?.scheduledStart || getEffectiveScheduleWindow(it?.raw)?.start))
+      // Scheduled items (have a schedule window) + promised-only items (no time yet)
+      const [scheduledRes, promisedRes] = await Promise.all([
+        getScheduleItems({ rangeStart, rangeEnd, orgId }),
+        getNeedsSchedulingPromiseItems({ rangeStart, rangeEnd, orgId }),
+      ])
 
-      scheduled.sort((a, b) => new Date(a?.scheduledStart || 0) - new Date(b?.scheduledStart || 0))
-      setJobs(scheduled)
+      const excluded = new Set(['draft', 'canceled', 'cancelled'])
+      const combined = [...(scheduledRes?.items || []), ...(promisedRes?.items || [])].filter(
+        (it) => !excluded.has(String(it?.raw?.job_status || it?.job_status || '').toLowerCase())
+      )
+
+      combined.sort((a, b) => {
+        const aIso = a?.scheduledStart || a?.promisedAt || null
+        const bIso = b?.scheduledStart || b?.promisedAt || null
+        const aMs = aIso ? new Date(aIso).getTime() : 0
+        const bMs = bIso ? new Date(bIso).getTime() : 0
+        return aMs - bMs
+      })
+
+      setJobs(combined)
     } catch (e) {
       console.warn('[agenda] load failed', e)
       setJobs([])
@@ -297,8 +362,9 @@ export default function CalendarAgenda() {
   }, [orgId])
 
   useEffect(() => {
+    if (authIsLoading) return
     load()
-  }, [load])
+  }, [authIsLoading, load])
 
   // Check for conflicts (passive, no blocking)
   useEffect(() => {
@@ -349,7 +415,15 @@ export default function CalendarAgenda() {
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach((j) => {
-      const key = toDateKey(j?.scheduledStart || getEffectiveScheduleWindow(j?.raw || j)?.start)
+      const promisedKey = j?.raw?.promised_date
+        ? String(j.raw.promised_date).slice(0, 10)
+        : j?.promisedAt
+          ? String(j.promisedAt).slice(0, 10)
+          : null
+
+      const key = j?.scheduledStart
+        ? toDateKey(j.scheduledStart)
+        : promisedKey || toDateKey(getEffectiveScheduleWindow(j?.raw || j)?.start)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(j)
     })
@@ -430,6 +504,8 @@ export default function CalendarAgenda() {
     }
   }
 
+  if (authIsLoading) return <div className="p-4">Loading agenda…</div>
+
   if (loading) return <div className="p-4">Loading agenda…</div>
 
   return (
@@ -442,7 +518,7 @@ export default function CalendarAgenda() {
       {/* Header with always-visible search and date range */}
       <header className="space-y-3" aria-label="Agenda controls">
         <div className="flex items-center gap-4 flex-wrap">
-          <h1 className="text-xl font-semibold">Scheduled Appointments</h1>
+          <h1 className="text-xl font-semibold">Appointments</h1>
           <input
             aria-label="Search appointments"
             placeholder="Search"
@@ -520,7 +596,7 @@ export default function CalendarAgenda() {
 
       {groups.length === 0 && (
         <div role="status" aria-live="polite">
-          No appointments in this range.
+          No scheduled or promised items in this range.
         </div>
       )}
       {groups.map(([dateKey, rows]) => (
@@ -534,11 +610,16 @@ export default function CalendarAgenda() {
               const { start, end } = r?.scheduledStart
                 ? { start: r.scheduledStart, end: r.scheduledEnd }
                 : getEffectiveScheduleWindow(raw)
-              const timeRange = formatScheduleRange(start, end)
+              const timeRange = start ? formatScheduleRange(start, end) : null
               const title = raw?.title || raw?.job_number
               const vehicleLabel =
                 r?.vehicleLabel ||
                 `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
+
+              const promisedLabel = !start && (r?.promisedAt || raw?.promised_date)
+              const promisedText = promisedLabel
+                ? `Promised: ${(r?.promisedAt || raw?.promised_date || '').toString().slice(0, 10)}`
+                : null
 
               return (
                 <li
@@ -548,7 +629,6 @@ export default function CalendarAgenda() {
                   aria-label={`Appointment ${title || r.id}`}
                   className={`flex items-center gap-3 px-3 py-2 text-sm ${focused ? 'bg-yellow-50' : ''}`}
                 >
-                  <div className="w-40 text-gray-700 font-mono text-xs">{timeRange}</div>
                   <div className="flex-1">
                     <div className="font-medium truncate flex items-center gap-2">
                       {title}
@@ -562,7 +642,13 @@ export default function CalendarAgenda() {
                         </span>
                       )}
                     </div>
+                    {timeRange && (
+                      <div className="text-xs text-gray-600 font-mono truncate">{timeRange}</div>
+                    )}
                     <div className="text-xs text-gray-500 truncate">{vehicleLabel}</div>
+                    {promisedText && (
+                      <div className="text-xs text-gray-500 truncate">{promisedText}</div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 ml-auto">
                     <button
