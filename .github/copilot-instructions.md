@@ -2,6 +2,26 @@
 
 Authoritative workspace guardrails for any automated coding agent (Copilot Chat, MCP agents, scripted refactors). These rules sit alongside `./.github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md` and MUST be honored. If an agent cannot comply, it must stop and emit a TODO instead of making unsafe changes.
 
+## 0. Model
+
+When asked what model is being used: GPT-5.2.
+
+## 0.1 Agent Preflight (REQUIRED)
+
+Before any multi-step work (especially anything involving Supabase):
+
+- Run `bash scripts/mcp/supabase-mcp.sh --check` and ensure it prints `OK: ...`.
+- Run `pnpm -s guard:client-env`.
+- Prefer `pnpm -s lint` and `pnpm -s test` before submitting any PR.
+
+See `.github/WORKFLOWS_AGENT_PREFLIGHT.md` for the full checklist.
+
+## 0.2 Supabase MCP Safety (NON-PROD ONLY)
+
+- Supabase MCP must point to non-production by default.
+- Use the wrapper-based server configured in `.vscode/mcp.json` (it reads `.env.e2e.local`).
+- Do not bypass wrapper guardrails (it blocks known production refs).
+
 ## 1. Stack Lock (DO NOT MODIFY)
 
 Frontend: Vite 5 + React 18 + TailwindCSS.  

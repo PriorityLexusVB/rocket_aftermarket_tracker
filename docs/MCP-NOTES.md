@@ -63,7 +63,7 @@ Known production project refs are hard-blocked by the wrapper.
 Run the wrapper smoke-check:
 
 ```bash
-bash scripts/mcp/supabase-mcp.sh .env.e2e.local --check
+bash scripts/mcp/supabase-mcp.sh --check
 ```
 
 Expected: `OK: Supabase MCP env validated ...`
@@ -71,6 +71,7 @@ Expected: `OK: Supabase MCP env validated ...`
 If it fails:
 
 - Confirm `.env.e2e.local` exists and includes `SUPABASE_PROJECT_REF` + `SUPABASE_ACCESS_TOKEN`.
+- Confirm `SUPABASE_PROJECT_REF` matches your `VITE_SUPABASE_URL` project ref.
 - Confirm you don’t have a **global** Supabase MCP server configured.
 - Restart the MCP server after editing env vars.
 

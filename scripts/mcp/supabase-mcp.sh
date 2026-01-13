@@ -83,6 +83,29 @@ if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
   exit 2
 fi
 
+# Extra guardrails: avoid common misconfiguration footguns.
+# 1) If VITE_SUPABASE_URL looks like https://<ref>.supabase.co, ensure it matches SUPABASE_PROJECT_REF.
+vite_url_ref=""
+if [[ -n "${VITE_SUPABASE_URL:-}" ]]; then
+  if [[ "${VITE_SUPABASE_URL}" =~ ^https://([a-z0-9]+)\\.supabase\\.co/?$ ]]; then
+    vite_url_ref="${BASH_REMATCH[1]}"
+  fi
+fi
+if [[ -n "$vite_url_ref" && "$vite_url_ref" != "$project_ref" ]]; then
+  echo "ERROR: Project ref mismatch." >&2
+  echo "- SUPABASE_PROJECT_REF=$project_ref" >&2
+  echo "- VITE_SUPABASE_URL implies project ref=$vite_url_ref" >&2
+  echo "Fix: set SUPABASE_PROJECT_REF to match VITE_SUPABASE_URL (or update VITE_SUPABASE_URL)." >&2
+  exit 2
+fi
+
+# 2) Prevent accidentally using the anon key as the Management API token.
+if [[ -n "${VITE_SUPABASE_ANON_KEY:-}" && "${SUPABASE_ACCESS_TOKEN}" == "${VITE_SUPABASE_ANON_KEY}" ]]; then
+  echo "ERROR: SUPABASE_ACCESS_TOKEN is set to VITE_SUPABASE_ANON_KEY." >&2
+  echo "SUPABASE_ACCESS_TOKEN must be a Supabase Personal Access Token (Management API), not the anon key." >&2
+  exit 2
+fi
+
 # Block known production project ref(s)
 case "$project_ref" in
   ogjtmtndgiqqdtwatsue)
@@ -93,11 +116,11 @@ case "$project_ref" in
 esac
 
 if [[ "$check_only" = "true" ]]; then
-  echo "OK: Supabase MCP env validated (project_ref=$project_ref)" >&2
+  echo "OK: Supabase MCP env validated (project_ref=$project_ref, env_file=$env_file)" >&2
   exit 0
 fi
 
-exec npx @supabase/mcp-server-supabase@0.5.10 \
-  --project-ref "$project_ref" \
-  --features account,docs,database,debugging,development,functions,storage,branching \
+exec npx @supabase/mcp-server-supabase@0.5.10 \\
+  --project-ref "$project_ref" \\
+  --features account,docs,database,debugging,development,functions,storage,branching \\
   --api-url https://api.supabase.com
