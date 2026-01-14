@@ -311,7 +311,7 @@ function isoDateKey(d) {
 }
 
 /**
- * Needs Scheduling support: promise-only items with no effective schedule window.
+ * Scheduled (No Time) support: promise-only items with no effective time window.
  *
  * Definition (per requirements):
  * - Has at least one job_part with requires_scheduling = true AND promised_date set

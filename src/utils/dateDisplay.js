@@ -40,7 +40,7 @@ export function formatPromiseDate(promiseDate) {
  *
  * @param {string|null} startTime - ISO datetime string
  * @param {string|null} endTime - ISO datetime string
- * @returns {string} - Formatted time window or "Needs scheduling"
+ * @returns {string} - Formatted time window or "Time TBD"
  */
 export function formatTimeWindow(startTime, endTime) {
   if (!startTime || !endTime) {
