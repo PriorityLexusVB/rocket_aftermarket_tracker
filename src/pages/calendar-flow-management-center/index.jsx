@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Clock,
   Car,
@@ -28,6 +28,29 @@ import JobDrawer from './components/JobDrawer'
 import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 import { useNavigate } from 'react-router-dom'
+import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+
+function getPromiseValue(job) {
+  return job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+}
+
+function toEtDateKey(input) {
+  const d = toSafeDateForTimeZone(input)
+  if (!d) return null
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d)
+
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]))
+  const y = map.year
+  const m = map.month
+  const day = map.day
+  return y && m && day ? `${y}-${m}-${day}` : null
+}
 
 const CalendarFlowManagementCenter = () => {
   const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
@@ -65,7 +88,7 @@ const CalendarFlowManagementCenter = () => {
   // Drag and drop
   const [draggedJob, setDraggedJob] = useState(null)
 
-  // Needs Scheduling queue (promise-only)
+  // Scheduled (No Time) queue (promised day, no schedule window)
   const [needsSchedulingItems, setNeedsSchedulingItems] = useState([])
 
   const { orgId, loading: tenantLoading } = useTenant()
@@ -111,6 +134,40 @@ const CalendarFlowManagementCenter = () => {
         return date
     }
   }, [getViewStartDate, viewMode])
+
+  const viewDateKeys = useMemo(() => {
+    const start = getViewStartDate()
+    if (!start) return new Set()
+
+    if (viewMode === 'day') {
+      const key = toEtDateKey(start)
+      return new Set(key ? [key] : [])
+    }
+
+    if (viewMode === 'week') {
+      const out = new Set()
+      for (let i = 0; i < 6; i++) {
+        const d = new Date(start)
+        d?.setDate(d?.getDate() + i)
+        const key = toEtDateKey(d)
+        if (key) out.add(key)
+      }
+      return out
+    }
+
+    return new Set()
+  }, [getViewStartDate, viewMode])
+
+  const needsSchedulingJobsInView = useMemo(() => {
+    const raws = (needsSchedulingItems || []).map((it) => it?.raw).filter(Boolean)
+    if (!raws.length) return []
+    if (!viewDateKeys || viewDateKeys.size === 0) return []
+
+    return raws.filter((job) => {
+      const key = toEtDateKey(getPromiseValue(job))
+      return !!(key && viewDateKeys.has(key))
+    })
+  }, [needsSchedulingItems, viewDateKeys])
 
   const loadCalendarData = useCallback(async () => {
     if (tenantLoading || !orgId) {
@@ -436,9 +493,20 @@ const CalendarFlowManagementCenter = () => {
           return jobDate?.toDateString() === currentDate?.toDateString()
         })
 
+        const dayKey = toEtDateKey(currentDate)
+        const noTime = (needsSchedulingItems || [])
+          .map((it) => it?.raw)
+          .filter(Boolean)
+          .filter((job) => {
+            const k = toEtDateKey(getPromiseValue(job))
+            return !!(dayKey && k && k === dayKey)
+          })
+
+        const combined = [...(dayJobs || []), ...(noTime || [])]
+
         week?.push({
           date: new Date(currentDate),
-          jobs: dayJobs,
+          jobs: combined,
           isCurrentMonth: currentDate?.getMonth() === monthStart?.getMonth(),
           isToday: currentDate?.toDateString() === new Date()?.toDateString(),
         })
@@ -521,6 +589,12 @@ const CalendarFlowManagementCenter = () => {
       job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     )
 
+    const hasTimeWindow = !!job?.scheduled_start_time
+    const promise = getPromiseValue(job)
+    const noTimeLabel = promise
+      ? `All-day (Time TBD) • ${formatEtDateLabel(promise)}`
+      : 'All-day (Time TBD)'
+
     return (
       <div
         key={job?.id}
@@ -564,7 +638,9 @@ const CalendarFlowManagementCenter = () => {
             <div className="flex items-center space-x-2">
               <div className="flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
-                {formatTime(job?.scheduled_start_time)}–{formatTime(job?.scheduled_end_time)}
+                {hasTimeWindow
+                  ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
+                  : noTimeLabel}
               </div>
             </div>
 
@@ -590,59 +666,109 @@ const CalendarFlowManagementCenter = () => {
 
   const renderWeekView = () => {
     const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const days =
+      viewMode === 'day'
+        ? [new Date(getViewStartDate())]
+        : weekDays.map((_, dayIndex) => {
+            const d = new Date(getViewStartDate())
+            d?.setDate(d?.getDate() + dayIndex)
+            return d
+          })
     const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i) // 8AM to 6PM
 
-    return (
-      <div className="grid grid-cols-7 gap-2 h-full">
-        {/* Time header */}
-        <div className="col-span-1 space-y-12">
-          <div className="h-12"></div> {/* Header spacer */}
-          {timeSlots?.map((hour) => (
-            <div key={hour} className="text-xs text-gray-500 text-right pr-2">
-              {hour}:00
-            </div>
-          ))}
-        </div>
-        {/* Week days */}
-        {weekDays?.map((day, dayIndex) => {
-          const dayDate = new Date(getViewStartDate())
-          dayDate?.setDate(dayDate?.getDate() + dayIndex)
-          const dayJobs = filteredJobs?.filter((job) => {
-            const jobDate = new Date(job?.scheduled_start_time)
-            return jobDate?.toDateString() === dayDate?.toDateString()
+    const dayModeDate = viewMode === 'day' ? days?.[0] : null
+    const dayModeKey = viewMode === 'day' ? toEtDateKey(dayModeDate) : null
+    const dayModeNoTimeJobs =
+      viewMode === 'day'
+        ? (needsSchedulingJobsInView || []).filter((job) => {
+            const k = toEtDateKey(getPromiseValue(job))
+            return !!(dayModeKey && k && k === dayModeKey)
           })
+        : []
 
-          return (
-            <div key={day} className="border-l border-gray-200 pl-2">
-              {/* Day header */}
-              <div className="h-12 border-b border-gray-200 pb-2">
-                <div className="font-medium text-sm">{day}</div>
-                <div className="text-xs text-gray-500">
-                  {dayDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+    return (
+      <div className="h-full">
+        {viewMode === 'day' && dayModeNoTimeJobs?.length > 0 && (
+          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-medium text-gray-900">Scheduled (No Time)</div>
+              <div className="text-xs text-gray-600">{dayModeNoTimeJobs.length} jobs</div>
+            </div>
+            <div className="space-y-2">{dayModeNoTimeJobs.map(renderEventChip)}</div>
+          </div>
+        )}
+
+        <div className={`grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-7'} gap-2 h-full`}>
+          {/* Time header */}
+          <div className="col-span-1 space-y-12">
+            <div className="h-12"></div> {/* Header spacer */}
+            {timeSlots?.map((hour) => (
+              <div key={hour} className="text-xs text-gray-500 text-right pr-2">
+                {hour}:00
+              </div>
+            ))}
+          </div>
+          {/* Days */}
+          {days?.map((dayDate) => {
+            const dayLabel = dayDate?.toLocaleDateString('en-US', { weekday: 'long' })
+            const dayJobs = filteredJobs?.filter((job) => {
+              const jobDate = new Date(job?.scheduled_start_time)
+              return jobDate?.toDateString() === dayDate?.toDateString()
+            })
+
+            const dayKey = toEtDateKey(dayDate)
+            const dayNoTimeJobs = (needsSchedulingJobsInView || []).filter((job) => {
+              const k = toEtDateKey(getPromiseValue(job))
+              return !!(dayKey && k && k === dayKey)
+            })
+
+            return (
+              <div
+                key={dayKey || dayDate?.toISOString?.() || String(dayDate)}
+                className="border-l border-gray-200 pl-2"
+              >
+                {/* Day header */}
+                <div className="h-12 border-b border-gray-200 pb-2">
+                  <div className="font-medium text-sm">{dayLabel}</div>
+                  <div className="text-xs text-gray-500">
+                    {dayDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+                {viewMode !== 'day' && dayNoTimeJobs?.length > 0 && (
+                  <div className="py-2 border-b border-gray-100">
+                    <div className="text-[11px] font-medium text-gray-600 mb-2">
+                      Scheduled (No Time)
+                    </div>
+                    <div className="space-y-2">{dayNoTimeJobs?.map(renderEventChip)}</div>
+                  </div>
+                )}
+                {/* Time slots */}
+                <div className="space-y-12">
+                  {timeSlots?.map((hour) => (
+                    <div
+                      key={`${dayKey || dayLabel}-${hour}`}
+                      className="h-12 border-b border-gray-100 relative"
+                      onDragOver={(e) => e?.preventDefault()}
+                      onDrop={() => {
+                        const slot = new Date(dayDate)
+                        slot?.setHours(hour, 0, 0, 0)
+                        handleDrop(null, slot)
+                      }}
+                    >
+                      {/* Jobs for this time slot */}
+                      {dayJobs
+                        ?.filter((job) => {
+                          const jobStart = new Date(job?.scheduled_start_time)
+                          return jobStart?.getHours() === hour
+                        })
+                        ?.map(renderEventChip)}
+                    </div>
+                  ))}
                 </div>
               </div>
-              {/* Time slots */}
-              <div className="space-y-12">
-                {timeSlots?.map((hour) => (
-                  <div
-                    key={`${day}-${hour}`}
-                    className="h-12 border-b border-gray-100 relative"
-                    onDragOver={(e) => e?.preventDefault()}
-                    onDrop={() => handleDrop(null, new Date(dayDate?.setHours(hour)))}
-                  >
-                    {/* Jobs for this time slot */}
-                    {dayJobs
-                      ?.filter((job) => {
-                        const jobStart = new Date(job?.scheduled_start_time)
-                        return jobStart?.getHours() === hour
-                      })
-                      ?.map(renderEventChip)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
     )
   }
@@ -655,6 +781,24 @@ const CalendarFlowManagementCenter = () => {
 
     return (
       <div className="space-y-4">
+        {needsSchedulingJobsInView?.length > 0 && (
+          <div className="bg-indigo-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="w-4 h-4 bg-indigo-500 rounded mr-3"></div>
+                <h3 className="font-medium">Scheduled (No Time)</h3>
+              </div>
+              <div className="text-sm text-gray-600">
+                {needsSchedulingJobsInView?.length || 0} jobs
+              </div>
+            </div>
+
+            <div className="grid grid-cols-6 gap-2">
+              {needsSchedulingJobsInView?.map(renderEventChip)}
+            </div>
+          </div>
+        )}
+
         {/* On-Site Lane */}
         {(showEmptyLanes || (onSiteJobs && onSiteJobs?.length > 0)) && (
           <div className="bg-green-50 rounded-lg p-4">
@@ -859,7 +1003,11 @@ const CalendarFlowManagementCenter = () => {
           filters={filters}
           onFiltersChange={setFilters}
           jobCounts={{
-            today: [...originalJobs, ...originalUnassignedJobs]?.filter((j) => {
+            today: [
+              ...originalJobs,
+              ...originalUnassignedJobs,
+              ...needsSchedulingJobsInView,
+            ]?.filter((j) => {
               const jobDate = new Date(j?.scheduled_start_time)
               const today = new Date()
               return jobDate?.toDateString() === today?.toDateString()
@@ -867,9 +1015,11 @@ const CalendarFlowManagementCenter = () => {
             inProgress: [...originalJobs, ...originalUnassignedJobs]?.filter(
               (j) => j?.job_status === 'in_progress'
             )?.length,
-            overdue: [...originalJobs, ...originalUnassignedJobs]?.filter((j) =>
-              isOverdue(j?.next_promised_iso || j?.promised_date || j?.promisedAt || null)
-            )?.length,
+            overdue: [
+              ...originalJobs,
+              ...originalUnassignedJobs,
+              ...needsSchedulingJobsInView,
+            ]?.filter((j) => isOverdue(getPromiseValue(j)))?.length,
             noShow: [...originalJobs, ...originalUnassignedJobs]?.filter(
               (j) => j?.job_status === 'no_show'
             )?.length,
@@ -903,7 +1053,7 @@ const CalendarFlowManagementCenter = () => {
                   renderMonthView()
                 ) : filteredJobs?.length +
                     (filters?.showUnassigned ? filteredUnassignedJobs?.length : 0) ===
-                  0 ? (
+                    0 && (needsSchedulingJobsInView?.length || 0) === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center p-8 text-center">
                     <div className="text-lg font-semibold text-gray-900">
                       No jobs this {viewMode === 'day' ? 'day' : 'week'}.
@@ -937,16 +1087,18 @@ const CalendarFlowManagementCenter = () => {
                           }
 
                           toast?.info(
-                            'Needs Scheduling view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
+                            'Scheduled (No Time) view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
                           )
                           navigate('/currently-active-appointments')
                         }}
                         className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
                       >
-                        Go to Needs Scheduling
+                        Go to Scheduled (No Time)
                       </button>
                     </div>
                   </div>
+                ) : viewMode === 'day' ? (
+                  renderWeekView()
                 ) : vendorLanesEnabled ? (
                   <div className="h-full">
                     <div className="flex items-center justify-end px-4 py-3 border-b border-gray-100">

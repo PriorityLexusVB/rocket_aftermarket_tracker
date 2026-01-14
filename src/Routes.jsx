@@ -188,7 +188,14 @@ const Routes = () => {
               {/* Calendar route - redirect to new calendar flow center */}
               <Route
                 path="/calendar"
-                element={<Navigate to="/calendar-flow-management-center" replace />}
+                element={
+                  <Navigate
+                    to={
+                      SimpleAgendaEnabled ? '/calendar/agenda' : '/calendar-flow-management-center'
+                    }
+                    replace
+                  />
+                }
               />
 
               {/* Loaner Management */}
@@ -240,7 +247,14 @@ const Routes = () => {
                 path="/calendar-scheduling-center"
                 element={
                   <ProtectedRoute>
-                    <Navigate to="/calendar-flow-management-center" replace />
+                    <Navigate
+                      to={
+                        SimpleAgendaEnabled
+                          ? '/calendar/agenda'
+                          : '/calendar-flow-management-center'
+                      }
+                      replace
+                    />
                   </ProtectedRoute>
                 }
               />

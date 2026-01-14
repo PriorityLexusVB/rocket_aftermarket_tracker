@@ -49,14 +49,37 @@ function safeDate(input) {
 // Exported to allow unit testing
 export function filterAndSort(jobs) {
   const rows = Array.isArray(jobs) ? jobs : []
-  const filtered = rows.filter(
-    (j) =>
-      (j?.job_status === 'scheduled' || j?.job_status === 'in_progress') && j?.scheduled_start_time
-  )
-  filtered.sort(
-    (a, b) =>
-      new Date(a.scheduled_start_time).getTime() - new Date(b.scheduled_start_time).getTime()
-  )
+  const filtered = rows.filter((j) => {
+    if (!(j?.job_status === 'scheduled' || j?.job_status === 'in_progress')) return false
+    const promised = j?.next_promised_iso || j?.promised_date || j?.promisedAt || null
+    return !!(j?.scheduled_start_time || promised)
+  })
+
+  const effectiveDayMs = (j) => {
+    const start = safeDate(j?.scheduled_start_time)
+    const promised = safeDate(j?.next_promised_iso || j?.promised_date || j?.promisedAt)
+    const base = start || promised
+    if (!base) return null
+    return Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate())
+  }
+
+  const effectiveTimeMs = (j) => {
+    const start = safeDate(j?.scheduled_start_time)
+    return start ? start.getTime() : Number.POSITIVE_INFINITY
+  }
+
+  filtered.sort((a, b) => {
+    const aDay = effectiveDayMs(a) ?? 0
+    const bDay = effectiveDayMs(b) ?? 0
+    if (aDay !== bDay) return aDay - bDay
+
+    const aTime = effectiveTimeMs(a)
+    const bTime = effectiveTimeMs(b)
+    if (aTime !== bTime) return aTime - bTime
+
+    return 0
+  })
+
   return filtered
 }
 
@@ -72,12 +95,14 @@ export function splitSnapshotItems(items, { now = new Date() } = {}) {
 
   for (const it of list) {
     const start = safeDate(it?.scheduledStart)
+    const promised = safeDate(it?.promisedAt)
 
     const state =
       it?.scheduleState ||
       classifyScheduleState({
         scheduledStart: it?.scheduledStart,
         scheduledEnd: it?.scheduledEnd,
+        promisedAt: it?.promisedAt,
         jobStatus: it?.raw?.job_status,
         now: nowDate,
       })
@@ -99,22 +124,47 @@ export function splitSnapshotItems(items, { now = new Date() } = {}) {
       continue
     }
 
-    if (!start) continue
+    // Effective schedule date: scheduled time if present else promised day.
+    const effectiveMs = (() => {
+      if (start) return start.getTime()
+      if (!promised) return null
+      return Date.UTC(promised.getUTCFullYear(), promised.getUTCMonth(), promised.getUTCDate())
+    })()
+    if (!effectiveMs) continue
 
-    if (state === 'scheduled' || state === 'in_progress') upcoming.push(it)
-    else if (state === 'overdue_recent') overdueRecent.push(it)
+    if (state === 'scheduled' || state === 'scheduled_no_time' || state === 'in_progress') {
+      upcoming.push(it)
+    } else if (state === 'overdue_recent') overdueRecent.push(it)
     else if (state === 'overdue_old') overdueOld.push(it)
   }
 
-  const sortByStart = (a, b) => {
-    const aMs = safeDate(a?.scheduledStart)?.getTime() || 0
-    const bMs = safeDate(b?.scheduledStart)?.getTime() || 0
-    return aMs - bMs
+  const sortByEffective = (a, b) => {
+    const aStart = safeDate(a?.scheduledStart)
+    const bStart = safeDate(b?.scheduledStart)
+    const aProm = safeDate(a?.promisedAt)
+    const bProm = safeDate(b?.promisedAt)
+
+    const aBase = aStart || aProm
+    const bBase = bStart || bProm
+    const aDay = aBase
+      ? Date.UTC(aBase.getUTCFullYear(), aBase.getUTCMonth(), aBase.getUTCDate())
+      : 0
+    const bDay = bBase
+      ? Date.UTC(bBase.getUTCFullYear(), bBase.getUTCMonth(), bBase.getUTCDate())
+      : 0
+
+    if (aDay !== bDay) return aDay - bDay
+
+    const aTime = aStart ? aStart.getTime() : Number.POSITIVE_INFINITY
+    const bTime = bStart ? bStart.getTime() : Number.POSITIVE_INFINITY
+    if (aTime !== bTime) return aTime - bTime
+
+    return 0
   }
 
-  upcoming.sort(sortByStart)
-  overdueRecent.sort(sortByStart)
-  overdueOld.sort(sortByStart)
+  upcoming.sort(sortByEffective)
+  overdueRecent.sort(sortByEffective)
+  overdueOld.sort(sortByEffective)
 
   return { upcoming, overdueRecent, overdueOld, unscheduledInProgress }
 }
@@ -222,6 +272,7 @@ export default function SnapshotView() {
         classifyScheduleState({
           scheduledStart: it?.scheduledStart,
           scheduledEnd: it?.scheduledEnd,
+          promisedAt: it?.promisedAt,
           jobStatus: it?.raw?.job_status,
           now,
         })
@@ -289,6 +340,7 @@ export default function SnapshotView() {
             counts: {
               scheduleState: {
                 scheduled: scheduleStateCounts?.scheduled || 0,
+                scheduled_no_time: scheduleStateCounts?.scheduled_no_time || 0,
                 in_progress: scheduleStateCounts?.in_progress || 0,
                 overdue_recent: scheduleStateCounts?.overdue_recent || 0,
                 overdue_old: scheduleStateCounts?.overdue_old || 0,
@@ -338,6 +390,14 @@ export default function SnapshotView() {
       const unscheduledRes = await getUnscheduledInProgressInHouseItems({ orgId })
       const unscheduledItems = Array.isArray(unscheduledRes?.items) ? unscheduledRes.items : []
 
+      // Date-only scheduled (promised day with no time) should still appear in Up Next.
+      const dateOnlyRes = await getNeedsSchedulingPromiseItems({
+        rangeStart: windowStart,
+        rangeEnd: windowEnd,
+        orgId,
+      })
+      const dateOnlyItems = Array.isArray(dateOnlyRes?.items) ? dateOnlyRes.items : []
+
       const combined = [...(upcomingRes.items || []), ...(overdueRes.items || [])]
 
       // De-dupe by id (upcoming and overdue windows can overlap at boundary)
@@ -348,6 +408,10 @@ export default function SnapshotView() {
 
       // Source totals split: scheduled-RPC vs unscheduled-query
       const scheduledRpcUnique = byId.size
+
+      for (const it of dateOnlyItems) {
+        if (it?.id && !byId.has(it.id)) byId.set(it.id, it)
+      }
 
       for (const it of unscheduledItems) {
         if (it?.id && !byId.has(it.id)) byId.set(it.id, it)
@@ -371,9 +435,11 @@ export default function SnapshotView() {
 
         setSourceDebug({
           upcoming: upcomingRes.debug || null,
+          dateOnly: dateOnlyRes?.debug || null,
           overdue: overdueRes.debug || null,
           totals: {
             upcomingItems: (upcomingRes.items || []).length,
+            dateOnlyItems: dateOnlyItems.length,
             overdueItems: (overdueRes.items || []).length,
             combinedUnique: byId.size,
             scheduledRpcUnique,
@@ -382,6 +448,7 @@ export default function SnapshotView() {
           counts: {
             scheduleState: {
               scheduled: scheduleStateCounts?.scheduled || 0,
+              scheduled_no_time: scheduleStateCounts?.scheduled_no_time || 0,
               in_progress: scheduleStateCounts?.in_progress || 0,
               overdue_recent: scheduleStateCounts?.overdue_recent || 0,
               overdue_old: scheduleStateCounts?.overdue_old || 0,
@@ -391,6 +458,7 @@ export default function SnapshotView() {
               job_parts: scheduleSourceCounts?.job_parts || 0,
               job: scheduleSourceCounts?.job || 0,
               legacy_appt: scheduleSourceCounts?.legacy_appt || 0,
+              needs_scheduling_promise: scheduleSourceCounts?.needs_scheduling_promise || 0,
               none: scheduleSourceCounts?.none || 0,
             },
           },
@@ -555,7 +623,7 @@ export default function SnapshotView() {
               }
               aria-pressed={windowMode === 'needs_scheduling'}
             >
-              Needs Scheduling
+              Scheduled (No Time)
             </button>
           </div>
 
@@ -587,7 +655,7 @@ export default function SnapshotView() {
       ) : null}
 
       {import.meta.env.DEV && sourceDebug?.effectiveFilters?.window === 'needs_scheduling' ? (
-        <div className="text-[11px] text-muted-foreground" aria-label="Needs Scheduling Debug">
+        <div className="text-[11px] text-muted-foreground" aria-label="Scheduled (No Time) Debug">
           needs:{JSON.stringify(sourceDebug?.needsScheduling || null)}
         </div>
       ) : null}
@@ -607,14 +675,14 @@ export default function SnapshotView() {
       needsSplit.overdue.length === 0 &&
       needsSplit.upcoming.length === 0 ? (
         <div role="status" aria-live="polite" className="text-muted-foreground">
-          No items need scheduling in this range.
+          No scheduled items without time in this range.
         </div>
       ) : null}
 
       {windowMode === 'needs_scheduling' && needsSplit.overdue.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Overdue (Needs Scheduling)</div>
-          <div className="text-xs text-muted-foreground">Promise date passed</div>
+          <div className="text-foreground font-medium">Overdue (Scheduled, No Time)</div>
+          <div className="text-xs text-muted-foreground">Promised day passed</div>
         </div>
       ) : null}
 
@@ -630,7 +698,7 @@ export default function SnapshotView() {
               <li
                 key={j.id}
                 className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Needs scheduling ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+                aria-label={`Scheduled (no time) ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
                 <div className="w-28 flex items-center gap-2 text-xs text-muted-foreground">
                   <span>{promiseLabel}</span>
@@ -677,8 +745,8 @@ export default function SnapshotView() {
 
       {windowMode === 'needs_scheduling' && needsSplit.upcoming.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Upcoming (Needs Scheduling)</div>
-          <div className="text-xs text-muted-foreground">Next window</div>
+          <div className="text-foreground font-medium">Upcoming (Scheduled, No Time)</div>
+          <div className="text-xs text-muted-foreground">Promised day in range</div>
         </div>
       ) : null}
 
@@ -694,7 +762,7 @@ export default function SnapshotView() {
               <li
                 key={j.id}
                 className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Needs scheduling ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+                aria-label={`Scheduled (no time) ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
                 <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
                   <span>{promiseLabel}</span>
@@ -768,8 +836,10 @@ export default function SnapshotView() {
           {groupedUpcoming.scheduled.length > 0 ? (
             <ul role="list" className="divide-y rounded-lg border border-border bg-card">
               {groupedUpcoming.scheduled.map((j) => {
-                const start = formatTime(j.scheduledStart)
-                const end = formatTime(j.scheduledEnd)
+                const hasTime = !!j?.scheduledStart
+                const start = hasTime ? formatTime(j.scheduledStart) : null
+                const end = hasTime ? formatTime(j.scheduledEnd) : null
+                const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
                 const vendorName = j?.vendorName || 'Unassigned'
                 const customer = j?.customerName || vehicle?.owner_name || ''
@@ -782,8 +852,14 @@ export default function SnapshotView() {
                   >
                     <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
                       <span>
-                        {start}
-                        {end ? ` – ${end}` : ''}
+                        {hasTime ? (
+                          <>
+                            {start}
+                            {end ? ` – ${end}` : ''}
+                          </>
+                        ) : (
+                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                        )}
                       </span>
                       {conflictIds.has(j.id) && (
                         <span
@@ -862,8 +938,10 @@ export default function SnapshotView() {
           {groupedUpcoming.inProgress.length > 0 ? (
             <ul role="list" className="divide-y rounded-lg border border-border bg-card">
               {groupedUpcoming.inProgress.map((j) => {
-                const start = formatTime(j.scheduledStart)
-                const end = formatTime(j.scheduledEnd)
+                const hasTime = !!j?.scheduledStart
+                const start = hasTime ? formatTime(j.scheduledStart) : null
+                const end = hasTime ? formatTime(j.scheduledEnd) : null
+                const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
                 const vendorName = j?.vendorName || 'Unassigned'
                 const customer = j?.customerName || vehicle?.owner_name || ''
@@ -876,8 +954,14 @@ export default function SnapshotView() {
                   >
                     <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
                       <span>
-                        {start}
-                        {end ? ` – ${end}` : ''}
+                        {hasTime ? (
+                          <>
+                            {start}
+                            {end ? ` – ${end}` : ''}
+                          </>
+                        ) : (
+                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                        )}
                       </span>
                       {conflictIds.has(j.id) && (
                         <span
@@ -956,8 +1040,10 @@ export default function SnapshotView() {
           {split.overdueRecent.length > 0 ? (
             <ul role="list" className="divide-y rounded-lg border border-border bg-card">
               {split.overdueRecent.map((j) => {
-                const start = formatTime(j.scheduledStart)
-                const end = formatTime(j.scheduledEnd)
+                const hasTime = !!j?.scheduledStart
+                const start = hasTime ? formatTime(j.scheduledStart) : null
+                const end = hasTime ? formatTime(j.scheduledEnd) : null
+                const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
                 const vendorName = j?.vendorName || 'Unassigned'
                 const customer = j?.customerName || vehicle?.owner_name || ''
@@ -970,8 +1056,14 @@ export default function SnapshotView() {
                   >
                     <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
                       <span>
-                        {start}
-                        {end ? ` – ${end}` : ''}
+                        {hasTime ? (
+                          <>
+                            {start}
+                            {end ? ` – ${end}` : ''}
+                          </>
+                        ) : (
+                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                        )}
                       </span>
                       {conflictIds.has(j.id) && (
                         <span
@@ -1043,8 +1135,10 @@ export default function SnapshotView() {
           {showOlderOverdue && split.overdueOld.length > 0 ? (
             <ul role="list" className="divide-y rounded-lg border border-border bg-card">
               {split.overdueOld.map((j) => {
-                const start = formatTime(j.scheduledStart)
-                const end = formatTime(j.scheduledEnd)
+                const hasTime = !!j?.scheduledStart
+                const start = hasTime ? formatTime(j.scheduledStart) : null
+                const end = hasTime ? formatTime(j.scheduledEnd) : null
+                const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
                 const vendorName = j?.vendorName || 'Unassigned'
                 const customer = j?.customerName || vehicle?.owner_name || ''
@@ -1057,8 +1151,14 @@ export default function SnapshotView() {
                   >
                     <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
                       <span>
-                        {start}
-                        {end ? ` – ${end}` : ''}
+                        {hasTime ? (
+                          <>
+                            {start}
+                            {end ? ` – ${end}` : ''}
+                          </>
+                        ) : (
+                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                        )}
                       </span>
                       {conflictIds.has(j.id) && (
                         <span

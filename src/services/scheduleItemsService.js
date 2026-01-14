@@ -107,9 +107,43 @@ function safeMoneyAmount(job) {
   return Number.isFinite(sum) && sum > 0 ? sum : null
 }
 
-export function classifyScheduleState({ scheduledStart, scheduledEnd, jobStatus, now }) {
+export function classifyScheduleState({
+  scheduledStart,
+  scheduledEnd,
+  promisedAt,
+  jobStatus,
+  now,
+}) {
   const start = safeDate(scheduledStart)
-  if (!start) return 'unscheduled'
+  const promised = safeDate(promisedAt)
+
+  // Canonical rule: if there is a promised day/date, the job is considered scheduled even
+  // when no time exists yet.
+  if (!start) {
+    if (promised) {
+      const nowDate = safeDate(now) || new Date()
+      const status = String(jobStatus || '').toLowerCase()
+      if (status === 'in_progress' || status === 'quality_check') return 'in_progress'
+
+      // Date-only overdue logic is evaluated by promised day (UTC day key).
+      const nowDayUtc = new Date(
+        Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate())
+      )
+      const promisedDayUtc = new Date(
+        Date.UTC(promised.getUTCFullYear(), promised.getUTCMonth(), promised.getUTCDate())
+      )
+
+      if (promisedDayUtc.getTime() < nowDayUtc.getTime()) {
+        const days = Math.floor(
+          (nowDayUtc.getTime() - promisedDayUtc.getTime()) / (24 * 60 * 60 * 1000)
+        )
+        return days <= 7 ? 'overdue_recent' : 'overdue_old'
+      }
+
+      return 'scheduled_no_time'
+    }
+    return 'unscheduled'
+  }
 
   const end = safeDate(scheduledEnd) || start
   const nowDate = safeDate(now) || new Date()
@@ -146,6 +180,7 @@ export function normalizeScheduleItemFromJob(job, { now = new Date(), scheduleOv
   const scheduleState = classifyScheduleState({
     scheduledStart,
     scheduledEnd,
+    promisedAt,
     jobStatus: job?.job_status,
     now,
   })

@@ -12,15 +12,16 @@ import {
 } from '@/pages/currently-active-appointments/components/undoHelpers'
 
 describe('SnapshotView.filterAndSort', () => {
-  it('filters to scheduled and in_progress with start time', () => {
+  it('filters to scheduled and in_progress with start time or promised date', () => {
     const jobs = [
       { id: '1', job_status: 'scheduled', scheduled_start_time: '2025-11-11T10:00:00Z' },
       { id: '2', job_status: 'in_progress', scheduled_start_time: '2025-11-11T09:00:00Z' },
       { id: '3', job_status: 'completed', scheduled_start_time: '2025-11-11T08:00:00Z' },
       { id: '4', job_status: 'scheduled', scheduled_start_time: null },
+      { id: '5', job_status: 'scheduled', promised_date: '2025-11-11' },
     ]
     const out = filterAndSort(jobs)
-    expect(out.map((j) => j.id)).toEqual(['2', '1'])
+    expect(out.map((j) => j.id)).toEqual(['2', '1', '5'])
   })
 
   it('handles empty arrays', () => {
@@ -37,13 +38,14 @@ describe('SnapshotView.filterAndSort', () => {
     expect(out.map((j) => j.id)).toEqual(['a', 'b', 'c'])
   })
 
-  it('ignores items without scheduled_start_time', () => {
+  it('ignores items with neither scheduled_start_time nor promised date', () => {
     const jobs = [
       { id: 'x', job_status: 'scheduled' },
+      { id: 'p', job_status: 'scheduled', promised_date: '2025-11-11' },
       { id: 'y', job_status: 'in_progress', scheduled_start_time: '2025-11-11T11:00:00Z' },
     ]
     const out = filterAndSort(jobs)
-    expect(out.map((j) => j.id)).toEqual(['y'])
+    expect(out.map((j) => j.id)).toEqual(['y', 'p'])
   })
 
   it('detectConflicts returns empty set when no overlaps', () => {

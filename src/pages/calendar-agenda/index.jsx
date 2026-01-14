@@ -618,7 +618,7 @@ export default function CalendarAgenda() {
 
               const promisedLabel = !start && (r?.promisedAt || raw?.promised_date)
               const promisedText = promisedLabel
-                ? `Promised: ${(r?.promisedAt || raw?.promised_date || '').toString().slice(0, 10)}`
+                ? `All-day (Time TBD) • ${(r?.promisedAt || raw?.promised_date || '').toString().slice(0, 10)}`
                 : null
 
               return (
