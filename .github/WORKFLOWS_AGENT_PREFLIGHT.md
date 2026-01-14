@@ -25,6 +25,18 @@ bash scripts/mcp/supabase-mcp.sh --check
 Expected:
 - `OK: Supabase MCP env validated (project_ref=..., env_file=...)`
 
+If MCP tool calls report the server stopped (or VS Code shows the server restarting), run the smoke check to ensure the wrapper can start the MCP server without crashing:
+
+```bash
+bash scripts/mcp/supabase-mcp.sh --check --smoke
+```
+
+Expected:
+- `OK: Supabase MCP env validated ...`
+- `OK: Supabase MCP smoke start succeeded ...`
+
+This catches wrapper regressions like malformed CLI args (where the MCP server exits immediately).
+
 If it fails:
 - Ensure `.env.e2e.local` includes `SUPABASE_PROJECT_REF` + `SUPABASE_ACCESS_TOKEN`.
 - Ensure `SUPABASE_PROJECT_REF` matches `VITE_SUPABASE_URL`.

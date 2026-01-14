@@ -12,10 +12,10 @@ Update (post-audit, applied 2026-01-13):
 - Result: risky RPCs are no longer executable by `anon`/`PUBLIC`, and the cross-tenant data-returning RPCs now run as `SECURITY INVOKER` (RLS applies).
 - Applied forward-only access alignment migration: `supabase/migrations/20260113213000_align_full_access_rls_and_storage.sql`.
 - Result: removed PUBLIC access to `claim-photos`, removed the `loaner_assignments` `roles={public}` policy, and simplified `vendors`/`products`/`loaner_assignments` to single authenticated full-access policies (org/dealer scoped).
+- Applied forward-only grants migration: `supabase/migrations/20260113223000_grant_privileges_repaired_feature_tables.sql`.
+- Result: restored feature tables now have the required table-level grants for PostgREST (`authenticated` full privileges; `anon` INSERT only for guest claim submission tables).
 - Verified locally: `pnpm -s guard:client-env`, `pnpm -s lint`, `pnpm -s test`, `pnpm -s build` all pass.
-- Outstanding:
-   - Reconcile the Step B/C “missing” rows below (they were captured pre-repair and are now stale).
-   - Optional decision: whether to revoke remaining `anon` EXECUTE on health/perf wrapper RPCs.
+- Optional decision: whether to revoke remaining `anon` EXECUTE on health/perf wrapper RPCs.
 
 ## Post-repair reconciliation (2026-01-13)
 
@@ -130,13 +130,13 @@ Notes:
 | `vehicles` | table | ✅ | public | ✅ | ❌ | ✅ | vendor access via helper + org/job join |
 | `vendors` | table | ✅ | public | ✅ | ❌ | ✅ | single authenticated full-access policy (tenant scoped) |
 | `pg_stat_user_tables` | view | ✅ | pg_catalog | ❌ | ✅ | ✅ | system view used by perf/health checks |
-| `claims` | table | ❌ | — | — | — | — | referenced by UI + services but missing |
-| `claim_attachments` | table | ❌ | — | — | — | — | referenced by services but missing |
-| `filter_presets` | table | ❌ | — | — | — | — | referenced by services but missing |
-| `notification_outbox` | table | ❌ | — | — | — | — | referenced by services but missing |
-| `notification_preferences` | table | ❌ | — | — | — | — | referenced by services but missing |
-| `sms_templates` | table | ❌ | — | — | — | — | referenced by admin + services but missing |
-| `vehicle_products` | table | ❌ | — | — | — | — | referenced by vehicle service but missing |
+| `claims` | table | ✅ | public | ✅ | ❌ | ✅ | guest INSERT allowed (anon) via policy; staff SELECT/UPDATE scoped via user_profiles |
+| `claim_attachments` | table | ✅ | public | ✅ | ❌ | ✅ | guest INSERT allowed (anon) via policy; authenticated SELECT scoped to claim + user/email |
+| `filter_presets` | table | ✅ | public | ✅ | ❌ | ✅ | owner-managed; includes public presets via `is_public` |
+| `notification_outbox` | table | ✅ | public | ✅ | ❌ | ✅ | admin/manager managed (policies gate write paths) |
+| `notification_preferences` | table | ✅ | public | ✅ | ❌ | ✅ | owner-managed |
+| `sms_templates` | table | ✅ | public | ✅ | ❌ | ✅ | admin/manager managed; authenticated can read active templates |
+| `vehicle_products` | table | ✅ | public | ✅ | ❌ | ✅ | authenticated can read; write is owner/admin gated |
 
 ### Policies snapshot (by table)
 
@@ -166,24 +166,24 @@ This section is summarized from `pg_policies`.
 
 | Object | Type | Exists | Security definer | anon EXECUTE | auth EXECUTE | Notes/Risks |
 |---|---|---:|---:|---:|---:|---|
-| `check_vendor_schedule_conflict(vendor_uuid uuid, start_time timestamptz, end_time timestamptz, exclude_job_id uuid)` | RPC | ✅ | ✅ | ✅ | ✅ | Reads jobs/job_parts without explicit org scoping; if SECURITY DEFINER + tables not FORCE RLS, likely bypasses RLS |
-| `generate_job_number()` | RPC | ✅ | ✅ | ✅ | ✅ | Increments `public.job_number_seq`; should not be callable by anon |
-| `get_jobs_by_date_range(start_date timestamptz, end_date timestamptz, vendor_filter uuid, status_filter text)` | RPC | ✅ | ✅ | ✅ | ✅ | Returns jobs across DB unless RLS is enforced for definer (currently tables are **not** FORCE RLS) |
-| `get_overdue_jobs()` | RPC | ✅ | ✅ | ✅ | ✅ | Returns overdue jobs without org scoping; high risk under SECURITY DEFINER |
-| `get_vendor_vehicles(vendor_uuid uuid)` | RPC | ✅ | ✅ | ✅ | ✅ | Returns vehicles/jobs by vendor; high risk under SECURITY DEFINER |
-| `log_activity(...)` | RPC | ✅ | ✅ | ✅ | ✅ | Writes activity; should not be callable by anon |
-| `validate_status_progression(current_status text, new_status text)` | RPC | ✅ | ✅ | ✅ | ✅ | Pure function; still should not be callable by anon |
-| `pg_available_extensions` | RPC | ⚠️ | (pg_catalog only) | ✅ | ✅ | Found only in `pg_catalog`; likely **not** exposed via PostgREST unless explicitly allowed |
-| `bulk_update_jobs` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `get_overdue_jobs_enhanced` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `notify_schema_reload` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `exec_sql` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `generate_claim_number` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `generate_export_data` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `pg_indexes` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `pg_matviews` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `check_auth_connection` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
-| `check_job_parts_vendor_fk` | RPC | ❌ | — | — | — | referenced by runtime source but missing |
+| `check_vendor_schedule_conflict(vendor_uuid uuid, start_time timestamptz, end_time timestamptz, exclude_job_id uuid)` | RPC | ✅ | ❌ | ❌ | ✅ | Hardened: `SECURITY INVOKER` + authenticated-only EXECUTE (RLS applies) |
+| `generate_job_number()` | RPC | ✅ | ✅ | ❌ | ✅ | Hardened: remains definer for sequence access, but authenticated-only EXECUTE |
+| `get_jobs_by_date_range(start_date timestamptz, end_date timestamptz, vendor_filter uuid, status_filter text)` | RPC | ✅ | ❌ | ❌ | ✅ | Hardened: `SECURITY INVOKER` + authenticated-only EXECUTE |
+| `get_overdue_jobs()` | RPC | ✅ | ❌ | ❌ | ✅ | Hardened: `SECURITY INVOKER` + authenticated-only EXECUTE |
+| `get_vendor_vehicles(vendor_uuid uuid)` | RPC | ✅ | ❌ | ❌ | ✅ | Hardened: `SECURITY INVOKER` + authenticated-only EXECUTE |
+| `log_activity(p_entity_type text, p_entity_id uuid, p_action text, p_description text, p_old_values jsonb, p_new_values jsonb)` | RPC | ✅ | ❌ | ❌ | ✅ | Hardened: `SECURITY INVOKER` + authenticated-only EXECUTE |
+| `validate_status_progression(current_status text, new_status text)` | RPC | ✅ | ❌ | ❌ | ✅ | Hardened: `SECURITY INVOKER` + authenticated-only EXECUTE |
+| `bulk_update_jobs(job_ids uuid[], updates jsonb, performed_by uuid)` | RPC | ✅ | ❌ | ❌ | ✅ | Restored via repair migration; authenticated-only EXECUTE |
+| `get_overdue_jobs_enhanced()` | RPC | ✅ | ❌ | ❌ | ✅ | Restored via repair migration; authenticated-only EXECUTE |
+| `generate_export_data(export_type text, filters jsonb, user_role text)` | RPC | ✅ | ❌ | ❌ | ✅ | Restored via repair migration; authenticated-only EXECUTE |
+| `notify_schema_reload()` | RPC | ✅ | ✅ | ❌ | ✅ | Administrative helper; definer; authenticated-only EXECUTE |
+| `check_auth_connection()` | RPC | ✅ | ❌ | ✅ | ✅ | Health wrapper; still allows anon EXECUTE (not `PUBLIC`) |
+| `generate_claim_number()` | RPC | ✅ | ❌ | ✅ | ✅ | Helper; still allows anon EXECUTE (not `PUBLIC`) |
+| `pg_available_extensions()` | RPC | ✅ | ❌ | ✅ | ✅ | Perf wrapper; still allows anon EXECUTE (not `PUBLIC`) |
+| `pg_indexes()` | RPC | ✅ | ❌ | ✅ | ✅ | Perf wrapper; still allows anon EXECUTE (not `PUBLIC`) |
+| `pg_matviews()` | RPC | ✅ | ❌ | ✅ | ✅ | Perf wrapper; still allows anon EXECUTE (not `PUBLIC`) |
+| `exec_sql` | RPC | ❌ | — | — | — | intentionally not created (unsafe) |
+| `check_job_parts_vendor_fk` | RPC | ❌ | — | — | — | still missing in DB |
 
 ---
 
@@ -207,24 +207,24 @@ Matrix interpretation:
 | `user_profiles` | table | ✅ | ✅ | ✅ | ✅ | ✅ | includes admin/manager delete-in-org policy |
 | `vehicles` | table | ✅ | ✅ | ✅ | ✅ | ✅ | org/vendor constraints |
 | `vendors` | table | ✅ | ✅ | ✅ | ✅ | ✅ | single authenticated full-access policy (tenant scoped) |
-| `claims` | table | — | — | — | — | — | **missing in DB** but referenced by UI/services |
-| `claim_attachments` | table | — | — | — | — | — | **missing in DB** but referenced by services |
-| `filter_presets` | table | — | — | — | — | — | **missing in DB** but referenced by services |
-| `notification_outbox` | table | — | — | — | — | — | **missing in DB** but referenced by services |
-| `notification_preferences` | table | — | — | — | — | — | **missing in DB** but referenced by services |
-| `sms_templates` | table | — | — | — | — | — | **missing in DB** but referenced by admin/services |
-| `vehicle_products` | table | — | — | — | — | — | **missing in DB** but referenced by vehicle service |
+| `claims` | table | ✅ | ✅ | ❌ | ✅ | ❌ | guest submit uses `anon` INSERT; authenticated staff update is scoped; no authenticated delete policy |
+| `claim_attachments` | table | ✅ | ✅ | ❌ | ❌ | ❌ | guest submit uses `anon` INSERT; authenticated read scoped by claim/email/profile |
+| `filter_presets` | table | ✅ | ✅ | ✅ | ✅ | ✅ | owner-managed via `ALL` policy; `is_public` allows authenticated reads |
+| `notification_outbox` | table | ✅ | ✅ | ✅ | ✅ | ✅ | admin/manager-only `ALL` policy |
+| `notification_preferences` | table | ✅ | ✅ | ✅ | ✅ | ✅ | owner-managed via `ALL` policy |
+| `sms_templates` | table | ✅ | ✅ | ✅ | ✅ | ✅ | admin/manager-only `ALL` policy; authenticated SELECT for active templates |
+| `vehicle_products` | table | ✅ | ✅ | ✅ | ✅ | ✅ | authenticated SELECT; writes gated to owner/admin via policy |
 | `job-photos` | storage | ✅ | ✅ | ✅ | ✅ | ✅ | authenticated + owner-scoped |
 | `claim-photos` | storage | ✅ | ✅ | ✅ | ✅ | ✅ | authenticated-only + tenant scoped via claim id in object path |
-| `check_vendor_schedule_conflict(...)` | RPC | — | — | — | — | — | **SECURITY DEFINER + anon EXECUTE**; likely bypasses RLS |
-| `generate_job_number()` | RPC | — | — | — | — | — | **SECURITY DEFINER + anon EXECUTE**; should be authenticated-only |
-| `get_jobs_by_date_range(...)` | RPC | — | — | — | — | — | **SECURITY DEFINER + anon EXECUTE**; likely bypasses RLS |
-| `get_overdue_jobs()` | RPC | — | — | — | — | — | **SECURITY DEFINER + anon EXECUTE**; likely bypasses RLS |
-| `get_vendor_vehicles(...)` | RPC | — | — | — | — | — | **SECURITY DEFINER + anon EXECUTE**; likely bypasses RLS |
-| `log_activity(...)` | RPC | — | — | — | — | — | **SECURITY DEFINER + anon EXECUTE**; should be authenticated-only |
-| `validate_status_progression(...)` | RPC | — | — | — | — | — | **SECURITY DEFINER + anon EXECUTE**; should be authenticated-only |
-| `bulk_update_jobs` | RPC | — | — | — | — | — | **missing in DB** but referenced by runtime source |
-| `get_overdue_jobs_enhanced` | RPC | — | — | — | — | — | **missing in DB** but referenced by runtime source |
+| `check_vendor_schedule_conflict(...)` | RPC | — | — | — | — | — | authenticated-only EXECUTE (`SECURITY INVOKER`) |
+| `generate_job_number()` | RPC | — | — | — | — | — | authenticated-only EXECUTE (remains `SECURITY DEFINER`) |
+| `get_jobs_by_date_range(...)` | RPC | — | — | — | — | — | authenticated-only EXECUTE (`SECURITY INVOKER`) |
+| `get_overdue_jobs()` | RPC | — | — | — | — | — | authenticated-only EXECUTE (`SECURITY INVOKER`) |
+| `get_vendor_vehicles(...)` | RPC | — | — | — | — | — | authenticated-only EXECUTE (`SECURITY INVOKER`) |
+| `log_activity(...)` | RPC | — | — | — | — | — | authenticated-only EXECUTE (`SECURITY INVOKER`) |
+| `validate_status_progression(...)` | RPC | — | — | — | — | — | authenticated-only EXECUTE (`SECURITY INVOKER`) |
+| `bulk_update_jobs` | RPC | — | — | — | — | — | exists; authenticated-only EXECUTE |
+| `get_overdue_jobs_enhanced` | RPC | — | — | — | — | — | exists; authenticated-only EXECUTE |
 
 ---
 

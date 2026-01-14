@@ -8,6 +8,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 check_only="false"
+smoke_only="false"
 # Defaults to .env.e2e.local unless a different env file is passed.
 env_file_arg=".env.e2e.local"
 
@@ -17,10 +18,15 @@ while [[ $# -gt 0 ]]; do
       check_only="true"
       shift
       ;;
+    --smoke)
+      smoke_only="true"
+      shift
+      ;;
     -h|--help)
       echo "Usage: scripts/mcp/supabase-mcp.sh [path-to-env-file] [--check]" >&2
       echo "  Defaults to: .env.e2e.local" >&2
       echo "  --check: validates env + safety guards, then exits 0" >&2
+      echo "  --smoke: validates env + attempts to start MCP server briefly; exits 0 if server does not crash on startup" >&2
       exit 0
       ;;
     *)
@@ -117,10 +123,36 @@ esac
 
 if [[ "$check_only" = "true" ]]; then
   echo "OK: Supabase MCP env validated (project_ref=$project_ref, env_file=$env_file)" >&2
-  exit 0
+  if [[ "$smoke_only" != "true" ]]; then
+    exit 0
+  fi
 fi
 
-exec npx @supabase/mcp-server-supabase@0.5.10 \\
-  --project-ref "$project_ref" \\
-  --features account,docs,database,debugging,development,functions,storage,branching \\
+if [[ "$smoke_only" = "true" ]]; then
+  # Smoke-test: ensure the MCP server does not crash on startup (e.g., bad args).
+  # Expected exit codes from `timeout`:
+  # - 124: timed out
+  # - 143: terminated
+  set +e
+  timeout 3s npx @supabase/mcp-server-supabase@0.5.10 \
+    --project-ref "$project_ref" \
+    --features account,docs,database,debugging,development,functions,storage,branching \
+    --api-url https://api.supabase.com >/dev/null 2>&1
+  smoke_exit=$?
+  set -e
+
+  if [[ "$smoke_exit" = "124" || "$smoke_exit" = "143" ]]; then
+    echo "OK: Supabase MCP smoke start succeeded (server did not crash immediately)" >&2
+    exit 0
+  fi
+
+  echo "ERROR: Supabase MCP smoke start failed (exit=$smoke_exit)." >&2
+  echo "Try running without timeout for full output:" >&2
+  echo "  bash scripts/mcp/supabase-mcp.sh .env.e2e.local" >&2
+  exit 4
+fi
+
+exec npx @supabase/mcp-server-supabase@0.5.10 \
+  --project-ref "$project_ref" \
+  --features account,docs,database,debugging,development,functions,storage,branching \
   --api-url https://api.supabase.com
