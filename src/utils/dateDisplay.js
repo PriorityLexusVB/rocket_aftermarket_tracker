@@ -44,7 +44,7 @@ export function formatPromiseDate(promiseDate) {
  */
 export function formatTimeWindow(startTime, endTime) {
   if (!startTime || !endTime) {
-    return 'Needs scheduling'
+    return 'Time TBD'
   }
 
   try {
@@ -52,7 +52,7 @@ export function formatTimeWindow(startTime, endTime) {
     const end = new Date(endTime)
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return 'Needs scheduling'
+      return 'Time TBD'
     }
 
     const startStr = start.toLocaleTimeString('en-US', {
@@ -69,6 +69,6 @@ export function formatTimeWindow(startTime, endTime) {
 
     return `${startStr} - ${endStr}`
   } catch {
-    return 'Needs scheduling'
+    return 'Time TBD'
   }
 }

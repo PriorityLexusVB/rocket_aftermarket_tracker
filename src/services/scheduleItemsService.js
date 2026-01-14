@@ -74,14 +74,34 @@ export function getEffectiveScheduleWindowFromJob(job) {
 function getPromiseIso(job) {
   if (!job) return null
 
-  const explicit = job?.next_promised_iso || job?.promised_date || job?.promisedAt
+  const normalizePromiseIso = (v) => {
+    if (!v) return null
+    const str = String(v).trim()
+    if (!str) return null
+
+    // Date-only values must NOT be interpreted as UTC midnight (causes local day-shift).
+    // Normalize to noon UTC so the calendar day stays stable across time zones.
+    const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(str)
+    if (m) return `${m[1]}-${m[2]}-${m[3]}T12:00:00Z`
+
+    // Midnight ISO variants should be treated as date-only.
+    const m2 =
+      /^([0-9]{4})-([0-9]{2})-([0-9]{2})T00:00:00(?:\.0{1,3})?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(str)
+    if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}T12:00:00Z`
+
+    return str
+  }
+
+  const explicit = normalizePromiseIso(
+    job?.next_promised_iso || job?.promised_date || job?.promisedAt
+  )
   let earliest = explicit || null
 
   const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
   for (const p of parts) {
     const v = p?.promised_date
     if (!v) continue
-    const iso = String(v).includes('T') ? v : `${v}T00:00:00Z`
+    const iso = normalizePromiseIso(v)
     earliest = minIso(earliest, iso)
   }
 

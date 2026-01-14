@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/ToastProvider'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import { createUndoEntry, canUndo } from './undoHelpers'
 import { formatTime } from '@/utils/dateTimeUtils'
+import { toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import {
   getScheduleItems,
   classifyScheduleState,
@@ -33,17 +34,17 @@ function startOfDay(d) {
 function formatPromiseLabel(d) {
   const dt = safeDate(d)
   if (!dt) return '—'
-  return dt.toLocaleDateString('en-US', {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-  })
+  }).format(dt)
 }
 
 function safeDate(input) {
   if (input === null || input === undefined) return null
-  const d = input instanceof Date ? input : new Date(input)
-  return Number.isNaN(d.getTime()) ? null : d
+  return toSafeDateForTimeZone(input)
 }
 
 // Exported to allow unit testing
@@ -665,6 +666,7 @@ export default function SnapshotView() {
       {windowMode !== 'needs_scheduling' &&
       split.upcoming.length === 0 &&
       split.overdueRecent.length === 0 &&
+      split.overdueOld.length === 0 &&
       split.unscheduledInProgress.length === 0 ? (
         <div role="status" aria-live="polite" className="text-muted-foreground">
           No appointments in this range.
