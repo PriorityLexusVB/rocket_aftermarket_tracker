@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { calendarService } from '@/services/calendarService'
+import CalendarLegend from '@/components/calendar/CalendarLegend'
+import { getEventColors } from '@/utils/calendarColors'
+
+const SIMPLE_AGENDA_ENABLED =
+  String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
 // Safe date creation utility
 const safeCreateDate = (input) => {
@@ -58,15 +64,78 @@ const safeFormatTime = (dateInput, options = {}) => {
   }
 }
 
+const VALID_VIEW_TYPES = new Set(['day', 'week', 'month'])
+
+const parseDateParam = (value) => {
+  if (!value) return null
+  const str = String(value).trim()
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(str)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (!y || !mo || !d) return null
+  const dt = new Date(y, mo - 1, d, 12, 0, 0, 0)
+  return Number.isNaN(dt.getTime()) ? null : dt
+}
+
+const formatDateParam = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const safeDayKey = (value) => {
+  const d = safeCreateDate(value)
+  return d ? d.toDateString() : ''
+}
+
 const CalendarSchedulingCenter = () => {
   // State management
   const { user, orgId } = useAuth()
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [viewType, setViewType] = useState('week') // 'day', 'week', 'month'
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [currentDate, setCurrentDate] = useState(
+    () => parseDateParam(searchParams.get('date')) || new Date()
+  )
+  const [viewType, setViewType] = useState(() => {
+    const v = String(searchParams.get('view') || '').toLowerCase()
+    return VALID_VIEW_TYPES.has(v) ? v : 'week'
+  }) // 'day', 'week', 'month'
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [debugInfo, setDebugInfo] = useState('')
+
+  // Keep state in sync with URL (supports refresh + browser back/forward)
+  useEffect(() => {
+    const nextViewRaw = String(searchParams.get('view') || '').toLowerCase()
+    const nextView = VALID_VIEW_TYPES.has(nextViewRaw) ? nextViewRaw : null
+    if (nextView && nextView !== viewType) setViewType(nextView)
+
+    const nextDate = parseDateParam(searchParams.get('date'))
+    if (nextDate) {
+      const currKey = formatDateParam(currentDate)
+      const nextKey = formatDateParam(nextDate)
+      if (currKey && nextKey && currKey !== nextKey) setCurrentDate(nextDate)
+    }
+  }, [searchParams, viewType, currentDate])
+
+  // Persist view/date to URL so it’s shareable/bookmarkable.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams)
+    const view = VALID_VIEW_TYPES.has(viewType) ? viewType : 'week'
+    const date = formatDateParam(currentDate)
+
+    if (next.get('view') !== view) next.set('view', view)
+    if (date && next.get('date') !== date) next.set('date', date)
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [viewType, currentDate, searchParams, setSearchParams])
 
   // Date range calculation based on view type with safe date operations
   const dateRange = useMemo(() => {
@@ -131,7 +200,16 @@ const CalendarSchedulingCenter = () => {
         ...job,
         scheduled_start_time: safeDateString(job?.scheduled_start_time),
         scheduled_end_time: safeDateString(job?.scheduled_end_time),
-        color_code: job?.color_code || '#3b82f6',
+        // Derive a service_type for lane clarity if backend doesn't provide one.
+        // Vendor/offsite work is inferred from vendor_id presence.
+        service_type: job?.service_type || (job?.vendor_id ? 'vendor' : 'onsite'),
+        color_code:
+          getEventColors(
+            job?.service_type || (job?.vendor_id ? 'vendor' : 'onsite'),
+            job?.job_status
+          )?.hex ||
+          job?.color_code ||
+          '#3b82f6',
       }))
 
       setJobs(jobsData)
@@ -152,6 +230,18 @@ const CalendarSchedulingCenter = () => {
   useEffect(() => {
     loadCalendarData()
   }, [dateRange, loadCalendarData])
+
+  const jobsByDayKey = useMemo(() => {
+    const map = new Map()
+    for (const job of jobs || []) {
+      const key = safeDayKey(job?.scheduled_start_time)
+      if (!key) continue
+      const existing = map.get(key)
+      if (existing) existing.push(job)
+      else map.set(key, [job])
+    }
+    return map
+  }, [jobs])
 
   // Navigation handlers with safe date operations
   const navigateDate = (direction) => {
@@ -231,6 +321,7 @@ const CalendarSchedulingCenter = () => {
   // Enhanced calendar grid component with safe date handling
   const CalendarGrid = ({ jobs, viewType }) => {
     if (viewType === 'week') {
+      const todayKey = new Date().toDateString()
       // Create week view with safe date operations
       const weekDays = []
       const startDate = safeCreateDate(dateRange?.start)
@@ -253,14 +344,7 @@ const CalendarSchedulingCenter = () => {
           continue
         }
 
-        const dayJobs = jobs?.filter((job) => {
-          if (!job?.scheduled_start_time) return false
-
-          const jobDate = safeCreateDate(job?.scheduled_start_time)
-          if (!jobDate) return false
-
-          return jobDate?.toDateString() === dayDate?.toDateString()
-        })
+        const dayJobs = jobsByDayKey.get(dayDate?.toDateString?.()) || []
 
         weekDays?.push({
           date: dayDate,
@@ -274,7 +358,7 @@ const CalendarSchedulingCenter = () => {
           {weekDays?.map((day, index) => (
             <div
               key={`header-${index}`}
-              className="bg-gray-50 p-2 border-b font-semibold text-center"
+              className={`p-2 border-b font-semibold text-center ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50' : 'bg-gray-50'}`}
             >
               <div className="text-sm text-gray-600">
                 {safeFormatDate(day?.date, { weekday: 'short' }) || 'N/A'}
@@ -286,37 +370,222 @@ const CalendarSchedulingCenter = () => {
           {weekDays?.map((day, index) => (
             <div
               key={`content-${index}`}
-              className="bg-white p-2 border-r border-gray-200 min-h-96 overflow-y-auto"
+              className={`p-2 border-r border-gray-200 min-h-96 overflow-y-auto ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50/30' : 'bg-white'}`}
             >
               {day?.jobs?.map((job) => {
                 const jobStartTime = safeCreateDate(job?.scheduled_start_time)
+                const colors = getEventColors(job?.service_type, job?.job_status)
+                const statusLabel = job?.job_status
+                  ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
+                  : 'SCHEDULED'
 
                 return (
                   <div
                     key={job?.id}
-                    className="mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow"
-                    style={{ backgroundColor: job?.color_code || '#3b82f6', color: 'white' }}
-                    onClick={() =>
-                      alert(
-                        `Job: ${job?.title}\nVendor: ${job?.vendor_name}\nTime: ${jobStartTime ? safeFormatTime(jobStartTime) : 'Invalid Time'}`
-                      )
-                    }
+                    className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
+                    onClick={() => navigate(`/deals/${job?.id}/edit`)}
+                    title={job?.title || 'Open deal'}
                   >
                     <div className="font-medium truncate">{job?.title}</div>
-                    <div className="text-xs opacity-90">{job?.vendor_name}</div>
-                    <div className="text-xs opacity-80">
-                      {jobStartTime
-                        ? safeFormatTime(jobStartTime, {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })
-                        : 'Invalid Time'}
+                    <div className="text-xs opacity-90 truncate">{job?.vendor_name}</div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="text-xs opacity-80">
+                        {jobStartTime
+                          ? safeFormatTime(jobStartTime, {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : 'Invalid Time'}
+                      </span>
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[10px] text-gray-700 truncate">
+                      {job?.service_type === 'vendor' || job?.service_type === 'offsite'
+                        ? 'Vendor/Offsite'
+                        : 'Onsite'}
                     </div>
                   </div>
                 )
               })}
             </div>
           ))}
+        </div>
+      )
+    }
+
+    if (viewType === 'month') {
+      const monthStart = safeCreateDate(dateRange?.start)
+      const monthEnd = safeCreateDate(dateRange?.end)
+
+      if (!monthStart || !monthEnd) {
+        return (
+          <div className="p-4 text-center text-red-500">
+            Error: Unable to create month view - Invalid date range
+          </div>
+        )
+      }
+
+      const todayKey = new Date().toDateString()
+
+      // Month grid starts on Sunday of the first week that contains monthStart
+      const gridStart = new Date(monthStart)
+      gridStart?.setDate(gridStart?.getDate() - gridStart?.getDay())
+      gridStart?.setHours(0, 0, 0, 0)
+
+      // Month grid ends on Saturday of the last week that contains monthEnd
+      const gridEnd = new Date(monthEnd)
+      gridEnd?.setDate(gridEnd?.getDate() + (6 - gridEnd?.getDay()))
+      gridEnd?.setHours(23, 59, 59, 999)
+
+      if (isNaN(gridStart?.getTime()) || isNaN(gridEnd?.getTime())) {
+        return (
+          <div className="p-4 text-center text-red-500">
+            Error: Unable to create month view - Invalid grid range
+          </div>
+        )
+      }
+
+      const days = []
+      const cursor = new Date(gridStart)
+      cursor?.setHours(0, 0, 0, 0)
+
+      // Build a flat list of days for the grid
+      while (cursor <= gridEnd) {
+        days.push(new Date(cursor))
+        cursor?.setDate(cursor?.getDate() + 1)
+      }
+
+      const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+      return (
+        <div className="h-full">
+          <div className="grid grid-cols-7 gap-1">
+            {weekdayLabels.map((label) => (
+              <div
+                key={label}
+                className="bg-gray-50 p-2 border-b font-semibold text-center text-sm text-gray-700"
+              >
+                {label}
+              </div>
+            ))}
+
+            {days.map((dayDate) => {
+              const dayKey = dayDate?.toDateString?.()
+              const isToday = dayKey === todayKey
+              const isInMonth =
+                dayDate?.getFullYear?.() === monthStart.getFullYear() &&
+                dayDate?.getMonth?.() === monthStart.getMonth()
+
+              const jumpToDay = () => {
+                try {
+                  const nextDate = new Date(dayDate)
+                  // Avoid edge-case day drift in some TZ/DST boundaries by anchoring away from midnight.
+                  nextDate?.setHours?.(12, 0, 0, 0)
+                  if (!isNaN(nextDate?.getTime?.())) {
+                    setCurrentDate(nextDate)
+                    setViewType('day')
+                  }
+                } catch (e) {
+                  console.error('Failed to jump to day view:', e)
+                }
+              }
+
+              const dayJobs = jobsByDayKey.get(dayKey) || []
+
+              const visibleJobs = dayJobs?.slice?.(0, 4) || []
+              const remainingCount = Math.max((dayJobs?.length || 0) - visibleJobs.length, 0)
+
+              return (
+                <div
+                  key={dayKey}
+                  role="button"
+                  tabIndex={0}
+                  onClick={jumpToDay}
+                  onKeyDown={(e) => {
+                    if (e?.key === 'Enter' || e?.key === ' ') {
+                      e.preventDefault()
+                      jumpToDay()
+                    }
+                  }}
+                  className={`min-h-32 border border-gray-200 rounded-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                    isToday
+                      ? 'bg-blue-50/30 border-blue-200'
+                      : isInMonth
+                        ? 'bg-white hover:bg-gray-50'
+                        : 'bg-gray-50 hover:bg-gray-100'
+                  }`}
+                  aria-label={`Open ${formatDateParam(dayDate)} in day view`}
+                  title="Open day view"
+                >
+                  <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100">
+                    <div
+                      className={`text-sm font-semibold ${
+                        isInMonth ? 'text-gray-900' : 'text-gray-400'
+                      }`}
+                    >
+                      {dayDate?.getDate?.()}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {dayJobs?.length ? `${dayJobs.length}` : ''}
+                    </div>
+                  </div>
+
+                  <div className="p-1 space-y-1 max-h-28 overflow-y-auto">
+                    {visibleJobs.map((job) => {
+                      const colors = getEventColors(job?.service_type, job?.job_status)
+                      const statusLabel = job?.job_status
+                        ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
+                        : 'SCHEDULED'
+                      const jobStartTime = safeCreateDate(job?.scheduled_start_time)
+
+                      return (
+                        <button
+                          type="button"
+                          key={job?.id}
+                          className={`w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${
+                            colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'
+                          }`}
+                          onClick={(e) => {
+                            e?.stopPropagation?.()
+                            navigate(`/deals/${job?.id}/edit`)
+                          }}
+                          title={job?.title || 'Open deal'}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-medium truncate">{job?.title}</div>
+                            <span
+                              className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                colors?.badge || 'bg-blue-500 text-white'
+                              } ${colors?.pulse ? 'animate-pulse' : ''}`}
+                            >
+                              {statusLabel}
+                            </span>
+                          </div>
+                          <div className="text-[10px] opacity-90 truncate">{job?.vendor_name}</div>
+                          <div className="text-[10px] opacity-80">
+                            {jobStartTime
+                              ? safeFormatTime(jobStartTime, {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })
+                              : ''}
+                          </div>
+                        </button>
+                      )
+                    })}
+
+                    {remainingCount > 0 ? (
+                      <div className="text-xs text-gray-500 px-2">+{remainingCount} more</div>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )
     }
@@ -330,16 +599,16 @@ const CalendarSchedulingCenter = () => {
           <div className="space-y-4">
             {jobs?.map((job) => {
               const jobStartTime = safeCreateDate(job?.scheduled_start_time)
+              const colors = getEventColors(job?.service_type, job?.job_status)
+              const statusLabel = job?.job_status
+                ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
+                : 'SCHEDULED'
 
               return (
                 <div
                   key={job?.id}
                   className="bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() =>
-                    alert(
-                      `Job Details:\n${job?.title}\nVendor: ${job?.vendor_name}\nVehicle: ${job?.vehicle_info}\nTime: ${jobStartTime ? jobStartTime?.toLocaleString() : 'Invalid Time'}`
-                    )
-                  }
+                  onClick={() => navigate(`/deals/${job?.id}/edit`)}
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -350,10 +619,22 @@ const CalendarSchedulingCenter = () => {
                       <p className="text-sm text-gray-500">
                         {jobStartTime ? jobStartTime?.toLocaleString() : 'Invalid Time'}
                       </p>
+                      <div className="mt-2 flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
+                        >
+                          {statusLabel}
+                        </span>
+                        <span className="text-xs text-gray-600">
+                          {job?.service_type === 'vendor' || job?.service_type === 'offsite'
+                            ? 'Vendor/Offsite'
+                            : 'Onsite'}
+                        </span>
+                      </div>
                     </div>
                     <div
                       className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: job?.color_code || '#3b82f6' }}
+                      style={{ backgroundColor: colors?.hex || job?.color_code || '#3b82f6' }}
                     ></div>
                   </div>
                 </div>
@@ -391,16 +672,17 @@ const CalendarSchedulingCenter = () => {
 
   // Main calendar view component with safe date handling
   const MainCalendarView = () => {
-    const isWeekView = viewType === 'week'
+    const viewLabel = viewType === 'week' ? 'Weekly' : viewType === 'month' ? 'Monthly' : 'Daily'
 
     return (
       <div className="p-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {isWeekView ? 'Weekly Schedule' : 'Daily Schedule'}
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">{viewLabel} Schedule</h1>
             <p className="text-gray-600">{formatDisplayDate()}</p>
+            <div className="mt-2">
+              <CalendarLegend compact />
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -435,6 +717,8 @@ const CalendarSchedulingCenter = () => {
           </div>
 
           <div className="space-y-4">
+            <CalendarLegend showStatuses />
+
             <div className="bg-white p-4 rounded-lg shadow border">
               <h3 className="font-medium text-gray-900 mb-3">Quick Actions</h3>
               <button
@@ -443,6 +727,23 @@ const CalendarSchedulingCenter = () => {
               >
                 Refresh Data
               </button>
+
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <button
+                  onClick={() => navigate('/calendar-flow-management-center')}
+                  className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                >
+                  Open Scheduling Board
+                </button>
+                {SIMPLE_AGENDA_ENABLED ? (
+                  <button
+                    onClick={() => navigate('/calendar/agenda')}
+                    className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                  >
+                    Open Agenda (List)
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow border">

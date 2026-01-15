@@ -206,7 +206,7 @@ function getEtDayKey(isoOrDate, timeZone = TZ) {
 /**
  * ScheduleBlock
  * - If scheduled start/end exist: primary "Tue Dec 30 • 4:30–6:30 PM ET"
- * - If no scheduled window (promise-only): primary "Promise: Tue Dec 30" + "Scheduled (No Time)" badge
+ * - If no scheduled window (promise-only): primary "Promise: Tue Dec 30" + "Not scheduled" badge
  * - Promise shown as secondary only if present + meaningful (differs from scheduled day)
  */
 export default function ScheduleBlock({
@@ -305,7 +305,7 @@ export default function ScheduleBlock({
         </div>
         {!hasWindow && !hasDateOnlySchedule && promiseDate ? (
           <span className="shrink-0 inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-xs font-medium text-slate-700">
-            Scheduled (No Time)
+            Not scheduled
           </span>
         ) : null}
       </div>

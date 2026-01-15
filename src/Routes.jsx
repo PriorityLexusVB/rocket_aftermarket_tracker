@@ -23,6 +23,8 @@ const CurrentlyActiveAppointments = lazy(() => import('./pages/currently-active-
 
 // NEW: Calendar Flow Management Center
 const CalendarFlowManagementCenter = lazy(() => import('./pages/calendar-flow-management-center'))
+// Real Calendar (grid)
+const CalendarSchedulingCenter = lazy(() => import('./pages/calendar'))
 // Simple Agenda (feature-flagged)
 const SimpleAgendaEnabled =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -121,6 +123,14 @@ const Routes = () => {
 
               {/* Advanced Management Centers */}
               <Route
+                path="/calendar/grid"
+                element={
+                  <ProtectedRoute>
+                    <CalendarSchedulingCenter />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/calendar-flow-management-center"
                 element={
                   <ProtectedRoute>
@@ -194,17 +204,7 @@ const Routes = () => {
               />
 
               {/* Calendar route - redirect to new calendar flow center */}
-              <Route
-                path="/calendar"
-                element={
-                  <Navigate
-                    to={
-                      SimpleAgendaEnabled ? '/calendar/agenda' : '/calendar-flow-management-center'
-                    }
-                    replace
-                  />
-                }
-              />
+              <Route path="/calendar" element={<Navigate to="/calendar/grid" replace />} />
 
               {/* Loaner Management */}
               <Route
@@ -255,14 +255,7 @@ const Routes = () => {
                 path="/calendar-scheduling-center"
                 element={
                   <ProtectedRoute>
-                    <Navigate
-                      to={
-                        SimpleAgendaEnabled
-                          ? '/calendar/agenda'
-                          : '/calendar-flow-management-center'
-                      }
-                      replace
-                    />
+                    <Navigate to="/calendar/grid" replace />
                   </ProtectedRoute>
                 }
               />

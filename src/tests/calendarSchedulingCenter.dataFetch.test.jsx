@@ -1,6 +1,7 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
@@ -20,7 +21,11 @@ import { calendarService } from '@/services/calendarService'
 
 describe('CalendarSchedulingCenter data fetch', () => {
   it('loads jobs via calendarService.getJobsByDateRange (org-scoped)', async () => {
-    render(<CalendarSchedulingCenter />)
+    render(
+      <MemoryRouter>
+        <CalendarSchedulingCenter />
+      </MemoryRouter>
+    )
 
     await waitFor(() => {
       expect(calendarService.getJobsByDateRange).toHaveBeenCalled()

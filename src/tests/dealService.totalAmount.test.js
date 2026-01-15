@@ -1,15 +1,22 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { supabase } from '@/lib/supabase'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-let originalFrom
-let originalGetUser
+const { supabase } = vi.hoisted(() => {
+  return {
+    supabase: {
+      from: vi.fn(),
+      auth: {
+        getUser: vi.fn(),
+      },
+    },
+  }
+})
+
+vi.mock('@/lib/supabase', () => ({ supabase }))
 
 describe('dealService - total_amount numeric coercion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
-    originalFrom = supabase.from
-    originalGetUser = supabase.auth?.getUser
+    vi.resetModules()
 
     const mockJobs = [
       {
@@ -38,7 +45,6 @@ describe('dealService - total_amount numeric coercion', () => {
     const mockLoaners = []
 
     // Patch the shared supabase instance so dealService sees these responses.
-    supabase.auth = supabase.auth || {}
     supabase.auth.getUser = vi.fn(() =>
       Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })
     )
@@ -155,11 +161,6 @@ describe('dealService - total_amount numeric coercion', () => {
         }),
       }
     })
-  })
-
-  afterEach(() => {
-    if (originalFrom) supabase.from = originalFrom
-    if (supabase.auth && originalGetUser) supabase.auth.getUser = originalGetUser
   })
 
   it('should convert total_amount from string to number in getAllDeals', async () => {

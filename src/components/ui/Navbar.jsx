@@ -8,6 +8,7 @@ import {
   LogOut,
   Settings,
   Calendar,
+  List,
   Car,
   Package,
   BarChart3,
@@ -38,9 +39,25 @@ const Navbar = () => {
   const navigationLinks = [
     {
       name: 'Calendar',
-      href: SIMPLE_AGENDA_ENABLED ? '/calendar/agenda' : '/calendar-flow-management-center',
+      href: '/calendar/grid',
       icon: Calendar,
     },
+    {
+      name: 'Scheduling',
+      href: '/calendar-flow-management-center',
+      icon: Calendar,
+      shortName: 'Flow',
+    },
+    ...(SIMPLE_AGENDA_ENABLED
+      ? [
+          {
+            name: 'Agenda',
+            href: '/calendar/agenda',
+            icon: List,
+            shortName: 'Agenda',
+          },
+        ]
+      : []),
     {
       name: 'Appointments',
       href: '/currently-active-appointments',
