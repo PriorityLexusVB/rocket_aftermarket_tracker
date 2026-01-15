@@ -74,14 +74,34 @@ export function getEffectiveScheduleWindowFromJob(job) {
 function getPromiseIso(job) {
   if (!job) return null
 
-  const explicit = job?.next_promised_iso || job?.promised_date || job?.promisedAt
+  const normalizePromiseIso = (v) => {
+    if (!v) return null
+    const str = String(v).trim()
+    if (!str) return null
+
+    // Date-only values must NOT be interpreted as UTC midnight (causes local day-shift).
+    // Normalize to noon UTC so the calendar day stays stable across time zones.
+    const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(str)
+    if (m) return `${m[1]}-${m[2]}-${m[3]}T12:00:00Z`
+
+    // Midnight ISO variants should be treated as date-only.
+    const m2 =
+      /^([0-9]{4})-([0-9]{2})-([0-9]{2})T00:00:00(?:\.0{1,3})?(?:Z|[+-]\d{2}:?\d{2})?$/.exec(str)
+    if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}T12:00:00Z`
+
+    return str
+  }
+
+  const explicit = normalizePromiseIso(
+    job?.next_promised_iso || job?.promised_date || job?.promisedAt
+  )
   let earliest = explicit || null
 
   const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
   for (const p of parts) {
     const v = p?.promised_date
     if (!v) continue
-    const iso = String(v).includes('T') ? v : `${v}T00:00:00Z`
+    const iso = normalizePromiseIso(v)
     earliest = minIso(earliest, iso)
   }
 
@@ -107,9 +127,43 @@ function safeMoneyAmount(job) {
   return Number.isFinite(sum) && sum > 0 ? sum : null
 }
 
-export function classifyScheduleState({ scheduledStart, scheduledEnd, jobStatus, now }) {
+export function classifyScheduleState({
+  scheduledStart,
+  scheduledEnd,
+  promisedAt,
+  jobStatus,
+  now,
+}) {
   const start = safeDate(scheduledStart)
-  if (!start) return 'unscheduled'
+  const promised = safeDate(promisedAt)
+
+  // Canonical rule: if there is a promised day/date, the job is considered scheduled even
+  // when no time exists yet.
+  if (!start) {
+    if (promised) {
+      const nowDate = safeDate(now) || new Date()
+      const status = String(jobStatus || '').toLowerCase()
+      if (status === 'in_progress' || status === 'quality_check') return 'in_progress'
+
+      // Date-only overdue logic is evaluated by promised day (UTC day key).
+      const nowDayUtc = new Date(
+        Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate())
+      )
+      const promisedDayUtc = new Date(
+        Date.UTC(promised.getUTCFullYear(), promised.getUTCMonth(), promised.getUTCDate())
+      )
+
+      if (promisedDayUtc.getTime() < nowDayUtc.getTime()) {
+        const days = Math.floor(
+          (nowDayUtc.getTime() - promisedDayUtc.getTime()) / (24 * 60 * 60 * 1000)
+        )
+        return days <= 7 ? 'overdue_recent' : 'overdue_old'
+      }
+
+      return 'scheduled_no_time'
+    }
+    return 'unscheduled'
+  }
 
   const end = safeDate(scheduledEnd) || start
   const nowDate = safeDate(now) || new Date()
@@ -146,6 +200,7 @@ export function normalizeScheduleItemFromJob(job, { now = new Date(), scheduleOv
   const scheduleState = classifyScheduleState({
     scheduledStart,
     scheduledEnd,
+    promisedAt,
     jobStatus: job?.job_status,
     now,
   })
@@ -256,7 +311,7 @@ function isoDateKey(d) {
 }
 
 /**
- * Needs Scheduling support: promise-only items with no effective schedule window.
+ * Scheduled (No Time) support: promise-only items with no effective time window.
  *
  * Definition (per requirements):
  * - Has at least one job_part with requires_scheduling = true AND promised_date set

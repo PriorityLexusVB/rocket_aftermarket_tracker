@@ -150,8 +150,8 @@ export function getAppointmentScheduleDisplay(appointment, { timeZone = DEFAULT_
   if (promised) {
     const promiseLabel = formatEtDateLabel(promised, { timeZone })
     return {
-      primary: promiseLabel ? `Promise: ${promiseLabel}` : 'Promise: —',
-      badge: 'Needs scheduling',
+      primary: promiseLabel ? `All-day (Time TBD) • ${promiseLabel}` : 'All-day (Time TBD)',
+      badge: 'Scheduled (No Time)',
     }
   }
 

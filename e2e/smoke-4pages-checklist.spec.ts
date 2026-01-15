@@ -132,6 +132,8 @@ function attachConsoleCapture(page: Page) {
         !err.includes('getProducts error') &&
         !err.includes('vendorService.getAllVendors failed') &&
         !err.includes('Error loading vendors:') &&
+        // Optional SMS templates surface can error on drifted schemas; not relevant to this smoke flow.
+        !err.includes('listSmsTemplatesByOrg') &&
         // Capability-gated fallbacks can still emit safeSelect errors in drifted schemas.
         // These are expected in E2E against older / partially migrated databases.
         !err.startsWith('[safeSelect]') &&
@@ -194,7 +196,7 @@ test.describe('4-page smoke checklist', () => {
 
     const todayBtn = page.getByRole('button', { name: 'Today' })
     const next7Btn = page.getByRole('button', { name: 'Next 7 Days' })
-    const needsBtn = page.getByRole('button', { name: 'Needs Scheduling' })
+    const needsBtn = page.getByRole('button', { name: 'Scheduled (No Time)' })
 
     await expect(todayBtn).toBeVisible()
     await expect(next7Btn).toBeVisible()
@@ -210,7 +212,7 @@ test.describe('4-page smoke checklist', () => {
     } catch {
       // In some environments, the needs-scheduling hydration path can be transiently empty
       // (e.g., DB/network blip). Treat the explicit empty-state as acceptable for this smoke flow.
-      await expect(page.getByText(/No items need scheduling/i).first()).toBeVisible({
+      await expect(page.getByText(/No scheduled items without time/i).first()).toBeVisible({
         timeout: 10_000,
       })
     }
@@ -235,7 +237,7 @@ test.describe('4-page smoke checklist', () => {
 
     // D) Agenda
     await page.goto('/calendar/agenda?dateRange=next7days')
-    await expect(page.locator('h1:has-text("Scheduled Appointments")')).toBeVisible({
+    await expect(page.getByRole('heading', { level: 1, name: 'Appointments' })).toBeVisible({
       timeout: 20_000,
     })
 

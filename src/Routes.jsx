@@ -1,5 +1,11 @@
 import React, { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes as RouterRoutes, Route, Navigate } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Routes as RouterRoutes,
+  Route,
+  Navigate,
+  useLocation,
+} from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -40,6 +46,12 @@ const CommunicationsCenter = lazy(() => import('./pages/communications'))
 const ProfileSettings = lazy(() => import('./pages/profile'))
 
 const Routes = () => {
+  const CalendarAgendaRedirect = () => {
+    const location = useLocation()
+    const search = location?.search || ''
+    return <Navigate to={`/calendar-flow-management-center${search}`} replace />
+  }
+
   return (
     <BrowserRouter
       future={{
@@ -120,11 +132,7 @@ const Routes = () => {
                 path="/calendar/agenda"
                 element={
                   <ProtectedRoute>
-                    {SimpleAgendaEnabled ? (
-                      <CalendarAgenda />
-                    ) : (
-                      <Navigate to="/calendar-flow-management-center" replace />
-                    )}
+                    {SimpleAgendaEnabled ? <CalendarAgenda /> : <CalendarAgendaRedirect />}
                   </ProtectedRoute>
                 }
               />
@@ -188,7 +196,14 @@ const Routes = () => {
               {/* Calendar route - redirect to new calendar flow center */}
               <Route
                 path="/calendar"
-                element={<Navigate to="/calendar-flow-management-center" replace />}
+                element={
+                  <Navigate
+                    to={
+                      SimpleAgendaEnabled ? '/calendar/agenda' : '/calendar-flow-management-center'
+                    }
+                    replace
+                  />
+                }
               />
 
               {/* Loaner Management */}
@@ -240,7 +255,14 @@ const Routes = () => {
                 path="/calendar-scheduling-center"
                 element={
                   <ProtectedRoute>
-                    <Navigate to="/calendar-flow-management-center" replace />
+                    <Navigate
+                      to={
+                        SimpleAgendaEnabled
+                          ? '/calendar/agenda'
+                          : '/calendar-flow-management-center'
+                      }
+                      replace
+                    />
                   </ProtectedRoute>
                 }
               />

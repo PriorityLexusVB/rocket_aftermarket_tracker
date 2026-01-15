@@ -26,7 +26,7 @@ const AssignmentQuickPanel = ({
   }
 
   const formatJobTime = (timestamp) => {
-    if (!timestamp) return 'Needs scheduling'
+    if (!timestamp) return 'All day'
     return new Date(timestamp)?.toLocaleDateString()
   }
 

@@ -32,8 +32,15 @@ const Navbar = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const SIMPLE_AGENDA_ENABLED =
+    String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
+
   const navigationLinks = [
-    { name: 'Calendar', href: '/calendar-flow-management-center', icon: Calendar },
+    {
+      name: 'Calendar',
+      href: SIMPLE_AGENDA_ENABLED ? '/calendar/agenda' : '/calendar-flow-management-center',
+      icon: Calendar,
+    },
     {
       name: 'Appointments',
       href: '/currently-active-appointments',

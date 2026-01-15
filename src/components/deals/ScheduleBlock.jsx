@@ -8,7 +8,7 @@ function isDateOnlyValue(input) {
   const str = String(input).trim()
   if (!str) return false
   // Treat bare dates (and a legacy local-midnight normalization) as NOT a scheduled window.
-  // These values are commonly used for promise dates and should render as "Promise:" + "Needs scheduling".
+  // These values are commonly used for promise dates and should render as scheduled without time.
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return true
   return /^\d{4}-\d{2}-\d{2}T00:00:00(?:\.0{1,3})?(?:Z|[+-]\d{2}:?\d{2})?$/.test(str)
 }
@@ -206,7 +206,7 @@ function getEtDayKey(isoOrDate, timeZone = TZ) {
 /**
  * ScheduleBlock
  * - If scheduled start/end exist: primary "Tue Dec 30 • 4:30–6:30 PM ET"
- * - If no scheduled window: primary "Promise: Tue Dec 30" + "Needs scheduling" badge
+ * - If no scheduled window (promise-only): primary "Promise: Tue Dec 30" + "Scheduled (No Time)" badge
  * - Promise shown as secondary only if present + meaningful (differs from scheduled day)
  */
 export default function ScheduleBlock({
@@ -305,7 +305,7 @@ export default function ScheduleBlock({
         </div>
         {!hasWindow && !hasDateOnlySchedule && promiseDate ? (
           <span className="shrink-0 inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-xs font-medium text-slate-700">
-            Needs scheduling
+            Scheduled (No Time)
           </span>
         ) : null}
       </div>
