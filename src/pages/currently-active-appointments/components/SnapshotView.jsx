@@ -624,7 +624,7 @@ export default function SnapshotView() {
               }
               aria-pressed={windowMode === 'needs_scheduling'}
             >
-              Scheduled (No Time)
+              All-day
             </button>
           </div>
 
@@ -656,7 +656,7 @@ export default function SnapshotView() {
       ) : null}
 
       {import.meta.env.DEV && sourceDebug?.effectiveFilters?.window === 'needs_scheduling' ? (
-        <div className="text-[11px] text-muted-foreground" aria-label="Scheduled (No Time) Debug">
+        <div className="text-[11px] text-muted-foreground" aria-label="All-day Debug">
           needs:{JSON.stringify(sourceDebug?.needsScheduling || null)}
         </div>
       ) : null}
@@ -677,13 +677,13 @@ export default function SnapshotView() {
       needsSplit.overdue.length === 0 &&
       needsSplit.upcoming.length === 0 ? (
         <div role="status" aria-live="polite" className="text-muted-foreground">
-          No scheduled items without time in this range.
+          No all-day items in this range.
         </div>
       ) : null}
 
       {windowMode === 'needs_scheduling' && needsSplit.overdue.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Overdue (Scheduled, No Time)</div>
+          <div className="text-foreground font-medium">Overdue (All-day)</div>
           <div className="text-xs text-muted-foreground">Promised day passed</div>
         </div>
       ) : null}
@@ -700,7 +700,7 @@ export default function SnapshotView() {
               <li
                 key={j.id}
                 className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Scheduled (no time) ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+                aria-label={`All-day ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
                 <div className="w-28 flex items-center gap-2 text-xs text-muted-foreground">
                   <span>{promiseLabel}</span>
@@ -747,7 +747,7 @@ export default function SnapshotView() {
 
       {windowMode === 'needs_scheduling' && needsSplit.upcoming.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Upcoming (Scheduled, No Time)</div>
+          <div className="text-foreground font-medium">Upcoming (All-day)</div>
           <div className="text-xs text-muted-foreground">Promised day in range</div>
         </div>
       ) : null}
@@ -764,7 +764,7 @@ export default function SnapshotView() {
               <li
                 key={j.id}
                 className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
-                aria-label={`Scheduled (no time) ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
+                aria-label={`All-day ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
                 <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
                   <span>{promiseLabel}</span>
@@ -860,7 +860,7 @@ export default function SnapshotView() {
                             {end ? ` – ${end}` : ''}
                           </>
                         ) : (
-                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                          <>All day{promiseLabel ? ` • ${promiseLabel}` : ''}</>
                         )}
                       </span>
                       {conflictIds.has(j.id) && (
@@ -962,7 +962,7 @@ export default function SnapshotView() {
                             {end ? ` – ${end}` : ''}
                           </>
                         ) : (
-                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                          <>All day{promiseLabel ? ` • ${promiseLabel}` : ''}</>
                         )}
                       </span>
                       {conflictIds.has(j.id) && (
@@ -1064,7 +1064,7 @@ export default function SnapshotView() {
                             {end ? ` – ${end}` : ''}
                           </>
                         ) : (
-                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                          <>All day{promiseLabel ? ` • ${promiseLabel}` : ''}</>
                         )}
                       </span>
                       {conflictIds.has(j.id) && (
@@ -1159,7 +1159,7 @@ export default function SnapshotView() {
                             {end ? ` – ${end}` : ''}
                           </>
                         ) : (
-                          <>All-day (Time TBD){promiseLabel ? ` • ${promiseLabel}` : ''}</>
+                          <>All day{promiseLabel ? ` • ${promiseLabel}` : ''}</>
                         )}
                       </span>
                       {conflictIds.has(j.id) && (

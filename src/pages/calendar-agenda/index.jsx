@@ -540,7 +540,7 @@ export default function CalendarAgenda() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900" aria-label="Calendar Agenda">
       <Navbar />
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4" style={{ paddingTop: '5rem' }}>
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6" style={{ paddingTop: '5rem' }}>
         {/* Aria-live region for screen reader announcements */}
         <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
 
@@ -556,13 +556,13 @@ export default function CalendarAgenda() {
             <input
               aria-label="Search appointments"
               placeholder="Search"
-              className="border rounded px-2 py-1"
+              className="h-9 w-64 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
             <select
               aria-label="Filter by date range"
-              className="border rounded px-2 py-1"
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
             >
@@ -574,7 +574,7 @@ export default function CalendarAgenda() {
 
             <button
               type="button"
-              className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
               aria-label="Show my next 3 days"
               onClick={() => {
                 setAssignee('me')
@@ -589,7 +589,7 @@ export default function CalendarAgenda() {
             {/* Filter toggle button */}
             <button
               onClick={() => setFiltersExpanded((prev) => !prev)}
-              className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
+              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
               aria-expanded={filtersExpanded}
               aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
             >
@@ -599,10 +599,10 @@ export default function CalendarAgenda() {
 
           {/* Collapsible filters panel */}
           {filtersExpanded && (
-            <div className="flex items-center gap-4 flex-wrap p-3 bg-gray-50 rounded border">
+            <div className="flex items-center gap-4 flex-wrap rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
               <select
                 aria-label="Filter by assignment"
-                className="border rounded px-2 py-1 bg-white"
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                 value={assignee}
                 onChange={(e) => setAssignee(e.target.value)}
                 disabled={!session?.user?.id}
@@ -613,7 +613,7 @@ export default function CalendarAgenda() {
               </select>
               <select
                 aria-label="Filter by status"
-                className="border rounded px-2 py-1 bg-white"
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
               >
@@ -635,10 +635,12 @@ export default function CalendarAgenda() {
         )}
         {groups.map(([dateKey, rows]) => (
           <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-2">
-            <h2 className="text-base font-semibold text-gray-900 mt-6">
-              {formatAgendaDayHeader(dateKey)}
-            </h2>
-            <ul className="divide-y rounded border bg-white" role="list">
+            <div className="sticky top-[5rem] z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200">
+              <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
+                {formatAgendaDayHeader(dateKey)}
+              </h2>
+            </div>
+            <ul className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" role="list">
               {rows.map((r) => {
                 const focused = r.id === focusId
                 const hasConflict = conflicts.get(r.id)
@@ -658,44 +660,46 @@ export default function CalendarAgenda() {
                     ref={focused ? focusRef : null}
                     tabIndex={0}
                     aria-label={`Appointment ${title || r.id}`}
-                    className={`flex items-center gap-3 px-3 py-2 text-sm ${focused ? 'bg-yellow-50' : ''}`}
+                    className={`flex items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none ${focused ? 'bg-amber-50' : ''}`}
                   >
                     <div className="flex-1">
                       <div className="font-medium truncate flex items-center gap-2">
                         {title}
                         {hasConflict && (
                           <span
-                            className="text-yellow-600"
+                            className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"
                             title="Potential scheduling conflict"
                             aria-label="Potential scheduling conflict"
                           >
-                            ⚠️
+                            Conflict
                           </span>
                         )}
                       </div>
                       {timeRange && (
-                        <div className="text-xs text-gray-600 font-mono truncate">{timeRange}</div>
+                        <div className="text-xs text-slate-600 font-mono tabular-nums truncate">
+                          {timeRange}
+                        </div>
                       )}
-                      <div className="text-xs text-gray-500 truncate">{vehicleLabel}</div>
+                      <div className="text-xs text-slate-500 truncate">{vehicleLabel}</div>
                     </div>
                     <div className="flex items-center gap-2 ml-auto">
                       <button
                         onClick={() => navigate(`/deals/${r.id}/edit`)}
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-700 hover:underline"
                         aria-label="View deal"
                       >
                         View
                       </button>
                       <button
                         onClick={() => handleReschedule(r)}
-                        className="text-indigo-600 hover:underline"
+                        className="text-indigo-700 hover:underline"
                         aria-label="Reschedule appointment"
                       >
                         Reschedule
                       </button>
                       <button
                         onClick={() => handleComplete(r)}
-                        className="text-green-600 hover:underline"
+                        className="text-emerald-700 hover:underline"
                         aria-label="Mark appointment complete"
                       >
                         Complete
