@@ -752,7 +752,9 @@ const CalendarFlowManagementCenter = () => {
 
   const renderVendorLanes = () => {
     const allDayJobs = needsSchedulingJobsInView || []
-    const allDayOnSiteJobs = allDayJobs.filter((job) => !job?.vendor_id || job?.location === 'on_site')
+    const allDayOnSiteJobs = allDayJobs.filter(
+      (job) => !job?.vendor_id || job?.location === 'on_site'
+    )
     const onSiteJobs = filteredJobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
     const onSiteCombined = [...(allDayOnSiteJobs || []), ...(onSiteJobs || [])]
     const vendorsToShow = showEmptyLanes
