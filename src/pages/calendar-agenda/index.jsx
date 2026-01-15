@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
 import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
+import Navbar from '@/components/ui/Navbar'
 
 const TZ = 'America/New_York'
 
@@ -92,6 +93,28 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
   const start = zonedStartOfDay(date, timeZone)
   const probe = new Date(start.getTime() + days * 24 * 60 * 60 * 1000)
   return zonedStartOfDay(probe, timeZone)
+}
+
+function dateKeyToNoonUtcDate(dateKey) {
+  if (!dateKey) return null
+  const m = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  if (!year || !month || !day) return null
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0))
+}
+
+function formatAgendaDayHeader(dateKey) {
+  const d = dateKeyToNoonUtcDate(dateKey)
+  if (!d) return String(dateKey)
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(d)
 }
 
 export function getEffectiveScheduleWindow(job) {
@@ -201,6 +224,12 @@ export default function CalendarAgenda() {
   }, [userProfile?.department])
 
   const authIsLoading = authLoading || profileLoading
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = 'Calendar — Agenda'
+    }
+  }, [])
 
   // Initialize filters from URL params, with localStorage fallback
   const [q, setQ] = useState(() => {
@@ -509,188 +538,188 @@ export default function CalendarAgenda() {
   if (loading) return <div className="p-4">Loading agenda…</div>
 
   return (
-    <div className="p-4 space-y-4" aria-label="Scheduled Appointments Agenda">
-      {/* Aria-live region for screen reader announcements */}
-      <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <div className="min-h-screen bg-slate-50 text-slate-900" aria-label="Calendar Agenda">
+      <Navbar />
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4" style={{ paddingTop: '5rem' }}>
+        {/* Aria-live region for screen reader announcements */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-      {supabaseNotice}
+        {supabaseNotice}
 
-      {/* Header with always-visible search and date range */}
-      <header className="space-y-3" aria-label="Agenda controls">
-        <div className="flex items-center gap-4 flex-wrap">
-          <h1 className="text-xl font-semibold">Appointments</h1>
-          <input
-            aria-label="Search appointments"
-            placeholder="Search"
-            className="border rounded px-2 py-1"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <select
-            aria-label="Filter by date range"
-            className="border rounded px-2 py-1"
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-          >
-            <option value="all">All Dates</option>
-            <option value="today">Today</option>
-            <option value="next3days">Next 3 Days</option>
-            <option value="next7days">Next 7 Days</option>
-          </select>
-
-          <button
-            type="button"
-            className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
-            aria-label="Show my next 3 days"
-            onClick={() => {
-              setAssignee('me')
-              setDateRange('next3days')
-            }}
-            disabled={!session?.user?.id}
-            title={session?.user?.id ? 'Filter to your upcoming items' : 'Sign in to use this'}
-          >
-            My Next 3 Days
-          </button>
-
-          {/* Filter toggle button */}
-          <button
-            onClick={() => setFiltersExpanded((prev) => !prev)}
-            className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
-            aria-expanded={filtersExpanded}
-            aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
-          >
-            Filters {filtersExpanded ? '▲' : '▼'}
-          </button>
-        </div>
-
-        {/* Collapsible filters panel */}
-        {filtersExpanded && (
-          <div className="flex items-center gap-4 flex-wrap p-3 bg-gray-50 rounded border">
+        {/* Header with always-visible search and date range */}
+        <header className="space-y-3" aria-label="Agenda controls">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
+              <span className="text-sm font-medium text-gray-500">Agenda</span>
+            </div>
+            <input
+              aria-label="Search appointments"
+              placeholder="Search"
+              className="border rounded px-2 py-1"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
             <select
-              aria-label="Filter by assignment"
-              className="border rounded px-2 py-1 bg-white"
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
+              aria-label="Filter by date range"
+              className="border rounded px-2 py-1"
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+            >
+              <option value="all">All Dates</option>
+              <option value="today">Today</option>
+              <option value="next3days">Next 3 Days</option>
+              <option value="next7days">Next 7 Days</option>
+            </select>
+
+            <button
+              type="button"
+              className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
+              aria-label="Show my next 3 days"
+              onClick={() => {
+                setAssignee('me')
+                setDateRange('next3days')
+              }}
               disabled={!session?.user?.id}
-              title={session?.user?.id ? '' : 'Sign in to filter by assignment'}
+              title={session?.user?.id ? 'Filter to your upcoming items' : 'Sign in to use this'}
             >
-              <option value="">All Assignments</option>
-              <option value="me">My Items</option>
-            </select>
-            <select
-              aria-label="Filter by status"
-              className="border rounded px-2 py-1 bg-white"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              My Next 3 Days
+            </button>
+
+            {/* Filter toggle button */}
+            <button
+              onClick={() => setFiltersExpanded((prev) => !prev)}
+              className="px-3 py-1 border rounded bg-white hover:bg-gray-50 text-sm font-medium"
+              aria-expanded={filtersExpanded}
+              aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
             >
-              <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-            {/* Note: vendor filter can be added here when vendor list is available */}
+              Filters {filtersExpanded ? '▲' : '▼'}
+            </button>
+          </div>
+
+          {/* Collapsible filters panel */}
+          {filtersExpanded && (
+            <div className="flex items-center gap-4 flex-wrap p-3 bg-gray-50 rounded border">
+              <select
+                aria-label="Filter by assignment"
+                className="border rounded px-2 py-1 bg-white"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+                disabled={!session?.user?.id}
+                title={session?.user?.id ? '' : 'Sign in to filter by assignment'}
+              >
+                <option value="">All Assignments</option>
+                <option value="me">My Items</option>
+              </select>
+              <select
+                aria-label="Filter by status"
+                className="border rounded px-2 py-1 bg-white"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+              {/* Note: vendor filter can be added here when vendor list is available */}
+            </div>
+          )}
+        </header>
+
+        {groups.length === 0 && (
+          <div role="status" aria-live="polite">
+            No scheduled or promised items in this range.
           </div>
         )}
-      </header>
+        {groups.map(([dateKey, rows]) => (
+          <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-2">
+            <h2 className="text-base font-semibold text-gray-900 mt-6">
+              {formatAgendaDayHeader(dateKey)}
+            </h2>
+            <ul className="divide-y rounded border bg-white" role="list">
+              {rows.map((r) => {
+                const focused = r.id === focusId
+                const hasConflict = conflicts.get(r.id)
+                const raw = r?.raw || r
+                const { start, end } = r?.scheduledStart
+                  ? { start: r.scheduledStart, end: r.scheduledEnd }
+                  : getEffectiveScheduleWindow(raw)
+                const timeRange = start ? formatScheduleRange(start, end) : null
+                const title = raw?.title || raw?.job_number
+                const vehicleLabel =
+                  r?.vehicleLabel ||
+                  `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
 
-      {groups.length === 0 && (
-        <div role="status" aria-live="polite">
-          No scheduled or promised items in this range.
-        </div>
-      )}
-      {groups.map(([dateKey, rows]) => (
-        <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-2">
-          <h2 className="text-sm font-medium text-gray-600 mt-6">{dateKey}</h2>
-          <ul className="divide-y rounded border bg-white" role="list">
-            {rows.map((r) => {
-              const focused = r.id === focusId
-              const hasConflict = conflicts.get(r.id)
-              const raw = r?.raw || r
-              const { start, end } = r?.scheduledStart
-                ? { start: r.scheduledStart, end: r.scheduledEnd }
-                : getEffectiveScheduleWindow(raw)
-              const timeRange = start ? formatScheduleRange(start, end) : null
-              const title = raw?.title || raw?.job_number
-              const vehicleLabel =
-                r?.vehicleLabel ||
-                `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
-
-              const promisedLabel = !start && (r?.promisedAt || raw?.promised_date)
-              const promisedText = promisedLabel
-                ? `All-day (Time TBD) • ${(r?.promisedAt || raw?.promised_date || '').toString().slice(0, 10)}`
-                : null
-
-              return (
-                <li
-                  key={r.id}
-                  ref={focused ? focusRef : null}
-                  tabIndex={0}
-                  aria-label={`Appointment ${title || r.id}`}
-                  className={`flex items-center gap-3 px-3 py-2 text-sm ${focused ? 'bg-yellow-50' : ''}`}
-                >
-                  <div className="flex-1">
-                    <div className="font-medium truncate flex items-center gap-2">
-                      {title}
-                      {hasConflict && (
-                        <span
-                          className="text-yellow-600"
-                          title="Potential scheduling conflict"
-                          aria-label="Potential scheduling conflict"
-                        >
-                          ⚠️
-                        </span>
+                return (
+                  <li
+                    key={r.id}
+                    ref={focused ? focusRef : null}
+                    tabIndex={0}
+                    aria-label={`Appointment ${title || r.id}`}
+                    className={`flex items-center gap-3 px-3 py-2 text-sm ${focused ? 'bg-yellow-50' : ''}`}
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium truncate flex items-center gap-2">
+                        {title}
+                        {hasConflict && (
+                          <span
+                            className="text-yellow-600"
+                            title="Potential scheduling conflict"
+                            aria-label="Potential scheduling conflict"
+                          >
+                            ⚠️
+                          </span>
+                        )}
+                      </div>
+                      {timeRange && (
+                        <div className="text-xs text-gray-600 font-mono truncate">{timeRange}</div>
                       )}
+                      <div className="text-xs text-gray-500 truncate">{vehicleLabel}</div>
                     </div>
-                    {timeRange && (
-                      <div className="text-xs text-gray-600 font-mono truncate">{timeRange}</div>
-                    )}
-                    <div className="text-xs text-gray-500 truncate">{vehicleLabel}</div>
-                    {promisedText && (
-                      <div className="text-xs text-gray-500 truncate">{promisedText}</div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <button
-                      onClick={() => navigate(`/deals/${r.id}/edit`)}
-                      className="text-blue-600 hover:underline"
-                      aria-label="View deal"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleReschedule(r)}
-                      className="text-indigo-600 hover:underline"
-                      aria-label="Reschedule appointment"
-                    >
-                      Reschedule
-                    </button>
-                    <button
-                      onClick={() => handleComplete(r)}
-                      className="text-green-600 hover:underline"
-                      aria-label="Mark appointment complete"
-                    >
-                      Complete
-                    </button>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      ))}
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={() => navigate(`/deals/${r.id}/edit`)}
+                        className="text-blue-600 hover:underline"
+                        aria-label="View deal"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => handleReschedule(r)}
+                        className="text-indigo-600 hover:underline"
+                        aria-label="Reschedule appointment"
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        onClick={() => handleComplete(r)}
+                        className="text-green-600 hover:underline"
+                        aria-label="Mark appointment complete"
+                      >
+                        Complete
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        ))}
 
-      {/* Reschedule Modal */}
-      <RescheduleModal
-        open={rescheduleModal.open}
-        onClose={() =>
-          setRescheduleModal({ open: false, job: null, initialStart: null, initialEnd: null })
-        }
-        onSubmit={handleRescheduleSubmit}
-        job={rescheduleModal.job}
-        initialStart={rescheduleModal.initialStart}
-        initialEnd={rescheduleModal.initialEnd}
-      />
+        {/* Reschedule Modal */}
+        <RescheduleModal
+          open={rescheduleModal.open}
+          onClose={() =>
+            setRescheduleModal({ open: false, job: null, initialStart: null, initialEnd: null })
+          }
+          onSubmit={handleRescheduleSubmit}
+          job={rescheduleModal.job}
+          initialStart={rescheduleModal.initialStart}
+          initialEnd={rescheduleModal.initialEnd}
+        />
+      </div>
     </div>
   )
 }
