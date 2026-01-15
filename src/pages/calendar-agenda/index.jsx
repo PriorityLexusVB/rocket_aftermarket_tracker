@@ -640,7 +640,10 @@ export default function CalendarAgenda() {
                 {formatAgendaDayHeader(dateKey)}
               </h2>
             </div>
-            <ul className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" role="list">
+            <ul
+              className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+              role="list"
+            >
               {rows.map((r) => {
                 const focused = r.id === focusId
                 const hasConflict = conflicts.get(r.id)
@@ -660,9 +663,23 @@ export default function CalendarAgenda() {
                     ref={focused ? focusRef : null}
                     tabIndex={0}
                     aria-label={`Appointment ${title || r.id}`}
-                    className={`flex items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus:bg-slate-50 focus:outline-none ${focused ? 'bg-amber-50' : ''}`}
+                    className={`grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
                   >
-                    <div className="flex-1">
+                    {/* Time column (blank for all-day) */}
+                    <div className="w-28 text-xs font-mono tabular-nums text-slate-600">
+                      {timeRange ? (
+                        <span className="truncate" title={timeRange}>
+                          {timeRange}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="sr-only">All day</span>
+                          <span aria-hidden="true">&nbsp;</span>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
                       <div className="font-medium truncate flex items-center gap-2">
                         {title}
                         {hasConflict && (
@@ -675,31 +692,27 @@ export default function CalendarAgenda() {
                           </span>
                         )}
                       </div>
-                      {timeRange && (
-                        <div className="text-xs text-slate-600 font-mono tabular-nums truncate">
-                          {timeRange}
-                        </div>
-                      )}
                       <div className="text-xs text-slate-500 truncate">{vehicleLabel}</div>
                     </div>
-                    <div className="flex items-center gap-2 ml-auto">
+
+                    <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => navigate(`/deals/${r.id}/edit`)}
-                        className="text-blue-700 hover:underline"
+                        className="rounded-md px-2 py-1 text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                         aria-label="View deal"
                       >
                         View
                       </button>
                       <button
                         onClick={() => handleReschedule(r)}
-                        className="text-indigo-700 hover:underline"
+                        className="rounded-md px-2 py-1 text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                         aria-label="Reschedule appointment"
                       >
                         Reschedule
                       </button>
                       <button
                         onClick={() => handleComplete(r)}
-                        className="text-emerald-700 hover:underline"
+                        className="rounded-md px-2 py-1 text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                         aria-label="Mark appointment complete"
                       >
                         Complete
