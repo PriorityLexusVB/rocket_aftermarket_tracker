@@ -16,6 +16,14 @@ vi.mock('@/services/calendarService', () => ({
   },
 }))
 
+vi.mock('@/services/scheduleItemsService', () => ({
+  getNeedsSchedulingPromiseItems: vi.fn(() => Promise.resolve({ items: [], debug: {} })),
+}))
+
+vi.mock('@/components/layouts/AppLayout', () => ({
+  default: ({ children }) => <>{children}</>,
+}))
+
 import CalendarSchedulingCenter from '@/pages/calendar/index.jsx'
 
 function LocationProbe() {

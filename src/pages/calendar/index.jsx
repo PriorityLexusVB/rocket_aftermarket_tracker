@@ -3,7 +3,9 @@ import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-reac
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { calendarService } from '@/services/calendarService'
+import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
+import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
 
 const SIMPLE_AGENDA_ENABLED =
@@ -125,16 +127,19 @@ const CalendarSchedulingCenter = () => {
 
   // Persist view/date to URL so it’s shareable/bookmarkable.
   useEffect(() => {
-    const next = new URLSearchParams(searchParams)
     const view = VALID_VIEW_TYPES.has(viewType) ? viewType : 'week'
     const date = formatDateParam(currentDate)
 
-    if (next.get('view') !== view) next.set('view', view)
-    if (date && next.get('date') !== date) next.set('date', date)
+    const currView = String(searchParams.get('view') || '')
+    const currDate = String(searchParams.get('date') || '')
+    const nextDate = date || ''
 
-    if (next.toString() !== searchParams.toString()) {
-      setSearchParams(next, { replace: true })
-    }
+    if (currView === view && currDate === nextDate) return
+
+    const next = new URLSearchParams(searchParams)
+    next.set('view', view)
+    if (nextDate) next.set('date', nextDate)
+    setSearchParams(next, { replace: true })
   }, [viewType, currentDate, searchParams, setSearchParams])
 
   // Date range calculation based on view type with safe date operations
@@ -212,11 +217,61 @@ const CalendarSchedulingCenter = () => {
           '#3b82f6',
       }))
 
-      setJobs(jobsData)
+      const scheduledIds = new Set((jobsData || []).map((j) => j?.id).filter(Boolean))
+
+      // Also include promise-only items (Scheduled (No Time)) so "Not scheduled" deals
+      // with a Promise date show up on the grid.
+      const endExclusive = (() => {
+        const dt = new Date(dateRange?.end)
+        if (Number.isNaN(dt.getTime())) return null
+        dt.setDate(dt.getDate() + 1)
+        dt.setHours(0, 0, 0, 0)
+        return dt
+      })()
+
+      let promiseItems = []
+      if (dateRange?.start && endExclusive) {
+        const res = await getNeedsSchedulingPromiseItems({
+          orgId: orgId || null,
+          rangeStart: dateRange.start,
+          rangeEnd: endExclusive,
+        })
+        promiseItems = Array.isArray(res?.items) ? res.items : []
+      }
+
+      const promiseJobs = (promiseItems || [])
+        .map((item) => {
+          const raw = item?.raw || {}
+          const id = item?.id || raw?.id
+          if (!id || scheduledIds.has(id)) return null
+
+          const vendorId = raw?.vendor_id || item?.vendorId || null
+          const serviceType = raw?.service_type || (vendorId ? 'vendor' : 'onsite')
+
+          return {
+            ...raw,
+            id,
+            title: raw?.title || item?.vehicleLabel || item?.customerName || 'Scheduled (No Time)',
+            vendor_id: vendorId,
+            vendor_name: item?.vendorName || raw?.vendor_name || 'Unassigned',
+            job_status: raw?.job_status || 'scheduled',
+            scheduled_start_time: safeDateString(item?.promisedAt),
+            scheduled_end_time: null,
+            service_type: serviceType,
+            time_tbd: true,
+            schedule_state: item?.scheduleState || 'scheduled_no_time',
+            color_code:
+              getEventColors(serviceType, raw?.job_status)?.hex || raw?.color_code || '#3b82f6',
+          }
+        })
+        .filter(Boolean)
+
+      const mergedJobs = [...(jobsData || []), ...(promiseJobs || [])]
+      setJobs(mergedJobs)
 
       // Update debug info
       setDebugInfo(
-        `Loaded ${jobsData?.length} jobs (${safeFormatDate(dateRange?.start)} - ${safeFormatDate(dateRange?.end)})`
+        `Loaded ${(jobsData?.length || 0) + (promiseJobs?.length || 0)} jobs (${safeFormatDate(dateRange?.start)} - ${safeFormatDate(dateRange?.end)})`
       )
     } catch (error) {
       console.error('Error loading calendar data:', error)
@@ -373,7 +428,9 @@ const CalendarSchedulingCenter = () => {
               className={`p-2 border-r border-gray-200 min-h-96 overflow-y-auto ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50/30' : 'bg-white'}`}
             >
               {day?.jobs?.map((job) => {
-                const jobStartTime = safeCreateDate(job?.scheduled_start_time)
+                const jobStartTime = job?.time_tbd
+                  ? null
+                  : safeCreateDate(job?.scheduled_start_time)
                 const colors = getEventColors(job?.service_type, job?.job_status)
                 const statusLabel = job?.job_status
                   ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
@@ -390,12 +447,14 @@ const CalendarSchedulingCenter = () => {
                     <div className="text-xs opacity-90 truncate">{job?.vendor_name}</div>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="text-xs opacity-80">
-                        {jobStartTime
-                          ? safeFormatTime(jobStartTime, {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })
-                          : 'Invalid Time'}
+                        {job?.time_tbd
+                          ? 'Time TBD'
+                          : jobStartTime
+                            ? safeFormatTime(jobStartTime, {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })
+                            : 'Invalid Time'}
                       </span>
                       <span
                         className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
@@ -540,7 +599,9 @@ const CalendarSchedulingCenter = () => {
                       const statusLabel = job?.job_status
                         ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
                         : 'SCHEDULED'
-                      const jobStartTime = safeCreateDate(job?.scheduled_start_time)
+                      const jobStartTime = job?.time_tbd
+                        ? null
+                        : safeCreateDate(job?.scheduled_start_time)
 
                       return (
                         <button
@@ -567,12 +628,14 @@ const CalendarSchedulingCenter = () => {
                           </div>
                           <div className="text-[10px] opacity-90 truncate">{job?.vendor_name}</div>
                           <div className="text-[10px] opacity-80">
-                            {jobStartTime
-                              ? safeFormatTime(jobStartTime, {
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                })
-                              : ''}
+                            {job?.time_tbd
+                              ? 'Time TBD'
+                              : jobStartTime
+                                ? safeFormatTime(jobStartTime, {
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  })
+                                : ''}
                           </div>
                         </button>
                       )
@@ -598,7 +661,7 @@ const CalendarSchedulingCenter = () => {
         ) : (
           <div className="space-y-4">
             {jobs?.map((job) => {
-              const jobStartTime = safeCreateDate(job?.scheduled_start_time)
+              const jobStartTime = job?.time_tbd ? null : safeCreateDate(job?.scheduled_start_time)
               const colors = getEventColors(job?.service_type, job?.job_status)
               const statusLabel = job?.job_status
                 ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
@@ -617,7 +680,11 @@ const CalendarSchedulingCenter = () => {
                         {job?.vendor_name} • {job?.vehicle_info}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {jobStartTime ? jobStartTime?.toLocaleString() : 'Invalid Time'}
+                        {job?.time_tbd
+                          ? 'Time TBD'
+                          : jobStartTime
+                            ? jobStartTime?.toLocaleString()
+                            : 'Invalid Time'}
                       </p>
                       <div className="mt-2 flex items-center gap-2 flex-wrap">
                         <span
@@ -788,7 +855,7 @@ const CalendarSchedulingCenter = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AppLayout>
       <div className="max-w-7xl mx-auto p-4">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Calendar Scheduling Center</h1>
@@ -799,7 +866,7 @@ const CalendarSchedulingCenter = () => {
 
         {loading ? <LoadingState /> : error ? <ErrorState /> : <MainCalendarView />}
       </div>
-    </div>
+    </AppLayout>
   )
 }
 

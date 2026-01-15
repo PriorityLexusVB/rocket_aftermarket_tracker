@@ -10,7 +10,7 @@ import {
   ArrowRight,
   Check,
 } from 'lucide-react'
-import { getAppointmentScheduleDisplay } from '@/utils/scheduleDisplay'
+import { getAppointmentScheduleDisplay, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 
 const AppointmentCard = ({
   appointment,
@@ -28,9 +28,10 @@ const AppointmentCard = ({
   const getTimeRemaining = () => {
     if (!appointment?.promised_date) return null
 
-    const now = new Date()
-    const promisedDate = new Date(appointment?.promised_date)
-    const diffMs = promisedDate - now
+    const promisedDate = toSafeDateForTimeZone(appointment?.promised_date)
+    if (!promisedDate) return null
+
+    const diffMs = promisedDate.getTime() - Date.now()
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
     const diffDays = Math.floor(diffHours / 24)
 

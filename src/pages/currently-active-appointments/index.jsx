@@ -16,6 +16,7 @@ import AppLayout from '../../components/layouts/AppLayout'
 import { useNavigate } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { appointmentsService } from '@/services/appointmentsService'
+import { toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 
 // Import components
 import AppointmentCard from './components/AppointmentCard'
@@ -156,7 +157,11 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
       const processedData = (data || [])?.map((job) => ({
         ...job,
-        isOverdue: job?.promised_date && new Date(job?.promised_date) < new Date(),
+        isOverdue: (() => {
+          const promised = toSafeDateForTimeZone(job?.promised_date)
+          if (!promised) return false
+          return promised.getTime() < Date.now()
+        })(),
         statusConfig: getStatusConfig(job?.job_status),
         priorityConfig: getPriorityConfig(job?.priority),
       }))

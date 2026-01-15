@@ -663,7 +663,10 @@ function mapFormToDb(formState = {}) {
     const requiresSchedulingNorm =
       li?.requires_scheduling ?? li?.requiresScheduling ?? true /* default to true */
     const noScheduleReasonNorm = li?.no_schedule_reason || li?.noScheduleReason || null
-    const lineItemPromisedDateNorm = li?.promised_date || li?.lineItemPromisedDate || null
+    const lineItemPromisedDateRaw = li?.promised_date || li?.lineItemPromisedDate || null
+    const lineItemPromisedDateNorm = lineItemPromisedDateRaw
+      ? String(lineItemPromisedDateRaw).slice(0, 10)
+      : null
     const isOffSiteNorm = li?.is_off_site ?? li?.isOffSite ?? false
     const scheduledStartNorm = li?.scheduled_start_time || li?.scheduledStartTime || null
     const scheduledEndNorm = li?.scheduled_end_time || li?.scheduledEndTime || null
@@ -3014,8 +3017,8 @@ function mapDbDealToForm(dbDeal) {
       unit_price: part?.unit_price || 0,
       unitPrice: part?.unit_price || 0,
       quantity_used: part?.quantity_used || 1,
-      promised_date: part?.promised_date || '',
-      promisedDate: part?.promised_date || '',
+      promised_date: part?.promised_date ? String(part.promised_date).slice(0, 10) : '',
+      promisedDate: part?.promised_date ? String(part.promised_date).slice(0, 10) : '',
       // ✅ FIX: Use formatTime() for proper timezone conversion (America/New_York)
       scheduled_start_time: formatTime(part?.scheduled_start_time),
       scheduledStartTime: formatTime(part?.scheduled_start_time),

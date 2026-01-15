@@ -181,8 +181,11 @@ export function buildJobPartsPayload(jobId, lineItems = [], opts = {}) {
 
         const promisedDateRaw =
           item?.promised_date ?? item?.lineItemPromisedDate ?? item?.dateScheduled ?? null
-        const promisedDateNorm =
-          promisedDateRaw || (requiresScheduling ? new Date().toISOString().slice(0, 10) : null)
+        const promisedDateNorm = promisedDateRaw
+          ? String(promisedDateRaw).slice(0, 10)
+          : requiresScheduling
+            ? new Date().toISOString().slice(0, 10)
+            : null
 
         const record = {
           job_id: jobId,
