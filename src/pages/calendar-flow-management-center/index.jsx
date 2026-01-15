@@ -583,7 +583,9 @@ const CalendarFlowManagementCenter = () => {
   // Updated renderEventChip to work with filtered data
   const renderEventChip = (job) => {
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
-    const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500'
+    const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
+    const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
+    const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
     const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500'
     const overdue = isOverdue(
       job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
@@ -591,16 +593,14 @@ const CalendarFlowManagementCenter = () => {
 
     const hasTimeWindow = !!job?.scheduled_start_time
     const promise = getPromiseValue(job)
-    const noTimeLabel = promise
-      ? `All-day (Time TBD) • ${formatEtDateLabel(promise)}`
-      : 'All-day (Time TBD)'
+    const allDayLabel = promise ? `All day • ${formatEtDateLabel(promise)}` : 'All day'
 
     return (
       <div
         key={job?.id}
         className={`
-          relative rounded-lg p-3 mb-2 cursor-pointer transition-all duration-200 hover:shadow-lg
-          ${chipColor} text-white text-sm
+          relative rounded-lg border p-3 mb-2 cursor-pointer transition-all duration-200 hover:shadow-md
+          ${chipBg} ${chipBorder} ${chipHoverBorder} text-sm text-gray-900
         `}
         onClick={() => handleJobClick(job)}
         draggable
@@ -626,7 +626,7 @@ const CalendarFlowManagementCenter = () => {
               )}
             </div>
             {overdue && (
-              <div className="flex items-center text-red-200">
+              <div className="flex items-center text-red-600">
                 <AlertTriangle className="h-3 w-3" />
                 <span className="text-xs ml-1">Overdue</span>
               </div>
@@ -634,13 +634,13 @@ const CalendarFlowManagementCenter = () => {
           </div>
 
           {/* Second line */}
-          <div className="text-xs opacity-90 flex items-center justify-between">
+          <div className="text-xs text-gray-600 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
                 {hasTimeWindow
                   ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
-                  : noTimeLabel}
+                  : allDayLabel}
               </div>
             </div>
 
@@ -654,7 +654,7 @@ const CalendarFlowManagementCenter = () => {
 
           {/* Vendor line for off-site */}
           {!isOnSite && (
-            <div className="text-xs opacity-90 mt-1 flex items-center">
+            <div className="text-xs text-gray-600 mt-1 flex items-center">
               <Building2 className="h-3 w-3 mr-1" />
               {job?.vendor_name}
             </div>
@@ -676,28 +676,8 @@ const CalendarFlowManagementCenter = () => {
           })
     const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i) // 8AM to 6PM
 
-    const dayModeDate = viewMode === 'day' ? days?.[0] : null
-    const dayModeKey = viewMode === 'day' ? toEtDateKey(dayModeDate) : null
-    const dayModeNoTimeJobs =
-      viewMode === 'day'
-        ? (needsSchedulingJobsInView || []).filter((job) => {
-            const k = toEtDateKey(getPromiseValue(job))
-            return !!(dayModeKey && k && k === dayModeKey)
-          })
-        : []
-
     return (
       <div className="h-full">
-        {viewMode === 'day' && dayModeNoTimeJobs?.length > 0 && (
-          <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-medium text-gray-900">Scheduled (No Time)</div>
-              <div className="text-xs text-gray-600">{dayModeNoTimeJobs.length} jobs</div>
-            </div>
-            <div className="space-y-2">{dayModeNoTimeJobs.map(renderEventChip)}</div>
-          </div>
-        )}
-
         <div className={`grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-7'} gap-2 h-full`}>
           {/* Time header */}
           <div className="col-span-1 space-y-12">
@@ -734,11 +714,8 @@ const CalendarFlowManagementCenter = () => {
                     {dayDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </div>
                 </div>
-                {viewMode !== 'day' && dayNoTimeJobs?.length > 0 && (
+                {dayNoTimeJobs?.length > 0 && (
                   <div className="py-2 border-b border-gray-100">
-                    <div className="text-[11px] font-medium text-gray-600 mb-2">
-                      Scheduled (No Time)
-                    </div>
                     <div className="space-y-2">{dayNoTimeJobs?.map(renderEventChip)}</div>
                   </div>
                 )}
@@ -774,49 +751,40 @@ const CalendarFlowManagementCenter = () => {
   }
 
   const renderVendorLanes = () => {
+    const allDayJobs = needsSchedulingJobsInView || []
+    const allDayOnSiteJobs = allDayJobs.filter((job) => !job?.vendor_id || job?.location === 'on_site')
     const onSiteJobs = filteredJobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
+    const onSiteCombined = [...(allDayOnSiteJobs || []), ...(onSiteJobs || [])]
     const vendorsToShow = showEmptyLanes
       ? vendors
-      : vendors?.filter((vendor) => filteredJobs?.some((job) => job?.vendor_id === vendor?.id))
+      : vendors?.filter(
+          (vendor) =>
+            filteredJobs?.some((job) => job?.vendor_id === vendor?.id) ||
+            allDayJobs?.some((job) => job?.vendor_id === vendor?.id)
+        )
 
     return (
       <div className="space-y-4">
-        {needsSchedulingJobsInView?.length > 0 && (
-          <div className="bg-indigo-50 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-indigo-500 rounded mr-3"></div>
-                <h3 className="font-medium">Scheduled (No Time)</h3>
-              </div>
-              <div className="text-sm text-gray-600">
-                {needsSchedulingJobsInView?.length || 0} jobs
-              </div>
-            </div>
-
-            <div className="grid grid-cols-6 gap-2">
-              {needsSchedulingJobsInView?.map(renderEventChip)}
-            </div>
-          </div>
-        )}
-
         {/* On-Site Lane */}
-        {(showEmptyLanes || (onSiteJobs && onSiteJobs?.length > 0)) && (
+        {(showEmptyLanes || onSiteCombined?.length > 0) && (
           <div className="bg-green-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
                 <h3 className="font-medium">On-Site (PLV)</h3>
               </div>
-              <div className="text-sm text-gray-600">{onSiteJobs?.length || 0} jobs</div>
+              <div className="text-sm text-gray-600">{onSiteCombined?.length || 0} jobs</div>
             </div>
 
-            <div className="grid grid-cols-6 gap-2">{onSiteJobs?.map(renderEventChip)}</div>
+            <div className="grid grid-cols-6 gap-2">{onSiteCombined?.map(renderEventChip)}</div>
           </div>
         )}
         {/* Vendor Lanes */}
         {vendorsToShow?.map((vendor) => {
           const vendorJobs = filteredJobs?.filter((job) => job?.vendor_id === vendor?.id)
-          const capacity = vendorJobs?.length
+          const allDayVendorJobs = allDayJobs?.filter((job) => job?.vendor_id === vendor?.id)
+          const vendorJobsCombined = [...(allDayVendorJobs || []), ...(vendorJobs || [])]
+          const capacity = vendorJobsCombined?.length
           const maxCapacity = 7 // Default capacity
 
           return (
@@ -841,7 +809,7 @@ const CalendarFlowManagementCenter = () => {
                 onDragOver={(e) => e?.preventDefault()}
                 onDrop={() => handleDrop(vendor?.id)}
               >
-                {vendorJobs?.map(renderEventChip)}
+                {vendorJobsCombined?.map(renderEventChip)}
               </div>
             </div>
           )
@@ -1087,13 +1055,13 @@ const CalendarFlowManagementCenter = () => {
                           }
 
                           toast?.info(
-                            'Scheduled (No Time) view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
+                            'All-day view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
                           )
                           navigate('/currently-active-appointments')
                         }}
                         className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
                       >
-                        Go to Scheduled (No Time)
+                        Go to All-day
                       </button>
                     </div>
                   </div>

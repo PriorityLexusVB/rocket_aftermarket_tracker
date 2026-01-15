@@ -89,12 +89,14 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
       {/* Header */}
       <div className="p-4 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900">Scheduled (No Time)</h2>
+          <h2 className="font-medium text-gray-900">All-day</h2>
           <div className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full font-medium">
             {jobs?.length || 0}
           </div>
         </div>
-        <p className="text-xs text-gray-600 mt-1">Drag onto calendar to assign a time/vendor</p>
+        <p className="text-xs text-gray-600 mt-1">
+          Promised date is set; drag onto the calendar to assign a time/vendor.
+        </p>
       </div>
 
       {/* Job List */}
@@ -108,7 +110,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
         ) : (
           <div className="text-center py-8">
             <Car className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-            <div className="text-sm text-gray-600">No scheduled items without time</div>
+            <div className="text-sm text-gray-600">No all-day items</div>
             <div className="text-xs text-gray-500 mt-1">Everything has a time window</div>
           </div>
         )}
