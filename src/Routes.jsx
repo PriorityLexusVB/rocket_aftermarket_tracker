@@ -1,5 +1,11 @@
 import React, { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes as RouterRoutes, Route, Navigate, useLocation } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Routes as RouterRoutes,
+  Route,
+  Navigate,
+  useLocation,
+} from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -126,11 +132,7 @@ const Routes = () => {
                 path="/calendar/agenda"
                 element={
                   <ProtectedRoute>
-                    {SimpleAgendaEnabled ? (
-                      <CalendarAgenda />
-                    ) : (
-                      <CalendarAgendaRedirect />
-                    )}
+                    {SimpleAgendaEnabled ? <CalendarAgenda /> : <CalendarAgendaRedirect />}
                   </ProtectedRoute>
                 }
               />
