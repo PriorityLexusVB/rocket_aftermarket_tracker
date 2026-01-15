@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   Clock,
   Car,
@@ -27,7 +27,7 @@ import UnassignedQueue from './components/UnassignedQueue'
 import JobDrawer from './components/JobDrawer'
 import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 
 function getPromiseValue(job) {
@@ -54,6 +54,9 @@ function toEtDateKey(input) {
 
 const CalendarFlowManagementCenter = () => {
   const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
+
+  const location = useLocation()
+  const lastAutoFocusRef = useRef(null)
 
   // State management
   const [loading, setLoading] = useState(true)
@@ -298,6 +301,23 @@ const CalendarFlowManagementCenter = () => {
     loadCalendarData()
     loadVendors()
   }, [loadCalendarData, loadVendors, orgId, tenantLoading])
+
+  // If a focus id is provided, open that job in the drawer once data is available.
+  useEffect(() => {
+    const qs = new URLSearchParams(location?.search || '')
+    const focusId = qs.get('focus')
+
+    if (!focusId) return
+    if (lastAutoFocusRef.current === focusId) return
+
+    const allJobs = [...(originalJobs || []), ...(originalUnassignedJobs || [])]
+    const match = allJobs.find((j) => String(j?.id) === String(focusId))
+    if (!match) return
+
+    setSelectedJob(match)
+    setShowDrawer(true)
+    lastAutoFocusRef.current = focusId
+  }, [location?.search, originalJobs, originalUnassignedJobs])
 
   // Apply filters whenever filters or original data change
   useEffect(() => {
