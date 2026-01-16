@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { calendarService } from '@/services/calendarService'
 import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
@@ -97,13 +97,16 @@ const safeDayKey = (value) => {
 const CalendarSchedulingCenter = () => {
   // State management
   const { user, orgId } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [, setSearchParams] = useSearchParams()
+  const urlParams = useMemo(() => new URLSearchParams(location.search), [location.search])
+  const didInitUrlStateRef = useRef(false)
   const [currentDate, setCurrentDate] = useState(
-    () => parseDateParam(searchParams.get('date')) || new Date()
+    () => parseDateParam(urlParams.get('date')) || new Date()
   )
   const [viewType, setViewType] = useState(() => {
-    const v = String(searchParams.get('view') || '').toLowerCase()
+    const v = String(urlParams.get('view') || '').toLowerCase()
     return VALID_VIEW_TYPES.has(v) ? v : 'week'
   }) // 'day', 'week', 'month'
   const [jobs, setJobs] = useState([])
@@ -113,34 +116,60 @@ const CalendarSchedulingCenter = () => {
 
   // Keep state in sync with URL (supports refresh + browser back/forward)
   useEffect(() => {
-    const nextViewRaw = String(searchParams.get('view') || '').toLowerCase()
+    const nextViewRaw = String(urlParams.get('view') || '').toLowerCase()
     const nextView = VALID_VIEW_TYPES.has(nextViewRaw) ? nextViewRaw : null
     if (nextView && nextView !== viewType) setViewType(nextView)
 
-    const nextDate = parseDateParam(searchParams.get('date'))
+    const nextDate = parseDateParam(urlParams.get('date'))
     if (nextDate) {
       const currKey = formatDateParam(currentDate)
       const nextKey = formatDateParam(nextDate)
       if (currKey && nextKey && currKey !== nextKey) setCurrentDate(nextDate)
     }
-  }, [searchParams, viewType, currentDate])
+  }, [urlParams, viewType, currentDate])
 
-  // Persist view/date to URL so it’s shareable/bookmarkable.
+  // One-time URL normalization so the page is shareable/bookmarkable without
+  // creating a state <-> URL feedback loop.
   useEffect(() => {
-    const view = VALID_VIEW_TYPES.has(viewType) ? viewType : 'week'
-    const date = formatDateParam(currentDate)
+    if (didInitUrlStateRef.current) return
 
-    const currView = String(searchParams.get('view') || '')
-    const currDate = String(searchParams.get('date') || '')
-    const nextDate = date || ''
+    const desiredView = VALID_VIEW_TYPES.has(viewType) ? viewType : 'week'
+    const desiredDate = formatDateParam(currentDate) || ''
 
-    if (currView === view && currDate === nextDate) return
+    const currView = String(urlParams.get('view') || '').toLowerCase()
+    const currDate = String(urlParams.get('date') || '')
 
-    const next = new URLSearchParams(searchParams)
-    next.set('view', view)
-    if (nextDate) next.set('date', nextDate)
-    setSearchParams(next, { replace: true })
-  }, [viewType, currentDate, searchParams, setSearchParams])
+    const next = new URLSearchParams(urlParams)
+    let changed = false
+
+    if (currView !== desiredView) {
+      next.set('view', desiredView)
+      changed = true
+    }
+
+    if (currDate !== desiredDate) {
+      if (desiredDate) next.set('date', desiredDate)
+      else next.delete('date')
+      changed = true
+    }
+
+    didInitUrlStateRef.current = true
+    if (changed) setSearchParams(next, { replace: true })
+  }, [viewType, currentDate, urlParams, setSearchParams])
+
+  const setUrlState = useCallback(
+    ({ nextViewType, nextDate }) => {
+      const view = VALID_VIEW_TYPES.has(nextViewType) ? nextViewType : 'week'
+      const date = formatDateParam(nextDate) || ''
+
+      const next = new URLSearchParams(location.search)
+      next.set('view', view)
+      if (date) next.set('date', date)
+      else next.delete('date')
+      setSearchParams(next, { replace: true })
+    },
+    [location.search, setSearchParams]
+  )
 
   // Date range calculation based on view type with safe date operations
   const dateRange = useMemo(() => {
@@ -318,6 +347,7 @@ const CalendarSchedulingCenter = () => {
       // Validate the new date before setting
       if (!isNaN(newDate?.getTime())) {
         setCurrentDate(newDate)
+        setUrlState({ nextViewType: viewType, nextDate: newDate })
       } else {
         console.warn('Invalid date generated during navigation')
       }
@@ -327,7 +357,9 @@ const CalendarSchedulingCenter = () => {
   }
 
   const goToToday = () => {
-    setCurrentDate(new Date())
+    const today = new Date()
+    setCurrentDate(today)
+    setUrlState({ nextViewType: viewType, nextDate: today })
   }
 
   // Refresh data with safe date operations
@@ -547,6 +579,7 @@ const CalendarSchedulingCenter = () => {
                   if (!isNaN(nextDate?.getTime?.())) {
                     setCurrentDate(nextDate)
                     setViewType('day')
+                    setUrlState({ nextViewType: 'day', nextDate })
                   }
                 } catch (e) {
                   console.error('Failed to jump to day view:', e)
@@ -817,7 +850,10 @@ const CalendarSchedulingCenter = () => {
               <h3 className="font-medium text-gray-900 mb-3">View Settings</h3>
               <div className="space-y-2">
                 <button
-                  onClick={() => setViewType('day')}
+                  onClick={() => {
+                    setViewType('day')
+                    setUrlState({ nextViewType: 'day', nextDate: currentDate })
+                  }}
                   className={`w-full py-2 rounded transition-colors ${
                     viewType === 'day'
                       ? 'bg-blue-500 text-white'
@@ -827,7 +863,10 @@ const CalendarSchedulingCenter = () => {
                   Day View
                 </button>
                 <button
-                  onClick={() => setViewType('week')}
+                  onClick={() => {
+                    setViewType('week')
+                    setUrlState({ nextViewType: 'week', nextDate: currentDate })
+                  }}
                   className={`w-full py-2 rounded transition-colors ${
                     viewType === 'week'
                       ? 'bg-blue-500 text-white'
@@ -837,7 +876,10 @@ const CalendarSchedulingCenter = () => {
                   Week View
                 </button>
                 <button
-                  onClick={() => setViewType('month')}
+                  onClick={() => {
+                    setViewType('month')
+                    setUrlState({ nextViewType: 'month', nextDate: currentDate })
+                  }}
                   className={`w-full py-2 rounded transition-colors ${
                     viewType === 'month'
                       ? 'bg-blue-500 text-white'
