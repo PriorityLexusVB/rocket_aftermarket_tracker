@@ -1,8 +1,8 @@
 {
   "folders": [
     {
-      "path": "."
-    }
+      "path": ".",
+    },
   ],
   "settings": {
     "files.eol": "\n",
@@ -10,6 +10,6 @@
     "testing.defaultGutterClickAction": "run",
     "github.copilot.chat.codeGeneration.useInstructionFiles": true,
     "chat.mcp.access": "all",
-    "chat.mcp.gallery.enabled": true
-  }
+    "chat.mcp.gallery.enabled": true,
+  },
 }

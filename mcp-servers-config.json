@@ -12,10 +12,7 @@
     "supabase-wrapper": {
       "type": "stdio",
       "command": "bash",
-      "args": [
-        "${workspaceFolder}/scripts/mcp/supabase-mcp.sh",
-        ".env.e2e.local"
-      ],
+      "args": ["${workspaceFolder}/scripts/mcp/supabase-mcp.sh", ".env.e2e.local"],
       "env": {
         "npm_config_yes": "true"
       },
