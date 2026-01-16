@@ -33,6 +33,27 @@ const emptyLineItem = () => ({
   is_off_site: false,
 })
 
+const normalizeDateOnly = (value) => {
+  if (!value) return ''
+  const s = String(value).slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''
+}
+
+const normalizeLineItemsForForm = (items) => {
+  const arr = Array.isArray(items) ? items : []
+  return arr.map((li) => {
+    const normalizedPromised = normalizeDateOnly(
+      li?.promised_date ?? li?.promisedDate ?? li?.lineItemPromisedDate ?? ''
+    )
+    return {
+      ...li,
+      promised_date: normalizedPromised,
+      promisedDate: normalizedPromised,
+      lineItemPromisedDate: normalizedPromised,
+    }
+  })
+}
+
 export default function DealForm({
   initial = {},
   mode = 'create', // 'create' | 'edit'
@@ -69,7 +90,9 @@ export default function DealForm({
       eta_return_date: initial?.loanerForm?.eta_return_date || '',
       notes: initial?.loanerForm?.notes || '',
     },
-    lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
+    lineItems: initial.lineItems?.length
+      ? normalizeLineItemsForForm(initial.lineItems)
+      : [emptyLineItem()],
     promised_date: initial.promised_date || '',
     scheduled_start_time: initial.scheduled_start_time || '',
     scheduled_end_time: initial.scheduled_end_time || '',
@@ -109,7 +132,9 @@ export default function DealForm({
         eta_return_date: initial?.loanerForm?.eta_return_date || '',
         notes: initial?.loanerForm?.notes || '',
       },
-      lineItems: initial.lineItems?.length ? initial.lineItems : [emptyLineItem()],
+      lineItems: initial.lineItems?.length
+        ? normalizeLineItemsForForm(initial.lineItems)
+        : [emptyLineItem()],
       promised_date: initial.promised_date || '',
       scheduled_start_time: initial.scheduled_start_time || '',
       scheduled_end_time: initial.scheduled_end_time || '',
@@ -389,7 +414,7 @@ export default function DealForm({
       const next = { ...prev }
       const lineItems = Array.isArray(next.lineItems) ? [...next.lineItems] : []
       const li = { ...(lineItems[idx] || {}) }
-      li[key] = val
+      li[key] = key === 'promised_date' ? normalizeDateOnly(val) : val
       if (key === 'product_id') {
         const prod = productMap.get(String(val))
         if (prod && prod.unit_price !== undefined) {
