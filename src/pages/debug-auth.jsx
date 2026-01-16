@@ -251,7 +251,7 @@ export default function DebugAuthPage() {
                   </span>
                 </li>
                 <li>
-                  Scheduled (No Time) (promise-only):{' '}
+                  All-day (promise-only):{' '}
                   <span data-testid="ops-needs-scheduling-count">
                     {ops?.needsScheduling?.count ?? 'N/A'}
                   </span>

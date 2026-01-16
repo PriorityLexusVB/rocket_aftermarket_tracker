@@ -248,7 +248,7 @@ const CalendarSchedulingCenter = () => {
 
       const scheduledIds = new Set((jobsData || []).map((j) => j?.id).filter(Boolean))
 
-      // Also include promise-only items (Scheduled (No Time)) so "Not scheduled" deals
+      // Also include promise-only items (All-day) so "Not scheduled" deals
       // with a Promise date show up on the grid.
       const endExclusive = (() => {
         const dt = new Date(dateRange?.end)
@@ -280,7 +280,7 @@ const CalendarSchedulingCenter = () => {
           return {
             ...raw,
             id,
-            title: raw?.title || item?.vehicleLabel || item?.customerName || 'Scheduled (No Time)',
+            title: raw?.title || item?.vehicleLabel || item?.customerName || 'All-day',
             vendor_id: vendorId,
             vendor_name: item?.vendorName || raw?.vendor_name || 'Unassigned',
             job_status: raw?.job_status || 'scheduled',

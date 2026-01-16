@@ -91,7 +91,7 @@ const CalendarFlowManagementCenter = () => {
   // Drag and drop
   const [draggedJob, setDraggedJob] = useState(null)
 
-  // Scheduled (No Time) queue (promised day, no schedule window)
+  // All-day queue (promised day, no schedule window)
   const [needsSchedulingItems, setNeedsSchedulingItems] = useState([])
 
   const { orgId, loading: tenantLoading } = useTenant()

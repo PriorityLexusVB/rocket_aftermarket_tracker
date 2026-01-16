@@ -55,7 +55,8 @@ test.describe('Agenda View', () => {
 
     // Verify agenda can accept focus param without crashing.
     await page.goto(`/calendar/agenda?focus=${encodeURIComponent(jobId)}`)
-    await expect(page.getByRole('heading', { level: 1, name: 'Appointments' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible()
+    await expect(page.locator('header[aria-label="Agenda controls"]')).toContainText('Agenda')
   })
 
   test('agenda view renders with flag enabled', async ({ page }) => {
@@ -73,7 +74,8 @@ test.describe('Agenda View', () => {
     await page.goto('/calendar/agenda')
 
     // Verify page loads
-    await expect(page.getByRole('heading', { level: 1, name: 'Appointments' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible()
+    await expect(page.locator('header[aria-label="Agenda controls"]')).toContainText('Agenda')
 
     // Verify always-visible filters are present
     await expect(page.locator('select[aria-label="Filter by date range"]')).toBeVisible()
@@ -101,7 +103,8 @@ test.describe('Agenda View', () => {
     await page.goto('/calendar/agenda?focus=test-job-123')
 
     // Verify page loads without error
-    await expect(page.getByRole('heading', { level: 1, name: 'Appointments' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible()
+    await expect(page.locator('header[aria-label="Agenda controls"]')).toContainText('Agenda')
 
     // Page should handle missing job gracefully (no crash)
     const errorBanner = page.locator('[role="alert"]')
@@ -150,6 +153,7 @@ test.describe('Agenda View', () => {
 
     // Check if filter persisted - reusing the same statusFilter locator
     await expect(statusFilter).toHaveValue('completed')
-    await expect(page.getByRole('heading', { level: 1, name: 'Appointments' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible()
+    await expect(page.locator('header[aria-label="Agenda controls"]')).toContainText('Agenda')
   })
 })

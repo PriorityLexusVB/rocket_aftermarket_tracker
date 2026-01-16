@@ -2005,7 +2005,7 @@ export async function createDeal(formState) {
     // Some environments have DB triggers/defaults that materialize a scheduled window
     // from promised dates even when the user did not set schedule times.
     // If the user provided no schedule window, force the job (and optionally job_parts)
-    // to remain scheduled-without-time so the UI renders a promise date with "Scheduled (No Time)".
+    // to remain scheduled-without-time so the UI renders a promise date with "All-day".
     try {
       const userProvidedJobTimes = !!(payload?.scheduled_start_time || payload?.scheduled_end_time)
       const userProvidedLineTimes = (normalizedLineItems || []).some(

@@ -196,7 +196,7 @@ test.describe('4-page smoke checklist', () => {
 
     const todayBtn = page.getByRole('button', { name: 'Today' })
     const next7Btn = page.getByRole('button', { name: 'Next 7 Days' })
-    const needsBtn = page.getByRole('button', { name: 'Scheduled (No Time)' })
+    const needsBtn = page.getByRole('button', { name: 'All-day' })
 
     await expect(todayBtn).toBeVisible()
     await expect(next7Btn).toBeVisible()
@@ -212,7 +212,7 @@ test.describe('4-page smoke checklist', () => {
     } catch {
       // In some environments, the needs-scheduling hydration path can be transiently empty
       // (e.g., DB/network blip). Treat the explicit empty-state as acceptable for this smoke flow.
-      await expect(page.getByText(/No scheduled items without time/i).first()).toBeVisible({
+      await expect(page.getByText(/No all-day items in this range/i).first()).toBeVisible({
         timeout: 10_000,
       })
     }
@@ -237,9 +237,10 @@ test.describe('4-page smoke checklist', () => {
 
     // D) Agenda
     await page.goto('/calendar/agenda?dateRange=next7days')
-    await expect(page.getByRole('heading', { level: 1, name: 'Appointments' })).toBeVisible({
+    await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible({
       timeout: 20_000,
     })
+    await expect(page.locator('header[aria-label="Agenda controls"]')).toContainText('Agenda')
 
     const dateRange = page.locator('select[aria-label="Filter by date range"]')
     await expect(dateRange).toBeVisible()
