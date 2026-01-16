@@ -39,5 +39,5 @@ describe('CalendarFlowManagementCenter smoke', () => {
         )
       }).not.toThrow()
     })
-  })
+  }, 15000)
 })

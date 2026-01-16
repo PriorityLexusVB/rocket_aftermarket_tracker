@@ -280,7 +280,7 @@ export async function getUnscheduledInProgressInHouseItems({ orgId } = {}) {
     if (!ids.length) return { items: [], debug: { candidateIds: 0, hydrated: 0, kept: 0 } }
 
     const jobs = await jobService.getJobsByIds(ids, { orgId })
-    const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+    const withLoaners = await attachActiveLoanerFlags(jobs)
 
     const now = new Date()
     const items = []
@@ -443,7 +443,7 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
       }
     }
 
-    const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+    const withLoaners = await attachActiveLoanerFlags(jobs)
 
     const now = new Date()
     const items = []
@@ -521,7 +521,7 @@ export async function getScheduledJobsByDateRange({ rangeStart, rangeEnd, orgId 
   }
 
   const jobs = await jobService.getJobsByIds(ids, { orgId })
-  const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+  const withLoaners = await attachActiveLoanerFlags(jobs)
 
   const patched = withLoaners.map((job) => {
     const override = scheduleById.get(job?.id)
@@ -551,7 +551,7 @@ export async function getScheduledJobsByDateRange({ rangeStart, rangeEnd, orgId 
   }
 }
 
-async function attachActiveLoanerFlags(jobRows, orgId) {
+async function attachActiveLoanerFlags(jobRows) {
   const jobs = Array.isArray(jobRows) ? jobRows : []
   const ids = jobs.map((j) => j?.id).filter(Boolean)
   if (!ids.length) return jobs
@@ -629,7 +629,7 @@ export async function getScheduleItems({ rangeStart, rangeEnd, orgId } = {}) {
   }
 
   const jobs = await jobService.getJobsByIds(ids, { orgId })
-  const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+  const withLoaners = await attachActiveLoanerFlags(jobs)
 
   const normalized = []
   let scheduleFromJobParts = 0

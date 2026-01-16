@@ -60,10 +60,7 @@ async function check(col) {
       return false
     }
     if (errMsg.includes('permission denied') || errMsg.includes('not authorized')) {
-      logOnce(
-        `perm-${col}`,
-        `[health-user-profiles] Permission denied checking ${col}; treating as unavailable`
-      )
+      // Expected in some RLS configurations; treat as unknown/unavailable without log spam.
       return null
     }
     // Other errors (RLS, network, etc.) - treat as unknown
