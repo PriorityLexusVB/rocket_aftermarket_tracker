@@ -8,6 +8,7 @@ import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import { createUndoEntry, canUndo } from './undoHelpers'
 import { formatTime } from '@/utils/dateTimeUtils'
 import { toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+import { getStatusBadge } from '@/lib/time'
 import {
   getScheduleItems,
   classifyScheduleState,
@@ -694,15 +695,18 @@ export default function SnapshotView() {
             const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
             const vendorName = j?.vendorName || 'Unassigned'
             const customer = j?.customerName || vehicle?.owner_name || ''
-            const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+            const status = String(j?.raw?.job_status || 'pending')
+            const statusBadge = getStatusBadge(status)
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
+            const hasLoaner =
+              !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
             return (
               <li
                 key={j.id}
-                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                 aria-label={`All-day ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
-                <div className="w-28 flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="w-full flex items-center gap-2 text-xs text-muted-foreground sm:w-28">
                   <span>{promiseLabel}</span>
                   <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[11px] font-medium">
                     Overdue
@@ -719,9 +723,24 @@ export default function SnapshotView() {
                       : ''}
                   </div>
                 </div>
-                <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                <div className="w-full sm:w-28">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
+                  >
+                    {statusBadge?.label || status}
+                  </span>
+                </div>
+                {hasLoaner ? (
+                  <div className="w-full sm:w-20">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800">
+                      Loaner
+                    </span>
+                  </div>
+                ) : (
+                  <div className="hidden sm:block sm:w-20" />
+                )}
+                <div className="flex items-center gap-2 sm:ml-auto">
                   <button
                     onClick={() => navigate(`/deals/${j.id}/edit`)}
                     className="text-blue-600 hover:underline"
@@ -758,15 +777,18 @@ export default function SnapshotView() {
             const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
             const vendorName = j?.vendorName || 'Unassigned'
             const customer = j?.customerName || vehicle?.owner_name || ''
-            const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+            const status = String(j?.raw?.job_status || 'pending')
+            const statusBadge = getStatusBadge(status)
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
+            const hasLoaner =
+              !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
             return (
               <li
                 key={j.id}
-                className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                 aria-label={`All-day ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
-                <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="w-full flex items-center gap-1 text-xs text-muted-foreground sm:w-28">
                   <span>{promiseLabel}</span>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -780,9 +802,24 @@ export default function SnapshotView() {
                       : ''}
                   </div>
                 </div>
-                <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                <div className="flex items-center gap-2 ml-auto">
+                <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                <div className="w-full sm:w-28">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
+                  >
+                    {statusBadge?.label || status}
+                  </span>
+                </div>
+                {hasLoaner ? (
+                  <div className="w-full sm:w-20">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800">
+                      Loaner
+                    </span>
+                  </div>
+                ) : (
+                  <div className="hidden sm:block sm:w-20" />
+                )}
+                <div className="flex items-center gap-2 sm:ml-auto">
                   <button
                     onClick={() => navigate(`/deals/${j.id}/edit`)}
                     className="text-blue-600 hover:underline"
@@ -845,14 +882,17 @@ export default function SnapshotView() {
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
                 const vendorName = j?.vendorName || 'Unassigned'
                 const customer = j?.customerName || vehicle?.owner_name || ''
-                const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
+                const status = String(j?.raw?.job_status || 'pending')
+                const statusBadge = getStatusBadge(status)
+                const hasLoaner =
+                  !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
                 return (
                   <li
                     key={j.id}
-                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
-                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="w-full flex items-center gap-1 text-xs text-muted-foreground sm:w-28">
                       <span>
                         {hasTime ? (
                           <>
@@ -885,9 +925,24 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full sm:w-28">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
+                      >
+                        {statusBadge?.label || status}
+                      </span>
+                    </div>
+                    {hasLoaner ? (
+                      <div className="w-full sm:w-20">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800">
+                          Loaner
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="hidden sm:block sm:w-20" />
+                    )}
+                    <div className="flex items-center gap-2 sm:ml-auto">
                       <button
                         onClick={() => navigate(`/deals/${j.id}/edit`)}
                         className="text-blue-600 hover:underline"

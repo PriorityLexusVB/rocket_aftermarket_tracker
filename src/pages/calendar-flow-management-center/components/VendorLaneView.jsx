@@ -6,17 +6,28 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   const renderEventChip = (job) => {
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
-    const chipColor = isOnSite ? 'bg-green-500' : 'bg-orange-500'
-    const statusColor = getStatusBadge(job?.job_status)?.color || 'bg-blue-500'
+    const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
+    const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
+    const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
+
+    const statusBadge = getStatusBadge(job?.job_status)
+    const statusColor = statusBadge?.color || 'bg-blue-500'
+
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     const overdue = isOverdue(promise)
+
+    const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
+    const vehicleLabel = job?.vehicle_info || ''
+    const customerLabel = job?.customer_name || job?.customerName || ''
+
+    const hasLoaner = !!(job?.has_active_loaner || job?.loaner_id || job?.customer_needs_loaner)
 
     return (
       <div
         key={job?.id}
         className={`
-          relative rounded-lg p-3 mb-2 cursor-pointer transition-all duration-200 hover:shadow-lg
-          ${chipColor} text-white text-sm min-w-[280px]
+          relative rounded-lg border p-3 cursor-pointer transition-all duration-200 hover:shadow-md
+          ${chipBg} ${chipBorder} ${chipHoverBorder} text-sm text-gray-900 w-full
         `}
         onClick={() => onJobClick?.(job)}
       >
@@ -24,26 +35,32 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
         <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusColor} rounded-l-lg`} />
 
         {/* Main content */}
-        <div className="ml-2">
+        <div className="ml-2 min-w-0">
           {/* Top line */}
           <div className="flex items-center justify-between mb-1">
-            <div className="font-bold truncate flex items-center flex-1">
+            <div className="font-semibold truncate flex items-center flex-1 min-w-0">
               <Car className="h-3 w-3 mr-1 flex-shrink-0" />
               <span className="truncate">
-                {job?.job_number?.split('-')?.pop()} • {job?.title}
+                {jobNumber ? `${jobNumber} • ` : ''}
+                {job?.title}
               </span>
+              {hasLoaner && (
+                <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-800 whitespace-nowrap">
+                  Loaner
+                </span>
+              )}
             </div>
             {overdue && (
-              <div className="flex items-center text-red-200 ml-2">
+              <div className="flex items-center text-red-600 ml-2">
                 <AlertTriangle className="h-3 w-3" />
                 <span className="text-xs ml-1">Overdue</span>
               </div>
             )}
           </div>
 
-          {/* Second line */}
-          <div className="text-xs opacity-90 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+          {/* Second line (time + promise + status) */}
+          <div className="text-xs text-gray-600 flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
               <div className="flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
                 {formatTime(job?.scheduled_start_time)}–{formatTime(job?.scheduled_end_time)}
@@ -53,7 +70,21 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
                 Promise: {formatEtDateLabel(promise) || '—'}
               </div>
             </div>
+
+            <div
+              className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
+            >
+              {statusBadge?.label || job?.job_status?.toUpperCase?.()}
+            </div>
           </div>
+
+          {/* Third line (customer + vehicle) */}
+          {customerLabel || vehicleLabel ? (
+            <div className="mt-1 text-xs text-gray-600 truncate">
+              {customerLabel ? `${customerLabel}${vehicleLabel ? ' • ' : ''}` : ''}
+              {vehicleLabel}
+            </div>
+          ) : null}
 
           {/* Vendor line for off-site */}
           {!isOnSite && (
@@ -62,19 +93,6 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
               {job?.vendor_name}
             </div>
           )}
-
-          {/* Status badge */}
-          <div className="flex justify-end mt-2">
-            <div
-              className={`
-              px-2 py-1 rounded-full text-xs font-medium
-              ${getStatusBadge(job?.job_status)?.bg || 'bg-gray-500'} 
-              bg-opacity-20 border border-current
-            `}
-            >
-              {getStatusBadge(job?.job_status)?.label || job?.job_status?.toUpperCase()}
-            </div>
-          </div>
         </div>
       </div>
     )
@@ -114,7 +132,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
         </div>
 
         <div
-          className="p-4 min-h-[120px] grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"
+          className="p-4 min-h-[120px] grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"
           onDragOver={(e) => e?.preventDefault()}
           onDrop={() => onDrop?.(null, 'on_site')}
         >
@@ -177,7 +195,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
               </div>
             </div>
             <div
-              className="p-4 min-h-[120px] grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3"
+              className="p-4 min-h-[120px] grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3"
               onDragOver={(e) => e?.preventDefault()}
               onDrop={() => onDrop?.(vendor?.id, 'off_site')}
             >

@@ -170,9 +170,9 @@ export const getStatusBadge = (status) => {
   const statusMap = {
     pending: {
       label: 'PENDING',
-      bg: 'bg-gray-100',
-      textColor: 'text-gray-800',
-      color: 'bg-gray-500',
+      bg: 'bg-slate-700',
+      textColor: 'text-white',
+      color: 'bg-slate-600',
     },
     scheduled: {
       label: 'BOOKED',

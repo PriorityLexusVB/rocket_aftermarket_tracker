@@ -468,6 +468,17 @@ const CalendarSchedulingCenter = () => {
                   ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
                   : 'SCHEDULED'
 
+                const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
+                const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'Unassigned')
+                const vehicleLabel = job?.vehicle_info || ''
+                const promiseLabel = job?.time_tbd
+                  ? safeFormatDate(job?.scheduled_start_time, {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : ''
+
                 return (
                   <div
                     key={job?.id}
@@ -475,23 +486,33 @@ const CalendarSchedulingCenter = () => {
                     onClick={() => navigate(`/deals/${job?.id}/edit`)}
                     title={job?.title || 'Open deal'}
                   >
-                    <div className="font-medium truncate">{job?.title}</div>
-                    <div className="text-xs opacity-90 truncate">{job?.vendor_name}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold truncate">
+                        {jobNumber ? `${jobNumber} • ` : ''}
+                        {job?.title}
+                      </div>
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+                    <div className="text-[11px] opacity-90 truncate">{vendorLabel}</div>
+                    {vehicleLabel ? (
+                      <div className="text-[11px] opacity-90 truncate">{vehicleLabel}</div>
+                    ) : null}
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="text-xs opacity-80">
                         {job?.time_tbd
-                          ? 'Time TBD'
+                          ? promiseLabel
+                            ? `All day • ${promiseLabel}`
+                            : 'All day'
                           : jobStartTime
                             ? safeFormatTime(jobStartTime, {
                                 hour: 'numeric',
                                 minute: '2-digit',
                               })
                             : 'Invalid Time'}
-                      </span>
-                      <span
-                        className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
-                      >
-                        {statusLabel}
                       </span>
                     </div>
                     <div className="mt-1 text-[10px] text-gray-700 truncate">
@@ -636,6 +657,16 @@ const CalendarSchedulingCenter = () => {
                         ? null
                         : safeCreateDate(job?.scheduled_start_time)
 
+                      const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
+                      const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'Unassigned')
+                      const promiseLabel = job?.time_tbd
+                        ? safeFormatDate(job?.scheduled_start_time, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : ''
+
                       return (
                         <button
                           type="button"
@@ -650,7 +681,10 @@ const CalendarSchedulingCenter = () => {
                           title={job?.title || 'Open deal'}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="font-medium truncate">{job?.title}</div>
+                            <div className="font-medium truncate">
+                              {jobNumber ? `${jobNumber} • ` : ''}
+                              {job?.title}
+                            </div>
                             <span
                               className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${
                                 colors?.badge || 'bg-blue-500 text-white'
@@ -659,10 +693,12 @@ const CalendarSchedulingCenter = () => {
                               {statusLabel}
                             </span>
                           </div>
-                          <div className="text-[10px] opacity-90 truncate">{job?.vendor_name}</div>
+                          <div className="text-[10px] opacity-90 truncate">{vendorLabel}</div>
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
-                              ? 'Time TBD'
+                              ? promiseLabel
+                                ? `All day • ${promiseLabel}`
+                                : 'All day'
                               : jobStartTime
                                 ? safeFormatTime(jobStartTime, {
                                     hour: 'numeric',

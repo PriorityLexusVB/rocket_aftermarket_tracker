@@ -38,6 +38,10 @@ const SERVICE_TYPE_COLORS = {
  * Status-based color overlays (applied on top of service type colors)
  */
 const STATUS_OVERLAYS = {
+  pending: {
+    opacity: 'opacity-100',
+    badge: 'bg-slate-700 text-white',
+  },
   scheduled: {
     opacity: 'opacity-90',
     badge: 'bg-blue-500 text-white',
