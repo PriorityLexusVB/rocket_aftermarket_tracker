@@ -6,6 +6,7 @@ import { syncJobPartsForJob } from './jobPartsService'
 import { z } from 'zod'
 // Typed schemas from Drizzle + Zod (Section 20)
 import { jobInsertSchema } from '@/db/schemas'
+import { classifySchemaError, getRemediationGuidance, SchemaErrorCode } from '@/utils/schemaErrorClassifier'
 
 const nowIso = () => new Date()?.toISOString()
 
@@ -31,13 +32,35 @@ async function selectJobs(baseQuery) {
       `)
 
     if (error) {
-      // Log detailed error info for debugging
-      console.warn('[jobService] Expanded select failed, using fallback:', {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint,
-      })
+      const classification = classifySchemaError(error)
+      const message = String(error?.message || '')
+
+      // Keep schema/relationship errors loud and actionable.
+      if (classification !== SchemaErrorCode.GENERIC) {
+        const remediation = getRemediationGuidance(error)
+        console.warn('[jobService] Expanded select failed (schema), using fallback:', {
+          message: error?.message,
+          code: error?.code,
+          hint: error?.hint,
+          remediation: remediation?.instructions || null,
+        })
+      } else {
+        // Reduce noise for transient/network failures (common in dev/e2e boot flows).
+        const isFetchFailure = /failed to fetch/i.test(message)
+        const mode = import.meta?.env?.MODE
+        const log = mode === 'e2e' ? console.debug : console.info
+
+        if (isFetchFailure) {
+          log?.('[jobService] Expanded select fallback (transient):', message)
+        } else {
+          console.warn('[jobService] Expanded select failed, using fallback:', {
+            message: error?.message,
+            code: error?.code,
+            hint: error?.hint,
+          })
+        }
+      }
+
       // Run a basic select to surface actionable errors instead of silently masking them
       const fallback = await run(baseQuery?.select('*'))
       return fallback ?? []
