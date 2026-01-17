@@ -626,8 +626,7 @@ const CalendarFlowManagementCenter = () => {
     const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
     const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
     const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
-    const statusBadge = getStatusBadge(job?.job_status)
-    const statusColor = statusBadge?.color || 'bg-blue-500'
+    const rawStatus = String(job?.job_status || '').toLowerCase()
     const overdue = isOverdue(
       job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     )
@@ -635,6 +634,16 @@ const CalendarFlowManagementCenter = () => {
     const hasTimeWindow = !!job?.scheduled_start_time
     const promise = getPromiseValue(job)
     const allDayLabel = promise ? `All day • ${formatEtDateLabel(promise)}` : 'All day'
+
+    // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
+    // Avoid confusing "Pending" badges for these rows.
+    const statusForBadge =
+      !hasTimeWindow && promise && (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
+        ? 'scheduled'
+        : rawStatus
+
+    const statusBadge = getStatusBadge(statusForBadge)
+    const statusColor = statusBadge?.color || 'bg-blue-500'
 
     return (
       <div
@@ -689,7 +698,7 @@ const CalendarFlowManagementCenter = () => {
             <div
               className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
             >
-              {statusBadge?.label || job?.job_status}
+              {statusBadge?.label || statusForBadge || job?.job_status}
             </div>
           </div>
 
@@ -1098,7 +1107,7 @@ const CalendarFlowManagementCenter = () => {
                       <button
                         onClick={() => {
                           if (SNAPSHOT_ON) {
-                            navigate('/currently-active-appointments?window=needs_scheduling')
+                            navigate('/currently-active-appointments?window=all_day')
                             return
                           }
 

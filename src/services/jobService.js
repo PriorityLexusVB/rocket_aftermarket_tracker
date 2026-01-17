@@ -4,6 +4,27 @@ import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/
 import { toDateInputValue } from '@/utils/dateTimeUtils'
 import { syncJobPartsForJob } from './jobPartsService'
 import { z } from 'zod'
+function hasSchedulableLineItems(lineItems = []) {
+  return (lineItems || []).some((it) => {
+    if (!it?.requires_scheduling) return false
+    const hasPromisedDate = !!it?.promised_date
+    const hasTimes = !!(
+      it?.scheduled_start_time ||
+      it?.scheduled_end_time ||
+      it?.scheduledStartTime ||
+      it?.scheduledEndTime
+    )
+    return hasPromisedDate || hasTimes
+  })
+}
+
+function maybeAutoUpgradeJobStatusToScheduled(currentStatus, lineItems) {
+  const s = String(currentStatus || '').trim().toLowerCase()
+  const eligible = !s || s === 'new' || s === 'pending'
+  if (!eligible) return currentStatus
+  if (!hasSchedulableLineItems(lineItems)) return currentStatus
+  return 'scheduled'
+}
 // Typed schemas from Drizzle + Zod (Section 20)
 import { jobInsertSchema } from '@/db/schemas'
 import {
@@ -194,7 +215,10 @@ export const jobService = {
         vendor_id: dealData?.vendor_id ?? null,
         vehicle_id: dealData?.vehicle_id ?? null,
         priority: dealData?.priority ?? null,
-        job_status: dealData?.job_status ?? 'new',
+        job_status: maybeAutoUpgradeJobStatusToScheduled(
+          dealData?.job_status ?? 'new',
+          dealData?.lineItems
+        ),
         job_number: jobNumber ?? dealData?.job_number ?? null,
         scheduled_start_time: dealData?.scheduled_start_time ?? null,
         scheduled_end_time: dealData?.scheduled_end_time ?? null,

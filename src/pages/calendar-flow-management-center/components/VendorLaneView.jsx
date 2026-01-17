@@ -10,11 +10,17 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
     const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
     const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
 
-    const statusBadge = getStatusBadge(job?.job_status)
-    const statusColor = statusBadge?.color || 'bg-blue-500'
-
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     const overdue = isOverdue(promise)
+
+    const rawStatus = String(job?.job_status || '').toLowerCase()
+    const hasTimeWindow = !!job?.scheduled_start_time
+    const statusForBadge =
+      !hasTimeWindow && promise && (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
+        ? 'scheduled'
+        : rawStatus
+    const statusBadge = getStatusBadge(statusForBadge)
+    const statusColor = statusBadge?.color || 'bg-blue-500'
 
     const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
     const vehicleLabel = job?.vehicle_info || ''
@@ -63,7 +69,9 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
               <div className="flex items-center">
                 <Clock className="h-3 w-3 mr-1" />
-                {formatTime(job?.scheduled_start_time)}–{formatTime(job?.scheduled_end_time)}
+                {hasTimeWindow
+                  ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
+                  : 'All day'}
               </div>
               <div className="flex items-center">
                 <Calendar className="h-3 w-3 mr-1" />
@@ -74,7 +82,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
             <div
               className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
             >
-              {statusBadge?.label || job?.job_status?.toUpperCase?.()}
+              {statusBadge?.label || statusForBadge?.toUpperCase?.() || job?.job_status?.toUpperCase?.()}
             </div>
           </div>
 

@@ -34,7 +34,13 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
   const renderUnassignedJob = (job) => {
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     const overdue = isOverdue(promise)
-    const statusBadge = getStatusBadge(job?.job_status)
+    const rawStatus = String(job?.job_status || '').toLowerCase()
+    const hasTimeWindow = !!job?.scheduled_start_time
+    const statusForBadge =
+      !hasTimeWindow && promise && (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
+        ? 'scheduled'
+        : rawStatus
+    const statusBadge = getStatusBadge(statusForBadge)
     const vehicle = job?.vehicle || job?.vehicles || null
     const stock = vehicle?.stock_number || job?.stock_no || job?.stockNumber || ''
     const customer = job?.customer_name || job?.customerName || vehicle?.owner_name || ''
@@ -62,7 +68,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
             ${statusBadge?.textColor || 'text-gray-800'}
           `}
           >
-            {statusBadge?.label || job?.job_status?.toUpperCase()}
+            {statusBadge?.label || statusForBadge?.toUpperCase?.() || job?.job_status?.toUpperCase?.()}
           </div>
         </div>
 

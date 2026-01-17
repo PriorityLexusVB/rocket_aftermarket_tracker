@@ -209,7 +209,7 @@ test.describe('4-page smoke checklist', () => {
     await expect(needsBtn).toBeVisible()
 
     await needsBtn.click()
-    await expect(page).toHaveURL(/window=needs_scheduling/)
+    await expect(page).toHaveURL(/window=(all_day|needs_scheduling)/)
 
     // Needs Scheduling shows promise-only item we just created.
     const promiseOnlyRow = page.getByText(unique, { exact: false }).first()

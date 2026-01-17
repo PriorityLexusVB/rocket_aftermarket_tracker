@@ -18,35 +18,6 @@ import {
 
 const SIMPLE_CAL_ON = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
-function summarizeOpCodesFromParts(parts, max = 4) {
-  const list = Array.isArray(parts) ? parts : []
-  const byCode = new Map()
-
-  for (const p of list) {
-    const code = String(p?.product?.op_code || p?.product?.opCode || '')
-      .trim()
-
-      .trim()
-      .toUpperCase()
-    if (!code) continue
-
-    const qtyRaw = p?.quantity_used ?? p?.quantity ?? 1
-    const qtyNum = Number(qtyRaw)
-    const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
-
-    const existing = byCode.get(code)
-    if (!existing) byCode.set(code, qty)
-    else byCode.set(code, existing + qty)
-  }
-
-  const tokens = Array.from(byCode.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([code, qty]) => (qty > 1 ? `${code}×${qty}` : code))
-
-  const clipped = tokens.slice(0, max)
-  return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
-}
-
 const MS_DAY = 24 * 60 * 60 * 1000
 
 function addDays(d, days) {
@@ -286,7 +257,23 @@ export default function SnapshotView() {
   const [statusMessage, setStatusMessage] = useState('') // For aria-live announcements
   const [showOlderOverdue, setShowOlderOverdue] = useState(false)
   const [sourceDebug, setSourceDebug] = useState(null)
-  const [windowMode, setWindowMode] = useState('next7') // 'today' | 'next7' | 'needs_scheduling'
+  const [windowMode, setWindowMode] = useState('next7') // 'today' | 'next7' | 'all_day'
+
+  const effectiveStatusForBadge = useCallback((item) => {
+    const rawStatus = String(item?.raw?.job_status || item?.raw?.status || '').toLowerCase()
+
+    // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
+    // Avoid showing confusing "Pending" badges for these rows.
+    const promised = item?.promisedAt || item?.raw?.next_promised_iso || item?.raw?.promised_date
+    const hasTime = !!(item?.scheduledStart || item?.scheduledEnd)
+    const isAllDayScheduled = !hasTime && !!promised
+
+    if (isAllDayScheduled && (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')) {
+      return 'scheduled'
+    }
+
+    return rawStatus || 'scheduled'
+  }, [])
 
   const now = useMemo(() => new Date(), [])
 
@@ -333,7 +320,7 @@ export default function SnapshotView() {
     try {
       const nowDate = new Date()
 
-      if (windowMode === 'needs_scheduling') {
+      if (windowMode === 'all_day') {
         const start = addDays(nowDate, -365)
         const end = addDays(nowDate, 7)
         const res = await getNeedsSchedulingPromiseItems({
@@ -344,7 +331,7 @@ export default function SnapshotView() {
 
         if (import.meta.env.DEV) {
           // More reliable than the "Source Debug" UI line (which can be truncated in a11y snapshots)
-          console.log('[Snapshot needs_scheduling debug]', res?.debug || null)
+          console.log('[Snapshot all_day debug]', res?.debug || null)
         }
         setItems(res.items || [])
 
@@ -363,27 +350,20 @@ export default function SnapshotView() {
 
           setSourceDebug({
             needsScheduling: res.debug || null,
-            totals: {
-              needsSchedulingPromise: allItems.length,
-              scheduledRpcUnique: 0,
-              unscheduledQuery: 0,
+            scheduleState: {
+              scheduled: scheduleStateCounts?.scheduled || 0,
+              scheduled_no_time: scheduleStateCounts?.scheduled_no_time || 0,
+              in_progress: scheduleStateCounts?.in_progress || 0,
+              overdue_recent: scheduleStateCounts?.overdue_recent || 0,
+              overdue_old: scheduleStateCounts?.overdue_old || 0,
+              unscheduled: scheduleStateCounts?.unscheduled || 0,
             },
-            counts: {
-              scheduleState: {
-                scheduled: scheduleStateCounts?.scheduled || 0,
-                scheduled_no_time: scheduleStateCounts?.scheduled_no_time || 0,
-                in_progress: scheduleStateCounts?.in_progress || 0,
-                overdue_recent: scheduleStateCounts?.overdue_recent || 0,
-                overdue_old: scheduleStateCounts?.overdue_old || 0,
-                unscheduled: scheduleStateCounts?.unscheduled || 0,
-              },
-              scheduleSource: {
-                needs_scheduling_promise: scheduleSourceCounts?.needs_scheduling_promise || 0,
-                job_parts: scheduleSourceCounts?.job_parts || 0,
-                job: scheduleSourceCounts?.job || 0,
-                legacy_appt: scheduleSourceCounts?.legacy_appt || 0,
-                none: scheduleSourceCounts?.none || 0,
-              },
+            scheduleSource: {
+              needs_scheduling_promise: scheduleSourceCounts?.needs_scheduling_promise || 0,
+              job_parts: scheduleSourceCounts?.job_parts || 0,
+              job: scheduleSourceCounts?.job || 0,
+              legacy_appt: scheduleSourceCounts?.legacy_appt || 0,
+              none: scheduleSourceCounts?.none || 0,
             },
             effectiveFilters: {
               window: windowMode,
@@ -431,26 +411,49 @@ export default function SnapshotView() {
 
       const combined = [...(upcomingRes.items || []), ...(overdueRes.items || [])]
 
-      // De-dupe by id (upcoming and overdue windows can overlap at boundary)
-      const byId = new Map()
+      const itemKey = (it) => {
+        if (!it) return null
+        return (
+          it?.calendarKey ||
+          it?.calendar_key ||
+          (it?.id && it?.promisedAt && it?.scheduleSource === 'needs_scheduling_promise'
+            ? `${it.id}::promise::${String(it.promisedAt).slice(0, 10)}`
+            : it?.id) ||
+          null
+        )
+      }
+
+      // De-dupe scheduled items by id (upcoming and overdue windows can overlap at boundary).
+      // Promise-only items are allowed to appear multiple times via calendarKey.
+      const byKey = new Map()
       for (const it of combined) {
-        if (it?.id) byId.set(it.id, it)
+        const k = it?.id ? String(it.id) : null
+        if (k) byKey.set(k, it)
       }
 
       // Source totals split: scheduled-RPC vs unscheduled-query
-      const scheduledRpcUnique = byId.size
+      const scheduledRpcUnique = byKey.size
 
+      // Add date-only items. Skip in_progress/quality_check here to avoid duplicates with the
+      // dedicated unscheduled in-progress bucket.
       for (const it of dateOnlyItems) {
-        if (it?.id && !byId.has(it.id)) byId.set(it.id, it)
+        const status = String(it?.raw?.job_status || it?.raw?.status || '').toLowerCase()
+        if (status === 'in_progress' || status === 'quality_check') continue
+
+        const k = itemKey(it)
+        if (k && !byKey.has(k)) byKey.set(k, it)
       }
 
+      // Add controlled unscheduled bucket (job-level uniqueness by id).
       for (const it of unscheduledItems) {
-        if (it?.id && !byId.has(it.id)) byId.set(it.id, it)
+        const k = it?.id ? String(it.id) : null
+        if (k && !byKey.has(k)) byKey.set(k, it)
       }
-      setItems(Array.from(byId.values()))
+
+      setItems(Array.from(byKey.values()))
 
       if (import.meta.env.DEV) {
-        const allItems = Array.from(byId.values())
+        const allItems = Array.from(byKey.values())
         const countBy = (arr, keyFn) =>
           (arr || []).reduce((acc, it) => {
             const k = keyFn(it)
@@ -472,7 +475,7 @@ export default function SnapshotView() {
             upcomingItems: (upcomingRes.items || []).length,
             dateOnlyItems: dateOnlyItems.length,
             overdueItems: (overdueRes.items || []).length,
-            combinedUnique: byId.size,
+            combinedUnique: byKey.size,
             scheduledRpcUnique,
             unscheduledQuery,
           },
@@ -513,8 +516,9 @@ export default function SnapshotView() {
 
   useEffect(() => {
     const mode = String(searchParams?.get?.('window') || '')
-    if (mode === 'needs_scheduling' && windowMode !== 'needs_scheduling') {
-      setWindowMode('needs_scheduling')
+    const normalized = mode === 'needs_scheduling' ? 'all_day' : mode
+    if (normalized === 'all_day' && windowMode !== 'all_day') {
+      setWindowMode('all_day')
       return
     }
   }, [searchParams, windowMode])
@@ -642,19 +646,19 @@ export default function SnapshotView() {
             <button
               type="button"
               onClick={() => {
-                setWindowMode('needs_scheduling')
+                setWindowMode('all_day')
                 const next = new URLSearchParams(searchParams)
-                next.set('window', 'needs_scheduling')
+                next.set('window', 'all_day')
                 setSearchParams(next, { replace: true })
               }}
               className={
-                windowMode === 'needs_scheduling'
+                windowMode === 'all_day'
                   ? 'px-3 py-1.5 text-sm font-medium btn-primary'
                   : 'px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-gray-50'
               }
-              aria-pressed={windowMode === 'needs_scheduling'}
+              aria-pressed={windowMode === 'all_day'}
             >
-              All-day
+              Scheduled (All-day)
             </button>
           </div>
 
@@ -675,7 +679,7 @@ export default function SnapshotView() {
           DEV • window:{sourceDebug?.effectiveFilters?.window} • org:
           {sourceDebug?.effectiveFilters?.org_id} • vendor:
           {sourceDebug?.effectiveFilters?.vendor}
-          {sourceDebug?.effectiveFilters?.window === 'needs_scheduling'
+          {sourceDebug?.effectiveFilters?.window === 'all_day'
             ? ` • needs:${JSON.stringify(sourceDebug?.needsScheduling || null)}`
             : ''}
           • scheduled-RPC:{sourceDebug?.totals?.scheduledRpcUnique ?? 0} • unscheduled:
@@ -685,7 +689,7 @@ export default function SnapshotView() {
         </div>
       ) : null}
 
-      {import.meta.env.DEV && sourceDebug?.effectiveFilters?.window === 'needs_scheduling' ? (
+      {import.meta.env.DEV && sourceDebug?.effectiveFilters?.window === 'all_day' ? (
         <div className="text-[11px] text-muted-foreground" aria-label="All-day Debug">
           needs:{JSON.stringify(sourceDebug?.needsScheduling || null)}
         </div>
@@ -693,7 +697,7 @@ export default function SnapshotView() {
 
       <SupabaseConfigNotice />
 
-      {windowMode !== 'needs_scheduling' &&
+      {windowMode !== 'all_day' &&
       split.upcoming.length === 0 &&
       split.overdueRecent.length === 0 &&
       split.overdueOld.length === 0 &&
@@ -703,7 +707,7 @@ export default function SnapshotView() {
         </div>
       ) : null}
 
-      {windowMode === 'needs_scheduling' &&
+      {windowMode === 'all_day' &&
       needsSplit.overdue.length === 0 &&
       needsSplit.upcoming.length === 0 ? (
         <div role="status" aria-live="polite" className="text-muted-foreground">
@@ -711,30 +715,30 @@ export default function SnapshotView() {
         </div>
       ) : null}
 
-      {windowMode === 'needs_scheduling' && needsSplit.overdue.length > 0 ? (
+      {windowMode === 'all_day' && needsSplit.overdue.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
           <div className="text-foreground font-medium">Overdue (All-day)</div>
           <div className="text-xs text-muted-foreground">Promised day passed</div>
         </div>
       ) : null}
 
-      {windowMode === 'needs_scheduling' && needsSplit.overdue.length > 0 ? (
+      {windowMode === 'all_day' && needsSplit.overdue.length > 0 ? (
         <ul role="list" className="divide-y rounded-lg border border-border bg-card">
           {needsSplit.overdue.map((j) => {
             const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
             const vendorName = j?.vendorName || 'Unassigned'
             const customer = j?.customerName || vehicle?.owner_name || ''
-            const status = String(j?.raw?.job_status || 'pending')
+            const status = effectiveStatusForBadge(j)
             const statusBadge = getStatusBadge(status)
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
-            const hasLoaner =
-              !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
-            const stock = vehicle?.stock_number || ''
-            const parts = Array.isArray(j?.raw?.job_parts) ? j.raw.job_parts : []
-            const ops = summarizeOpCodesFromParts(parts, 5)
+            const hasLoaner = !!(
+              j?.raw?.has_active_loaner ||
+              j?.raw?.loaner_id ||
+              j?.raw?.customer_needs_loaner
+            )
             return (
               <li
-                key={j.id}
+                key={j?.calendarKey || j?.calendar_key || j.id}
                 className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                 aria-label={`All-day ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
@@ -753,26 +757,7 @@ export default function SnapshotView() {
                     {vehicle
                       ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
                       : ''}
-                    {stock ? ` • Stock ${stock}` : ''}
                   </div>
-                  {ops.tokens.length ? (
-                    <div className="mt-1 flex flex-wrap items-center gap-1" aria-label="Products">
-                      {ops.tokens.map((t) => (
-                        <span
-                          key={t}
-                          className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
-                          title={t}
-                        >
-                          {t}
-                        </span>
-                      ))}
-                      {ops.extraCount ? (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                          +{ops.extraCount}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
                 <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
                 <div className="w-full sm:w-28">
@@ -815,30 +800,30 @@ export default function SnapshotView() {
         </ul>
       ) : null}
 
-      {windowMode === 'needs_scheduling' && needsSplit.upcoming.length > 0 ? (
+      {windowMode === 'all_day' && needsSplit.upcoming.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
           <div className="text-foreground font-medium">Upcoming (All-day)</div>
           <div className="text-xs text-muted-foreground">Promised day in range</div>
         </div>
       ) : null}
 
-      {windowMode === 'needs_scheduling' && needsSplit.upcoming.length > 0 ? (
+      {windowMode === 'all_day' && needsSplit.upcoming.length > 0 ? (
         <ul role="list" className="divide-y rounded-lg border border-border bg-card">
           {needsSplit.upcoming.map((j) => {
             const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
             const vendorName = j?.vendorName || 'Unassigned'
             const customer = j?.customerName || vehicle?.owner_name || ''
-            const status = String(j?.raw?.job_status || 'pending')
+            const status = effectiveStatusForBadge(j)
             const statusBadge = getStatusBadge(status)
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
-            const hasLoaner =
-              !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
-            const stock = vehicle?.stock_number || ''
-            const parts = Array.isArray(j?.raw?.job_parts) ? j.raw.job_parts : []
-            const ops = summarizeOpCodesFromParts(parts, 5)
+            const hasLoaner = !!(
+              j?.raw?.has_active_loaner ||
+              j?.raw?.loaner_id ||
+              j?.raw?.customer_needs_loaner
+            )
             return (
               <li
-                key={j.id}
+                key={j?.calendarKey || j?.calendar_key || j.id}
                 className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                 aria-label={`All-day ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
               >
@@ -854,26 +839,7 @@ export default function SnapshotView() {
                     {vehicle
                       ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
                       : ''}
-                    {stock ? ` • Stock ${stock}` : ''}
                   </div>
-                  {ops.tokens.length ? (
-                    <div className="mt-1 flex flex-wrap items-center gap-1" aria-label="Products">
-                      {ops.tokens.map((t) => (
-                        <span
-                          key={t}
-                          className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
-                          title={t}
-                        >
-                          {t}
-                        </span>
-                      ))}
-                      {ops.extraCount ? (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                          +{ops.extraCount}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
                 <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
                 <div className="w-full sm:w-28">
@@ -916,7 +882,7 @@ export default function SnapshotView() {
         </ul>
       ) : null}
 
-      {windowMode === 'needs_scheduling' ? null : (
+      {windowMode === 'all_day' ? null : (
         <>
           {split.overdueOld.length > 0 ? (
             <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
@@ -955,13 +921,16 @@ export default function SnapshotView() {
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
                 const vendorName = j?.vendorName || 'Unassigned'
                 const customer = j?.customerName || vehicle?.owner_name || ''
-                const status = String(j?.raw?.job_status || 'pending')
+                const status = effectiveStatusForBadge(j)
                 const statusBadge = getStatusBadge(status)
-                const hasLoaner =
-                  !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
+                const hasLoaner = !!(
+                  j?.raw?.has_active_loaner ||
+                  j?.raw?.loaner_id ||
+                  j?.raw?.customer_needs_loaner
+                )
                 return (
                   <li
-                    key={j.id}
+                    key={j?.calendarKey || j?.calendar_key || j.id}
                     className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
@@ -998,7 +967,9 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full truncate text-muted-foreground sm:w-40">
+                      {vendorName}
+                    </div>
                     <div className="w-full sm:w-28">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
@@ -1078,7 +1049,7 @@ export default function SnapshotView() {
                 const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
                 return (
                   <li
-                    key={j.id}
+                    key={j?.calendarKey || j?.calendar_key || j.id}
                     className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
@@ -1180,7 +1151,7 @@ export default function SnapshotView() {
                 const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
                 return (
                   <li
-                    key={j.id}
+                    key={j?.calendarKey || j?.calendar_key || j.id}
                     className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
@@ -1275,7 +1246,7 @@ export default function SnapshotView() {
                 const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
                 return (
                   <li
-                    key={j.id}
+                    key={j?.calendarKey || j?.calendar_key || j.id}
                     className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
@@ -1462,7 +1433,7 @@ export default function SnapshotView() {
 
                   return (
                     <li
-                      key={j.id}
+                      key={j?.calendarKey || j?.calendar_key || j.id}
                       className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
                       aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                     >
