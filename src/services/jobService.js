@@ -6,7 +6,14 @@ import { syncJobPartsForJob } from './jobPartsService'
 import { z } from 'zod'
 // Typed schemas from Drizzle + Zod (Section 20)
 import { jobInsertSchema } from '@/db/schemas'
-import { classifySchemaError, getRemediationGuidance, SchemaErrorCode } from '@/utils/schemaErrorClassifier'
+import {
+  classifySchemaError,
+  getRemediationGuidance,
+  SchemaErrorCode,
+  classifySchemaError,
+  getRemediationGuidance,
+  SchemaErrorCode,
+} from '@/utils/schemaErrorClassifier'
 
 const nowIso = () => new Date()?.toISOString()
 
