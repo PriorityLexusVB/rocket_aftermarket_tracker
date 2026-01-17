@@ -638,7 +638,9 @@ const CalendarFlowManagementCenter = () => {
     // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
     // Avoid confusing "Pending" badges for these rows.
     const statusForBadge =
-      !hasTimeWindow && promise && (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
+      !hasTimeWindow &&
+      promise &&
+      (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
         ? 'scheduled'
         : rawStatus
 

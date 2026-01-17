@@ -1884,7 +1884,9 @@ function hasSchedulableLineItems(lineItems = []) {
 }
 
 function maybeAutoUpgradeJobStatusToScheduled(currentStatus, normalizedLineItems) {
-  const s = String(currentStatus || '').trim().toLowerCase()
+  const s = String(currentStatus || '')
+    .trim()
+    .toLowerCase()
   const eligible = !s || s === 'new' || s === 'pending'
   if (!eligible) return currentStatus
   if (!hasSchedulableLineItems(normalizedLineItems)) return currentStatus
@@ -1905,7 +1907,10 @@ export async function createDeal(formState) {
 
   // Product rule: if there's schedulable work (promised or timed line items), treat the job as scheduled.
   // This keeps persisted status aligned with UI semantics (Scheduled (All-day)) even when no time window exists.
-  payload.job_status = maybeAutoUpgradeJobStatusToScheduled(payload?.job_status, normalizedLineItems)
+  payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
+    payload?.job_status,
+    normalizedLineItems
+  )
 
   // Fallback tenant scoping: if dealer_id is missing, try to infer from current user's profile
   if (!payload?.dealer_id) {
@@ -2249,7 +2254,10 @@ export async function updateDeal(id, formState) {
   } = mapFormToDb(formState || {})
 
   // Product rule: if there's schedulable work (promised or timed line items), treat the job as scheduled.
-  payload.job_status = maybeAutoUpgradeJobStatusToScheduled(payload?.job_status, normalizedLineItems)
+  payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
+    payload?.job_status,
+    normalizedLineItems
+  )
 
   // 🔍 DEBUG: Log normalized line items count
   if (import.meta.env.MODE === 'development') {

@@ -37,7 +37,9 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
     const rawStatus = String(job?.job_status || '').toLowerCase()
     const hasTimeWindow = !!job?.scheduled_start_time
     const statusForBadge =
-      !hasTimeWindow && promise && (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
+      !hasTimeWindow &&
+      promise &&
+      (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
         ? 'scheduled'
         : rawStatus
     const statusBadge = getStatusBadge(statusForBadge)
@@ -68,7 +70,9 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
             ${statusBadge?.textColor || 'text-gray-800'}
           `}
           >
-            {statusBadge?.label || statusForBadge?.toUpperCase?.() || job?.job_status?.toUpperCase?.()}
+            {statusBadge?.label ||
+              statusForBadge?.toUpperCase?.() ||
+              job?.job_status?.toUpperCase?.()}
           </div>
         </div>
 

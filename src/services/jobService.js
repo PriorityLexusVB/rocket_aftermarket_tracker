@@ -19,7 +19,9 @@ function hasSchedulableLineItems(lineItems = []) {
 }
 
 function maybeAutoUpgradeJobStatusToScheduled(currentStatus, lineItems) {
-  const s = String(currentStatus || '').trim().toLowerCase()
+  const s = String(currentStatus || '')
+    .trim()
+    .toLowerCase()
   const eligible = !s || s === 'new' || s === 'pending'
   if (!eligible) return currentStatus
   if (!hasSchedulableLineItems(lineItems)) return currentStatus
