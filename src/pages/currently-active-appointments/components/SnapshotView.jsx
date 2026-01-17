@@ -18,6 +18,35 @@ import {
 
 const SIMPLE_CAL_ON = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
+function summarizeOpCodesFromParts(parts, max = 4) {
+  const list = Array.isArray(parts) ? parts : []
+  const byCode = new Map()
+
+  for (const p of list) {
+    const code = String(p?.product?.op_code || p?.product?.opCode || '')
+      .trim()
+
+      .trim()
+      .toUpperCase()
+    if (!code) continue
+
+    const qtyRaw = p?.quantity_used ?? p?.quantity ?? 1
+    const qtyNum = Number(qtyRaw)
+    const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
+
+    const existing = byCode.get(code)
+    if (!existing) byCode.set(code, qty)
+    else byCode.set(code, existing + qty)
+  }
+
+  const tokens = Array.from(byCode.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([code, qty]) => (qty > 1 ? `${code}×${qty}` : code))
+
+  const clipped = tokens.slice(0, max)
+  return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
+}
+
 const MS_DAY = 24 * 60 * 60 * 1000
 
 function addDays(d, days) {
@@ -700,6 +729,9 @@ export default function SnapshotView() {
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
             const hasLoaner =
               !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
+            const stock = vehicle?.stock_number || ''
+            const parts = Array.isArray(j?.raw?.job_parts) ? j.raw.job_parts : []
+            const ops = summarizeOpCodesFromParts(parts, 5)
             return (
               <li
                 key={j.id}
@@ -721,7 +753,26 @@ export default function SnapshotView() {
                     {vehicle
                       ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
                       : ''}
+                    {stock ? ` • Stock ${stock}` : ''}
                   </div>
+                  {ops.tokens.length ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-1" aria-label="Products">
+                      {ops.tokens.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                          title={t}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                      {ops.extraCount ? (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                          +{ops.extraCount}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
                 <div className="w-full sm:w-28">
@@ -782,6 +833,9 @@ export default function SnapshotView() {
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
             const hasLoaner =
               !!(j?.raw?.has_active_loaner || j?.raw?.loaner_id || j?.raw?.customer_needs_loaner)
+            const stock = vehicle?.stock_number || ''
+            const parts = Array.isArray(j?.raw?.job_parts) ? j.raw.job_parts : []
+            const ops = summarizeOpCodesFromParts(parts, 5)
             return (
               <li
                 key={j.id}
@@ -800,7 +854,26 @@ export default function SnapshotView() {
                     {vehicle
                       ? `${vehicle.year ?? ''} ${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim()
                       : ''}
+                    {stock ? ` • Stock ${stock}` : ''}
                   </div>
+                  {ops.tokens.length ? (
+                    <div className="mt-1 flex flex-wrap items-center gap-1" aria-label="Products">
+                      {ops.tokens.map((t) => (
+                        <span
+                          key={t}
+                          className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                          title={t}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                      {ops.extraCount ? (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                          +{ops.extraCount}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
                 <div className="w-full sm:w-28">

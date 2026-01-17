@@ -117,6 +117,12 @@ function attachConsoleCapture(page: Page) {
         !err.includes('favicon') &&
         !err.includes('ResizeObserver') &&
         !err.includes('Failed to load resource') &&
+        // Supabase Realtime can intermittently fail its websocket handshake (502) in CI/E2E.
+        // The app does not require Realtime for this smoke flow, so don't fail on this.
+        !(
+          err.includes('realtime/v1/websocket') &&
+          (err.includes('Unexpected response code: 502') || err.includes('response code: 502'))
+        ) &&
         // Transient auth fetch failures can occur during retries; if auth succeeds later,
         // these aren't meaningful regressions for the smoke flow.
         !err.includes('signInWithPassword') &&
@@ -167,13 +173,13 @@ test.describe('4-page smoke checklist', () => {
     const firstCol = grid.locator('> div').first()
     await expect(firstCol).toContainText('Created')
 
-    // Schedule block is unified (promise-only shows a single Promise label + Needs scheduling)
+    // Schedule block is unified (promise-only renders a single compact label, e.g. "{date} • All-day")
     const scheduleCol = grid.locator('> div').nth(1)
     const scheduleText = (await scheduleCol.innerText()).replace(/\s+/g, ' ').trim()
     // Different environments may materialize a default schedule window for promise-only jobs.
     // Assert the column renders meaningful content without overfitting to one representation.
     expect(scheduleText.length).toBeGreaterThan(0)
-    expect(scheduleText).toMatch(/Promise:|\bET\b/)
+    expect(scheduleText).toMatch(/All-day|Promise:|\bET\b/)
 
     // Vehicle slot never shows job/title junk (our unique title must not appear there)
     const vehicle = row.locator(`[data-testid="deal-vehicle-${dealId}"]`)

@@ -16,6 +16,33 @@ import Navbar from '@/components/ui/Navbar'
 
 const TZ = 'America/New_York'
 
+function summarizeOpCodesFromParts(parts, max = 5) {
+  const list = Array.isArray(parts) ? parts : []
+  const byCode = new Map()
+
+  for (const p of list) {
+    const code = String(p?.product?.op_code || p?.product?.opCode || '')
+      .trim()
+      .toUpperCase()
+    if (!code) continue
+
+    const qtyRaw = p?.quantity_used ?? p?.quantity ?? 1
+    const qtyNum = Number(qtyRaw)
+    const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
+
+    const existing = byCode.get(code)
+    if (!existing) byCode.set(code, qty)
+    else byCode.set(code, existing + qty)
+  }
+
+  const tokens = Array.from(byCode.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([code, qty]) => (qty > 1 ? `${code}×${qty}` : code))
+
+  const clipped = tokens.slice(0, max)
+  return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
+}
+
 function toYmdInTz(date, timeZone) {
   const d = date instanceof Date ? date : new Date(date)
   if (Number.isNaN(d.getTime())) return null
@@ -656,6 +683,10 @@ export default function CalendarAgenda() {
                 const vehicleLabel =
                   r?.vehicleLabel ||
                   `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
+                const customerName =
+                  r?.customerName || raw?.customer_name || raw?.vehicle?.owner_name || ''
+                const stock = raw?.vehicle?.stock_number || ''
+                const ops = summarizeOpCodesFromParts(raw?.job_parts, 6)
 
                 return (
                   <li
@@ -672,10 +703,7 @@ export default function CalendarAgenda() {
                           {timeRange}
                         </span>
                       ) : (
-                        <>
-                          <span className="sr-only">All day</span>
-                          <span aria-hidden="true">&nbsp;</span>
-                        </>
+                        <span className="text-slate-400">All-day</span>
                       )}
                     </div>
 
@@ -692,7 +720,32 @@ export default function CalendarAgenda() {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-500 truncate">{vehicleLabel}</div>
+                      <div className="text-xs text-slate-500 truncate">
+                        {[customerName, vehicleLabel, stock ? `Stock ${stock}` : null]
+                          .filter(Boolean)
+                          .join(' • ')}
+                      </div>
+                      {ops.tokens.length ? (
+                        <div
+                          className="mt-1 flex flex-wrap items-center gap-1"
+                          aria-label="Products"
+                        >
+                          {ops.tokens.map((t) => (
+                            <span
+                              key={t}
+                              className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                              title={t}
+                            >
+                              {t}
+                            </span>
+                          ))}
+                          {ops.extraCount ? (
+                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                              +{ops.extraCount}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="flex items-center justify-end gap-3">

@@ -1372,7 +1372,7 @@ export async function getAllDeals() {
       const jobPartsTimeFields = JOB_PARTS_HAS_PER_LINE_TIMES
         ? ', scheduled_start_time, scheduled_end_time'
         : ''
-      const productFields = `product:products(id, name, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})`
+      const productFields = `product:products(id, name, op_code, category, brand${JOB_PARTS_VENDOR_ID_COLUMN_AVAILABLE ? ', vendor_id' : ''})`
       const jobPartsFieldsVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields}${perLineVendorJoin2})`
       const jobPartsFieldsNoVendor = `job_parts(${jobPartsCore}${jobPartsTimeFields}, ${productFields})`
 

@@ -3,11 +3,42 @@ import { Car, Clock, Calendar, AlertTriangle, Package } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
+function summarizeOpCodesFromParts(parts, max = 5) {
+  const list = Array.isArray(parts) ? parts : []
+  const byCode = new Map()
+
+  for (const p of list) {
+    const code = String(p?.product?.op_code || p?.product?.opCode || '')
+      .trim()
+      .toUpperCase()
+    if (!code) continue
+
+    const qtyRaw = p?.quantity_used ?? p?.quantity ?? 1
+    const qtyNum = Number(qtyRaw)
+    const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
+
+    const existing = byCode.get(code)
+    if (!existing) byCode.set(code, qty)
+    else byCode.set(code, existing + qty)
+  }
+
+  const tokens = Array.from(byCode.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([code, qty]) => (qty > 1 ? `${code}×${qty}` : code))
+
+  const clipped = tokens.slice(0, max)
+  return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
+}
+
 const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
   const renderUnassignedJob = (job) => {
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     const overdue = isOverdue(promise)
     const statusBadge = getStatusBadge(job?.job_status)
+    const vehicle = job?.vehicle || job?.vehicles || null
+    const stock = vehicle?.stock_number || job?.stock_no || job?.stockNumber || ''
+    const customer = job?.customer_name || job?.customerName || vehicle?.owner_name || ''
+    const ops = summarizeOpCodesFromParts(job?.job_parts, 6)
 
     return (
       <div
@@ -36,13 +67,37 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
         </div>
 
         {/* Job Title */}
-        <div className="text-sm font-medium text-gray-800 mb-2 flex items-center">
+        <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
           <Package className="h-3 w-3 text-gray-500 mr-1" />
-          {job?.title}
+          <span className="truncate">{job?.title || job?.job_number || '—'}</span>
         </div>
 
-        {/* Vehicle Info */}
-        <div className="text-xs text-gray-600 mb-2">{job?.vehicle_info}</div>
+        <div className="text-xs text-gray-600 mb-2 truncate">
+          {[customer, job?.vehicle_info, stock ? `Stock ${stock}` : null]
+            .filter(Boolean)
+
+            .filter(Boolean)
+            .join(' • ')}
+        </div>
+
+        {ops.tokens.length ? (
+          <div className="mb-2 flex flex-wrap items-center gap-1" aria-label="Products">
+            {ops.tokens.map((t) => (
+              <span
+                key={t}
+                className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                title={t}
+              >
+                {t}
+              </span>
+            ))}
+            {ops.extraCount ? (
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                +{ops.extraCount}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* Time and Promise Info */}
         <div className="space-y-1">
@@ -76,9 +131,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
 
         {/* Drag Indicator */}
         <div className="mt-3 pt-2 border-t border-gray-100">
-          <div className="text-xs text-gray-500 text-center">
-            Drag to assign vendor or time slot
-          </div>
+          <div className="text-xs text-gray-500 text-center">Drag to assign</div>
         </div>
       </div>
     )

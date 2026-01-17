@@ -51,7 +51,7 @@ export const appointmentsService = {
         ?.select(
           `
           *,
-          products (name, estimated_cost, vendor_id)
+          products (name, op_code, estimated_cost, vendor_id)
         `
         )
         ?.eq('job_id', jobId)

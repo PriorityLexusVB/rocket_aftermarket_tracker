@@ -170,6 +170,10 @@ const getDealProductLabelSummary = (deal, maxLabels = 3) => {
 
   const byKey = new Map()
   for (const part of parts) {
+    const opCodeRaw = part?.product?.op_code || part?.product?.opCode || part?.op_code || ''
+    const opCode = String(opCodeRaw || '')
+      .trim()
+      .toUpperCase()
     const name =
       part?.product?.name ||
       part?.product_name ||
@@ -178,7 +182,7 @@ const getDealProductLabelSummary = (deal, maxLabels = 3) => {
       part?.product_id ||
       ''
 
-    const abbr = abbreviateProductName(name)
+    const abbr = opCode || abbreviateProductName(name)
     if (!abbr) continue
 
     const keyRaw = part?.product?.id || part?.product_id || abbr
@@ -520,6 +524,7 @@ export default function DealsPage() {
   const [searchDebounce, setSearchDebounce] = useState('')
   const [showDetailDrawer, setShowDetailDrawer] = useState(false)
   const [selectedDealForDetail, setSelectedDealForDetail] = useState(null)
+  const [expandedDealIds, setExpandedDealIds] = useState(() => new Set())
 
   // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
   const {
@@ -1684,6 +1689,7 @@ export default function DealsPage() {
                 const createdShort = formatCreatedShort(
                   deal?.created_at || deal?.createdAt || deal?.created || deal?.inserted_at
                 )
+                const isExpanded = expandedDealIds?.has?.(deal?.id)
 
                 return (
                   <div
@@ -1840,11 +1846,6 @@ export default function DealsPage() {
                           </div>
 
                           <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
-                            {deal?.vendor_name || deal?.vendor_id ? (
-                              <Pill className="max-w-full truncate">
-                                Vendor • {deal?.vendor_name || 'Assigned'}
-                              </Pill>
-                            ) : null}
                             <ServiceLocationTag jobParts={deal?.job_parts} />
                           </div>
                         </div>
@@ -1853,6 +1854,28 @@ export default function DealsPage() {
                       {/* Actions (icons only) */}
                       <div className="col-span-12 lg:col-span-2 justify-self-end">
                         <div className="inline-flex items-center justify-end gap-2 rounded-lg border border-slate-200 bg-slate-100/70 p-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const id = deal?.id
+                              if (!id) return
+                              setExpandedDealIds((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(id)) next.delete(id)
+                                else next.add(id)
+                                return next
+                              })
+                            }}
+                            className="h-9 px-2 rounded-lg flex items-center gap-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                            aria-label={
+                              isExpanded ? 'Collapse deal details' : 'Expand deal details'
+                            }
+                            title={isExpanded ? 'Collapse' : 'Expand'}
+                            data-testid={`deal-expand-${deal?.id}`}
+                          >
+                            <span className="text-xs font-medium">Details</span>
+                          </button>
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -1920,6 +1943,94 @@ export default function DealsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {isExpanded ? (
+                      <div
+                        className="mt-4 rounded-xl border border-slate-200 bg-white p-4"
+                        role="region"
+                        aria-label="Deal details"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                            Items purchased
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const id = deal?.id
+                              if (!id) return
+                              setExpandedDealIds((prev) => {
+                                const next = new Set(prev)
+                                next.delete(id)
+                                return next
+                              })
+                            }}
+                            className="text-xs text-slate-500 hover:text-slate-900"
+                            aria-label="Close deal details"
+                          >
+                            Close
+                          </button>
+                        </div>
+
+                        {Array.isArray(deal?.job_parts) && deal.job_parts.length > 0 ? (
+                          <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                            <table className="w-full text-sm">
+                              <thead className="bg-slate-50 text-xs text-slate-600">
+                                <tr>
+                                  <th className="px-3 py-2 text-left font-medium">Op</th>
+                                  <th className="px-3 py-2 text-left font-medium">Product</th>
+                                  <th className="px-3 py-2 text-right font-medium">Qty</th>
+                                  <th className="px-3 py-2 text-right font-medium">Price</th>
+                                  <th className="px-3 py-2 text-right font-medium">Total</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                {deal.job_parts.map((p) => {
+                                  const op =
+                                    (p?.product?.op_code || p?.product?.opCode || p?.op_code || '')
+                                      ?.toString?.()
+                                      ?.trim?.()
+                                      ?.toUpperCase?.() || ''
+                                  const name =
+                                    p?.product?.name || p?.product_name || p?.productLabel || '—'
+                                  const qtyRaw = p?.quantity_used ?? p?.quantity ?? 1
+                                  const qtyNum = Number(qtyRaw)
+                                  const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
+                                  const unit = toFiniteNumberOrNull(p?.unit_price)
+                                  const total =
+                                    toFiniteNumberOrNull(p?.total_price) ??
+                                    (typeof unit === 'number' ? unit * qty : null)
+
+                                  return (
+                                    <tr
+                                      key={p?.id || `${name}-${op}`}
+                                      className="hover:bg-slate-50"
+                                    >
+                                      <td className="px-3 py-2 text-xs font-mono tabular-nums text-slate-700">
+                                        {op || '—'}
+                                      </td>
+                                      <td className="px-3 py-2 text-slate-900">{name}</td>
+                                      <td className="px-3 py-2 text-right tabular-nums text-slate-700">
+                                        {qty}
+                                      </td>
+                                      <td className="px-3 py-2 text-right tabular-nums text-slate-700">
+                                        {formatMoney0OrDash(unit)}
+                                      </td>
+                                      <td className="px-3 py-2 text-right tabular-nums text-slate-900">
+                                        {formatMoney0OrDash(total)}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="mt-3 text-sm text-slate-500">No line items found.</div>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}
@@ -2027,9 +2138,6 @@ export default function DealsPage() {
                         />
 
                         <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          {deal?.vendor_name || deal?.vendor_id ? (
-                            <Pill>Vendor: {deal?.vendor_name || 'Assigned'}</Pill>
-                          ) : null}
                           {(() => {
                             const summary = getDealProductLabelSummary(deal, 2)
                             if (!summary.labels.length) return null
