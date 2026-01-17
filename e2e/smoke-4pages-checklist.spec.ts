@@ -117,6 +117,12 @@ function attachConsoleCapture(page: Page) {
         !err.includes('favicon') &&
         !err.includes('ResizeObserver') &&
         !err.includes('Failed to load resource') &&
+        // Supabase Realtime can intermittently fail its websocket handshake (502) in CI/E2E.
+        // The app does not require Realtime for this smoke flow, so don't fail on this.
+        !(
+          err.includes('realtime/v1/websocket') &&
+          (err.includes('Unexpected response code: 502') || err.includes('response code: 502'))
+        ) &&
         // Transient auth fetch failures can occur during retries; if auth succeeds later,
         // these aren't meaningful regressions for the smoke flow.
         !err.includes('signInWithPassword') &&
