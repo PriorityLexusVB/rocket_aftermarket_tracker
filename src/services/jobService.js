@@ -71,19 +71,13 @@ export const jobService = {
    */
   async getAllJobs(filters = {}) {
     try {
-      let q = supabase?.from('jobs')
+      // NOTE: PostgREST filter helpers (eq/in/or/...) exist on the builder returned from .select().
+      // We start with a tiny select to get a filter-capable builder, then let selectJobs() apply
+      // the expanded select fragment later.
+      let q = supabase?.from('jobs')?.select('id')
 
       // If Supabase client is unavailable (e.g., missing env or stub), return empty to avoid runtime errors
-      if (!q || typeof q.select !== 'function') {
-        console.warn('[jobs] getAllJobs: supabase client unavailable; returning empty list')
-        return []
-      }
-
-      // Some dev stubs may not expose eq/in/or helpers; bail out cleanly
-      if (typeof q.eq !== 'function') {
-        console.warn('[jobs] getAllJobs: supabase query helpers unavailable; returning empty list')
-        return []
-      }
+      if (!q || typeof q.select !== 'function') return []
 
       if (filters?.status) q = q?.eq('job_status', filters?.status)
       if (filters?.vendorId) q = q?.eq('vendor_id', filters?.vendorId)
@@ -114,14 +108,10 @@ export const jobService = {
     if (list.length === 0) return []
 
     try {
-      let q = supabase?.from('jobs')
+      let q = supabase?.from('jobs')?.select('id')
+      if (!q || typeof q.select !== 'function') return []
 
-      if (!q || typeof q.select !== 'function' || typeof q.in !== 'function') {
-        console.warn('[jobs] getJobsByIds: supabase client unavailable; returning empty list')
-        return []
-      }
-
-      q = q.in('id', list)
+      q = q?.in?.('id', list) ?? q
       // Back-compat: orgId is treated as dealer_id.
       if (orgId) q = q.eq('dealer_id', orgId)
       q = q.order('created_at', { ascending: false })
@@ -140,7 +130,7 @@ export const jobService = {
   async getJobById(id) {
     if (!id) return null
     try {
-      const rows = await selectJobs(supabase?.from('jobs')?.eq('id', id)?.limit(1))
+      const rows = await selectJobs(supabase?.from('jobs')?.select('id')?.eq('id', id)?.limit(1))
       return rows?.[0] ?? null
     } catch (err) {
       console.error('[jobs] getJobById failed:', err?.message || err)

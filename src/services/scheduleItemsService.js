@@ -6,6 +6,14 @@ import { safeSelect } from '@/lib/supabase/safeSelect'
 
 const MS_DAY = 24 * 60 * 60 * 1000
 
+function readSessionCap(key) {
+  if (typeof sessionStorage === 'undefined') return null
+  const stored = sessionStorage.getItem(key)
+  if (stored === 'false') return false
+  if (stored === 'true') return true
+  return null
+}
+
 function safeDate(input) {
   const d = input instanceof Date ? input : new Date(input)
   return Number.isNaN(d.getTime()) ? null : d
@@ -272,7 +280,7 @@ export async function getUnscheduledInProgressInHouseItems({ orgId } = {}) {
     if (!ids.length) return { items: [], debug: { candidateIds: 0, hydrated: 0, kept: 0 } }
 
     const jobs = await jobService.getJobsByIds(ids, { orgId })
-    const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+    const withLoaners = await attachActiveLoanerFlags(jobs)
 
     const now = new Date()
     const items = []
@@ -435,7 +443,7 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
       }
     }
 
-    const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+    const withLoaners = await attachActiveLoanerFlags(jobs)
 
     const now = new Date()
     const items = []
@@ -513,7 +521,7 @@ export async function getScheduledJobsByDateRange({ rangeStart, rangeEnd, orgId 
   }
 
   const jobs = await jobService.getJobsByIds(ids, { orgId })
-  const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+  const withLoaners = await attachActiveLoanerFlags(jobs)
 
   const patched = withLoaners.map((job) => {
     const override = scheduleById.get(job?.id)
@@ -543,24 +551,41 @@ export async function getScheduledJobsByDateRange({ rangeStart, rangeEnd, orgId 
   }
 }
 
-async function attachActiveLoanerFlags(jobRows, orgId) {
+async function attachActiveLoanerFlags(jobRows) {
   const jobs = Array.isArray(jobRows) ? jobRows : []
   const ids = jobs.map((j) => j?.id).filter(Boolean)
   if (!ids.length) return jobs
 
   try {
-    let q = supabase
-      ?.from('loaner_assignments')
-      ?.select('job_id, id')
-      ?.in('job_id', ids)
-      ?.is('returned_at', null)
+    // PostgREST encodes `.in('job_id', ids)` into the URL query string. When `ids` is large,
+    // some environments can respond 400 due to request line / URL size limits.
+    // Chunk to keep requests well under typical limits.
+    // Keep conservative: some hosted proxies have very low URL size limits.
+    // 20 UUIDs stays comfortably under common limits even with encoding.
+    const chunkSize = 20
+    const hasLoaner = new Set()
 
-    // Back-compat: orgId param is treated as dealer_id.
-    if (orgId) q = q?.eq?.('dealer_id', orgId) ?? q
+    // Shared with dealService.js: if we know returned_at is missing, avoid repeated 400s.
+    // Unknown/null => default to skipping the filter (best-effort loaner badge).
+    const hasReturnedAt = readSessionCap('cap_loanerAssignmentsReturnedAt') === true
 
-    const data = await safeSelect(q, 'scheduleItems:loaners')
-    const loaners = Array.isArray(data) ? data : []
-    const hasLoaner = new Set(loaners.map((l) => l?.job_id).filter(Boolean))
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      const chunk = ids.slice(i, i + chunkSize)
+
+      let q = supabase?.from('loaner_assignments')?.select('job_id, id')?.in('job_id', chunk)
+
+      if (hasReturnedAt) q = q?.is?.('returned_at', null) ?? q
+
+      try {
+        const data = await safeSelect(q, 'scheduleItems:loaners')
+        const loaners = Array.isArray(data) ? data : []
+        for (const l of loaners) {
+          if (l?.job_id) hasLoaner.add(l.job_id)
+        }
+      } catch {
+        // Best-effort: treat loaner flags as unknown if a chunk fails.
+      }
+    }
 
     return jobs.map((j) => ({ ...j, has_active_loaner: hasLoaner.has(j?.id) }))
   } catch {
@@ -604,7 +629,7 @@ export async function getScheduleItems({ rangeStart, rangeEnd, orgId } = {}) {
   }
 
   const jobs = await jobService.getJobsByIds(ids, { orgId })
-  const withLoaners = await attachActiveLoanerFlags(jobs, orgId)
+  const withLoaners = await attachActiveLoanerFlags(jobs)
 
   const normalized = []
   let scheduleFromJobParts = 0

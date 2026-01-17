@@ -145,7 +145,6 @@ function useTenant() {
       // Handle retry for transient network errors
       if (shouldRetry && retryAttempt < MAX_RETRIES) {
         retryAttempt++
-        console.log(`[useTenant] Retrying due to network error (attempt ${retryAttempt})`)
         await new Promise((resolve) => setTimeout(resolve, 1000))
         if (!didCancel) {
           load()

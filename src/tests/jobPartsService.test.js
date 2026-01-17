@@ -51,19 +51,26 @@ vi.mock('../utils/capabilityTelemetry', () => ({
   },
 }))
 
-// Import after mocks are set up
-import {
-  replaceJobPartsForJob,
-  toJobPartRows,
-  buildJobPartsPayload,
-} from '../services/jobPartsService'
+// IMPORTANT: This module is imported by other tests too.
+// When Vitest runs the full suite, module caching can cause this file to
+// receive an already-imported instance of jobPartsService (with real supabase),
+// which breaks our per-file supabase mock assertions.
+//
+// Fix: reset module cache + dynamically import after mocks.
+let replaceJobPartsForJob
+let toJobPartRows
+let buildJobPartsPayload
 
 describe('jobPartsService - replaceJobPartsForJob', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset tracking
     upsertCallCount = 0
     insertedRows = []
     lastOnConflict = null
+
+    vi.resetModules()
+    ;({ replaceJobPartsForJob, toJobPartRows, buildJobPartsPayload } =
+      await import('../services/jobPartsService'))
   })
 
   afterEach(() => {

@@ -166,7 +166,8 @@
     "overrides": {
       "esbuild": "0.25.12",
       "next": "15.5.9",
-      "@remix-run/router": "1.23.2"
+      "@remix-run/router": "1.23.2",
+      "tar": "7.5.3"
     }
   },
   "packageManager": "pnpm@10.15.0"

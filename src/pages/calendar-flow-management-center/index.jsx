@@ -106,7 +106,8 @@ const CalendarFlowManagementCenter = () => {
         return date
       case 'week':
         const dayOfWeek = date?.getDay()
-        date?.setDate(date?.getDate() - dayOfWeek + 1) // Monday start
+        const diffToMonday = (dayOfWeek + 6) % 7
+        date?.setDate(date?.getDate() - diffToMonday) // Monday start
         date?.setHours(0, 0, 0, 0)
         return date
       case 'month':
@@ -161,16 +162,34 @@ const CalendarFlowManagementCenter = () => {
     return new Set()
   }, [getViewStartDate, viewMode])
 
+  const needsSchedulingJobs = useMemo(() => {
+    return (needsSchedulingItems || [])
+      .map((it) => {
+        const raw = it?.raw
+        if (!raw) return null
+
+        const promisedAt =
+          it?.promisedAt || raw?.next_promised_iso || raw?.promised_date || raw?.promisedAt || null
+
+        return {
+          ...raw,
+          promisedAt,
+          next_promised_iso: raw?.next_promised_iso ?? promisedAt,
+          promised_date: raw?.promised_date ?? promisedAt,
+        }
+      })
+      .filter(Boolean)
+  }, [needsSchedulingItems])
+
   const needsSchedulingJobsInView = useMemo(() => {
-    const raws = (needsSchedulingItems || []).map((it) => it?.raw).filter(Boolean)
-    if (!raws.length) return []
+    if (!needsSchedulingJobs.length) return []
     if (!viewDateKeys || viewDateKeys.size === 0) return []
 
-    return raws.filter((job) => {
+    return needsSchedulingJobs.filter((job) => {
       const key = toEtDateKey(getPromiseValue(job))
       return !!(key && viewDateKeys.has(key))
     })
-  }, [needsSchedulingItems, viewDateKeys])
+  }, [needsSchedulingJobs, viewDateKeys])
 
   const loadCalendarData = useCallback(async () => {
     if (tenantLoading || !orgId) {
@@ -1024,7 +1043,7 @@ const CalendarFlowManagementCenter = () => {
           {/* Unassigned Queue Sidebar - Hide for month view */}
           {viewMode !== 'month' && (
             <UnassignedQueue
-              jobs={(needsSchedulingItems || []).map((it) => it?.raw).filter(Boolean)}
+              jobs={needsSchedulingJobs}
               onJobClick={handleJobClick}
               onDragStart={handleDragStart}
               loading={loading}

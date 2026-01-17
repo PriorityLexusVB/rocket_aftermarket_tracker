@@ -5,6 +5,11 @@
 import { supabase } from '@/lib/supabase'
 import { clearDropdownCache } from './dropdownService'
 
+const realtimeDebugEnabled =
+  typeof import.meta !== 'undefined' &&
+  import.meta?.env?.DEV &&
+  String(import.meta?.env?.VITE_DEBUG_REALTIME || '').toLowerCase() === 'true'
+
 /**
  * Initialize realtime listeners that bust dropdown caches when underlying data changes.
  * Returns a cleanup function to unsubscribe.
@@ -36,7 +41,9 @@ export function initDropdownCacheRealtime(orgId) {
 
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        console.debug('[realtime] dropdown-cache subscribed', { orgId })
+        if (realtimeDebugEnabled) {
+          console.debug('[realtime] dropdown-cache subscribed', { orgId })
+        }
       }
     })
 
