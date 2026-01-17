@@ -690,7 +690,7 @@ export default function CalendarAgenda() {
 
                 return (
                   <li
-                    key={r.id}
+                    key={r?.calendarKey || r?.calendar_key || r.id}
                     ref={focused ? focusRef : null}
                     tabIndex={0}
                     aria-label={`Appointment ${title || r.id}`}

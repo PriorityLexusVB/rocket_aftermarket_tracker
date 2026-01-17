@@ -332,6 +332,15 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
   const endKey = isoDateKey(rangeEnd)
   if (!startKey || !endKey) return { items: [], debug: { reason: 'invalid_range' } }
 
+  const toPromiseIso = (dateKey) => {
+    if (!dateKey) return null
+    const s = String(dateKey)
+    // If already has a time component, keep it.
+    if (s.includes('T')) return s
+    // Anchor away from midnight to avoid TZ day drift.
+    return `${s}T12:00:00.000Z`
+  }
+
   try {
     const caps = getCapabilities?.() || {}
     let q = supabase
@@ -371,9 +380,15 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
     } else {
       data = await safeSelect(q, 'scheduleItems:needsScheduling:partIds')
     }
-    let jobIds = Array.from(
-      new Set((Array.isArray(data) ? data : []).map((r) => r?.job_id).filter(Boolean))
-    )
+    const promiseDatesByJobId = new Map()
+    for (const row of Array.isArray(data) ? data : []) {
+      const jobId = row?.job_id
+      const dateKey = row?.promised_date
+      if (!jobId || !dateKey) continue
+      const existing = promiseDatesByJobId.get(jobId)
+      if (existing) existing.add(String(dateKey))
+      else promiseDatesByJobId.set(jobId, new Set([String(dateKey)]))
+    }
 
     // Some environments don't populate job_parts.dealer_id consistently (jobs are the canonical tenant).
     // Always attempt a jobs + inner join job_parts candidate discovery and union ids.
@@ -395,14 +410,24 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
         }
 
         const viaJobs = await safeSelect(jq, 'scheduleItems:needsScheduling:candidates:jobsJoin')
-        const viaJobIds = (Array.isArray(viaJobs) ? viaJobs : []).map((r) => r?.id).filter(Boolean)
-        if (viaJobIds.length) {
-          jobIds = Array.from(new Set([...jobIds, ...viaJobIds]))
+        for (const row of Array.isArray(viaJobs) ? viaJobs : []) {
+          const jobId = row?.id
+          if (!jobId) continue
+          const parts = Array.isArray(row?.job_parts) ? row.job_parts : []
+          for (const p of parts) {
+            const dateKey = p?.promised_date
+            if (!dateKey) continue
+            const existing = promiseDatesByJobId.get(jobId)
+            if (existing) existing.add(String(dateKey))
+            else promiseDatesByJobId.set(jobId, new Set([String(dateKey)]))
+          }
         }
       } catch {
         // Keep graceful behavior; downstream will return empty if no candidates.
       }
     }
+
+    const jobIds = Array.from(promiseDatesByJobId.keys()).filter(Boolean)
 
     if (!jobIds.length) {
       return { items: [], debug: { candidateJobs: 0, hydrated: 0, kept: 0 } }
@@ -451,18 +476,31 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
       const schedule = getEffectiveScheduleWindowFromJob(job)
       if (schedule?.start) continue
 
-      const item = normalizeScheduleItemFromJob(job, {
-        now,
-        scheduleOverride: { start: null, end: null, source: 'needs_scheduling_promise' },
-      })
+      const dateKeys = Array.from(promiseDatesByJobId.get(job?.id) || []).filter(Boolean).sort()
+      if (!dateKeys.length) continue
 
-      if (!item?.promisedAt) continue
-      const promiseDate = safeDate(item.promisedAt)
-      if (!promiseDate) continue
-      if (promiseDate.toISOString().slice(0, 10) < startKey) continue
-      if (promiseDate.toISOString().slice(0, 10) >= endKey) continue
+      for (const dateKey of dateKeys) {
+        if (String(dateKey) < startKey) continue
+        if (String(dateKey) >= endKey) continue
 
-      items.push(item)
+        const item = normalizeScheduleItemFromJob(job, {
+          now,
+          scheduleOverride: { start: null, end: null, source: 'needs_scheduling_promise' },
+        })
+
+        if (!item) continue
+
+        const promisedAt = toPromiseIso(dateKey)
+        const promiseDate = safeDate(promisedAt)
+        if (!promiseDate) continue
+
+        items.push({
+          ...item,
+          promisedAt,
+          // Unique key for multi-date promise-only items.
+          calendarKey: `${item?.id || job?.id}::promise::${String(dateKey)}`,
+        })
+      }
     }
 
     items.sort((a, b) => {

@@ -274,12 +274,18 @@ const CalendarSchedulingCenter = () => {
           const id = item?.id || raw?.id
           if (!id || scheduledIds.has(id)) return null
 
+          const calendarKey =
+            item?.calendarKey ||
+            item?.calendar_key ||
+            (item?.promisedAt ? `${id}::promise::${String(item.promisedAt).slice(0, 10)}` : null)
+
           const vendorId = raw?.vendor_id || item?.vendorId || null
           const serviceType = raw?.service_type || (vendorId ? 'vendor' : 'onsite')
 
           return {
             ...raw,
             id,
+            calendar_key: calendarKey || id,
             title: raw?.title || item?.vehicleLabel || item?.customerName || 'All-day',
             vendor_id: vendorId,
             vendor_name: item?.vendorName || raw?.vendor_name || 'Unassigned',
@@ -481,7 +487,7 @@ const CalendarSchedulingCenter = () => {
 
                 return (
                   <div
-                    key={job?.id}
+                    key={job?.calendar_key || job?.id}
                     className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={() => navigate(`/deals/${job?.id}/edit`)}
                     title={job?.title || 'Open deal'}
@@ -670,7 +676,7 @@ const CalendarSchedulingCenter = () => {
                       return (
                         <button
                           type="button"
-                          key={job?.id}
+                          key={job?.calendar_key || job?.id}
                           className={`w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${
                             colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'
                           }`}
@@ -738,7 +744,7 @@ const CalendarSchedulingCenter = () => {
 
               return (
                 <div
-                  key={job?.id}
+                  key={job?.calendar_key || job?.id}
                   className="bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => navigate(`/deals/${job?.id}/edit`)}
                 >

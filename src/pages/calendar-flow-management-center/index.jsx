@@ -173,6 +173,10 @@ const CalendarFlowManagementCenter = () => {
 
         return {
           ...raw,
+          calendar_key:
+            it?.calendarKey ||
+            it?.calendar_key ||
+            (it?.promisedAt ? `${raw?.id}::promise::${String(it.promisedAt).slice(0, 10)}` : null),
           promisedAt,
           next_promised_iso: raw?.next_promised_iso ?? promisedAt,
           promised_date: raw?.promised_date ?? promisedAt,
@@ -533,13 +537,10 @@ const CalendarFlowManagementCenter = () => {
         })
 
         const dayKey = toEtDateKey(currentDate)
-        const noTime = (needsSchedulingItems || [])
-          .map((it) => it?.raw)
-          .filter(Boolean)
-          .filter((job) => {
-            const k = toEtDateKey(getPromiseValue(job))
-            return !!(dayKey && k && k === dayKey)
-          })
+        const noTime = (needsSchedulingJobs || []).filter((job) => {
+          const k = toEtDateKey(getPromiseValue(job))
+          return !!(dayKey && k && k === dayKey)
+        })
 
         const combined = [...(dayJobs || []), ...(noTime || [])]
 
@@ -593,7 +594,7 @@ const CalendarFlowManagementCenter = () => {
                   <div className="space-y-1">
                     {day?.jobs?.slice(0, 2)?.map((job) => (
                       <div
-                        key={job?.id}
+                        key={job?.calendar_key || job?.id}
                         className={`
                           text-xs p-1 rounded cursor-pointer truncate
                           ${!job?.vendor_id || job?.location === 'on_site' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-orange-100 text-orange-800 border border-orange-200'}
@@ -637,7 +638,7 @@ const CalendarFlowManagementCenter = () => {
 
     return (
       <div
-        key={job?.id}
+        key={job?.calendar_key || job?.id}
         className={`
           relative rounded-lg border p-3 mb-2 cursor-pointer transition-all duration-200 hover:shadow-md
           ${chipBg} ${chipBorder} ${chipHoverBorder} text-sm text-gray-900
