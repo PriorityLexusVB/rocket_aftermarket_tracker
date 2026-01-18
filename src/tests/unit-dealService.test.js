@@ -474,7 +474,7 @@ describe('dealService.updateDeal transaction upsert behavior', () => {
 
   // Note: These skipped tests require deeper Supabase mocks to cover the full updateDeal chain
   // (e.g. supabase.from('jobs').update().eq().eq().select().maybeSingle()).
-  // Deferred intentionally; tracked in TODO_DEFERRED.md under "Test Enhancement".
+  // Deferred intentionally; tracked in the repo's deferred tasks doc under "Test Enhancement".
 
   it.skip('inserts a transaction when none exists', async () => {
     const id = 'job-1'
