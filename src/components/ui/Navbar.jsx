@@ -29,6 +29,10 @@ const Navbar = () => {
   const [notifications, setNotifications] = useState([])
   const [notificationLoading, setNotificationLoading] = useState(false)
 
+  const buildSha = typeof __BUILD_SHA__ === 'string' ? __BUILD_SHA__ : ''
+  const buildTimeIso = typeof __BUILD_TIME__ === 'string' ? __BUILD_TIME__ : ''
+  const buildLabel = buildSha ? buildSha.slice(0, 7) : ''
+
   const { user, userProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -607,6 +611,16 @@ const Navbar = () => {
           }}
         />
       )}
+
+      {buildLabel ? (
+        <div
+          className="pointer-events-none fixed bottom-20 right-2 z-[60] select-none text-[10px] text-gray-400 md:bottom-2"
+          aria-label="Build info"
+          title={`Build ${buildLabel}${buildTimeIso ? ` @ ${buildTimeIso}` : ''}`}
+        >
+          build {buildLabel}
+        </div>
+      ) : null}
     </>
   )
 }
