@@ -6,6 +6,10 @@ import { DiagnosticsBanner } from '../DiagnosticsBanner'
 const AppLayout = ({ children }) => {
   const location = useLocation()
 
+  const buildSha = typeof __BUILD_SHA__ === 'string' ? __BUILD_SHA__ : ''
+  const buildTimeIso = typeof __BUILD_TIME__ === 'string' ? __BUILD_TIME__ : ''
+  const buildLabel = buildSha ? buildSha.slice(0, 7) : ''
+
   // Pages that should NOT have the navbar
   const excludeNavbarPaths = ['/guest-claims-submission-form']
 
@@ -23,6 +27,16 @@ const AppLayout = ({ children }) => {
       <main className={`${shouldShowNavbar ? 'pt-16 md:pt-16' : ''}`}>
         {children}
       </main>
+
+      {buildLabel ? (
+        <div
+          className="pointer-events-none fixed bottom-2 right-2 select-none text-[10px] text-gray-400"
+          aria-label="Build info"
+          title={`Build ${buildLabel}${buildTimeIso ? ` @ ${buildTimeIso}` : ''}`}
+        >
+          build {buildLabel}
+        </div>
+      ) : null}
     </div>
   )
 }
