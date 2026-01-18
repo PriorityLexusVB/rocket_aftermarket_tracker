@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Calendar, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
 import { calendarService } from '../../services/calendarService'
 import { listActiveVendorsLite } from '../../services/vendorService'
+import { withTimeout } from '@/utils/promiseTimeout'
+
+const LOAD_TIMEOUT_MS = 15000
 
 const CalendarSchedulingCenter = () => {
   // State management
@@ -55,13 +58,13 @@ const CalendarSchedulingCenter = () => {
       })
 
       const vendorId = selectedVendors?.length > 0 ? selectedVendors?.[0] : null
-      const res = await calendarService.getJobsByDateRangeWithFallback(
-        dateRange?.start,
-        dateRange?.end,
-        {
+      const res = await withTimeout(
+        calendarService.getJobsByDateRangeWithFallback(dateRange?.start, dateRange?.end, {
           vendorId,
           status: null,
-        }
+        }),
+        LOAD_TIMEOUT_MS,
+        { label: 'Scheduling Center load' }
       )
 
       setDebugInfo(res?.debugInfo || '')

@@ -7,9 +7,12 @@ import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
+import { withTimeout } from '@/utils/promiseTimeout'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
+
+const LOAD_TIMEOUT_MS = 15000
 
 // Safe date creation utility
 const safeCreateDate = (input) => {
@@ -216,12 +219,12 @@ const CalendarSchedulingCenter = () => {
       setLoading(true)
       setError(null)
 
-      const { data, error } = await calendarService?.getJobsByDateRange(
-        dateRange?.start,
-        dateRange?.end,
-        {
+      const { data, error } = await withTimeout(
+        calendarService?.getJobsByDateRange(dateRange?.start, dateRange?.end, {
           orgId: orgId || null,
-        }
+        }),
+        LOAD_TIMEOUT_MS,
+        { label: 'Calendar load' }
       )
 
       if (error) {
@@ -260,11 +263,15 @@ const CalendarSchedulingCenter = () => {
 
       let promiseItems = []
       if (dateRange?.start && endExclusive) {
-        const res = await getNeedsSchedulingPromiseItems({
-          orgId: orgId || null,
-          rangeStart: dateRange.start,
-          rangeEnd: endExclusive,
-        })
+        const res = await withTimeout(
+          getNeedsSchedulingPromiseItems({
+            orgId: orgId || null,
+            rangeStart: dateRange.start,
+            rangeEnd: endExclusive,
+          }),
+          LOAD_TIMEOUT_MS,
+          { label: 'Calendar promise-only load' }
+        )
         promiseItems = Array.isArray(res?.items) ? res.items : []
       }
 
@@ -310,7 +317,7 @@ const CalendarSchedulingCenter = () => {
       )
     } catch (error) {
       console.error('Error loading calendar data:', error)
-      setError('Failed to load calendar data')
+      setError(error?.message ? `Failed to load calendar data: ${error.message}` : 'Failed to load calendar data')
     } finally {
       setLoading(false)
     }

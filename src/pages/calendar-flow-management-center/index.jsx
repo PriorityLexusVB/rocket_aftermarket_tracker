@@ -29,6 +29,9 @@ import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+import { withTimeout } from '@/utils/promiseTimeout'
+
+const LOAD_TIMEOUT_MS = 15000
 
 function getPromiseValue(job) {
   return job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
@@ -60,6 +63,7 @@ const CalendarFlowManagementCenter = () => {
 
   // State management
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [jumpLoading, setJumpLoading] = useState(false)
 
   // Separate original data from filtered data
@@ -200,20 +204,26 @@ const CalendarFlowManagementCenter = () => {
       setOriginalJobs([])
       setOriginalUnassignedJobs([])
       setNeedsSchedulingItems([])
+      setLoadError(null)
       setLoading(false)
       return
     }
     setLoading(true)
+    setLoadError(null)
     try {
       const startDate = getViewStartDate()
       const endDate = getViewEndDate()
 
       // Canonical scheduling truth: overlap window from calendar RPC, then hydrate job rows.
-      const { jobs: jobsData } = await getScheduledJobsByDateRange({
-        rangeStart: startDate,
-        rangeEnd: endDate,
-        orgId,
-      })
+      const { jobs: jobsData } = await withTimeout(
+        getScheduledJobsByDateRange({
+          rangeStart: startDate,
+          rangeEnd: endDate,
+          orgId,
+        }),
+        LOAD_TIMEOUT_MS,
+        { label: 'Flow Center scheduled load' }
+      )
 
       const assignedJobs = jobsData?.filter((job) => job?.vendor_id)
       const unassigned = jobsData?.filter((job) => !job?.vendor_id)
@@ -225,14 +235,22 @@ const CalendarFlowManagementCenter = () => {
       // Promise-only needs-scheduling queue for this view window (include overdue)
       const needsStart = new Date(startDate)
       needsStart?.setDate(needsStart?.getDate() - 365)
-      const needsRes = await getNeedsSchedulingPromiseItems({
-        orgId,
-        rangeStart: needsStart,
-        rangeEnd: endDate,
-      })
+      const needsRes = await withTimeout(
+        getNeedsSchedulingPromiseItems({
+          orgId,
+          rangeStart: needsStart,
+          rangeEnd: endDate,
+        }),
+        LOAD_TIMEOUT_MS,
+        { label: 'Flow Center needs-scheduling load' }
+      )
       setNeedsSchedulingItems(needsRes?.items || [])
     } catch (error) {
       console.error('Error loading calendar data:', error)
+      setLoadError(error?.message || 'Failed to load calendar data')
+      setOriginalJobs([])
+      setOriginalUnassignedJobs([])
+      setNeedsSchedulingItems([])
     } finally {
       setLoading(false)
     }
@@ -1070,6 +1088,26 @@ const CalendarFlowManagementCenter = () => {
 
           {/* Calendar View */}
           <div className={`flex-1 p-6 ${viewMode === 'month' ? 'w-full' : ''}`}>
+            {loadError ? (
+              <div
+                role="alert"
+                className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"
+              >
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-sm">
+                    <span className="font-medium">Calendar didn’t load.</span>{' '}
+                    <span className="text-amber-800">{String(loadError)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => loadCalendarData()}
+                    className="h-8 rounded-md border border-amber-300 bg-white px-3 text-sm font-medium text-amber-900 hover:bg-amber-100"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : null}
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
