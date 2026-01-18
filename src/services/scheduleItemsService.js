@@ -242,7 +242,7 @@ export function normalizeScheduleItemFromJob(job, { now = new Date(), scheduleOv
     salesName,
     vehicleLabel,
     vendorId: job?.vendor_id || vendor?.id || null,
-    vendorName: vendor?.name || job?.vendor_name || 'Unassigned',
+    vendorName: vendor?.name || job?.vendor_name || '',
     locationType,
     loanerTag: job?.loaner_number || job?.has_active_loaner ? 'Loaner' : null,
     amount: safeMoneyAmount(job),
