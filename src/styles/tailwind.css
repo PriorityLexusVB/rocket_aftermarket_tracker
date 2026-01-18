@@ -16,6 +16,21 @@ body,
   height: 100%;
 }
 
+/*
+  When the mobile bottom nav is present (md:hidden) it is fixed and will
+  overlay content near the bottom. This global padding ensures users can
+  always scroll far enough to interact with bottom buttons across pages.
+*/
+:root {
+  --mobile-bottom-nav-height: 64px;
+}
+
+@media (max-width: 767px) {
+  body.has-mobile-bottom-nav {
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom));
+  }
+}
+
 /* Progressive enhancement fallbacks for older iOS */
 @supports not (overflow: clip) {
   .overflow-clip {

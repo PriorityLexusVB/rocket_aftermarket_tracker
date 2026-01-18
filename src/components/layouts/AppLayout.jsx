@@ -21,8 +21,7 @@ const AppLayout = ({ children }) => {
 
       {/* Main content area with proper spacing for top navbar */}
       <main className={`${shouldShowNavbar ? 'pt-16 md:pt-16' : ''}`}>
-        {/* Add mobile bottom navigation padding for mobile devices */}
-        <div className={`${shouldShowNavbar ? 'pb-20 md:pb-0' : ''}`}>{children}</div>
+        {children}
       </main>
     </div>
   )

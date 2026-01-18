@@ -36,6 +36,38 @@ const Navbar = () => {
   const SIMPLE_AGENDA_ENABLED =
     String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
+  // Ensure content can scroll past the fixed mobile bottom nav.
+  useEffect(() => {
+    if (isTest) return
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const body = document.body
+    if (!body) return
+
+    const mql = window.matchMedia('(max-width: 767px)')
+    const apply = () => {
+      if (mql.matches) body.classList.add('has-mobile-bottom-nav')
+      else body.classList.remove('has-mobile-bottom-nav')
+    }
+
+    apply()
+
+    if (typeof mql.addEventListener === 'function') {
+      mql.addEventListener('change', apply)
+      return () => {
+        mql.removeEventListener('change', apply)
+        body.classList.remove('has-mobile-bottom-nav')
+      }
+    }
+
+    // Safari < 14
+    mql.addListener(apply)
+    return () => {
+      mql.removeListener(apply)
+      body.classList.remove('has-mobile-bottom-nav')
+    }
+  }, [])
+
   const navigationLinks = [
     {
       name: 'Calendar',
