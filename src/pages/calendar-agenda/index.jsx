@@ -10,11 +10,13 @@ import { getNeedsSchedulingPromiseItems, getScheduleItems } from '@/services/sch
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
+import { withTimeout } from '@/utils/promiseTimeout'
 import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import Navbar from '@/components/ui/Navbar'
 
 const TZ = 'America/New_York'
+const LOAD_TIMEOUT_MS = 15000
 
 function summarizeOpCodesFromParts(parts, max = 5) {
   const list = Array.isArray(parts) ? parts : []
@@ -240,6 +242,7 @@ export default function CalendarAgenda() {
   const navigate = useNavigate()
   const location = useLocation()
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [jobs, setJobs] = useState([])
   const [conflicts, setConflicts] = useState(new Map()) // jobId -> boolean
 
@@ -378,11 +381,11 @@ export default function CalendarAgenda() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       if (!orgId) {
         setJobs([])
         setConflicts(new Map())
-        setLoading(false)
         return
       }
 
@@ -391,10 +394,14 @@ export default function CalendarAgenda() {
       const rangeEnd = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
 
       // Scheduled items (have a schedule window) + promised-only items (no time yet)
-      const [scheduledRes, promisedRes] = await Promise.all([
-        getScheduleItems({ rangeStart, rangeEnd, orgId }),
-        getNeedsSchedulingPromiseItems({ rangeStart, rangeEnd, orgId }),
-      ])
+      const [scheduledRes, promisedRes] = await withTimeout(
+        Promise.all([
+          getScheduleItems({ rangeStart, rangeEnd, orgId }),
+          getNeedsSchedulingPromiseItems({ rangeStart, rangeEnd, orgId }),
+        ]),
+        LOAD_TIMEOUT_MS,
+        { label: 'Agenda load' }
+      )
 
       const excluded = new Set(['draft', 'canceled', 'cancelled'])
       const combined = [...(scheduledRes?.items || []), ...(promisedRes?.items || [])].filter(
@@ -413,8 +420,10 @@ export default function CalendarAgenda() {
     } catch (e) {
       console.warn('[agenda] load failed', e)
       setJobs([])
+      setLoadError(e?.message || 'Failed to load agenda')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [orgId])
 
   useEffect(() => {
@@ -572,6 +581,27 @@ export default function CalendarAgenda() {
         <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
 
         {supabaseNotice}
+
+        {loadError ? (
+          <div
+            role="alert"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"
+          >
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="text-sm">
+                <span className="font-medium">Agenda didn’t load.</span>{' '}
+                <span className="text-amber-800">{String(loadError)}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => load()}
+                className="h-8 rounded-md border border-amber-300 bg-white px-3 text-sm font-medium text-amber-900 hover:bg-amber-100"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Header with always-visible search and date range */}
         <header className="space-y-3" aria-label="Agenda controls">
