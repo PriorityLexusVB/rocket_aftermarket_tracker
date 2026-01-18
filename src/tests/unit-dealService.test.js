@@ -472,10 +472,9 @@ describe('dealService.updateDeal transaction upsert behavior', () => {
     supabase.__setExistingTxn(null)
   })
 
-  // TODO: These tests need enhanced mocks to support the full chain of updateDeal operations
-  // Including: supabase.from('jobs').update().eq().eq().select().maybeSingle()
-  // The core functionality (vehicle description persistence) is tested above
-  // These tests are preserved for future enhancement
+  // Note: These skipped tests require deeper Supabase mocks to cover the full updateDeal chain
+  // (e.g. supabase.from('jobs').update().eq().eq().select().maybeSingle()).
+  // Deferred intentionally; tracked in TODO_DEFERRED.md under "Test Enhancement".
 
   it.skip('inserts a transaction when none exists', async () => {
     const id = 'job-1'
