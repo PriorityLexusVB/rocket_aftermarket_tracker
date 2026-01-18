@@ -76,7 +76,9 @@ export const calendarService = {
 
         const transformed = (rows || []).map((job) => ({
           ...job,
-          vendor_name: job?.vendors?.name || 'Unassigned',
+          vendor_name:
+            job?.vendors?.name ||
+            (job?.vendor_id ? 'Vendor' : job?.location === 'off_site' ? 'Vendor/Offsite' : 'On-site'),
           vehicle_info: job?.vehicles
             ? `${job?.vehicles?.year} ${job?.vehicles?.make} ${job?.vehicles?.model}`.trim()
             : 'No Vehicle',

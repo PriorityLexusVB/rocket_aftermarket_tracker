@@ -167,6 +167,7 @@ export const isOverdue = (promiseDate) => {
 
 // Get status badge configuration
 export const getStatusBadge = (status) => {
+  const normalized = status === 'pending' || !status ? 'scheduled' : status
   const statusMap = {
     pending: {
       label: 'PENDING',
@@ -218,7 +219,7 @@ export const getStatusBadge = (status) => {
     },
   }
 
-  return statusMap?.[status] || statusMap?.['pending']
+  return statusMap?.[normalized] || statusMap?.['scheduled']
 }
 
 // Get location-based colors

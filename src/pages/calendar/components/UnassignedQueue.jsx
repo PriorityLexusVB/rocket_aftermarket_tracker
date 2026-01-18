@@ -25,7 +25,7 @@ const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
       {/* Header with Search */}
       <div className="p-4 border-b border-border">
         <h3 className="text-lg font-semibold text-foreground mb-3">
-          Unassigned Jobs ({filteredJobs?.length})
+          Needs Scheduling ({filteredJobs?.length})
         </h3>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -117,7 +117,7 @@ const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
         {filteredJobs?.length === 0 && (
           <div className="text-center py-8">
             <div className="text-muted-foreground text-sm">
-              {searchQuery ? 'No jobs match your search' : 'No unassigned jobs'}
+              {searchQuery ? 'No jobs match your search' : 'No jobs to schedule'}
             </div>
             {searchQuery && (
               <button

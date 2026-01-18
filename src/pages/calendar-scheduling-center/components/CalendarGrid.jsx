@@ -184,7 +184,7 @@ const CalendarGrid = ({ jobs = [], currentDate, viewType, onJobClick, onJobDragD
         onDragStart={(e) => handleDragStart(e, job)}
         onDragEnd={handleDragEnd}
         onClick={() => onJobClick?.(job)}
-        title={`${job?.title} - ${job?.vendor_name || 'No Vendor'}`}
+        title={`${job?.title} - ${job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')}`}
       >
         {/* Priority indicator */}
         <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${priorityColor}`} />
@@ -198,7 +198,9 @@ const CalendarGrid = ({ jobs = [], currentDate, viewType, onJobClick, onJobDragD
         <div className="flex items-center justify-between text-xs mt-1">
           <div className="flex items-center space-x-1">
             <User className="h-3 w-3" />
-            <span className="truncate max-w-16">{job?.vendor_name || 'Unassigned'}</span>
+            <span className="truncate max-w-16">
+              {job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')}
+            </span>
           </div>
 
           {job?.vehicle_info && (

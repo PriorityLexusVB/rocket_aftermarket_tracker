@@ -31,7 +31,7 @@ const FilterControls = ({
             <option value="scheduled">Scheduled</option>
             <option value="in_progress">In Progress</option>
             <option value="quality_check">Quality Check</option>
-            <option value="pending">Pending</option>
+            <option value="pending">Booked (time TBD)</option>
             <option value="overdue">Overdue Items</option>
           </select>
         </div>
@@ -84,7 +84,12 @@ const FilterControls = ({
 
             {statusFilter !== 'all' && (
               <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                <span>Status: {statusFilter?.replace('_', ' ')}</span>
+                <span>
+                  Status:{' '}
+                  {statusFilter === 'pending'
+                    ? 'booked (time TBD)'
+                    : statusFilter?.replace('_', ' ')}
+                </span>
                 <button
                   onClick={() => setStatusFilter('all')}
                   className="ml-2 text-blue-600 hover:text-blue-800"

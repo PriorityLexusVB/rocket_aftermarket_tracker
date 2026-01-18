@@ -535,7 +535,7 @@ export default function SnapshotView() {
       // Use the existing jobService updateStatus path via raw id.
       const { jobService } = await import('@/services/jobService')
       await jobService.updateStatus(job.id, 'completed', { completed_at: new Date().toISOString() })
-      const message = `Marked "${jobTitle}" as completed`
+      const message = `Marked "${jobTitle}" as done`
       toast?.success?.(message)
       setStatusMessage(message) // For screen readers
       await load()
@@ -555,7 +555,7 @@ export default function SnapshotView() {
       })
     } catch (e) {
       console.warn('[SnapshotView] complete failed', e)
-      const errorMsg = 'Complete failed'
+      const errorMsg = 'Could not mark done'
       toast?.error?.(errorMsg)
       setStatusMessage(errorMsg)
     }
@@ -726,7 +726,7 @@ export default function SnapshotView() {
         <ul role="list" className="divide-y rounded-lg border border-border bg-card">
           {needsSplit.overdue.map((j) => {
             const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-            const vendorName = j?.vendorName || 'Unassigned'
+            const vendorName = j?.vendorName || 'On-site'
             const customer = j?.customerName || vehicle?.owner_name || ''
             const status = effectiveStatusForBadge(j)
             const statusBadge = getStatusBadge(status)
@@ -811,7 +811,7 @@ export default function SnapshotView() {
         <ul role="list" className="divide-y rounded-lg border border-border bg-card">
           {needsSplit.upcoming.map((j) => {
             const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-            const vendorName = j?.vendorName || 'Unassigned'
+            const vendorName = j?.vendorName || 'On-site'
             const customer = j?.customerName || vehicle?.owner_name || ''
             const status = effectiveStatusForBadge(j)
             const statusBadge = getStatusBadge(status)
@@ -919,7 +919,7 @@ export default function SnapshotView() {
                 const end = hasTime ? formatTime(j.scheduledEnd) : null
                 const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-                const vendorName = j?.vendorName || 'Unassigned'
+                const vendorName = j?.vendorName || 'On-site'
                 const customer = j?.customerName || vehicle?.owner_name || ''
                 const status = effectiveStatusForBadge(j)
                 const statusBadge = getStatusBadge(status)
@@ -1017,9 +1017,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark complete"
+                          aria-label="Mark done"
+                          title="Marks this job as done (status: completed)"
                         >
-                          Complete
+                          Mark done
                         </button>
                       )}
                     </div>
@@ -1044,7 +1045,7 @@ export default function SnapshotView() {
                 const end = hasTime ? formatTime(j.scheduledEnd) : null
                 const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-                const vendorName = j?.vendorName || 'Unassigned'
+                const vendorName = j?.vendorName || 'On-site'
                 const customer = j?.customerName || vehicle?.owner_name || ''
                 const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
                 return (
@@ -1119,9 +1120,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark complete"
+                          aria-label="Mark done"
+                          title="Marks this job as done (status: completed)"
                         >
-                          Complete
+                          Mark done
                         </button>
                       )}
                     </div>
@@ -1146,7 +1148,7 @@ export default function SnapshotView() {
                 const end = hasTime ? formatTime(j.scheduledEnd) : null
                 const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-                const vendorName = j?.vendorName || 'Unassigned'
+                const vendorName = j?.vendorName || 'On-site'
                 const customer = j?.customerName || vehicle?.owner_name || ''
                 const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
                 return (
@@ -1221,9 +1223,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark complete"
+                          aria-label="Mark done"
+                          title="Marks this job as done (status: completed)"
                         >
-                          Complete
+                          Mark done
                         </button>
                       )}
                     </div>
@@ -1241,7 +1244,7 @@ export default function SnapshotView() {
                 const end = hasTime ? formatTime(j.scheduledEnd) : null
                 const promiseLabel = !hasTime ? formatPromiseLabel(j?.promisedAt) : null
                 const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-                const vendorName = j?.vendorName || 'Unassigned'
+                const vendorName = j?.vendorName || 'On-site'
                 const customer = j?.customerName || vehicle?.owner_name || ''
                 const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
                 return (
@@ -1316,9 +1319,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark complete"
+                          aria-label="Mark done"
+                          title="Marks this job as done (status: completed)"
                         >
-                          Complete
+                          Mark done
                         </button>
                       )}
                     </div>
@@ -1337,7 +1341,7 @@ export default function SnapshotView() {
           const start = formatTime(j.scheduledStart)
           const end = formatTime(j.scheduledEnd)
           const vehicle = j?.raw?.vehicle || j?.raw?.vehicles
-          const vendorName = j?.vendorName || 'Unassigned'
+          const vendorName = j?.vendorName || 'On-site'
           const customer = j?.customerName || vehicle?.owner_name || ''
           const statusLabel = String(j?.raw?.job_status || '').replace('_', ' ')
           return (
@@ -1402,9 +1406,10 @@ export default function SnapshotView() {
                   <button
                     onClick={() => handleComplete(j)}
                     className="text-green-600 hover:underline"
-                    aria-label="Mark complete"
+                    aria-label="Mark done"
+                    title="Marks this job as done (status: completed)"
                   >
-                    Complete
+                    Mark done
                   </button>
                 )}
               </div>
@@ -1473,9 +1478,10 @@ export default function SnapshotView() {
                           <button
                             onClick={() => handleComplete(j)}
                             className="text-green-600 hover:underline"
-                            aria-label="Mark complete"
+                            aria-label="Mark done"
+                            title="Marks this job as done (status: completed)"
                           >
-                            Complete
+                            Mark done
                           </button>
                         )}
                       </div>

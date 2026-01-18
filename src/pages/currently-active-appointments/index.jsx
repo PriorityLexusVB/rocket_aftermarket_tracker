@@ -298,7 +298,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
         text: 'text-gray-700',
         border: 'border-gray-200',
         icon: Clock,
-        label: 'Pending',
+        label: 'Booked (time TBD)',
       },
     }
     return configs?.[status] || configs?.pending
@@ -544,7 +544,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
                   <div className="flex items-center space-x-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200">
                     <UserPlus className="w-4 h-4 text-purple-600" />
                     <span className="text-sm font-medium text-purple-800">
-                      {counts?.unassigned} Unassigned
+                      {counts?.unassigned} Needs assignment
                     </span>
                   </div>
                 )}

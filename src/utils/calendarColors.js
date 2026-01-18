@@ -71,7 +71,8 @@ export function getEventColors(serviceType, jobStatus) {
   // Default to onsite if not specified
   const type = serviceType === 'vendor' || serviceType === 'offsite' ? serviceType : 'onsite'
   const colors = SERVICE_TYPE_COLORS[type]
-  const statusOverlay = STATUS_OVERLAYS[jobStatus] || STATUS_OVERLAYS.scheduled
+  const normalizedStatus = jobStatus === 'pending' ? 'scheduled' : jobStatus
+  const statusOverlay = STATUS_OVERLAYS[normalizedStatus] || STATUS_OVERLAYS.scheduled
 
   return {
     bg: colors.bg,

@@ -269,7 +269,7 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
   }
 
   const getStatusOptions = () => [
-    { value: 'pending', label: 'Not Started', color: 'text-gray-600' },
+    { value: 'pending', label: 'Booked (time TBD)', color: 'text-gray-600' },
     { value: 'scheduled', label: 'Scheduled', color: 'text-blue-600' },
     { value: 'in_progress', label: 'In Progress', color: 'text-yellow-600' },
     { value: 'quality_check', label: 'Quality Check', color: 'text-purple-600' },

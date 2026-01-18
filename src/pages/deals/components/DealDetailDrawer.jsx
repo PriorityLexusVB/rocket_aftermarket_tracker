@@ -152,7 +152,7 @@ export default function DealDetailDrawer({ isOpen, onClose, deal }) {
         return (
           <>
             <Section title="Vendor">
-              <div>{deal?.vendor_name || 'Unassigned'}</div>
+              <div>{deal?.vendor_name || (deal?.vendor_id ? 'Vendor' : 'On-site')}</div>
             </Section>
           </>
         )

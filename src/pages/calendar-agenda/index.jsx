@@ -547,7 +547,7 @@ export default function CalendarAgenda() {
 
         // Toast with undo action (10s timeout)
         toast.success({
-          message: 'Marked completed',
+          message: 'Marked done',
           action: { label: 'Undo', onClick: undo },
           duration: 10000,
         })
@@ -556,7 +556,7 @@ export default function CalendarAgenda() {
       await load()
     } catch (err) {
       console.error('[agenda] complete failed', err)
-      toast?.error?.('Complete failed')
+      toast?.error?.('Could not mark done')
     }
   }
 
@@ -645,8 +645,8 @@ export default function CalendarAgenda() {
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="scheduled">Scheduled</option>
+                <option value="pending">Booked (time TBD)</option>
+                <option value="scheduled">Booked (time set)</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
               </select>
@@ -766,9 +766,10 @@ export default function CalendarAgenda() {
                       <button
                         onClick={() => handleComplete(r)}
                         className="rounded-md px-2 py-1 text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                        aria-label="Mark appointment complete"
+                        aria-label="Mark done"
+                        title="Marks this job as done (status: completed)"
                       >
-                        Complete
+                        Mark done
                       </button>
                     </div>
                   </li>

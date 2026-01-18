@@ -288,7 +288,7 @@ const CalendarSchedulingCenter = () => {
             calendar_key: calendarKey || id,
             title: raw?.title || item?.vehicleLabel || item?.customerName || 'All-day',
             vendor_id: vendorId,
-            vendor_name: item?.vendorName || raw?.vendor_name || 'Unassigned',
+            vendor_name: item?.vendorName || raw?.vendor_name || 'On-site',
             job_status: raw?.job_status || 'scheduled',
             scheduled_start_time: safeDateString(item?.promisedAt),
             scheduled_end_time: null,
@@ -469,13 +469,16 @@ const CalendarSchedulingCenter = () => {
                 const jobStartTime = job?.time_tbd
                   ? null
                   : safeCreateDate(job?.scheduled_start_time)
-                const colors = getEventColors(job?.service_type, job?.job_status)
-                const statusLabel = job?.job_status
-                  ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
+                const normalizedStatus = job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+                const colors = getEventColors(job?.service_type, normalizedStatus)
+                const statusLabel = normalizedStatus
+                  ? normalizedStatus === 'scheduled'
+                    ? 'BOOKED'
+                    : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
                   : 'SCHEDULED'
 
                 const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'Unassigned')
+                const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
                 const vehicleLabel = job?.vehicle_info || ''
                 const promiseLabel = job?.time_tbd
                   ? safeFormatDate(job?.scheduled_start_time, {
@@ -655,16 +658,20 @@ const CalendarSchedulingCenter = () => {
 
                   <div className="p-1 space-y-1 max-h-28 overflow-y-auto">
                     {visibleJobs.map((job) => {
-                      const colors = getEventColors(job?.service_type, job?.job_status)
-                      const statusLabel = job?.job_status
-                        ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
+                      const normalizedStatus =
+                        job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+                      const colors = getEventColors(job?.service_type, normalizedStatus)
+                      const statusLabel = normalizedStatus
+                        ? normalizedStatus === 'scheduled'
+                          ? 'BOOKED'
+                          : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
                         : 'SCHEDULED'
                       const jobStartTime = job?.time_tbd
                         ? null
                         : safeCreateDate(job?.scheduled_start_time)
 
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                      const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'Unassigned')
+                      const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
                       const promiseLabel = job?.time_tbd
                         ? safeFormatDate(job?.scheduled_start_time, {
                             weekday: 'short',
@@ -737,9 +744,12 @@ const CalendarSchedulingCenter = () => {
           <div className="space-y-4">
             {jobs?.map((job) => {
               const jobStartTime = job?.time_tbd ? null : safeCreateDate(job?.scheduled_start_time)
-              const colors = getEventColors(job?.service_type, job?.job_status)
-              const statusLabel = job?.job_status
-                ? String(job.job_status).replace(/_/g, ' ').toUpperCase()
+              const normalizedStatus = job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+              const colors = getEventColors(job?.service_type, normalizedStatus)
+              const statusLabel = normalizedStatus
+                ? normalizedStatus === 'scheduled'
+                  ? 'BOOKED'
+                  : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
                 : 'SCHEDULED'
 
               return (

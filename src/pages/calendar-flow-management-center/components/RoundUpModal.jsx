@@ -19,7 +19,7 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
-    const vendorName = job?.vendor_name || 'Unassigned'
+    const vendorName = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
     if (!acc?.[vendorName]) {
       acc[vendorName] = []
     }
@@ -209,7 +209,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
             <button
               onClick={() => handleJobAction(job?.id, 'complete')}
               className="p-1 hover:bg-blue-100 rounded text-blue-600"
-              title="Complete"
+              title="Mark done"
             >
               <CheckCircle className="h-3 w-3" />
             </button>

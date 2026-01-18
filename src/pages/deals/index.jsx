@@ -1368,7 +1368,7 @@ export default function DealsPage() {
               </div>
             </div>
 
-            {/* Pending */}
+            {/* Booked (time TBD) */}
             <div className="bg-white p-6 rounded-xl border shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-yellow-100 mr-4">
@@ -1376,7 +1376,7 @@ export default function DealsPage() {
                 </div>
                 <div>
                   <h3 className="text-slate-600 text-sm font-medium uppercase tracking-wide">
-                    Pending
+                    Booked (time TBD)
                   </h3>
                   <p className="text-slate-900 text-2xl font-bold">{kpis?.pending}</p>
                 </div>
@@ -1404,18 +1404,24 @@ export default function DealsPage() {
         <div className="mb-6 bg-white rounded-lg border p-4">
           {/* Status Tabs */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {['All', 'Draft', 'Pending', 'Active', 'Completed']?.map((status) => (
+            {[
+              { value: 'All', label: 'All' },
+              { value: 'Draft', label: 'Draft' },
+              { value: 'Pending', label: 'Booked (time TBD)' },
+              { value: 'Active', label: 'Active' },
+              { value: 'Completed', label: 'Completed' },
+            ]?.map(({ value, label }) => (
               <button
-                key={status}
-                onClick={() => updateFilter('status', status)}
+                key={value}
+                onClick={() => updateFilter('status', value)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
                   ${
-                    filters?.status === status
+                    filters?.status === value
                       ? 'bg-blue-600 text-white'
                       : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                   }`}
               >
-                {status}
+                {label}
               </button>
             ))}
           </div>
@@ -1812,9 +1818,9 @@ export default function DealsPage() {
                       </div>
 
                       {/* $ | Vendor | Location | Loaner */}
-                      <div className="col-span-12 lg:col-span-2 min-w-0">
-                        <div className="flex flex-col items-start lg:items-end gap-2">
-                          <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                      <div className="col-span-12 md:col-span-6 lg:col-span-2 min-w-0">
+                        <div className="flex flex-col items-start md:items-end gap-2">
+                          <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
                             {(() => {
                               const fin = getDealFinancials(deal)
                               const profitClass =
@@ -1845,16 +1851,17 @@ export default function DealsPage() {
                             )}
                           </div>
 
-                          <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2">
+                          <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
                             <ServiceLocationTag jobParts={deal?.job_parts} />
                           </div>
                         </div>
                       </div>
 
-                      {/* Actions (icons only) */}
-                      <div className="col-span-12 lg:col-span-2 justify-self-end">
-                        <div className="inline-flex items-center justify-end gap-2 rounded-lg border border-slate-200 bg-slate-100/70 p-1">
+                      {/* Actions */}
+                      <div className="col-span-12 md:col-span-6 lg:col-span-2 min-w-0 justify-self-stretch md:justify-self-end">
+                        <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation()
                               const id = deal?.id
@@ -1866,80 +1873,84 @@ export default function DealsPage() {
                                 return next
                               })
                             }}
-                            className="h-9 px-2 rounded-lg flex items-center gap-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                            className="h-9 px-3 rounded-lg flex items-center gap-2 border border-slate-200 bg-white/70 text-slate-700 hover:bg-white hover:text-slate-900"
                             aria-label={
                               isExpanded ? 'Collapse deal details' : 'Expand deal details'
                             }
-                            title={isExpanded ? 'Collapse' : 'Expand'}
+                            aria-expanded={!!isExpanded}
+                            title={isExpanded ? 'Collapse details' : 'Expand details'}
                             data-testid={`deal-expand-${deal?.id}`}
                           >
-                            <span className="text-xs font-medium">Details</span>
+                            <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={16} />
+                            <span className="text-xs font-semibold">Details</span>
                           </button>
 
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleEditDeal(deal?.id)
-                            }}
-                            className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                            aria-label="Edit deal"
-                            title="Edit deal"
-                          >
-                            <span className="sr-only">Edit</span>
-                            <Icon name="Pencil" size={16} />
-                          </button>
-
-                          {deal?.customer_needs_loaner && (
+                          <div className="inline-flex items-center justify-end gap-1 rounded-lg border border-slate-200 bg-slate-100/70 p-1">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleEditDeal(deal?.id)
                               }}
                               className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                              aria-label="Edit deal (loaner)"
-                              title="Edit deal (loaner)"
+                              aria-label="Edit deal"
+                              title="Edit deal"
                             >
-                              <span className="sr-only">Edit deal (loaner)</span>
-                              <Icon name="Car" size={16} />
+                              <span className="sr-only">Edit</span>
+                              <Icon name="Pencil" size={16} />
                             </button>
-                          )}
 
-                          {deal?.loaner_id && (
+                            {deal?.customer_needs_loaner && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditDeal(deal?.id)
+                                }}
+                                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                                aria-label="Edit deal (loaner)"
+                                title="Edit deal (loaner)"
+                              >
+                                <span className="sr-only">Edit deal (loaner)</span>
+                                <Icon name="Car" size={16} />
+                              </button>
+                            )}
+
+                            {deal?.loaner_id && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setMarkReturnedModal({
+                                    loaner_id: deal?.loaner_id,
+                                    loaner_number: deal?.loaner_number,
+                                    job_title: getDealPrimaryRef(deal),
+                                  })
+                                }}
+                                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                                aria-label="Mark loaner returned"
+                                title="Mark loaner returned"
+                              >
+                                <span className="sr-only">Mark returned</span>
+                                <Icon name="CheckCircle" size={16} />
+                              </button>
+                            )}
+
+                            {deal?.customer_needs_loaner || deal?.loaner_id ? (
+                              <span aria-hidden="true" className="mx-1 h-6 w-px bg-slate-200" />
+                            ) : null}
+
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                setMarkReturnedModal({
-                                  loaner_id: deal?.loaner_id,
-                                  loaner_number: deal?.loaner_number,
-                                  job_title: getDealPrimaryRef(deal),
-                                })
+                                setError('')
+                                setDeleteConfirm(deal)
                               }}
                               className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                              aria-label="Mark loaner returned"
-                              title="Mark loaner returned"
+                              aria-label="Delete deal"
+                              title="Delete deal"
                             >
-                              <span className="sr-only">Mark returned</span>
-                              <Icon name="CheckCircle" size={16} />
+                              <span className="sr-only">Delete</span>
+                              <Icon name="Trash2" size={16} />
                             </button>
-                          )}
-
-                          {deal?.customer_needs_loaner || deal?.loaner_id ? (
-                            <span aria-hidden="true" className="mx-1 h-6 w-px bg-slate-200" />
-                          ) : null}
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setError('')
-                              setDeleteConfirm(deal)
-                            }}
-                            className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                            aria-label="Delete deal"
-                            title="Delete deal"
-                          >
-                            <span className="sr-only">Delete</span>
-                            <Icon name="Trash2" size={16} />
-                          </button>
+                          </div>
                         </div>
                       </div>
                     </div>

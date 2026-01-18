@@ -51,9 +51,10 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
     },
     {
       id: 'complete',
-      label: 'Complete',
+      label: 'Mark done',
       icon: CheckCircle,
       color: 'bg-blue-600 hover:bg-blue-700 text-white',
+      title: 'Marks this job as done (status: completed)',
       action: () => onStatusUpdate?.(job?.id, 'completed'),
     },
     {
@@ -338,6 +339,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                   <button
                     key={action?.id}
                     onClick={action?.action}
+                    title={action?.title || undefined}
                     className={`
                       flex items-center px-3 py-2 rounded-lg text-sm font-medium
                       ${action?.color} transition-colors duration-200

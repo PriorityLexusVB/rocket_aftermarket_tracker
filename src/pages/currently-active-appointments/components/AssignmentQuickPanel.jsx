@@ -44,8 +44,8 @@ const AssignmentQuickPanel = ({
                 <h3 className="text-xl font-bold text-gray-900">Assignment Center</h3>
                 <p className="text-sm text-gray-600">
                   {selectedAppointments?.size > 0
-                    ? `Manage ${selectedAppointments?.size} selected appointment${selectedAppointments?.size !== 1 ? 's' : ''} and ${unassignedJobs?.length} unassigned job${unassignedJobs?.length !== 1 ? 's' : ''}`
-                    : `Assign ${unassignedJobs?.length} unassigned job${unassignedJobs?.length !== 1 ? 's' : ''}`}
+                    ? `Manage ${selectedAppointments?.size} selected appointment${selectedAppointments?.size !== 1 ? 's' : ''} and ${unassignedJobs?.length} job${unassignedJobs?.length !== 1 ? 's' : ''} needing assignment`
+                    : `Assign ${unassignedJobs?.length} job${unassignedJobs?.length !== 1 ? 's' : ''} needing assignment`}
                 </p>
               </div>
             </div>
@@ -155,11 +155,11 @@ const AssignmentQuickPanel = ({
               </div>
             </div>
 
-            {/* Unassigned Jobs */}
+            {/* Jobs needing assignment */}
             <div className="lg:col-span-2">
               <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
                 <Clock className="w-5 h-5" />
-                <span>Unassigned Jobs ({unassignedJobs?.length})</span>
+                <span>Needs assignment ({unassignedJobs?.length})</span>
               </h4>
 
               {assignmentMode === 'individual' && (
@@ -230,7 +230,7 @@ const AssignmentQuickPanel = ({
                   ) : (
                     <div className="text-center py-8">
                       <Clock className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                      <p className="text-gray-600">No unassigned jobs at the moment</p>
+                      <p className="text-gray-600">No jobs need assignment right now</p>
                     </div>
                   )}
                 </div>
