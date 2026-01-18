@@ -2,11 +2,15 @@ import React, { useState, useContext } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../../../contexts/AuthContext'
 import { Button, Input, Checkbox } from '../../../components/ui'
+import SupabaseConfigNotice from '../../../components/ui/SupabaseConfigNotice'
+import { isSupabaseConfigured } from '../../../lib/supabase'
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const supabaseConfigured = !!isSupabaseConfigured?.()
 
   const { signIn } = useContext(AuthContext)
   const navigate = useNavigate()
@@ -29,6 +33,11 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
+
+    if (!supabaseConfigured) {
+      setError('Supabase is not configured for this dev server. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local, then restart.')
+      return
+    }
 
     if (isLoading) {
       console.log('Already processing login, ignoring...')
@@ -80,6 +89,7 @@ const LoginForm = () => {
   return (
     <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-center text-gray-800">Sign In</h2>
+      <SupabaseConfigNotice />
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block mb-2 text-sm font-medium text-gray-700">Email</label>
@@ -140,7 +150,7 @@ const LoginForm = () => {
         <Button
           type="submit"
           className="w-full"
-          disabled={isLoading}
+          disabled={isLoading || !supabaseConfigured}
           onClick={handleSubmit}
           aria-label="Sign In"
           aria-labelledby=""
