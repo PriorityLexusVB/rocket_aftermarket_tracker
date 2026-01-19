@@ -617,10 +617,14 @@ export default function CalendarAgenda() {
         {/* Header with always-visible search and date range */}
         <header className="space-y-3" aria-label="Agenda controls">
           <CalendarViewTabs />
+          <div className="text-xs text-slate-500">
+            List view for upcoming items. Use <span className="font-medium text-slate-700">Grid</span> for the
+            visual calendar.
+          </div>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-baseline gap-3">
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
-              <span className="text-sm font-medium text-gray-500">Agenda</span>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Agenda</h1>
+              <span className="text-sm font-medium text-gray-500">List view</span>
             </div>
             <input
               aria-label="Search appointments"

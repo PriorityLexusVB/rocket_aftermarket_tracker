@@ -107,15 +107,14 @@ describe('dealService - loaner_assignments RLS degradation', () => {
       ),
     })
 
-    // Order of mock calls:
-    // 1. Preflight probe (job_parts)
-    // 2. Main jobs query
-    // 3. Transactions query
-    // 4. Loaner assignments query
-    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
-    mockSupabase.from.mockReturnValueOnce({ select: mockJobsSelect }) // jobs
-    mockSupabase.from.mockReturnValueOnce({ select: mockTransactionsSelect }) // transactions
-    mockSupabase.from.mockReturnValueOnce({ select: mockLoanerSelect }) // loaner_assignments
+    // Table-based mock to avoid brittleness when getAllDeals changes query ordering.
+    mockSupabase.from.mockImplementation((table) => {
+      if (table === 'job_parts') return { select: mockPreflightSelect }
+      if (table === 'jobs') return { select: mockJobsSelect }
+      if (table === 'transactions') return { select: mockTransactionsSelect }
+      if (table === 'loaner_assignments') return { select: mockLoanerSelect }
+      return { select: vi.fn(() => Promise.resolve({ data: null, error: null })) }
+    })
 
     // Should not throw despite RLS error
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})

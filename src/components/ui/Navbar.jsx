@@ -8,6 +8,7 @@ import {
   LogOut,
   Settings,
   Calendar,
+  LayoutGrid,
   List,
   Car,
   Package,
@@ -76,13 +77,14 @@ const Navbar = () => {
     {
       name: 'Calendar',
       href: '/calendar/grid',
-      icon: Calendar,
+      icon: LayoutGrid,
+      shortName: 'Grid',
     },
     {
-      name: 'Scheduling',
+      name: 'Board',
       href: '/calendar-flow-management-center',
       icon: Calendar,
-      shortName: 'Flow',
+      shortName: 'Board',
     },
     ...(SIMPLE_AGENDA_ENABLED
       ? [
@@ -95,7 +97,7 @@ const Navbar = () => {
         ]
       : []),
     {
-      name: 'Appointments',
+      name: 'Active',
       href: '/currently-active-appointments',
       icon: Clock,
       shortName: 'Active',
