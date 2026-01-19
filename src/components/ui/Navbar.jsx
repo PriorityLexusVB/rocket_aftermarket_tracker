@@ -229,6 +229,7 @@ const Navbar = () => {
                       ? 'text-blue-600 bg-blue-50'
                       : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
                   }`}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="text-[10px] font-medium leading-tight text-center">
@@ -270,6 +271,7 @@ const Navbar = () => {
                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
                         : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
                     }`}
+                    aria-current={isActive ? 'page' : undefined}
                   >
                     <Icon className="w-4 h-4" />
                     <span className="hidden lg:inline">{link?.name}</span>
@@ -293,8 +295,12 @@ const Navbar = () => {
               {/* Enhanced Notifications with Real Data */}
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
                   className="relative p-2 text-gray-400 hover:text-blue-600 transition-colors duration-200 rounded-lg hover:bg-gray-50"
+                  aria-label="Notifications"
+                  aria-haspopup="menu"
+                  aria-expanded={isNotificationOpen}
                 >
                   <Bell className="w-5 h-5" />
                   {notificationCount > 0 && (
@@ -375,8 +381,12 @@ const Navbar = () => {
               {/* User Profile Dropdown */}
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center space-x-3 p-2 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                  aria-label="Profile menu"
+                  aria-haspopup="menu"
+                  aria-expanded={isProfileOpen}
                 >
                   <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
                     <User className="w-4 h-4" />
@@ -457,8 +467,12 @@ const Navbar = () => {
           <div className="flex items-center space-x-3">
             {/* Mobile Notifications */}
             <button
+              type="button"
               onClick={() => setIsNotificationOpen(!isNotificationOpen)}
               className="relative p-2 text-gray-400 hover:text-blue-600"
+              aria-label="Notifications"
+              aria-haspopup="menu"
+              aria-expanded={isNotificationOpen}
             >
               <Bell className="w-5 h-5" />
               {notificationCount > 0 && (
@@ -470,8 +484,12 @@ const Navbar = () => {
 
             {/* Menu Button */}
             <button
+              type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="p-2 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-gray-50"
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>

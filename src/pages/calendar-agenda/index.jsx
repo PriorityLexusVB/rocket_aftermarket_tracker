@@ -14,6 +14,7 @@ import { withTimeout } from '@/utils/promiseTimeout'
 import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import Navbar from '@/components/ui/Navbar'
+import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -569,9 +570,19 @@ export default function CalendarAgenda() {
     }
   }
 
-  if (authIsLoading) return <div className="p-4">Loading agenda…</div>
+  if (authIsLoading)
+    return (
+      <div className="p-4" role="status" aria-live="polite">
+        Loading agenda…
+      </div>
+    )
 
-  if (loading) return <div className="p-4">Loading agenda…</div>
+  if (loading)
+    return (
+      <div className="p-4" role="status" aria-live="polite">
+        Loading agenda…
+      </div>
+    )
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900" aria-label="Calendar Agenda">
@@ -605,6 +616,7 @@ export default function CalendarAgenda() {
 
         {/* Header with always-visible search and date range */}
         <header className="space-y-3" aria-label="Agenda controls">
+          <CalendarViewTabs />
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-baseline gap-3">
               <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>

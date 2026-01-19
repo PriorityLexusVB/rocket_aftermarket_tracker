@@ -388,16 +388,40 @@ describe('Step 16: Deals List Screen Verification', () => {
       const row1 = screen?.getByTestId('deal-row-job-001')
       expect(within(row1)?.getByText('S $850 / C $725'))?.toBeInTheDocument()
       // Profit is computed as Sale - Cost (850 - 724.50 = 125.50 -> $126)
-      expect(within(row1)?.getByText('P $126'))?.toBeInTheDocument()
+      expect(within(row1)?.getAllByText('P $126')?.length)?.toBeGreaterThan(0)
 
       const row2 = screen?.getByTestId('deal-row-job-002')
       // 1200.50 -> $1,201 (money0)
       expect(within(row2)?.getByText('S $1,201 / C $1,020'))?.toBeInTheDocument()
       // 1200.50 - 1020.25 = 180.25 -> $180
-      expect(within(row2)?.getByText('P $180'))?.toBeInTheDocument()
+      expect(within(row2)?.getAllByText('P $180')?.length)?.toBeGreaterThan(0)
     })
 
     console.log('✅ Per-deal financials display: Sale vs Cost with Profit')
+  })
+
+  it('should render spreadsheet sheet view with category flags and tracking', async () => {
+    renderComponent()
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId(/deal-row-/)).toHaveLength(mockDealsData.length)
+    })
+
+    const sheetToggle = screen.getByRole('button', { name: /sheet view/i })
+    sheetToggle.click()
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sheet-row-job-001')).toBeInTheDocument()
+    })
+
+    const row1 = screen.getByTestId('sheet-row-job-001')
+    expect(within(row1).getByTestId('sheet-job-001-exterior')).toHaveTextContent('✓')
+    expect(within(row1).getByTestId('sheet-job-001-interior')).toHaveTextContent('✓')
+    expect(within(row1).getByTestId('sheet-job-001-windshield')).toHaveTextContent('—')
+    expect(within(row1).getByTestId('sheet-job-001-rg')).toHaveTextContent('—')
+
+    expect(within(row1).getByText('Martinez, J.')).toBeInTheDocument()
+    expect(within(row1).getByText('JOB-001')).toBeInTheDocument()
   })
 
   it('should display service location pills with correct labels (muted styling)', async () => {
@@ -475,14 +499,14 @@ describe('Step 16: Deals List Screen Verification', () => {
       const { within } = require('@testing-library/react')
 
       // Job-001: Michael Johnson (delivery coord) and Jennifer Martinez (sales)
-      expect(within(row1)?.getByText('Johnson, M.'))?.toBeInTheDocument()
-      expect(within(row1)?.getByText('Martinez, J.'))?.toBeInTheDocument()
+      expect(within(row1)?.getAllByText('Johnson, M.')?.length)?.toBeGreaterThan(0)
+      expect(within(row1)?.getAllByText('Martinez, J.')?.length)?.toBeGreaterThan(0)
 
       // Job-002: Robert Wilson (delivery coord), no sales consultant
-      expect(within(row2)?.getByText('Wilson, R.'))?.toBeInTheDocument()
+      expect(within(row2)?.getAllByText('Wilson, R.')?.length)?.toBeGreaterThan(0)
 
       // Job-003: Jennifer Martinez (sales), no delivery coord
-      expect(within(row3)?.getByText('Martinez, J.'))?.toBeInTheDocument()
+      expect(within(row3)?.getAllByText('Martinez, J.')?.length)?.toBeGreaterThan(0)
     })
 
     console.log('✅ Staff names correctly formatted as "Lastname, F." pattern')

@@ -316,6 +316,256 @@ const CustomerDisplay = ({ deal }) => {
   )
 }
 
+const SHEET_CATEGORY_RULES = [
+  { key: 'exterior', tokens: ['exterior', 'paint', 'ppf', 'ceramic', 'coating', 'tint'] },
+  { key: 'interior', tokens: ['interior', 'leather', 'carpet', 'fabric', 'upholstery'] },
+  { key: 'windshield', tokens: ['windshield', 'glass'] },
+  { key: 'rg', tokens: ['rg', 'rust', 'rustguard', 'rust guard', 'rustproof'] },
+]
+
+const normalizeSheetToken = (value) => String(value || '').toLowerCase().trim()
+
+const getSheetDateLabel = (deal) => {
+  const raw =
+    deal?.deal_date ||
+    deal?.dealDate ||
+    deal?.created_at ||
+    deal?.createdAt ||
+    deal?.created ||
+    deal?.inserted_at
+  const date = raw ? toSafeDateForTimeZone(raw) : null
+  if (!date || Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })
+}
+
+const getSheetTrackingRef = (deal) => {
+  return (
+    deal?.deal_number ||
+    deal?.dealNumber ||
+    deal?.transaction_number ||
+    deal?.job_number ||
+    deal?.jobNumber ||
+    '—'
+  )
+}
+
+const getSheetSalesLabel = (deal) => {
+  const raw = deal?.sales_consultant_name || deal?.delivery_coordinator_name || ''
+  return raw ? formatStaffName(raw) : '—'
+}
+
+const getSheetCategoryFlags = (deal) => {
+  const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
+  const flags = { exterior: false, interior: false, windshield: false, rg: false }
+  const extraLabels = new Map()
+
+  for (const part of parts) {
+    const product = part?.product || part?.products || {}
+    const rawName =
+      product?.name || part?.product_name || part?.productLabel || part?.product_id || ''
+    const rawCategory = product?.category || part?.category || ''
+    const rawOp = product?.op_code || product?.opCode || part?.op_code || ''
+
+    const token = [rawCategory, rawName, rawOp]
+      .map(normalizeSheetToken)
+      .filter(Boolean)
+      .join(' ')
+
+    let matchedKey = null
+    for (const rule of SHEET_CATEGORY_RULES) {
+      if (rule.tokens.some((t) => token.includes(t))) {
+        matchedKey = rule.key
+        flags[rule.key] = true
+        break
+      }
+    }
+
+    if (!matchedKey) {
+      const label = rawOp || abbreviateProductName(rawName)
+      if (label) extraLabels.set(label.toLowerCase(), label)
+    }
+  }
+
+  const extras = Array.from(extraLabels.values())
+  const max = 2
+  const clipped = extras.slice(0, max)
+  const extraCount = Math.max(0, extras.length - clipped.length)
+  const additionalLabel = clipped.length
+    ? `${clipped.join(', ')}${extraCount ? ` +${extraCount}` : ''}`
+    : '—'
+
+  return { flags, additionalLabel }
+}
+
+const SheetSummaryRow = ({ deal, dense = false }) => {
+  const { flags, additionalLabel } = getSheetCategoryFlags(deal)
+  const fin = getDealFinancials(deal)
+  const dateLabel = getSheetDateLabel(deal)
+  const salesLabel = getSheetSalesLabel(deal)
+  const trackingRef = getSheetTrackingRef(deal)
+
+  const flagBadge = (isOn, label) => (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+        isOn
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : 'bg-slate-50 text-slate-400 border-slate-200'
+      }`}
+    >
+      {label}
+    </span>
+  )
+
+  return (
+    <div
+      className={`grid gap-2 text-xs text-slate-700 ${
+        dense
+          ? 'grid-cols-2 sm:grid-cols-3'
+          : 'grid-cols-12 items-start rounded-lg border border-slate-200 bg-white/80 px-3 py-2'
+      }`}
+    >
+      <div className={dense ? 'min-w-0' : 'col-span-2'}>
+        <div className="text-[10px] uppercase tracking-wide text-slate-400">Date</div>
+        <div className="font-semibold tabular-nums">{dateLabel}</div>
+      </div>
+      <div className={dense ? 'min-w-0' : 'col-span-3'}>
+        <div className="text-[10px] uppercase tracking-wide text-slate-400">Categories</div>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {flagBadge(flags.exterior, 'Ext')}
+          {flagBadge(flags.interior, 'Int')}
+          {flagBadge(flags.windshield, 'WS')}
+          {flagBadge(flags.rg, 'RG')}
+        </div>
+      </div>
+      <div className={dense ? 'min-w-0' : 'col-span-3'}>
+        <div className="text-[10px] uppercase tracking-wide text-slate-400">Additional</div>
+        <div className="truncate" title={additionalLabel}>
+          {additionalLabel}
+        </div>
+      </div>
+      <div className={dense ? 'min-w-0' : 'col-span-2'}>
+        <div className="text-[10px] uppercase tracking-wide text-slate-400">Sales</div>
+        <div className="truncate" title={salesLabel}>
+          {salesLabel}
+        </div>
+      </div>
+      <div className={dense ? 'min-w-0' : 'col-span-2'}>
+        <div className="text-[10px] uppercase tracking-wide text-slate-400">Tracking</div>
+        <div className="truncate" title={trackingRef}>
+          {trackingRef}
+        </div>
+      </div>
+      <div className={dense ? 'min-w-0' : 'col-span-12'}>
+        <div className="text-[10px] uppercase tracking-wide text-slate-400">Price / Cost / Gross</div>
+        <div className="flex flex-wrap gap-2 font-semibold tabular-nums">
+          <span>S {formatMoney0OrDash(fin.sale)}</span>
+          <span>C {formatMoney0OrDash(fin.cost)}</span>
+          <span>P {formatMoney0OrDash(fin.profit)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const SheetViewTable = ({ deals = [], onRowClick }) => {
+  const renderCheck = (value) => (value ? '✓' : '—')
+
+  return (
+    <div className="bg-white rounded-lg border overflow-x-auto">
+      <table className="min-w-[1100px] w-full text-xs">
+        <thead className="bg-slate-50 text-slate-600 uppercase text-[11px] tracking-wide">
+          <tr>
+            <th className="px-3 py-2 text-left font-semibold">Date</th>
+            <th className="px-3 py-2 text-left font-semibold">Customer</th>
+            <th className="px-3 py-2 text-left font-semibold">Vehicle</th>
+            <th className="px-3 py-2 text-center font-semibold">Exterior</th>
+            <th className="px-3 py-2 text-center font-semibold">Interior</th>
+            <th className="px-3 py-2 text-center font-semibold">Windshield</th>
+            <th className="px-3 py-2 text-center font-semibold">RG</th>
+            <th className="px-3 py-2 text-left font-semibold">Additional Package</th>
+            <th className="px-3 py-2 text-right font-semibold">Price</th>
+            <th className="px-3 py-2 text-right font-semibold">Cost</th>
+            <th className="px-3 py-2 text-right font-semibold">Gross</th>
+            <th className="px-3 py-2 text-left font-semibold">Sales</th>
+            <th className="px-3 py-2 text-left font-semibold">Tracking</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {deals.map((deal) => {
+            const fin = getDealFinancials(deal)
+            const { flags, additionalLabel } = getSheetCategoryFlags(deal)
+            const vehicle = getDealVehicleDisplay(deal)
+            const customer =
+              deal?.customer_name || deal?.vehicle?.owner_name || deal?.customerEmail || '—'
+
+            return (
+              <tr
+                key={deal?.id}
+                data-testid={`sheet-row-${deal?.id}`}
+                className="hover:bg-slate-50 cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => onRowClick?.(deal)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onRowClick?.(deal)
+                  }
+                }}
+              >
+                <td className="px-3 py-2 text-slate-700 tabular-nums">
+                  {getSheetDateLabel(deal)}
+                </td>
+                <td className="px-3 py-2 text-slate-900" title={customer}>
+                  {customer}
+                </td>
+                <td className="px-3 py-2 text-slate-700" title={vehicle?.title || ''}>
+                  {vehicle?.main || '—'}
+                </td>
+                <td
+                  className="px-3 py-2 text-center"
+                  data-testid={`sheet-${deal?.id}-exterior`}
+                >
+                  {renderCheck(flags.exterior)}
+                </td>
+                <td
+                  className="px-3 py-2 text-center"
+                  data-testid={`sheet-${deal?.id}-interior`}
+                >
+                  {renderCheck(flags.interior)}
+                </td>
+                <td
+                  className="px-3 py-2 text-center"
+                  data-testid={`sheet-${deal?.id}-windshield`}
+                >
+                  {renderCheck(flags.windshield)}
+                </td>
+                <td className="px-3 py-2 text-center" data-testid={`sheet-${deal?.id}-rg`}>
+                  {renderCheck(flags.rg)}
+                </td>
+                <td className="px-3 py-2 text-slate-700">{additionalLabel}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-slate-900">
+                  {formatMoney0OrDash(fin.sale)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-slate-900">
+                  {formatMoney0OrDash(fin.cost)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-slate-900">
+                  {formatMoney0OrDash(fin.profit)}
+                </td>
+                <td className="px-3 py-2 text-slate-700">{getSheetSalesLabel(deal)}</td>
+                <td className="px-3 py-2 text-slate-700 tabular-nums">
+                  {getSheetTrackingRef(deal)}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // Determine primary label for a deal card/table row (job number > title > stock > customer)
 const getDealPrimaryRef = (deal) => {
   if (!deal) return 'Deal'
@@ -525,6 +775,7 @@ export default function DealsPage() {
   const [showDetailDrawer, setShowDetailDrawer] = useState(false)
   const [selectedDealForDetail, setSelectedDealForDetail] = useState(null)
   const [expandedDealIds, setExpandedDealIds] = useState(() => new Set())
+  const [showSheetView, setShowSheetView] = useState(false)
 
   // ✅ FIXED: Properly use the dropdown hook instead of direct function calls
   const {
@@ -1490,6 +1741,34 @@ export default function DealsPage() {
                 Clear
               </Button>
             </div>
+
+            {/* View Toggle (desktop) */}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSheetView(false)}
+                className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
+                  showSheetView
+                    ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    : 'bg-slate-900 text-white border-slate-900'
+                }`}
+                aria-pressed={!showSheetView}
+              >
+                Card View
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSheetView(true)}
+                className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
+                  showSheetView
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+                aria-pressed={showSheetView}
+              >
+                Sheet View
+              </button>
+            </div>
           </div>
 
           {/* Advanced filter dropdowns removed; search covers all filtering needs */}
@@ -1684,7 +1963,15 @@ export default function DealsPage() {
 
         {/* Desktop/iPad: modern card rows (no horizontal scroll) */}
         <div className="hidden md:block">
-          {filteredDeals?.length === 0 ? (
+          {showSheetView ? (
+            filteredDeals?.length === 0 ? (
+              <div className="bg-white rounded-lg border p-10 text-center text-slate-500">
+                No deals
+              </div>
+            ) : (
+              <SheetViewTable deals={filteredDeals} onRowClick={handleOpenDetail} />
+            )
+          ) : filteredDeals?.length === 0 ? (
             <div className="bg-white rounded-lg border p-10 text-center text-slate-500">
               No deals
             </div>
@@ -1718,6 +2005,10 @@ export default function DealsPage() {
                       handleOpenDetail(deal)
                     }}
                   >
+                    <div className="mb-3">
+                      <SheetSummaryRow deal={deal} />
+                    </div>
+
                     {/* Column order (desktop): Created | Schedule | Customer/Sales | Vehicle | Pills | Actions */}
                     <div className="grid grid-cols-12 gap-x-4 gap-y-3">
                       {/* Created */}
@@ -2139,6 +2430,8 @@ export default function DealsPage() {
 
                     {/* Card Content with compact 3-line mobile layout */}
                     <div className="p-4 space-y-2">
+                      <SheetSummaryRow deal={deal} dense />
+
                       {/* Unified schedule (no duplicate Promise / Appt Window) */}
                       <div>
                         <ScheduleBlock

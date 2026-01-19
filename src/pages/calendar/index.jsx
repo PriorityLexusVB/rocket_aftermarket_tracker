@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { calendarService } from '@/services/calendarService'
 import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
+import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
 import { withTimeout } from '@/utils/promiseTimeout'
@@ -963,6 +964,10 @@ const CalendarSchedulingCenter = () => {
           <div className="flex items-center gap-2">
             <div className="text-sm text-gray-600">{user?.name || 'User'}</div>
           </div>
+        </div>
+
+        <div className="mb-6">
+          <CalendarViewTabs />
         </div>
 
         {loading ? <LoadingState /> : error ? <ErrorState /> : <MainCalendarView />}

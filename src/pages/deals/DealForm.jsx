@@ -1019,6 +1019,10 @@ export default function DealForm({
             />
           </div>
         </div>
+
+        <p className="text-xs text-slate-500">
+          Loaners are marked returned when the customer picks up their vehicle.
+        </p>
       </section>
 
       {/* Line Items */}

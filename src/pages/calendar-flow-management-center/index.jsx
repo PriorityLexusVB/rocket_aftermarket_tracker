@@ -30,6 +30,7 @@ import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import { withTimeout } from '@/utils/promiseTimeout'
+import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -1040,6 +1041,10 @@ const CalendarFlowManagementCenter = () => {
                 />
               </div>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <CalendarViewTabs />
           </div>
         </div>
 

@@ -72,6 +72,22 @@ const AuthenticationPortal = () => {
               </div>
             </div>
           </div>
+
+          {/* Customer Claims Access (public) */}
+          <div className="mt-4 text-center">
+            <div className="bg-card/80 backdrop-blur border border-border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-foreground mb-2">Customer Claims</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                Customers can submit claims here instead of showing up unannounced.
+              </p>
+              <a
+                href="/guest-claims-submission-form"
+                className="inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+              >
+                Open Claims Form
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 

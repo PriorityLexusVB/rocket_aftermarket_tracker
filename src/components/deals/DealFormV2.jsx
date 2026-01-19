@@ -1164,6 +1164,10 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                       disabled={!customerData?.needsLoaner}
                     />
                   </div>
+
+                  <p className="text-xs text-slate-500">
+                    Loaners are marked returned when the customer picks up their vehicle.
+                  </p>
                 </div>
               </div>
             </div>

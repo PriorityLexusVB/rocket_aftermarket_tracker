@@ -117,6 +117,12 @@ Admin → Staff Records and Admin → User Accounts both support:
 
 These tools help keep tenant data clean without requiring additional logins for staff records.
 
+## Deals workflow quick notes
+
+- Deals list supports **Card View** and **Sheet View** (spreadsheet-style intake layout) so teams can scan sales, categories, and profit at a glance.
+- Loaners are considered **returned when the customer picks up their vehicle**. Set the expected return date in the Deal form and manage loaners in the Loaner drawer.
+- Customer claims intake is available at `/guest-claims-submission-form` (linked from the sign-in page) to keep walk-ins from bypassing the claims process.
+
 ## Error Handling
 
 This application includes comprehensive error handling for PostgREST/Supabase 400 and 403 HTTP errors:
