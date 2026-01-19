@@ -1965,15 +1965,37 @@ export default function DealsPage() {
         <div className="hidden md:block">
           {showSheetView ? (
             filteredDeals?.length === 0 ? (
-              <div className="bg-white rounded-lg border p-10 text-center text-slate-500">
-                No deals
+              <div className="bg-white rounded-lg border p-10 text-center">
+                <div className="text-slate-700 font-medium">
+                  {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
+                </div>
+                {(deals?.length || 0) > 0 ? (
+                  <button
+                    type="button"
+                    className="mt-3 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    onClick={clearAllFilters}
+                  >
+                    Clear filters
+                  </button>
+                ) : null}
               </div>
             ) : (
               <SheetViewTable deals={filteredDeals} onRowClick={handleOpenDetail} />
             )
           ) : filteredDeals?.length === 0 ? (
-            <div className="bg-white rounded-lg border p-10 text-center text-slate-500">
-              No deals
+            <div className="bg-white rounded-lg border p-10 text-center">
+              <div className="text-slate-700 font-medium">
+                {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
+              </div>
+              {(deals?.length || 0) > 0 ? (
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={clearAllFilters}
+                >
+                  Clear filters
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-2">
