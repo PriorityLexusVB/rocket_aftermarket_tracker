@@ -42,6 +42,7 @@ export default function DebugAuthPage() {
   const { orgId, loading: tenantLoading, session } = useTenant()
   const [counts, setCounts] = useState({})
   const [ops, setOps] = useState(null)
+  const [dealsProbe, setDealsProbe] = useState({ loading: false, error: null, data: null })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [conn, setConn] = useState({ configured: false, ok: null, last: null })
@@ -316,6 +317,81 @@ export default function DebugAuthPage() {
                 </li>
               </ul>
             )}
+
+            <div className="mt-4">
+              <h3 className="font-semibold">Deals visibility probe</h3>
+              <p className="text-slate-500 text-sm">
+                Helps diagnose “0 deals” by checking what <code>getAllDeals()</code> returns for
+                your current session.
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-mobile btn-mobile-sm"
+                  disabled={!orgId || dealsProbe.loading}
+                  onClick={async () => {
+                    setDealsProbe({ loading: true, error: null, data: null })
+                    try {
+                      const { getAllDeals } = await import('../services/dealService')
+                      const deals = await getAllDeals()
+                      const statusCounts = (Array.isArray(deals) ? deals : []).reduce((acc, d) => {
+                        const key = String(d?.job_status || 'unknown')
+                        acc[key] = (acc[key] || 0) + 1
+                        return acc
+                      }, {})
+                      const missingCustomer = (Array.isArray(deals) ? deals : []).filter((d) => {
+                        const name = String(d?.customer_name || '').trim()
+                        return !name
+                      }).length
+
+                      setDealsProbe({
+                        loading: false,
+                        error: null,
+                        data: {
+                          count: Array.isArray(deals) ? deals.length : 0,
+                          statusCounts,
+                          missingCustomer,
+                        },
+                      })
+                    } catch (e) {
+                      setDealsProbe({
+                        loading: false,
+                        error: e?.message || String(e),
+                        data: null,
+                      })
+                    }
+                  }}
+                >
+                  {dealsProbe.loading ? 'Probing…' : 'Probe Deals'}
+                </button>
+                {dealsProbe.data ? (
+                  <span className="text-sm text-slate-700" data-testid="deals-probe-count">
+                    Deals: <strong>{dealsProbe.data.count}</strong>
+                  </span>
+                ) : null}
+              </div>
+
+              {dealsProbe.error ? (
+                <div className="mt-2 text-red-600 text-sm">Error: {dealsProbe.error}</div>
+              ) : null}
+
+              {dealsProbe.data ? (
+                <div className="mt-2 text-sm text-slate-700">
+                  <div>
+                    Missing customer_name: <strong>{dealsProbe.data.missingCustomer}</strong>
+                  </div>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm text-slate-600">
+                      job_status distribution
+                    </summary>
+                    <pre className="bg-gray-100 p-2 rounded mt-2 text-xs overflow-auto">
+                      {JSON.stringify(dealsProbe.data.statusCounts, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              ) : null}
+
+            </div>
 
             {import.meta.env.DEV && ops ? (
               <details className="mt-2">
