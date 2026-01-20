@@ -140,9 +140,26 @@
       "group": "test"
     },
     {
-      "label": "DB: Supabase Status",
+      "label": "DB: Supabase Status (Docker only)",
       "type": "shell",
       "command": "npx supabase@latest status",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "DB: Supabase MCP Check (Docker-free)",
+      "type": "shell",
+      "command": "bash scripts/mcp/supabase-mcp.sh --check",
       "options": {
         "cwd": "${workspaceFolder}"
       },
