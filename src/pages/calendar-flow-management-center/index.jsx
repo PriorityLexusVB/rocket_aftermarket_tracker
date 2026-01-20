@@ -21,7 +21,6 @@ import { vendorService } from '../../services/vendorService'
 import useTenant from '@/hooks/useTenant'
 import QuickFilters from './components/QuickFilters'
 import { useToast } from '@/components/ui/ToastProvider'
-import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 
 import UnassignedQueue from './components/UnassignedQueue'
 import JobDrawer from './components/JobDrawer'
@@ -337,9 +336,6 @@ const CalendarFlowManagementCenter = () => {
   useEffect(() => {
     if (tenantLoading) return
     if (!orgId) return
-    ;<div className="mx-auto max-w-xl">
-      <SupabaseConfigNotice className="mb-4 text-left" />
-    </div>
     loadCalendarData()
     loadVendors()
   }, [loadCalendarData, loadVendors, orgId, tenantLoading])
@@ -738,6 +734,13 @@ const CalendarFlowManagementCenter = () => {
               {statusBadge?.label || statusForBadge || job?.job_status}
             </div>
           </div>
+
+          {/* Customer / service context */}
+          {job?.customer_name || job?.service_type ? (
+            <div className="text-xs text-gray-600 mt-1 truncate">
+              {[job?.customer_name, job?.service_type].filter(Boolean).join(' • ')}
+            </div>
+          ) : null}
 
           {/* Vehicle line */}
           {job?.vehicle_info ? (
