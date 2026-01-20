@@ -390,7 +390,6 @@ export default function DebugAuthPage() {
                   </details>
                 </div>
               ) : null}
-
             </div>
 
             {import.meta.env.DEV && ops ? (
