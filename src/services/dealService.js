@@ -14,6 +14,7 @@ import {
   getRemediationGuidance,
 } from '@/utils/schemaErrorClassifier'
 import { formatTime } from '@/utils/dateTimeUtils'
+import { formatEtMonthDay } from '@/utils/scheduleDisplay'
 import { syncJobPartsForJob } from './jobPartsService'
 
 const IS_TEST_ENV =
@@ -1636,10 +1637,7 @@ export async function getAllDeals() {
           loaner_id: loaner?.id || null,
           loaner_number: loaner?.loaner_number || null,
           loaner_eta_short: loaner?.eta_return_date
-            ? new Date(loaner?.eta_return_date)?.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-              })
+            ? formatEtMonthDay(loaner.eta_return_date)
             : null,
           loaner_eta_return_date: loaner?.eta_return_date || null,
           age_days: ageDays,
@@ -1844,10 +1842,7 @@ export async function getDeal(id) {
       loaner_id: loaner?.id || null,
       loaner_eta_return_date: loaner?.eta_return_date || null,
       loaner_eta_short: loaner?.eta_return_date
-        ? new Date(loaner?.eta_return_date)?.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-          })
+        ? formatEtMonthDay(loaner.eta_return_date)
         : null,
       loaner_notes: loaner?.notes || '',
       age_days: ageDays,

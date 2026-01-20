@@ -188,6 +188,17 @@ describe('SnapshotView.splitNeedsSchedulingItems', () => {
     expect(out.upcoming.map((x) => x.id)).toEqual(['b', 'c'])
   })
 
+  it('treats date-only today as upcoming (not overdue)', () => {
+    const now = new Date('2025-11-11T12:00:00Z')
+    const items = [
+      { id: 'y', promisedAt: '2025-11-10', raw: {} },
+      { id: 't', promisedAt: '2025-11-11', raw: {} },
+    ]
+    const out = splitNeedsSchedulingItems(items, { now })
+    expect(out.overdue.map((x) => x.id)).toEqual(['y'])
+    expect(out.upcoming.map((x) => x.id)).toEqual(['t'])
+  })
+
   it('ignores items without a parseable promise', () => {
     const now = new Date('2025-11-11T12:00:00Z')
     const items = [{ id: 'x', promisedAt: null, raw: {} }]

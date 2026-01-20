@@ -3,6 +3,7 @@ import { jobService } from '@/services/jobService'
 import { getCapabilities } from '@/services/dealService'
 import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
+import { getEtDayUtcMs } from '@/utils/scheduleDisplay'
 
 const MS_DAY = 24 * 60 * 60 * 1000
 
@@ -154,17 +155,11 @@ export function classifyScheduleState({
       if (status === 'in_progress' || status === 'quality_check') return 'in_progress'
 
       // Date-only overdue logic is evaluated by promised day (UTC day key).
-      const nowDayUtc = new Date(
-        Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate())
-      )
-      const promisedDayUtc = new Date(
-        Date.UTC(promised.getUTCFullYear(), promised.getUTCMonth(), promised.getUTCDate())
-      )
+      const nowDayUtcMs = getEtDayUtcMs(nowDate)
+      const promisedDayUtcMs = getEtDayUtcMs(promisedAt || promised)
 
-      if (promisedDayUtc.getTime() < nowDayUtc.getTime()) {
-        const days = Math.floor(
-          (nowDayUtc.getTime() - promisedDayUtc.getTime()) / (24 * 60 * 60 * 1000)
-        )
+      if (promisedDayUtcMs != null && nowDayUtcMs != null && promisedDayUtcMs < nowDayUtcMs) {
+        const days = Math.floor((nowDayUtcMs - promisedDayUtcMs) / (24 * 60 * 60 * 1000))
         return days <= 7 ? 'overdue_recent' : 'overdue_old'
       }
 

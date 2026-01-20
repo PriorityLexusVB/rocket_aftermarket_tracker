@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/ToastProvider'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import { createUndoEntry, canUndo } from './undoHelpers'
 import { formatTime } from '@/utils/dateTimeUtils'
-import { toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+import { getEtDayUtcMs, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import { getStatusBadge } from '@/lib/time'
 import {
   getScheduleItems,
@@ -174,14 +174,17 @@ export function splitSnapshotItems(items, { now = new Date() } = {}) {
 // Exported to allow unit testing
 export function splitNeedsSchedulingItems(items, { now = new Date() } = {}) {
   const list = Array.isArray(items) ? items : []
-  const nowDayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const nowDayUtcMs =
+    getEtDayUtcMs(now) ?? Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   const overdue = []
   const upcoming = []
 
   for (const it of list) {
     const p = safeDate(it?.promisedAt || it?.raw?.next_promised_iso || it?.raw?.promised_date)
     if (!p) continue
-    if (p.getTime() < nowDayUtc.getTime()) overdue.push(it)
+    const pDayUtcMs =
+      getEtDayUtcMs(p) ?? Date.UTC(p.getUTCFullYear(), p.getUTCMonth(), p.getUTCDate())
+    if (pDayUtcMs < nowDayUtcMs) overdue.push(it)
     else upcoming.push(it)
   }
 

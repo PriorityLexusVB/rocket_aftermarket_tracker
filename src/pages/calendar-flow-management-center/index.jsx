@@ -800,7 +800,9 @@ const CalendarFlowManagementCenter = () => {
                   {timeSlots?.map((hour) => (
                     <div
                       key={`${dayKey || dayLabel}-${hour}`}
-                      className="h-12 border-b border-gray-100 relative"
+                      className={`min-h-12 border-b border-gray-100 relative py-1 ${
+                        draggedJob ? 'bg-indigo-50/30 ring-1 ring-inset ring-indigo-200' : ''
+                      }`}
                       onDragOver={(e) => e?.preventDefault()}
                       onDrop={() => {
                         const slot = new Date(dayDate)
@@ -813,6 +815,11 @@ const CalendarFlowManagementCenter = () => {
                         ?.filter((job) => {
                           const jobStart = new Date(job?.scheduled_start_time)
                           return jobStart?.getHours() === hour
+                        })
+                        ?.sort((a, b) => {
+                          const aStart = new Date(a?.scheduled_start_time)
+                          const bStart = new Date(b?.scheduled_start_time)
+                          return aStart - bStart
                         })
                         ?.map(renderEventChip)}
                     </div>
@@ -883,7 +890,9 @@ const CalendarFlowManagementCenter = () => {
                 </div>
               </div>
               <div
-                className="grid grid-cols-6 gap-2 min-h-[60px] border-2 border-dashed border-orange-200 rounded p-2"
+                className={`grid grid-cols-6 gap-2 min-h-[60px] border-2 border-dashed border-orange-200 rounded p-2 ${
+                  draggedJob ? 'bg-orange-50/50 border-orange-300' : ''
+                }`}
                 onDragOver={(e) => e?.preventDefault()}
                 onDrop={() => handleDrop(vendor?.id)}
               >

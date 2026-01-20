@@ -1,4 +1,5 @@
 import { fromZonedTime, toZonedTime, format } from 'date-fns-tz'
+import { getEtDayUtcMs, isDateOnlyValue } from '@/utils/scheduleDisplay'
 
 const EST_TIMEZONE = 'America/New_York'
 
@@ -151,6 +152,13 @@ export const formatTime = (timeString) => {
 // Check if a promise date is overdue with safe date handling
 export const isOverdue = (promiseDate) => {
   if (!promiseDate) return false
+
+  if (isDateOnlyValue(promiseDate)) {
+    const promiseDay = getEtDayUtcMs(promiseDate)
+    const nowDay = getEtDayUtcMs(new Date())
+    if (!promiseDay || !nowDay) return false
+    return promiseDay < nowDay
+  }
 
   const promise = safeCreateDate(promiseDate)
   if (!promise) return false
