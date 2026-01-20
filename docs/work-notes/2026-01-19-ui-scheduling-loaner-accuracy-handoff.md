@@ -4,6 +4,35 @@ Date: 2026-01-19 (ET)
 Repo: `PriorityLexusVB/rocket_aftermarket_tracker`
 Branch at time of writing: `main`
 
+## Quick resume checklist (when you’re back home)
+
+1) Pull latest `main`:
+```bash
+git pull --ff-only
+```
+
+2) Confirm nothing uncommitted locally:
+```bash
+git status --porcelain=v1
+```
+
+3) Run the repo verification suite (fastest “green” signal):
+```bash
+pnpm -s verify
+```
+
+4) Start dev server and reproduce with today’s date:
+```bash
+pnpm dev
+```
+
+5) Open these routes and validate screenshots match expectations:
+- `/currently-active-appointments`
+- `/calendar-flow-management-center`
+- `/loaner-management-drawer`
+
+If anything fails, scroll down to **Execution plan (sequenced, minimal-risk)**.
+
 ## Why this doc exists
 You flagged 4 production UX/correctness problems (screenshots):
 1) "Overdue" is wrong when today is the 19th.
