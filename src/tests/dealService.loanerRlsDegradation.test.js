@@ -34,6 +34,7 @@ vi.mock('@/lib/supabase', () => ({
 
 describe('dealService - loaner_assignments RLS degradation', () => {
   let mockSupabase
+  let getAllDeals
 
   const makeThenable = (result, extra = {}) => ({
     ...extra,
@@ -48,6 +49,11 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     mockSupabase = module.supabase
     mockSupabase.from.mockReset()
     mockSupabase.auth.getUser.mockClear()
+
+    // Import dealService AFTER resetModules so module-level capability state
+    // (initialized from sessionStorage) is deterministic per test.
+    const dealService = await import('@/services/dealService')
+    getAllDeals = dealService.getAllDeals
   })
 
   afterEach(() => {
@@ -56,8 +62,6 @@ describe('dealService - loaner_assignments RLS degradation', () => {
   })
 
   it('should gracefully handle 403 RLS errors on loaner_assignments query in getAllDeals', async () => {
-    const { getAllDeals } = await import('../services/dealService')
-
     const mockRlsError = {
       message: 'permission denied for table loaner_assignments',
       code: '42501',

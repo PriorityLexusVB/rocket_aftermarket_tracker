@@ -18,8 +18,9 @@ You are modifying Aftermarket Tracker under strict guardrails. This document ser
 ## Baseline Directives
 
 1. **Follow ALL guardrails**:
-   - `copilot-instructions.md` (root directory)
+   - `.github/copilot-instructions.md`
    - `.github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md`
+   - `AGENTS.md`
 
 2. **Never import Supabase client directly from React components**:
    - Only use service/lib modules for database operations
@@ -50,7 +51,7 @@ You are modifying Aftermarket Tracker under strict guardrails. This document ser
 
 - **Package Manager**: `pnpm` (required)
 - **Node Version**: 20 (see `.nvmrc`)
-- Install: `npm install -g pnpm`
+- pnpm is pinned via `package.json#packageManager` (recommend using Corepack)
 - Dependencies: `pnpm install`
 
 ### Development Environment

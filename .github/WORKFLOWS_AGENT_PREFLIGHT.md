@@ -12,6 +12,7 @@ Use this checklist whenever you (or Copilot) are about to do multi-step work, es
 
 ```bash
 pnpm -s guard:client-env
+pnpm -s guard:instructions
 ```
 
 ## 2) Supabase MCP safety (required)
