@@ -8,7 +8,7 @@ import EditDealModal from './components/EditDealModal'
 import DealDetailDrawer from './components/DealDetailDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 import ScheduleBlock from '../../components/deals/ScheduleBlock'
-import { toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
+import { formatEtMonthDay, toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -66,12 +66,7 @@ const StatusPill = ({ status }) => {
 
 // Small badge for loaner status in lists
 const LoanerBadge = ({ deal }) => {
-  const dueShort = deal?.loaner_eta_return_date
-    ? new Date(deal.loaner_eta_return_date).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      })
-    : null
+  const dueShort = deal?.loaner_eta_return_date ? formatEtMonthDay(deal.loaner_eta_return_date) : null
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
       <Icon name="Car" size={12} className="mr-1" />
@@ -1329,26 +1324,19 @@ export default function DealsPage() {
 
     // Loaner status filter
     if (filters?.loanerStatus && filters?.loanerStatus !== 'All') {
-      const now = new Date()
-      const startOfToday = new Date(now)
-      startOfToday.setHours(0, 0, 0, 0)
-      const endOfToday = new Date(now)
-      endOfToday.setHours(23, 59, 59, 999)
+      const todayKey = getEtDayKey(new Date())
       const hasActiveLoaner = !!(deal?.has_active_loaner || deal?.loaner_id)
-      const loanerDue = deal?.loaner_eta_return_date ? new Date(deal?.loaner_eta_return_date) : null
+      const loanerKey = deal?.loaner_eta_return_date ? getEtDayKey(deal?.loaner_eta_return_date) : ''
 
       switch (filters.loanerStatus) {
         case 'Active':
           if (!hasActiveLoaner) return false
           break
         case 'Due Today':
-          if (
-            !(hasActiveLoaner && loanerDue && loanerDue >= startOfToday && loanerDue <= endOfToday)
-          )
-            return false
+          if (!(hasActiveLoaner && loanerKey && todayKey && loanerKey === todayKey)) return false
           break
         case 'Overdue':
-          if (!(hasActiveLoaner && loanerDue && loanerDue < startOfToday)) return false
+          if (!(hasActiveLoaner && loanerKey && todayKey && loanerKey < todayKey)) return false
           break
         case 'None':
           if (hasActiveLoaner) return false

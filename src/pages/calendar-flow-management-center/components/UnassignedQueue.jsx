@@ -141,7 +141,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
 
         {/* Drag Indicator */}
         <div className="mt-3 pt-2 border-t border-gray-100">
-          <div className="text-xs text-gray-500 text-center">Drag to assign</div>
+          <div className="text-xs text-gray-500 text-center">Drag to a time slot or vendor lane</div>
         </div>
       </div>
     )

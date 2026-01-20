@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/ui/Navbar'
 import Button from '../../components/ui/Button'
 import Icon from '../../components/ui/Icon'
+import { getEtDayUtcMs, toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
 import {
   markLoanerReturned,
   listLoanerAssignmentsForDrawer,
@@ -20,6 +21,16 @@ export default function LoanerManagementDrawer() {
     overdue: 0,
   })
 
+  const MS_DAY = 24 * 60 * 60 * 1000
+
+  const getDayUtcMs = (value) => getEtDayUtcMs(value)
+
+  const isPastEtDay = (value, nowDayMs) => {
+    const dayMs = getDayUtcMs(value)
+    if (!dayMs || !nowDayMs) return false
+    return dayMs < nowDayMs
+  }
+
   // Load loaner data
   const loadLoaners = async () => {
     try {
@@ -30,10 +41,10 @@ export default function LoanerManagementDrawer() {
       const assignments = await listLoanerAssignmentsForDrawer()
 
       // Calculate inventory stats
-      const today = new Date()
+      const todayDayMs = getDayUtcMs(new Date())
       const assigned = assignments?.filter((a) => !a?.returned_at)?.length || 0
       const overdue =
-        assignments?.filter((a) => !a?.returned_at && new Date(a?.eta_return_date) < today)
+        assignments?.filter((a) => !a?.returned_at && isPastEtDay(a?.eta_return_date, todayDayMs))
           ?.length || 0
 
       setLoaners(assignments || [])
@@ -79,23 +90,27 @@ export default function LoanerManagementDrawer() {
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return '—'
-    return new Date(dateString)?.toLocaleDateString('en-US', {
+    const date = toSafeDateForTimeZone(dateString)
+    if (!date) return '—'
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-    })
+    }).format(date)
   }
 
   // Determine loaner status
   const getLoanerStatus = (assignment) => {
     if (assignment?.returned_at) return 'returned'
 
-    const today = new Date()
-    const etaDate = new Date(assignment?.eta_return_date)
+    const todayDayMs = getDayUtcMs(new Date())
+    const etaDayMs = getDayUtcMs(assignment?.eta_return_date)
 
-    if (etaDate < today) return 'overdue'
+    if (!etaDayMs || !todayDayMs) return 'active'
+    if (etaDayMs < todayDayMs) return 'overdue'
 
-    const daysDiff = Math.ceil((etaDate - today) / (1000 * 60 * 60 * 24))
+    const daysDiff = Math.ceil((etaDayMs - todayDayMs) / MS_DAY)
     if (daysDiff <= 2) return 'due-soon'
 
     return 'active'

@@ -1,5 +1,39 @@
 const DEFAULT_TZ = 'America/New_York'
 
+export function getEtDayParts(isoOrDate, { timeZone = DEFAULT_TZ } = {}) {
+  const d = toSafeDateForTimeZone(isoOrDate)
+  if (!d) return null
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d)
+
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]))
+  const year = Number(map.year)
+  const month = Number(map.month)
+  const day = Number(map.day)
+
+  if (!year || !month || !day) return null
+  return { year, month, day }
+}
+
+export function getEtDayUtcMs(isoOrDate, { timeZone = DEFAULT_TZ } = {}) {
+  const parts = getEtDayParts(isoOrDate, { timeZone })
+  if (!parts) return null
+  return Date.UTC(parts.year, parts.month - 1, parts.day)
+}
+
+export function getEtDayKey(isoOrDate, { timeZone = DEFAULT_TZ } = {}) {
+  const parts = getEtDayParts(isoOrDate, { timeZone })
+  if (!parts) return ''
+  const m = String(parts.month).padStart(2, '0')
+  const d = String(parts.day).padStart(2, '0')
+  return `${parts.year}-${m}-${d}`
+}
+
 export function isDateOnlyValue(input) {
   if (!input) return false
   if (input instanceof Date) return false
@@ -70,6 +104,27 @@ export function formatEtDateLabel(isoOrDate, { timeZone = DEFAULT_TZ, weekday = 
   const m = map.month || ''
   const day = map.day || ''
   return [w, m, day].filter(Boolean).join(' ')
+}
+
+export function formatEtMonthDay(isoOrDate, { timeZone = DEFAULT_TZ } = {}) {
+  const d = toSafeDateForTimeZone(isoOrDate)
+  if (!d) return ''
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    month: 'short',
+    day: 'numeric',
+  }).format(d)
+}
+
+export function formatEtMonthDayYear(isoOrDate, { timeZone = DEFAULT_TZ } = {}) {
+  const d = toSafeDateForTimeZone(isoOrDate)
+  if (!d) return ''
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(d)
 }
 
 function formatEtTimeParts(isoOrDate, { timeZone = DEFAULT_TZ } = {}) {
