@@ -640,7 +640,15 @@ const CalendarFlowManagementCenter = () => {
   }
 
   // Updated renderEventChip to work with filtered data
-  const renderEventChip = (job) => {
+  const renderEventChip = (job, renderOptions) => {
+    const options =
+      renderOptions && typeof renderOptions === 'object' && !Array.isArray(renderOptions)
+        ? renderOptions
+        : null
+    const density = options?.density || 'default'
+    const containerClassName = options?.containerClassName || ''
+    const containerStyle = options?.containerStyle || undefined
+
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
     const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
     const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
@@ -666,13 +674,21 @@ const CalendarFlowManagementCenter = () => {
     const statusBadge = getStatusBadge(statusForBadge)
     const statusColor = statusBadge?.color || 'bg-blue-500'
 
+    const densityClasses =
+      density === 'compact'
+        ? 'p-2 text-xs leading-snug'
+        : 'p-3 text-sm'
+    const densityMargin = density === 'compact' ? 'mb-1' : 'mb-2'
+
     return (
       <div
         key={job?.calendar_key || job?.id}
         className={`
-          relative rounded-lg border p-3 mb-2 cursor-pointer transition-all duration-200 hover:shadow-md
-          ${chipBg} ${chipBorder} ${chipHoverBorder} text-sm text-gray-900
+          relative rounded-lg border ${densityClasses} ${densityMargin} cursor-pointer transition-all duration-200 hover:shadow-md
+          ${chipBg} ${chipBorder} ${chipHoverBorder} text-gray-900
+          ${containerClassName}
         `}
+        style={containerStyle}
         onClick={() => handleJobClick(job)}
         draggable
         onDragStart={() => handleDragStart(job)}
@@ -751,15 +767,22 @@ const CalendarFlowManagementCenter = () => {
             return d
           })
     const timeSlots = Array.from({ length: 10 }, (_, i) => 8 + i) // 8AM to 6PM
+    const HOUR_SLOT_PX = 180
+    const PX_PER_MINUTE = HOUR_SLOT_PX / 60
+    const DROP_MINUTE_INCREMENT = 5
 
     return (
       <div className="h-full">
         <div className={`grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-7'} gap-2 h-full`}>
           {/* Time header */}
-          <div className="col-span-1 space-y-12">
+          <div className="col-span-1 space-y-0">
             <div className="h-12"></div> {/* Header spacer */}
             {timeSlots?.map((hour) => (
-              <div key={hour} className="text-xs text-gray-500 text-right pr-2">
+              <div
+                key={hour}
+                className="text-xs text-gray-500 text-right pr-2 flex items-start justify-end"
+                style={{ height: HOUR_SLOT_PX }}
+              >
                 {hour}:00
               </div>
             ))}
@@ -796,32 +819,60 @@ const CalendarFlowManagementCenter = () => {
                   </div>
                 )}
                 {/* Time slots */}
-                <div className="space-y-12">
+                <div className="space-y-0">
                   {timeSlots?.map((hour) => (
                     <div
                       key={`${dayKey || dayLabel}-${hour}`}
-                      className={`min-h-12 border-b border-gray-100 relative py-1 ${
+                      className={`border-b border-gray-100 relative py-1 ${
                         draggedJob ? 'bg-indigo-50/30 ring-1 ring-inset ring-indigo-200' : ''
                       }`}
+                      style={{ height: HOUR_SLOT_PX }}
                       onDragOver={(e) => e?.preventDefault()}
-                      onDrop={() => {
+                      onDrop={(e) => {
+                        const rect = e?.currentTarget?.getBoundingClientRect?.()
+                        const offsetY = rect ? e?.clientY - rect.top : 0
+                        const rawMinutes = rect?.height
+                          ? Math.max(0, Math.min(59, Math.round((offsetY / rect.height) * 60)))
+                          : 0
+                        const minutes =
+                          Math.round(rawMinutes / DROP_MINUTE_INCREMENT) * DROP_MINUTE_INCREMENT
+
                         const slot = new Date(dayDate)
-                        slot?.setHours(hour, 0, 0, 0)
+                        slot?.setHours(hour, minutes, 0, 0)
                         handleDrop(null, slot)
                       }}
                     >
                       {/* Jobs for this time slot */}
-                      {dayJobs
-                        ?.filter((job) => {
+                      {(() => {
+                        const jobsInHour = (dayJobs || [])
+                          .filter((job) => {
+                            const jobStart = new Date(job?.scheduled_start_time)
+                            return jobStart?.getHours?.() === hour
+                          })
+                          .sort((a, b) => {
+                            const aStart = new Date(a?.scheduled_start_time)
+                            const bStart = new Date(b?.scheduled_start_time)
+                            return aStart - bStart
+                          })
+
+                        const minuteCounts = new Map()
+
+                        return jobsInHour.map((job) => {
                           const jobStart = new Date(job?.scheduled_start_time)
-                          return jobStart?.getHours() === hour
+                          const minutes = jobStart?.getMinutes?.() || 0
+                          const seen = minuteCounts.get(minutes) || 0
+                          minuteCounts.set(minutes, seen + 1)
+
+                          const baseTop = Math.max(0, Math.min(HOUR_SLOT_PX - 8, minutes * PX_PER_MINUTE))
+                          const stackedTop = Math.min(HOUR_SLOT_PX - 8, baseTop + seen * 10)
+
+                          return renderEventChip(job, {
+                            density: 'compact',
+                            containerClassName: 'absolute left-1 right-1',
+                            containerStyle: { top: stackedTop, zIndex: 10 + seen },
+                          })
                         })
-                        ?.sort((a, b) => {
-                          const aStart = new Date(a?.scheduled_start_time)
-                          const bStart = new Date(b?.scheduled_start_time)
-                          return aStart - bStart
-                        })
-                        ?.map(renderEventChip)}
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -962,6 +1013,25 @@ const CalendarFlowManagementCenter = () => {
                 <Download className="h-4 w-4 mr-2" />
                 Round-Up
               </button>
+
+              <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <summary className="cursor-pointer select-none text-sm text-gray-700">Legend</summary>
+                <div className="mt-2 grid gap-1 text-xs text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-green-500" />
+                    <span>On-site (PLV)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
+                    <span>Vendor lane</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-3 w-3 text-red-600" />
+                    <span>Overdue promise</span>
+                  </div>
+                  <div className="text-[11px] text-gray-500">Drop in a slot to set minutes (5-min increments).</div>
+                </div>
+              </details>
             </div>
           </div>
 
