@@ -903,8 +903,8 @@ const CalendarFlowManagementCenter = () => {
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Scheduling Board</h1>
-              <p className="text-gray-600">Drag jobs into lanes to schedule and balance workload</p>
+              <h1 className="text-2xl font-bold text-gray-900">Calendar Flow Management Center</h1>
+              <p className="text-gray-600">Visual scheduling and workflow management</p>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -1045,10 +1045,6 @@ const CalendarFlowManagementCenter = () => {
 
           <div className="mt-4">
             <CalendarViewTabs />
-            <div className="mt-2 text-xs text-gray-500">
-              Tip: Use <span className="font-medium text-gray-700">Grid</span> for the visual calendar, and
-              <span className="font-medium text-gray-700"> Agenda</span> for the list view.
-            </div>
           </div>
         </div>
 

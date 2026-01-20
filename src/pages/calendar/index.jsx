@@ -454,29 +454,26 @@ const CalendarSchedulingCenter = () => {
       }
 
       return (
-        <div className="space-y-1">
-          <div className="grid grid-cols-7 gap-1">
-            {/* Day headers */}
-            {weekDays?.map((day, index) => (
-              <div
-                key={`header-${index}`}
-                className={`p-2 border-b font-semibold text-center ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50' : 'bg-gray-50'}`}
-              >
-                <div className="text-sm text-gray-600">
-                  {safeFormatDate(day?.date, { weekday: 'short' }) || 'N/A'}
-                </div>
-                <div className="text-lg">{day?.date?.getDate() || '?'}</div>
+        <div className="grid grid-cols-7 gap-1 h-full">
+          {/* Day headers */}
+          {weekDays?.map((day, index) => (
+            <div
+              key={`header-${index}`}
+              className={`p-2 border-b font-semibold text-center ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50' : 'bg-gray-50'}`}
+            >
+              <div className="text-sm text-gray-600">
+                {safeFormatDate(day?.date, { weekday: 'short' }) || 'N/A'}
               </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {/* Day content */}
-            {weekDays?.map((day, index) => (
-              <div
-                key={`content-${index}`}
-                className={`min-h-24 overflow-y-auto rounded-sm border border-gray-200 p-2 flex flex-col gap-2 ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50/30' : 'bg-white'}`}
-              >
-                {day?.jobs?.map((job) => {
+              <div className="text-lg">{day?.date?.getDate() || '?'}</div>
+            </div>
+          ))}
+          {/* Day content */}
+          {weekDays?.map((day, index) => (
+            <div
+              key={`content-${index}`}
+              className={`p-2 border-r border-gray-200 min-h-96 overflow-y-auto ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50/30' : 'bg-white'}`}
+            >
+              {day?.jobs?.map((job) => {
                 const jobStartTime = job?.time_tbd
                   ? null
                   : safeCreateDate(job?.scheduled_start_time)
@@ -502,7 +499,7 @@ const CalendarSchedulingCenter = () => {
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
-                      className={`p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
+                    className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={() => navigate(`/deals/${job?.id}/edit`)}
                     title={job?.title || 'Open deal'}
                   >
@@ -542,10 +539,9 @@ const CalendarSchedulingCenter = () => {
                     </div>
                   </div>
                 )
-                })}
-              </div>
-            ))}
-          </div>
+              })}
+            </div>
+          ))}
         </div>
       )
     }
@@ -897,7 +893,7 @@ const CalendarSchedulingCenter = () => {
                   onClick={() => navigate('/calendar-flow-management-center')}
                   className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                 >
-                  Open Board (Drag & Drop)
+                  Open Scheduling Board
                 </button>
                 {SIMPLE_AGENDA_ENABLED ? (
                   <button

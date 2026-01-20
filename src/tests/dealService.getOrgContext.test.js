@@ -18,7 +18,7 @@ let mockAuthResponse = {
   error: null,
 }
 let mockProfileResponse = {
-  data: { dealer_id: mockOrgId },
+  data: { org_id: mockOrgId },
   error: null,
 }
 
@@ -63,15 +63,12 @@ beforeEach(async () => {
     error: null,
   }
   mockProfileResponse = {
-    data: { dealer_id: mockOrgId },
+    data: { org_id: mockOrgId },
     error: null,
   }
 
   vi.resetModules()
-  // Ensure any previous test file's mock for this module can't leak into this suite.
-  vi.unmock('@/lib/supabase')
   registerSupabaseMock()
-  vi.clearAllMocks()
   const dealService = await import('../services/dealService')
   isRlsError = dealService.isRlsError
   getOrgContext = dealService.getOrgContext

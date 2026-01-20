@@ -10,9 +10,8 @@
 # 1. Install Node 20 (see .nvmrc)
 nvm use
 
-# 2. Enable pnpm via Corepack (pnpm version is pinned in package.json#packageManager)
+# 2. Install pnpm
 corepack enable
-pnpm -v
 
 # 3. Install dependencies
 pnpm install
@@ -48,7 +47,6 @@ pnpm build
 
 1. **MASTER_EXECUTION_PROMPT.md** — Complete development guide with phased execution plan
 2. **.github/copilot-instructions.md** — Workspace guardrails (must follow)
-   - Also see: **.github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md** (short summary)
 3. **AGENT_RUN_PROMPT_ONEPAGE.md** — One-page agent execution guide (for automated coding agents)
 4. **docs/MCP-NOTES.md** — How to use Supabase MCP for schema introspection
 5. **PERFORMANCE_INDEXES.md** — Index optimization guidelines

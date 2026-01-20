@@ -1,6 +1,7 @@
 // src/tests/dealService.capabilityFallback.test.js
 // Tests for capability flag and retry logic with fallback
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { getAllDeals, getCapabilities } from '@/services/dealService'
 
 // Mock sessionStorage
 const sessionStorageMock = (() => {
@@ -33,8 +34,6 @@ vi.mock('@/lib/supabase', () => ({
 
 describe('dealService - capability flag and retry logic', () => {
   let mockSupabase
-  let getAllDeals
-  let getCapabilities
 
   beforeEach(async () => {
     sessionStorageMock.clear()
@@ -43,12 +42,6 @@ describe('dealService - capability flag and retry logic', () => {
 
     const module = await import('@/lib/supabase')
     mockSupabase = module.supabase
-
-    // Import dealService AFTER resetModules so module-level capability state
-    // (initialized from sessionStorage) is deterministic per test.
-    const dealService = await import('@/services/dealService')
-    getAllDeals = dealService.getAllDeals
-    getCapabilities = dealService.getCapabilities
   })
 
   afterEach(() => {

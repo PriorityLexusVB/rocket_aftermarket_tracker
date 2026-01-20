@@ -7,7 +7,7 @@ const SIMPLE_AGENDA_ENABLED =
 
 const CALENDAR_VIEWS = [
   { key: 'grid', label: 'Grid', href: '/calendar/grid', icon: LayoutGrid },
-  { key: 'flow', label: 'Board', href: '/calendar-flow-management-center', icon: Calendar },
+  { key: 'flow', label: 'Flow', href: '/calendar-flow-management-center', icon: Calendar },
   ...(SIMPLE_AGENDA_ENABLED
     ? [{ key: 'agenda', label: 'Agenda', href: '/calendar/agenda', icon: List }]
     : []),

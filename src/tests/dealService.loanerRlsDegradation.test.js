@@ -34,7 +34,6 @@ vi.mock('@/lib/supabase', () => ({
 
 describe('dealService - loaner_assignments RLS degradation', () => {
   let mockSupabase
-  let getAllDeals
 
   const makeThenable = (result, extra = {}) => ({
     ...extra,
@@ -49,11 +48,6 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     mockSupabase = module.supabase
     mockSupabase.from.mockReset()
     mockSupabase.auth.getUser.mockClear()
-
-    // Import dealService AFTER resetModules so module-level capability state
-    // (initialized from sessionStorage) is deterministic per test.
-    const dealService = await import('@/services/dealService')
-    getAllDeals = dealService.getAllDeals
   })
 
   afterEach(() => {
@@ -62,6 +56,8 @@ describe('dealService - loaner_assignments RLS degradation', () => {
   })
 
   it('should gracefully handle 403 RLS errors on loaner_assignments query in getAllDeals', async () => {
+    const { getAllDeals } = await import('../services/dealService')
+
     const mockRlsError = {
       message: 'permission denied for table loaner_assignments',
       code: '42501',
@@ -111,14 +107,15 @@ describe('dealService - loaner_assignments RLS degradation', () => {
       ),
     })
 
-    // Table-based mock to avoid brittleness when getAllDeals changes query ordering.
-    mockSupabase.from.mockImplementation((table) => {
-      if (table === 'job_parts') return { select: mockPreflightSelect }
-      if (table === 'jobs') return { select: mockJobsSelect }
-      if (table === 'transactions') return { select: mockTransactionsSelect }
-      if (table === 'loaner_assignments') return { select: mockLoanerSelect }
-      return { select: vi.fn(() => Promise.resolve({ data: null, error: null })) }
-    })
+    // Order of mock calls:
+    // 1. Preflight probe (job_parts)
+    // 2. Main jobs query
+    // 3. Transactions query
+    // 4. Loaner assignments query
+    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
+    mockSupabase.from.mockReturnValueOnce({ select: mockJobsSelect }) // jobs
+    mockSupabase.from.mockReturnValueOnce({ select: mockTransactionsSelect }) // transactions
+    mockSupabase.from.mockReturnValueOnce({ select: mockLoanerSelect }) // loaner_assignments
 
     // Should not throw despite RLS error
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -128,15 +125,11 @@ describe('dealService - loaner_assignments RLS degradation', () => {
     expect(deals).toBeDefined()
     expect(Array.isArray(deals)).toBe(true)
 
-    // Should log a warning about the RLS block.
-    // In the full suite, other tests may globally stub console.warn; treat the
-    // log as best-effort and only assert the content when we see calls.
-    if (warnSpy.mock.calls.length > 0) {
-      const firstArg = warnSpy.mock.calls[0]?.[0]
-      expect(String(firstArg)).toContain(
-        '[dealService:getAllDeals] RLS blocked loaner_assignments query'
-      )
-    }
+    // Should log warning about RLS block
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[dealService:getAllDeals] RLS blocked loaner_assignments query'),
+      expect.any(String)
+    )
   })
 })
 
