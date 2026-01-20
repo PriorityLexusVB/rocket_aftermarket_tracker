@@ -1,5 +1,7 @@
 # Supabase Environment Mismatch Runbook (Avoiding “It exists here but not there”)
 
+Last updated: 2026-01-20
+
 This repo uses **Vite + React** on the client and a **Supabase MCP wrapper** for safe DB introspection.
 
 The #1 footgun is accidentally pointing the **app** at one Supabase project while the **MCP tools** point at another.
@@ -49,6 +51,47 @@ After restarting:
 1. Re-open `/debug-auth`.
 2. Confirm the **project ref** matches the non-prod project.
 3. Click **Probe Deals** and verify it returns the expected count.
+
+## At-home checklist (quick start)
+
+When you get home and want to continue without losing time:
+
+1. Pull latest code
+
+- `git pull origin main`
+
+1. Ensure local dev is not pointed at prod
+
+- Check `.env.local` (do **not** commit it).
+- Make sure these are set to your **non-prod** project:
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+- Easiest: copy the non-prod URL + anon key from `.env.e2e.local` into `.env.local`.
+
+1. Run the repo verification
+
+- `pnpm -s verify`
+
+1. Start the app
+
+- `pnpm dev`
+
+1. Confirm you’re on the intended Supabase project
+
+- Open `/debug-auth` and check the **Supabase environment** section.
+- If it shows a known production ref warning, stop and fix `.env.local` first.
+
+1. Re-test the original symptom
+
+- On `/debug-auth`, click **Probe Deals**.
+- Then check `/deals` and confirm the expected item appears.
+
+## Optional: enable Supabase MCP tools at home
+
+Only needed if you want to run MCP-based DB checks locally.
+
+- Put `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF` in `.env.e2e.local`.
+- Run: `bash scripts/mcp/supabase-mcp.sh --check`
 
 ## Why this repo is extra strict
 
