@@ -22,8 +22,8 @@ If these point at different Supabase projects, the UI and MCP evidence will disa
 
 ## Quick diagnosis
 
-1) Open `/debug-auth` in the app.
-2) Look at the **Supabase environment** section:
+1. Open `/debug-auth` in the app.
+2. Look at the **Supabase environment** section:
    - `VITE_SUPABASE_URL`
    - inferred **project ref**
 
@@ -34,19 +34,21 @@ If it warns about a known production ref, you’re pointed at prod.
 Recommended: copy the non-prod values from `.env.e2e.local` into `.env.local`.
 
 Keys:
+
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
 Then restart the dev server:
+
 - `pnpm dev`
 
 ## Proof step
 
 After restarting:
 
-1) Re-open `/debug-auth`.
-2) Confirm the **project ref** matches the non-prod project.
-3) Click **Probe Deals** and verify it returns the expected count.
+1. Re-open `/debug-auth`.
+2. Confirm the **project ref** matches the non-prod project.
+3. Click **Probe Deals** and verify it returns the expected count.
 
 ## Why this repo is extra strict
 
