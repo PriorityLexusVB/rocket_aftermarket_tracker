@@ -59,6 +59,32 @@ if (isTest) {
   const supabaseUrl = import.meta?.env?.VITE_SUPABASE_URL
   const supabaseAnonKey = import.meta?.env?.VITE_SUPABASE_ANON_KEY
 
+  // Guardrail: prevent accidental production project usage during local development.
+  // We do not throw (to avoid blocking emergency debugging), but we make it extremely obvious.
+  const inferProjectRefFromUrl = (url) => {
+    const m = String(url || '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/i)
+    return m?.[1] || null
+  }
+  const urlRef = inferProjectRefFromUrl(supabaseUrl)
+  const isKnownProdRef = urlRef === 'ogjtmtndgiqqdtwatsue'
+  if (import.meta?.env?.DEV && isKnownProdRef) {
+    console.error(
+      '[Supabase] DEV ENV WARNING: VITE_SUPABASE_URL is pointed at the known production project ref.'
+    )
+    try {
+      if (typeof window !== 'undefined') {
+        window.__ROCKET_SUPABASE_ENV_WARNING__ = {
+          type: 'known-production-ref',
+          ref: urlRef,
+          url: supabaseUrl,
+          timestamp: new Date().toISOString(),
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   // Only log environment check in development mode
   if (import.meta?.env?.DEV) {
     console.log('Supabase Environment Check:', {

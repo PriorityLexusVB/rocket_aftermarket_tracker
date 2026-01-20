@@ -47,6 +47,13 @@ export default function DebugAuthPage() {
   const [error, setError] = useState(null)
   const [conn, setConn] = useState({ configured: false, ok: null, last: null })
 
+  const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL
+  const supabaseUrlRef = (() => {
+    const m = String(supabaseUrl || '').match(/^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/i)
+    return m?.[1] || null
+  })()
+  const isKnownProdRef = supabaseUrlRef === 'ogjtmtndgiqqdtwatsue'
+
   useEffect(() => {
     let mounted = true
     async function load() {
@@ -233,6 +240,30 @@ export default function DebugAuthPage() {
         <p className="text-slate-500 text-sm mt-1">
           If you see “Error” but the app otherwise works, it may be an RLS-permission message. The
           test treats those as reachable.
+        </p>
+      </section>
+
+      <section className="mb-4">
+        <h2 className="font-semibold">Supabase environment</h2>
+        <div>
+          Mode: <strong>{String(import.meta.env?.MODE || '—')}</strong>
+        </div>
+        <div className="break-all">
+          VITE_SUPABASE_URL: <strong>{supabaseUrl ? String(supabaseUrl) : '—'}</strong>
+        </div>
+        <div>
+          Project ref (from URL): <strong>{supabaseUrlRef ? String(supabaseUrlRef) : '—'}</strong>
+        </div>
+        {import.meta.env?.DEV && isKnownProdRef ? (
+          <div className="mt-2 p-3 rounded border border-red-300 bg-red-50 text-red-800 text-sm">
+            ⚠️ This dev build is pointed at the known production Supabase project ref. Update your
+            local env to a non-prod project before continuing.
+          </div>
+        ) : null}
+        <p className="text-slate-500 text-sm mt-1">
+          Tip: Vite reads <code>.env.local</code> by default; the Supabase MCP wrapper reads{' '}
+          <code>.env.e2e.local</code>. If these point at different projects, the app UI and MCP
+          queries will disagree.
         </p>
       </section>
 
