@@ -43,7 +43,7 @@ const LoanerManagementDrawer = lazy(() => import('./pages/loaner-management-draw
 // Admin and utilities
 const AdminPage = lazy(() => import('./pages/admin'))
 const AdminCapabilities = lazy(() => import('./pages/AdminCapabilities'))
-const DebugAuthPage = import.meta.env.DEV ? lazy(() => import('./pages/debug-auth')) : null
+const DebugAuthPage = lazy(() => import('./pages/debug-auth'))
 const CommunicationsCenter = lazy(() => import('./pages/communications'))
 const ProfileSettings = lazy(() => import('./pages/profile'))
 
@@ -109,17 +109,14 @@ const Routes = () => {
                   </ProtectedRoute>
                 }
               />
-              {/* Debug route only in dev */}
-              {import.meta.env.DEV && (
-                <Route
-                  path="/debug-auth"
-                  element={
-                    <ProtectedRoute>
-                      <DebugAuthPage />
-                    </ProtectedRoute>
-                  }
-                />
-              )}
+              <Route
+                path="/debug-auth"
+                element={
+                  <ProtectedRoute>
+                    <DebugAuthPage />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Advanced Management Centers */}
               <Route

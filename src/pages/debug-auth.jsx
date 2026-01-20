@@ -14,6 +14,30 @@ import {
   getUnscheduledInProgressInHouseItems,
 } from '@/services/scheduleItemsService'
 
+function getSafeSessionSnapshot(session) {
+  if (!session) return null
+
+  const user = session?.user
+  return {
+    user: user
+      ? {
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          aud: user.aud,
+          app_metadata: user.app_metadata,
+          user_metadata: user.user_metadata,
+          created_at: user.created_at,
+          last_sign_in_at: user.last_sign_in_at,
+        }
+      : null,
+    expires_at: session.expires_at,
+    expires_in: session.expires_in,
+    token_type: session.token_type,
+  }
+}
+
 export default function DebugAuthPage() {
   const { orgId, loading: tenantLoading, session } = useTenant()
   const [counts, setCounts] = useState({})
@@ -132,7 +156,35 @@ export default function DebugAuthPage() {
           <span className="text-sm text-slate-600">Session User ID: </span>
           <strong data-testid="session-user-id">{session?.user?.id || '—'}</strong>
         </div>
-        <pre className="bg-gray-100 p-2 rounded">{JSON.stringify(session || null, null, 2)}</pre>
+        <p className="text-slate-500 text-sm mb-2">
+          Session details are intentionally redacted to avoid exposing tokens.
+        </p>
+        <pre className="bg-gray-100 p-2 rounded">
+          {JSON.stringify(getSafeSessionSnapshot(session), null, 2)}
+        </pre>
+
+        {import.meta.env.DEV && session ? (
+          <details className="mt-2">
+            <summary className="cursor-pointer text-sm text-slate-600">
+              Dev-only: full session (tokens redacted)
+            </summary>
+            <pre className="bg-gray-100 p-2 rounded mt-2 text-xs overflow-auto">
+              {JSON.stringify(
+                {
+                  ...session,
+                  access_token: session?.access_token ? '[REDACTED]' : session?.access_token,
+                  refresh_token: session?.refresh_token ? '[REDACTED]' : session?.refresh_token,
+                  provider_token: session?.provider_token ? '[REDACTED]' : session?.provider_token,
+                  provider_refresh_token: session?.provider_refresh_token
+                    ? '[REDACTED]'
+                    : session?.provider_refresh_token,
+                },
+                null,
+                2
+              )}
+            </pre>
+          </details>
+        ) : null}
       </section>
 
       <section className="mb-4">
