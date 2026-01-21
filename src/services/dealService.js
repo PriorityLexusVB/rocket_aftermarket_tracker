@@ -1878,17 +1878,15 @@ export async function getDeal(id) {
 }
 
 // CREATE: deal + job_parts
-function hasSchedulableLineItems(lineItems = []) {
+function hasTimedLineItems(lineItems = []) {
   return (lineItems || []).some((it) => {
     if (!it?.requires_scheduling) return false
-    const hasPromisedDate = !!it?.promised_date
-    const hasTimes = !!(
+    return !!(
       it?.scheduled_start_time ||
       it?.scheduled_end_time ||
       it?.scheduledStartTime ||
       it?.scheduledEndTime
     )
-    return hasPromisedDate || hasTimes
   })
 }
 
@@ -1898,7 +1896,9 @@ function maybeAutoUpgradeJobStatusToScheduled(currentStatus, normalizedLineItems
     .toLowerCase()
   const eligible = !s || s === 'new' || s === 'pending'
   if (!eligible) return currentStatus
-  if (!hasSchedulableLineItems(normalizedLineItems)) return currentStatus
+  // Only promote when a real time window exists; promised_date alone should not
+  // move a deal out of the Deals "Booked (time TBD)" lane.
+  if (!hasTimedLineItems(normalizedLineItems)) return currentStatus
   return 'scheduled'
 }
 
@@ -1914,8 +1914,10 @@ export async function createDeal(formState) {
     vin,
   } = mapFormToDb(formState || {})
 
-  // Product rule: if there's schedulable work (promised or timed line items), treat the job as scheduled.
-  // This keeps persisted status aligned with UI semantics (Scheduled (All-day)) even when no time window exists.
+  // Default: keep new deals in the Deals "Booked (time TBD)" lane unless a real time window exists.
+  if (!payload?.job_status) payload.job_status = 'pending'
+
+  // Product rule: if there's timed schedulable work, treat the job as scheduled.
   payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
     payload?.job_status,
     normalizedLineItems
@@ -2262,7 +2264,10 @@ export async function updateDeal(id, formState) {
     vin,
   } = mapFormToDb(formState || {})
 
-  // Product rule: if there's schedulable work (promised or timed line items), treat the job as scheduled.
+  // Default: keep deals visible in Pending unless an actual time window exists.
+  if (!payload?.job_status) payload.job_status = 'pending'
+
+  // If user provided an actual scheduled time window, promote to scheduled.
   payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
     payload?.job_status,
     normalizedLineItems

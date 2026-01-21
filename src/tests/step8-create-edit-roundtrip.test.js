@@ -183,6 +183,7 @@ describe('Step 8: Create → Edit Round-trip Test', () => {
     expect(createdDeal?.id)?.toBeTruthy()
     expect(createdDeal?.title)?.toBe('Step 8 Test Deal')
     expect(createdDeal?.customer_needs_loaner)?.toBe(true)
+    expect(createdDeal?.job_status)?.toBe('pending')
 
     // Verify job_parts were created correctly
     expect(createdDeal?.job_parts)?.toHaveLength(2)
@@ -277,6 +278,7 @@ describe('Step 8: Create → Edit Round-trip Test', () => {
     expect(updatedDeal)?.toBeTruthy()
     expect(updatedDeal?.title)?.toBe('Step 8 Test Deal - EDITED')
     expect(updatedDeal?.customer_needs_loaner)?.toBe(false)
+    expect(updatedDeal?.job_status)?.toBe('pending')
 
     // Verify job_parts were updated correctly
     expect(updatedDeal?.job_parts)?.toHaveLength(3)
