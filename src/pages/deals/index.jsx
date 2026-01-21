@@ -285,9 +285,15 @@ const Pill = ({ children, className = '' }) => (
 const CustomerDisplay = ({ deal }) => {
   if (!deal) return <span className="text-sm text-slate-700">—</span>
 
-  const rawName = deal?.customer_name || deal?.customerEmail || '—'
-  const name = rawName // Already titleCased in database
-  const email = deal?.customer_email || ''
+  const rawName =
+    deal?.customer_name ||
+    deal?.customerName ||
+    deal?.vehicle?.owner_name ||
+    deal?.customer_email ||
+    deal?.customerEmail ||
+    '—'
+  const name = rawName // already title-cased in DB where applicable
+  const email = deal?.customer_email || deal?.customerEmail || deal?.vehicle?.owner_email || ''
   const tags = Array.isArray(deal?.work_tags) ? deal.work_tags : []
   const title = [name, email, tags.length ? `Tags: ${tags.join(', ')}` : null]
     .filter(Boolean)
@@ -295,8 +301,20 @@ const CustomerDisplay = ({ deal }) => {
 
   return (
     <div className="flex flex-col gap-1" title={title}>
-      <span className="text-sm font-medium text-slate-800">{name}</span>
-      {email ? <span className="text-xs text-slate-500">{email}</span> : null}
+      <span
+        className="text-sm font-medium text-slate-800"
+        data-testid={deal?.id ? `deal-customer-name-${deal.id}` : 'deal-customer-name'}
+      >
+        {name}
+      </span>
+      {email ? (
+        <span
+          className="text-xs text-slate-500"
+          data-testid={deal?.id ? `deal-customer-email-${deal.id}` : 'deal-customer-email'}
+        >
+          {email}
+        </span>
+      ) : null}
       {tags.length ? (
         <div className="flex flex-wrap gap-1">
           {tags.map((tag) => (
@@ -1359,11 +1377,16 @@ export default function DealsPage() {
 
       const searchableFields = [
         deal?.customer_name,
+        deal?.customerName,
         deal?.customer_phone,
+        deal?.customer_phone_e164,
         deal?.customer_email,
+        deal?.customerEmail,
         deal?.job_number,
         deal?.vehicle?.make,
         deal?.vehicle?.model,
+        deal?.vehicle?.owner_name,
+        deal?.vehicle?.owner_email,
         deal?.vehicle?.stock_number || deal?.stock_no,
         deal?.description,
       ]?.filter(Boolean)

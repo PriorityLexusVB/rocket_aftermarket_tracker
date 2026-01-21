@@ -58,6 +58,9 @@ build-output.log
 
 # Local temp/artifacts
 .artifacts/
+
+# Local-only Playwright sanity specs
+e2e/*.local.spec.ts
 _tmp_*/
 rocket-aftermarket-tracker@*/
 vite-err.log

@@ -312,18 +312,19 @@ describe('Step 16: Deals List Screen Verification', () => {
     renderComponent()
 
     await waitFor(() => {
-      // Customer names should be derived from vehicle.owner_name
-      // The current implementation doesn't show customer names directly, but they should be available
-      // This test verifies the data structure supports customer display
-      const deals = mockDealsData
-      expect(deals?.[0]?.vehicle?.owner_name)?.toBe('John Smith')
-      expect(deals?.[1]?.vehicle?.owner_name)?.toBe('Sarah Johnson')
-      expect(deals?.[2]?.vehicle?.owner_name)?.toBe(null) // Missing case
+      const row1 = screen.getByTestId('deal-row-job-001')
+      expect(within(row1).getByTestId('deal-customer-name-job-001')).toHaveTextContent('John Smith')
+
+      const row2 = screen.getByTestId('deal-row-job-002')
+      expect(within(row2).getByTestId('deal-customer-name-job-002')).toHaveTextContent(
+        'Sarah Johnson'
+      )
+
+      const row3 = screen.getByTestId('deal-row-job-003')
+      expect(within(row3).getByTestId('deal-customer-name-job-003')).toHaveTextContent('—')
     })
 
-    console.log(
-      '✅ Customer data structure verified - names available when present, null when missing'
-    )
+    console.log('✅ Customer names render from vehicle.owner_name; placeholder used when missing')
   })
 
   it('should display product summary with qty only when >1', async () => {
