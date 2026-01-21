@@ -66,7 +66,9 @@ const StatusPill = ({ status }) => {
 
 // Small badge for loaner status in lists
 const LoanerBadge = ({ deal }) => {
-  const dueShort = deal?.loaner_eta_return_date ? formatEtMonthDay(deal.loaner_eta_return_date) : null
+  const dueShort = deal?.loaner_eta_return_date
+    ? formatEtMonthDay(deal.loaner_eta_return_date)
+    : null
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
       <Icon name="Car" size={12} className="mr-1" />
@@ -318,7 +320,10 @@ const SHEET_CATEGORY_RULES = [
   { key: 'rg', tokens: ['rg', 'rust', 'rustguard', 'rust guard', 'rustproof'] },
 ]
 
-const normalizeSheetToken = (value) => String(value || '').toLowerCase().trim()
+const normalizeSheetToken = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .trim()
 
 const getSheetDateLabel = (deal) => {
   const raw =
@@ -361,10 +366,7 @@ const getSheetCategoryFlags = (deal) => {
     const rawCategory = product?.category || part?.category || ''
     const rawOp = product?.op_code || product?.opCode || part?.op_code || ''
 
-    const token = [rawCategory, rawName, rawOp]
-      .map(normalizeSheetToken)
-      .filter(Boolean)
-      .join(' ')
+    const token = [rawCategory, rawName, rawOp].map(normalizeSheetToken).filter(Boolean).join(' ')
 
     let matchedKey = null
     for (const rule of SHEET_CATEGORY_RULES) {
@@ -451,7 +453,9 @@ const SheetSummaryRow = ({ deal, dense = false }) => {
         </div>
       </div>
       <div className={dense ? 'min-w-0' : 'col-span-12'}>
-        <div className="text-[10px] uppercase tracking-wide text-slate-400">Price / Cost / Gross</div>
+        <div className="text-[10px] uppercase tracking-wide text-slate-400">
+          Price / Cost / Gross
+        </div>
         <div className="flex flex-wrap gap-2 font-semibold tabular-nums">
           <span>S {formatMoney0OrDash(fin.sale)}</span>
           <span>C {formatMoney0OrDash(fin.cost)}</span>
@@ -508,31 +512,20 @@ const SheetViewTable = ({ deals = [], onRowClick }) => {
                   }
                 }}
               >
-                <td className="px-3 py-2 text-slate-700 tabular-nums">
-                  {getSheetDateLabel(deal)}
-                </td>
+                <td className="px-3 py-2 text-slate-700 tabular-nums">{getSheetDateLabel(deal)}</td>
                 <td className="px-3 py-2 text-slate-900" title={customer}>
                   {customer}
                 </td>
                 <td className="px-3 py-2 text-slate-700" title={vehicle?.title || ''}>
                   {vehicle?.main || '—'}
                 </td>
-                <td
-                  className="px-3 py-2 text-center"
-                  data-testid={`sheet-${deal?.id}-exterior`}
-                >
+                <td className="px-3 py-2 text-center" data-testid={`sheet-${deal?.id}-exterior`}>
                   {renderCheck(flags.exterior)}
                 </td>
-                <td
-                  className="px-3 py-2 text-center"
-                  data-testid={`sheet-${deal?.id}-interior`}
-                >
+                <td className="px-3 py-2 text-center" data-testid={`sheet-${deal?.id}-interior`}>
                   {renderCheck(flags.interior)}
                 </td>
-                <td
-                  className="px-3 py-2 text-center"
-                  data-testid={`sheet-${deal?.id}-windshield`}
-                >
+                <td className="px-3 py-2 text-center" data-testid={`sheet-${deal?.id}-windshield`}>
                   {renderCheck(flags.windshield)}
                 </td>
                 <td className="px-3 py-2 text-center" data-testid={`sheet-${deal?.id}-rg`}>
@@ -1326,7 +1319,9 @@ export default function DealsPage() {
     if (filters?.loanerStatus && filters?.loanerStatus !== 'All') {
       const todayKey = getEtDayKey(new Date())
       const hasActiveLoaner = !!(deal?.has_active_loaner || deal?.loaner_id)
-      const loanerKey = deal?.loaner_eta_return_date ? getEtDayKey(deal?.loaner_eta_return_date) : ''
+      const loanerKey = deal?.loaner_eta_return_date
+        ? getEtDayKey(deal?.loaner_eta_return_date)
+        : null
 
       switch (filters.loanerStatus) {
         case 'Active':
@@ -1953,15 +1948,37 @@ export default function DealsPage() {
         <div className="hidden md:block">
           {showSheetView ? (
             filteredDeals?.length === 0 ? (
-              <div className="bg-white rounded-lg border p-10 text-center text-slate-500">
-                No deals
+              <div className="bg-white rounded-lg border p-10 text-center">
+                <div className="text-slate-700 font-medium">
+                  {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
+                </div>
+                {(deals?.length || 0) > 0 ? (
+                  <button
+                    type="button"
+                    className="mt-3 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    onClick={clearAllFilters}
+                  >
+                    Clear filters
+                  </button>
+                ) : null}
               </div>
             ) : (
               <SheetViewTable deals={filteredDeals} onRowClick={handleOpenDetail} />
             )
           ) : filteredDeals?.length === 0 ? (
-            <div className="bg-white rounded-lg border p-10 text-center text-slate-500">
-              No deals
+            <div className="bg-white rounded-lg border p-10 text-center">
+              <div className="text-slate-700 font-medium">
+                {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
+              </div>
+              {(deals?.length || 0) > 0 ? (
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={clearAllFilters}
+                >
+                  Clear filters
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="space-y-2">

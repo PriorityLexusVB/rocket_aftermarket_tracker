@@ -40,6 +40,7 @@ export default async function globalSetup() {
 
   const storageDir = path.join(process.cwd(), 'e2e')
   const storagePath = path.join(storageDir, 'storageState.json')
+  const artifactsDir = path.join(process.cwd(), '.artifacts', 'e2e')
 
   const seen5xx = new Set<string>()
 
@@ -52,6 +53,28 @@ export default async function globalSetup() {
     storageExists ? { storageState: storagePath } : undefined
   )
   const page = await context.newPage()
+
+  // Keep debug artifacts out of Vite's watched paths to avoid triggering HMR reloads mid-setup.
+  try {
+    await fs.mkdir(artifactsDir, { recursive: true })
+  } catch {}
+
+  // Capture ErrorBoundary exceptions (see src/components/ErrorBoundary.jsx)
+  try {
+    await page.addInitScript(() => {
+      ;(globalThis as any).__E2E_LAST_COMPONENT_ERROR__ = null
+      ;(globalThis as any).__COMPONENT_ERROR__ = (error: any, errorInfo: any) => {
+        try {
+          ;(globalThis as any).__E2E_LAST_COMPONENT_ERROR__ = {
+            message: error?.message ?? String(error),
+            stack: error?.stack ?? null,
+            errorInfo,
+          }
+        } catch {}
+      }
+    })
+  } catch {}
+
   // Debug: surface browser console and key auth responses during setup
   page.on('console', (msg) => {
     try {
@@ -93,6 +116,21 @@ export default async function globalSetup() {
       if (/(auth|supabase)\//i.test(url)) {
         console.log(`[setup:response] ${status} ${url}`)
       }
+    } catch {}
+  })
+
+  page.on('pageerror', (err) => {
+    try {
+      console.error('[setup:pageerror]', err?.message ?? String(err))
+      if ((err as any)?.stack) console.error(String((err as any).stack))
+    } catch {}
+  })
+
+  page.on('requestfailed', (req) => {
+    try {
+      const failure = req.failure()
+      const statusText = failure?.errorText ? ` (${failure.errorText})` : ''
+      console.warn(`[setup:requestfailed] ${req.method()} ${req.url()}${statusText}`)
     } catch {}
   })
 
@@ -241,7 +279,7 @@ export default async function globalSetup() {
           // Take a screenshot to help diagnose
           try {
             await page.screenshot({
-              path: path.join(storageDir, `setup-debug-auth-fail-${i + 1}.png`),
+              path: path.join(artifactsDir, `setup-debug-auth-fail-${i + 1}.png`),
             })
           } catch {}
           await page.waitForTimeout(1000)
@@ -262,9 +300,19 @@ export default async function globalSetup() {
       }
 
       try {
-        await page.screenshot({ path: path.join(storageDir, 'setup-final.png'), fullPage: true })
+        await page.screenshot({ path: path.join(artifactsDir, 'setup-final.png'), fullPage: true })
         const html = await page.content()
-        await fs.writeFile(path.join(storageDir, 'setup-final.html'), html)
+        await fs.writeFile(path.join(artifactsDir, 'setup-final.html'), html)
+
+        const boundaryErr = await page
+          .evaluate(() => (globalThis as any).__E2E_LAST_COMPONENT_ERROR__ ?? null)
+          .catch(() => null)
+        if (boundaryErr) {
+          await fs.writeFile(
+            path.join(artifactsDir, 'setup-error-boundary.json'),
+            JSON.stringify(boundaryErr, null, 2)
+          )
+        }
       } catch {}
       throw new Error('[global.setup] Unable to verify session on /debug-auth after login')
     }
@@ -329,11 +377,11 @@ export default async function globalSetup() {
   } catch {
     try {
       await page.screenshot({
-        path: path.join(storageDir, 'setup-orgid-missing.png'),
+        path: path.join(artifactsDir, 'setup-orgid-missing.png'),
         fullPage: true,
       })
       const html = await page.content()
-      await fs.writeFile(path.join(storageDir, 'setup-orgid-missing.html'), html)
+      await fs.writeFile(path.join(artifactsDir, 'setup-orgid-missing.html'), html)
     } catch {}
     throw new Error(
       '[global.setup] Logged in but orgId was still missing on /debug-auth after DB association'

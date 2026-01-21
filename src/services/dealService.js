@@ -1352,8 +1352,8 @@ export async function getAllDeals() {
     // without draft if the database rejects it.
     let jobStatusFilter =
       jobsJobStatusSupportsDraft === false
-        ? ['pending', 'in_progress', 'completed']
-        : ['draft', 'pending', 'in_progress', 'completed']
+        ? ['pending', 'scheduled', 'in_progress', 'completed']
+        : ['draft', 'pending', 'scheduled', 'in_progress', 'completed']
 
     // We may need up to 4 attempts: original -> remove per-line times -> remove user_profiles name columns / vendor rel
     for (let attempt = 1; attempt <= 4; attempt++) {
@@ -1423,6 +1423,20 @@ export async function getAllDeals() {
         )
         setJobsJobStatusDraftCapability(false)
         jobStatusFilter = jobStatusFilter.filter((s) => s !== 'draft')
+        continue
+      }
+
+      // If job_status is an enum that doesn't include "scheduled", retry without it.
+      if (
+        jobStatusFilter.includes('scheduled') &&
+        msg.toLowerCase().includes('invalid input value for enum') &&
+        msg.toLowerCase().includes('job_status') &&
+        (msg.includes('"scheduled"') || msg.includes("'scheduled'"))
+      ) {
+        warnSchema(
+          '[dealService:getAllDeals] job_status enum does not support "scheduled"; retrying without it'
+        )
+        jobStatusFilter = jobStatusFilter.filter((s) => s !== 'scheduled')
         continue
       }
 
@@ -1841,10 +1855,7 @@ export async function getDeal(id) {
       loaner_number: loaner?.loaner_number || '',
       loaner_id: loaner?.id || null,
       loaner_eta_return_date: loaner?.eta_return_date || null,
-      loaner_eta_short: loaner?.eta_return_date
-        ? formatEtMonthDay(loaner.eta_return_date)
-        : null,
-      loaner_notes: loaner?.notes || '',
+      loaner_eta_short: loaner?.eta_return_date ? formatEtMonthDay(loaner.eta_return_date) : null,
       age_days: ageDays,
       // DEPRECATED: Legacy fields for backward compatibility only
       appt_start: apptStart,
