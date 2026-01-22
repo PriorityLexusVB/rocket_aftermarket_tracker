@@ -16,7 +16,6 @@
 
 const fs = require('fs')
 const path = require('path')
-const readline = require('readline')
 
 // Parse command line arguments
 const args = process.argv.slice(2)
@@ -126,25 +125,6 @@ function exportToCSV(candidates, filepath) {
   const csv = header + rows.join('\n')
   fs.writeFileSync(filepath, csv, 'utf8')
   console.log(`✓ Exported candidate list to: ${filepath}`)
-}
-
-/**
- * Prompt user for confirmation
- * @param {string} question - Confirmation question
- * @returns {Promise<boolean>}
- */
-async function promptConfirmation(question) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  })
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close()
-      resolve(answer.toLowerCase() === 'yes')
-    })
-  })
 }
 
 /**
