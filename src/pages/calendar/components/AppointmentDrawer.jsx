@@ -109,7 +109,12 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(appointment?.job_status)}`}
               >
-                {appointment?.job_status ? String(appointment?.job_status).replace(/_/g, ' ')>
+                {appointment?.job_status
+                  ? String(appointment?.job_status).replace(/_/g, ' ')
+                  : '—'}
+              </span>
+
+            </div>
 
             {/* Subline: Y/M/M/Color + VIN last4 */}
             <div className="text-sm text-gray-600 mb-1">
