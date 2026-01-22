@@ -43,6 +43,7 @@ export default async function globalSetup() {
   const artifactsDir = path.join(process.cwd(), '.artifacts', 'e2e')
 
   const seen5xx = new Set<string>()
+  const seenRequestFailures = new Set<string>()
 
   const browser = await chromium.launch()
   const storageExists = await fs
@@ -129,8 +130,29 @@ export default async function globalSetup() {
   page.on('requestfailed', (req) => {
     try {
       const failure = req.failure()
-      const statusText = failure?.errorText ? ` (${failure.errorText})` : ''
-      console.warn(`[setup:requestfailed] ${req.method()} ${req.url()}${statusText}`)
+      const url = req.url()
+      const rt = req.resourceType()
+
+      // Playwright frequently reports benign aborts during navigation/redirects.
+      // Keep logs high-signal so real flakes stand out.
+      const errorText = failure?.errorText ?? ''
+      const isAborted = errorText === 'net::ERR_ABORTED'
+      const isFont = rt === 'font' || /\.(?:woff2?|ttf|otf)(?:\?|$)/i.test(url)
+      const isFavicon = /\/favicon\b/i.test(url)
+      const isHealth = /\/api\/health-/i.test(url)
+      const isNavigation = req.isNavigationRequest()
+      if (isAborted && (isFont || isFavicon || isHealth || isNavigation)) return
+
+      const statusText = errorText ? ` (${errorText})` : ''
+
+      // De-dupe repetitive failures to keep CI logs readable.
+      const key = `${errorText}|${req.method()}|${rt}|${url}`
+      if (seenRequestFailures.has(key)) return
+      // Prevent unbounded growth on long runs.
+      if (seenRequestFailures.size > 200) seenRequestFailures.clear()
+      seenRequestFailures.add(key)
+
+      console.warn(`[setup:requestfailed] ${req.method()} ${url}${statusText}`)
     } catch {}
   })
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../../components/ui/Navbar'
 import Button from '../../components/ui/Button'
@@ -23,16 +23,19 @@ export default function LoanerManagementDrawer() {
 
   const MS_DAY = 24 * 60 * 60 * 1000
 
-  const getDayUtcMs = (value) => getEtDayUtcMs(value)
+  const getDayUtcMs = useCallback((value) => getEtDayUtcMs(value), [])
 
-  const isPastEtDay = (value, nowDayMs) => {
-    const dayMs = getDayUtcMs(value)
-    if (!dayMs || !nowDayMs) return false
-    return dayMs < nowDayMs
-  }
+  const isPastEtDay = useCallback(
+    (value, nowDayMs) => {
+      const dayMs = getDayUtcMs(value)
+      if (!dayMs || !nowDayMs) return false
+      return dayMs < nowDayMs
+    },
+    [getDayUtcMs]
+  )
 
   // Load loaner data
-  const loadLoaners = async () => {
+  const loadLoaners = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
@@ -59,19 +62,19 @@ export default function LoanerManagementDrawer() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [getDayUtcMs, isPastEtDay])
 
   // Load jobs that need loaners
   const [jobsNeedingLoaners, setJobsNeedingLoaners] = useState([])
 
-  const loadJobsNeedingLoaners = async () => {
+  const loadJobsNeedingLoaners = useCallback(async () => {
     try {
       const jobsWithoutActiveLoaners = await listJobsNeedingLoanersForDrawer()
       setJobsNeedingLoaners(jobsWithoutActiveLoaners || [])
     } catch (err) {
       console.error('Load jobs needing loaners error:', err)
     }
-  }
+  }, [])
 
   // Handle mark returned
   const handleMarkReturned = async (assignmentId) => {
@@ -142,7 +145,7 @@ export default function LoanerManagementDrawer() {
 
   useEffect(() => {
     Promise.all([loadLoaners(), loadJobsNeedingLoaners()])
-  }, [])
+  }, [loadLoaners, loadJobsNeedingLoaners])
 
   if (loading) {
     return (

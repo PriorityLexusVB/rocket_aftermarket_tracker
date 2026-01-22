@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { X, Users, Clock, Car, UserPlus, CheckCircle } from 'lucide-react'
+import { formatPromiseDate } from '@/utils/dateDisplay'
 
 const AssignmentQuickPanel = ({
   unassignedJobs,
@@ -26,8 +27,8 @@ const AssignmentQuickPanel = ({
   }
 
   const formatJobTime = (timestamp) => {
-    if (!timestamp) return 'All day'
-    return new Date(timestamp)?.toLocaleDateString()
+    if (!timestamp) return '—'
+    return formatPromiseDate(timestamp)
   }
 
   return (

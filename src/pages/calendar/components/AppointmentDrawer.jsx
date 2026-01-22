@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   X,
   Calendar,
@@ -19,19 +19,17 @@ import { estLabel } from '../../../lib/time'
 const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }) => {
   const [activeTab, setActiveTab] = useState('details')
   const [copied, setCopied] = useState(false)
+  const closeButtonRef = useRef(null)
 
-  // Extract stock number from title or vehicle info
-  const getStockNumber = () => {
-    if (appointment?.vehicle_info?.includes('Stock:')) {
-      return appointment?.vehicle_info?.split('Stock:')?.[1]?.split('•')?.[0]?.trim()
+  const stockNumber = useMemo(() => {
+    const info = appointment?.vehicle_info
+    if (info?.includes('Stock:')) {
+      return info?.split('Stock:')?.[1]?.split('•')?.[0]?.trim()
     }
     return appointment?.job_number?.split('-')?.pop() || 'N/A'
-  }
+  }, [appointment?.vehicle_info, appointment?.job_number])
 
-  const stockNumber = getStockNumber()
-
-  // Copy stock number to clipboard
-  const handleCopyStock = async () => {
+  const handleCopyStock = useCallback(async () => {
     try {
       await navigator.clipboard?.writeText(stockNumber)
       setCopied(true)
@@ -39,42 +37,68 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
     } catch (err) {
       console.error('Failed to copy:', err)
     }
-  }
+  }, [stockNumber])
 
-  // Build vehicle display string (Y/M/M/Color + VIN last4)
-  const getVehicleDisplay = () => {
+  const { ymm, color } = useMemo(() => {
     const info = appointment?.vehicle_info || ''
     if (info?.includes('•')) {
       const parts = info?.split('•')
-      const ymm = parts?.[0]?.trim()
-      const color = parts?.[1]?.trim()
-      return { ymm, color }
+      return { ymm: parts?.[0]?.trim(), color: parts?.[1]?.trim() }
     }
     return { ymm: info, color: null }
-  }
+  }, [appointment?.vehicle_info])
 
-  const { ymm, color } = getVehicleDisplay()
+  const tabs = useMemo(
+    () => [
+      { id: 'details', label: 'Details', icon: FileText },
+      { id: 'timeline', label: 'Timeline/Notes', icon: MessageSquare },
+      { id: 'photos', label: 'Photos', icon: Camera },
+      { id: 'sms', label: 'SMS', icon: Phone },
+    ],
+    []
+  )
 
-  const tabs = [
-    { id: 'details', label: 'Details', icon: FileText },
-    { id: 'timeline', label: 'Timeline/Notes', icon: MessageSquare },
-    { id: 'photos', label: 'Photos', icon: Camera },
-    { id: 'sms', label: 'SMS', icon: Phone },
-  ]
+  const handleExportIcs = useCallback(() => {
+    onExportICS?.(appointment)
+  }, [appointment, onExportICS])
+
+  useEffect(() => {
+    closeButtonRef.current?.focus?.()
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl border-l border-gray-200 z-50 flex flex-col">
+    <div
+      className="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl border-l border-gray-200 z-50 flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="appointment-drawer-title"
+    >
       {/* Header with BIG STOCK # */}
       <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {/* BIG STOCK NUMBER */}
             <div className="flex items-center space-x-3 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900 tracking-wide">{stockNumber}</h2>
+              <h2
+                id="appointment-drawer-title"
+                className="text-2xl font-bold text-gray-900 tracking-wide"
+              >
+                {stockNumber}
+              </h2>
               <button
                 onClick={handleCopyStock}
                 className="p-2 text-gray-500 hover:text-blue-600 hover:bg-white rounded-full transition-all"
-                title="Copy Stock Number"
+                title="Copy stock number"
+                aria-label="Copy stock number"
               >
                 {copied ? (
                   <CheckCircle className="w-5 h-5 text-green-600" />
@@ -85,7 +109,9 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(appointment?.job_status)}`}
               >
-                {appointment?.job_status?.replace('_', ' ')}
+                {appointment?.job_status
+                  ? String(appointment?.job_status).replace(/_/g, ' ')
+                  : '—'}
               </span>
             </div>
 
@@ -99,7 +125,13 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
             </div>
           </div>
 
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+          <button
+            ref={closeButtonRef}
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 p-1"
+            aria-label="Close appointment details"
+            title="Close"
+          >
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -113,6 +145,7 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
               <button
                 key={tab?.id}
                 onClick={() => setActiveTab(tab?.id)}
+                aria-current={activeTab === tab?.id ? 'page' : undefined}
                 className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab?.id
                     ? 'border-blue-500 text-blue-600 bg-blue-50'
@@ -211,8 +244,9 @@ const AppointmentDrawer = ({ appointment, onClose, onExportICS, getStatusColor }
             {/* Copy .ics Button */}
             <div className="pt-4 border-t border-gray-200">
               <button
-                onClick={() => onExportICS(appointment)}
+                onClick={handleExportIcs}
                 className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2 transition-colors"
+                aria-label="Copy calendar file (.ics)"
               >
                 <Download className="w-4 h-4" />
                 <span>Copy .ics Calendar File</span>

@@ -122,8 +122,7 @@
 
 - Goal: Safe cleanup utility
 - Do:
-  - `scripts/pruneDemoJobs.js` with `--dry-run` default; `--apply --confirm` required
-  - Output JSON + CSV summary
+  - `scripts/pruneDemoJobs.cjs` (dry-run only) to identify candidates and export a CSV ledger
   - Unit test selection logic; no side effects in dry-run
 - Artifact: `.artifacts/prune-demo/preview-<date>.csv`
 

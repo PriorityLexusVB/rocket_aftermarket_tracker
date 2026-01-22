@@ -22,6 +22,7 @@ import {
   isDateOnlyValue,
   toSafeDateForTimeZone,
 } from '@/utils/scheduleDisplay'
+import { formatPromiseDate } from '@/utils/dateDisplay'
 
 const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
   const navigate = useNavigate()
@@ -102,6 +103,19 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
   }
 
   const TZ = 'America/New_York'
+
+  const formatCommTimestamp = (value) => {
+    const d = toSafeDateForTimeZone(value)
+    if (!d) return '—'
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ,
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(d)
+  }
 
   const formatDetailDateTime = (value) => {
     if (!value) return '—'
@@ -358,7 +372,9 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
                 <div>
                   <span className="font-medium text-gray-700">Promised Completion:</span>
                   <div className="text-gray-900">
-                    {formatDetailDateTime(appointment?.promised_date)}
+                    {isDateOnlyValue(appointment?.promised_date)
+                      ? formatPromiseDate(appointment?.promised_date)
+                      : formatDetailDateTime(appointment?.promised_date)}
                   </div>
                 </div>
               )}
@@ -557,7 +573,7 @@ const AppointmentDetailPanel = ({ appointment, onClose, onUpdate }) => {
                         {comm?.communication_type}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {new Date(comm?.sent_at)?.toLocaleString()}
+                        {formatCommTimestamp(comm?.sent_at)}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700">{comm?.message}</p>

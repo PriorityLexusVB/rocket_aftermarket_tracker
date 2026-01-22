@@ -5,16 +5,13 @@
  * Safety-first utility to identify and optionally remove demo/test jobs from the database.
  *
  * Usage:
- *   node scripts/pruneDemoJobs.js                    # Dry-run mode (default)
- *   node scripts/pruneDemoJobs.js --apply            # Apply changes (requires confirmation)
- *   node scripts/pruneDemoJobs.js --help             # Show help
+ *   node scripts/pruneDemoJobs.cjs                   # Dry-run mode (default)
+ *   node scripts/pruneDemoJobs.cjs --help            # Show help
  *
  * Guardrails:
  *   - Dry-run is the default mode (no destructive operations)
- *   - --apply requires interactive confirmation
- *   - Exports candidate list to CSV before deletion
- *   - Never runs in CI environment
- *   - Requires explicit org_id parameter
+ *   - Exports candidate list to CSV ledger
+ *   - Never performs deletions (use the SQL/maintenance cleanup scripts for that)
  */
 
 const fs = require('fs')
@@ -23,7 +20,7 @@ const readline = require('readline')
 
 // Parse command line arguments
 const args = process.argv.slice(2)
-const isDryRun = !args.includes('--apply')
+const requestedApply = args.includes('--apply')
 const showHelp = args.includes('--help') || args.includes('-h')
 const orgIdArg = args.find((arg) => arg.startsWith('--org-id='))
 const orgId = orgIdArg ? orgIdArg.split('=')[1] : null
@@ -34,43 +31,35 @@ if (showHelp) {
 Prune Demo Jobs Script
 
 Usage:
-  node scripts/pruneDemoJobs.js [options]
+  node scripts/pruneDemoJobs.cjs [options]
 
 Options:
   --help, -h              Show this help message
-  --apply                 Apply changes (requires confirmation, default is dry-run)
-  --org-id=<id>           Filter by organization ID (required for --apply)
+  --org-id=<id>           Filter by organization ID (optional)
 
 Examples:
-  node scripts/pruneDemoJobs.js
+  node scripts/pruneDemoJobs.cjs
     # Dry-run: List demo jobs without deleting
   
-  node scripts/pruneDemoJobs.js --org-id=abc123
+  node scripts/pruneDemoJobs.cjs --org-id=abc123
     # Dry-run for specific org
-  
-  node scripts/pruneDemoJobs.js --org-id=abc123 --apply
-    # Delete demo jobs for org (requires confirmation)
 
 Safety Features:
   - Dry-run is the default mode
-  - --apply requires explicit confirmation
   - Exports CSV before deletion
-  - Never runs in CI
+  - Never deletes data (use cleanup scripts / SQL for that)
 `)
   process.exit(0)
 }
 
-// CI check
-if (process.env.CI === 'true' && !isDryRun) {
-  console.error('ERROR: Cannot run --apply mode in CI environment')
-  process.exit(1)
-}
-
-// Require org_id for apply mode
-if (!isDryRun && !orgId) {
-  console.error('ERROR: --org-id is required when using --apply mode')
-  console.error('Usage: node scripts/pruneDemoJobs.js --org-id=<id> --apply')
-  process.exit(1)
+if (requestedApply) {
+  console.error('ERROR: This script is non-destructive and does not support --apply.')
+  console.error('It only identifies candidates and exports a CSV ledger.')
+  console.error('')
+  console.error('If you need to delete data, use:')
+  console.error('  - scripts/cleanupOldDeals.cjs (org-scoped, dry-run default)')
+  console.error('  - scripts/sql/* (transactional deletes in SQL editor)')
+  process.exit(2)
 }
 
 /**
@@ -163,7 +152,7 @@ async function promptConfirmation(question) {
  */
 async function main() {
   console.log('\n=== Prune Demo Jobs ===\n')
-  console.log(`Mode: ${isDryRun ? 'DRY-RUN (safe)' : 'APPLY (destructive)'}`)
+  console.log('Mode: DRY-RUN (safe)')
   if (orgId) {
     console.log(`Org ID: ${orgId}`)
   }
@@ -229,35 +218,8 @@ async function main() {
 
   exportToCSV(candidates, csvPath)
 
-  if (isDryRun) {
-    console.log('\n✓ DRY-RUN complete. No changes made.')
-    console.log('To apply changes, run: node scripts/pruneDemoJobs.js --org-id=<id> --apply')
-    return
-  }
-
-  // Apply mode - require confirmation
-  console.log('\n⚠️  WARNING: You are about to DELETE the jobs listed above.')
-  console.log('This action cannot be undone.')
-  console.log('')
-
-  const confirmed = await promptConfirmation('Type "yes" to confirm deletion: ')
-
-  if (!confirmed) {
-    console.log('\n✓ Deletion cancelled. No changes made.')
-    return
-  }
-
-  // In production, this would execute the deletion
-  console.log('\n🔄 Deleting demo jobs...')
-  console.log('(In production, this would execute SQL DELETE statements)')
-
-  // Mock deletion
-  candidates.forEach((job) => {
-    console.log(`  ✓ Deleted: ${job.job_number || job.id}`)
-  })
-
-  console.log(`\n✓ Successfully deleted ${candidates.length} demo jobs`)
-  console.log(`Backup CSV: ${csvPath}`)
+  console.log('\n✓ DRY-RUN complete. No changes made.')
+  console.log(`Ledger CSV: ${csvPath}`)
 }
 
 // Run

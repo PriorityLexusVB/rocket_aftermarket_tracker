@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   X,
@@ -26,72 +26,129 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')
   const [notes, setNotes] = useState('')
+  const [jobNumberCopied, setJobNumberCopied] = useState(false)
+  const closeButtonRef = useRef(null)
   const navigate = useNavigate()
+
+  const useAgenda = useMemo(
+    () => String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true',
+    []
+  )
+
+  const handleOpenDeal = useCallback(() => {
+    onClose?.()
+    navigate(`/deals/${job?.id}/edit`)
+  }, [job?.id, navigate, onClose])
+
+  const handleStart = useCallback(() => {
+    onStatusUpdate?.(job?.id, 'in_progress')
+  }, [job?.id, onStatusUpdate])
+
+  const handleComplete = useCallback(() => {
+    onStatusUpdate?.(job?.id, 'completed')
+  }, [job?.id, onStatusUpdate])
+
+  const handleNoShow = useCallback(() => {
+    onStatusUpdate?.(job?.id, 'no_show')
+  }, [job?.id, onStatusUpdate])
+
+  const handleReschedule = useCallback(() => {
+    if (useAgenda) {
+      const qs = new URLSearchParams({ focus: String(job?.id || '') })
+      onClose?.()
+      navigate(`/calendar/agenda?${qs.toString()}`)
+      return
+    }
+
+    // Fallback: send user to deal edit where line items/times can be adjusted.
+    onClose?.()
+    navigate(`/deals/${job?.id}/edit`)
+  }, [job?.id, navigate, onClose, useAgenda])
+
+  const handleCopyJobNumber = useCallback(async () => {
+    const text = job?.job_number
+    if (!text) return
+
+    try {
+      await navigator.clipboard?.writeText(String(text))
+      setJobNumberCopied(true)
+      window.setTimeout(() => setJobNumberCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy job number:', err)
+    }
+  }, [job?.job_number])
+
+  useEffect(() => {
+    if (!isOpen) return
+    closeButtonRef.current?.focus?.()
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose?.()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isOpen, onClose])
+
+  const quickActions = useMemo(
+    () => [
+      {
+        id: 'open_deal',
+        label: 'Open Deal',
+        icon: Eye,
+        color: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
+        action: handleOpenDeal,
+      },
+      {
+        id: 'start',
+        label: 'Start',
+        icon: Play,
+        color: 'bg-green-600 hover:bg-green-700 text-white',
+        action: handleStart,
+      },
+      {
+        id: 'complete',
+        label: 'Mark done',
+        icon: CheckCircle,
+        color: 'bg-blue-600 hover:bg-blue-700 text-white',
+        title: 'Marks this job as done (status: completed)',
+        action: handleComplete,
+      },
+      {
+        id: 'no_show',
+        label: 'No-Show',
+        icon: XCircle,
+        color: 'bg-gray-600 hover:bg-gray-700 text-white',
+        action: handleNoShow,
+      },
+      {
+        id: 'reschedule',
+        label: 'Reschedule',
+        icon: RotateCcw,
+        color: 'bg-orange-600 hover:bg-orange-700 text-white',
+        action: handleReschedule,
+      },
+    ],
+    [handleComplete, handleNoShow, handleOpenDeal, handleReschedule, handleStart]
+  )
+
+  const tabs = useMemo(
+    () => [
+      { id: 'details', label: 'Details', icon: Package },
+      { id: 'customer', label: 'Customer', icon: User },
+      { id: 'timeline', label: 'Timeline/Notes', icon: MessageSquare },
+      { id: 'photos', label: 'Photos', icon: Camera },
+    ],
+    []
+  )
 
   if (!isOpen || !job) return null
 
   const statusBadge = getStatusBadge(job?.job_status)
   const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
   const overdue = isOverdue(promise)
-
-  const quickActions = [
-    {
-      id: 'open_deal',
-      label: 'Open Deal',
-      icon: Eye,
-      color: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
-      action: () => navigate(`/deals/${job?.id}/edit`),
-    },
-    {
-      id: 'start',
-      label: 'Start',
-      icon: Play,
-      color: 'bg-green-600 hover:bg-green-700 text-white',
-      action: () => onStatusUpdate?.(job?.id, 'in_progress'),
-    },
-    {
-      id: 'complete',
-      label: 'Mark done',
-      icon: CheckCircle,
-      color: 'bg-blue-600 hover:bg-blue-700 text-white',
-      title: 'Marks this job as done (status: completed)',
-      action: () => onStatusUpdate?.(job?.id, 'completed'),
-    },
-    {
-      id: 'no_show',
-      label: 'No-Show',
-      icon: XCircle,
-      color: 'bg-gray-600 hover:bg-gray-700 text-white',
-      action: () => onStatusUpdate?.(job?.id, 'no_show'),
-    },
-    {
-      id: 'reschedule',
-      label: 'Reschedule',
-      icon: RotateCcw,
-      color: 'bg-orange-600 hover:bg-orange-700 text-white',
-      action: () => {
-        const useAgenda = String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true'
-
-        if (useAgenda) {
-          const qs = new URLSearchParams({ focus: String(job?.id || '') })
-          onClose?.()
-          navigate(`/calendar/agenda?${qs.toString()}`)
-          return
-        }
-
-        // Fallback: send user to deal edit where line items/times can be adjusted.
-        onClose?.()
-        navigate(`/deals/${job?.id}/edit`)
-      },
-    },
-  ]
-
-  const tabs = [
-    { id: 'details', label: 'Details', icon: Package },
-    { id: 'customer', label: 'Customer', icon: User },
-    { id: 'timeline', label: 'Timeline/Notes', icon: MessageSquare },
-    { id: 'photos', label: 'Photos', icon: Camera },
-  ]
 
   const renderDetailsTab = () => (
     <div className="space-y-6">
@@ -105,7 +162,12 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
             </label>
             <div className="mt-1 flex items-center">
               <span className="text-sm font-mono">{job?.job_number}</span>
-              <button className="ml-2 p-1 hover:bg-gray-100 rounded">
+                <button
+                  onClick={handleCopyJobNumber}
+                  className="ml-2 p-1 hover:bg-gray-100 rounded"
+                  aria-label="Copy job number"
+                  title="Copy job number"
+                >
                 <Copy className="h-3 w-3 text-gray-400" />
               </button>
             </div>
@@ -296,9 +358,14 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} aria-hidden="true"></div>
 
-      <div className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl">
+      <div
+        className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="job-drawer-title"
+      >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200 bg-white">
@@ -310,7 +377,9 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                   }`}
                 ></div>
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">{job?.job_number}</h2>
+                  <h2 id="job-drawer-title" className="text-xl font-semibold text-gray-900">
+                    {job?.job_number}
+                  </h2>
                   <div className="text-sm text-gray-600 flex items-center mt-1">
                     {job?.vehicle_info}
                     <span
@@ -326,9 +395,30 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                 </div>
               </div>
 
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="h-5 w-5 text-gray-400" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyJobNumber}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                  aria-label="Copy job number"
+                  title="Copy job number"
+                >
+                  {jobNumberCopied ? (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  ) : (
+                    <Copy className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+
+                <button
+                  ref={closeButtonRef}
+                  onClick={onClose}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                  aria-label="Close job details"
+                  title="Close"
+                >
+                  <X className="h-5 w-5 text-gray-400" />
+                </button>
+              </div>
             </div>
 
             {/* Quick Actions */}
@@ -385,6 +475,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                   <button
                     key={tab?.id}
                     onClick={() => setActiveTab(tab?.id)}
+                    aria-current={activeTab === tab?.id ? 'page' : undefined}
                     className={`
                       flex items-center py-3 border-b-2 text-sm font-medium
                       ${

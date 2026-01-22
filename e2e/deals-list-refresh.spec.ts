@@ -111,12 +111,19 @@ test.describe('Deals List Refresh After Edit', () => {
     await page.goto('/deals')
     await page.waitForLoadState('networkidle')
 
+    const allTab = page.getByRole('button', { name: 'All' })
+    if (await allTab.isVisible().catch(() => false)) {
+      await allTab.click()
+      await page.waitForLoadState('networkidle')
+    }
+
     const firstDealRow = page.locator('[data-testid^="deal-row-"]').first()
     await expect(firstDealRow).toBeVisible({ timeout: 10_000 })
 
     // Get deal ID
     const dealId = await firstDealRow.getAttribute('data-testid')
     const cleanDealId = dealId?.replace('deal-row-', '')
+    if (!cleanDealId) throw new Error('No deal id available to edit (missing data-testid)')
 
     // Navigate directly to edit route to avoid drawer overlay
     await page.goto(`/deals/${cleanDealId}/edit`, { waitUntil: 'domcontentloaded' })
@@ -159,17 +166,13 @@ test.describe('Deals List Refresh After Edit', () => {
     await page.goto('/deals')
     await page.waitForLoadState('networkidle')
 
-    let targetRow = cleanDealId
-      ? page.locator(`[data-testid="deal-row-${cleanDealId}"]`)
-      : page.locator('[data-testid^="deal-row-"]').first()
-
-    try {
-      await expect(targetRow).toBeVisible({ timeout: 10_000 })
-    } catch {
-      // Fallback to the first available row if the specific one is not present
-      targetRow = page.locator('[data-testid^="deal-row-"]').first()
-      await expect(targetRow).toBeVisible({ timeout: 10_000 })
+    if (await allTab.isVisible().catch(() => false)) {
+      await allTab.click()
+      await page.waitForLoadState('networkidle')
     }
+
+    const targetRow = page.locator(`[data-testid="deal-row-${cleanDealId}"]`)
+    await expect(targetRow).toBeVisible({ timeout: 10_000 })
 
     // Check that a date field exists in the resolved row
     const dateField = targetRow.locator(

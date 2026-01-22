@@ -55,14 +55,22 @@ const EditDealModal = ({ isOpen, dealId, deal: initialDeal, onClose, onSuccess }
 
   // Handle save
   const handleSave = async (payload) => {
+    const targetId = dealId || initialDeal?.id
+    if (!targetId) throw new Error('No deal selected to edit.')
+
+    const savedDeal = await updateDeal(targetId, payload)
+
+    // Best-effort refresh so parent list gets the canonical persisted row
+    // (e.g. server-side defaults, computed fields, status normalization).
+    let canonicalDeal = savedDeal
     try {
-      const savedDeal = await updateDeal(dealId || initialDeal?.id, payload)
-      setDealData(mapDbDealToForm(savedDeal))
-      // Pass the saved deal back to parent for in-place update
-      if (onSuccess) onSuccess(savedDeal)
-    } catch (err) {
-      throw err
+      canonicalDeal = await getDeal(targetId)
+    } catch {
+      // Keep savedDeal if refetch fails.
     }
+
+    setDealData(mapDbDealToForm(canonicalDeal))
+    if (onSuccess) onSuccess(canonicalDeal)
   }
 
   // Handle close

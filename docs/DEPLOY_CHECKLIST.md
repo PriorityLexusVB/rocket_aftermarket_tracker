@@ -34,10 +34,17 @@ NOTIFY pgrst, 'reload schema';
   - `supabase/migrations/20251107110500_add_manager_delete_policies_and_deals_health.sql` (Manager DELETE policies)
   - `supabase/migrations/20251107103000_rls_write_policies_completion.sql` (RLS validation)
   - `supabase/migrations/20251107093000_verify_job_parts_vendor_fk.sql` (Vendor FK + drift prevention)
+  - `supabase/migrations/20260121220000_add_missing_fk_indexes_phase7.sql` (Index-only: FK covering indexes)
+  - `supabase/migrations/20260121220100_drop_duplicate_indexes_phase7.sql` (Index-only: remove duplicates)
+  - `supabase/migrations/20260121223000_add_remaining_fk_indexes_phase7.sql` (Index-only: FK covering indexes)
 - [ ] Confirm all migrations include `NOTIFY pgrst, 'reload schema';` when adding/modifying:
   - Foreign key constraints
   - RLS policies
   - Helper functions
+
+Notes:
+- Index-only migrations do not require a PostgREST schema reload.
+- Any migration that changes relationships/policies/functions should include `NOTIFY pgrst, 'reload schema';`.
 - [ ] Review RLS policy documentation: `docs/RLS_FIX_SUMMARY.md`
 
 ### Pre-Deployment Validation

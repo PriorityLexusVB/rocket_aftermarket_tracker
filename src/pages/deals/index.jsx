@@ -1665,6 +1665,7 @@ export default function DealsPage() {
               { value: 'All', label: 'All' },
               { value: 'Draft', label: 'Draft' },
               { value: 'Pending', label: 'Booked (time TBD)' },
+              { value: 'Scheduled', label: 'Scheduled' },
               { value: 'Active', label: 'Active' },
               { value: 'Completed', label: 'Completed' },
             ]?.map(({ value, label }) => (

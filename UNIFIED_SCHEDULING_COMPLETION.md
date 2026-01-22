@@ -35,10 +35,8 @@ This PR completes the unified scheduling implementation by fixing test failures,
 **Features**:
 
 - 🛡️ Dry-run mode by default (no destructive operations)
-- 📊 CSV export to `.artifacts/` before any deletion
-- ✋ Interactive confirmation required for apply mode
-- 🚫 CI environment protection (cannot run --apply in CI)
-- 🔑 Requires explicit org-id parameter
+- 📊 CSV export to `.artifacts/` as a deletion ledger
+- 🚫 Never deletes data (use dedicated cleanup scripts or SQL for destructive operations)
 - 🎯 Pattern-based demo job identification
 
 **Usage**:
@@ -49,9 +47,6 @@ node scripts/pruneDemoJobs.cjs
 
 # With org filter
 node scripts/pruneDemoJobs.cjs --org-id=abc123
-
-# Apply changes (requires confirmation)
-node scripts/pruneDemoJobs.cjs --org-id=abc123 --apply
 ```
 
 ## Infrastructure Already Complete

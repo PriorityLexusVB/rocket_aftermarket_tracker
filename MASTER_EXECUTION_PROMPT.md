@@ -510,9 +510,8 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 ### Test Results
 
 ```
-✅ Tests: PASS — 514 passed, 1 failed (unrelated), 2 skipped
-✅ Total test suite: 517 tests
-✅ Known non-blocking: capabilityTelemetry invalid JSON import (expected in tests)
+✅ Tests: PASS — 996 passed, 2 skipped
+✅ Test files: 116 passed
 ```
 
 ### Artifacts Present
@@ -530,13 +529,13 @@ formatTimeWindow(start, end) → "h:mm AM/PM - h:mm AM/PM" or "Not scheduled"
 | Phase 1: Permission Error Mapping    | ✅ COMPLETED | `.artifacts/deal-perm-map/`                 |
 | Phase 2: Time Normalization          | ✅ COMPLETED | `.artifacts/time-normalize/`                |
 | Phase 3: UI-Safe Date Display        | ✅ COMPLETED | `src/tests/ui/promiseDate.display.test.jsx` |
-| Phase 4: Appointments Simplification | 🔄 READY     | -                                           |
-| Phase 5: Drawer Streamlining         | 🔄 READY     | -                                           |
-| Phase 6: Calendar UX Lane Clarity    | 🔄 READY     | -                                           |
-| Phase 7: Performance Health Polish   | 🔄 READY     | -                                           |
-| Phase 8: Prune Demo Jobs Script      | 🔄 READY     | -                                           |
-| Phase 9: Final Checks                | 🔄 READY     | -                                           |
-| Phase 10: PR and Rollback            | 🔄 READY     | -                                           |
+| Phase 4: Appointments Simplification | ✅ COMPLETED | `src/tests/appointmentGrouping.test.js`     |
+| Phase 5: Drawer Streamlining         | ✅ COMPLETED | `.artifacts/final-verification-2026-01-21.md` |
+| Phase 6: Calendar UX Lane Clarity    | ✅ COMPLETED | `docs/CALENDAR_LANES_LEGEND.md`             |
+| Phase 7: Performance Health Polish   | ✅ COMPLETED | `.artifacts/performance/2026-01-21_phase7_followup_migrations.md` |
+| Phase 8: Prune Demo Jobs Script      | ✅ COMPLETED | `scripts/pruneDemoJobs.cjs`                 |
+| Phase 9: Final Checks                | ✅ COMPLETED | `.artifacts/final-verification-2026-01-21.md` |
+| Phase 10: PR and Rollback            | ✅ COMPLETED | `docs/DEPLOY_CHECKLIST.md`                  |
 
 ---
 

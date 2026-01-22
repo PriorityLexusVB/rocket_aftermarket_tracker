@@ -670,10 +670,7 @@ const CalendarFlowManagementCenter = () => {
     const statusBadge = getStatusBadge(statusForBadge)
     const statusColor = statusBadge?.color || 'bg-blue-500'
 
-    const densityClasses =
-      density === 'compact'
-        ? 'p-2 text-xs leading-snug'
-        : 'p-3 text-sm'
+    const densityClasses = density === 'compact' ? 'p-2 text-xs leading-snug' : 'p-3 text-sm'
     const densityMargin = density === 'compact' ? 'mb-1' : 'mb-2'
 
     return (
@@ -866,7 +863,10 @@ const CalendarFlowManagementCenter = () => {
                           const seen = minuteCounts.get(minutes) || 0
                           minuteCounts.set(minutes, seen + 1)
 
-                          const baseTop = Math.max(0, Math.min(HOUR_SLOT_PX - 8, minutes * PX_PER_MINUTE))
+                          const baseTop = Math.max(
+                            0,
+                            Math.min(HOUR_SLOT_PX - 8, minutes * PX_PER_MINUTE)
+                          )
                           const stackedTop = Math.min(HOUR_SLOT_PX - 8, baseTop + seen * 10)
 
                           return renderEventChip(job, {
@@ -1018,21 +1018,26 @@ const CalendarFlowManagementCenter = () => {
               </button>
 
               <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                <summary className="cursor-pointer select-none text-sm text-gray-700">Legend</summary>
+                <summary className="cursor-pointer select-none text-sm text-gray-700">
+                  Legend
+                </summary>
                 <div className="mt-2 grid gap-1 text-xs text-gray-600">
                   <div className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 rounded bg-green-500" />
-                    <span>On-site (PLV)</span>
+                    <span>On-site (PLV) (no vendor or on-site)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
-                    <span>Vendor lane</span>
+                    <span>Vendor lane (assigned vendor)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-3 w-3 text-red-600" />
                     <span>Overdue promise</span>
                   </div>
-                  <div className="text-[11px] text-gray-500">Drop in a slot to set minutes (5-min increments).</div>
+                  <div className="text-[11px] text-gray-500">
+                    Drop onto a time slot to set minutes (5-min increments) or into a vendor lane to
+                    assign vendor.
+                  </div>
                 </div>
               </details>
             </div>
