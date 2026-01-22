@@ -18,6 +18,20 @@ For automated coding agents (Copilot, MCP agents), see the comprehensive one-pag
 
 - **[AGENT_RUN_PROMPT_ONEPAGE.md](./AGENT_RUN_PROMPT_ONEPAGE.md)** — Complete agent execution prompt with guardrails, stack lock, and phased execution plan
 
+## Documentation map
+
+Canonical / start-here docs:
+
+- `AGENTS.md`
+- `.github/copilot-instructions.md`
+- `.github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md`
+- `MASTER_EXECUTION_PROMPT.md`
+- [docs/QUICK_START_DEVELOPMENT.md](docs/QUICK_START_DEVELOPMENT.md)
+- [docs/DEPLOY_CHECKLIST.md](docs/DEPLOY_CHECKLIST.md)
+- `DEPLOYMENT_GUIDE.md`
+
+Historical one-off reports and fix summaries live under [docs/archive/](docs/archive/).
+
 ## Development Environment Setup
 
 ### Using Dev Containers (Recommended)
