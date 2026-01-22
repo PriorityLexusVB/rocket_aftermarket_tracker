@@ -17,7 +17,7 @@ import { useNavigate } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { appointmentsService } from '@/services/appointmentsService'
 import { toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
-import { getEffectiveJobStatus } from '@/utils/jobStatusTimeRules'
+import { getEffectiveJobStatus } from '@/utils/jobStatusTimeRules.js'
 
 // Import components
 import AppointmentCard from './components/AppointmentCard'

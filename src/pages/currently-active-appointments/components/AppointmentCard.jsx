@@ -11,7 +11,7 @@ import {
   Check,
 } from 'lucide-react'
 import { getAppointmentScheduleDisplay, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
-import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
+import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules.js'
 
 const AppointmentCard = ({
   appointment,
