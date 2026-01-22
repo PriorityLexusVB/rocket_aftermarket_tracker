@@ -11,6 +11,7 @@ import {
   Check,
 } from 'lucide-react'
 import { getAppointmentScheduleDisplay, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
 
 const AppointmentCard = ({
   appointment,
@@ -272,26 +273,33 @@ const AppointmentCard = ({
         {!bulkMode && (
           <div className="flex items-center justify-between pt-4 border-t border-gray-100">
             <div className="flex items-center space-x-2">
-              {/* Quick Status Updates */}
-              {appointment?.job_status === 'scheduled' && (
+              {appointment?.job_status === 'completed' ? (
                 <button
-                  onClick={(e) => handleStatusChange('in_progress', e)}
-                  className="px-3 py-1.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors duration-200"
+                  onClick={(e) =>
+                    handleStatusChange(
+                      {
+                        status: getUncompleteTargetStatus(appointment, { now: new Date() }),
+                        patch: { completed_at: null },
+                      },
+                      e
+                    )
+                  }
+                  className="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors duration-200"
+                  title="Uncomplete this job"
                 >
-                  Start Work
+                  Uncomplete
                 </button>
-              )}
-              {appointment?.job_status === 'in_progress' && (
+              ) : (
                 <button
-                  onClick={(e) => handleStatusChange('quality_check', e)}
-                  className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors duration-200"
-                >
-                  Quality Check
-                </button>
-              )}
-              {appointment?.job_status === 'quality_check' && (
-                <button
-                  onClick={(e) => handleStatusChange('completed', e)}
+                  onClick={(e) =>
+                    handleStatusChange(
+                      {
+                        status: 'completed',
+                        patch: { completed_at: new Date().toISOString() },
+                      },
+                      e
+                    )
+                  }
                   className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200"
                   title="Marks this job as done (status: completed)"
                 >

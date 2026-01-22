@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
 import { appointmentsService } from '@/services/appointmentsService'
 import { toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+import { getEffectiveJobStatus } from '@/utils/jobStatusTimeRules'
 
 // Import components
 import AppointmentCard from './components/AppointmentCard'
@@ -333,11 +334,17 @@ const CurrentlyActiveAppointmentsLegacy = () => {
     setSelectedAppointments(newSelection)
   }
 
-  const handleUpdateStatus = async (appointmentId, newStatus) => {
+  const handleUpdateStatus = async (appointmentId, newStatusOrPayload) => {
     try {
+      const payload =
+        newStatusOrPayload && typeof newStatusOrPayload === 'object'
+          ? newStatusOrPayload
+          : { status: newStatusOrPayload }
+
       const { error } = await appointmentsService.updateJobStatus({
         jobId: appointmentId,
-        status: newStatus,
+        status: payload?.status,
+        patch: payload?.patch,
         orgId,
       })
       if (error) throw error
@@ -408,9 +415,13 @@ const CurrentlyActiveAppointmentsLegacy = () => {
   const getAppointmentCounts = () => {
     const total = originalAppointments?.length || 0
     const inProgress =
-      originalAppointments?.filter((apt) => apt?.job_status === 'in_progress')?.length || 0
+      originalAppointments?.filter(
+        (apt) => getEffectiveJobStatus(apt, { now: new Date() }) === 'in_progress'
+      )?.length || 0
     const scheduled =
-      originalAppointments?.filter((apt) => apt?.job_status === 'scheduled')?.length || 0
+      originalAppointments?.filter(
+        (apt) => getEffectiveJobStatus(apt, { now: new Date() }) === 'scheduled'
+      )?.length || 0
     const overdue = originalAppointments?.filter((apt) => apt?.isOverdue)?.length || 0
     const unassigned = unassignedJobs?.length || 0
 

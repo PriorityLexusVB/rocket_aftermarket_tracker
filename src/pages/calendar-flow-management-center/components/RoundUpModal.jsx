@@ -9,7 +9,6 @@ import {
   Car,
   Building2,
   MapPin,
-  Play,
   CheckCircle,
   XCircle,
   RotateCcw,
@@ -199,13 +198,6 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
 
           {/* Quick Actions */}
           <div className="flex items-center space-x-1">
-            <button
-              onClick={() => handleJobAction(job?.id, 'start')}
-              className="p-1 hover:bg-green-100 rounded text-green-600"
-              title="Start"
-            >
-              <Play className="h-3 w-3" />
-            </button>
             <button
               onClick={() => handleJobAction(job?.id, 'complete')}
               className="p-1 hover:bg-blue-100 rounded text-blue-600"

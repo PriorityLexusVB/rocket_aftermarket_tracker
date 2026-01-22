@@ -398,14 +398,18 @@ export const appointmentsService = {
     }
   },
 
-  async updateJobStatus({ jobId, status, orgId } = {}) {
+  async updateJobStatus({ jobId, status, orgId, patch } = {}) {
     try {
       if (!jobId) return { data: null, error: new Error('jobId is required') }
       if (!status) return { data: null, error: new Error('status is required') }
 
+      const extra = patch && typeof patch === 'object' ? { ...patch } : {}
+      if ('job_status' in extra) delete extra.job_status
+      if ('updated_at' in extra) delete extra.updated_at
+
       let q = supabase
         .from('jobs')
-        .update({ job_status: status, updated_at: new Date().toISOString() })
+        .update({ job_status: status, ...extra, updated_at: new Date().toISOString() })
         .eq('id', jobId)
 
       if (orgId) q = q.eq('dealer_id', orgId)
