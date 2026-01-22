@@ -30,10 +30,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const closeButtonRef = useRef(null)
   const navigate = useNavigate()
 
-  const useAgenda = useMemo(
-    () => String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true',
-    []
-  )
+  const useAgenda = useMemo(() => String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true', [])
 
   const handleOpenDeal = useCallback(() => {
     onClose?.()
@@ -162,12 +159,12 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
             </label>
             <div className="mt-1 flex items-center">
               <span className="text-sm font-mono">{job?.job_number}</span>
-                <button
-                  onClick={handleCopyJobNumber}
-                  className="ml-2 p-1 hover:bg-gray-100 rounded"
-                  aria-label="Copy job number"
-                  title="Copy job number"
-                >
+              <button
+                onClick={handleCopyJobNumber}
+                className="ml-2 p-1 hover:bg-gray-100 rounded"
+                aria-label="Copy job number"
+                title="Copy job number"
+              >
                 <Copy className="h-3 w-3 text-gray-400" />
               </button>
             </div>
@@ -358,7 +355,11 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} aria-hidden="true"></div>
+      <div
+        className="absolute inset-0 bg-black bg-opacity-50"
+        onClick={onClose}
+        aria-hidden="true"
+      ></div>
 
       <div
         className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl"

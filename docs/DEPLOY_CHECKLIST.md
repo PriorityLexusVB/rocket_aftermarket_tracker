@@ -43,6 +43,7 @@ NOTIFY pgrst, 'reload schema';
   - Helper functions
 
 Notes:
+
 - Index-only migrations do not require a PostgREST schema reload.
 - Any migration that changes relationships/policies/functions should include `NOTIFY pgrst, 'reload schema';`.
 - [ ] Review RLS policy documentation: `docs/RLS_FIX_SUMMARY.md`
