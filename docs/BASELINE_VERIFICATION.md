@@ -182,16 +182,17 @@ Total: 19 migration files in supabase/migrations/
 
 - RLS_AUTH_USERS_FIX.md - Documents auth.users reference fixes
 - docs/policies.md - Policy documentation
-- IMPLEMENTATION_SUMMARY_RLS_HARDENING.md
-- IMPLEMENTATION_SUMMARY_RLS_AUDIT.md
+- RLS_FIX_SUMMARY.md
+- RLS_AUDIT_RESULT_2025-11-07.md
 
 ### Database Documentation
 
-- DATABASE_FIX_SUMMARY.md
-- DATABASE_FIX_VISUAL.md
-- MIGRATION_SUMMARY.md
-- MIGRATION_VERIFICATION.md
-- docs/ERD.md
+- LOCAL_DEV_SUPABASE.md
+- TROUBLESHOOTING_SCHEMA_CACHE.md
+- SCHEMA_DRIFT_FIX.md
+- ERD.md
+
+Database migration history lives under `supabase/migrations/`.
 
 ## Issues Noted for Future Tasks
 

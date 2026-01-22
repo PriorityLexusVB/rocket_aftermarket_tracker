@@ -241,7 +241,7 @@ All changes are backward compatible:
 
 ## Related Documentation
 
-- [RUNBOOK_migration_repair_job_parts_times_vendor.md](../RUNBOOK_migration_repair_job_parts_times_vendor.md) - Operational runbook
+- [RUNBOOK_JOB_PARTS_VENDOR_FK.md](./RUNBOOK_JOB_PARTS_VENDOR_FK.md) - Operational runbook
 - [docs/TROUBLESHOOTING_SCHEMA_CACHE.md](./TROUBLESHOOTING_SCHEMA_CACHE.md) - Schema cache issues
 - [docs/job_parts_vendor_relationship_fix.md](./job_parts_vendor_relationship_fix.md) - Vendor relationship history
 
