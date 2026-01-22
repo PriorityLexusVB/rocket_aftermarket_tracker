@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 /**
  * Regression test:
@@ -118,6 +118,10 @@ vi.mock('../lib/supabase', () => {
 })
 
 describe('dealService.getDeal - loaner returned_at missing fallback', () => {
+  beforeEach(() => {
+    vi.resetModules()
+  })
+
   it('returns loaner_number even when returned_at column is missing', async () => {
     const { getDeal } = await import('../services/dealService')
     const deal = await getDeal('job-1')
