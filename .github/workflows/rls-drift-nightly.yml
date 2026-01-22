@@ -19,16 +19,45 @@ jobs:
     # Only run on main branch (skip forks)
     if: github.repository == 'PriorityLexusVB/rocket_aftermarket_tracker'
 
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
     steps:
+      - name: Check required secrets
+        id: secrets_check
+        run: |
+          set -euo pipefail
+          missing=()
+          if [ -z "$VITE_SUPABASE_URL" ]; then missing+=("VITE_SUPABASE_URL"); fi
+          if [ -z "$VITE_SUPABASE_ANON_KEY" ]; then missing+=("VITE_SUPABASE_ANON_KEY"); fi
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "missing_secrets=true" >> "$GITHUB_OUTPUT"
+            echo "Supabase secrets not available (${missing[*]}); skipping nightly drift/health checks."
+            echo "::warning::Nightly drift/health checks skipped because required secrets are missing: ${missing[*]}"
+            echo "::warning::Fix: Configure these in GitHub -> Settings -> Environments -> Production -> Environment secrets."
+          else
+            echo "missing_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "Supabase secrets present."
+          fi
+
+      - name: Skip when secrets unavailable
+        if: steps.secrets_check.outputs.missing_secrets == 'true'
+        run: |
+          echo "Skipping nightly drift/health checks because required Supabase secrets are not configured/available for this workflow context."
+
       - name: Checkout
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Setup pnpm via corepack (use packageManager version) + retry
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         shell: bash
         run: |
           set -euo pipefail
@@ -49,6 +78,7 @@ jobs:
           exit 1
 
       - name: Get pnpm store path
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         id: pnpm-store
         shell: bash
         run: |
@@ -56,6 +86,7 @@ jobs:
           echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
 
       - name: Cache pnpm store
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         uses: actions/cache@v4
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
@@ -64,13 +95,12 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: pnpm install --frozen-lockfile
 
       - name: Run Schema Drift Script
         id: drift_check
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        if: steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "Running schema cache verification..."
           # Ensure we use npx supabase from node_modules
@@ -86,10 +116,7 @@ jobs:
 
       - name: Start Development Server
         id: start_server
-        if: always()
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        if: always() && steps.secrets_check.outputs.missing_secrets == 'false'
         run: |
           echo "Starting Vite dev server..."
           pnpm dev &
@@ -100,7 +127,7 @@ jobs:
           sleep 10
 
       - name: Wait for Server Ready
-        if: always() && steps.start_server.conclusion == 'success'
+        if: always() && steps.secrets_check.outputs.missing_secrets == 'false' && steps.start_server.conclusion == 'success'
         run: |
           echo "Waiting for server to be ready..."
           timeout 60 bash -c 'until curl -f http://localhost:5173 > /dev/null 2>&1; do sleep 2; done' || {
@@ -111,9 +138,7 @@ jobs:
 
       - name: Check Health Endpoint
         id: health_check
-        if: always() && steps.start_server.conclusion == 'success'
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        if: always() && steps.secrets_check.outputs.missing_secrets == 'false' && steps.start_server.conclusion == 'success'
         run: |
           echo "Checking /api/health endpoint..."
           HEALTH_RESPONSE=$(curl -s -w "\n%{http_code}" "http://localhost:5173/api/health" || echo "000")
@@ -133,9 +158,7 @@ jobs:
 
       - name: Check Deals Relationship Health Endpoint
         id: deals_rel_check
-        if: always() && steps.start_server.conclusion == 'success'
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        if: always() && steps.secrets_check.outputs.missing_secrets == 'false' && steps.start_server.conclusion == 'success'
         run: |
           echo "Checking /api/health-deals-rel endpoint..."
           RESPONSE=$(curl -s -w "\n%{http_code}" "http://localhost:5173/api/health-deals-rel" || echo "000")
@@ -161,7 +184,7 @@ jobs:
           fi
 
       - name: Stop Development Server
-        if: always() && steps.start_server.conclusion == 'success'
+        if: always() && steps.secrets_check.outputs.missing_secrets == 'false' && steps.start_server.conclusion == 'success'
         run: |
           DEV_PID=${{ steps.start_server.outputs.dev_pid }}
           if [ -n "$DEV_PID" ] && kill -0 "$DEV_PID" 2>/dev/null; then
@@ -179,6 +202,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.secrets_check.outputs.missing_secrets }}" = "true" ]; then
+            echo "### Secrets" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ **SKIPPED** - Required Supabase secrets missing" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the **Production** environment secrets." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
 
           echo "### Schema Drift Check" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.drift_check.outputs.drift_detected }}" = "false" ]; then
