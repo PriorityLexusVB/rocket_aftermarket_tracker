@@ -22,7 +22,7 @@
   - EMPTY_LINE_ITEM() function respects capability flags
 
 - **Documentation & Tests**:
-  - `RUNBOOK_migration_repair_job_parts_times_vendor.md` - Comprehensive operational runbook
+  - `docs/RUNBOOK_JOB_PARTS_VENDOR_FK.md` - Comprehensive operational runbook
   - `docs/IMPLEMENTATION_SUMMARY.md` - Complete field mapping table and architecture guide
   - `migration.verification.test.js` - 35 tests verifying migration file contents
   - `capabilityTelemetry.test.js` - 19 tests for telemetry functionality

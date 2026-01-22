@@ -490,6 +490,7 @@ console.log(typeof sessionStorage !== 'undefined') // Should be true
 ## Related Documentation
 
 - [Database Schema](docs/schema-fingerprint.json)
-- [Migration Guide](MIGRATION_SUMMARY.md)
+- [Local Dev Supabase (env + migrations)](docs/LOCAL_DEV_SUPABASE.md)
+- [Schema Cache Troubleshooting](docs/TROUBLESHOOTING_SCHEMA_CACHE.md)
 - [Testing Guide](README.md#testing)
-- [Supabase RLS Policies](IMPLEMENTATION_SUMMARY_RLS_HARDENING.md)
+- [Supabase RLS Policies](docs/RLS_FIX_SUMMARY.md)

@@ -392,7 +392,7 @@ Deployment is successful when:
 
 **Documentation:**
 
-- `LINE_ITEM_SCHEDULING_REDESIGN_SUMMARY.md` - Technical summary
+- `docs/SCHEDULING_ARCHITECTURE.md` - Scheduling architecture
 - `DEPLOYMENT_GUIDE.md` - This file
 
 ---

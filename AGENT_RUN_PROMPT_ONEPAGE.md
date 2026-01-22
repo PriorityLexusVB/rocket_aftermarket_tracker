@@ -132,7 +132,7 @@
 - Do:
   - Re-run tests, lint, typecheck
   - Update `docs/DEPLOY_CHECKLIST.md`
-  - Summarize artifacts in `FINAL_VERIFICATION_COMPLETE.md`
+  - Summarize artifacts in `.artifacts/final-phase-report.md` (and/or index under `docs/archive/`)
 - Artifact: `.artifacts/final-phase-report.md`
 
 #### Phase 10: Final PR & close-out
