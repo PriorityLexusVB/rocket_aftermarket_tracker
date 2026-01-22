@@ -149,8 +149,7 @@ No UI redesigns; no state management rewrites; no switching test runners; no add
 
 ## 15. Phased Execution (See MASTER_EXECUTION_PROMPT.md)
 
-**Phases 1-3 COMPLETED** (Permission mapping, Time normalization, Date display)
-**Phases 4-10 READY** (Appointments, Drawers, Calendar, Performance, Scripts, Docs, PR)
+**Phases 1-10 COMPLETED** (Permission mapping, time normalization, date display, appointments/drawers/calendar, performance, scripts, docs, rollout notes)
 
 For detailed phase descriptions, implementation status, and execution guidelines, refer to `MASTER_EXECUTION_PROMPT.md`.
 
