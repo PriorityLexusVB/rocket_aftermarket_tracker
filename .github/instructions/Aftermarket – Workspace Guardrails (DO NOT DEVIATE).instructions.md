@@ -22,9 +22,9 @@ UI rules (LOCKED)
 
 Safety
 
-- Work on a feature branch. Touch ≤ 10 files. Minimal diffs. No styling changes.
-- Follow: .github/copilot-instructions.md and AGENTS.md.
+- Prefer PR-sized changes with minimal diffs; avoid styling-only churn.
+- Source of truth for agent behavior: AGENTS.md + .github/copilot-instructions.md.
 - Preflight checklist: .github/WORKFLOWS_AGENT_PREFLIGHT.md.
-- Run: pnpm run build before/after edits. If failing, revert the last change.
+- Verify changes with: pnpm -s verify (and pnpm build when relevant).
 - Do not change package.json deps or env keys. If absolutely required, STOP and output TODO.
-- Stage changes; do not push.
+- Push only when explicitly requested by the repo owner.
