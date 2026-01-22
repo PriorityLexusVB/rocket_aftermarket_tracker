@@ -22,6 +22,7 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel
               {/* Status Updates */}
               <div className="flex items-center space-x-2">
                 <button
+                  type="button"
                   onClick={() => onStatusUpdate('in_progress')}
                   className="flex items-center space-x-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 text-sm font-medium"
                 >
@@ -30,6 +31,7 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => onStatusUpdate('quality_check')}
                   className="flex items-center space-x-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 text-sm font-medium"
                 >
@@ -38,6 +40,7 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => onStatusUpdate('scheduled')}
                   className="flex items-center space-x-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200 text-sm font-medium"
                 >
@@ -50,6 +53,7 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel
 
               {/* Assignment */}
               <button
+                type="button"
                 onClick={onAssign}
                 className="flex items-center space-x-2 px-4 py-1.5 bg-green-500/80 hover:bg-green-500 rounded-lg transition-all duration-200 text-sm font-medium"
               >
@@ -59,6 +63,7 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel
 
               {/* Danger Actions */}
               <button
+                type="button"
                 onClick={() => onStatusUpdate('cancelled')}
                 className="flex items-center space-x-1 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/40 rounded-lg transition-all duration-200 text-sm font-medium border border-red-400/30"
               >
@@ -69,6 +74,7 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel
           </div>
 
           <button
+            type="button"
             onClick={onCancel}
             className="flex items-center space-x-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all duration-200"
           >
