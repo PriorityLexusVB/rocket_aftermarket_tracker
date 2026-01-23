@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
+import { jobService } from '@/services/jobService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
 import EditDealModal from './components/EditDealModal'
@@ -953,6 +954,55 @@ export default function DealsPage() {
       toast?.error?.(e?.message || 'Failed to mark loaner returned')
     } finally {
       setReturningLoaner(false)
+    }
+  }
+
+  const handleMarkDealComplete = async (deal) => {
+    const dealId = deal?.id
+    if (!dealId) return
+
+    // If an active loaner exists, guide the user to return it first.
+    if (deal?.loaner_id || deal?.has_active_loaner) {
+      toast?.info?.('Return the loaner before completing')
+      if (deal?.loaner_id) {
+        setMarkReturnedModal({
+          loaner_id: deal?.loaner_id,
+          loaner_number: deal?.loaner_number,
+          job_title: getDealPrimaryRef(deal),
+        })
+      }
+      return
+    }
+
+    const previousStatus = deal?.job_status
+    const previousCompletedAt = deal?.completed_at
+
+    try {
+      await jobService.updateStatus(dealId, 'completed', { completed_at: new Date().toISOString() })
+
+      const undo = async () => {
+        try {
+          await jobService.updateStatus(dealId, previousStatus || 'scheduled', {
+            completed_at: previousCompletedAt || null,
+          })
+          toast?.success?.('Undo successful')
+          await loadDeals(0, 'undo-complete')
+        } catch (err) {
+          console.error('[Deals] undo complete failed', err)
+          toast?.error?.('Undo failed')
+        }
+      }
+
+      toast?.success?.({
+        message: 'Completed',
+        action: { label: 'Undo', onClick: undo },
+        duration: 10000,
+      })
+
+      await loadDeals(0, 'mark-complete')
+    } catch (e) {
+      console.error('[Deals] mark complete failed', e)
+      toast?.error?.(e?.message || 'Failed to complete')
     }
   }
 
@@ -2087,7 +2137,23 @@ export default function DealsPage() {
                           </div>
 
                           <div className="shrink-0">
-                            <StatusPill status={deal?.job_status} />
+                            <div className="flex items-center gap-2">
+                              <StatusPill status={deal?.job_status} />
+                              {deal?.job_status === 'completed' ? (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200"
+                                  title={
+                                    deal?.completed_at
+                                      ? `Completed: ${formatCreatedShort(deal.completed_at)}`
+                                      : 'Completed'
+                                  }
+                                  aria-label="Completed"
+                                >
+                                  <Icon name="BadgeCheck" size={14} className="text-emerald-700" />
+                                  Completed
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2231,6 +2297,21 @@ export default function DealsPage() {
                               >
                                 <span className="sr-only">Edit deal (loaner)</span>
                                 <Icon name="Car" size={16} />
+                              </button>
+                            )}
+
+                            {deal?.job_status !== 'completed' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleMarkDealComplete(deal)
+                                }}
+                                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                                aria-label="Complete job"
+                                title="Complete"
+                              >
+                                <span className="sr-only">Complete</span>
+                                <Icon name="BadgeCheck" size={16} />
                               </button>
                             )}
 

@@ -4,6 +4,7 @@ import {
   Car,
   Building2,
   AlertTriangle,
+  CheckCircle,
   Search,
   Download,
   Eye,
@@ -369,12 +370,60 @@ const CalendarFlowManagementCenter = () => {
 
   const handleJobStatusUpdate = async (jobId, newStatus) => {
     try {
-      // Update job status via calendar service
-      await calendarService?.updateJobSchedule(jobId, { status: newStatus })
+      const nextStatus = String(newStatus || '').toLowerCase()
+
+      // Status-only updates should use jobService so we can correctly manage completed_at.
+      if (nextStatus === 'completed') {
+        await jobService.updateStatus(jobId, 'completed', {
+          completed_at: new Date().toISOString(),
+        })
+        toast?.success?.('Completed')
+      } else {
+        // Clearing completed_at avoids "completed" timestamps lingering after status changes.
+        await jobService.updateStatus(jobId, nextStatus, { completed_at: null })
+      }
+
       loadCalendarData() // Refresh data
     } catch (error) {
       console.error('Error updating job status:', error)
       toast?.error?.(error?.message || 'Failed to update status')
+    }
+  }
+
+  const handleCompleteJob = async (job, e) => {
+    e?.stopPropagation?.()
+    const jobId = job?.id
+    if (!jobId) return
+
+    const previousStatus = job?.job_status
+    const previousCompletedAt = job?.completed_at
+    if (String(previousStatus || '').toLowerCase() === 'completed') return
+
+    try {
+      await jobService.updateStatus(jobId, 'completed', { completed_at: new Date().toISOString() })
+
+      const undo = async () => {
+        try {
+          await jobService.updateStatus(jobId, previousStatus || 'scheduled', {
+            completed_at: previousCompletedAt || null,
+          })
+          toast?.success?.('Undo successful')
+          await loadCalendarData()
+        } catch (err) {
+          console.error('[Flow Mgmt] undo complete failed', err)
+          toast?.error?.('Undo failed')
+        }
+      }
+
+      toast?.success?.({
+        message: 'Completed',
+        action: { label: 'Undo', onClick: undo },
+        duration: 10000,
+      })
+
+      await loadCalendarData()
+    } catch {
+      toast?.error?.('Failed to complete')
     }
   }
 
@@ -670,6 +719,8 @@ const CalendarFlowManagementCenter = () => {
     const statusBadge = getStatusBadge(statusForBadge)
     const statusColor = statusBadge?.color || 'bg-blue-500'
 
+    const isCompleted = rawStatus === 'completed'
+
     const densityClasses = density === 'compact' ? 'p-2 text-xs leading-snug' : 'p-3 text-sm'
     const densityMargin = density === 'compact' ? 'mb-1' : 'mb-2'
 
@@ -693,7 +744,7 @@ const CalendarFlowManagementCenter = () => {
         {/* Main content */}
         <div className="ml-2">
           {/* Top line */}
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-1 gap-2">
             <div className="font-bold truncate flex items-center gap-2">
               <Car className="h-3 w-3 mr-1" />
               <span className="truncate">
@@ -711,6 +762,18 @@ const CalendarFlowManagementCenter = () => {
                 <span className="text-xs ml-1">Overdue</span>
               </div>
             )}
+
+            {!isCompleted ? (
+              <button
+                type="button"
+                onClick={(e) => handleCompleteJob(job, e)}
+                className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-200 bg-white/70 text-emerald-700 hover:bg-emerald-50"
+                aria-label="Complete"
+                title="Mark completed"
+              >
+                <CheckCircle className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
 
           {/* Second line */}
@@ -1174,12 +1237,13 @@ const CalendarFlowManagementCenter = () => {
               jobs={needsSchedulingJobs}
               onJobClick={handleJobClick}
               onDragStart={handleDragStart}
+              onComplete={(job) => handleCompleteJob(job)}
               loading={loading}
             />
           )}
 
           {/* Calendar View */}
-          <div className={`flex-1 p-6 ${viewMode === 'month' ? 'w-full' : ''}`}>
+          <div className={`flex-1 p-4 ${viewMode === 'month' ? 'w-full' : ''}`}>
             {loadError ? (
               <div
                 role="alert"

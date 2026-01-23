@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
  * getDeal() should retry without the `returned_at IS NULL` filter and still return loaner_number.
  */
 
-vi.mock('../lib/supabase', () => {
+function supabaseMockFactory() {
   const missingReturnedAtError = {
     message: 'column loaner_assignments.returned_at does not exist',
     code: '42703',
@@ -115,7 +115,13 @@ vi.mock('../lib/supabase', () => {
   }
 
   return { supabase }
-})
+}
+
+// dealService imports Supabase via Vite alias path.
+vi.mock('@/lib/supabase', supabaseMockFactory)
+
+// Back-compat in case other imports still reference the relative path.
+vi.mock('../lib/supabase', supabaseMockFactory)
 
 describe('dealService.getDeal - loaner returned_at missing fallback', () => {
   beforeEach(() => {

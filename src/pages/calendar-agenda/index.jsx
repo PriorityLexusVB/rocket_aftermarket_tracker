@@ -557,7 +557,7 @@ export default function CalendarAgenda() {
 
         // Toast with undo action (10s timeout)
         toast.success({
-          message: 'Marked done',
+          message: 'Completed',
           action: { label: 'Undo', onClick: undo },
           duration: 10000,
         })
@@ -566,7 +566,7 @@ export default function CalendarAgenda() {
       await load()
     } catch (err) {
       console.error('[agenda] complete failed', err)
-      toast?.error?.('Could not mark done')
+      toast?.error?.('Could not complete')
     }
   }
 
@@ -808,10 +808,10 @@ export default function CalendarAgenda() {
                       <button
                         onClick={() => handleComplete(r)}
                         className="rounded-md px-2 py-1 text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                        aria-label="Mark done"
-                        title="Marks this job as done (status: completed)"
+                        aria-label="Complete"
+                        title="Marks this job as completed"
                       >
-                        Mark done
+                        Complete
                       </button>
                     </div>
                   </li>

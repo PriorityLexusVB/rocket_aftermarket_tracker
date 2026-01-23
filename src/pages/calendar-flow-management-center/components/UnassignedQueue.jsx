@@ -1,5 +1,5 @@
 import React from 'react'
-import { Car, Clock, Calendar, AlertTriangle, Package } from 'lucide-react'
+import { Car, Clock, Calendar, AlertTriangle, Package, CheckCircle } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
@@ -30,7 +30,7 @@ function summarizeOpCodesFromParts(parts, max = 5) {
   return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
 }
 
-const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
+const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading, onComplete }) => {
   const renderUnassignedJob = (job) => {
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     const overdue = isOverdue(promise)
@@ -51,7 +51,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
     return (
       <div
         key={job?.id}
-        className="bg-white rounded-lg border border-gray-200 p-4 mb-3 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-blue-300"
+        className="bg-white rounded-lg border border-gray-200 p-3 mb-2 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-blue-300"
         onClick={() => onJobClick?.(job)}
         draggable
         onDragStart={() => onDragStart?.(job)}
@@ -63,16 +63,33 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
             <span className="font-medium text-gray-900">{job?.job_number?.split('-')?.pop()}</span>
             {overdue && <AlertTriangle className="h-4 w-4 text-red-500 ml-2" />}
           </div>
-          <div
-            className={`
+          <div className="flex items-center gap-2">
+            {String(job?.job_status || '').toLowerCase() !== 'completed' ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e?.stopPropagation?.()
+                  onComplete?.(job)
+                }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                aria-label="Complete"
+                title="Mark completed"
+              >
+                <CheckCircle className="h-4 w-4" />
+              </button>
+            ) : null}
+
+            <div
+              className={`
             px-2 py-1 rounded-full text-xs font-medium
             ${statusBadge?.bg || 'bg-gray-100'} 
             ${statusBadge?.textColor || 'text-gray-800'}
           `}
-          >
-            {statusBadge?.label ||
-              statusForBadge?.toUpperCase?.() ||
-              job?.job_status?.toUpperCase?.()}
+            >
+              {statusBadge?.label ||
+                statusForBadge?.toUpperCase?.() ||
+                job?.job_status?.toUpperCase?.()}
+            </div>
           </div>
         </div>
 
@@ -141,16 +158,18 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
 
         {/* Drag Indicator */}
         <div className="mt-3 pt-2 border-t border-gray-100">
-          <div className="text-xs text-gray-500 text-center">Drag to a time slot or vendor lane</div>
+          <div className="text-xs text-gray-500 text-center">
+            Drag to a time slot or vendor lane
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
+    <div className="w-72 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 bg-white border-b border-gray-200">
+      <div className="p-3 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between">
           <h2 className="font-medium text-gray-900">All-day</h2>
           <div className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full font-medium">
@@ -163,7 +182,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
       </div>
 
       {/* Job List */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-3">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
@@ -180,7 +199,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading }) => {
       </div>
 
       {/* Instructions */}
-      <div className="p-4 bg-white border-t border-gray-200">
+      <div className="p-3 bg-white border-t border-gray-200">
         <div className="text-xs text-gray-600 space-y-1">
           <div className="flex items-center">
             <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>

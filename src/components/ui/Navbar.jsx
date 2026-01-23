@@ -8,7 +8,6 @@ import {
   LogOut,
   Settings,
   Calendar,
-  List,
   Car,
   Package,
   BarChart3,
@@ -36,9 +35,6 @@ const Navbar = () => {
   const { user, userProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-
-  const SIMPLE_AGENDA_ENABLED =
-    String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
   // Ensure content can scroll past the fixed mobile bottom nav.
   useEffect(() => {
@@ -78,22 +74,6 @@ const Navbar = () => {
       href: '/calendar/grid',
       icon: Calendar,
     },
-    {
-      name: 'Scheduling',
-      href: '/calendar-flow-management-center',
-      icon: Calendar,
-      shortName: 'Flow',
-    },
-    ...(SIMPLE_AGENDA_ENABLED
-      ? [
-          {
-            name: 'Agenda',
-            href: '/calendar/agenda',
-            icon: List,
-            shortName: 'Agenda',
-          },
-        ]
-      : []),
     {
       name: 'Appointments',
       href: '/currently-active-appointments',

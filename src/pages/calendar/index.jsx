@@ -1,14 +1,16 @@
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { calendarService } from '@/services/calendarService'
 import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
+import { jobService } from '@/services/jobService'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
 import { withTimeout } from '@/utils/promiseTimeout'
+import { useToast } from '@/components/ui/ToastProvider'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -101,6 +103,7 @@ const safeDayKey = (value) => {
 const CalendarSchedulingCenter = () => {
   // State management
   const { user, orgId } = useAuth()
+  const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
   const [, setSearchParams] = useSearchParams()
@@ -318,7 +321,11 @@ const CalendarSchedulingCenter = () => {
       )
     } catch (error) {
       console.error('Error loading calendar data:', error)
-      setError(error?.message ? `Failed to load calendar data: ${error.message}` : 'Failed to load calendar data')
+      setError(
+        error?.message
+          ? `Failed to load calendar data: ${error.message}`
+          : 'Failed to load calendar data'
+      )
     } finally {
       setLoading(false)
     }
@@ -394,6 +401,48 @@ const CalendarSchedulingCenter = () => {
     }
   }
 
+  const handleComplete = useCallback(
+    async (job, e) => {
+      e?.stopPropagation?.()
+      const jobId = job?.id
+      if (!jobId) return
+
+      const previousStatus = job?.job_status
+      const previousCompletedAt = job?.completed_at
+
+      try {
+        await jobService.updateStatus(jobId, 'completed', {
+          completed_at: new Date().toISOString(),
+        })
+
+        const undo = async () => {
+          try {
+            await jobService.updateStatus(jobId, previousStatus || 'scheduled', {
+              completed_at: previousCompletedAt || null,
+            })
+            toast?.success?.('Undo successful')
+            await loadCalendarData()
+          } catch (err) {
+            console.error('[calendar-grid] undo failed', err)
+            toast?.error?.('Undo failed')
+          }
+        }
+
+        toast?.success?.({
+          message: 'Completed',
+          action: { label: 'Undo', onClick: undo },
+          duration: 10000,
+        })
+
+        await loadCalendarData()
+      } catch (err) {
+        console.error('[calendar-grid] complete failed', err)
+        toast?.error?.(err?.message || 'Failed to complete')
+      }
+    },
+    [loadCalendarData, toast]
+  )
+
   // Format date for display with safe operations
   const formatDisplayDate = () => {
     try {
@@ -459,25 +508,26 @@ const CalendarSchedulingCenter = () => {
           {weekDays?.map((day, index) => (
             <div
               key={`header-${index}`}
-              className={`p-2 border-b font-semibold text-center ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50' : 'bg-gray-50'}`}
+              className={`p-1 border-b font-semibold text-center ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50' : 'bg-gray-50'}`}
             >
               <div className="text-sm text-gray-600">
                 {safeFormatDate(day?.date, { weekday: 'short' }) || 'N/A'}
               </div>
-              <div className="text-lg">{day?.date?.getDate() || '?'}</div>
+              <div className="text-base">{day?.date?.getDate() || '?'}</div>
             </div>
           ))}
           {/* Day content */}
           {weekDays?.map((day, index) => (
             <div
               key={`content-${index}`}
-              className={`p-2 border-r border-gray-200 min-h-96 overflow-y-auto ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50/30' : 'bg-white'}`}
+              className={`p-1 border-r border-gray-200 min-h-80 overflow-y-auto ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50/30' : 'bg-white'}`}
             >
               {day?.jobs?.map((job) => {
                 const jobStartTime = job?.time_tbd
                   ? null
                   : safeCreateDate(job?.scheduled_start_time)
-                const normalizedStatus = job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+                const normalizedStatus =
+                  job?.job_status === 'pending' ? 'scheduled' : job?.job_status
                 const colors = getEventColors(job?.service_type, normalizedStatus)
                 const statusLabel = normalizedStatus
                   ? normalizedStatus === 'scheduled'
@@ -504,15 +554,28 @@ const CalendarSchedulingCenter = () => {
                     title={job?.title || 'Open deal'}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold truncate">
+                      <div className="font-semibold truncate min-w-0">
                         {jobNumber ? `${jobNumber} • ` : ''}
                         {job?.title}
                       </div>
-                      <span
-                        className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
-                      >
-                        {statusLabel}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {String(job?.job_status || '').toLowerCase() !== 'completed' ? (
+                          <button
+                            type="button"
+                            onClick={(e) => handleComplete(job, e)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-200 bg-white/70 text-emerald-700 hover:bg-emerald-50"
+                            aria-label="Complete"
+                            title="Mark completed"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-[11px] opacity-90 truncate">{vendorLabel}</div>
                     {vehicleLabel ? (
@@ -679,7 +742,8 @@ const CalendarSchedulingCenter = () => {
                         : safeCreateDate(job?.scheduled_start_time)
 
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                      const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+                      const vendorLabel =
+                        job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
                       const promiseLabel = job?.time_tbd
                         ? safeFormatDate(job?.scheduled_start_time, {
                             weekday: 'short',
@@ -792,10 +856,23 @@ const CalendarSchedulingCenter = () => {
                         </span>
                       </div>
                     </div>
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: colors?.hex || job?.color_code || '#3b82f6' }}
-                    ></div>
+                    <div className="flex items-center gap-2">
+                      {String(job?.job_status || '').toLowerCase() !== 'completed' ? (
+                        <button
+                          type="button"
+                          onClick={(e) => handleComplete(job, e)}
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          aria-label="Complete"
+                          title="Mark completed"
+                        >
+                          <CheckCircle className="h-5 w-5" />
+                        </button>
+                      ) : null}
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: colors?.hex || job?.color_code || '#3b82f6' }}
+                      ></div>
+                    </div>
                   </div>
                 </div>
               )
@@ -871,8 +948,8 @@ const CalendarSchedulingCenter = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4">
+          <div className="min-w-0">
             <CalendarGrid jobs={jobs} viewType={viewType} />
           </div>
 
