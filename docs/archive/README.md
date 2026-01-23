@@ -23,3 +23,5 @@ Prefer these entrypoints unless you specifically need history:
 
 - `2026-01-21-root-reports/`: initial batch of root-level report artifacts moved under `docs/archive/` to reduce clutter.
 - `2026-01-22-root-reports/`: additional batch of root-level report artifacts (non-canonical) moved under `docs/archive/`.
+
+- 2026-01-22-work-notes/ - Work-note handoffs and transient notes (moved from docs/work-notes).
