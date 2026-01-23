@@ -285,9 +285,9 @@ const AppointmentCard = ({
                     )
                   }
                   className="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors duration-200"
-                  title="Uncomplete this job"
+                  title="Undo complete"
                 >
-                  Uncomplete
+                  Undo
                 </button>
               ) : (
                 <button
@@ -301,9 +301,9 @@ const AppointmentCard = ({
                     )
                   }
                   className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200"
-                  title="Marks this job as done (status: completed)"
+                  title="Marks this job as completed (status: completed)"
                 >
-                  Mark done
+                  Complete
                 </button>
               )}
             </div>

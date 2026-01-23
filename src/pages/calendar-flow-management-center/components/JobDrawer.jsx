@@ -110,7 +110,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
         label: 'Complete',
         icon: CheckCircle,
         color: 'bg-blue-600 hover:bg-blue-700 text-white',
-        title: 'Marks this job as done (status: completed)',
+        title: 'Marks this job as completed (status: completed)',
         action: handleComplete,
       },
       {

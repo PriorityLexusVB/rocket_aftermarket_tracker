@@ -538,7 +538,7 @@ export default function SnapshotView() {
       // Use the existing jobService updateStatus path via raw id.
       const { jobService } = await import('@/services/jobService')
       await jobService.updateStatus(job.id, 'completed', { completed_at: new Date().toISOString() })
-      const message = `Marked "${jobTitle}" as done`
+      const message = `Completed "${jobTitle}"`
       toast?.success?.(message)
       setStatusMessage(message) // For screen readers
       await load()
@@ -558,7 +558,7 @@ export default function SnapshotView() {
       })
     } catch (e) {
       console.warn('[SnapshotView] complete failed', e)
-      const errorMsg = 'Could not mark done'
+      const errorMsg = 'Could not complete'
       toast?.error?.(errorMsg)
       setStatusMessage(errorMsg)
     }
@@ -1020,10 +1020,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark done"
-                          title="Marks this job as done (status: completed)"
+                          aria-label="Complete"
+                          title="Marks this job as completed (status: completed)"
                         >
-                          Mark done
+                          Complete
                         </button>
                       )}
                     </div>
@@ -1123,10 +1123,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark done"
-                          title="Marks this job as done (status: completed)"
+                          aria-label="Complete"
+                          title="Marks this job as completed (status: completed)"
                         >
-                          Mark done
+                          Complete
                         </button>
                       )}
                     </div>
@@ -1226,10 +1226,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark done"
-                          title="Marks this job as done (status: completed)"
+                          aria-label="Complete"
+                          title="Marks this job as completed (status: completed)"
                         >
-                          Mark done
+                          Complete
                         </button>
                       )}
                     </div>
@@ -1322,10 +1322,10 @@ export default function SnapshotView() {
                         <button
                           onClick={() => handleComplete(j)}
                           className="text-green-600 hover:underline"
-                          aria-label="Mark done"
-                          title="Marks this job as done (status: completed)"
+                          aria-label="Complete"
+                          title="Marks this job as completed (status: completed)"
                         >
-                          Mark done
+                          Complete
                         </button>
                       )}
                     </div>
@@ -1409,10 +1409,10 @@ export default function SnapshotView() {
                   <button
                     onClick={() => handleComplete(j)}
                     className="text-green-600 hover:underline"
-                    aria-label="Mark done"
-                    title="Marks this job as done (status: completed)"
+                    aria-label="Complete"
+                    title="Marks this job as completed (status: completed)"
                   >
-                    Mark done
+                    Complete
                   </button>
                 )}
               </div>
@@ -1481,10 +1481,10 @@ export default function SnapshotView() {
                           <button
                             onClick={() => handleComplete(j)}
                             className="text-green-600 hover:underline"
-                            aria-label="Mark done"
-                            title="Marks this job as done (status: completed)"
+                            aria-label="Complete"
+                            title="Marks this job as completed (status: completed)"
                           >
-                            Mark done
+                            Complete
                           </button>
                         )}
                       </div>

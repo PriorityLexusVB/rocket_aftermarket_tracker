@@ -201,7 +201,8 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
             <button
               onClick={() => handleJobAction(job?.id, 'complete')}
               className="p-1 hover:bg-blue-100 rounded text-blue-600"
-              title="Mark done"
+              aria-label="Complete"
+              title="Complete"
             >
               <CheckCircle className="h-3 w-3" />
             </button>
