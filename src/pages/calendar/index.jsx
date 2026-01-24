@@ -9,6 +9,7 @@ import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
+import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
 
@@ -417,7 +418,8 @@ const CalendarSchedulingCenter = () => {
 
         const undo = async () => {
           try {
-            await jobService.updateStatus(jobId, previousStatus || 'scheduled', {
+            const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
+            await jobService.updateStatus(jobId, previousStatus || fallbackStatus, {
               completed_at: previousCompletedAt || null,
             })
             toast?.success?.('Undo successful')
@@ -438,6 +440,25 @@ const CalendarSchedulingCenter = () => {
       } catch (err) {
         console.error('[calendar-grid] complete failed', err)
         toast?.error?.(err?.message || 'Failed to complete')
+      }
+    },
+    [loadCalendarData, toast]
+  )
+
+  const handleReopen = useCallback(
+    async (job, e) => {
+      e?.stopPropagation?.()
+      const jobId = job?.id
+      if (!jobId) return
+
+      try {
+        const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+        await jobService.updateStatus(jobId, targetStatus, { completed_at: null })
+        toast?.success?.('Reopened')
+        await loadCalendarData()
+      } catch (err) {
+        console.error('[calendar-grid] reopen failed', err)
+        toast?.error?.(err?.message || 'Failed to reopen')
       }
     },
     [loadCalendarData, toast]
@@ -559,17 +580,35 @@ const CalendarSchedulingCenter = () => {
                         {job?.title}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {String(job?.job_status || '').toLowerCase() !== 'completed' ? (
-                          <button
-                            type="button"
-                            onClick={(e) => handleComplete(job, e)}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-200 bg-white/70 text-emerald-700 hover:bg-emerald-50"
-                            aria-label="Complete"
-                            title="Mark completed"
-                          >
+                        <button
+                          type="button"
+                          onClick={(e) =>
+                            String(job?.job_status || '').toLowerCase() === 'completed'
+                              ? handleReopen(job, e)
+                              : handleComplete(job, e)
+                          }
+                          className={
+                            String(job?.job_status || '').toLowerCase() === 'completed'
+                              ? 'inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white/70 text-slate-700 hover:bg-slate-50'
+                              : 'inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-200 bg-white/70 text-emerald-700 hover:bg-emerald-50'
+                          }
+                          aria-label={
+                            String(job?.job_status || '').toLowerCase() === 'completed'
+                              ? 'Reopen'
+                              : 'Complete'
+                          }
+                          title={
+                            String(job?.job_status || '').toLowerCase() === 'completed'
+                              ? 'Reopen deal'
+                              : 'Mark completed'
+                          }
+                        >
+                          {String(job?.job_status || '').toLowerCase() === 'completed' ? (
+                            <RefreshCw className="h-4 w-4" />
+                          ) : (
                             <CheckCircle className="h-4 w-4" />
-                          </button>
-                        ) : null}
+                          )}
+                        </button>
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-semibold ${colors?.badge || 'bg-blue-500 text-white'} ${colors?.pulse ? 'animate-pulse' : ''}`}
                         >
@@ -857,17 +896,35 @@ const CalendarSchedulingCenter = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {String(job?.job_status || '').toLowerCase() !== 'completed' ? (
-                        <button
-                          type="button"
-                          onClick={(e) => handleComplete(job, e)}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                          aria-label="Complete"
-                          title="Mark completed"
-                        >
+                      <button
+                        type="button"
+                        onClick={(e) =>
+                          String(job?.job_status || '').toLowerCase() === 'completed'
+                            ? handleReopen(job, e)
+                            : handleComplete(job, e)
+                        }
+                        className={
+                          String(job?.job_status || '').toLowerCase() === 'completed'
+                            ? 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                            : 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        }
+                        aria-label={
+                          String(job?.job_status || '').toLowerCase() === 'completed'
+                            ? 'Reopen'
+                            : 'Complete'
+                        }
+                        title={
+                          String(job?.job_status || '').toLowerCase() === 'completed'
+                            ? 'Reopen deal'
+                            : 'Mark completed'
+                        }
+                      >
+                        {String(job?.job_status || '').toLowerCase() === 'completed' ? (
+                          <RefreshCw className="h-5 w-5" />
+                        ) : (
                           <CheckCircle className="h-5 w-5" />
-                        </button>
-                      ) : null}
+                        )}
+                      </button>
                       <div
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: colors?.hex || job?.color_code || '#3b82f6' }}

@@ -5,7 +5,7 @@ import ScheduleChip from '@/components/deals/ScheduleChip'
 import { formatEtMonthDayYear } from '@/utils/scheduleDisplay'
 
 // Read-only Deal Detail Drawer with 8 tabs and quick actions
-export default function DealDetailDrawer({ isOpen, onClose, deal }) {
+export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, onReopen }) {
   const [activeTab, setActiveTab] = useState('Customer')
   const [copied, setCopied] = useState('')
 
@@ -24,6 +24,8 @@ export default function DealDetailDrawer({ isOpen, onClose, deal }) {
   )
 
   if (!isOpen || !deal) return null
+
+  const isCompleted = deal?.job_status === 'completed'
 
   const copy = async (text) => {
     try {
@@ -232,9 +234,20 @@ export default function DealDetailDrawer({ isOpen, onClose, deal }) {
             <Button size="sm" variant="outline" className="h-9" disabled>
               <Icon name="FileText" size={16} className="mr-1" /> Note
             </Button>
-            <Button size="sm" variant="outline" className="h-9" disabled>
-              <Icon name="CheckCircle" size={16} className="mr-1" /> Complete
-            </Button>
+            {isCompleted ? (
+              <Button size="sm" variant="outline" className="h-9" onClick={() => onReopen?.(deal)}>
+                <Icon name="RotateCcw" size={16} className="mr-1" /> Reopen
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9"
+                onClick={() => onComplete?.(deal)}
+              >
+                <Icon name="CheckCircle" size={16} className="mr-1" /> Complete
+              </Button>
+            )}
           </div>
         </div>
 

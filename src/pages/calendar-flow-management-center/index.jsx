@@ -5,6 +5,7 @@ import {
   Building2,
   AlertTriangle,
   CheckCircle,
+  RefreshCw,
   Search,
   Download,
   Eye,
@@ -29,6 +30,7 @@ import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 
@@ -404,7 +406,8 @@ const CalendarFlowManagementCenter = () => {
 
       const undo = async () => {
         try {
-          await jobService.updateStatus(jobId, previousStatus || 'scheduled', {
+          const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
+          await jobService.updateStatus(jobId, previousStatus || fallbackStatus, {
             completed_at: previousCompletedAt || null,
           })
           toast?.success?.('Undo successful')
@@ -426,6 +429,25 @@ const CalendarFlowManagementCenter = () => {
       toast?.error?.('Failed to complete')
     }
   }
+
+  const handleReopenJob = useCallback(
+    async (job, e) => {
+      e?.stopPropagation?.()
+      const jobId = job?.id
+      if (!jobId) return
+
+      try {
+        const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+        await jobService.updateStatus(jobId, targetStatus, { completed_at: null })
+        toast?.success?.('Reopened')
+        await loadCalendarData()
+      } catch (error) {
+        console.error('[Flow Mgmt] reopen failed', error)
+        toast?.error?.(error?.message || 'Failed to reopen')
+      }
+    },
+    [loadCalendarData, toast]
+  )
 
   const handleDragStart = (job) => {
     setDraggedJob(job)
@@ -763,17 +785,23 @@ const CalendarFlowManagementCenter = () => {
               </div>
             )}
 
-            {!isCompleted ? (
-              <button
-                type="button"
-                onClick={(e) => handleCompleteJob(job, e)}
-                className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-200 bg-white/70 text-emerald-700 hover:bg-emerald-50"
-                aria-label="Complete"
-                title="Mark completed"
-              >
+            <button
+              type="button"
+              onClick={(e) => (isCompleted ? handleReopenJob(job, e) : handleCompleteJob(job, e))}
+              className={
+                isCompleted
+                  ? 'ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white/70 text-slate-700 hover:bg-slate-50'
+                  : 'ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-200 bg-white/70 text-emerald-700 hover:bg-emerald-50'
+              }
+              aria-label={isCompleted ? 'Reopen' : 'Complete'}
+              title={isCompleted ? 'Reopen deal' : 'Mark completed'}
+            >
+              {isCompleted ? (
+                <RefreshCw className="h-4 w-4" />
+              ) : (
                 <CheckCircle className="h-4 w-4" />
-              </button>
-            ) : null}
+              )}
+            </button>
           </div>
 
           {/* Second line */}
@@ -1238,6 +1266,7 @@ const CalendarFlowManagementCenter = () => {
               onJobClick={handleJobClick}
               onDragStart={handleDragStart}
               onComplete={(job) => handleCompleteJob(job)}
+              onReopen={(job) => handleReopenJob(job)}
               loading={loading}
             />
           )}
@@ -1355,6 +1384,8 @@ const CalendarFlowManagementCenter = () => {
           jobs={filteredJobs}
           type={roundUpType}
           onTypeChange={setRoundUpType}
+          onComplete={(job) => handleCompleteJob(job)}
+          onReopen={(job) => handleReopenJob(job)}
         />
       </div>
     </AppLayout>

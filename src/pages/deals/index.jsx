@@ -10,6 +10,7 @@ import DealDetailDrawer from './components/DealDetailDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 import ScheduleBlock from '../../components/deals/ScheduleBlock'
 import { formatEtMonthDay, toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
+import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules.js'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -947,6 +948,34 @@ export default function DealsPage() {
     } catch (e) {
       console.error('[Deals] mark complete failed', e)
       toast?.error?.(e?.message || 'Failed to complete')
+    }
+  }
+
+  const handleReopenDeal = async (deal) => {
+    const dealId = deal?.id
+    if (!dealId) return
+
+    const targetStatus = getUncompleteTargetStatus(deal, { now: new Date() })
+
+    try {
+      await jobService.updateStatus(dealId, targetStatus, { completed_at: null })
+
+      // Optimistic update for the open drawer (if any)
+      setSelectedDealForDetail((prev) =>
+        prev?.id === dealId
+          ? {
+              ...prev,
+              job_status: targetStatus,
+              completed_at: null,
+            }
+          : prev
+      )
+
+      toast?.success?.('Reopened')
+      await loadDeals(0, 'reopen')
+    } catch (e) {
+      console.error('[Deals] reopen failed', e)
+      toast?.error?.(e?.message || 'Failed to reopen')
     }
   }
 
@@ -2549,7 +2578,6 @@ export default function DealsPage() {
                       {/* ✅ FIXED: Loaner actions row with proper conditions */}
                       {(deal?.customer_needs_loaner || deal?.loaner_id) && (
                         <div className="grid grid-cols-2 gap-2">
-
                           {deal?.customer_needs_loaner && !deal?.loaner_id && (
                             <Button
                               size="sm"
@@ -2651,6 +2679,8 @@ export default function DealsPage() {
             setSelectedDealForDetail(null)
           }}
           deal={selectedDealForDetail}
+          onComplete={handleMarkDealComplete}
+          onReopen={handleReopenDeal}
         />
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   Building2,
   MapPin,
   CheckCircle,
+  RefreshCw,
   XCircle,
   RotateCcw,
 } from 'lucide-react'
@@ -94,7 +95,7 @@ const groupJobsByMonth = (jobList) => {
   return weeks
 }
 
-const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
+const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange, onComplete, onReopen }) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set())
 
   const groupedJobs = useMemo(() => {
@@ -111,11 +112,6 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
         return groupJobsByDay(jobs)
     }
   }, [jobs, type])
-
-  const handleJobAction = (jobId, action) => {
-    console.log(`${action} job ${jobId}`)
-    // Implement job actions
-  }
 
   const handleSelectJob = (jobId) => {
     const newSelected = new Set(selectedJobs)
@@ -135,6 +131,7 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
   const renderJobRow = (job) => {
     const statusBadge = getStatusBadge(job?.job_status)
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+    const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
 
     return (
       <div
@@ -199,22 +196,30 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange }) => {
           {/* Quick Actions */}
           <div className="flex items-center space-x-1">
             <button
-              onClick={() => handleJobAction(job?.id, 'complete')}
-              className="p-1 hover:bg-blue-100 rounded text-blue-600"
-              aria-label="Complete"
-              title="Complete"
+              onClick={() => (isCompleted ? onReopen?.(job) : onComplete?.(job))}
+              className={
+                isCompleted
+                  ? 'p-1 hover:bg-gray-100 rounded text-gray-700'
+                  : 'p-1 hover:bg-blue-100 rounded text-blue-600'
+              }
+              aria-label={isCompleted ? 'Reopen' : 'Complete'}
+              title={isCompleted ? 'Reopen' : 'Complete'}
             >
-              <CheckCircle className="h-3 w-3" />
+              {isCompleted ? (
+                <RefreshCw className="h-3 w-3" />
+              ) : (
+                <CheckCircle className="h-3 w-3" />
+              )}
             </button>
             <button
-              onClick={() => handleJobAction(job?.id, 'no_show')}
+              onClick={() => console.log(`no_show job ${job?.id}`)}
               className="p-1 hover:bg-gray-100 rounded text-gray-600"
               title="No-Show"
             >
               <XCircle className="h-3 w-3" />
             </button>
             <button
-              onClick={() => handleJobAction(job?.id, 'reschedule')}
+              onClick={() => console.log(`reschedule job ${job?.id}`)}
               className="p-1 hover:bg-orange-100 rounded text-orange-600"
               title="Reschedule"
             >

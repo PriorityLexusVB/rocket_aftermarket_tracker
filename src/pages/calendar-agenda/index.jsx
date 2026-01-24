@@ -10,6 +10,7 @@ import { getNeedsSchedulingPromiseItems, getScheduleItems } from '@/services/sch
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
+import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
@@ -544,7 +545,8 @@ export default function CalendarAgenda() {
       if (toast?.success) {
         const undo = async () => {
           try {
-            await jobService.updateStatus(job.id, previousStatus || 'scheduled', {
+            const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
+            await jobService.updateStatus(job.id, previousStatus || fallbackStatus, {
               completed_at: previousCompletedAt || null,
             })
             toast.success('Undo successful')
@@ -567,6 +569,18 @@ export default function CalendarAgenda() {
     } catch (err) {
       console.error('[agenda] complete failed', err)
       toast?.error?.('Could not complete')
+    }
+  }
+
+  async function handleReopen(job) {
+    try {
+      const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+      await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
+      toast?.success?.('Reopened')
+      await load()
+    } catch (err) {
+      console.error('[agenda] reopen failed', err)
+      toast?.error?.('Could not reopen')
     }
   }
 
@@ -806,12 +820,26 @@ export default function CalendarAgenda() {
                         Reschedule
                       </button>
                       <button
-                        onClick={() => handleComplete(r)}
+                        onClick={() =>
+                          String(r?.job_status || '').toLowerCase() === 'completed'
+                            ? handleReopen(r)
+                            : handleComplete(r)
+                        }
                         className="rounded-md px-2 py-1 text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
-                        aria-label="Complete"
-                        title="Marks this job as completed"
+                        aria-label={
+                          String(r?.job_status || '').toLowerCase() === 'completed'
+                            ? 'Reopen'
+                            : 'Complete'
+                        }
+                        title={
+                          String(r?.job_status || '').toLowerCase() === 'completed'
+                            ? 'Reopen deal'
+                            : 'Marks this job as completed'
+                        }
                       >
-                        Complete
+                        {String(r?.job_status || '').toLowerCase() === 'completed'
+                          ? 'Reopen'
+                          : 'Complete'}
                       </button>
                     </div>
                   </li>

@@ -8,6 +8,7 @@ import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import { createUndoEntry, canUndo } from './undoHelpers'
 import { formatTime } from '@/utils/dateTimeUtils'
 import { getEtDayUtcMs, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
+import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
 import { getStatusBadge } from '@/lib/time'
 import {
   getScheduleItems,
@@ -589,6 +590,67 @@ export default function SnapshotView() {
     }
   }
 
+  async function handleReopen(job) {
+    const raw = job?.raw || job
+    const jobTitle = raw?.title || raw?.job_number || 'Appointment'
+
+    try {
+      const { jobService } = await import('@/services/jobService')
+      const targetStatus = getUncompleteTargetStatus(raw, { now: new Date() })
+      await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
+      const message = `Reopened "${jobTitle}"`
+      toast?.success?.(message)
+      setStatusMessage(message)
+      await load()
+    } catch (e) {
+      console.warn('[SnapshotView] reopen failed', e)
+      const errorMsg = 'Could not reopen'
+      toast?.error?.(errorMsg)
+      setStatusMessage(errorMsg)
+    }
+  }
+
+  const renderCompletionAction = (j) => {
+    const rawStatus = String(j?.raw?.job_status || '').toLowerCase()
+
+    if (canUndo(undoMap, j.id)) {
+      return (
+        <button
+          onClick={() => handleUndo(j.id)}
+          className="text-amber-600 hover:underline"
+          aria-label="Undo complete"
+          title="Undo completion (available briefly)"
+        >
+          Undo
+        </button>
+      )
+    }
+
+    if (rawStatus === 'completed') {
+      return (
+        <button
+          onClick={() => handleReopen(j)}
+          className="text-slate-700 hover:underline"
+          aria-label="Reopen"
+          title="Reopen this deal"
+        >
+          Reopen
+        </button>
+      )
+    }
+
+    return (
+      <button
+        onClick={() => handleComplete(j)}
+        className="text-green-600 hover:underline"
+        aria-label="Complete"
+        title="Mark this job as completed"
+      >
+        Complete
+      </button>
+    )
+  }
+
   if (loading) return <div className="p-6">Loading…</div>
 
   return (
@@ -1008,24 +1070,7 @@ export default function SnapshotView() {
                           Reschedule
                         </button>
                       )}
-                      {canUndo(undoMap, j.id) ? (
-                        <button
-                          onClick={() => handleUndo(j.id)}
-                          className="text-amber-600 hover:underline"
-                          aria-label="Undo complete"
-                        >
-                          Undo
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleComplete(j)}
-                          className="text-green-600 hover:underline"
-                          aria-label="Complete"
-                          title="Marks this job as completed (status: completed)"
-                        >
-                          Complete
-                        </button>
-                      )}
+                      {renderCompletionAction(j)}
                     </div>
                   </li>
                 )
@@ -1111,24 +1156,7 @@ export default function SnapshotView() {
                           Reschedule
                         </button>
                       )}
-                      {canUndo(undoMap, j.id) ? (
-                        <button
-                          onClick={() => handleUndo(j.id)}
-                          className="text-amber-600 hover:underline"
-                          aria-label="Undo complete"
-                        >
-                          Undo
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleComplete(j)}
-                          className="text-green-600 hover:underline"
-                          aria-label="Complete"
-                          title="Marks this job as completed (status: completed)"
-                        >
-                          Complete
-                        </button>
-                      )}
+                      {renderCompletionAction(j)}
                     </div>
                   </li>
                 )
@@ -1214,24 +1242,7 @@ export default function SnapshotView() {
                           Reschedule
                         </button>
                       )}
-                      {canUndo(undoMap, j.id) ? (
-                        <button
-                          onClick={() => handleUndo(j.id)}
-                          className="text-amber-600 hover:underline"
-                          aria-label="Undo complete"
-                        >
-                          Undo
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleComplete(j)}
-                          className="text-green-600 hover:underline"
-                          aria-label="Complete"
-                          title="Marks this job as completed (status: completed)"
-                        >
-                          Complete
-                        </button>
-                      )}
+                      {renderCompletionAction(j)}
                     </div>
                   </li>
                 )
@@ -1310,24 +1321,7 @@ export default function SnapshotView() {
                           Reschedule
                         </button>
                       )}
-                      {canUndo(undoMap, j.id) ? (
-                        <button
-                          onClick={() => handleUndo(j.id)}
-                          className="text-amber-600 hover:underline"
-                          aria-label="Undo complete"
-                        >
-                          Undo
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleComplete(j)}
-                          className="text-green-600 hover:underline"
-                          aria-label="Complete"
-                          title="Marks this job as completed (status: completed)"
-                        >
-                          Complete
-                        </button>
-                      )}
+                      {renderCompletionAction(j)}
                     </div>
                   </li>
                 )
@@ -1397,24 +1391,7 @@ export default function SnapshotView() {
                     Reschedule
                   </button>
                 )}
-                {canUndo(undoMap, j.id) ? (
-                  <button
-                    onClick={() => handleUndo(j.id)}
-                    className="text-amber-600 hover:underline"
-                    aria-label="Undo complete"
-                  >
-                    Undo
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleComplete(j)}
-                    className="text-green-600 hover:underline"
-                    aria-label="Complete"
-                    title="Marks this job as completed (status: completed)"
-                  >
-                    Complete
-                  </button>
-                )}
+                {renderCompletionAction(j)}
               </div>
             </li>
           )
@@ -1469,24 +1446,7 @@ export default function SnapshotView() {
                         >
                           View
                         </button>
-                        {canUndo(undoMap, j.id) ? (
-                          <button
-                            onClick={() => handleUndo(j.id)}
-                            className="text-amber-600 hover:underline"
-                            aria-label="Undo complete"
-                          >
-                            Undo
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleComplete(j)}
-                            className="text-green-600 hover:underline"
-                            aria-label="Complete"
-                            title="Marks this job as completed (status: completed)"
-                          >
-                            Complete
-                          </button>
-                        )}
+                        {renderCompletionAction(j)}
                       </div>
                     </li>
                   )

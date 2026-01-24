@@ -1,5 +1,5 @@
 import React from 'react'
-import { Car, Clock, Calendar, AlertTriangle, Package, CheckCircle } from 'lucide-react'
+import { Car, Clock, Calendar, AlertTriangle, Package, CheckCircle, RefreshCw } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
@@ -30,7 +30,7 @@ function summarizeOpCodesFromParts(parts, max = 5) {
   return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
 }
 
-const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading, onComplete }) => {
+const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading, onComplete, onReopen }) => {
   const renderUnassignedJob = (job) => {
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     const overdue = isOverdue(promise)
@@ -47,6 +47,7 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading, onComplete })
     const stock = vehicle?.stock_number || job?.stock_no || job?.stockNumber || ''
     const customer = job?.customer_name || job?.customerName || vehicle?.owner_name || ''
     const ops = summarizeOpCodesFromParts(job?.job_parts, 6)
+    const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
 
     return (
       <div
@@ -64,20 +65,27 @@ const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading, onComplete })
             {overdue && <AlertTriangle className="h-4 w-4 text-red-500 ml-2" />}
           </div>
           <div className="flex items-center gap-2">
-            {String(job?.job_status || '').toLowerCase() !== 'completed' ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e?.stopPropagation?.()
-                  onComplete?.(job)
-                }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                aria-label="Complete"
-                title="Mark completed"
-              >
+            <button
+              type="button"
+              onClick={(e) => {
+                e?.stopPropagation?.()
+                if (isCompleted) onReopen?.(job)
+                else onComplete?.(job)
+              }}
+              className={
+                isCompleted
+                  ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+              }
+              aria-label={isCompleted ? 'Reopen' : 'Complete'}
+              title={isCompleted ? 'Reopen deal' : 'Mark completed'}
+            >
+              {isCompleted ? (
+                <RefreshCw className="h-4 w-4" />
+              ) : (
                 <CheckCircle className="h-4 w-4" />
-              </button>
-            ) : null}
+              )}
+            </button>
 
             <div
               className={`
