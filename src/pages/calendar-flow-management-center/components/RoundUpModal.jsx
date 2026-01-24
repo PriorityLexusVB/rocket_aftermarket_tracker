@@ -95,7 +95,16 @@ const groupJobsByMonth = (jobList) => {
   return weeks
 }
 
-const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange, onComplete, onReopen }) => {
+const RoundUpModal = ({
+  isOpen,
+  onClose,
+  jobs,
+  type,
+  onTypeChange,
+  onComplete,
+  onReopen,
+  isStatusInFlight,
+}) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set())
 
   const groupedJobs = useMemo(() => {
@@ -202,8 +211,10 @@ const RoundUpModal = ({ isOpen, onClose, jobs, type, onTypeChange, onComplete, o
                   ? 'p-1 hover:bg-gray-100 rounded text-gray-700'
                   : 'p-1 hover:bg-blue-100 rounded text-blue-600'
               }
+              disabled={isStatusInFlight?.(job?.id) || false}
+              aria-disabled={isStatusInFlight?.(job?.id) || false}
               aria-label={isCompleted ? 'Reopen' : 'Complete'}
-              title={isCompleted ? 'Reopen' : 'Complete'}
+              title={isCompleted ? 'Reopen deal' : 'Mark completed'}
             >
               {isCompleted ? (
                 <RefreshCw className="h-3 w-3" />

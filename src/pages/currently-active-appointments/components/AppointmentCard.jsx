@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   Calendar,
   User,
@@ -21,6 +21,7 @@ const AppointmentCard = ({
   bulkMode,
   onToggleSelect,
 }) => {
+  const [statusBusy, setStatusBusy] = useState(false)
   const StatusIcon = appointment?.statusConfig?.icon
   const isOverdue = appointment?.isOverdue
 
@@ -44,9 +45,15 @@ const AppointmentCard = ({
 
   const timeRemaining = getTimeRemaining()
 
-  const handleStatusChange = (newStatus, e) => {
+  const handleStatusChange = async (newStatus, e) => {
     e?.stopPropagation()
-    onUpdateStatus?.(appointment?.id, newStatus)
+    if (statusBusy) return
+    setStatusBusy(true)
+    try {
+      await onUpdateStatus?.(appointment?.id, newStatus)
+    } finally {
+      setStatusBusy(false)
+    }
   }
 
   const handleCardClick = (e) => {
@@ -284,10 +291,15 @@ const AppointmentCard = ({
                       e
                     )
                   }
-                  className="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors duration-200"
-                  title="Undo complete"
+                  disabled={statusBusy}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200 ${
+                    statusBusy
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                  title="Reopen deal"
                 >
-                  Undo
+                  Reopen
                 </button>
               ) : (
                 <button
@@ -300,8 +312,13 @@ const AppointmentCard = ({
                       e
                     )
                   }
-                  className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200"
-                  title="Marks this job as completed (status: completed)"
+                  disabled={statusBusy}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors duration-200 ${
+                    statusBusy
+                      ? 'bg-blue-100 text-blue-300 cursor-not-allowed'
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  }`}
+                  title="Mark completed"
                 >
                   Complete
                 </button>

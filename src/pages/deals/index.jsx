@@ -726,7 +726,7 @@ export default function DealsPage() {
 
   // ✅ UPDATED: Status tabs & quick search with enhanced filtering
   const [filters, setFilters] = useState({
-    status: 'All',
+    status: 'Open',
     presetView: 'All',
     salesAssigned: null,
     deliveryAssigned: null,
@@ -764,6 +764,9 @@ export default function DealsPage() {
 
   // Guard against rapid double-click triggering duplicate deletes
   const deleteInFlightRef = useRef(false)
+
+  // Guard against rapid double-click triggering duplicate status updates (complete/reopen)
+  const statusUpdateInFlightRef = useRef(new Set())
 
   // ✅ FIXED: Replace direct function calls with hook-based calls
   const getSalesConsultants = () => {
@@ -908,6 +911,10 @@ export default function DealsPage() {
       return
     }
 
+    // Prevent double-clicks from sending duplicate completion updates.
+    if (statusUpdateInFlightRef.current.has(dealId)) return
+    statusUpdateInFlightRef.current.add(dealId)
+
     if (loanerAssignmentId) {
       try {
         await markLoanerReturned(loanerAssignmentId)
@@ -915,6 +922,7 @@ export default function DealsPage() {
         setError(`Failed to auto-return loaner: ${e?.message}`)
         console.error('[Deals] auto-return loaner failed', e)
         toast?.error?.(e?.message || 'Failed to auto-return loaner')
+        statusUpdateInFlightRef.current.delete(dealId)
         return
       }
     }
@@ -948,12 +956,17 @@ export default function DealsPage() {
     } catch (e) {
       console.error('[Deals] mark complete failed', e)
       toast?.error?.(e?.message || 'Failed to complete')
+    } finally {
+      statusUpdateInFlightRef.current.delete(dealId)
     }
   }
 
   const handleReopenDeal = async (deal) => {
     const dealId = deal?.id
     if (!dealId) return
+
+    if (statusUpdateInFlightRef.current.has(dealId)) return
+    statusUpdateInFlightRef.current.add(dealId)
 
     const targetStatus = getUncompleteTargetStatus(deal, { now: new Date() })
 
@@ -976,6 +989,8 @@ export default function DealsPage() {
     } catch (e) {
       console.error('[Deals] reopen failed', e)
       toast?.error?.(e?.message || 'Failed to reopen')
+    } finally {
+      statusUpdateInFlightRef.current.delete(dealId)
     }
   }
 
@@ -1247,7 +1262,10 @@ export default function DealsPage() {
       let targetStatus = filters?.status?.toLowerCase()?.replace(' ', '_')
       // Map UI label "Active" to backend status "in_progress"
       if (targetStatus === 'active') targetStatus = 'in_progress'
-      if (deal?.job_status !== targetStatus) {
+      // "Open" is the default view: everything except completed
+      if (targetStatus === 'open') {
+        if (deal?.job_status === 'completed') return false
+      } else if (deal?.job_status !== targetStatus) {
         return false
       }
     }
@@ -1430,6 +1448,36 @@ export default function DealsPage() {
     return true
   })
 
+  // Default ordering: most recently added first
+  const sortedDeals = React.useMemo(() => {
+    const list = Array.isArray(filteredDeals) ? [...filteredDeals] : []
+
+    const toSortMs = (deal) => {
+      const raw =
+        deal?.created_at ||
+        deal?.createdAt ||
+        deal?.created ||
+        deal?.inserted_at ||
+        deal?.deal_date ||
+        deal?.dealDate ||
+        deal?.date ||
+        null
+      if (!raw) return 0
+      const s = String(raw)
+      const iso = /^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T00:00:00Z` : s
+      const ms = Date.parse(iso)
+      return Number.isFinite(ms) ? ms : 0
+    }
+
+    list.sort((a, b) => {
+      const diff = toSortMs(b) - toSortMs(a)
+      if (diff !== 0) return diff
+      return String(a?.id || '').localeCompare(String(b?.id || ''))
+    })
+
+    return list
+  }, [filteredDeals])
+
   // ✅ ADDED: 300ms debounced search implementation
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1462,7 +1510,7 @@ export default function DealsPage() {
   // Clear all filters
   const clearAllFilters = () => {
     setFilters({
-      status: 'All',
+      status: 'Open',
       presetView: 'All',
       salesAssigned: null,
       deliveryAssigned: null,
@@ -1686,6 +1734,7 @@ export default function DealsPage() {
           <div className="flex flex-wrap gap-2 mb-4">
             {[
               { value: 'All', label: 'All' },
+              { value: 'Open', label: 'Open' },
               { value: 'Draft', label: 'Draft' },
               { value: 'Pending', label: 'Booked (time TBD)' },
               { value: 'Scheduled', label: 'Scheduled' },
@@ -1956,14 +2005,14 @@ export default function DealsPage() {
         {/* Results count */}
         <div className="mb-4 text-sm text-slate-600 flex items-center gap-3">
           <span>
-            Showing {filteredDeals?.length} of {deals?.length} deals
+            Showing {sortedDeals?.length} of {deals?.length} deals
             {filters?.search && <span className="ml-2 text-blue-600">(filtered)</span>}
           </span>
           {(() => {
             // Count overdue promises
             const now = new Date()
             const overdueCount =
-              filteredDeals?.filter((deal) => {
+              sortedDeals?.filter((deal) => {
                 const promisedAt = deal?.next_promised_iso
                 if (!promisedAt) {
                   // Check job_parts for fallback
@@ -1994,7 +2043,7 @@ export default function DealsPage() {
         {/* Desktop/iPad: modern card rows (no horizontal scroll) */}
         <div className="hidden md:block">
           {showSheetView ? (
-            filteredDeals?.length === 0 ? (
+            sortedDeals?.length === 0 ? (
               <div className="bg-white rounded-lg border p-10 text-center">
                 <div className="text-slate-700 font-medium">
                   {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
@@ -2010,9 +2059,9 @@ export default function DealsPage() {
                 ) : null}
               </div>
             ) : (
-              <SheetViewTable deals={filteredDeals} onRowClick={handleOpenDetail} />
+              <SheetViewTable deals={sortedDeals} onRowClick={handleOpenDetail} />
             )
-          ) : filteredDeals?.length === 0 ? (
+          ) : sortedDeals?.length === 0 ? (
             <div className="bg-white rounded-lg border p-10 text-center">
               <div className="text-slate-700 font-medium">
                 {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
@@ -2029,7 +2078,7 @@ export default function DealsPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredDeals?.map((deal) => {
+              {sortedDeals?.map((deal) => {
                 const promiseIso = getDealPromiseIso(deal)
                 const createdShort = formatCreatedShort(
                   deal?.created_at || deal?.createdAt || deal?.created || deal?.inserted_at
@@ -2258,21 +2307,6 @@ export default function DealsPage() {
                               <Icon name="Pencil" size={16} />
                             </button>
 
-                            {deal?.customer_needs_loaner && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEditDeal(deal?.id)
-                                }}
-                                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                                aria-label="Edit deal (loaner)"
-                                title="Edit deal (loaner)"
-                              >
-                                <span className="sr-only">Edit deal (loaner)</span>
-                                <Icon name="Car" size={16} />
-                              </button>
-                            )}
-
                             {deal?.job_status !== 'completed' && (
                               <button
                                 onClick={(e) => {
@@ -2287,10 +2321,6 @@ export default function DealsPage() {
                                 <Icon name="BadgeCheck" size={16} />
                               </button>
                             )}
-
-                            {deal?.customer_needs_loaner || deal?.loaner_id ? (
-                              <span aria-hidden="true" className="mx-1 h-6 w-px bg-slate-200" />
-                            ) : null}
 
                             <button
                               onClick={(e) => {
@@ -2410,7 +2440,7 @@ export default function DealsPage() {
           if (IS_TEST) return null // Avoid duplicate content in test DOM assertions
           return (
             <div className="md:hidden space-y-4">
-              {filteredDeals?.length === 0 ? (
+              {sortedDeals?.length === 0 ? (
                 <div className="bg-white rounded-lg border p-8 text-center">
                   <div className="text-slate-500">
                     {filters?.status === 'All'
@@ -2419,7 +2449,7 @@ export default function DealsPage() {
                   </div>
                 </div>
               ) : (
-                filteredDeals?.map((deal) => (
+                sortedDeals?.map((deal) => (
                   <div
                     key={deal?.id}
                     className="bg-white rounded-xl border shadow-sm overflow-hidden"
@@ -2576,22 +2606,6 @@ export default function DealsPage() {
                       </div>
 
                       {/* ✅ FIXED: Loaner actions row with proper conditions */}
-                      {(deal?.customer_needs_loaner || deal?.loaner_id) && (
-                        <div className="grid grid-cols-2 gap-2">
-                          {deal?.customer_needs_loaner && !deal?.loaner_id && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditDeal(deal?.id)}
-                              className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
-                              aria-label="Edit deal to assign loaner"
-                            >
-                              <Icon name="Car" size={16} className="mr-2" />
-                              Edit Deal
-                            </Button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))

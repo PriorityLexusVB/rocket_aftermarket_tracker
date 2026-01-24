@@ -8,6 +8,7 @@ import { formatEtMonthDayYear } from '@/utils/scheduleDisplay'
 export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, onReopen }) {
   const [activeTab, setActiveTab] = useState('Customer')
   const [copied, setCopied] = useState('')
+  const [statusBusy, setStatusBusy] = useState(false)
 
   const tabs = useMemo(
     () => [
@@ -26,6 +27,16 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
   if (!isOpen || !deal) return null
 
   const isCompleted = deal?.job_status === 'completed'
+
+  const runStatusAction = async (fn) => {
+    if (statusBusy) return
+    setStatusBusy(true)
+    try {
+      await fn?.()
+    } finally {
+      setStatusBusy(false)
+    }
+  }
 
   const copy = async (text) => {
     try {
@@ -235,7 +246,15 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
               <Icon name="FileText" size={16} className="mr-1" /> Note
             </Button>
             {isCompleted ? (
-              <Button size="sm" variant="outline" className="h-9" onClick={() => onReopen?.(deal)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9"
+                disabled={statusBusy}
+                aria-label="Reopen"
+                title="Reopen deal"
+                onClick={() => runStatusAction(() => onReopen?.(deal))}
+              >
                 <Icon name="RotateCcw" size={16} className="mr-1" /> Reopen
               </Button>
             ) : (
@@ -243,7 +262,10 @@ export default function DealDetailDrawer({ isOpen, onClose, deal, onComplete, on
                 size="sm"
                 variant="outline"
                 className="h-9"
-                onClick={() => onComplete?.(deal)}
+                disabled={statusBusy}
+                aria-label="Complete"
+                title="Mark completed"
+                onClick={() => runStatusAction(() => onComplete?.(deal))}
               >
                 <Icon name="CheckCircle" size={16} className="mr-1" /> Complete
               </Button>

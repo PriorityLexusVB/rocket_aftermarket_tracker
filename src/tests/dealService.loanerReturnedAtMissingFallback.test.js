@@ -8,8 +8,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 function supabaseMockFactory() {
   const missingReturnedAtError = {
-    message: 'column loaner_assignments.returned_at does not exist',
-    code: '42703',
+    message: "Could not find the 'returned_at' column of 'loaner_assignments' in the schema cache",
+    code: 'PGRST204',
   }
 
   const job = {
@@ -117,15 +117,19 @@ function supabaseMockFactory() {
   return { supabase }
 }
 
-// dealService imports Supabase via Vite alias path.
-vi.mock('@/lib/supabase', supabaseMockFactory)
-
-// Back-compat in case other imports still reference the relative path.
-vi.mock('../lib/supabase', supabaseMockFactory)
-
 describe('dealService.getDeal - loaner returned_at missing fallback', () => {
   beforeEach(() => {
     vi.resetModules()
+
+    // Override the global supabase mock from src/tests/setup.ts for this spec.
+    // We need a custom mock to simulate missing `returned_at` schema-cache errors.
+    vi.doMock('@/lib/supabase', supabaseMockFactory)
+    vi.doMock('../lib/supabase', supabaseMockFactory)
+
+    // Ensure module-level capability cache reads a clean slate.
+    if (globalThis.sessionStorage && typeof globalThis.sessionStorage.clear === 'function') {
+      globalThis.sessionStorage.clear()
+    }
   })
 
   it('returns loaner_number even when returned_at column is missing', async () => {

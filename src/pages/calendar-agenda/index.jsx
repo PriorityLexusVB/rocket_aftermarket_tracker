@@ -336,6 +336,28 @@ export default function CalendarAgenda() {
     initialEnd: null,
   })
 
+  // Prevent double-clicks from sending duplicate status updates.
+  const statusInFlightRef = useRef(new Set())
+  const [, bumpStatusInFlightVersion] = useState(0)
+
+  const isStatusInFlight = useCallback((jobId) => {
+    if (!jobId) return false
+    return statusInFlightRef.current.has(jobId)
+  }, [])
+
+  const withStatusLock = useCallback(async (jobId, fn) => {
+    if (!jobId) return
+    if (statusInFlightRef.current.has(jobId)) return
+    statusInFlightRef.current.add(jobId)
+    bumpStatusInFlightVersion((x) => x + 1)
+    try {
+      await fn()
+    } finally {
+      statusInFlightRef.current.delete(jobId)
+      bumpStatusInFlightVersion((x) => x + 1)
+    }
+  }, [])
+
   // Filters toggle state
   const [filtersExpanded, setFiltersExpanded] = useState(false)
 
@@ -538,50 +560,57 @@ export default function CalendarAgenda() {
   async function handleComplete(job) {
     const previousStatus = job.job_status
     const previousCompletedAt = job.completed_at
-    try {
-      await jobService.updateStatus(job.id, 'completed', { completed_at: new Date().toISOString() })
 
-      // Show success with Undo action
-      if (toast?.success) {
-        const undo = async () => {
-          try {
-            const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
-            await jobService.updateStatus(job.id, previousStatus || fallbackStatus, {
-              completed_at: previousCompletedAt || null,
-            })
-            toast.success('Undo successful')
-            await load()
-          } catch (err) {
-            console.error('[agenda] undo failed', err)
-            toast.error('Undo failed')
+    await withStatusLock(job?.id, async () => {
+      try {
+        await jobService.updateStatus(job.id, 'completed', {
+          completed_at: new Date().toISOString(),
+        })
+
+        // Show success with Undo action
+        if (toast?.success) {
+          const undo = async () => {
+            try {
+              const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
+              await jobService.updateStatus(job.id, previousStatus || fallbackStatus, {
+                completed_at: previousCompletedAt || null,
+              })
+              toast.success('Undo successful')
+              await load()
+            } catch (err) {
+              console.error('[agenda] undo failed', err)
+              toast.error('Undo failed')
+            }
           }
+
+          // Toast with undo action (10s timeout)
+          toast.success({
+            message: 'Completed',
+            action: { label: 'Undo', onClick: undo },
+            duration: 10000,
+          })
         }
 
-        // Toast with undo action (10s timeout)
-        toast.success({
-          message: 'Completed',
-          action: { label: 'Undo', onClick: undo },
-          duration: 10000,
-        })
+        await load()
+      } catch (err) {
+        console.error('[agenda] complete failed', err)
+        toast?.error?.('Could not complete')
       }
-
-      await load()
-    } catch (err) {
-      console.error('[agenda] complete failed', err)
-      toast?.error?.('Could not complete')
-    }
+    })
   }
 
   async function handleReopen(job) {
-    try {
-      const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
-      await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
-      toast?.success?.('Reopened')
-      await load()
-    } catch (err) {
-      console.error('[agenda] reopen failed', err)
-      toast?.error?.('Could not reopen')
-    }
+    await withStatusLock(job?.id, async () => {
+      try {
+        const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+        await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
+        toast?.success?.('Reopened')
+        await load()
+      } catch (err) {
+        console.error('[agenda] reopen failed', err)
+        toast?.error?.('Could not reopen')
+      }
+    })
   }
 
   if (authIsLoading)
@@ -825,7 +854,14 @@ export default function CalendarAgenda() {
                             ? handleReopen(r)
                             : handleComplete(r)
                         }
-                        className="rounded-md px-2 py-1 text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+                        disabled={isStatusInFlight(r?.id)}
+                        className={`rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+                          isStatusInFlight(r?.id)
+                            ? 'text-slate-300 cursor-not-allowed'
+                            : String(r?.job_status || '').toLowerCase() === 'completed'
+                              ? 'text-indigo-700 hover:underline'
+                              : 'text-emerald-700 hover:underline'
+                        }`}
                         aria-label={
                           String(r?.job_status || '').toLowerCase() === 'completed'
                             ? 'Reopen'
@@ -834,7 +870,7 @@ export default function CalendarAgenda() {
                         title={
                           String(r?.job_status || '').toLowerCase() === 'completed'
                             ? 'Reopen deal'
-                            : 'Marks this job as completed'
+                            : 'Mark completed'
                         }
                       >
                         {String(r?.job_status || '').toLowerCase() === 'completed'

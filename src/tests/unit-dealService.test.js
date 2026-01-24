@@ -391,64 +391,78 @@ describe('dealService pure transforms', () => {
 })
 
 describe('dealService loaner actions', () => {
-  beforeEach(() => {
+  let dealServiceFresh
+  let supabaseFresh
+
+  beforeEach(async () => {
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.removeItem('cap_loanerAssignmentsOrgId')
     }
 
-    // reset recorded calls for isolation
-    supabase.__calls.loaner_assignments.select.length = 0
-    supabase.__calls.loaner_assignments.update.length = 0
-    supabase.__calls.loaner_assignments.insert.length = 0
+    // Ensure dealService uses THIS file's supabase mock (avoid cross-file module cache collisions)
+    vi.resetModules()
+    ;({ supabase: supabaseFresh } = await import('@/lib/supabase'))
+    dealServiceFresh = await import('@/services/dealService.js')
 
-    supabase.__setLoanerSelectRows([])
-    supabase.__setLoanerUpdateResult([{ id: 'loaner-1' }])
-    supabase.__setLoanerInsertResult([{ id: 'loaner-1' }])
-    supabase.__setLoanerInsertError(null)
-    supabase.__setLoanerInsertErrors([])
+    // reset recorded calls for isolation
+    supabaseFresh.__calls.loaner_assignments.select.length = 0
+    supabaseFresh.__calls.loaner_assignments.update.length = 0
+    supabaseFresh.__calls.loaner_assignments.insert.length = 0
+
+    supabaseFresh.__setLoanerSelectRows([])
+    supabaseFresh.__setLoanerUpdateResult([{ id: 'loaner-1' }])
+    supabaseFresh.__setLoanerInsertResult([{ id: 'loaner-1' }])
+    supabaseFresh.__setLoanerInsertError(null)
+    supabaseFresh.__setLoanerInsertErrors([])
   })
 
   it('markLoanerReturned throws when update affects 0 rows', async () => {
-    supabase.__setLoanerUpdateResult([])
-    await expect(dealService.markLoanerReturned('loaner-1')).rejects.toThrow(/0 rows updated/i)
+    supabaseFresh.__setLoanerUpdateResult([])
+    await expect(dealServiceFresh.markLoanerReturned('loaner-1')).rejects.toThrow(/0 rows updated/i)
   })
 
   it('saveLoanerAssignment throws when update affects 0 rows', async () => {
-    vi.spyOn(dealService, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
+    vi.spyOn(dealServiceFresh, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
 
-    supabase.__setLoanerSelectRows([{ id: 'loaner-1' }])
-    supabase.__setLoanerUpdateResult([])
+    supabaseFresh.__setLoanerSelectRows([{ id: 'loaner-1' }])
+    supabaseFresh.__setLoanerUpdateResult([])
 
     await expect(
-      dealService.saveLoanerAssignment('job-1', { loaner_number: 'L-123', eta_return_date: null })
+      dealServiceFresh.saveLoanerAssignment('job-1', {
+        loaner_number: 'L-123',
+        eta_return_date: null,
+      })
     ).rejects.toThrow(/0 rows updated/i)
   })
 
   it('saveLoanerAssignment throws when insert affects 0 rows', async () => {
-    vi.spyOn(dealService, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
+    vi.spyOn(dealServiceFresh, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
 
-    supabase.__setLoanerSelectRows([])
-    supabase.__setLoanerInsertResult([])
+    supabaseFresh.__setLoanerSelectRows([])
+    supabaseFresh.__setLoanerInsertResult([])
 
     await expect(
-      dealService.saveLoanerAssignment('job-1', { loaner_number: 'L-123', eta_return_date: null })
+      dealServiceFresh.saveLoanerAssignment('job-1', {
+        loaner_number: 'L-123',
+        eta_return_date: null,
+      })
     ).rejects.toThrow(/0 rows inserted/i)
   })
 
   it('saveLoanerAssignment omits org_id by default (avoids PGRST204)', async () => {
-    vi.spyOn(dealService, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
+    vi.spyOn(dealServiceFresh, 'getOrgContext').mockResolvedValue({ org_id: 'org-1' })
 
-    supabase.__setLoanerSelectRows([])
+    supabaseFresh.__setLoanerSelectRows([])
 
     await expect(
-      dealService.saveLoanerAssignment('job-1', {
+      dealServiceFresh.saveLoanerAssignment('job-1', {
         loaner_number: 'L-123',
         eta_return_date: null,
         org_id: 'org-1',
       })
     ).resolves.toBe(true)
 
-    const inserts = supabase.__calls.loaner_assignments.insert
+    const inserts = supabaseFresh.__calls.loaner_assignments.insert
     expect(inserts.length).toBeGreaterThanOrEqual(1)
 
     const lastInsert = inserts[inserts.length - 1]

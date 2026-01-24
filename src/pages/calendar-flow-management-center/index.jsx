@@ -370,26 +370,50 @@ const CalendarFlowManagementCenter = () => {
     setShowDrawer(true)
   }
 
-  const handleJobStatusUpdate = async (jobId, newStatus) => {
+  // Prevent double-clicks from sending duplicate status updates.
+  const statusInFlightRef = useRef(new Set())
+  const [, bumpStatusInFlightVersion] = useState(0)
+
+  const isStatusInFlight = useCallback((jobId) => {
+    if (!jobId) return false
+    return statusInFlightRef.current.has(jobId)
+  }, [])
+
+  const withStatusLock = useCallback(async (jobId, fn) => {
+    if (!jobId) return
+    if (statusInFlightRef.current.has(jobId)) return
+    statusInFlightRef.current.add(jobId)
+    bumpStatusInFlightVersion((x) => x + 1)
     try {
-      const nextStatus = String(newStatus || '').toLowerCase()
-
-      // Status-only updates should use jobService so we can correctly manage completed_at.
-      if (nextStatus === 'completed') {
-        await jobService.updateStatus(jobId, 'completed', {
-          completed_at: new Date().toISOString(),
-        })
-        toast?.success?.('Completed')
-      } else {
-        // Clearing completed_at avoids "completed" timestamps lingering after status changes.
-        await jobService.updateStatus(jobId, nextStatus, { completed_at: null })
-      }
-
-      loadCalendarData() // Refresh data
-    } catch (error) {
-      console.error('Error updating job status:', error)
-      toast?.error?.(error?.message || 'Failed to update status')
+      await fn()
+    } finally {
+      statusInFlightRef.current.delete(jobId)
+      bumpStatusInFlightVersion((x) => x + 1)
     }
+  }, [])
+
+  const handleJobStatusUpdate = async (jobId, newStatus) => {
+    await withStatusLock(jobId, async () => {
+      try {
+        const nextStatus = String(newStatus || '').toLowerCase()
+
+        // Status-only updates should use jobService so we can correctly manage completed_at.
+        if (nextStatus === 'completed') {
+          await jobService.updateStatus(jobId, 'completed', {
+            completed_at: new Date().toISOString(),
+          })
+          toast?.success?.('Completed')
+        } else {
+          // Clearing completed_at avoids "completed" timestamps lingering after status changes.
+          await jobService.updateStatus(jobId, nextStatus, { completed_at: null })
+        }
+
+        loadCalendarData() // Refresh data
+      } catch (error) {
+        console.error('Error updating job status:', error)
+        toast?.error?.(error?.message || 'Failed to update status')
+      }
+    })
   }
 
   const handleCompleteJob = async (job, e) => {
@@ -401,33 +425,37 @@ const CalendarFlowManagementCenter = () => {
     const previousCompletedAt = job?.completed_at
     if (String(previousStatus || '').toLowerCase() === 'completed') return
 
-    try {
-      await jobService.updateStatus(jobId, 'completed', { completed_at: new Date().toISOString() })
+    await withStatusLock(jobId, async () => {
+      try {
+        await jobService.updateStatus(jobId, 'completed', {
+          completed_at: new Date().toISOString(),
+        })
 
-      const undo = async () => {
-        try {
-          const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
-          await jobService.updateStatus(jobId, previousStatus || fallbackStatus, {
-            completed_at: previousCompletedAt || null,
-          })
-          toast?.success?.('Undo successful')
-          await loadCalendarData()
-        } catch (err) {
-          console.error('[Flow Mgmt] undo complete failed', err)
-          toast?.error?.('Undo failed')
+        const undo = async () => {
+          try {
+            const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
+            await jobService.updateStatus(jobId, previousStatus || fallbackStatus, {
+              completed_at: previousCompletedAt || null,
+            })
+            toast?.success?.('Undo successful')
+            await loadCalendarData()
+          } catch (err) {
+            console.error('[Flow Mgmt] undo complete failed', err)
+            toast?.error?.('Undo failed')
+          }
         }
+
+        toast?.success?.({
+          message: 'Completed',
+          action: { label: 'Undo', onClick: undo },
+          duration: 10000,
+        })
+
+        await loadCalendarData()
+      } catch {
+        toast?.error?.('Failed to complete')
       }
-
-      toast?.success?.({
-        message: 'Completed',
-        action: { label: 'Undo', onClick: undo },
-        duration: 10000,
-      })
-
-      await loadCalendarData()
-    } catch {
-      toast?.error?.('Failed to complete')
-    }
+    })
   }
 
   const handleReopenJob = useCallback(
@@ -436,17 +464,19 @@ const CalendarFlowManagementCenter = () => {
       const jobId = job?.id
       if (!jobId) return
 
-      try {
-        const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
-        await jobService.updateStatus(jobId, targetStatus, { completed_at: null })
-        toast?.success?.('Reopened')
-        await loadCalendarData()
-      } catch (error) {
-        console.error('[Flow Mgmt] reopen failed', error)
-        toast?.error?.(error?.message || 'Failed to reopen')
-      }
+      await withStatusLock(jobId, async () => {
+        try {
+          const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+          await jobService.updateStatus(jobId, targetStatus, { completed_at: null })
+          toast?.success?.('Reopened')
+          await loadCalendarData()
+        } catch (error) {
+          console.error('[Flow Mgmt] reopen failed', error)
+          toast?.error?.(error?.message || 'Failed to reopen')
+        }
+      })
     },
-    [loadCalendarData, toast]
+    [loadCalendarData, toast, withStatusLock]
   )
 
   const handleDragStart = (job) => {
@@ -788,10 +818,19 @@ const CalendarFlowManagementCenter = () => {
             <button
               type="button"
               onClick={(e) => (isCompleted ? handleReopenJob(job, e) : handleCompleteJob(job, e))}
+              disabled={isStatusInFlight(job?.id)}
               className={
                 isCompleted
-                  ? 'ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white/70 text-slate-700 hover:bg-slate-50'
-                  : 'ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-emerald-200 bg-white/70 text-emerald-700 hover:bg-emerald-50'
+                  ? `ml-1 inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-800 ${
+                      isStatusInFlight(job?.id)
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:bg-indigo-100'
+                    }`
+                  : `ml-1 inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-800 ${
+                      isStatusInFlight(job?.id)
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:bg-emerald-100'
+                    }`
               }
               aria-label={isCompleted ? 'Reopen' : 'Complete'}
               title={isCompleted ? 'Reopen deal' : 'Mark completed'}
@@ -1267,6 +1306,7 @@ const CalendarFlowManagementCenter = () => {
               onDragStart={handleDragStart}
               onComplete={(job) => handleCompleteJob(job)}
               onReopen={(job) => handleReopenJob(job)}
+              isStatusInFlight={isStatusInFlight}
               loading={loading}
             />
           )}
@@ -1386,6 +1426,7 @@ const CalendarFlowManagementCenter = () => {
           onTypeChange={setRoundUpType}
           onComplete={(job) => handleCompleteJob(job)}
           onReopen={(job) => handleReopenJob(job)}
+          isStatusInFlight={isStatusInFlight}
         />
       </div>
     </AppLayout>

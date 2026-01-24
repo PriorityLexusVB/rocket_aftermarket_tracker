@@ -3,34 +3,8 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 
-// Mock sessionStorage
-const sessionStorageMock = (() => {
-  let store = {}
-  return {
-    getItem: (key) => store[key] || null,
-    setItem: (key, value) => {
-      store[key] = value
-    },
-    removeItem: (key) => {
-      delete store[key]
-    },
-    clear: () => {
-      store = {}
-    },
-  }
-})()
-
-global.sessionStorage = sessionStorageMock
-
-// Mock supabase
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: vi.fn(),
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'test-user' } } }),
-    },
-  },
-}))
+let supabase
+let fromSpy
 
 describe('dealService - loaner_assignments RLS degradation', () => {
   let mockSupabase
@@ -41,13 +15,16 @@ describe('dealService - loaner_assignments RLS degradation', () => {
   })
 
   beforeEach(async () => {
-    sessionStorageMock.clear()
+    sessionStorage.clear()
     vi.resetModules()
+    ;({ supabase } = await import('@/lib/supabase'))
+    mockSupabase = supabase
 
-    const module = await import('@/lib/supabase')
-    mockSupabase = module.supabase
-    mockSupabase.from.mockReset()
-    mockSupabase.auth.getUser.mockClear()
+    fromSpy = vi.spyOn(mockSupabase, 'from')
+    vi.spyOn(mockSupabase.auth, 'getUser').mockResolvedValue({
+      data: { user: { id: 'test-user' } },
+      error: null,
+    })
   })
 
   afterEach(() => {
@@ -56,7 +33,7 @@ describe('dealService - loaner_assignments RLS degradation', () => {
   })
 
   it('should gracefully handle 403 RLS errors on loaner_assignments query in getAllDeals', async () => {
-    const { getAllDeals } = await import('../services/dealService')
+    const { getAllDeals } = await import('@/services/dealService')
 
     const mockRlsError = {
       message: 'permission denied for table loaner_assignments',
@@ -107,15 +84,25 @@ describe('dealService - loaner_assignments RLS degradation', () => {
       ),
     })
 
-    // Order of mock calls:
-    // 1. Preflight probe (job_parts)
-    // 2. Main jobs query
-    // 3. Transactions query
-    // 4. Loaner assignments query
-    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
-    mockSupabase.from.mockReturnValueOnce({ select: mockJobsSelect }) // jobs
-    mockSupabase.from.mockReturnValueOnce({ select: mockTransactionsSelect }) // transactions
-    mockSupabase.from.mockReturnValueOnce({ select: mockLoanerSelect }) // loaner_assignments
+    // IMPORTANT: do NOT rely on call order here. In the full suite, sessionStorage-driven
+    // capability flags can cause the preflight probe to run or be skipped.
+    // Instead, route mocks by table name so behavior is deterministic.
+    fromSpy.mockImplementation((table) => {
+      if (table === 'job_parts') return { select: mockPreflightSelect }
+      if (table === 'jobs') return { select: mockJobsSelect }
+      if (table === 'transactions') return { select: mockTransactionsSelect }
+      if (table === 'loaner_assignments') return { select: mockLoanerSelect }
+      return {
+        select: vi.fn().mockReturnValue(
+          makeThenable(
+            { data: [], error: null },
+            {
+              limit: vi.fn().mockReturnValue(makeThenable({ data: [], error: null })),
+            }
+          )
+        ),
+      }
+    })
 
     // Should not throw despite RLS error
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})

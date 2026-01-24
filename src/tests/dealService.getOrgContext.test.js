@@ -5,49 +5,17 @@
  * which is used for RLS compliance in DB operations.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mock supabase for testing
 const mockOrgId = 'test-org-123'
 const mockUserId = 'test-user-456'
 const mockUserEmail = 'test@example.com'
 
-// Create a configurable mock for testing different scenarios
+// Configurable stubs used by per-test spies (avoids cross-file module mock collisions)
 let mockAuthResponse = {
   data: { user: { id: mockUserId, email: mockUserEmail } },
   error: null,
-}
-let mockProfileResponse = {
-  data: { org_id: mockOrgId },
-  error: null,
-}
-
-function registerSupabaseMock() {
-  vi.doMock('@/lib/supabase', () => {
-    const mockChain = () => ({
-      from: vi.fn(() => mockChain()),
-      select: vi.fn(() => mockChain()),
-      eq: vi.fn(() => mockChain()),
-      order: vi.fn(() => mockChain()),
-      limit: vi.fn(() => mockChain()),
-      maybeSingle: vi.fn(() => Promise.resolve(mockProfileResponse)),
-    })
-
-    return {
-      supabase: {
-        from: vi.fn(() => mockChain()),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
-        },
-      },
-      default: {
-        from: vi.fn(() => mockChain()),
-        auth: {
-          getUser: vi.fn(() => Promise.resolve(mockAuthResponse)),
-        },
-      },
-    }
-  })
 }
 
 // Import functions after mocks are set up.
@@ -55,6 +23,8 @@ function registerSupabaseMock() {
 // in the same worker. We re-import after vi.resetModules() so our mocks always apply.
 let isRlsError
 let getOrgContext
+let supabase
+let originalAuthGetUser
 
 beforeEach(async () => {
   // Reset mocks to default successful state before each test
@@ -62,16 +32,44 @@ beforeEach(async () => {
     data: { user: { id: mockUserId, email: mockUserEmail } },
     error: null,
   }
-  mockProfileResponse = {
-    data: { org_id: mockOrgId },
-    error: null,
-  }
 
   vi.resetModules()
-  registerSupabaseMock()
-  const dealService = await import('../services/dealService')
+  ;({ supabase } = await import('@/lib/supabase'))
+
+  // Ensure auth user comes from our test-controlled response even if another
+  // test file has provided a different supabase mock in this worker.
+  supabase.auth = supabase.auth || {}
+  originalAuthGetUser = supabase.auth.getUser
+  supabase.auth.getUser = vi.fn(() => Promise.resolve(mockAuthResponse))
+
+  // Use the shared in-memory Supabase mock in src/tests/setup.ts.
+  // Seed a user profile row and set currentUser via admin.generateLink so
+  // getOrgContext() reads auth + org context without fragile spies.
+  supabase.__seed?.('user_profiles', [
+    {
+      id: mockUserId,
+      email: mockUserEmail,
+      full_name: 'Test User',
+      role: 'admin',
+      dealer_id: mockOrgId,
+      auth_user_id: mockUserId,
+    },
+  ])
+  await supabase.auth?.admin?.generateLink?.({ email: mockUserEmail })
+
+  const dealService = await vi.importActual('@/services/dealService')
   isRlsError = dealService.isRlsError
   getOrgContext = dealService.getOrgContext
+})
+
+afterEach(() => {
+  try {
+    if (supabase?.auth) {
+      if (originalAuthGetUser) supabase.auth.getUser = originalAuthGetUser
+      else delete supabase.auth.getUser
+    }
+  } catch {}
+  vi.restoreAllMocks()
 })
 
 describe('dealService - getOrgContext', () => {
@@ -90,8 +88,14 @@ describe('dealService - getOrgContext', () => {
     })
 
     it('should return context object with null values when auth fails', async () => {
-      // Simulate auth failure
-      mockAuthResponse = { data: { user: null }, error: { message: 'Not authenticated' } }
+      // Simulate auth failure by clearing seeded profiles and generating a link
+      // for an email that does not exist in user_profiles.
+      supabase.__seed?.('user_profiles', [])
+      await supabase.auth?.admin?.generateLink?.({ email: 'missing-user@example.com' })
+
+      supabase.auth.getUser = vi.fn(() =>
+        Promise.resolve({ data: { user: null }, error: { message: 'Not authenticated' } })
+      )
 
       const context = await getOrgContext('test-auth-fail')
 

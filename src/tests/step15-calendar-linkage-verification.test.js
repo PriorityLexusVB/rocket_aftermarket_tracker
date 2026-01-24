@@ -5,12 +5,16 @@
  * Validates scheduled_start_time, scheduled_end_time, calendar_event_id, location, and color_code.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { supabase } from '@/lib/supabase'
 
 describe('Step 15: Calendar Linkage Verification', () => {
   beforeEach(() => {
     vi?.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi?.restoreAllMocks()
   })
 
   describe('Off-site Job Calendar Fields', () => {

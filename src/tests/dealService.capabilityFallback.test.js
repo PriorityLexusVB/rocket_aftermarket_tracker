@@ -1,7 +1,6 @@
 // src/tests/dealService.capabilityFallback.test.js
 // Tests for capability flag and retry logic with fallback
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getAllDeals, getCapabilities } from '@/services/dealService'
 
 // Mock sessionStorage
 const sessionStorageMock = (() => {
@@ -20,8 +19,6 @@ const sessionStorageMock = (() => {
   }
 })()
 
-global.sessionStorage = sessionStorageMock
-
 // Mock supabase
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -34,11 +31,20 @@ vi.mock('@/lib/supabase', () => ({
 
 describe('dealService - capability flag and retry logic', () => {
   let mockSupabase
+  let getAllDeals
+  let getCapabilities
 
   beforeEach(async () => {
     sessionStorageMock.clear()
     // Reset module to clear capability flags
     vi.resetModules()
+
+    // Ensure dealService reads/writes capability flags against this test storage.
+    // Vitest runs single-threaded in this repo, so avoid leaking globals across files.
+    vi.stubGlobal('sessionStorage', sessionStorageMock)
+
+    // Re-import after reset so module-level capability caches re-init from sessionStorage
+    ;({ getAllDeals, getCapabilities } = await import('@/services/dealService'))
 
     const module = await import('@/lib/supabase')
     mockSupabase = module.supabase
@@ -46,6 +52,7 @@ describe('dealService - capability flag and retry logic', () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('should set capability flag to false when vendor relationship is missing', async () => {

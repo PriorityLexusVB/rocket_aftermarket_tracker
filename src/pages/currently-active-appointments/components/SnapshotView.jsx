@@ -1,5 +1,5 @@
 // src/pages/currently-active-appointments/components/SnapshotView.jsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 import useTenant from '@/hooks/useTenant'
@@ -262,6 +262,28 @@ export default function SnapshotView() {
   const [showOlderOverdue, setShowOlderOverdue] = useState(false)
   const [sourceDebug, setSourceDebug] = useState(null)
   const [windowMode, setWindowMode] = useState('next7') // 'today' | 'next7' | 'all_day'
+
+  // Prevent double-clicks from sending duplicate status updates.
+  const statusInFlightRef = useRef(new Set())
+  const [, bumpStatusInFlightVersion] = useState(0)
+
+  const isStatusInFlight = useCallback((jobId) => {
+    if (!jobId) return false
+    return statusInFlightRef.current.has(jobId)
+  }, [])
+
+  const withStatusLock = useCallback(async (jobId, fn) => {
+    if (!jobId) return
+    if (statusInFlightRef.current.has(jobId)) return
+    statusInFlightRef.current.add(jobId)
+    bumpStatusInFlightVersion((x) => x + 1)
+    try {
+      await fn()
+    } finally {
+      statusInFlightRef.current.delete(jobId)
+      bumpStatusInFlightVersion((x) => x + 1)
+    }
+  }, [])
 
   const effectiveStatusForBadge = useCallback((item) => {
     const rawStatus = String(item?.raw?.job_status || item?.raw?.status || '').toLowerCase()
@@ -535,79 +557,89 @@ export default function SnapshotView() {
   async function handleComplete(job) {
     const prevStatus = job?.raw?.job_status || 'scheduled'
     const jobTitle = job?.raw?.title || job?.raw?.job_number || 'Appointment'
-    try {
-      // Use the existing jobService updateStatus path via raw id.
-      const { jobService } = await import('@/services/jobService')
-      await jobService.updateStatus(job.id, 'completed', { completed_at: new Date().toISOString() })
-      const message = `Completed "${jobTitle}"`
-      toast?.success?.(message)
-      setStatusMessage(message) // For screen readers
-      await load()
 
-      // set undo window (10s)
-      const tId = setTimeout(() => {
+    await withStatusLock(job?.id, async () => {
+      try {
+        // Use the existing jobService updateStatus path via raw id.
+        const { jobService } = await import('@/services/jobService')
+        await jobService.updateStatus(job.id, 'completed', {
+          completed_at: new Date().toISOString(),
+        })
+        const message = `Completed "${jobTitle}"`
+        toast?.success?.(message)
+        setStatusMessage(message) // For screen readers
+        await load()
+
+        // set undo window (10s)
+        const tId = setTimeout(() => {
+          setUndoMap((m) => {
+            const copy = new Map(m)
+            copy.delete(job.id)
+            return copy
+          })
+        }, 10000)
         setUndoMap((m) => {
           const copy = new Map(m)
-          copy.delete(job.id)
+          copy.set(job.id, createUndoEntry(job.id, prevStatus, tId))
           return copy
         })
-      }, 10000)
-      setUndoMap((m) => {
-        const copy = new Map(m)
-        copy.set(job.id, createUndoEntry(job.id, prevStatus, tId))
-        return copy
-      })
-    } catch (e) {
-      console.warn('[SnapshotView] complete failed', e)
-      const errorMsg = 'Could not complete'
-      toast?.error?.(errorMsg)
-      setStatusMessage(errorMsg)
-    }
+      } catch (e) {
+        console.warn('[SnapshotView] complete failed', e)
+        const errorMsg = 'Could not complete'
+        toast?.error?.(errorMsg)
+        setStatusMessage(errorMsg)
+      }
+    })
   }
 
   async function handleUndo(jobId) {
     const meta = undoMap.get(jobId)
     if (!meta) return
     clearTimeout(meta.timeoutId)
-    try {
-      const { jobService } = await import('@/services/jobService')
-      await jobService.updateStatus(jobId, meta.prevStatus, { completed_at: null })
-      const message = 'Restored status'
-      toast?.success?.(message)
-      setStatusMessage(message)
-    } catch (e) {
-      console.warn('[SnapshotView] undo failed', e)
-      const errorMsg = 'Undo failed'
-      toast?.error?.(errorMsg)
-      setStatusMessage(errorMsg)
-    } finally {
-      setUndoMap((m) => {
-        const copy = new Map(m)
-        copy.delete(jobId)
-        return copy
-      })
-      await load()
-    }
+
+    await withStatusLock(jobId, async () => {
+      try {
+        const { jobService } = await import('@/services/jobService')
+        await jobService.updateStatus(jobId, meta.prevStatus, { completed_at: null })
+        const message = 'Restored status'
+        toast?.success?.(message)
+        setStatusMessage(message)
+      } catch (e) {
+        console.warn('[SnapshotView] undo failed', e)
+        const errorMsg = 'Undo failed'
+        toast?.error?.(errorMsg)
+        setStatusMessage(errorMsg)
+      } finally {
+        setUndoMap((m) => {
+          const copy = new Map(m)
+          copy.delete(jobId)
+          return copy
+        })
+        await load()
+      }
+    })
   }
 
   async function handleReopen(job) {
     const raw = job?.raw || job
     const jobTitle = raw?.title || raw?.job_number || 'Appointment'
 
-    try {
-      const { jobService } = await import('@/services/jobService')
-      const targetStatus = getUncompleteTargetStatus(raw, { now: new Date() })
-      await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
-      const message = `Reopened "${jobTitle}"`
-      toast?.success?.(message)
-      setStatusMessage(message)
-      await load()
-    } catch (e) {
-      console.warn('[SnapshotView] reopen failed', e)
-      const errorMsg = 'Could not reopen'
-      toast?.error?.(errorMsg)
-      setStatusMessage(errorMsg)
-    }
+    await withStatusLock(job?.id, async () => {
+      try {
+        const { jobService } = await import('@/services/jobService')
+        const targetStatus = getUncompleteTargetStatus(raw, { now: new Date() })
+        await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
+        const message = `Reopened "${jobTitle}"`
+        toast?.success?.(message)
+        setStatusMessage(message)
+        await load()
+      } catch (e) {
+        console.warn('[SnapshotView] reopen failed', e)
+        const errorMsg = 'Could not reopen'
+        toast?.error?.(errorMsg)
+        setStatusMessage(errorMsg)
+      }
+    })
   }
 
   const renderCompletionAction = (j) => {
@@ -617,7 +649,10 @@ export default function SnapshotView() {
       return (
         <button
           onClick={() => handleUndo(j.id)}
-          className="text-amber-600 hover:underline"
+          disabled={isStatusInFlight(j.id)}
+          className={`text-amber-600 hover:underline ${
+            isStatusInFlight(j.id) ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           aria-label="Undo complete"
           title="Undo completion (available briefly)"
         >
@@ -630,9 +665,12 @@ export default function SnapshotView() {
       return (
         <button
           onClick={() => handleReopen(j)}
-          className="text-slate-700 hover:underline"
+          disabled={isStatusInFlight(j.id)}
+          className={`text-indigo-700 hover:underline ${
+            isStatusInFlight(j.id) ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           aria-label="Reopen"
-          title="Reopen this deal"
+          title="Reopen deal"
         >
           Reopen
         </button>
@@ -642,9 +680,12 @@ export default function SnapshotView() {
     return (
       <button
         onClick={() => handleComplete(j)}
-        className="text-green-600 hover:underline"
+        disabled={isStatusInFlight(j.id)}
+        className={`text-green-600 hover:underline ${
+          isStatusInFlight(j.id) ? 'opacity-50 cursor-not-allowed' : ''
+        }`}
         aria-label="Complete"
-        title="Mark this job as completed"
+        title="Mark completed"
       >
         Complete
       </button>

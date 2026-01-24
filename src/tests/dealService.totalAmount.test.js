@@ -1,55 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-
-const { supabase } = vi.hoisted(() => {
-  return {
-    supabase: {
-      from: vi.fn(),
-      auth: {
-        getUser: vi.fn(),
-      },
-    },
-  }
-})
-
-vi.mock('@/lib/supabase', () => ({ supabase }))
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 describe('dealService - total_amount numeric coercion', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.resetModules()
+  })
 
-    const mockJobs = [
-      {
-        id: 'job-1',
-        job_number: 'JOB-001',
-        title: 'Test Deal',
-        job_status: 'pending',
-        created_at: '2025-01-15T10:00:00Z',
-        job_parts: [],
-        vehicle: { year: 2025, make: 'Test', model: 'Car', stock_number: 'L25-001' },
-        vendor: null,
-      },
-    ]
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
-    const mockTransactions = [
-      {
-        job_id: 'job-1',
-        customer_name: 'Test Customer',
-        customer_phone: '555-1234',
-        customer_email: 'test@example.com',
-        // PostgREST returns DECIMAL as string
-        total_amount: '1234.56',
-      },
-    ]
-
-    const mockLoaners = []
+  it('should convert total_amount from string to number in getAllDeals', async () => {
+    const { supabase } = await import('@/lib/supabase')
 
     // Patch the shared supabase instance so dealService sees these responses.
-    supabase.auth.getUser = vi.fn(() =>
+    vi.spyOn(supabase.auth, 'getUser').mockImplementation(() =>
       Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })
     )
 
-    supabase.from = vi.fn((table) => {
+    vi.spyOn(supabase, 'from').mockImplementation((table) => {
       if (table === 'jobs') {
         return {
           select() {
@@ -57,14 +25,50 @@ describe('dealService - total_amount numeric coercion', () => {
               in() {
                 return {
                   order() {
-                    return Promise.resolve({ data: mockJobs, error: null })
+                    return Promise.resolve({
+                      data: [
+                        {
+                          id: 'job-1',
+                          job_number: 'JOB-001',
+                          title: 'Test Deal',
+                          job_status: 'pending',
+                          created_at: '2025-01-15T10:00:00Z',
+                          job_parts: [],
+                          vehicle: {
+                            year: 2025,
+                            make: 'Test',
+                            model: 'Car',
+                            stock_number: 'L25-001',
+                          },
+                          vendor: null,
+                        },
+                      ],
+                      error: null,
+                    })
                   },
                 }
               },
               eq() {
                 return {
                   async single() {
-                    return { data: mockJobs[0], error: null }
+                    return {
+                      data: {
+                        id: 'job-1',
+                        job_number: 'JOB-001',
+                        title: 'Test Deal',
+                        job_status: 'pending',
+                        created_at: '2025-01-15T10:00:00Z',
+                        job_parts: [],
+                        vehicle: {
+                          year: 2025,
+                          make: 'Test',
+                          model: 'Car',
+                          stock_number: 'L25-001',
+                        },
+                        vendor: null,
+                      },
+                      error: null,
+                    }
                   },
                 }
               },
@@ -78,15 +82,45 @@ describe('dealService - total_amount numeric coercion', () => {
           select() {
             return {
               in() {
-                return Promise.resolve({ data: mockTransactions, error: null })
+                return Promise.resolve({
+                  data: [
+                    {
+                      job_id: 'job-1',
+                      customer_name: 'Test Customer',
+                      customer_phone: '555-1234',
+                      customer_email: 'test@example.com',
+                      // PostgREST returns DECIMAL as string
+                      total_amount: '1234.56',
+                    },
+                  ],
+                  error: null,
+                })
               },
               eq() {
                 return {
                   async maybeSingle() {
-                    return { data: mockTransactions[0], error: null }
+                    return {
+                      data: {
+                        job_id: 'job-1',
+                        customer_name: 'Test Customer',
+                        customer_phone: '555-1234',
+                        customer_email: 'test@example.com',
+                        total_amount: '1234.56',
+                      },
+                      error: null,
+                    }
                   },
                   async single() {
-                    return { data: mockTransactions[0], error: null }
+                    return {
+                      data: {
+                        job_id: 'job-1',
+                        customer_name: 'Test Customer',
+                        customer_phone: '555-1234',
+                        customer_email: 'test@example.com',
+                        total_amount: '1234.56',
+                      },
+                      error: null,
+                    }
                   },
                 }
               },
@@ -102,20 +136,10 @@ describe('dealService - total_amount numeric coercion', () => {
               in() {
                 return {
                   is() {
-                    return Promise.resolve({ data: mockLoaners, error: null })
+                    return Promise.resolve({ data: [], error: null })
                   },
                   // Some code paths may skip returned_at filtering.
                   then: undefined,
-                }
-              },
-              eq() {
-                return {
-                  is() {
-                    return { maybeSingle: async () => ({ data: null, error: null }) }
-                  },
-                  async maybeSingle() {
-                    return { data: null, error: null }
-                  },
                 }
               },
             }
@@ -135,25 +159,6 @@ describe('dealService - total_amount numeric coercion', () => {
         }
       }
 
-      if (table === 'user_profiles') {
-        return {
-          select() {
-            return {
-              limit() {
-                return Promise.resolve({ data: [], error: null })
-              },
-              eq() {
-                return {
-                  async single() {
-                    return { data: { name: 'Test User' }, error: null }
-                  },
-                }
-              },
-            }
-          },
-        }
-      }
-
       // Default fallback
       return {
         select: () => ({
@@ -161,9 +166,7 @@ describe('dealService - total_amount numeric coercion', () => {
         }),
       }
     })
-  })
 
-  it('should convert total_amount from string to number in getAllDeals', async () => {
     const { getAllDeals } = await import('../services/dealService')
 
     const deals = await getAllDeals()
@@ -180,6 +183,108 @@ describe('dealService - total_amount numeric coercion', () => {
   })
 
   it('should handle zero total_amount correctly', async () => {
+    const { supabase } = await import('@/lib/supabase')
+
+    // Same base stubs as the main test; we only assert coercion and non-negativity.
+    vi.spyOn(supabase.auth, 'getUser').mockImplementation(() =>
+      Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })
+    )
+
+    vi.spyOn(supabase, 'from').mockImplementation((table) => {
+      if (table === 'jobs') {
+        return {
+          select() {
+            return {
+              in() {
+                return {
+                  order() {
+                    return Promise.resolve({
+                      data: [
+                        {
+                          id: 'job-1',
+                          job_number: 'JOB-001',
+                          title: 'Test Deal',
+                          job_status: 'pending',
+                          created_at: '2025-01-15T10:00:00Z',
+                          job_parts: [],
+                          vehicle: {
+                            year: 2025,
+                            make: 'Test',
+                            model: 'Car',
+                            stock_number: 'L25-001',
+                          },
+                          vendor: null,
+                        },
+                      ],
+                      error: null,
+                    })
+                  },
+                }
+              },
+            }
+          },
+        }
+      }
+
+      if (table === 'transactions') {
+        return {
+          select() {
+            return {
+              in() {
+                return Promise.resolve({
+                  data: [
+                    {
+                      job_id: 'job-1',
+                      customer_name: 'Test Customer',
+                      customer_phone: '555-1234',
+                      customer_email: 'test@example.com',
+                      total_amount: '0',
+                    },
+                  ],
+                  error: null,
+                })
+              },
+            }
+          },
+        }
+      }
+
+      if (table === 'loaner_assignments') {
+        return {
+          select() {
+            return {
+              in() {
+                return {
+                  is() {
+                    return Promise.resolve({ data: [], error: null })
+                  },
+                  then: undefined,
+                }
+              },
+            }
+          },
+        }
+      }
+
+      if (table === 'job_parts') {
+        return {
+          select() {
+            return {
+              limit() {
+                return Promise.resolve({ data: [], error: null })
+              },
+            }
+          },
+        }
+      }
+
+      return {
+        select: () => ({
+          limit: () => Promise.resolve({ data: [], error: null }),
+        }),
+      }
+    })
+
     const { getAllDeals } = await import('../services/dealService')
 
     const deals = await getAllDeals()

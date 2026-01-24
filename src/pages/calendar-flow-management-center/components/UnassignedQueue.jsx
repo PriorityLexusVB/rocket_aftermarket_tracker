@@ -1,226 +1,226 @@
-import React from 'react'
-import { Car, Clock, Calendar, AlertTriangle, Package, CheckCircle, RefreshCw } from 'lucide-react'
-import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
-import { formatEtDateLabel } from '@/utils/scheduleDisplay'
+import React, { useMemo } from 'react'
+import { CheckCircle2, Clock, Pencil, RefreshCcw, Trash2 } from 'lucide-react'
+import { format } from 'date-fns'
 
-function summarizeOpCodesFromParts(parts, max = 5) {
-  const list = Array.isArray(parts) ? parts : []
-  const byCode = new Map()
+import { cn } from '../../../utils/cn'
+import jobService from '../../../services/jobService'
+import { getUncompleteTargetStatus } from '../../../utils/jobStatusTimeRules'
 
-  for (const p of list) {
-    const code = String(p?.product?.op_code || p?.product?.opCode || '')
-      .trim()
-      .toUpperCase()
-    if (!code) continue
-
-    const qtyRaw = p?.quantity_used ?? p?.quantity ?? 1
-    const qtyNum = Number(qtyRaw)
-    const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
-
-    const existing = byCode.get(code)
-    if (!existing) byCode.set(code, qty)
-    else byCode.set(code, existing + qty)
+function fmtMaybe(dateValue) {
+  if (!dateValue) return null
+  try {
+    return format(new Date(dateValue), 'MMM d, h:mm a')
+  } catch {
+    return null
   }
-
-  const tokens = Array.from(byCode.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([code, qty]) => (qty > 1 ? `${code}×${qty}` : code))
-
-  const clipped = tokens.slice(0, max)
-  return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
 }
 
-const UnassignedQueue = ({ jobs, onJobClick, onDragStart, loading, onComplete, onReopen }) => {
-  const renderUnassignedJob = (job) => {
-    const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
-    const overdue = isOverdue(promise)
-    const rawStatus = String(job?.job_status || '').toLowerCase()
-    const hasTimeWindow = !!job?.scheduled_start_time
-    const statusForBadge =
-      !hasTimeWindow &&
-      promise &&
-      (rawStatus === 'pending' || rawStatus === 'new' || rawStatus === '')
-        ? 'scheduled'
-        : rawStatus
-    const statusBadge = getStatusBadge(statusForBadge)
-    const vehicle = job?.vehicle || job?.vehicles || null
-    const stock = vehicle?.stock_number || job?.stock_no || job?.stockNumber || ''
-    const customer = job?.customer_name || job?.customerName || vehicle?.owner_name || ''
-    const ops = summarizeOpCodesFromParts(job?.job_parts, 6)
-    const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
+function actionMeta(job) {
+  const isCompleted = job?.job_status === 'completed'
+  return isCompleted
+    ? { label: 'Reopen', title: 'Reopen deal' }
+    : { label: 'Complete', title: 'Mark completed' }
+}
 
-    return (
-      <div
-        key={job?.id}
-        className="bg-white rounded-lg border border-gray-200 p-3 mb-2 cursor-pointer hover:shadow-md transition-all duration-200 hover:border-blue-300"
-        onClick={() => onJobClick?.(job)}
-        draggable
-        onDragStart={() => onDragStart?.(job)}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center">
-            <Car className="h-4 w-4 text-gray-600 mr-2" />
-            <span className="font-medium text-gray-900">{job?.job_number?.split('-')?.pop()}</span>
-            {overdue && <AlertTriangle className="h-4 w-4 text-red-500 ml-2" />}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e?.stopPropagation?.()
-                if (isCompleted) onReopen?.(job)
-                else onComplete?.(job)
-              }}
-              className={
-                isCompleted
-                  ? 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                  : 'inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-              }
-              aria-label={isCompleted ? 'Reopen' : 'Complete'}
-              title={isCompleted ? 'Reopen deal' : 'Mark completed'}
-            >
-              {isCompleted ? (
-                <RefreshCw className="h-4 w-4" />
-              ) : (
-                <CheckCircle className="h-4 w-4" />
-              )}
-            </button>
+export default function UnassignedQueue({
+  jobs,
+  onEdit,
+  onDelete,
+  onRefresh,
+  now,
+  isStatusInFlight,
+}) {
+  const rows = useMemo(() => jobs ?? [], [jobs])
+  const currentNow = now ?? new Date()
 
-            <div
-              className={`
-            px-2 py-1 rounded-full text-xs font-medium
-            ${statusBadge?.bg || 'bg-gray-100'} 
-            ${statusBadge?.textColor || 'text-gray-800'}
-          `}
-            >
-              {statusBadge?.label ||
-                statusForBadge?.toUpperCase?.() ||
-                job?.job_status?.toUpperCase?.()}
-            </div>
-          </div>
-        </div>
+  async function onToggleComplete(job) {
+    if (!job?.id) return
+    if (isStatusInFlight?.(job.id)) return
 
-        {/* Job Title */}
-        <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
-          <Package className="h-3 w-3 text-gray-500 mr-1" />
-          <span className="truncate">{job?.title || job?.job_number || '—'}</span>
-        </div>
+    const isCompleted = job.job_status === 'completed'
+    if (isCompleted) {
+      const targetStatus = getUncompleteTargetStatus(job, {
+        now: currentNow,
+      })
+      await jobService.updateStatus(job.id, targetStatus, {
+        completed_at: null,
+      })
+      return
+    }
 
-        <div className="text-xs text-gray-600 mb-2 truncate">
-          {[customer, job?.vehicle_info, stock ? `Stock ${stock}` : null]
-            .filter(Boolean)
-
-            .filter(Boolean)
-            .join(' • ')}
-        </div>
-
-        {ops.tokens.length ? (
-          <div className="mb-2 flex flex-wrap items-center gap-1" aria-label="Products">
-            {ops.tokens.map((t) => (
-              <span
-                key={t}
-                className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
-                title={t}
-              >
-                {t}
-              </span>
-            ))}
-            {ops.extraCount ? (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                +{ops.extraCount}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-
-        {/* Time and Promise Info */}
-        <div className="space-y-1">
-          {job?.scheduled_start_time && (
-            <div className="flex items-center text-xs text-gray-600">
-              <Clock className="h-3 w-3 mr-1" />
-              {formatTime(job?.scheduled_start_time)}–{formatTime(job?.scheduled_end_time)}
-            </div>
-          )}
-
-          <div
-            className={`flex items-center text-xs ${overdue ? 'text-red-600' : 'text-gray-600'}`}
-          >
-            <Calendar className="h-3 w-3 mr-1" />
-            Promise: {formatEtDateLabel(promise) || '—'}
-            {overdue && (
-              <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
-                Overdue
-              </span>
-            )}
-          </div>
-
-          {/* Estimated Hours */}
-          {job?.estimated_hours && (
-            <div className="flex items-center text-xs text-gray-600">
-              <Clock className="h-3 w-3 mr-1" />
-              {job?.estimated_hours}h estimated
-            </div>
-          )}
-        </div>
-
-        {/* Drag Indicator */}
-        <div className="mt-3 pt-2 border-t border-gray-100">
-          <div className="text-xs text-gray-500 text-center">
-            Drag to a time slot or vendor lane
-          </div>
-        </div>
-      </div>
-    )
+    await jobService.updateStatus(job.id, 'completed', {
+      completed_at: new Date().toISOString(),
+    })
   }
 
   return (
-    <div className="w-72 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
-      {/* Header */}
-      <div className="p-3 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium text-gray-900">All-day</h2>
-          <div className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full font-medium">
-            {jobs?.length || 0}
-          </div>
+    <div className={cn('rounded-lg', 'border', 'border-gray-200', 'bg-white')}>
+      <div className={cn('flex items-center justify-between', 'border-b border-gray-200', 'p-3')}>
+        <div className={cn('flex items-center', 'gap-2')}>
+          <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
+          <h3 className="text-sm font-semibold text-gray-900">Unassigned</h3>
+          <span className="text-xs text-gray-500">({rows.length})</span>
         </div>
-        <p className="text-xs text-gray-600 mt-1">
-          Promised date is set; drag onto the calendar to assign a time/vendor.
-        </p>
+
+        <button
+          type="button"
+          className={cn(
+            'inline-flex items-center gap-2',
+            'rounded-md',
+            'border border-gray-200',
+            'px-2 py-1',
+            'text-xs text-gray-700',
+            'hover:bg-gray-50'
+          )}
+          onClick={onRefresh}
+          title="Refresh"
+        >
+          <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
+          Refresh
+        </button>
       </div>
 
-      {/* Job List */}
-      <div className="flex-1 overflow-y-auto p-3">
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-          </div>
-        ) : jobs?.length > 0 ? (
-          <div className="space-y-3">{jobs?.map(renderUnassignedJob)}</div>
-        ) : (
-          <div className="text-center py-8">
-            <Car className="h-8 w-8 text-gray-400 mx-auto mb-3" />
-            <div className="text-sm text-gray-600">No all-day items</div>
-            <div className="text-xs text-gray-500 mt-1">Everything has a time window</div>
-          </div>
-        )}
-      </div>
+      <div className={cn('divide-y', 'divide-gray-100')}>
+        {rows.length === 0 ? (
+          <div className="p-4 text-sm text-gray-500">No unassigned jobs.</div>
+        ) : null}
 
-      {/* Instructions */}
-      <div className="p-3 bg-white border-t border-gray-200">
-        <div className="text-xs text-gray-600 space-y-1">
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-            Drop on calendar for On-Site
-          </div>
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-            Drop on vendor lane for Off-Site
-          </div>
-        </div>
+        {rows.map((job) => {
+          const isCompleted = job.job_status === 'completed'
+          const isBusy = Boolean(isStatusInFlight?.(job.id))
+          const completedAt = fmtMaybe(job.completed_at)
+          const createdAt = fmtMaybe(job.created_at)
+          const { label, title } = actionMeta(job)
+
+          return (
+            <div
+              key={job.id}
+              className={cn(
+                'p-3',
+                isBusy ? 'opacity-60' : null,
+                isCompleted ? 'bg-green-50/40' : null
+              )}
+            >
+              <div className={cn('flex', 'items-start', 'justify-between', 'gap-3')}>
+                <div className={cn('min-w-0')}>
+                  <div className={cn('flex flex-wrap items-center', 'gap-x-2 gap-y-1')}>
+                    <div className={cn('truncate', 'text-sm', 'font-medium', 'text-gray-900')}>
+                      {job.vehicle_description || job.vehicle || '(No vehicle)'}
+                    </div>
+
+                    {isCompleted ? (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1',
+                          'rounded-full',
+                          'bg-green-100',
+                          'px-2 py-0.5',
+                          'text-[11px]',
+                          'font-medium',
+                          'text-green-800'
+                        )}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Completed
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div
+                    className={cn(
+                      'mt-1',
+                      'flex flex-wrap items-center',
+                      'gap-x-2 gap-y-1',
+                      'text-xs text-gray-600'
+                    )}
+                  >
+                    {job.customer_name ? (
+                      <span className={cn('truncate')}>{job.customer_name}</span>
+                    ) : null}
+                    {job.stock_number ? (
+                      <span className={cn('truncate')}>Stock {job.stock_number}</span>
+                    ) : null}
+                    {job.job_number ? (
+                      <span className={cn('truncate')}>Job {job.job_number}</span>
+                    ) : null}
+                    {createdAt ? <span>Created {createdAt}</span> : null}
+                    {completedAt ? <span>Completed {completedAt}</span> : null}
+                  </div>
+                </div>
+
+                <div className={cn('flex', 'shrink-0', 'items-center', 'gap-2')}>
+                  <button
+                    type="button"
+                    className={cn(
+                      'inline-flex items-center gap-1',
+                      'rounded-md',
+                      isCompleted
+                        ? 'border border-indigo-200 text-indigo-800'
+                        : 'border border-emerald-200 text-emerald-800',
+                      'px-2 py-1',
+                      'text-xs font-medium',
+                      isCompleted ? 'hover:bg-indigo-50' : 'hover:bg-emerald-50'
+                    )}
+                    onClick={() => onToggleComplete(job)}
+                    title={title}
+                    aria-label={title}
+                    disabled={isBusy}
+                  >
+                    {isCompleted ? (
+                      <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
+                    {label}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={cn(
+                      'inline-flex items-center gap-1',
+                      'rounded-md',
+                      'border border-gray-200',
+                      'px-2 py-1',
+                      'text-xs text-gray-700',
+                      'hover:bg-gray-50'
+                    )}
+                    onClick={() => onEdit?.(job)}
+                    title="Edit"
+                    disabled={isBusy}
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    className={cn(
+                      'inline-flex items-center gap-1',
+                      'rounded-md',
+                      'border border-red-200',
+                      'px-2 py-1',
+                      'text-xs text-red-700',
+                      'hover:bg-red-50'
+                    )}
+                    onClick={() => onDelete?.(job)}
+                    title="Delete"
+                    disabled={isBusy}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              {job.notes ? (
+                <div className={cn('mt-2', 'line-clamp-2', 'text-xs', 'text-gray-600')}>
+                  {job.notes}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
-
-export default UnassignedQueue
