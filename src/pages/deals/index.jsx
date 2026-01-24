@@ -709,43 +709,6 @@ const DraftReminderBanner = ({ draftsCount, onViewDrafts }) => {
   )
 }
 
-// ✅ ADDED: Mark Returned Modal Component
-const MarkReturnedModal = ({ loaner, onClose, onConfirm, loading }) => {
-  if (!loaner) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md">
-        <div className="p-6">
-          <h3 className="text-lg font-semibold mb-4 text-slate-900">Mark Loaner Returned</h3>
-          <p className="text-slate-600 mb-6">
-            Mark loaner <strong>#{loaner?.loaner_number}</strong> as returned?
-          </p>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1 h-11"
-              disabled={loading}
-              aria-label="Cancel marking loaner as returned"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={onConfirm}
-              className="flex-1 h-11 bg-green-600 hover:bg-green-700 text-white"
-              disabled={loading}
-              aria-label="Confirm loaner returned"
-            >
-              {loading ? 'Processing...' : 'Mark Returned'}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function DealsPage() {
   const toast = useToast?.()
   const [deals, setDeals] = useState([])
@@ -775,9 +738,6 @@ export default function DealsPage() {
     promiseEndDate: '', // YYYY-MM-DD
     search: '',
   })
-
-  const [markReturnedModal, setMarkReturnedModal] = useState(null)
-  const [returningLoaner, setReturningLoaner] = useState(false)
   const [searchDebounce, setSearchDebounce] = useState('')
   const [showDetailDrawer, setShowDetailDrawer] = useState(false)
   const [selectedDealForDetail, setSelectedDealForDetail] = useState(null)
@@ -897,10 +857,6 @@ export default function DealsPage() {
         setSelectedDealForDetail(null)
         closedUiState.closedDetailDrawer = true
       }
-      // Defensive: if a mark-returned modal is open, close it as well.
-      if (markReturnedModal) {
-        setMarkReturnedModal(null)
-      }
 
       if (isDealsDebugEnabled()) {
         console.info(
@@ -938,40 +894,28 @@ export default function DealsPage() {
       deleteInFlightRef.current = false
     }
   }
-
-  // ✅ FIXED: Enhanced mark returned with better error handling
-  const handleMarkLoanerReturned = async (loanerData) => {
-    try {
-      setReturningLoaner(true)
-      setError('') // Clear previous errors
-      await markLoanerReturned(loanerData?.loaner_id)
-      setMarkReturnedModal(null)
-      toast?.success?.('Loaner marked returned')
-      await loadDeals(0, 'after-loaner-returned') // Refresh data
-    } catch (e) {
-      setError(`Failed to mark loaner as returned: ${e?.message}`)
-      console.error('Mark returned error:', e)
-      toast?.error?.(e?.message || 'Failed to mark loaner returned')
-    } finally {
-      setReturningLoaner(false)
-    }
-  }
-
   const handleMarkDealComplete = async (deal) => {
     const dealId = deal?.id
     if (!dealId) return
+    const loanerAssignmentId = deal?.loaner_id || null
 
-    // If an active loaner exists, guide the user to return it first.
-    if (deal?.loaner_id || deal?.has_active_loaner) {
-      toast?.info?.('Return the loaner before completing')
-      if (deal?.loaner_id) {
-        setMarkReturnedModal({
-          loaner_id: deal?.loaner_id,
-          loaner_number: deal?.loaner_number,
-          job_title: getDealPrimaryRef(deal),
-        })
-      }
+    // Auto-return the loaner on completion (Deals page no longer has a manual return control).
+    if (deal?.has_active_loaner && !loanerAssignmentId) {
+      toast?.error?.(
+        'Active loaner assignment exists but no assignment id is available. Refresh and try again.'
+      )
       return
+    }
+
+    if (loanerAssignmentId) {
+      try {
+        await markLoanerReturned(loanerAssignmentId)
+      } catch (e) {
+        setError(`Failed to auto-return loaner: ${e?.message}`)
+        console.error('[Deals] auto-return loaner failed', e)
+        toast?.error?.(e?.message || 'Failed to auto-return loaner')
+        return
+      }
     }
 
     const previousStatus = deal?.job_status
@@ -2315,25 +2259,6 @@ export default function DealsPage() {
                               </button>
                             )}
 
-                            {deal?.loaner_id && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setMarkReturnedModal({
-                                    loaner_id: deal?.loaner_id,
-                                    loaner_number: deal?.loaner_number,
-                                    job_title: getDealPrimaryRef(deal),
-                                  })
-                                }}
-                                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
-                                aria-label="Mark loaner returned"
-                                title="Mark loaner returned"
-                              >
-                                <span className="sr-only">Mark returned</span>
-                                <Icon name="CheckCircle" size={16} />
-                              </button>
-                            )}
-
                             {deal?.customer_needs_loaner || deal?.loaner_id ? (
                               <span aria-hidden="true" className="mx-1 h-6 w-px bg-slate-200" />
                             ) : null}
@@ -2624,26 +2549,6 @@ export default function DealsPage() {
                       {/* ✅ FIXED: Loaner actions row with proper conditions */}
                       {(deal?.customer_needs_loaner || deal?.loaner_id) && (
                         <div className="grid grid-cols-2 gap-2">
-                          {deal?.loaner_id && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  setMarkReturnedModal({
-                                    loaner_id: deal?.loaner_id,
-                                    loaner_number: deal?.loaner_number,
-                                    job_title: getDealPrimaryRef(deal),
-                                  })
-                                }
-                                className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
-                                aria-label="Mark loaner returned"
-                              >
-                                <Icon name="CheckCircle" size={16} className="mr-2" />
-                                Mark Returned
-                              </Button>
-                            </>
-                          )}
 
                           {deal?.customer_needs_loaner && !deal?.loaner_id && (
                             <Button
@@ -2746,17 +2651,6 @@ export default function DealsPage() {
             setSelectedDealForDetail(null)
           }}
           deal={selectedDealForDetail}
-        />
-
-        {/* Mark Loaner Returned Modal */}
-        <MarkReturnedModal
-          loaner={markReturnedModal}
-          onClose={() => {
-            setMarkReturnedModal(null)
-            setError('') // Clear any modal-related errors
-          }}
-          onConfirm={() => handleMarkLoanerReturned(markReturnedModal)}
-          loading={returningLoaner}
         />
       </div>
     </div>
