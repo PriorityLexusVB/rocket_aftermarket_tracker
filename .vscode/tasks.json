@@ -1,7 +1,24 @@
 {
   "version": "2.0.0",
   "tasks": [
-    { "label": "Dev: Vite", "type": "shell", "command": "pnpm dev", "group": "build" },
+    {
+      "label": "Dev: Vite",
+      "type": "shell",
+      "command": "pnpm dev",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true,
+        "focus": false,
+        "close": false
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
     {
       "label": "Test: Vitest",
       "type": "shell",
@@ -52,24 +69,6 @@
       },
       "problemMatcher": [],
       "group": "test"
-    },
-    {
-      "label": "Dev: Vite (Stable)",
-      "type": "shell",
-      "command": "pnpm dev",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "isBackground": true,
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated",
-        "clear": true,
-        "focus": false,
-        "close": false
-      },
-      "problemMatcher": [],
-      "group": "build"
     },
     {
       "label": "Lint: ESLint",

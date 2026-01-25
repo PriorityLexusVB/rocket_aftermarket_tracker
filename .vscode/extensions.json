@@ -1,5 +1,10 @@
 {
   "recommendations": [
+    "antfu.vite",
+    "antfu.browse-lite",
+    "yoavbls.pretty-ts-errors",
+    "dsznajder.es7-react-js-snippets",
+    "christian-kohler.path-intellisense",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "EditorConfig.EditorConfig",

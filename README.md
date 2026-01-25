@@ -84,6 +84,11 @@ By default the app runs at <http://localhost:5173> in development.
 
 If you already have another app on 5173, use `pnpm dev:5174` to run this repo at <http://localhost:5174>.
 
+### WSL + embedded preview (Browse Lite / Vite extension)
+
+- Use `http://` for local dev URLs (not `https://`).
+- If you use the `antfu.vite` extension, it defaults to port `4000` and may auto-bump to `4001` if `4000` is already in use.
+
 ## Environment
 
 Create a `.env.local` with your Supabase config and any feature flags.

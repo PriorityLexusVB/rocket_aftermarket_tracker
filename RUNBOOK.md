@@ -96,6 +96,11 @@ pnpm dev
 - **Supabase Studio**: http://localhost:54323
 - **Supabase API**: http://localhost:54321
 
+WSL + embedded preview note:
+
+- Use `http://` (not `https://`) for local dev URLs.
+- If you use the `antfu.vite` extension with embedded browser, it typically uses port `4000` and may auto-bump to `4001`.
+
 ## Production Deployment
 
 ## Production Readiness Checklist (Must-Pass)
