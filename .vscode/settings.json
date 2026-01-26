@@ -132,7 +132,7 @@
   "vite.port": 4001,
 
   "browse-lite.chromeExecutable": "/usr/bin/google-chrome",
-  "browse-lite.otherArgs": "--no-sandbox --disable-dev-shm-usage",
   "browse-lite.startUrl": "http://localhost:4001/",
-  "browse-lite.verbose": false
+  "browse-lite.storeUserData": false,
+  "browse-lite.verbose": true
 }
