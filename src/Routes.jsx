@@ -23,6 +23,8 @@ const CurrentlyActiveAppointments = lazy(() => import('./pages/currently-active-
 
 // NEW: Calendar Flow Management Center
 const CalendarFlowManagementCenter = lazy(() => import('./pages/calendar-flow-management-center'))
+// Dashboard
+const DashboardPage = lazy(() => import('./pages/dashboard'))
 // Real Calendar (grid)
 const CalendarSchedulingCenter = lazy(() => import('./pages/calendar'))
 // Simple Agenda (feature-flagged)
@@ -81,7 +83,7 @@ const Routes = () => {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <DealsPage />
+                    <DashboardPage />
                   </ProtectedRoute>
                 }
               />
@@ -236,7 +238,7 @@ const Routes = () => {
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Navigate to="/deals" replace />
+                    <DashboardPage />
                   </ProtectedRoute>
                 }
               />

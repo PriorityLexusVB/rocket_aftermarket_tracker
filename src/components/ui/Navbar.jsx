@@ -71,7 +71,7 @@ const Navbar = () => {
   const navigationLinks = [
     {
       name: 'Calendar',
-      href: '/calendar/grid',
+      href: '/calendar',
       icon: Calendar,
     },
     {

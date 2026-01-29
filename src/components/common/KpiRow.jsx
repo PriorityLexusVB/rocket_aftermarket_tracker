@@ -2,7 +2,9 @@ import React from 'react'
 
 const KpiRow = ({ active, revenue, profit, margin, pending }) => {
   // Sanitize values to prevent NaN/undefined display
-  const sanitizeValue = (value, defaultValue = '0') => {
+  const isMissing = (value) => value === null || value === undefined || value === ''
+
+  const sanitizeValue = (value, defaultValue = '—') => {
     if (value === null || value === undefined || value === '') {
       return defaultValue
     }
@@ -20,7 +22,9 @@ const KpiRow = ({ active, revenue, profit, margin, pending }) => {
 
   // Format currency with commas, no decimals
   const formatCurrency = (value) => {
-    const num = parseFloat(value) || 0
+    if (isMissing(value)) return '—'
+    const num = parseFloat(value)
+    if (!Number.isFinite(num)) return '—'
     return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
   }
 
@@ -37,9 +41,9 @@ const KpiRow = ({ active, revenue, profit, margin, pending }) => {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       <Item label="Active Jobs" value={sanitizeValue(active)} />
-      <Item label="Revenue" value={`$${formatCurrency(revenue)}`} />
-      <Item label="Profit" value={`$${formatCurrency(profit)}`} />
-      <Item label="Margin" value={sanitizeValue(margin, '0')} suffix="%" />
+      <Item label="Revenue" value={isMissing(revenue) ? '—' : `$${formatCurrency(revenue)}`} />
+      <Item label="Profit" value={isMissing(profit) ? '—' : `$${formatCurrency(profit)}`} />
+      <Item label="Margin" value={sanitizeValue(margin)} suffix={isMissing(margin) ? '' : '%'} />
       <Item label="Pending" value={sanitizeValue(pending)} />
     </div>
   )

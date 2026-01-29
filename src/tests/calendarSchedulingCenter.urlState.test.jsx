@@ -1,5 +1,5 @@
 import React from 'react'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 
@@ -24,7 +24,15 @@ vi.mock('@/components/layouts/AppLayout', () => ({
   default: ({ children }) => <>{children}</>,
 }))
 
-import CalendarSchedulingCenter from '@/pages/calendar/index.jsx'
+let CalendarSchedulingCenter
+
+beforeEach(async () => {
+  vi.useRealTimers()
+  // This test can be sensitive to cross-file import ordering; force a fresh module graph
+  // so the vi.mocks above are always applied.
+  vi.resetModules()
+  CalendarSchedulingCenter = (await import('@/pages/calendar/index.jsx')).default
+})
 
 function LocationProbe() {
   const location = useLocation()
@@ -46,7 +54,7 @@ describe('CalendarSchedulingCenter URL state', () => {
     expect(initialSearch).toContain('view=month')
     expect(initialSearch).toContain('date=2026-01-15')
 
-    const dayCell = screen.getByLabelText('Open 2026-01-15 in day view')
+    const dayCell = await screen.findByLabelText('Open 2026-01-15 in day view')
     fireEvent.click(dayCell)
 
     expect(await screen.findByText('Daily Schedule')).toBeTruthy()

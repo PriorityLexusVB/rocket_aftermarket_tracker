@@ -40,13 +40,12 @@ class AnalyticsService {
           products!inner(name, category, brand),
           jobs!inner(
             vehicle_id,
-            vehicles!inner(year, make, model, vehicle_status)
+            vehicles(year, make, model, vehicle_status)
           )
         `
         )
         ?.not('products', 'is', null)
         ?.not('jobs', 'is', null)
-        ?.not('jobs.vehicles', 'is', null)
       if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q.throwOnError()
 
@@ -91,13 +90,12 @@ class AnalyticsService {
           products!inner(name, category, brand),
           jobs!inner(
             vehicle_id,
-            vehicles!inner(make, model, year, vehicle_status)
+            vehicles(make, model, year, vehicle_status)
           )
         `
         )
         ?.not('products', 'is', null)
         ?.not('jobs', 'is', null)
-        ?.not('jobs.vehicles', 'is', null)
       if (orgId) q = q?.eq('jobs.dealer_id', orgId)
       const { data } = await q.throwOnError()
 
@@ -175,7 +173,7 @@ class AnalyticsService {
             total_amount,
             transaction_status
           ),
-          vehicles!inner(make, model, year)
+          vehicles(make, model, year)
         `
         )
         ?.not('job_parts', 'is', null)
@@ -436,7 +434,7 @@ class AnalyticsService {
           products!inner(name, category),
           jobs!inner(
             created_at,
-            vehicles!inner(make, model, year)
+            vehicles(make, model, year)
           )
         `
         )
@@ -511,6 +509,11 @@ class AnalyticsService {
         ])
 
       const dealKpis = calculateDealKPIs(deals)
+      const safeDeals = Array.isArray(deals) ? deals : []
+      const totalProductsSoldFromDeals = safeDeals.reduce((sum, deal) => {
+        const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
+        return sum + parts.length
+      }, 0)
 
       return {
         vehicle_type_analysis: vehicleTypeData,
@@ -524,7 +527,9 @@ class AnalyticsService {
           total_deals: Array.isArray(deals)
             ? deals.length
             : safeNumber(productsPerDeal?.averages?.total_deals),
-          total_products_sold: safeNumber(productsPerDeal?.averages?.total_products_sold),
+          // Products Sold must be derived from the same deals dataset as deal_kpis.
+          // Do not depend on analytics queries that may inner-join vehicles.
+          total_products_sold: totalProductsSoldFromDeals,
           total_revenue: dealKpis?.revenue || '0.00',
           active_vendors: vendorData?.length || 0,
           product_categories: categoryData?.length || 0,

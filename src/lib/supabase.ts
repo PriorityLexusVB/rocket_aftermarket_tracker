@@ -1,6 +1,16 @@
-import { createClient } from '@supabase/supabase-js'
+// IMPORTANT:
+// This repo has a JS implementation at `src/lib/supabase.js` that includes
+// robust dev/test fallbacks and additional helpers.
+//
+// To avoid module-resolution drift (some imports resolving to .ts, others to .js)
+// we re-export from the JS module so all callers share the same singleton.
 
-const url = import.meta.env.VITE_SUPABASE_URL || 'http://localhost:54321'
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY || 'test_anon_key'
+export {
+  supabase,
+  isSupabaseConfigured,
+  testSupabaseConnection,
+  isNetworkOnline,
+  recoverSession,
+} from './supabase.js'
 
-export const supabase = createClient(url, anon)
+export { default } from './supabase.js'

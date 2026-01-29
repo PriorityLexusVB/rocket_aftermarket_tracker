@@ -1617,7 +1617,9 @@ export default function DealsPage() {
                     Profit
                   </h3>
                   <p className="text-slate-900 text-2xl font-bold">
-                    {money0.format(parseFloat(kpis?.profit) || 0)}
+                    {kpis?.profit === '' || kpis?.profit == null
+                      ? '—'
+                      : money0.format(parseFloat(kpis?.profit) || 0)}
                   </p>
                 </div>
               </div>
@@ -1634,7 +1636,9 @@ export default function DealsPage() {
                     Margin
                   </h3>
                   <p className="text-slate-900 text-2xl font-bold">
-                    {pct1(parseFloat(kpis?.margin) / 100 || 0)}
+                    {kpis?.margin === '' || kpis?.margin == null
+                      ? '—'
+                      : pct1(parseFloat(kpis?.margin) / 100 || 0)}
                   </p>
                 </div>
               </div>

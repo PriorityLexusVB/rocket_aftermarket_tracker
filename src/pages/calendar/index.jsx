@@ -89,7 +89,9 @@ const parseDateParam = (value) => {
 }
 
 const formatDateParam = (date) => {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+  if (!date || typeof date.getTime !== 'function') return ''
+  const t = date.getTime()
+  if (Number.isNaN(t)) return ''
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
@@ -217,6 +219,33 @@ const CalendarSchedulingCenter = () => {
 
     return { start, end }
   }, [currentDate, viewType])
+
+  const jumpToNextScheduled = useCallback(async () => {
+    try {
+      const after = dateRange?.end instanceof Date ? dateRange.end : new Date()
+      const { data, error } = await calendarService.getNextScheduledJob(after, {
+        orgId: orgId || null,
+      })
+
+      if (error) throw error
+
+      const nextStart = safeCreateDate(data?.scheduled_start_time)
+      if (!nextStart) {
+        toast?.info?.('No future scheduled jobs found')
+        return
+      }
+
+      // Anchor away from midnight to reduce TZ/DST edge cases.
+      const nextDate = new Date(nextStart)
+      nextDate?.setHours?.(12, 0, 0, 0)
+
+      setCurrentDate(nextDate)
+      setUrlState({ nextViewType: viewType, nextDate })
+    } catch (e) {
+      console.warn('Failed to jump to next scheduled job:', e)
+      toast?.error?.('Could not find the next scheduled job')
+    }
+  }, [dateRange?.end, orgId, setUrlState, toast, viewType])
 
   // Load calendar data with safe date operations
   const loadCalendarData = useCallback(async () => {
@@ -1002,6 +1031,13 @@ const CalendarSchedulingCenter = () => {
   // Main calendar view component with safe date handling
   const MainCalendarView = () => {
     const viewLabel = viewType === 'week' ? 'Weekly' : viewType === 'month' ? 'Monthly' : 'Daily'
+    const isEmptyRange = Array.isArray(jobs) && jobs.length === 0
+    const emptyTitle =
+      viewType === 'week'
+        ? 'No jobs scheduled for this week'
+        : viewType === 'day'
+          ? 'No jobs scheduled for this day'
+          : 'No jobs scheduled for this period'
 
     return (
       <div className="p-4">
@@ -1042,7 +1078,43 @@ const CalendarSchedulingCenter = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4">
           <div className="min-w-0">
-            <CalendarGrid jobs={jobs} viewType={viewType} />
+            <div className="relative">
+              <CalendarGrid jobs={jobs} viewType={viewType} />
+
+              {isEmptyRange ? (
+                <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+                  <div className="max-w-md text-center rounded-lg border bg-white/95 backdrop-blur-sm p-4 shadow-sm pointer-events-auto">
+                    <div className="text-base font-semibold text-gray-900">{emptyTitle}</div>
+                    <div className="mt-1 text-sm text-gray-600">
+                      Switch to Agenda for a queue view, or open the Scheduling Board to book work.
+                    </div>
+                    <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate('/calendar/agenda')}
+                        className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      >
+                        Open Agenda
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/calendar-flow-management-center')}
+                        className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+                      >
+                        Open Scheduling Board
+                      </button>
+                      <button
+                        type="button"
+                        onClick={jumpToNextScheduled}
+                        className="px-3 py-2 text-sm rounded border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 transition-colors"
+                      >
+                        Jump to Next Scheduled
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <div className="space-y-4">

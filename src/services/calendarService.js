@@ -78,7 +78,11 @@ export const calendarService = {
           ...job,
           vendor_name:
             job?.vendors?.name ||
-            (job?.vendor_id ? 'Vendor' : job?.location === 'off_site' ? 'Vendor/Offsite' : 'On-site'),
+            (job?.vendor_id
+              ? 'Vendor'
+              : job?.location === 'off_site'
+                ? 'Vendor/Offsite'
+                : 'On-site'),
           vehicle_info: job?.vehicles
             ? `${job?.vehicles?.year} ${job?.vehicles?.make} ${job?.vehicles?.model}`.trim()
             : 'No Vehicle',
@@ -211,6 +215,36 @@ export const calendarService = {
     } catch (error) {
       console.error('[calendar] getJobsByDateRange failed:', error)
       return { data: [], error: null }
+    }
+  },
+
+  /**
+   * Find the next scheduled job strictly after the provided date.
+   * Returns { data: { id, scheduled_start_time } | null, error }.
+   */
+  async getNextScheduledJob(afterDate, filters = {}) {
+    try {
+      const afterIso = afterDate?.toISOString?.() ? afterDate.toISOString() : null
+      if (!afterIso) return { data: null, error: new Error('Invalid date') }
+
+      let q = supabase
+        ?.from('jobs')
+        ?.select('id, scheduled_start_time')
+        ?.not('scheduled_start_time', 'is', null)
+        ?.gt('scheduled_start_time', afterIso)
+        ?.order('scheduled_start_time', { ascending: true })
+        ?.limit(1)
+
+      if (filters?.vendorId) {
+        q = q?.eq('vendor_id', filters.vendorId)
+      }
+
+      const rows = await safeSelect(q, 'calendar:getNextScheduledJob', { allowRLS: true })
+      const first = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+      return { data: first, error: null }
+    } catch (error) {
+      console.error('[calendar] getNextScheduledJob failed:', error)
+      return { data: null, error }
     }
   },
 

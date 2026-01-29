@@ -19,7 +19,15 @@ const sessionStorageMock = (() => {
   }
 })()
 
-// Mock supabase
+// Keep these module mocks file-scoped so each test can reset modules and
+// re-import dealService deterministically.
+vi.mock('@/utils/userProfileName', () => ({
+  buildUserProfileSelectFragment: () => '(id, full_name)',
+  resolveUserProfileName: (profile) => profile?.full_name || profile?.name || '',
+  ensureUserProfileCapsLoaded: async () => {},
+  downgradeCapForErrorMessage: () => {},
+}))
+
 vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
@@ -42,6 +50,8 @@ describe('dealService - capability flag and retry logic', () => {
     // Ensure dealService reads/writes capability flags against this test storage.
     // Vitest runs single-threaded in this repo, so avoid leaking globals across files.
     vi.stubGlobal('sessionStorage', sessionStorageMock)
+    // capabilityTelemetry prefers sessionStorage but can fall back to localStorage.
+    vi.stubGlobal('localStorage', sessionStorageMock)
 
     // Re-import after reset so module-level capability caches re-init from sessionStorage
     ;({ getAllDeals, getCapabilities } = await import('@/services/dealService'))
@@ -60,54 +70,55 @@ describe('dealService - capability flag and retry logic', () => {
       'Could not find a relationship between "job_parts" and "vendors" in the schema cache'
     )
 
-    // Mock preflight probe to succeed (so it doesn't block the test)
-    const mockPreflightSelect = vi.fn().mockReturnValue({
-      limit: vi.fn().mockResolvedValue({
-        data: [],
-        error: null,
-      }),
-    })
+    let jobsSelectAttempt = 0
+    mockSupabase.from.mockImplementation((table) => {
+      if (table === 'job_parts') {
+        return {
+          select: () => ({
+            limit: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
 
-    // Mock the primary select to throw relationship error
-    const mockSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({
-          data: null,
-          error: mockError,
+      if (table === 'jobs') {
+        return {
+          select: () => ({
+            in: () => ({
+              order: () => {
+                jobsSelectAttempt += 1
+                if (jobsSelectAttempt === 1) {
+                  return Promise.resolve({ data: null, error: mockError })
+                }
+                return Promise.resolve({ data: [], error: null })
+              },
+            }),
+          }),
+        }
+      }
+
+      if (table === 'transactions') {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
+
+      if (table === 'loaner_assignments') {
+        return {
+          select: () => ({
+            in: () => ({
+              is: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }
+      }
+
+      return {
+        select: () => ({
+          limit: () => Promise.resolve({ data: [], error: null }),
         }),
-      }),
-    })
-
-    // Mock the fallback select to succeed
-    const mockFallbackSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({
-          data: [],
-          error: null,
-        }),
-      }),
-    })
-
-    // Order of calls:
-    // 1. Preflight probe succeeds
-    // 2. Main query fails with relationship error
-    // 3. Fallback query succeeds
-    // 4. transactions query
-    // 5. loaner_assignments query
-    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
-    mockSupabase.from.mockReturnValueOnce({ select: mockSelect }) // main query
-    mockSupabase.from.mockReturnValueOnce({ select: mockFallbackSelect }) // fallback query
-    mockSupabase.from.mockReturnValueOnce({
-      select: vi.fn().mockReturnValue({
-        in: vi
-          .fn()
-          .mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: [], error: null }) }),
-      }),
-    })
-    mockSupabase.from.mockReturnValueOnce({
-      select: vi.fn().mockReturnValue({
-        in: vi.fn().mockReturnValue({ is: vi.fn().mockResolvedValue({ data: [], error: null }) }),
-      }),
+      }
     })
 
     try {
@@ -126,30 +137,49 @@ describe('dealService - capability flag and retry logic', () => {
   })
 
   it('should set capability flag to true when vendor relationship query succeeds', async () => {
-    const mockPreflightSelect = vi.fn().mockReturnValue({
-      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    })
+    mockSupabase.from.mockImplementation((table) => {
+      if (table === 'job_parts') {
+        return {
+          select: () => ({
+            limit: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
 
-    const mockJobsSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({ data: [], error: null }),
-      }),
-    })
+      if (table === 'jobs') {
+        return {
+          select: () => ({
+            in: () => ({
+              order: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }
+      }
 
-    const mockTransactionsSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockResolvedValue({ data: [], error: null }),
-    })
+      if (table === 'transactions') {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
 
-    const mockLoanersSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockReturnValue({
-        is: vi.fn().mockResolvedValue({ data: [], error: null }),
-      }),
-    })
+      if (table === 'loaner_assignments') {
+        return {
+          select: () => ({
+            in: () => ({
+              is: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }
+      }
 
-    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
-    mockSupabase.from.mockReturnValueOnce({ select: mockJobsSelect }) // jobs
-    mockSupabase.from.mockReturnValueOnce({ select: mockTransactionsSelect }) // transactions
-    mockSupabase.from.mockReturnValueOnce({ select: mockLoanersSelect }) // loaner_assignments
+      return {
+        select: () => ({
+          limit: () => Promise.resolve({ data: [], error: null }),
+        }),
+      }
+    })
 
     try {
       await getAllDeals()
@@ -166,54 +196,66 @@ describe('dealService - capability flag and retry logic', () => {
       'Could not find a relationship between "job_parts" and "vendors" in the schema cache'
     )
 
-    const mockPreflightSelect = vi.fn().mockReturnValue({
-      limit: vi.fn().mockResolvedValue({
-        data: [],
-        error: null,
-      }),
-    })
+    // First invocation: relationship error -> retry succeeds
+    let jobsSelectAttempt = 0
+    mockSupabase.from.mockImplementation((table) => {
+      if (table === 'job_parts') {
+        return {
+          select: () => ({
+            limit: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
 
-    const mockSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({
-          data: null,
-          error: mockError,
+      if (table === 'jobs') {
+        return {
+          select: () => ({
+            in: () => ({
+              order: () => {
+                jobsSelectAttempt += 1
+                if (jobsSelectAttempt === 1) {
+                  return Promise.resolve({ data: null, error: mockError })
+                }
+                return Promise.resolve({ data: [], error: null })
+              },
+            }),
+          }),
+        }
+      }
+
+      if (table === 'transactions') {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({ data: [], error: null }),
+          }),
+        }
+      }
+
+      if (table === 'loaner_assignments') {
+        return {
+          select: () => ({
+            in: () => ({
+              is: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }
+      }
+
+      return {
+        select: () => ({
+          limit: () => Promise.resolve({ data: [], error: null }),
         }),
-      }),
+      }
     })
-
-    const mockFallbackSelect = vi.fn().mockReturnValue({
-      in: vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({
-          data: [],
-          error: null,
-        }),
-      }),
-    })
-
-    const mockTransactions = {
-      select: vi.fn().mockReturnValue({
-        in: vi.fn().mockResolvedValue({ data: [], error: null }),
-      }),
-    }
-
-    const mockLoaners = {
-      select: vi.fn().mockReturnValue({
-        in: vi.fn().mockReturnValue({
-          is: vi.fn().mockResolvedValue({ data: [], error: null }),
-        }),
-      }),
-    }
-
-    // First invocation triggers fallback once
-    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
-    mockSupabase.from.mockReturnValueOnce({ select: mockSelect }) // main query
-    mockSupabase.from.mockReturnValueOnce({ select: mockFallbackSelect }) // fallback
-    mockSupabase.from.mockReturnValueOnce(mockTransactions)
-    mockSupabase.from.mockReturnValueOnce(mockLoaners)
     try {
       await getAllDeals()
     } catch {}
+
+    // Sanity check: the relationship error should have triggered a retry
+    // and disabled the vendor relationship capability.
+    expect(jobsSelectAttempt).toBeGreaterThanOrEqual(2)
+    expect(sessionStorage.getItem('cap_jobPartsVendorRel')).toBe('false')
+
     const vendorFallback = parseInt(sessionStorage.getItem('telemetry_vendorFallback') || '0')
     const vendorRelFallback = parseInt(sessionStorage.getItem('telemetry_vendorRelFallback') || '0')
     const totalFallbacks = vendorFallback + vendorRelFallback
@@ -223,11 +265,7 @@ describe('dealService - capability flag and retry logic', () => {
     sessionStorage.setItem('cap_jobPartsVendorRel', 'true')
 
     // Second invocation again triggers fallback once
-    mockSupabase.from.mockReturnValueOnce({ select: mockPreflightSelect }) // preflight
-    mockSupabase.from.mockReturnValueOnce({ select: mockSelect }) // main query
-    mockSupabase.from.mockReturnValueOnce({ select: mockFallbackSelect }) // fallback
-    mockSupabase.from.mockReturnValueOnce(mockTransactions)
-    mockSupabase.from.mockReturnValueOnce(mockLoaners)
+    jobsSelectAttempt = 0
     try {
       await getAllDeals()
     } catch {}

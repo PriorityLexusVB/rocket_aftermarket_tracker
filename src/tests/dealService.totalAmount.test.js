@@ -10,14 +10,32 @@ describe('dealService - total_amount numeric coercion', () => {
   })
 
   it('should convert total_amount from string to number in getAllDeals', async () => {
-    const { supabase } = await import('@/lib/supabase')
+    const mockFrom = vi.fn()
+    const mockGetUser = vi.fn()
 
-    // Patch the shared supabase instance so dealService sees these responses.
-    vi.spyOn(supabase.auth, 'getUser').mockImplementation(() =>
+    // Mock Supabase at the module boundary for this test only.
+    // Using vi.doMock keeps it from leaking across test files.
+    vi.doMock('@/lib/supabase', () => ({
+      supabase: {
+        from: mockFrom,
+        auth: {
+          getUser: mockGetUser,
+        },
+      },
+    }))
+
+    vi.doMock('@/utils/userProfileName', () => ({
+      buildUserProfileSelectFragment: () => '(id, full_name)',
+      resolveUserProfileName: () => 'Test User',
+      ensureUserProfileCapsLoaded: async () => {},
+      downgradeCapForErrorMessage: () => {},
+    }))
+
+    mockGetUser.mockImplementation(() =>
       Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })
     )
 
-    vi.spyOn(supabase, 'from').mockImplementation((table) => {
+    mockFrom.mockImplementation((table) => {
       if (table === 'jobs') {
         return {
           select() {
@@ -167,7 +185,7 @@ describe('dealService - total_amount numeric coercion', () => {
       }
     })
 
-    const { getAllDeals } = await import('../services/dealService')
+    const { getAllDeals } = await import('@/services/dealService')
 
     const deals = await getAllDeals()
 
@@ -183,14 +201,31 @@ describe('dealService - total_amount numeric coercion', () => {
   })
 
   it('should handle zero total_amount correctly', async () => {
-    const { supabase } = await import('@/lib/supabase')
+    const mockFrom = vi.fn()
+    const mockGetUser = vi.fn()
+
+    vi.doMock('@/lib/supabase', () => ({
+      supabase: {
+        from: mockFrom,
+        auth: {
+          getUser: mockGetUser,
+        },
+      },
+    }))
+
+    vi.doMock('@/utils/userProfileName', () => ({
+      buildUserProfileSelectFragment: () => '(id, full_name)',
+      resolveUserProfileName: () => 'Test User',
+      ensureUserProfileCapsLoaded: async () => {},
+      downgradeCapForErrorMessage: () => {},
+    }))
 
     // Same base stubs as the main test; we only assert coercion and non-negativity.
-    vi.spyOn(supabase.auth, 'getUser').mockImplementation(() =>
+    mockGetUser.mockImplementation(() =>
       Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })
     )
 
-    vi.spyOn(supabase, 'from').mockImplementation((table) => {
+    mockFrom.mockImplementation((table) => {
       if (table === 'jobs') {
         return {
           select() {
@@ -285,7 +320,7 @@ describe('dealService - total_amount numeric coercion', () => {
       }
     })
 
-    const { getAllDeals } = await import('../services/dealService')
+    const { getAllDeals } = await import('@/services/dealService')
 
     const deals = await getAllDeals()
 

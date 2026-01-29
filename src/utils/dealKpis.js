@@ -57,18 +57,31 @@ export const calculateDealKPIs = (dealsData) => {
     return sum + revenue
   }, 0)
 
+  // Profit and margin are only meaningful when underlying deal profit is known.
+  // If any deal has revenue but missing cost/profit inputs, surface as "unknown" (blank)
+  // so UI can render as an em-dash instead of $0.
+  let hasUnknownProfit = false
   const totalProfit = safeDeals.reduce((sum, deal) => {
     const fin = getDealFinancials(deal)
-    return sum + (toFiniteNumberOrNull(fin?.profit) ?? 0)
+    const sale = toFiniteNumberOrNull(fin?.sale)
+    const profit = toFiniteNumberOrNull(fin?.profit)
+
+    if (sale != null && profit == null) {
+      hasUnknownProfit = true
+      return sum
+    }
+
+    return sum + (profit ?? 0)
   }, 0)
 
-  const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
+  const margin = !hasUnknownProfit && totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null
 
   return {
     active: activeJobs,
     revenue: Number.isFinite(totalRevenue) ? totalRevenue.toFixed(2) : '0.00',
-    profit: Number.isFinite(totalProfit) ? totalProfit.toFixed(2) : '0.00',
-    margin: Number.isFinite(margin) ? margin.toFixed(1) : '0.0',
+    profit: hasUnknownProfit ? '' : Number.isFinite(totalProfit) ? totalProfit.toFixed(2) : '0.00',
+    margin:
+      hasUnknownProfit || margin == null ? '' : Number.isFinite(margin) ? margin.toFixed(1) : '0.0',
     pending: pendingJobs,
     drafts: totalDrafts,
   }
