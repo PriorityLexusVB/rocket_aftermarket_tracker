@@ -49,7 +49,7 @@
     "drizzle-zod": "^0.8.3",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.556.0",
-    "next": "15.5.9",
+    "next": "16.1.6",
     "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -166,9 +166,9 @@
   "pnpm": {
     "overrides": {
       "esbuild": "0.25.12",
-      "next": "15.5.9",
+      "next": "16.1.6",
       "@remix-run/router": "1.23.2",
-      "tar": "7.5.4"
+      "tar": "7.5.7"
     }
   },
   "packageManager": "pnpm@10.15.0"
