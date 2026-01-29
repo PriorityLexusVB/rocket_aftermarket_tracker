@@ -13,23 +13,20 @@ describe('dealService - total_amount numeric coercion', () => {
     const mockFrom = vi.fn()
     const mockGetUser = vi.fn()
 
-    // Mock Supabase at the module boundary for this test only.
-    // Using vi.doMock keeps it from leaking across test files.
-    vi.doMock('@/lib/supabase', () => ({
-      supabase: {
-        from: mockFrom,
-        auth: {
-          getUser: mockGetUser,
-        },
-      },
-    }))
+    // IMPORTANT:
+    // Avoid vi.mock/doMock for '@/lib/supabase' because other test files may establish
+    // a persistent module mock in the same worker. Instead, mutate the exported supabase
+    // client for the duration of this test and restore it.
+    const { supabase } = await import('@/lib/supabase')
+    const { setProfileCaps } = await import('@/utils/userProfileName')
+    setProfileCaps({ name: false, full_name: false, display_name: false })
 
-    vi.doMock('@/utils/userProfileName', () => ({
-      buildUserProfileSelectFragment: () => '(id, full_name)',
-      resolveUserProfileName: () => 'Test User',
-      ensureUserProfileCapsLoaded: async () => {},
-      downgradeCapForErrorMessage: () => {},
-    }))
+    const originalFrom = supabase.from
+    const originalGetUser = supabase?.auth?.getUser
+
+    supabase.from = mockFrom
+    supabase.auth = supabase.auth || {}
+    supabase.auth.getUser = mockGetUser
 
     mockGetUser.mockImplementation(() =>
       Promise.resolve({ data: { user: { id: 'user-1' } }, error: null })
@@ -185,40 +182,39 @@ describe('dealService - total_amount numeric coercion', () => {
       }
     })
 
-    const { getAllDeals } = await import('@/services/dealService')
+    try {
+      const { getAllDeals } = await import('@/services/dealService')
+      const deals = await getAllDeals()
 
-    const deals = await getAllDeals()
+      expect(deals).toBeDefined()
+      expect(Array.isArray(deals)).toBe(true)
+      expect(deals.length).toBeGreaterThan(0)
 
-    expect(deals).toBeDefined()
-    expect(Array.isArray(deals)).toBe(true)
-    expect(deals.length).toBeGreaterThan(0)
-
-    const deal = deals[0]
-    expect(deal.total_amount).toBeDefined()
-    // Should be a number, not a string
-    expect(typeof deal.total_amount).toBe('number')
-    expect(deal.total_amount).toBe(1234.56)
+      const deal = deals[0]
+      expect(deal.total_amount).toBeDefined()
+      // Should be a number, not a string
+      expect(typeof deal.total_amount).toBe('number')
+      expect(deal.total_amount).toBe(1234.56)
+    } finally {
+      supabase.from = originalFrom
+      if (originalGetUser) supabase.auth.getUser = originalGetUser
+    }
   })
 
   it('should handle zero total_amount correctly', async () => {
     const mockFrom = vi.fn()
     const mockGetUser = vi.fn()
 
-    vi.doMock('@/lib/supabase', () => ({
-      supabase: {
-        from: mockFrom,
-        auth: {
-          getUser: mockGetUser,
-        },
-      },
-    }))
+    const { supabase } = await import('@/lib/supabase')
+    const { setProfileCaps } = await import('@/utils/userProfileName')
+    setProfileCaps({ name: false, full_name: false, display_name: false })
 
-    vi.doMock('@/utils/userProfileName', () => ({
-      buildUserProfileSelectFragment: () => '(id, full_name)',
-      resolveUserProfileName: () => 'Test User',
-      ensureUserProfileCapsLoaded: async () => {},
-      downgradeCapForErrorMessage: () => {},
-    }))
+    const originalFrom = supabase.from
+    const originalGetUser = supabase?.auth?.getUser
+
+    supabase.from = mockFrom
+    supabase.auth = supabase.auth || {}
+    supabase.auth.getUser = mockGetUser
 
     // Same base stubs as the main test; we only assert coercion and non-negativity.
     mockGetUser.mockImplementation(() =>
@@ -320,20 +316,24 @@ describe('dealService - total_amount numeric coercion', () => {
       }
     })
 
-    const { getAllDeals } = await import('@/services/dealService')
+    try {
+      const { getAllDeals } = await import('@/services/dealService')
+      const deals = await getAllDeals()
 
-    const deals = await getAllDeals()
+      expect(deals).toBeDefined()
+      expect(Array.isArray(deals)).toBe(true)
 
-    expect(deals).toBeDefined()
-    expect(Array.isArray(deals)).toBe(true)
-
-    if (deals.length > 0) {
-      const deal = deals[0]
-      expect(deal.total_amount).toBeDefined()
-      // Should be a number type (parseFloat handles both strings and numbers)
-      expect(typeof deal.total_amount).toBe('number')
-      // parseFloat('1234.56') should work, parseFloat(1234.56) should also work
-      expect(deal.total_amount).toBeGreaterThanOrEqual(0)
+      if (deals.length > 0) {
+        const deal = deals[0]
+        expect(deal.total_amount).toBeDefined()
+        // Should be a number type (parseFloat handles both strings and numbers)
+        expect(typeof deal.total_amount).toBe('number')
+        // parseFloat('1234.56') should work, parseFloat(1234.56) should also work
+        expect(deal.total_amount).toBeGreaterThanOrEqual(0)
+      }
+    } finally {
+      supabase.from = originalFrom
+      if (originalGetUser) supabase.auth.getUser = originalGetUser
     }
   })
 })
