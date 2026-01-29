@@ -18,6 +18,7 @@ import VendorPerformanceTable from './components/VendorPerformanceTable'
 import DealAnalyticsWidget from './components/DealAnalyticsWidget'
 import SalesTrendsChart from './components/SalesTrendsChart'
 import MetricCard from './components/MetricCard'
+import KpiRow from '../../components/common/KpiRow'
 
 const AdvancedBusinessIntelligenceAnalytics = () => {
   const [loading, setLoading] = useState(true)
@@ -239,6 +240,17 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Deal KPIs (aligned with Deals page) */}
+          <div className="mb-8" data-testid="analytics-deal-kpis">
+            <KpiRow
+              active={dashboardData?.deal_kpis?.active}
+              revenue={dashboardData?.deal_kpis?.revenue}
+              profit={dashboardData?.deal_kpis?.profit}
+              margin={dashboardData?.deal_kpis?.margin}
+              pending={dashboardData?.deal_kpis?.pending}
+            />
+          </div>
+
           {/* Key Metrics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <MetricCard
@@ -260,7 +272,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
             <MetricCard
               icon={<DollarSign className="w-5 h-5" />}
               title="Total Revenue"
-              value={`$${parseFloat(dashboardData?.summary_stats?.total_revenue || 0)?.toLocaleString()}`}
+              value={`$${parseFloat(dashboardData?.deal_kpis?.revenue || dashboardData?.summary_stats?.total_revenue || 0)?.toLocaleString()}`}
               trend="+15%"
               trendUp={true}
               description="Total sales revenue"

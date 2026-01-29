@@ -11,6 +11,7 @@ import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 import ScheduleBlock from '../../components/deals/ScheduleBlock'
 import { formatEtMonthDay, toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
 import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules.js'
+import { calculateDealKPIs, getDealFinancials } from '../../utils/dealKpis'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
 import Navbar from '../../components/ui/Navbar'
@@ -606,32 +607,8 @@ const formatMoney0OrDash = (value) => {
   return num == null ? '—' : money0.format(num)
 }
 
-const getDealFinancials = (deal) => {
-  const sale =
-    toFiniteNumberOrNull(deal?.total_amount) ??
-    (Array.isArray(deal?.job_parts)
-      ? deal.job_parts.reduce((sum, p) => sum + (toFiniteNumberOrNull(p?.total_price) || 0), 0)
-      : null)
-
-  const costDirect =
-    toFiniteNumberOrNull(deal?.actual_cost) ??
-    toFiniteNumberOrNull(deal?.estimated_cost) ??
-    toFiniteNumberOrNull(deal?.total_cost)
-
-  const profitDirect = toFiniteNumberOrNull(deal?.profit_amount)
-
-  let cost = costDirect
-  // If we don't have cost but we *do* have stored profit, infer cost.
-  if (cost == null && sale != null && profitDirect != null) cost = sale - profitDirect
-
-  // Profit is defined as Sale - Cost.
-  let profit = sale != null && cost != null ? sale - cost : profitDirect
-
-  if (typeof profit === 'number' && Math.abs(profit) < 0.005) profit = 0
-  if (typeof cost === 'number' && Math.abs(cost) < 0.005) cost = 0
-
-  return { sale, cost, profit }
-}
+// NOTE: `getDealFinancials` is imported from `src/utils/dealKpis.js` to keep
+// Deals + Analytics KPI computation consistent.
 
 // ✅ UPDATED: Service Location Tag with color styling per requirements
 const ServiceLocationTag = ({ jobParts }) => {
@@ -1220,41 +1197,6 @@ export default function DealsPage() {
     )
   }
 
-  // ✅ UPDATED: Calculate KPIs with proper safety checks
-  const calculateKPIs = (dealsData) => {
-    const safeDeals = dealsData || []
-
-    const activeJobs = safeDeals?.filter((d) => d?.job_status === 'in_progress')?.length || 0
-
-    const totalRevenue = safeDeals?.reduce((sum, deal) => {
-      const revenue = parseFloat(deal?.total_amount) || 0
-      return sum + revenue
-    }, 0)
-
-    // Profit is Sale - Cost when cost exists; otherwise fallback to stored profit_amount.
-    const totalProfit = safeDeals?.reduce((sum, deal) => {
-      const fin = getDealFinancials(deal)
-      return sum + (toFiniteNumberOrNull(fin?.profit) || 0)
-    }, 0)
-
-    const margin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0
-
-    const pendingJobs = safeDeals?.filter((d) => d?.job_status === 'pending')?.length || 0
-
-    const totalDrafts = safeDeals?.filter((d) => d?.job_status === 'draft')?.length || 0
-
-    return {
-      active: activeJobs,
-      revenue: totalRevenue?.toFixed(2) || '0.00',
-      profit: totalProfit?.toFixed(2) || '0.00',
-      margin: margin?.toFixed(1) || '0.0',
-      pending: pendingJobs,
-      drafts: totalDrafts,
-    }
-  }
-
-  const kpis = calculateKPIs(deals)
-
   // ✅ UPDATED: Enhanced filter deals with 300ms debounced search
   const filteredDeals = deals?.filter((deal) => {
     // Status filter with tab-based logic
@@ -1447,6 +1389,8 @@ export default function DealsPage() {
 
     return true
   })
+
+  const kpis = calculateDealKPIs(filteredDeals)
 
   // Default ordering: most recently added first
   const sortedDeals = React.useMemo(() => {

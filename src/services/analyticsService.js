@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase'
+import { getAllDeals } from '@/services/dealService'
+import { calculateDealKPIs } from '@/utils/dealKpis'
 
 // Utility function to safely handle numeric values and prevent NaN
 const safeNumber = (value, defaultValue = 0) => {
@@ -496,14 +498,19 @@ class AnalyticsService {
   // Get comprehensive dashboard summary
   async getDashboardSummary(orgId = null) {
     try {
-      const [vehicleTypeData, productsPerDeal, vendorData, categoryData, trendsData] =
+      const [vehicleTypeData, productsPerDeal, vendorData, categoryData, trendsData, deals] =
         await Promise.all([
           this.getProductsByVehicleType(orgId),
           this.getProductsPerDealAnalysis(orgId),
           this.getVendorPerformanceData(orgId),
           this.getProductCategoryAnalysis(orgId),
           this.getSalesTrends('6months', orgId),
+          // NOTE: `getAllDeals()` is already tenant-scoped via RLS/org context.
+          // We call it here to keep high-level KPIs consistent with the Deals page.
+          getAllDeals(),
         ])
+
+      const dealKpis = calculateDealKPIs(deals)
 
       return {
         vehicle_type_analysis: vehicleTypeData,
@@ -511,10 +518,14 @@ class AnalyticsService {
         vendor_performance: vendorData,
         category_analysis: categoryData,
         sales_trends: trendsData,
+        deal_kpis: dealKpis,
         summary_stats: {
-          total_deals: safeNumber(productsPerDeal?.averages?.total_deals),
+          // Deal-count and revenue should match Deals KPIs for identical data sets.
+          total_deals: Array.isArray(deals)
+            ? deals.length
+            : safeNumber(productsPerDeal?.averages?.total_deals),
           total_products_sold: safeNumber(productsPerDeal?.averages?.total_products_sold),
-          total_revenue: productsPerDeal?.averages?.total_revenue || '0.00',
+          total_revenue: dealKpis?.revenue || '0.00',
           active_vendors: vendorData?.length || 0,
           product_categories: categoryData?.length || 0,
         },
@@ -527,6 +538,7 @@ class AnalyticsService {
         vendor_performance: [],
         category_analysis: [],
         sales_trends: [],
+        deal_kpis: calculateDealKPIs([]),
         summary_stats: {
           total_deals: 0,
           total_products_sold: 0,
