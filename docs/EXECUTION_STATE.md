@@ -209,8 +209,17 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
   - No remote push performed.
 
 ### Phase: 11 — Skills/Guardrails/CI Package Rollout (Only after Phase 8 complete + green)
-- Status: INCOMPLETE
-- Exit Criteria:
-  - Local validators pass.
-  - Repo gates pass.
-  - Commit created (no push).
+- Status: COMPLETE
+- Evidence:
+  - Skills package present under `.github/skills/`:
+    - `appcreation-repo-audit`, `appcreation-safe-changes`, `appcreation-ci-verify`, `appcreation-supabase-rls-migrations`, `appcreation-gamification-core`
+  - Guardrails already enforced in CI workflows:
+    - `.github/workflows/ci.yml` includes `pnpm -s guard:client-env`
+    - `.github/workflows/ci-pnpm.yml` includes `pnpm -s guard:client-env`
+  - Local validators already green in Phase 8:
+    - `pnpm -s guard:client-env` PASS
+    - `pnpm -s verify` PASS (`118/118; 1006 passed | 2 skipped`)
+- Files touched: none (configuration already present)
+- Decision: no-change
+- Exit Criteria: MET
+  - Skills/guardrails/CI package is already in place; local gates green; no additional rollout needed.
