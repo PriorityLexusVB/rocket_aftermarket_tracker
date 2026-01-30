@@ -1,0 +1,27 @@
+name: Skills Validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/skills/**"
+      - "skills_schema/**"
+      - "guardrails.json"
+      - "scripts/validate-skills.mjs"
+      - "scripts/validate-guardrails.mjs"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Validate skills
+        run: node scripts/validate-skills.mjs
+
+      - name: Validate guardrails
+        run: node scripts/validate-guardrails.mjs

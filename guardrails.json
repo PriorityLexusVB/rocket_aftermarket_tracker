@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "stack-lock",
+      "title": "Stack lock (no swaps)",
+      "severity": "error",
+      "scope": "repo",
+      "description": "Do not change the core stack: Vite + React + Tailwind + Supabase; pnpm; Node 20. No dependency removals of critical packages.",
+      "references": [
+        ".github/copilot-instructions.md",
+        "AGENTS.md"
+      ]
+    },
+    {
+      "id": "vite-client-env",
+      "title": "No process env in browser code",
+      "severity": "error",
+      "scope": "src/**",
+      "description": "Browser-bundled code under src/** must not reference process/process.env/globalThis.process; use import.meta.env.*.",
+      "references": [
+        ".github/copilot-instructions.md"
+      ]
+    },
+    {
+      "id": "supabase-access-layer",
+      "title": "No Supabase client in components",
+      "severity": "error",
+      "scope": "src/**",
+      "description": "Do not import Supabase client directly in React components for CRUD; use service/lib modules.",
+      "references": [
+        ".github/copilot-instructions.md"
+      ]
+    },
+    {
+      "id": "tenant-scoping",
+      "title": "Tenant scoping required",
+      "severity": "error",
+      "scope": "supabase + services",
+      "description": "All reads/writes must include tenant scoping (orgId/profile context) and preserve RLS isolation.",
+      "references": [
+        ".github/copilot-instructions.md",
+        "docs/policies.md"
+      ]
+    }
+  ]
+}

@@ -2,11 +2,12 @@
 
 **Repo:** PriorityLexusVB/rocket_aftermarket_tracker  
 **Branch:** main  
-**Date:** 2026-01-30  
+**Date:** 2026-01-30
 
 This file is the **single source of truth** for the execution plan + phase completion evidence.
 
 Rules:
+
 - Do not mark any phase COMPLETE unless its **Exit Criteria** are explicitly written here and marked **MET**.
 - Diff-first, smallest changes only.
 - If any gate fails: stop, fix only the failure, re-run gates.
@@ -30,9 +31,38 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 
 ---
 
+## Evidence Log (Current HEAD)
+
+### 2026-01-30 — HEAD evidence snapshot (commit: 85028e8)
+
+- `bash scripts/mcp/supabase-mcp.sh --check`
+  - Output: `OK: Supabase MCP env validated (project_ref=ntpoblmjxfivomcwmjrj, env_file=/home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/.env.e2e.local)`
+- `pnpm -s guard:client-env`
+  - Output: `✅ guard:client-env passed (no forbidden client env references in src/**)`
+- `pnpm -s verify`
+  - Output (summary): `Test Files 118 passed (118); Tests 1006 passed | 2 skipped (1008)`
+
+### 2026-01-30 — HEAD evidence snapshot (post Phase 11 package)
+
+- Local validators (Phase 11):
+  - `node scripts/validate-skills.mjs`
+    - Output: `✅ validate-skills: OK (5 skills)`
+  - `node scripts/validate-guardrails.mjs`
+    - Output: `✅ validate-guardrails: OK (4 rules)`
+- Required gates re-run:
+  - `bash scripts/mcp/supabase-mcp.sh --check`
+    - Output: `OK: Supabase MCP env validated (project_ref=ntpoblmjxfivomcwmjrj, env_file=/home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/.env.e2e.local)`
+  - `pnpm -s guard:client-env`
+    - Output: `✅ guard:client-env passed (no forbidden client env references in src/**)`
+  - `pnpm -s verify`
+    - Output (summary): `Test Files 118 passed (118); Tests 1006 passed | 2 skipped (1008)`
+
+---
+
 ## Completed Phases (Recorded Evidence)
 
 ### Phase: 0 — Freeze + Evidence Snapshot (No code changes)
+
 - Status: COMPLETE
 - Evidence:
   - `git status --porcelain`
@@ -60,6 +90,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 2
 
 ### Phase: 2 — Calendar Navbar Href Canonicalization
+
 - Status: COMPLETE
 - Evidence:
   - `rg -n "name: 'Calendar'|href:" src/components/ui/Navbar.jsx`
@@ -70,6 +101,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 3
 
 ### Phase: 3 — Dashboard Reschedule Link Verification (Canonical Routing)
+
 - Status: COMPLETE
 - Evidence:
   - Verified in `src/Routes.jsx`:
@@ -82,6 +114,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 9
 
 ### Phase: 9 — Re-run Gates (Post-fix)
+
 - Status: COMPLETE
 - Evidence:
   - Re-ran: `bash scripts/mcp/supabase-mcp.sh --check && pnpm -s guard:client-env && pnpm -s verify`
@@ -92,6 +125,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 10
 
 ### Phase: 10 — Single Commit (No push)
+
 - Status: COMPLETE
 - Evidence:
   - Commit created: `5c92750` — `dashboard: reschedule routes with focus; stabilize loaner fallback test`
@@ -104,6 +138,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 4
 
 ### Phase: 4 — KPI Unknown Profit/Margin Rendering Consistency
+
 - Status: COMPLETE
 - Evidence:
   - `rg -n "hasUnknownProfit|profit|margin|kpis\\.|dealKpis" src/utils/dealKpis.js src/pages/deals/index.jsx src/pages/dashboard/index.jsx src/components/common/KpiRow.jsx`
@@ -112,6 +147,8 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
       - `src/components/common/KpiRow.jsx`: renders `Profit` as `—` when `profit` is missing; `Margin` likewise.
       - `src/pages/deals/index.jsx`: explicitly renders `—` when `kpis.profit === '' || kpis.profit == null` and same for margin.
       - `src/pages/dashboard/index.jsx`: uses `hasUnknownProfit` to render `profitToday`/`profitMtd` as `—`, and passes `null` profit when unknown so `KpiRow` renders `—`.
+  - Re-verified (2026-01-30, HEAD 85028e8):
+    - Confirms `calculateDealKPIs()` returns `profit: ''` / `margin: ''` when unknown, and both Deals + Dashboard render `—` at the display boundary.
 - Files touched: none
 - Decision: no-change
 - Exit Criteria: MET
@@ -120,12 +157,15 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 5
 
 ### Phase: 5 — Calendar Empty-State Overlay Audit (Non-blocking)
+
 - Status: COMPLETE
 - Evidence:
   - `rg -n "No jobs|empty|Get Started|Switch to Agenda|Create|overlay|pointer-events" src/pages/calendar/index.jsx`
     - Found empty overlay with explicit pointer event control:
       - Wrapper uses `pointer-events-none` while the overlay card uses `pointer-events-auto`.
       - Buttons present: `Open Agenda`, `Open Flow`, `Today`.
+  - Re-verified (2026-01-30, HEAD 85028e8):
+    - Confirms overlay wrapper is `pointer-events-none` and only the card is `pointer-events-auto`.
 - Files touched: none
 - Decision: no-change
 - Exit Criteria: MET
@@ -133,6 +173,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 6
 
 ### Phase: 6 — Opportunities Migration + Service Audit (TEST-only, no DB apply)
+
 - Status: COMPLETE
 - Evidence:
   - Migration exists:
@@ -163,6 +204,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 7
 
 ### Phase: 7 — Risk Reduction: Dead/Unused Code Paths
+
 - Status: COMPLETE
 - Evidence:
   - `rg -n "Opportunit" src | head -n 50`
@@ -178,6 +220,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Next phase: 8
 
 ### Phase: 8 — Hard Gates + Final Evidence Blocks (Post phases 4–7)
+
 - Status: COMPLETE
 - Evidence:
   - `bash scripts/mcp/supabase-mcp.sh --check`
@@ -195,11 +238,8 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 ---
 
 ## Remaining Phases (Not Yet Completed)
-
-
-
-### Phase: 8 — Hard Gates + Final Evidence Blocks (Post phases 4–7)
 ### Phase: 9b — Commit Hygiene (Only if phases 4–7 produce changes)
+
 - Status: COMPLETE
 - Evidence:
   - Local commit created (no push): `570a19c` — `opportunities: surface CRUD errors; add execution SSOT`
@@ -209,17 +249,29 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
   - No remote push performed.
 
 ### Phase: 11 — Skills/Guardrails/CI Package Rollout (Only after Phase 8 complete + green)
-- Status: COMPLETE
+
+- Status: COMPLETE (corrected per strict Phase 11 exit criteria)
+- Correction note:
+  - Earlier “Phase 11 COMPLETE” claim (docs-only) did not include the required contract/validator/workflow artifacts.
+  - This phase is now backed by explicit schema + guardrails assets + local validators + a path-scoped CI workflow.
 - Evidence:
-  - Skills package present under `.github/skills/`:
-    - `appcreation-repo-audit`, `appcreation-safe-changes`, `appcreation-ci-verify`, `appcreation-supabase-rls-migrations`, `appcreation-gamification-core`
-  - Guardrails already enforced in CI workflows:
-    - `.github/workflows/ci.yml` includes `pnpm -s guard:client-env`
-    - `.github/workflows/ci-pnpm.yml` includes `pnpm -s guard:client-env`
-  - Local validators already green in Phase 8:
-    - `pnpm -s guard:client-env` PASS
-    - `pnpm -s verify` PASS (`118/118; 1006 passed | 2 skipped`)
-- Files touched: none (configuration already present)
-- Decision: no-change
+  - Required assets now present:
+    - `skills_schema/SKILL.schema.json`
+    - `skills_schema/guardrails.schema.json`
+    - `guardrails.json`
+    - `scripts/validate-skills.mjs`
+    - `scripts/validate-guardrails.mjs`
+    - `.github/workflows/skills-validate.yml`
+  - Validators:
+    - `node scripts/validate-skills.mjs` → `✅ validate-skills: OK (5 skills)`
+    - `node scripts/validate-guardrails.mjs` → `✅ validate-guardrails: OK (4 rules)`
+  - Gates remain green (see Evidence Log):
+    - Supabase MCP env check OK
+    - `guard:client-env` PASS
+    - `verify` PASS (`118/118; 1006 passed | 2 skipped`)
+- Files touched: yes (schemas/guardrails/validators/workflow)
+- Decision: minimal additive rollout; no stack changes
 - Exit Criteria: MET
-  - Skills/guardrails/CI package is already in place; local gates green; no additional rollout needed.
+  - Required contract + guardrails files exist.
+  - Local validators pass via `node scripts/validate-*.mjs`.
+  - Path-scoped CI workflow runs validators when these files change.
