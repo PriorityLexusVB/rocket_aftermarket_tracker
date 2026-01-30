@@ -133,7 +133,7 @@ describe('dealService.getDeal - loaner returned_at missing fallback', () => {
   })
 
   it('returns loaner_number even when returned_at column is missing', async () => {
-    const { getDeal } = await import('../services/dealService')
+    const { getDeal } = await import('../services/dealService?loanerReturnedAtMissingFallback')
     const deal = await getDeal('job-1')
     expect(deal.loaner_number).toBe('L-123')
     expect(deal.has_active_loaner).toBe(true)

@@ -413,7 +413,14 @@ const DashboardPage = () => {
                             </button>
                             <button
                               type="button"
-                              onClick={() => navigate('/calendar-flow-management-center')}
+                              onClick={() => {
+                                const focus = job?.id ? `?focus=${encodeURIComponent(job.id)}` : ''
+                                navigate(
+                                  SIMPLE_AGENDA_ENABLED
+                                    ? `/calendar/agenda${focus}`
+                                    : `/calendar-flow-management-center${focus}`
+                                )
+                              }}
                               className="px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
                             >
                               Reschedule
