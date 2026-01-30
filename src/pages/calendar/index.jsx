@@ -220,33 +220,6 @@ const CalendarSchedulingCenter = () => {
     return { start, end }
   }, [currentDate, viewType])
 
-  const jumpToNextScheduled = useCallback(async () => {
-    try {
-      const after = dateRange?.end instanceof Date ? dateRange.end : new Date()
-      const { data, error } = await calendarService.getNextScheduledJob(after, {
-        orgId: orgId || null,
-      })
-
-      if (error) throw error
-
-      const nextStart = safeCreateDate(data?.scheduled_start_time)
-      if (!nextStart) {
-        toast?.info?.('No future scheduled jobs found')
-        return
-      }
-
-      // Anchor away from midnight to reduce TZ/DST edge cases.
-      const nextDate = new Date(nextStart)
-      nextDate?.setHours?.(12, 0, 0, 0)
-
-      setCurrentDate(nextDate)
-      setUrlState({ nextViewType: viewType, nextDate })
-    } catch (e) {
-      console.warn('Failed to jump to next scheduled job:', e)
-      toast?.error?.('Could not find the next scheduled job')
-    }
-  }, [dateRange?.end, orgId, setUrlState, toast, viewType])
-
   // Load calendar data with safe date operations
   const loadCalendarData = useCallback(async () => {
     try {
@@ -1086,7 +1059,7 @@ const CalendarSchedulingCenter = () => {
                   <div className="max-w-md text-center rounded-lg border bg-white/95 backdrop-blur-sm p-4 shadow-sm pointer-events-auto">
                     <div className="text-base font-semibold text-gray-900">{emptyTitle}</div>
                     <div className="mt-1 text-sm text-gray-600">
-                      Switch to Agenda for a queue view, or open the Scheduling Board to book work.
+                      Switch to Agenda for a queue view, or open Flow to book work.
                     </div>
                     <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
                       <button
@@ -1101,14 +1074,14 @@ const CalendarSchedulingCenter = () => {
                         onClick={() => navigate('/calendar-flow-management-center')}
                         className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
                       >
-                        Open Scheduling Board
+                        Open Flow
                       </button>
                       <button
                         type="button"
-                        onClick={jumpToNextScheduled}
+                        onClick={goToToday}
                         className="px-3 py-2 text-sm rounded border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 transition-colors"
                       >
-                        Jump to Next Scheduled
+                        Today
                       </button>
                     </div>
                   </div>
