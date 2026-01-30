@@ -200,10 +200,13 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 
 ### Phase: 8 — Hard Gates + Final Evidence Blocks (Post phases 4–7)
 ### Phase: 9b — Commit Hygiene (Only if phases 4–7 produce changes)
-- Status: INCOMPLETE
-- Exit Criteria:
-  - If changes exist: one commit created (hash recorded) and `pnpm -s verify` GREEN.
-  - If no changes exist: explicitly state "NO COMMIT NEEDED".
+- Status: COMPLETE
+- Evidence:
+  - Local commit created (no push): `570a19c` — `opportunities: surface CRUD errors; add execution SSOT`
+  - Gates already green in Phase 8: `pnpm -s verify` summary `118/118; 1006 passed | 2 skipped`
+- Exit Criteria: MET
+  - One tight commit created for changes introduced in phases 4–7.
+  - No remote push performed.
 
 ### Phase: 11 — Skills/Guardrails/CI Package Rollout (Only after Phase 8 complete + green)
 - Status: INCOMPLETE
