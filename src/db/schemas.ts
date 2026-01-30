@@ -11,7 +11,7 @@
 
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { z } from 'zod'
-import { jobs, jobParts, vendors } from './schema'
+import { dealOpportunities, jobs, jobParts, vendors } from './schema'
 
 const POSTGRES_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -97,3 +97,52 @@ export const jobPartSelectSchema = createSelectSchema(jobParts)
 
 export type JobPartInsert = z.infer<typeof jobPartInsertSchema>
 export type JobPart = z.infer<typeof jobPartSelectSchema>
+
+// ============================================================================
+// DEAL OPPORTUNITIES
+// ============================================================================
+
+export const dealOpportunityStatusSchema = z.enum(['open', 'accepted', 'declined'])
+
+const baseDealOpportunityInsertSchema = createInsertSchema(dealOpportunities, {
+  name: z.string().min(1, 'Opportunity name is required'),
+  quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+})
+
+export const dealOpportunityInsertSchema = baseDealOpportunityInsertSchema
+  .extend({
+    status: dealOpportunityStatusSchema.default('open'),
+    unitPrice: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === undefined || val === null || val === '') return null
+        const num = typeof val === 'number' ? val : parseFloat(val)
+        return Number.isNaN(num) ? null : num
+      })
+      .refine((val) => val === null || val >= 0, 'Unit price must be non-negative'),
+    declineReason: z.union([z.literal(''), z.string()]).optional(),
+  })
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    decidedAt: true,
+  })
+  .superRefine((val, ctx) => {
+    if (val.status === 'declined') {
+      const reason = String(val.declineReason ?? '').trim()
+      if (!reason) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['declineReason'],
+          message: 'Decline reason is required when declined',
+        })
+      }
+    }
+  })
+
+export const dealOpportunitySelectSchema = createSelectSchema(dealOpportunities)
+
+export type DealOpportunityInsert = z.infer<typeof dealOpportunityInsertSchema>
+export type DealOpportunity = z.infer<typeof dealOpportunitySelectSchema>

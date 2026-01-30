@@ -5,6 +5,7 @@ import { calendarService } from '@/services/calendarService'
 import { jobService } from '@/services/jobService'
 import { claimsService } from '@/services/claimsService'
 import { getAllDeals } from '@/services/dealService'
+import { getOpenOpportunitySummary } from '@/services/opportunitiesService'
 import { getDealFinancials } from '@/utils/dealKpis'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -71,13 +72,14 @@ const DashboardPage = () => {
   const [mtdDeals, setMtdDeals] = useState([])
   const [todayDeals, setTodayDeals] = useState([])
   const [openClaims, setOpenClaims] = useState(null)
+  const [openOppSummary, setOpenOppSummary] = useState(null)
 
   const refresh = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats] =
+      const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary] =
         await Promise.all([
           calendarService.getJobsByDateRange(startOfToday(), endOfToday(), {
             orgId: orgId || null,
@@ -90,6 +92,7 @@ const DashboardPage = () => {
           }),
           getAllDeals(),
           claimsService.getClaimsStats(orgId || null),
+          getOpenOpportunitySummary().catch(() => null),
         ])
 
       const jobsToday = Array.isArray(jobsTodayRes?.data) ? jobsTodayRes.data : []
@@ -115,6 +118,7 @@ const DashboardPage = () => {
       setTodayDeals(mappedTodayDeals)
       setMtdDeals(mappedMtdDeals)
       setOpenClaims(Number.isFinite(openClaimsCount) ? openClaimsCount : null)
+      setOpenOppSummary(oppSummary && typeof oppSummary === 'object' ? oppSummary : null)
     } catch (e) {
       console.error('[dashboard] load failed', e)
       setError(e?.message || 'Failed to load dashboard')
@@ -123,6 +127,7 @@ const DashboardPage = () => {
       setTodayDeals([])
       setMtdDeals([])
       setOpenClaims(null)
+      setOpenOppSummary(null)
     } finally {
       setLoading(false)
     }
@@ -218,9 +223,14 @@ const DashboardPage = () => {
     profitToday: todayFinancials.hasUnknownProfit ? '—' : money0OrDash(todayFinancials.profit),
     revenueMtd: money0OrDash(mtdFinancials.revenue),
     profitMtd: mtdFinancials.hasUnknownProfit ? '—' : money0OrDash(mtdFinancials.profit),
-    openOpp: '—',
+    openOpp:
+      openOppSummary?.open_count == null ? '—' : String(Number(openOppSummary.open_count) || 0),
     openClaims: openClaims == null ? '—' : String(openClaims),
   }
+
+  const openOppSublabel = openOppSummary
+    ? `${Number(openOppSummary.open_deals_count) || 0} deals • ${money0OrDash(openOppSummary.open_amount)} pipeline`
+    : 'Not available'
 
   return (
     <AppLayout>
@@ -275,11 +285,7 @@ const DashboardPage = () => {
                 : `MTD: ${kpiValue.profitMtd}`
             }
           />
-          <KpiCard
-            label="Open Opp"
-            value={kpiValue.openOpp}
-            sublabel="Opportunity tracking pending"
-          />
+          <KpiCard label="Open Opp" value={kpiValue.openOpp} sublabel={openOppSublabel} />
           <KpiCard label="Open Claims" value={kpiValue.openClaims} />
         </div>
 
@@ -470,7 +476,8 @@ const DashboardPage = () => {
                 dataset.
               </div>
               <div className="mt-1 text-xs text-gray-600">
-                Opportunity tracking is a planned feature and currently shows “—”.
+                Open Opp reflects open opportunities across all jobs. Pipeline is computed as the
+                sum of quantity × unit price where unit price is present.
               </div>
             </div>
           </div>

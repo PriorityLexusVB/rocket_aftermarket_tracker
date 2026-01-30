@@ -112,3 +112,29 @@ export const jobParts = pgTable('job_parts', {
   // Note: totalPrice is a GENERATED ALWAYS column in Supabase and is not modeled here
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
+
+/**
+ * Deal Opportunities table
+ * Tenant-scoped via dealer_id
+ */
+export const dealOpportunities = pgTable('deal_opportunities', {
+  id: uuid('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+
+  dealerId: uuid('dealer_id').notNull(),
+  jobId: uuid('job_id').notNull(),
+  productId: uuid('product_id'),
+
+  name: text('name').notNull(),
+  quantity: integer('quantity').notNull().default(1),
+  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
+
+  status: text('status').notNull().default('open'),
+  declineReason: text('decline_reason'),
+
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+})

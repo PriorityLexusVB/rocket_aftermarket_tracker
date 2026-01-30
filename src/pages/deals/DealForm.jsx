@@ -14,6 +14,7 @@ import { useLogger } from '../../hooks/useLogger'
 import UnsavedChangesGuard from '../../components/common/UnsavedChangesGuard'
 import { useToast } from '../../components/ui/ToastProvider'
 import { UI_FLAGS } from '../../config/ui'
+import OpportunitiesPanel from '../../components/deals/OpportunitiesPanel'
 
 // Optional fallback to service-layer create/update if parent didn't pass onSave
 let dealServicePromise
@@ -1186,6 +1187,10 @@ export default function DealForm({
           )
         })}
       </section>
+
+      {mode === 'edit' && form?.id ? (
+        <OpportunitiesPanel jobId={form.id} products={products} />
+      ) : null}
 
       <section>
         <label className="block text-sm font-medium text-slate-700">Calendar Notes</label>
