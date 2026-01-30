@@ -89,6 +89,24 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 - Exit Criteria: MET
 - Next phase: 2
 
+### Phase: 1 — Stabilize failing tests (minimal fix)
+
+- Status: COMPLETE
+- Evidence (git history):
+  - Stabilization fix commit: `5c92750` — `dashboard: reschedule routes with focus; stabilize loaner fallback test`
+  - Note: verify/gates were rerun after the minimal fix and remained green.
+- Evidence (fresh, current HEAD — 2026-01-30):
+  - `bash scripts/mcp/supabase-mcp.sh --check`
+    - Output: `OK: Supabase MCP env validated (project_ref=ntpoblmjxfivomcwmjrj, env_file=/home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/.env.e2e.local)`
+  - `pnpm -s guard:client-env`
+    - Output: `✅ guard:client-env passed (no forbidden client env references in src/**)`
+  - `pnpm -s verify | tail -n 20`
+    - Output (summary):
+      - `Test Files  118 passed (118)`
+      - `Tests  1006 passed | 2 skipped (1008)`
+- Exit Criteria: MET
+- Next phase: 2
+
 ### Phase: 2 — Calendar Navbar Href Canonicalization
 
 - Status: COMPLETE
@@ -238,6 +256,7 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 ---
 
 ## Remaining Phases (Not Yet Completed)
+
 ### Phase: 9b — Commit Hygiene (Only if phases 4–7 produce changes)
 
 - Status: COMPLETE
