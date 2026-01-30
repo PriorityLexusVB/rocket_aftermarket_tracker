@@ -97,25 +97,33 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
     }
 
     setError('')
-    const updated = await updateOpportunity(id, payload)
-    setItems((prev) => prev.map((o) => (o?.id === id ? updated : o)))
-    setDrafts((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
+    try {
+      const updated = await updateOpportunity(id, payload)
+      setItems((prev) => prev.map((o) => (o?.id === id ? updated : o)))
+      setDrafts((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    } catch (e) {
+      setError(e?.message || 'Failed to update opportunity')
+    }
   }
 
   async function handleDeleteRow(id) {
     if (!confirm('Delete this opportunity?')) return
     setError('')
-    await deleteOpportunity(id)
-    setItems((prev) => prev.filter((o) => o?.id !== id))
-    setDrafts((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
+    try {
+      await deleteOpportunity(id)
+      setItems((prev) => prev.filter((o) => o?.id !== id))
+      setDrafts((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    } catch (e) {
+      setError(e?.message || 'Failed to delete opportunity')
+    }
   }
 
   async function handleCreate() {
@@ -142,6 +150,8 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
 
       setItems((prev) => [...prev, created])
       setNewOpp(emptyNew)
+    } catch (e) {
+      setError(e?.message || 'Failed to create opportunity')
     } finally {
       setCreating(false)
     }
