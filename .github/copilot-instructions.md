@@ -173,38 +173,6 @@ VITE_DEAL_FORM_V2="true"             # Enables Deal Form V2
 VITE_ORG_SCOPED_DROPDOWNS="true"     # Org-scoped dropdown queries
 ```
 
-### Expected E2E Spec Manifest (27 Core Tests)
-
-| Spec File                         | Test Name                                                                      | Category   |
-| --------------------------------- | ------------------------------------------------------------------------------ | ---------- |
-| `agenda.spec.ts`                  | agenda view renders with flag enabled                                          | Calendar   |
-| `agenda.spec.ts`                  | agenda view handles focus parameter                                            | Calendar   |
-| `agenda.spec.ts`                  | agenda filters persist across navigation                                       | Calendar   |
-| `admin-crud.spec.ts`              | create, edit, and delete a Vendor                                              | Admin      |
-| `admin-crud.spec.ts`              | create, edit, and delete a Product                                             | Admin      |
-| `capability-fallbacks.spec.ts`    | should handle vendor relationship fallback gracefully                          | Capability |
-| `capability-fallbacks.spec.ts`    | should handle scheduled times column missing                                   | Capability |
-| `capability-fallbacks.spec.ts`    | should display diagnostics banner when fallbacks occur                         | Capability |
-| `capability-fallbacks.spec.ts`    | should allow admin to reset capability flags                                   | Capability |
-| `capability-fallbacks.spec.ts`    | should export telemetry data                                                   | Capability |
-| `capability-fallbacks.spec.ts`    | should persist telemetry to localStorage                                       | Capability |
-| `deals-list-refresh.spec.ts`      | should show updated vehicle description, stock, and loaner badge in deals list | Deals      |
-| `deals-redirect.spec.ts`          | saving a new deal redirects to /deals/:id/edit                                 | Deals      |
-| `scheduling-quick-assign.spec.ts` | new pending job appears in Unassigned and can be assigned                      | Scheduling |
-| `snapshot-smoke.spec.ts`          | snapshot view loads successfully                                               | Snapshot   |
-| `snapshot-smoke.spec.ts`          | snapshot view renders key components                                           | Snapshot   |
-| `snapshot-smoke.spec.ts`          | snapshot view handles empty state gracefully                                   | Snapshot   |
-| `snapshot-smoke.spec.ts`          | snapshot view navigation is accessible                                         | Snapshot   |
-| `deal-unsaved-guard.spec.ts`      | Cancel prompts when form is dirty on New Deal                                  | Deals      |
-| `dealform-sticky-footer.spec.ts`  | save button is visible and clickable at 390x844                                | Deals      |
-| `debug-auth.spec.ts`              | debug-auth shows session + org counts                                          | Debug      |
-| `nav-smoke.spec.ts`               | desktop navbar links navigate to expected routes                               | Navigation |
-| `nav-smoke.spec.ts`               | mobile direct route visits resolve                                             | Navigation |
-| `profile-name-fallback.spec.ts`   | missing name -> falls back to full_name                                        | Profile    |
-| `profile-name-fallback.spec.ts`   | missing name and full_name -> falls back to display_name                       | Profile    |
-| `profile-name-fallback.spec.ts`   | only email available -> email local-part used                                  | Profile    |
-| `smoke.spec.ts`                   | app loads                                                                      | Smoke      |
-
 ### Running Tests Locally
 
 ```bash
