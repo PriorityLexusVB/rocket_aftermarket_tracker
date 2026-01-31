@@ -1,0 +1,1304 @@
+User: 
+
+# 1) What’s left / wrong in code (meticulous audit)
+
+## A) Agenda-first navigation is still broken in practice
+
+### Problem
+
+`Routes.jsx` correctly makes `/calendar` redirect to agenda-first when flag is on, BUT…
+
+`Navbar.jsx` still uses:
+
+* **Calendar href = `/calendar/grid`** (hard bypass)
+
+So DCs clicking Calendar **do not get agenda-first**.
+
+✅ Fix: change Calendar link to **`/calendar`** in navbar.
+
+---
+
+## B) Dashboard still shows Open Opportunities placeholder
+
+### Problem
+
+`DashboardPage` has:
+
+```js
+openOpp: '—'
+sublabel="Opportunity tracking pending"
+```
+
+But you already implemented:
+
+* `deal_opportunities` table + RLS migration
+* `opportunitiesService.getOpenOpportunitySummary()`
+* `OpportunitiesPanel` UI in DealForm
+
+✅ Fix: wire Open Opp KPI to real data:
+
+* open deals count
+* open amount ($)
+  Optionally show both.
+
+---
+
+## C) Dashboard “Reschedule” flow doesn’t match the agreed workflow
+
+### Problem
+
+Dashboard rows use:
+
+* Reschedule → `/calendar-flow-management-center`
+
+But your agreed “queue-first” design was:
+
+* if agenda enabled: `/calendar/agenda?focus=<jobId>`
+* else: flow center (optionally with focus)
+
+✅ Fix: reschedule button should route to **agenda focus** when enabled.
+
+---
+
+## D) Calendar grid “blank space” UX still needs an empty-state overlay
+
+### Problem
+
+When a week is empty, the calendar grid looks like a broken blank slab. We already agreed:
+
+* overlay “No jobs scheduled this week”
+* Open Agenda / Open Flow / Today buttons
+
+✅ Fix: implement empty-state overlay in `src/pages/calendar/index.jsx`.
+
+---
+
+## E) Potential CSS/UX risk: OpportunitiesPanel uses shared “input-mobile / btn-mobile” classnames
+
+`OpportunitiesPanel.jsx` uses:
+
+* `input-mobile`, `btn-mobile`, `btn-mobile-sm`, `button-enhanced`, `input-currency`
+
+If those classes exist globally, you’re fine. If not, the panel looks unstyled.
+
+✅ Fix: verify those classes exist; if missing, convert to Tailwind classes consistent with the rest of the app (minimal change).
+
+---
+
+## F) Definition drift risk: Analytics “Products Sold” counts line items, not units
+
+In `analyticsService.getDashboardSummary()`:
+
+```js
+totalProductsSoldFromDeals = safeDeals.reduce((sum, deal) => sum + parts.length, 0)
+```
+
+That counts rows (line items), not units (`quantity_used`). That might be okay, but label must match:
+
+* “Line Items Sold” vs “Units Sold”
+
+✅ Fix: decide one definition and label accordingly (small change, but important for trust).
+
+---
+
+## G) Opportunities: only exists in DealForm edit UI
+
+This is acceptable for v1, but for “DC OS,” you’ll eventually want:
+
+* in Deals list (badge / count)
+* in Dashboard queue row (badge)
+* in Analytics (lost opp, close rate)
+
+Not mandatory for “done,” but good to track as next wave.
+
+---
+
+# 2) Which model/tool to use in VS Code
+
+### Use **ChatGPT 5.2 Codex** for implementation
+
+* Better at multi-file edits, keeping changes minimal, tracking diffs, and not hallucinating paths.
+* Use it for the actual patch work + commits.
+
+### Use **ChatGPT 5.2** for review/strategy
+
+* Better for “step back” evaluation, product decisions, edge cases, and operational UX logic.
+
+### MCP tools
+
+* ✅ **Supabase MCP**: best for validating schema/policies + checking tenant scoping patterns.
+* ✅ **Git MCP / terminal**: best for diffstat, commit hygiene, and ensuring the deployed build matches HEAD.
+* ✅ Keep using the repo scripts for DB apply:
+
+  * `sb:db:push:test` / `sb:db:push:test:all`
+  * STOP before prod.
+
+---
+
+# 3) Step-by-step plan to give the VS Code agent (meticulous)
+
+## Phase 0 — Guardrails + proof
+
+1. Read `AGENTS.md` (required).
+2. Capture proof baseline:
+
+```bash
+git status --porcelain
+git log -1 --oneline
+git diff --stat
+pnpm -s guard:client-env
+bash scripts/mcp/supabase-mcp.sh --check
+pnpm -s verify
+```
+
+**Stop if verify fails.**
+
+---
+
+## Phase 1 — Fix agenda-first nav (must)
+
+### 1.1 Patch Navbar calendar link
+
+* Open `src/components/ui/Navbar.jsx`
+* Change calendar href from `/calendar/grid` to `/calendar`.
+
+**Proof:**
+
+```bash
+rg -n "name: 'Calendar'|href:" src/components/ui/Navbar.jsx
+git diff --stat
+```
+
+---
+
+## Phase 2 — Wire Dashboard Open Opp KPI (must)
+
+### 2.1 Add opportunities summary to Dashboard refresh()
+
+* Open `src/pages/dashboard/index.jsx`
+* Import `opportunitiesService`:
+
+```js
+import opportunitiesService from '@/services/opportunitiesService'
+```
+
+* In `refresh()`, add:
+
+  * call `getOpenOpportunitySummary()`
+  * store in state
+  * render KPI card showing `$ open_amount` and `open_deals_count` (or open_count)
+
+**Required behavior:**
+
+* If table missing / RLS blocks / service errors: show `—` and do not crash dashboard.
+
+**Proof:**
+
+* Update UI labels to match definition:
+
+  * “Open Opp ($)” and “Deals w/ Opp” or similar.
+
+**Gate:**
+
+```bash
+pnpm -s verify
+git diff --stat
+```
+
+---
+
+## Phase 3 — Dashboard queue reschedule focus (must)
+
+* Still in `src/pages/dashboard/index.jsx`
+* For each row:
+
+  * if agenda enabled: `/calendar/agenda?focus=<jobId>`
+  * else: `/calendar-flow-management-center?focus=<jobId>` (if focus supported; if not, omit focus)
+
+**Gate:**
+
+* manual: click reschedule, ensure it lands in the queue-first tool not a generic grid.
+
+---
+
+## Phase 4 — Calendar grid empty-state overlay (must)
+
+* Open `src/pages/calendar/index.jsx`
+* Implement empty-state overlay when range has 0 jobs:
+
+  * message + buttons (Open Agenda / Open Flow / Today)
+* Keep minimal, no redesign.
+
+**Gate:**
+
+```bash
+pnpm -s verify
+git diff --stat
+```
+
+---
+
+## Phase 5 — Opportunities panel styling sanity (must if missing)
+
+* Search:
+
+```bash
+rg -n "input-mobile|btn-mobile|button-enhanced|input-currency" src
+```
+
+If these classes don’t exist or look inconsistent:
+
+* Replace them with Tailwind classes that match existing controls.
+
+**Gate:** `pnpm -s verify`
+
+---
+
+## Phase 6 — Products Sold definition cleanup (recommended)
+
+Pick one:
+
+* **Line Items Sold** = parts.length
+* **Units Sold** = sum(quantity_used)
+
+Then:
+
+* Update label in analytics UI cards to match reality.
+
+---
+
+## Phase 7 — TEST DB evidence + STOP before prod
+
+Agent must paste:
+
+```bash
+pnpm -s sb:migration:list:test | tail -n 40
+```
+
+and explicitly confirm:
+
+* no prod push commands executed
+
+Do not do prod migration until you say.
+
+---
+
+# 4) Add a repo checklist file so the agent cannot drift
+
+Create: `docs/DC_OS_MASTER_TODO.md`
+
+Here’s the exact content to paste (agent should add it verbatim):
+
+```md
+# DC OS Master TODO — Rocket Aftermarket Tracker
+
+This file is the single checklist for completing the Delivery Coordinator OS workflow.
+Audience: Delivery Coordinators only. All users same access. No role gating in UI.
+
+## Definition rules
+- “Agenda-first” means queue-first workflow:
+  - `/calendar` redirects to agenda when `VITE_SIMPLE_CALENDAR=true`
+  - navbar Calendar must link to `/calendar` (never directly `/calendar/grid`)
+- “Unknown profit” must render as `—` and never as `$0`.
+- Analytics + Deals + Dashboard must share KPI definitions for the same dataset.
+
+---
+
+## ✅ Must-do (blocking)
+
+### 1) Navbar calendar link
+- [ ] `src/components/ui/Navbar.jsx` calendar link points to `/calendar` (not `/calendar/grid`)
+- [ ] Verified by clicking Calendar in nav with `VITE_SIMPLE_CALENDAR=true` lands on agenda
+
+### 2) Dashboard Open Opp KPI
+- [ ] `src/pages/dashboard/index.jsx` pulls Open Opp summary from `opportunitiesService.getOpenOpportunitySummary()`
+- [ ] Shows Open Opp $ and count
+- [ ] Graceful fallback if table missing (shows `—`, no crash)
+
+### 3) Dashboard reschedule flow
+- [ ] Reschedule from Today queue goes to:
+  - `/calendar/agenda?focus=<jobId>` when agenda enabled
+  - else flow center (optional focus)
+
+### 4) Calendar grid empty-state overlay
+- [ ] `src/pages/calendar/index.jsx` shows empty-state overlay when no jobs in week
+- [ ] Overlay includes: Open Agenda / Open Flow / Today buttons
+
+### 5) Opportunities panel styling sanity
+- [ ] Opportunities panel inputs/buttons match app styling
+- [ ] No missing CSS class names in production
+
+---
+
+## Recommended improvements (non-blocking)
+
+### 6) Products Sold definition is explicit
+- [ ] If using line-items count → label says “Line Items Sold”
+- [ ] If using quantity sum → label says “Units Sold”
+
+### 7) Opportunities surfaced in more places
+- [ ] Deals list shows opp badge/count
+- [ ] Dashboard queue row shows opp badge
+- [ ] Analytics shows lost opp + close rate (next wave)
+
+---
+
+## Verification gates (required)
+- [ ] `pnpm -s guard:client-env`
+- [ ] `bash scripts/mcp/supabase-mcp.sh --check`
+- [ ] `pnpm -s verify` (must pass)
+
+## TEST DB audit
+- [ ] Paste `pnpm -s sb:migration:list:test | tail -n 40` into PR notes
+- [ ] Confirm NO PROD migrations applied without explicit approval
+```
+
+---
+
+# 5) The exact “one paste” prompt for the agent to execute all remaining work
+
+If you want it even tighter, here’s a clean operational prompt you can paste after the checklist file is created:
+
+**Use ChatGPT 5.2 Codex for this execution.**
+
+```md
+Follow docs/DC_OS_MASTER_TODO.md strictly. Work phase-by-phase. After each phase paste `git diff --stat` and run `pnpm -s verify` at the end.
+
+Phase order:
+1) Fix Navbar calendar link to `/calendar`
+2) Wire Dashboard Open Opp KPI to opportunitiesService
+3) Fix Dashboard Reschedule to agenda focus when enabled
+4) Add Calendar grid empty-state overlay
+5) Validate OpportunitiesPanel styling classes exist; fix if missing
+6) Align Products Sold label/definition
+7) Final: pnpm -s verify + paste migration list (TEST) + STOP before prod
+
+Hard stop before prod migrations. Provide final summary with files changed, diffstat, verify result, and test migration list output.
+```
+
+---
+
+
+
+GitHub Copilot: Optimizing tool selection...
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/.github/instructions/Aftermarket%20%E2%80%93%20Workspace%20Guardrails%20%28DO%20NOT%20DEVIATE%29.instructions.md)
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && git status --porcelain && git log -1 --oneline && git diff --stat
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s guard:client-env
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && bash scripts/mcp/supabase-mcp.sh --check
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s verify
+
+Searched for files matching `**/*OpportunitiesPanel*`, 1 match
+
+Searched for files matching `**/*analyticsService*`, 1 match
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/components/ui/Navbar.jsx#1-1), lines 1 to 260
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/dashboard/index.jsx#1-1), lines 1 to 320
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#1-1), lines 1 to 320
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/components/deals/OpportunitiesPanel.jsx#1-1), lines 1 to 260
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/services/analyticsService.js#1-1), lines 1 to 260
+
+Searched for regex `Reschedule|calendar-flow-management-center|agenda` (`**/src/pages/dashboard/index.jsx`), 13 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/dashboard/index.jsx#300-300), lines 300 to 480
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/services/opportunitiesService.js)
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/dashboard/index.jsx#480-480), lines 480 to 498
+
+Searched for regex `No jobs|empty|No scheduled|No events|empty-state|empty state` (`**/src/pages/calendar/index.jsx`), 8 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#960-960), lines 960 to 1100
+
+Searched for regex `input-mobile|btn-mobile|btn-mobile-sm|button-enhanced|input-currency` (`**/src/**`), 67 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/styles/util-neutral.css#1-1), lines 1 to 240
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/styles/util-inputs.css)
+
+Searched for regex `\.input-mobile|\.btn-mobile|\.button-enhanced|\.button-outline-enhanced` (`**/src/styles/**`), 12 results
+
+Searched for regex `\.btn-mobile|\.input-mobile|button-enhanced|button-outline-enhanced` (`**/*.{css,scss,less}`), 12 results
+
+Searched for regex `Products Sold|Product Sold|Sold"` (`**/src/**`), 11 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/services/analyticsService.js#500-500), lines 500 to 560
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/advanced-business-intelligence-analytics/index.jsx#230-230), lines 230 to 320
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/advanced-business-intelligence-analytics/components/VendorPerformanceTable.jsx#1-1), lines 1 to 220
+
+Searched for text `total_products_sold` (`**/src/services/analyticsService.js`), 4 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/services/analyticsService.js#200-200), lines 200 to 360
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/components/deals/OpportunitiesPanel.jsx#180-180), lines 180 to 415
+
+Created [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/docs/DC_OS_MASTER_TODO.md)
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s verify
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s sb:migration:list:test | tail -n 40
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && git diff --stat
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && git status --porcelain
+
+Using GPT-5.2-Codex.
+
+Audit status:
+- A) Navbar Calendar already points to /calendar in Navbar.jsx. No change needed.
+- B) Open Opp KPI already wired; I updated the KPI to show $ and counts in index.jsx.
+- C) Reschedule already routes to agenda focus when enabled; I also aligned the empty-state scheduling button with agenda-first in index.jsx.
+- D) Calendar empty-state overlay already present in index.jsx. No change needed.
+- E) Missing utility classes confirmed; replaced with Tailwind classes in OpportunitiesPanel.jsx.
+- F) Products Sold definition now uses units and labels updated in analyticsService.js, index.jsx, and VendorPerformanceTable.jsx.
+
+Created checklist:
+- DC_OS_MASTER_TODO.md
+
+Verification:
+- pnpm -s guard:client-env ✅
+- bash supabase-mcp.sh --check ✅
+- pnpm -s verify ✅
+
+TEST DB audit (tail -n 40):
+20251114163000 | 20251114163000 | 2025-11-14 16:30:00  
+20251115222458 | 20251115222458 | 2025-11-15 22:24:58  
+20251124230000 | 20251124230000 | 2025-11-24 23:00:00  
+20251126140000 | 20251126140000 | 2025-11-26 14:00:00  
+20251126161700 | 20251126161700 | 2025-11-26 16:17:00  
+20251126161701 | 20251126161701 | 2025-11-26 16:17:01  
+20251126161702 | 20251126161702 | 2025-11-26 16:17:02  
+20251126161703 | 20251126161703 | 2025-11-26 16:17:03  
+20251126161704 | 20251126161704 | 2025-11-26 16:17:04  
+20251126220000 | 20251126220000 | 2025-11-26 22:00:00  
+20251129231539 | 20251129231539 | 2025-11-29 23:15:39  
+20251206001000 | 20251206001000 | 2025-12-06 00:10:00  
+20251210173000 | 20251210173000 | 2025-12-10 17:30:00  
+20251210173100 | 20251210173100 | 2025-12-10 17:31:00  
+20251210173200 | 20251210173200 | 2025-12-10 17:32:00  
+20251210173300 | 20251210173300 | 2025-12-10 17:33:00  
+20251212190000 | 20251212190000 | 2025-12-12 19:00:00  
+20251212194500 | 20251212194500 | 2025-12-12 19:45:00  
+20251212200000 | 20251212200000 | 2025-12-12 20:00:00  
+20251218042008 | 20251218042008 | 2025-12-18 04:20:08  
+20251219120000 | 20251219120000 | 2025-12-19 12:00:00  
+20251222040813 | 20251222040813 | 2025-12-22 04:08:13  
+20251226220653 | 20251226220653 | 2025-12-26 22:06:53  
+20251227090000 | 20251227090000 | 2025-12-27 09:00:00  
+20260108210000 | 20260108210000 | 2026-01-08 21:00:00  
+20260113185500 | 20260113185500 | 2026-01-13 18:55:00  
+20260113190000 | 20260113190000 | 2026-01-13 19:00:00  
+20260113202000 | 20260113202000 | 2026-01-13 20:20:00  
+20260113203000 | 20260113203000 | 2026-01-13 20:30:00  
+20260113213000 | 20260113213000 | 2026-01-13 21:30:00  
+20260113223000 | 20260113223000 | 2026-01-13 22:30:00  
+20260113234000 | 20260113234000 | 2026-01-13 23:40:00  
+20260113234500 | 20260113234500 | 2026-01-13 23:45:00  
+20260121215959 | 20260121215959 | 2026-01-21 21:59:59  
+20260121220000 | 20260121220000 | 2026-01-21 22:00:00  
+20260121220100 | 20260121220100 | 2026-01-21 22:01:00  
+20260121223000 | 20260121223000 | 2026-01-21 22:30:00  
+20260122100000 | 20260122100000 | 2026-01-22 10:00:00  
+20260130023834 | 20260130023834 | 2026-01-30 02:38:34  
+
+No prod migrations executed.
+
+## Must Fix
+None outstanding.
+
+## Should Fix
+None outstanding.
+
+## Nice to Have
+1) Surface opportunities beyond DealForm (badge/count in lists, dashboard queue, analytics close rate).
+- Why it matters: Improves DC visibility of upsell pipeline outside edit context.
+- Files: deals, dashboard, advanced-business-intelligence-analytics
+- Minimal change approach: add a compact badge/count component driven by existing opportunitiesService summary.
+- Verification commands: pnpm -s verify
+- Rollback approach: revert component additions in the above files.
+
+If you want any further adjustments, specify which KPI values should be primary (amount vs count) and I’ll align the UI.
+
+Made changes.
+
+User: Step 1 — Verify Navbar Calendar link (only hard check left)
+
+Run the rg command above.
+
+If wrong, change Calendar href to /calendar.
+
+Run pnpm -s verify.
+
+Step 2 — Optional “opp badge” (if you want the next UX win)
+
+Add a small badge on deal cards/rows showing open opp count for that job:
+
+Use listByJobId(jobId) or a new lightweight summary RPC later
+
+Keep it minimal and behind existing components.
+
+Step 3 — Stop before PROD Supabase
+
+You already have the hard stop and test migration evidence; keep it:
+
+paste pnpm -s sb:migration:list:test | tail -n 40 into the PR notes
+
+do not apply prod without explicit approval
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && rg -n "name: 'Calendar'|href:" src/components/ui/Navbar.jsx
+
+Searched for files matching `**/src/pages/deals/**/*`, 12 matches
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/deals/index.jsx#1-1), lines 1 to 260
+
+Searched for regex `DealCard|deal card|DealRow|deal-row|deal-row|data-testid="deal` (`**/src/pages/deals/index.jsx`), 2 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/deals/index.jsx#1960-1960), lines 1960 to 2145
+
+Searched for regex `deal_opportunities|opportunities` (`**/src/services/dealService*`), no results
+
+Searched for regex `opportun` (`**/src/pages/deals/index.jsx`), no results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/services/dealService.js#1-1), lines 1 to 260
+
+Searched for text `SheetSummaryRow` (`**/src/pages/deals/index.jsx`), 3 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/deals/index.jsx#380-380), lines 380 to 520
+
+Searched for regex `\[deals, setDeals\]|useState\(\[\]\)` (`**/src/pages/deals/index.jsx`), 2 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/deals/index.jsx#660-660), lines 660 to 820
+
+Searched for text `sortedDeals` (`**/src/pages/deals/index.jsx`), 9 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/deals/index.jsx#1320-1320), lines 1320 to 1485
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/src/pages/deals/index.jsx#2340-2340), lines 2340 to 2525
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s verify
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s sb:migration:list:test | tail -n 40
+
+Step 1: Navbar Calendar link verified. It is /calendar in Navbar.jsx.
+
+Step 2: Added open opportunities badge to deal rows/cards (cached per job, open-only) in index.jsx.
+
+Step 3: TEST DB migration list tail (for PR notes):
+20251114163000 | 20251114163000 | 2025-11-14 16:30:00  
+20251115222458 | 20251115222458 | 2025-11-15 22:24:58  
+20251124230000 | 20251124230000 | 2025-11-24 23:00:00  
+20251126140000 | 20251126140000 | 2025-11-26 14:00:00  
+20251126161700 | 20251126161700 | 2025-11-26 16:17:00  
+20251126161701 | 20251126161701 | 2025-11-26 16:17:01  
+20251126161702 | 20251126161702 | 2025-11-26 16:17:02  
+20251126161703 | 20251126161703 | 2025-11-26 16:17:03  
+20251126161704 | 20251126161704 | 2025-11-26 16:17:04  
+20251126220000 | 20251126220000 | 2025-11-26 22:00:00  
+20251129231539 | 20251129231539 | 2025-11-29 23:15:39  
+20251206001000 | 20251206001000 | 2025-12-06 00:10:00  
+20251210173000 | 20251210173000 | 2025-12-10 17:30:00  
+20251210173100 | 20251210173100 | 2025-12-10 17:31:00  
+20251210173200 | 20251210173200 | 2025-12-10 17:32:00  
+20251210173300 | 20251210173300 | 2025-12-10 17:33:00  
+20251212190000 | 20251212190000 | 2025-12-12 19:00:00  
+20251212194500 | 20251212194500 | 2025-12-12 19:45:00  
+20251212200000 | 20251212200000 | 2025-12-12 20:00:00  
+20251218042008 | 20251218042008 | 2025-12-18 04:20:08  
+20251219120000 | 20251219120000 | 2025-12-19 12:00:00  
+20251222040813 | 20251222040813 | 2025-12-22 04:08:13  
+20251226220653 | 20251226220653 | 2025-12-26 22:06:53  
+20251227090000 | 20251227090000 | 2025-12-27 09:00:00  
+20260108210000 | 20260108210000 | 2026-01-08 21:00:00  
+20260113185500 | 20260113185500 | 2026-01-13 18:55:00  
+20260113190000 | 20260113190000 | 2026-01-13 19:00:00  
+20260113202000 | 20260113202000 | 2026-01-13 20:20:00  
+20260113203000 | 20260113203000 | 2026-01-13 20:30:00  
+20260113213000 | 20260113213000 | 2026-01-13 21:30:00  
+20260113223000 | 20260113223000 | 2026-01-13 22:30:00  
+20260113234000 | 20260113234000 | 2026-01-13 23:40:00  
+20260113234500 | 20260113234500 | 2026-01-13 23:45:00  
+20260121215959 | 20260121215959 | 2026-01-21 21:59:59  
+20260121220000 | 20260121220000 | 2026-01-21 22:00:00  
+20260121220100 | 20260121220100 | 2026-01-21 22:01:00  
+20260121223000 | 20260121223000 | 2026-01-21 22:30:00  
+20260122100000 | 20260122100000 | 2026-01-22 10:00:00  
+20260130023834 | 20260130023834 | 2026-01-30 02:38:34  
+
+No prod migrations applied.
+
+Verification: pnpm -s verify passed.
+
+Files touched:
+- index.jsx
+
+If you want the badge limited to the current viewport only or paginated, say the word.
+
+Made changes.
+
+User: ✅ COMPLETION CONFIRMATION — All outstanding requests addressed (DC OS)
+
+### 1) Navbar Calendar link (Agenda-first flow)
+- Verified via `rg` that **Navbar Calendar href is `/calendar`** (not `/calendar/grid`) in `src/components/ui/Navbar.jsx`.
+- This ensures the feature-flag redirect in `Routes.jsx` works:
+  - `VITE_SIMPLE_CALENDAR=true` → `/calendar` → `/calendar/agenda`
+  - flag off → `/calendar` → `/calendar/grid`
+
+### 2) Opportunities visibility beyond DealForm (nice-to-have from master plan)
+- Implemented an **Open Opportunities badge** on the Deals list rows/cards in `src/pages/deals/index.jsx`.
+- Behavior:
+  - cached per job (open-only)
+  - minimal overhead
+  - improves DC visibility without forcing edit-screen entry
+
+### 3) Verification gate
+- `pnpm -s verify` ✅ PASSED
+
+### 4) TEST DB audit evidence (for PR notes)
+Command run:
+- `pnpm -s sb:migration:list:test | tail -n 40`
+
+Tail output includes the Opportunities migration:
+- `20260130023834_create_deal_opportunities.sql` ✅ present
+
+Also confirmed:
+- **NO PROD migrations applied** (no prod link/push commands executed)
+
+### Files changed in this step
+- `src/pages/deals/index.jsx` (opportunities badge only)
+
+### Status
+✅ All requested items are now complete for the DC OS v1 scope:
+- agenda-first navigation verified
+- dashboard + KPI consistency already in place
+- calendar empty-state already present
+- opportunities end-to-end (schema + service + UI) already implemented
+- opportunities are now visible in the deals list without needing to open the deal
+
+Hard stop remains in effect: do not apply migrations to PROD without explicit approval.
+
+
+GitHub Copilot: Confirmed. No further changes made. Hard stop for prod migrations remains in effect.
+
+User: # PROD MIGRATION PUSH RUNBOOK — deal_opportunities (DC OS) — WITH GUARDRAILS
+
+You are GPT-5.2-Codex in VS Code working in:
+`/home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker`
+
+Goal:
+Apply the already-created migration `20260130023834_create_deal_opportunities.sql` to **PROD Supabase** safely, with full checks/balances.
+
+Constraints:
+- Use MCP for INSPECT/VERIFY only (not deploy).
+- Use repo scripts for PROD apply.
+- Stop immediately on errors, mismatches, or unexpected migrations.
+
+========================================================
+0) REQUIRED GUARDRAILS PRECHECK (DO NOT SKIP)
+========================================================
+
+0.1 Read guardrails doc (already exists in workspace):
+- `.github/instructions/Aftermarket – Workspace Guardrails (DO NOT DEVIATE).instructions.md`
+Confirm any “must run” commands and follow them.
+
+0.2 Confirm clean working tree + correct commit:
+```bash
+cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker
+git status --porcelain
+git log -1 --oneline
+git diff --stat
+REQUIREMENT: clean or only expected committed changes. If dirty, STOP.
+
+0.3 Run local safety gates:
+
+pnpm -s guard:client-env
+bash scripts/mcp/supabase-mcp.sh --check
+pnpm -s verify
+REQUIREMENT: all ✅. If any fail, STOP.
+
+========================================================
+
+MCP INSPECTION — PROD READ-ONLY VALIDATION
+========================================================
+
+Use Supabase MCP to confirm:
+
+public.auth_dealer_id() exists
+
+RLS helpers are present
+
+Table deal_opportunities does NOT already exist in prod (or if it exists, schema matches)
+
+No policy conflicts
+
+If MCP shows the table already exists with a different structure, STOP and report.
+
+(Do not deploy anything with MCP.)
+
+========================================================
+2) PROD LINK + MIGRATION APPLY — SAFE MODE
+2.1 Link to PROD (must be explicit):
+
+pnpm -s sb:link:prod
+Paste output. Confirm it references the PROD project you expect (project ref).
+
+2.2 Preview what will be applied (NO SURPRISE MIGRATIONS)
+Run:
+
+pnpm -s sb:migration:list:prod | tail -n 60
+Confirm 20260130023834 is NOT already applied.
+
+Also confirm there are no other “missing older migrations” that will force a :all apply.
+If prod is missing older migrations and would require sb:db:push:prod:all, STOP and ask Rob for approval (we do NOT mass-apply to prod without explicit sign-off).
+
+2.3 Apply migration to PROD:
+
+pnpm -s sb:db:push:prod
+Paste output. If it fails with “missing earlier migration”, STOP.
+
+2.4 Confirm applied:
+
+pnpm -s sb:migration:list:prod | tail -n 60
+Requirement: 20260130023834 appears as applied.
+
+========================================================
+3) POST-PROD SMOKE (NO GUESSWORK)
+3.1 Run repo gate again (sanity):
+
+pnpm -s verify
+3.2 UI smoke (manual steps to report back):
+
+Dashboard loads with no errors
+
+Deals list loads
+
+Open a deal edit screen:
+
+Opportunities panel loads
+
+Create an opportunity (open) with qty + unit price
+
+Mark declined + reason
+
+Return to Dashboard:
+
+Open Opp KPI updates (count + $)
+
+No RLS errors in console
+
+========================================================
+4) REQUIRED FINAL REPORT FORMAT (PASTE BACK)
+Return a single final message with:
+
+A) Preflight results:
+
+guard:client-env ✅
+
+supabase-mcp.sh --check ✅
+
+pnpm -s verify ✅
+
+B) PROD targeting proof:
+
+output of sb:link:prod (project ref)
+
+C) Before/after migration proof:
+
+sb:migration:list:prod | tail -n 60 BEFORE
+
+sb:db:push:prod output
+
+sb:migration:list:prod | tail -n 60 AFTER
+
+D) UI smoke results:
+
+Opportunities create/update works
+
+Dashboard KPI updates
+
+No RLS errors
+
+STOP CONDITIONS (MANDATORY):
+
+If prod requires sb:db:push:prod:all → STOP and request explicit approval.
+
+If sb:db:push:prod applies anything other than the intended migration → STOP.
+
+If MCP/SQL indicates table exists with conflicting schema → STOP.
+
+END.
+
+::contentReference[oaicite:0]{index=0}
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && git status --porcelain && git log -1 --oneline && git diff --stat
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s guard:client-env
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && bash scripts/mcp/supabase-mcp.sh --check
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s verify
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/supabase/migrations/20260130023834_create_deal_opportunities.sql)
+
+Blocked at MCP inspection. Supabase MCP is configured to non-production only (guardrails: wrapper reads .env.e2e.local), so I cannot validate PROD via MCP without explicit approval to switch configs or proceed without MCP prod inspection.
+
+Preflight results:
+- guard:client-env ✅
+- supabase-mcp.sh --check ✅ (non‑prod)
+- pnpm -s verify ✅
+- Working tree clean (no uncommitted changes)
+
+Reply with one of:
+1) “Proceed without MCP prod inspection” — and I’ll run sb:link:prod, migration list, and push.
+2) “Approve MCP prod switch” — and provide a sanctioned prod MCP config or allow temporary override.
+
+User: 2
+
+GitHub Copilot: Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/MCP_CONFIGURATION_GUIDE.md#1-1), lines 1 to 260
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/docs/MCP-NOTES.md)
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/.vscode/mcp.json)
+
+Blocked: MCP wrapper is hard‑blocked to non‑prod and guardrails forbid pointing MCP at prod. I can proceed **without MCP prod inspection** (link + list + push via repo scripts), or you can provide an explicit exception in writing to bypass that guardrail.
+
+Reply with:
+- “Proceed without MCP prod inspection” to continue.
+
+User: “Proceed without MCP prod inspection” to continue.
+
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s sb:link:prod
+
+Blocked by prod guard: link requires CONFIRM_PROD=YES.
+
+Reply “Confirm PROD link: YES” and I will re-run `pnpm -s sb:link:prod` with that flag.
+
+User: Confirm PROD link: YES
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && CONFIRM_PROD=YES pnpm -s sb:link:prod
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s sb:migration:list:prod | tail -n 60
+
+Prod guard triggered again for migration list. Reply “Confirm PROD migration list: YES” to proceed.
+
+User: Confirm PROD migration list: YES
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && CONFIRM_PROD=YES pnpm -s sb:migration:list:prod | tail -n 60
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && CONFIRM_PROD=YES pnpm -s sb:db:push:prod
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && CONFIRM_PROD=YES pnpm -s sb:migration:list:prod | tail -n 60
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && pnpm -s verify
+
+A) Preflight results:
+- guard:client-env ✅
+- supabase-mcp.sh --check ✅ (non‑prod wrapper)
+- pnpm -s verify ✅
+
+B) PROD targeting proof (sb:link:prod output):
+- Finished supabase link.
+- Linked Supabase CLI to prod (ogjtmtndgiqqdtwatsue)
+
+C) Before/after migration proof:
+BEFORE (sb:migration:list:prod | tail -n 60):
+20251022213500 | 20251022213500 | 2025-10-22 21:35:00  
+20251022220000 | 20251022220000 | 2025-10-22 22:00:00  
+20251022220500 | 20251022220500 | 2025-10-22 22:05:00  
+20251022230000 | 20251022230000 | 2025-10-22 23:00:00  
+20251022230500 | 20251022230500 | 2025-10-22 23:05:00  
+20251023000000 | 20251023000000 | 2025-10-23 00:00:00  
+20251026170922 | 20251026170922 | 2025-10-26 17:09:22  
+20251027000001 | 20251027000001 | 2025-10-27 00:00:01  
+20251104221500 | 20251104221500 | 2025-11-04 22:15:00  
+20251105000000 | 20251105000000 | 2025-11-05 00:00:00  
+20251106000000 | 20251106000000 | 2025-11-06 00:00:00  
+20251106120000 | 20251106120000 | 2025-11-06 12:00:00  
+20251106210000 | 20251106210000 | 2025-11-06 21:00:00  
+20251107000000 | 20251107000000 | 2025-11-07 00:00:00  
+20251107093000 | 20251107093000 | 2025-11-07 09:30:00  
+20251107103000 | 20251107103000 | 2025-11-07 10:30:00  
+20251107110500 | 20251107110500 | 2025-11-07 11:05:00  
+20251110022900 | 20251110022900 | 2025-11-10 02:29:00  
+20251110023000 | 20251110023000 | 2025-11-10 02:30:00  
+20251110023500 | 20251110023500 | 2025-11-10 02:35:00  
+20251114163000 | 20251114163000 | 2025-11-14 16:30:00  
+20251115222458 | 20251115222458 | 2025-11-15 22:24:58  
+20251124230000 | 20251124230000 | 2025-11-24 23:00:00  
+20251126140000 | 20251126140000 | 2025-11-26 14:00:00  
+20251126161700 | 20251126161700 | 2025-11-26 16:17:00  
+20251126161701 | 20251126161701 | 2025-11-26 16:17:01  
+20251126161702 | 20251126161702 | 2025-11-26 16:17:02  
+20251126161703 | 20251126161703 | 2025-11-26 16:17:03  
+20251126161704 | 20251126161704 | 2025-11-26 16:17:04  
+20251126220000 | 20251126220000 | 2025-11-26 22:00:00  
+20251129231539 | 20251129231539 | 2025-11-29 23:15:39  
+20251206001000 | 20251206001000 | 2025-12-06 00:10:00  
+20251210173000 | 20251210173000 | 2025-12-10 17:30:00  
+20251210173100 | 20251210173100 | 2025-12-10 17:31:00  
+20251210173200 | 20251210173200 | 2025-12-10 17:32:00  
+20251210173300 | 20251210173300 | 2025-12-10 17:33:00  
+20251212190000 | 20251212190000 | 2025-12-12 19:00:00  
+20251212194500 | 20251212194500 | 2025-12-12 19:45:00  
+20251212200000 | 20251212200000 | 2025-12-12 20:00:00  
+20251218042008 | 20251218042008 | 2025-12-18 04:20:08  
+20251219120000 | 20251219120000 | 2025-12-19 12:00:00  
+20251222040813 | 20251222040813 | 2025-12-22 04:08:13  
+20251226220653 | 20251226220653 | 2025-12-26 22:06:53  
+20251227090000 | 20251227090000 | 2025-12-27 09:00:00  
+20260108210000 | 20260108210000 | 2026-01-08 21:00:00  
+20260113185500 | 20260113185500 | 2026-01-13 18:55:00  
+20260113190000 | 20260113190000 | 2026-01-13 19:00:00  
+20260113202000 | 20260113202000 | 2026-01-13 20:20:00  
+20260113203000 | 20260113203000 | 2026-01-13 20:30:00  
+20260113213000 | 20260113213000 | 2026-01-13 21:30:00  
+20260113223000 | 20260113223000 | 2026-01-13 22:30:00  
+20260113234000 | 20260113234000 | 2026-01-13 23:40:00  
+20260113234500 | 20260113234500 | 2026-01-13 23:45:00  
+20260121215959 | 20260121215959 | 2026-01-21 21:59:59  
+20260121220000 | 20260121220000 | 2026-01-21 22:00:00  
+20260121220100 | 20260121220100 | 2026-01-21 22:01:00  
+20260121223000 | 20260121223000 | 2026-01-21 22:30:00  
+20260122100000 | 20260122100000 | 2026-01-22 10:00:00  
+20260130023834 | 20260130023834 | 2026-01-30 02:38:34  
+
+sb:db:push:prod output:
+- Initialising login role...
+- Connecting to remote database...
+- Remote database is up to date.
+
+AFTER (sb:migration:list:prod | tail -n 60):
+20251022213500 | 20251022213500 | 2025-10-22 21:35:00  
+20251022220000 | 20251022220000 | 2025-10-22 22:00:00  
+20251022220500 | 20251022220500 | 2025-10-22 22:05:00  
+20251022230000 | 20251022230000 | 2025-10-22 23:00:00  
+20251022230500 | 20251022230500 | 2025-10-22 23:05:00  
+20251023000000 | 20251023000000 | 2025-10-23 00:00:00  
+20251026170922 | 20251026170922 | 2025-10-26 17:09:22  
+20251027000001 | 20251027000001 | 2025-10-27 00:00:01  
+20251104221500 | 20251104221500 | 2025-11-04 22:15:00  
+20251105000000 | 20251105000000 | 2025-11-05 00:00:00  
+20251106000000 | 20251106000000 | 2025-11-06 00:00:00  
+20251106120000 | 20251106120000 | 2025-11-06 12:00:00  
+20251106210000 | 20251106210000 | 2025-11-06 21:00:00  
+20251107000000 | 20251107000000 | 2025-11-07 00:00:00  
+20251107093000 | 20251107093000 | 2025-11-07 09:30:00  
+20251107103000 | 20251107103000 | 2025-11-07 10:30:00  
+20251107110500 | 20251107110500 | 2025-11-07 11:05:00  
+20251110022900 | 20251110022900 | 2025-11-10 02:29:00  
+20251110023000 | 20251110023000 | 2025-11-10 02:30:00  
+20251110023500 | 20251110023500 | 2025-11-10 02:35:00  
+20251114163000 | 20251114163000 | 2025-11-14 16:30:00  
+20251115222458 | 20251115222458 | 2025-11-15 22:24:58  
+20251124230000 | 20251124230000 | 2025-11-24 23:00:00  
+20251126140000 | 20251126140000 | 2025-11-26 14:00:00  
+20251126161700 | 20251126161700 | 2025-11-26 16:17:00  
+20251126161701 | 20251126161701 | 2025-11-26 16:17:01  
+20251126161702 | 20251126161702 | 2025-11-26 16:17:02  
+20251126161703 | 20251126161703 | 2025-11-26 16:17:03  
+20251126161704 | 20251126161704 | 2025-11-26 16:17:04  
+20251126220000 | 20251126220000 | 2025-11-26 22:00:00  
+20251129231539 | 20251129231539 | 2025-11-29 23:15:39  
+20251206001000 | 20251206001000 | 2025-12-06 00:10:00  
+20251210173000 | 20251210173000 | 2025-12-10 17:30:00  
+20251210173100 | 20251210173100 | 2025-12-10 17:31:00  
+20251210173200 | 20251210173200 | 2025-12-10 17:32:00  
+20251210173300 | 20251210173300 | 2025-12-10 17:33:00  
+20251212190000 | 20251212190000 | 2025-12-12 19:00:00  
+20251212194500 | 20251212194500 | 2025-12-12 19:45:00  
+20251212200000 | 20251212200000 | 2025-12-12 20:00:00  
+20251218042008 | 20251218042008 | 2025-12-18 04:20:08  
+20251219120000 | 20251219120000 | 2025-12-19 12:00:00  
+20251222040813 | 20251222040813 | 2025-12-22 04:08:13  
+20251226220653 | 20251226220653 | 2025-12-26 22:06:53  
+20251227090000 | 20251227090000 | 2025-12-27 09:00:00  
+20260108210000 | 20260108210000 | 2026-01-08 21:00:00  
+20260113185500 | 20260113185500 | 2026-01-13 18:55:00  
+20260113190000 | 20260113190000 | 2026-01-13 19:00:00  
+20260113202000 | 20260113202000 | 2026-01-13 20:20:00  
+20260113203000 | 20260113203000 | 2026-01-13 20:30:00  
+20260113213000 | 20260113213000 | 2026-01-13 21:30:00  
+20260113223000 | 20260113223000 | 2026-01-13 22:30:00  
+20260113234000 | 20260113234000 | 2026-01-13 23:40:00  
+20260113234500 | 20260113234500 | 2026-01-13 23:45:00  
+20260121215959 | 20260121215959 | 2026-01-21 21:59:59  
+20260121220000 | 20260121220000 | 2026-01-21 22:00:00  
+20260121220100 | 20260121220100 | 2026-01-21 22:01:00  
+20260121223000 | 20260121223000 | 2026-01-21 22:30:00  
+20260122100000 | 20260122100000 | 2026-01-22 10:00:00  
+20260130023834 | 20260130023834 | 2026-01-30 02:38:34  
+
+D) UI smoke results:
+- Not executed here (manual steps required).
+- Please verify: Dashboard loads, Deals list loads, Open a deal edit screen → Opportunities panel loads → create open opp with qty+unit price → mark declined + reason → return to Dashboard and confirm Open Opp KPI updates and no RLS errors.
+
+Notes:
+- sb:db:push:prod reported “Remote database is up to date,” indicating the migration was already applied.
+- MCP prod inspection was skipped by explicit approval.
+
+Stop condition respected: no prod “all” apply and no unexpected migrations.
+
+User: ✅ PROD status confirmed: `20260130023834_create_deal_opportunities` is already applied on prod project `ogjtmtndgiqqdtwatsue`.
+
+Evidence:
+- `sb:migration:list:prod` shows `20260130023834` BOTH before and after.
+- `sb:db:push:prod` returned: “Remote database is up to date.”
+
+Guards:
+- `pnpm -s guard:client-env` ✅
+- `bash scripts/mcp/supabase-mcp.sh --check` ✅
+- `pnpm -s verify` ✅
+
+No prod “all” apply was executed. No unexpected migrations.
+
+⬜ Remaining requirement (manual smoke test in PROD UI):
+1) Dashboard loads
+2) Deals list loads
+3) Deal Edit → Opportunities panel loads
+4) Create Open opp (qty + unit $) → persists
+5) Dashboard Open Opp KPI updates (count + $)
+6) Mark Declined + reason → persists
+7) Dashboard KPI updates again; no RLS errors in console
+
+Once the manual smoke test is confirmed, we’re 100% complete.
+
+
+GitHub Copilot: Acknowledged. Waiting on manual PROD UI smoke confirmation (steps 1–7).
+
+User: it looks good but it added all of those crazy e2e test files/schedules etc.  we need to remove all of that and only keep the set up - not add the test names
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && git status --porcelain && git diff --stat
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/.github/copilot-instructions.md#1-1), lines 1 to 260
+
+Using "Apply Patch"
+
+
+```
+
+```
+Removed the E2E test manifest list and kept setup-only instructions in copilot-instructions.md. No other changes.
+
+Made changes.
+
+User: theres all these fake jobs and deals.  we dont need any of those things just the stuff that was already threre: 
+
+GitHub Copilot: Searched codebase for "fake deals|mock deals|sample deals|seed deals|demo deals|mock data for deals|aftermarket_sample|sample data", 27 results
+
+Searched for regex `seed|sample|fixture|mock data|demo data|aftermarket_sample|seeded|seeding` (`**/scripts/**|src/**|data/**|supabase/**|e2e/**|docs/**`), no results
+
+Searched for regex `aftermarket_sample|aftermarket sample|sample.csv`, 5 results
+
+Need clarification before deleting data. Do you want me to remove these “fake jobs/deals” from PROD or a non‑prod project, and how should I identify them (e.g., job_number prefix like JOB-1768…, created_at range, or a known test user)?
+
+User: yea all from production, mayb u can just undo what u added?   job_ e2e and others
+
+GitHub Copilot: Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/package.json)
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/scripts/cleanupE2E.js#1-1), lines 1 to 260
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/scripts/cleanupE2E.js#260-260), lines 260 to 423
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/scripts/cleanupOldDeals.cjs#1-1), lines 1 to 260
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/scripts/seedE2E.js)
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/scripts/sql/seed_e2e.sql)
+
+Searched for regex `SUPABASE_DB_URL|DATABASE_URL|E2E_DATABASE_URL` (`**/.env*`), 3 results
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/scripts/supabase/with-env.sh)
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && CONFIRM_PROD=YES bash scripts/supabase/with-env.sh prod -- npx -y supabase@latest db query "select id, job_number, title, description, org_id, created_at from public.jobs where job_number ilike 'JOB-E2E%' or title ilike 'E2E %' or description ilike 'Seeded job for E2E%';"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && CONFIRM_PROD=YES bash scripts/supabase/with-env.sh prod -- npx -y supabase@latest db query "select id, job_number, title, description, org_id, created_at from public.jobs where job_number ilike 'JOB-E2E%' or title ilike 'E2E %' or description ilike 'Seeded job for E2E%';"
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/supabase)
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/supabase/.temp)
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker/scripts/supabase/link-env.sh)
+
+I can remove the E2E seed data from production, but I need PROD DB credentials to run the cleanup script. Please do one of these:
+
+**Option A (preferred, safe):**  
+Set these env vars locally (no need to paste secrets here):
+- `E2E_DATABASE_URL` = PROD pooler connection string  
+- `E2E_ORG_ID` = `00000000-0000-0000-0000-0000000000e2` (E2E Org)
+
+Then confirm and I’ll run:
+1) Dry run: `node cleanupE2E.js --dry-run`  
+2) Delete: `node cleanupE2E.js --delete`
+
+**Option B (explicit scope):**  
+Confirm that I should delete only the seeded E2E IDs (JOB-E2E-LOANER and E2E Vendor/Product IDs) and provide PROD DB URL.
+
+Which option do you want?
+
+User: all of that stuff is already in env.  the other stuff is JOB_ etc.  the ONLY real deal in there was with the customer ROB BRASCO - everything else is fake   use mcp and whatever other toos u need
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && node -e "const { createClient } = require('@supabase/supabase-js'); const url=process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY; if(!url||!key){console.error('Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'); process.exit(1);} const supabase=createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}}); (async()=>{ const { data: txns, error: txErr } = await supabase.from('transactions').select('job_id, customer_name').ilike('customer_name','%ROB BRASCO%'); if(txErr){console.error('transactions query error', txErr); process.exit(1);} const keepJobIds = Array.from(new Set((txns||[]).map(r=>r.job_id).filter(Boolean))); if(keepJobIds.length===0){console.error('No jobs found for customer name matching ROB BRASCO'); process.exit(1);} const { data: jobs, error: jobErr } = await supabase.from('jobs').select('id, org_id, dealer_id, created_at').in('id', keepJobIds); if(jobErr){console.error('jobs lookup error', jobErr); process.exit(1);} const orgIds = new Set(); for(const j of jobs||[]){ if(j.org_id) orgIds.add(j.org_id); if(j.dealer_id) orgIds.add(j.dealer_id); } if(orgIds.size!==1){ console.error('Expected exactly 1 org/dealer id for ROB BRASCO jobs; found', Array.from(orgIds)); process.exit(1);} const orgId = Array.from(orgIds)[0]; const { data: allJobs, error: allErr } = await supabase.from('jobs').select('id, created_at').eq('org_id', orgId); if(allErr){console.error('jobs list error', allErr); process.exit(1);} const allJobIds = (allJobs||[]).map(r=>r.id); const deleteJobIds = allJobIds.filter(id=>!keepJobIds.includes(id)); console.log('Org scope:', orgId); console.log('Keep job ids (ROB BRASCO):', keepJobIds); console.log('Total jobs in org:', allJobIds.length); console.log('Jobs to delete:', deleteJobIds.length); console.log('Sample delete job ids:', deleteJobIds.slice(0,10)); const { count: partsCount } = await supabase.from('job_parts').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: loanerCount } = await supabase.from('loaner_assignments').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: txnCount } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: oppCount } = await supabase.from('deal_opportunities').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); console.log('Related rows to delete (counts):', { job_parts: partsCount||0, loaner_assignments: loanerCount||0, transactions: txnCount||0, deal_opportunities: oppCount||0 }); })().catch(e=>{console.error(e); process.exit(1);});"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && set +H && node -e "const { createClient } = require('@supabase/supabase-js'); const url=process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY; if (!url || !key) { console.error('Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); } const supabase=createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}}); (async()=>{ const { data: txns, error: txErr } = await supabase.from('transactions').select('job_id, customer_name').ilike('customer_name','%ROB BRASCO%'); if (txErr) { console.error('transactions query error', txErr); process.exit(1); } const keepJobIds = Array.from(new Set((txns||[]).map(r=>r.job_id).filter(Boolean))); if (keepJobIds.length===0) { console.error('No jobs found for customer name matching ROB BRASCO'); process.exit(1); } const { data: jobs, error: jobErr } = await supabase.from('jobs').select('id, org_id, dealer_id, created_at').in('id', keepJobIds); if (jobErr) { console.error('jobs lookup error', jobErr); process.exit(1); } const orgIds = new Set(); for (const j of jobs||[]) { if (j.org_id) orgIds.add(j.org_id); if (j.dealer_id) orgIds.add(j.dealer_id); } if (orgIds.size!==1) { console.error('Expected exactly 1 org/dealer id for ROB BRASCO jobs; found', Array.from(orgIds)); process.exit(1); } const orgId = Array.from(orgIds)[0]; const { data: allJobs, error: allErr } = await supabase.from('jobs').select('id, created_at').eq('org_id', orgId); if (allErr) { console.error('jobs list error', allErr); process.exit(1); } const allJobIds = (allJobs||[]).map(r=>r.id); const deleteJobIds = allJobIds.filter(id=>!keepJobIds.includes(id)); console.log('Org scope:', orgId); console.log('Keep job ids (ROB BRASCO):', keepJobIds); console.log('Total jobs in org:', allJobIds.length); console.log('Jobs to delete:', deleteJobIds.length); console.log('Sample delete job ids:', deleteJobIds.slice(0,10)); const { count: partsCount } = await supabase.from('job_parts').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: loanerCount } = await supabase.from('loaner_assignments').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: txnCount } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: oppCount } = await supabase.from('deal_opportunities').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); console.log('Related rows to delete (counts):', { job_parts: partsCount||0, loaner_assignments: loanerCount||0, transactions: txnCount||0, deal_opportunities: oppCount||0 }); })().catch(e=>{ console.error(e); process.exit(1); });"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && set +H && node -e "const { createClient } = require('@supabase/supabase-js'); const url=process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL; const key=process.env.SUPABASE_SERVICE_ROLE_KEY; if (!url || !key) { console.error('Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'); process.exit(1); } const supabase=createClient(url,key,{auth:{autoRefreshToken:false,persistSession:false}}); (async()=>{ const { data: txns, error: txErr } = await supabase.from('transactions').select('job_id, customer_name').ilike('customer_name','%ROB BRASCO%'); if (txErr) { console.error('transactions query error', txErr); process.exit(1); } const keepJobIds = Array.from(new Set((txns||[]).map(r=>r.job_id).filter(Boolean))); if (keepJobIds.length===0) { console.error('No jobs found for customer name matching ROB BRASCO'); process.exit(1); } const { data: jobs, error: jobErr } = await supabase.from('jobs').select('id, org_id, dealer_id').in('id', keepJobIds); if (jobErr) { console.error('jobs lookup error', jobErr); process.exit(1); } const orgIds = new Set(); for (const j of jobs||[]) { if (j.org_id) orgIds.add(j.org_id); if (j.dealer_id) orgIds.add(j.dealer_id); } if (orgIds.size!==1) { console.error('Expected exactly 1 org/dealer id for ROB BRASCO jobs; found', Array.from(orgIds)); process.exit(1); } const orgId = Array.from(orgIds)[0]; const { data: allJobs, error: allErr } = await supabase.from('jobs').select('id').eq('org_id', orgId); if (allErr) { console.error('jobs list error', allErr); process.exit(1); } const allJobIds = (allJobs||[]).map(r=>r.id); const deleteJobIds = allJobIds.filter(id=>!keepJobIds.includes(id)); console.log('Org scope:', orgId); console.log('Keep job ids (ROB BRASCO):', keepJobIds); console.log('Total jobs in org:', allJobIds.length); console.log('Jobs to delete:', deleteJobIds.length); console.log('Sample delete job ids:', deleteJobIds.slice(0,10)); const { count: partsCount } = await supabase.from('job_parts').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: loanerCount } = await supabase.from('loaner_assignments').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: txnCount } = await supabase.from('transactions').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); const { count: oppCount } = await supabase.from('deal_opportunities').select('*', { count: 'exact', head: true }).in('job_id', deleteJobIds); console.log('Related rows to delete (counts):', { job_parts: partsCount||0, loaner_assignments: loanerCount||0, transactions: txnCount||0, deal_opportunities: oppCount||0 }); })().catch(e=>{ console.error(e); process.exit(1); });"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && node -e "console.log({SUPABASE_DB_URL: !!process.env.SUPABASE_DB_URL, DATABASE_URL: !!process.env.DATABASE_URL, E2E_DATABASE_URL: !!process.env.E2E_DATABASE_URL})"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && node -e "console.log({SUPABASE_DB_URL: !!process.env.SUPABASE_DB_URL, DATABASE_URL: !!process.env.DATABASE_URL, E2E_DATABASE_URL: !!process.env.E2E_DATABASE_URL})"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && node -e "const a=process.env.SUPABASE_DB_URL?1:0; const b=process.env.DATABASE_URL?1:0; const c=process.env.E2E_DATABASE_URL?1:0; console.log({SUPABASE_DB_URL:a, DATABASE_URL:b, E2E_DATABASE_URL:c});"
+
+Read [](file:///home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker)
+
+Blocked: no PROD credentials are loaded in this shell (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_DB_URL are all unset here).  
+Please set PROD envs for this terminal session (no need to paste values), then tell me which file to load if applicable. Example:
+
+- export SUPABASE_URL=…  
+- export SUPABASE_SERVICE_ROLE_KEY=…
+
+Once set, I will:
+1) Run a dry‑run (counts + sample IDs) for “customer_name ILIKE %ROB BRASCO%” keep-set.  
+2) Delete all other jobs + related rows in that org.  
+
+Confirm when the PROD envs are loaded.
+
+User: u have the instructions on how to do that somewhere  - its loaded
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && set -a && source .env.local && set +a && node -e "const a=process.env.SUPABASE_DB_URL?1:0; const b=process.env.DATABASE_URL?1:0; const c=process.env.E2E_DATABASE_URL?1:0; const d=process.env.SUPABASE_URL?1:0; const e=process.env.SUPABASE_SERVICE_ROLE_KEY?1:0; console.log({SUPABASE_DB_URL:a, DATABASE_URL:b, E2E_DATABASE_URL:c, SUPABASE_URL:d, SUPABASE_SERVICE_ROLE_KEY:e});"
+
+Only E2E_DATABASE_URL is loaded from .env.local. PROD creds are not present (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are unset).  
+Please load the PROD env file or export those two vars in this shell, then tell me which file you used so I can source it.
+
+User: u jkust did it earlier??  it musyt be a different .env file
+
+GitHub Copilot: Which env file holds the PROD `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`?  
+Name it (e.g., .env.production, .env.prod.local, .env.prod), and I’ll source it and proceed.
+
+User: which one did u use earlier for me to approve?
+
+GitHub Copilot: I used the prod link script (scripts/supabase/link-env.sh) via sb:link:prod. It doesn’t load SUPABASE_URL or service role keys.  
+We still need the prod env file that contains SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.  
+Which file is it?
+
+User: i dont know where they are now????  i had it all set already
+
+GitHub Copilot: Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && node -e "const fs=require('fs'); const p='.env.local'; if(!fs.existsSync(p)){console.log('env.local missing'); process.exit(0);} const txt=fs.readFileSync(p,'utf8'); const hasUrl=/^SUPABASE_URL=/m.test(txt); const hasKey=/^SUPABASE_SERVICE_ROLE_KEY=/m.test(txt); const hasDb=/^SUPABASE_DB_URL=/m.test(txt); console.log({SUPABASE_URL:hasUrl, SUPABASE_SERVICE_ROLE_KEY:hasKey, SUPABASE_DB_URL:hasDb});"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && set +H && node -e "const fs=require('fs'); const p='.env.local'; if(!fs.existsSync(p)){console.log('env.local missing'); process.exit(0);} const txt=fs.readFileSync(p,'utf8'); const hasUrl=/^SUPABASE_URL=/m.test(txt); const hasKey=/^SUPABASE_SERVICE_ROLE_KEY=/m.test(txt); const hasDb=/^SUPABASE_DB_URL=/m.test(txt); console.log({SUPABASE_URL:hasUrl, SUPABASE_SERVICE_ROLE_KEY:hasKey, SUPABASE_DB_URL:hasDb});"
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && rg -l "^SUPABASE_URL=" .env.local && rg -l "^SUPABASE_SERVICE_ROLE_KEY=" .env.local && rg -l "^SUPABASE_DB_URL=" .env.local
+
+Ran terminal command:  pwd
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && ls -l .env.local
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && grep -n "SUPABASE_URL=" .env.local | cut -d= -f1 && grep -n "SUPABASE_SERVICE_ROLE_KEY=" .env.local | cut -d= -f1 && grep -n "SUPABASE_DB_URL=" .env.local | cut -d= -f1
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && rg -l "SUPABASE_SERVICE_ROLE_KEY" .
+
+Ran terminal command:  cd /home/rbras/repos/PriorityLexusVB/rocket_aftermarket_tracker && rg -l "DATABASE_URL=|SUPABASE_DB_URL=|E2E_DATABASE_URL=" .
+
+I can’t find any prod DB creds in the repo env files. .env.local only has `VITE_SUPABASE_URL` (no `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`).  
+
+Please load the prod env file into this terminal session (or export those two vars). Example:
+
+- `source /path/to/.env.prod`  
+or  
+- `export SUPABASE_URL=...`  
+- `export SUPABASE_SERVICE_ROLE_KEY=...`
+
+Once set, I’ll run a dry‑run to list how many jobs will be deleted (keeping only the ROB BRASCO deal), then ask for a final delete confirmation.
+
+User: save this chat so i can access it tomorrow at work and finish it up
+
+GitHub Copilot: Using "Memory"
+
+Saved. You can resume from the summary tomorrow.
+
+User: how do i access it from a diff pc
+
+GitHub Copilot: You can’t access the saved memory from a different PC/session.  
+Copy the summary from this chat into your own notes.
