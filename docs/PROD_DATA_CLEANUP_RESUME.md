@@ -12,6 +12,26 @@ Goal:
 
 Production project ref (hard guard): `ogjtmtndgiqqdtwatsue`
 
+Optional (terminal-based): If you want to run the **read-only** steps (FK discovery + dry-run + export lists) from your terminal without storing a DB password, use:
+
+- `scripts/supabase/with-env.sh` to link the project ref safely (requires `CONFIRM_PROD=YES` for prod)
+- `scripts/supabase/sql-exec.mjs` to execute SQL via an **ephemeral** CLI-generated login role (credentials are captured, not printed)
+
+Examples:
+
+```bash
+# FK discovery (read-only)
+CONFIRM_PROD=YES bash scripts/supabase/with-env.sh prod -- \
+  node scripts/supabase/sql-exec.mjs --sql "select 1 as ok" --format json
+
+# Export delete job IDs (read-only): writes newline-delimited IDs
+CONFIRM_PROD=YES bash scripts/supabase/with-env.sh prod -- \
+  node scripts/supabase/sql-exec.mjs --sql "<PASTE THE STEP 3 SQL HERE>" \
+    --format lines --column id --out .artifacts/prod-cleanup/delete_jobs_<YYYYMMDD>.txt
+```
+
+Write SQL on PROD (DELETE/UPDATE/etc.) is blocked unless `ALLOW_PROD_SQL_WRITE=YES` is set.
+
 ---
 
 ## Step 0 — Make sure we only delete inside the correct tenant
@@ -66,16 +86,19 @@ with keep_jobs as (
 ),
 tenant as (
   select
-    count(distinct coalesce(j.dealer_id, j.org_id)) as tenant_count,
-    max(coalesce(j.dealer_id, j.org_id)) as tenant_id
-  from public.jobs j
-  where j.id in (select job_id from keep_jobs)
+    count(*) as tenant_count,
+    min(tenant_id_text) as tenant_id
+  from (
+    select distinct coalesce(j.dealer_id, j.org_id)::text as tenant_id_text
+    from public.jobs j
+    where j.id in (select job_id from keep_jobs)
+  ) t
 ),
 delete_jobs as (
   select j.id
   from public.jobs j
   cross join tenant t
-  where coalesce(j.dealer_id, j.org_id) = t.tenant_id
+  where coalesce(j.dealer_id, j.org_id)::text = t.tenant_id
     and j.id not in (select job_id from keep_jobs)
 )
 select
@@ -98,15 +121,18 @@ with keep_jobs as (
   where t.customer_name ilike '%ROB BRASCO%'
 ),
 tenant as (
-  select max(coalesce(j.dealer_id, j.org_id)) as tenant_id
-  from public.jobs j
-  where j.id in (select job_id from keep_jobs)
+  select min(tenant_id_text) as tenant_id
+  from (
+    select distinct coalesce(j.dealer_id, j.org_id)::text as tenant_id_text
+    from public.jobs j
+    where j.id in (select job_id from keep_jobs)
+  ) t
 ),
 delete_jobs as (
   select j.id, j.job_number, j.title, j.description, j.created_at
   from public.jobs j
   cross join tenant t
-  where coalesce(j.dealer_id, j.org_id) = t.tenant_id
+  where coalesce(j.dealer_id, j.org_id)::text = t.tenant_id
     and j.id not in (select job_id from keep_jobs)
 )
 select *
@@ -130,15 +156,18 @@ with keep_jobs as (
   where t.customer_name ilike '%ROB BRASCO%'
 ),
 tenant as (
-  select max(coalesce(j.dealer_id, j.org_id)) as tenant_id
-  from public.jobs j
-  where j.id in (select job_id from keep_jobs)
+  select min(tenant_id_text) as tenant_id
+  from (
+    select distinct coalesce(j.dealer_id, j.org_id)::text as tenant_id_text
+    from public.jobs j
+    where j.id in (select job_id from keep_jobs)
+  ) t
 ),
 delete_jobs as (
   select j.id
   from public.jobs j
   cross join tenant t
-  where coalesce(j.dealer_id, j.org_id) = t.tenant_id
+  where coalesce(j.dealer_id, j.org_id)::text = t.tenant_id
     and j.id not in (select job_id from keep_jobs)
 )
 select id
@@ -165,19 +194,25 @@ do $$
 declare
   v_tenant_count int;
   v_tenant_id uuid;
+  v_tenant_id_text text;
   v_delete_count int;
 begin
   -- Resolve tenant from ROB BRASCO jobs
   select
-    count(distinct coalesce(j.dealer_id, j.org_id)),
-    max(coalesce(j.dealer_id, j.org_id))
-  into v_tenant_count, v_tenant_id
-  from public.jobs j
-  where j.id in (
-    select distinct t.job_id
-    from public.transactions t
-    where t.customer_name ilike '%ROB BRASCO%'
-  );
+    count(*),
+    min(tenant_id_text)
+  into v_tenant_count, v_tenant_id_text
+  from (
+    select distinct coalesce(j.dealer_id, j.org_id)::text as tenant_id_text
+    from public.jobs j
+    where j.id in (
+      select distinct t.job_id
+      from public.transactions t
+      where t.customer_name ilike '%ROB BRASCO%'
+    )
+  ) t;
+
+  v_tenant_id := v_tenant_id_text::uuid;
 
   if v_tenant_count <> 1 or v_tenant_id is null then
     raise exception 'Abort: expected exactly 1 tenant from ROB BRASCO jobs, got % / %', v_tenant_count, v_tenant_id;
@@ -187,7 +222,7 @@ begin
   select count(*)
   into v_delete_count
   from public.jobs j
-  where coalesce(j.dealer_id, j.org_id) = v_tenant_id
+  where coalesce(j.dealer_id, j.org_id)::text = v_tenant_id::text
     and j.id not in (
       select distinct t.job_id
       from public.transactions t

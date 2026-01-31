@@ -15,7 +15,7 @@ import {
 } from '@/utils/schemaErrorClassifier'
 import { formatTime } from '@/utils/dateTimeUtils'
 import { formatEtMonthDay } from '@/utils/scheduleDisplay'
-import { syncJobPartsForJob } from './jobPartsService'
+import { syncJobPartsForJob } from '@/services/jobPartsService'
 
 const IS_TEST_ENV =
   typeof import.meta !== 'undefined' &&
@@ -2264,14 +2264,27 @@ export async function updateDeal(id, formState) {
     vin,
   } = mapFormToDb(formState || {})
 
-  // Default: keep deals visible in Pending unless an actual time window exists.
-  if (!payload?.job_status) payload.job_status = 'pending'
+  // IMPORTANT:
+  // Editing a deal must NOT implicitly change job_status.
+  // Only update job_status when the caller explicitly provides it.
+  {
+    const explicitJobStatus = formState?.job_status ?? formState?.jobStatus
+    const hasExplicitJobStatus =
+      typeof explicitJobStatus === 'string'
+        ? explicitJobStatus.trim().length > 0
+        : explicitJobStatus != null
 
-  // If user provided an actual scheduled time window, promote to scheduled.
-  payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
-    payload?.job_status,
-    normalizedLineItems
-  )
+    if (hasExplicitJobStatus) {
+      // Normalize and allow safe auto-promotion when an actual time window exists.
+      payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
+        String(explicitJobStatus).trim(),
+        normalizedLineItems
+      )
+    } else {
+      // Ensure we don't accidentally clear or reset status.
+      delete payload.job_status
+    }
+  }
 
   // 🔍 DEBUG: Log normalized line items count
   if (import.meta.env.MODE === 'development') {
