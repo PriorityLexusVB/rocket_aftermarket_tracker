@@ -6,6 +6,8 @@ import process from 'node:process'
 import dotenv from 'dotenv'
 import { Client } from 'pg'
 
+const PROD_REF = 'ogjtmtndgiqqdtwatsue'
+
 // Best-effort: load local env files for scripts.
 // Never log env values.
 {
@@ -42,6 +44,23 @@ const DATABASE_URL =
 if (!DATABASE_URL) {
   console.error('[cleanupE2E] DATABASE_URL (or SUPABASE_DB_URL/E2E_DATABASE_URL) is missing.')
   process.exit(1)
+}
+
+if (DATABASE_URL.includes(PROD_REF)) {
+  const confirmProd = process.env.CONFIRM_PROD === 'YES'
+  const allowSeedProd = process.env.ALLOW_SEED_PROD === 'YES'
+
+  if (!confirmProd || !allowSeedProd) {
+    console.error(
+      `[cleanupE2E] Refusing to run: connection string appears to contain production project ref ${PROD_REF}. ` +
+        'To override (NOT recommended), you must set CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.'
+    )
+    process.exit(1)
+  }
+
+  console.warn(
+    `[cleanupE2E] WARNING: production ref ${PROD_REF} detected, but override is enabled via CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.`
+  )
 }
 
 const orgId = getArgValue('--org-id') || process.env.E2E_ORG_ID || null

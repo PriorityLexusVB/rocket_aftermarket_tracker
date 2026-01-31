@@ -51,15 +51,26 @@ const buildClientConfig = (connectionString) => {
   }
 }
 
-const assertNotProduction = (connectionString) => {
+const assertNotProductionUnlessDoubleConfirmed = (connectionString) => {
   if (!connectionString) return
-  if (connectionString.includes(PROD_REF)) {
+
+  const isProd = connectionString.includes(PROD_REF)
+  if (!isProd) return
+
+  const confirmProd = process.env.CONFIRM_PROD === 'YES'
+  const allowSeedProd = process.env.ALLOW_SEED_PROD === 'YES'
+
+  if (!confirmProd || !allowSeedProd) {
     console.error(
-      `[seedE2E] Refusing to run: DATABASE_URL appears to contain production project ref ${PROD_REF}. ` +
-        'Use an E2E database connection string (recommended: put it in .env.e2e.local as E2E_DATABASE_URL).'
+      `[seedE2E] Refusing to run: connection string appears to contain production project ref ${PROD_REF}. ` +
+        'To override (NOT recommended), you must set CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.'
     )
     process.exit(1)
   }
+
+  console.warn(
+    `[seedE2E] WARNING: production ref ${PROD_REF} detected, but override is enabled via CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.`
+  )
 }
 
 const derivePoolerConnectionString = (connectionString) => {
@@ -176,7 +187,7 @@ const main = async () => {
     process.exit(1)
   }
 
-  assertNotProduction(connStr)
+  assertNotProductionUnlessDoubleConfirmed(connStr)
 
   const e2eEmail = process.env.E2E_EMAIL
   if (!e2eEmail) {

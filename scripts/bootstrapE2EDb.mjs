@@ -182,9 +182,18 @@ function shouldWipePublicSchema() {
 function assertNotProduction(dbUrl) {
   if (!dbUrl) return
   if (dbUrl.includes(PROD_REF)) {
-    throw new Error(
-      `[bootstrapE2EDb] Refusing to run: DATABASE_URL appears to contain production project ref ${PROD_REF}. ` +
-        `Use an E2E database connection string (recommended: put it in .env.e2e.local).`
+    const confirmProd = process.env.CONFIRM_PROD === 'YES'
+    const allowSeedProd = process.env.ALLOW_SEED_PROD === 'YES'
+
+    if (!confirmProd || !allowSeedProd) {
+      throw new Error(
+        `[bootstrapE2EDb] Refusing to run: DATABASE_URL appears to contain production project ref ${PROD_REF}. ` +
+          `To override (NOT recommended), you must set CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.`
+      )
+    }
+
+    console.warn(
+      `[bootstrapE2EDb] WARNING: production ref ${PROD_REF} detected, but override is enabled via CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.`
     )
   }
 }

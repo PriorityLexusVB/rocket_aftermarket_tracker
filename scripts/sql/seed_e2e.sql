@@ -1,5 +1,13 @@
 -- Seed minimal data for E2E runs: one org, staff entries, vendors, products
 -- Idempotent upserts
+--
+-- 🚫 Production safety:
+-- This file is intended to be executed by repo scripts (e.g. scripts/seedE2E.js) which
+-- hard-abort if the target connection string contains the production project ref:
+--   ogjtmtndgiqqdtwatsue
+--
+-- To override (NOT recommended), you must run the script with BOTH:
+--   CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES
 
 -- Create organization if missing
 insert into public.organizations (id, name)
