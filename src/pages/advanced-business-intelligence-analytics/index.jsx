@@ -263,11 +263,11 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
             />
             <MetricCard
               icon={<Package className="w-5 h-5" />}
-              title="Products Sold"
+              title="Units Sold"
               value={dashboardData?.summary_stats?.total_products_sold?.toString() || '0'}
               trend="+8%"
               trendUp={true}
-              description="Total products sold"
+              description="Total units sold"
             />
             <MetricCard
               icon={<DollarSign className="w-5 h-5" />}

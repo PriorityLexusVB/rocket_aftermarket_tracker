@@ -512,7 +512,11 @@ class AnalyticsService {
       const safeDeals = Array.isArray(deals) ? deals : []
       const totalProductsSoldFromDeals = safeDeals.reduce((sum, deal) => {
         const parts = Array.isArray(deal?.job_parts) ? deal.job_parts : []
-        return sum + parts.length
+        const partUnits = parts.reduce(
+          (partSum, part) => partSum + safeNumber(part?.quantity_used),
+          0
+        )
+        return sum + partUnits
       }, 0)
 
       return {

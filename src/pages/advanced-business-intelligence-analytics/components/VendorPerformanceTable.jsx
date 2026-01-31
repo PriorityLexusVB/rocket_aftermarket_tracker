@@ -127,7 +127,7 @@ const VendorPerformanceTable = ({ data }) => {
                   className="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:text-indigo-600 transition-colors"
                   onClick={() => handleSort('total_products_sold')}
                 >
-                  Products Sold {getSortIcon('total_products_sold')}
+                  Units Sold {getSortIcon('total_products_sold')}
                 </th>
                 <th
                   className="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:text-indigo-600 transition-colors"
@@ -256,7 +256,7 @@ const VendorPerformanceTable = ({ data }) => {
                   ?.reduce((sum, v) => sum + (v?.total_products_sold || 0), 0)
                   ?.toLocaleString()}
               </div>
-              <div className="text-sm text-gray-600">Total Products Sold</div>
+              <div className="text-sm text-gray-600">Total Units Sold</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">

@@ -35,6 +35,13 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
   const [creating, setCreating] = useState(false)
   const [newOpp, setNewOpp] = useState(emptyNew)
 
+  const inputBaseClass =
+    'mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500'
+  const buttonPrimaryClass =
+    'px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50'
+  const buttonDangerClass =
+    'px-3 py-2 text-sm rounded bg-red-50 text-red-700 hover:bg-red-100 transition-colors'
+
   const productOptions = useMemo(() => {
     return Array.isArray(products) ? products : []
   }, [products])
@@ -203,7 +210,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                           : getProductLabel(productId)
                         updateDraft(o.id, { product_id: productId || null, name: nextName })
                       }}
-                      className="mt-1 input-mobile w-full"
+                      className={inputBaseClass}
                     >
                       <option value="">—</option>
                       {productOptions.map((p) => (
@@ -220,7 +227,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                       type="text"
                       value={effective.name || ''}
                       onChange={(e) => updateDraft(o.id, { name: e.target.value })}
-                      className="mt-1 input-mobile w-full"
+                      className={inputBaseClass}
                       placeholder="e.g., Wheel locks"
                     />
                   </div>
@@ -233,7 +240,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                       min={1}
                       value={effective.quantity ?? 1}
                       onChange={(e) => updateDraft(o.id, { quantity: e.target.value })}
-                      className="mt-1 input-mobile w-full"
+                      className={inputBaseClass}
                     />
                   </div>
 
@@ -245,7 +252,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                       step="0.01"
                       value={effective.unit_price ?? ''}
                       onChange={(e) => updateDraft(o.id, { unit_price: e.target.value })}
-                      className="mt-1 input-mobile w-full input-currency"
+                      className={`${inputBaseClass} input-currency`}
                     />
                   </div>
 
@@ -261,7 +268,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                             nextStatus === 'declined' ? effective.decline_reason || '' : '',
                         })
                       }}
-                      className="mt-1 input-mobile w-full"
+                      className={inputBaseClass}
                     >
                       <option value="open">Open</option>
                       <option value="accepted">Accepted</option>
@@ -278,7 +285,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                         type="text"
                         value={effective.decline_reason || ''}
                         onChange={(e) => updateDraft(o.id, { decline_reason: e.target.value })}
-                        className="mt-1 input-mobile w-full"
+                        className={inputBaseClass}
                         placeholder="Optional but recommended"
                       />
                     </div>
@@ -289,14 +296,14 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                   <button
                     type="button"
                     onClick={() => handleDeleteRow(o.id)}
-                    className="btn-mobile btn-mobile-sm"
+                    className={buttonDangerClass}
                   >
                     Delete
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSaveRow(o.id)}
-                    className="btn-mobile btn-mobile-sm button-enhanced"
+                    className={buttonPrimaryClass}
                   >
                     Save
                   </button>
@@ -319,7 +326,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                 const nextName = newOpp.name ? newOpp.name : getProductLabel(productId)
                 setNewOpp((prev) => ({ ...prev, product_id: productId, name: nextName }))
               }}
-              className="mt-1 input-mobile w-full"
+              className={inputBaseClass}
             >
               <option value="">—</option>
               {productOptions.map((p) => (
@@ -336,7 +343,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
               type="text"
               value={newOpp.name}
               onChange={(e) => setNewOpp((prev) => ({ ...prev, name: e.target.value }))}
-              className="mt-1 input-mobile w-full"
+              className={inputBaseClass}
               placeholder="e.g., Door edge guards"
             />
           </div>
@@ -349,7 +356,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
               min={1}
               value={newOpp.quantity}
               onChange={(e) => setNewOpp((prev) => ({ ...prev, quantity: e.target.value }))}
-              className="mt-1 input-mobile w-full"
+              className={inputBaseClass}
             />
           </div>
 
@@ -361,7 +368,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
               step="0.01"
               value={newOpp.unit_price}
               onChange={(e) => setNewOpp((prev) => ({ ...prev, unit_price: e.target.value }))}
-              className="mt-1 input-mobile w-full input-currency"
+              className={`${inputBaseClass} input-currency`}
             />
           </div>
 
@@ -376,7 +383,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                   decline_reason: e.target.value === 'declined' ? prev.decline_reason : '',
                 }))
               }
-              className="mt-1 input-mobile w-full"
+              className={inputBaseClass}
             >
               <option value="open">Open</option>
               <option value="accepted">Accepted</option>
@@ -391,7 +398,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
                 type="text"
                 value={newOpp.decline_reason}
                 onChange={(e) => setNewOpp((prev) => ({ ...prev, decline_reason: e.target.value }))}
-                className="mt-1 input-mobile w-full"
+                className={inputBaseClass}
                 placeholder="Optional but recommended"
               />
             </div>
@@ -403,7 +410,7 @@ export default function OpportunitiesPanel({ jobId, products = [] }) {
             type="button"
             onClick={handleCreate}
             disabled={!jobId || creating}
-            className="btn-mobile button-enhanced"
+            className={buttonPrimaryClass}
           >
             {creating ? 'Adding…' : 'Add'}
           </button>

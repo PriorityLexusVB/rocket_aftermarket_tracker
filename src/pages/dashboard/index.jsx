@@ -223,13 +223,12 @@ const DashboardPage = () => {
     profitToday: todayFinancials.hasUnknownProfit ? '—' : money0OrDash(todayFinancials.profit),
     revenueMtd: money0OrDash(mtdFinancials.revenue),
     profitMtd: mtdFinancials.hasUnknownProfit ? '—' : money0OrDash(mtdFinancials.profit),
-    openOpp:
-      openOppSummary?.open_count == null ? '—' : String(Number(openOppSummary.open_count) || 0),
+    openOpp: money0OrDash(openOppSummary?.open_amount),
     openClaims: openClaims == null ? '—' : String(openClaims),
   }
 
   const openOppSublabel = openOppSummary
-    ? `${Number(openOppSummary.open_deals_count) || 0} deals • ${money0OrDash(openOppSummary.open_amount)} pipeline`
+    ? `${Number(openOppSummary.open_deals_count) || 0} deals • ${Number(openOppSummary.open_count) || 0} opps`
     : 'Not available'
 
   return (
@@ -285,7 +284,7 @@ const DashboardPage = () => {
                 : `MTD: ${kpiValue.profitMtd}`
             }
           />
-          <KpiCard label="Open Opp" value={kpiValue.openOpp} sublabel={openOppSublabel} />
+          <KpiCard label="Open Opp ($)" value={kpiValue.openOpp} sublabel={openOppSublabel} />
           <KpiCard label="Open Claims" value={kpiValue.openClaims} />
         </div>
 
@@ -319,10 +318,16 @@ const DashboardPage = () => {
                   <div className="mt-4 flex items-center justify-center gap-2">
                     <button
                       type="button"
-                      onClick={() => navigate('/calendar-flow-management-center')}
+                      onClick={() =>
+                        navigate(
+                          SIMPLE_AGENDA_ENABLED
+                            ? '/calendar/agenda'
+                            : '/calendar-flow-management-center'
+                        )
+                      }
                       className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                     >
-                      Open Scheduling Board
+                      {SIMPLE_AGENDA_ENABLED ? 'Open Agenda' : 'Open Scheduling Board'}
                     </button>
                     <button
                       type="button"
