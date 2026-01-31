@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
+import { listByJobId } from '@/services/opportunitiesService'
 import { jobService } from '@/services/jobService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
@@ -691,6 +692,7 @@ export default function DealsPage() {
   const toast = useToast?.()
   const [deals, setDeals] = useState([])
   const [loading, setLoading] = useState(true)
+  const [openOppByJobId, setOpenOppByJobId] = useState({})
   const [showNewDealModal, setShowNewDealModal] = useState(false)
   const [showEditDealModal, setShowEditDealModal] = useState(false)
   const [editingDealId, setEditingDealId] = useState(null)
@@ -1422,6 +1424,41 @@ export default function DealsPage() {
     return list
   }, [filteredDeals])
 
+  useEffect(() => {
+    let alive = true
+    const ids = (sortedDeals || []).map((deal) => deal?.id).filter(Boolean)
+    const missing = ids.filter((id) => openOppByJobId?.[id] == null)
+    if (!missing.length) return () => {}
+    ;(async () => {
+      const results = await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const rows = await listByJobId(id)
+            const openCount = (Array.isArray(rows) ? rows : []).filter(
+              (row) => (row?.status || 'open') === 'open'
+            ).length
+            return [id, openCount]
+          } catch {
+            return [id, 0]
+          }
+        })
+      )
+
+      if (!alive) return
+      setOpenOppByJobId((prev) => {
+        const next = { ...prev }
+        for (const [id, count] of results) {
+          next[id] = count
+        }
+        return next
+      })
+    })()
+
+    return () => {
+      alive = false
+    }
+  }, [sortedDeals, openOppByJobId])
+
   // ✅ ADDED: 300ms debounced search implementation
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -2032,6 +2069,7 @@ export default function DealsPage() {
                   deal?.created_at || deal?.createdAt || deal?.created || deal?.inserted_at
                 )
                 const isExpanded = expandedDealIds?.has?.(deal?.id)
+                const openOppCount = openOppByJobId?.[deal?.id]
 
                 return (
                   <div
@@ -2109,6 +2147,11 @@ export default function DealsPage() {
                           <div className="shrink-0">
                             <div className="flex items-center gap-2">
                               <StatusPill status={deal?.job_status} />
+                              {openOppCount > 0 ? (
+                                <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                                  Opps {openOppCount}
+                                </span>
+                              ) : null}
                               {deal?.job_status === 'completed' ? (
                                 <span
                                   className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200"
@@ -2397,166 +2440,176 @@ export default function DealsPage() {
                   </div>
                 </div>
               ) : (
-                sortedDeals?.map((deal) => (
-                  <div
-                    key={deal?.id}
-                    className="bg-white rounded-xl border shadow-sm overflow-hidden"
-                  >
-                    {/* Card Header */}
-                    <div className="p-4 border-b bg-slate-50">
-                      <div className="flex justify-between items-start mb-2">
+                sortedDeals?.map((deal) => {
+                  const openOppCount = openOppByJobId?.[deal?.id]
+                  return (
+                    <div
+                      key={deal?.id}
+                      className="bg-white rounded-xl border shadow-sm overflow-hidden"
+                    >
+                      {/* Card Header */}
+                      <div className="p-4 border-b bg-slate-50">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <div className="text-xs text-slate-500">
+                              {formatCreatedShort(
+                                deal?.created_at ||
+                                  deal?.createdAt ||
+                                  deal?.created ||
+                                  deal?.inserted_at
+                              ) || '—'}
+                              {typeof deal?.age_days === 'number' ? (
+                                <span className="ml-2 tabular-nums">{deal?.age_days}d</span>
+                              ) : null}
+                              {deal?.job_number ? (
+                                <span className="ml-2 tabular-nums" title={getDealPrimaryRef(deal)}>
+                                  {deal?.job_number}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="font-medium text-slate-900">
+                              {deal?.customer_name || '—'}
+                              {isDealsDebugEnabled() && deal?.id ? (
+                                <span className="ml-2 text-[10px] text-slate-400">
+                                  id…{String(deal.id).slice(-6)}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-sm text-slate-600 truncate">
+                              {deal?.sales_consultant_name
+                                ? formatStaffName(deal?.sales_consultant_name)
+                                : deal?.delivery_coordinator_name
+                                  ? formatStaffName(deal?.delivery_coordinator_name)
+                                  : '—'}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-600 truncate">
+                              {(deal?.vehicle
+                                ? titleCase(
+                                    `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
+                                  )
+                                : '') || '—'}
+                              {deal?.vehicle?.stock_number ? (
+                                <span className="text-slate-400">
+                                  {' '}
+                                  • Stock: {deal?.vehicle?.stock_number}
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500 truncate">
+                              {deal?.customer_phone_e164 ||
+                              deal?.customer_phone ||
+                              deal?.customer_mobile ? (
+                                <a
+                                  href={`tel:${deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile}`}
+                                  onClick={(e) => e?.stopPropagation?.()}
+                                  className="underline"
+                                >
+                                  {getDisplayPhone(deal)}
+                                </a>
+                              ) : (
+                                '—'
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <StatusPill status={deal?.job_status} />
+                            {openOppCount > 0 ? (
+                              <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                                Opps {openOppCount}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Content with compact 3-line mobile layout */}
+                      <div className="p-4 space-y-2">
+                        <SheetSummaryRow deal={deal} dense />
+
+                        {/* Unified schedule (no duplicate Promise / Appt Window) */}
                         <div>
-                          <div className="text-xs text-slate-500">
-                            {formatCreatedShort(
-                              deal?.created_at ||
-                                deal?.createdAt ||
-                                deal?.created ||
-                                deal?.inserted_at
-                            ) || '—'}
-                            {typeof deal?.age_days === 'number' ? (
-                              <span className="ml-2 tabular-nums">{deal?.age_days}d</span>
-                            ) : null}
-                            {deal?.job_number ? (
-                              <span className="ml-2 tabular-nums" title={getDealPrimaryRef(deal)}>
-                                {deal?.job_number}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="font-medium text-slate-900">
-                            {deal?.customer_name || '—'}
-                            {isDealsDebugEnabled() && deal?.id ? (
-                              <span className="ml-2 text-[10px] text-slate-400">
-                                id…{String(deal.id).slice(-6)}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="text-sm text-slate-600 truncate">
-                            {deal?.sales_consultant_name
-                              ? formatStaffName(deal?.sales_consultant_name)
-                              : deal?.delivery_coordinator_name
-                                ? formatStaffName(deal?.delivery_coordinator_name)
-                                : '—'}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-600 truncate">
-                            {(deal?.vehicle
-                              ? titleCase(
-                                  `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
-                                )
-                              : '') || '—'}
-                            {deal?.vehicle?.stock_number ? (
-                              <span className="text-slate-400">
-                                {' '}
-                                • Stock: {deal?.vehicle?.stock_number}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-500 truncate">
-                            {deal?.customer_phone_e164 ||
-                            deal?.customer_phone ||
-                            deal?.customer_mobile ? (
-                              <a
-                                href={`tel:${deal?.customer_phone_e164 || deal?.customer_phone || deal?.customer_mobile}`}
-                                onClick={(e) => e?.stopPropagation?.()}
-                                className="underline"
-                              >
-                                {getDisplayPhone(deal)}
-                              </a>
+                          <ScheduleBlock
+                            deal={deal}
+                            promiseDate={getDealPromiseIso(deal)}
+                            onClick={() => handleScheduleClick?.(deal)}
+                            className="w-full"
+                          />
+
+                          <div className="mt-2 flex items-center gap-2 flex-wrap">
+                            {(() => {
+                              const summary = getDealProductLabelSummary(deal, 2)
+                              if (!summary.labels.length) return null
+                              const label = `${summary.labels.join(', ')}${summary.extraCount ? ` +${summary.extraCount}` : ''}`
+                              return <Pill>Items: {label}</Pill>
+                            })()}
+                            <ServiceLocationTag jobParts={deal?.job_parts} />
+                            {deal?.loaner_number || deal?.has_active_loaner ? (
+                              <LoanerBadge deal={deal} />
                             ) : (
-                              '—'
+                              <Pill>Loaner: —</Pill>
                             )}
+                            {(() => {
+                              const fin = getDealFinancials(deal)
+                              const profitClass =
+                                typeof fin.profit === 'number'
+                                  ? fin.profit > 0
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : fin.profit < 0
+                                      ? 'bg-red-50 text-red-800 border-red-200'
+                                      : ''
+                                  : ''
+
+                              return (
+                                <>
+                                  <Pill className="tabular-nums">
+                                    S {formatMoney0OrDash(fin.sale)} / C{' '}
+                                    {formatMoney0OrDash(fin.cost)}
+                                  </Pill>
+                                  <Pill className={`tabular-nums ${profitClass}`}>
+                                    P {formatMoney0OrDash(fin.profit)}
+                                  </Pill>
+                                </>
+                              )
+                            })()}
                           </div>
                         </div>
-                        <StatusPill status={deal?.job_status} />
                       </div>
-                    </div>
 
-                    {/* Card Content with compact 3-line mobile layout */}
-                    <div className="p-4 space-y-2">
-                      <SheetSummaryRow deal={deal} dense />
+                      {/* ✅ FIXED: Enhanced mobile footer with proper loaner actions */}
+                      <div className="p-4 border-t bg-slate-50">
+                        {/* Primary actions row */}
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditDeal(deal?.id)}
+                            className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                            aria-label="Edit deal"
+                          >
+                            <Icon name="Edit" size={16} className="mr-2" />
+                            Edit
+                          </Button>
 
-                      {/* Unified schedule (no duplicate Promise / Appt Window) */}
-                      <div>
-                        <ScheduleBlock
-                          deal={deal}
-                          promiseDate={getDealPromiseIso(deal)}
-                          onClick={() => handleScheduleClick?.(deal)}
-                          className="w-full"
-                        />
-
-                        <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          {(() => {
-                            const summary = getDealProductLabelSummary(deal, 2)
-                            if (!summary.labels.length) return null
-                            const label = `${summary.labels.join(', ')}${summary.extraCount ? ` +${summary.extraCount}` : ''}`
-                            return <Pill>Items: {label}</Pill>
-                          })()}
-                          <ServiceLocationTag jobParts={deal?.job_parts} />
-                          {deal?.loaner_number || deal?.has_active_loaner ? (
-                            <LoanerBadge deal={deal} />
-                          ) : (
-                            <Pill>Loaner: —</Pill>
-                          )}
-                          {(() => {
-                            const fin = getDealFinancials(deal)
-                            const profitClass =
-                              typeof fin.profit === 'number'
-                                ? fin.profit > 0
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  : fin.profit < 0
-                                    ? 'bg-red-50 text-red-800 border-red-200'
-                                    : ''
-                                : ''
-
-                            return (
-                              <>
-                                <Pill className="tabular-nums">
-                                  S {formatMoney0OrDash(fin.sale)} / C{' '}
-                                  {formatMoney0OrDash(fin.cost)}
-                                </Pill>
-                                <Pill className={`tabular-nums ${profitClass}`}>
-                                  P {formatMoney0OrDash(fin.profit)}
-                                </Pill>
-                              </>
-                            )
-                          })()}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setError('')
+                              setDeleteConfirm(deal)
+                            }}
+                            className="h-11 w-full bg-white border-slate-200 text-red-700 hover:bg-red-50"
+                            aria-label="Delete deal"
+                          >
+                            <Icon name="Trash2" size={16} className="mr-2" />
+                            Delete
+                          </Button>
                         </div>
+
+                        {/* ✅ FIXED: Loaner actions row with proper conditions */}
                       </div>
                     </div>
-
-                    {/* ✅ FIXED: Enhanced mobile footer with proper loaner actions */}
-                    <div className="p-4 border-t bg-slate-50">
-                      {/* Primary actions row */}
-                      <div className="grid grid-cols-2 gap-2 mb-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditDeal(deal?.id)}
-                          className="h-11 w-full bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
-                          aria-label="Edit deal"
-                        >
-                          <Icon name="Edit" size={16} className="mr-2" />
-                          Edit
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setError('')
-                            setDeleteConfirm(deal)
-                          }}
-                          className="h-11 w-full bg-white border-slate-200 text-red-700 hover:bg-red-50"
-                          aria-label="Delete deal"
-                        >
-                          <Icon name="Trash2" size={16} className="mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-
-                      {/* ✅ FIXED: Loaner actions row with proper conditions */}
-                    </div>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           )
