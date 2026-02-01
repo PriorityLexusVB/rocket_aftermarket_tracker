@@ -11,6 +11,29 @@
  */
 const { Client } = require('pg')
 
+const PROD_REF = 'ogjtmtndgiqqdtwatsue'
+
+function assertNotProductionUnlessDoubleConfirmed(connectionString) {
+  if (!connectionString) return
+
+  if (!connectionString.includes(PROD_REF)) return
+
+  const confirmProd = process.env.CONFIRM_PROD === 'YES'
+  const allowSeedProd = process.env.ALLOW_SEED_PROD === 'YES'
+
+  if (!confirmProd || !allowSeedProd) {
+    console.error(
+      `[attachOrg] Refusing to run: connection string appears to contain production project ref ${PROD_REF}. ` +
+        'To override (NOT recommended), you must set CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.'
+    )
+    process.exit(1)
+  }
+
+  console.warn(
+    `[attachOrg] WARNING: production ref ${PROD_REF} detected, but override is enabled via CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.`
+  )
+}
+
 async function run() {
   const email = process.argv[2]
   if (!email) {
@@ -23,6 +46,7 @@ async function run() {
     console.error('[attachOrg] Missing E2E_DATABASE_URL/DATABASE_URL/SUPABASE_DB_URL env variable')
     process.exit(1)
   }
+  assertNotProductionUnlessDoubleConfirmed(conn)
   // Ensure sslmode=require is present (Supabase Postgres requires SSL)
   let finalConn = conn
   if (!/[?&]sslmode=/.test(finalConn)) {

@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { notificationService } from '../../services/notificationService'
 import QuickNavigation from '../common/QuickNavigation'
 import ThemeSelector from '../common/ThemeSelector'
+import EnvChip from '../common/EnvChip'
 import { isTest } from '../../lib/env'
 
 const Navbar = () => {
@@ -609,6 +610,8 @@ const Navbar = () => {
           }}
         />
       )}
+
+      <EnvChip className="fixed bottom-24 right-2 z-[60] md:bottom-8" />
 
       {buildLabel ? (
         <div

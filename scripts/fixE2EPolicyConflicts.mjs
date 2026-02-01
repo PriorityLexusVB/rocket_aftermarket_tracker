@@ -70,10 +70,20 @@ async function main() {
   console.log('[fixE2EPolicyConflicts] Target (non-secret):', info)
 
   if (dbUrl.includes(PROD_REF)) {
-    console.error(
-      `[fixE2EPolicyConflicts] Refusing to run: DB URL appears to be production (${PROD_REF}). Use your E2E/staging database URL.`
+    const confirmProd = process.env.CONFIRM_PROD === 'YES'
+    const allowSeedProd = process.env.ALLOW_SEED_PROD === 'YES'
+
+    if (!confirmProd || !allowSeedProd) {
+      console.error(
+        `[fixE2EPolicyConflicts] Refusing to run: DB URL appears to be production (${PROD_REF}). ` +
+          'To override (NOT recommended), you must set CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.'
+      )
+      process.exit(2)
+    }
+
+    console.warn(
+      `[fixE2EPolicyConflicts] WARNING: production ref ${PROD_REF} detected, but override is enabled via CONFIRM_PROD=YES and ALLOW_SEED_PROD=YES.`
     )
-    process.exit(2)
   }
 
   const client = new Client(buildClientConfig(dbUrl))
