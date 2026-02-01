@@ -9,7 +9,7 @@ import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
-import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
+import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
 
@@ -443,8 +443,15 @@ const CalendarSchedulingCenter = () => {
 
           const undo = async () => {
             try {
-              const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
-              await jobService.updateStatus(jobId, previousStatus || fallbackStatus, {
+              const normalizedPrev = String(previousStatus || '')
+                .trim()
+                .toLowerCase()
+              const fallbackStatus = getReopenTargetStatus(job, { now: new Date() })
+              const undoStatus =
+                normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
+                  ? normalizedPrev
+                  : fallbackStatus
+              await jobService.updateStatus(jobId, undoStatus, {
                 completed_at: previousCompletedAt || null,
               })
               toast?.success?.('Undo successful')
@@ -479,7 +486,7 @@ const CalendarSchedulingCenter = () => {
 
       await withStatusLock(jobId, async () => {
         try {
-          const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+          const targetStatus = getReopenTargetStatus(job, { now: new Date() })
           await jobService.updateStatus(jobId, targetStatus, { completed_at: null })
           toast?.success?.('Reopened')
           await loadCalendarData()

@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 
 import { cn } from '../../../utils/cn'
 import jobService from '../../../services/jobService'
-import { getUncompleteTargetStatus } from '../../../utils/jobStatusTimeRules'
+import { getReopenTargetStatus } from '../../../utils/jobStatusTimeRules'
 
 function fmtMaybe(dateValue) {
   if (!dateValue) return null
@@ -39,7 +39,7 @@ export default function UnassignedQueue({
 
     const isCompleted = job.job_status === 'completed'
     if (isCompleted) {
-      const targetStatus = getUncompleteTargetStatus(job, {
+      const targetStatus = getReopenTargetStatus(job, {
         now: currentNow,
       })
       await jobService.updateStatus(job.id, targetStatus, {

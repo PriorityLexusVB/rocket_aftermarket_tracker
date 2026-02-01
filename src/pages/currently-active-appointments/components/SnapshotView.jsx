@@ -8,7 +8,7 @@ import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import { createUndoEntry, canUndo } from './undoHelpers'
 import { formatTime } from '@/utils/dateTimeUtils'
 import { getEtDayUtcMs, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
-import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
+import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { getStatusBadge } from '@/lib/time'
 import {
   getScheduleItems,
@@ -555,7 +555,15 @@ export default function SnapshotView() {
   }, [load, tenantLoading])
 
   async function handleComplete(job) {
-    const prevStatus = job?.raw?.job_status || 'scheduled'
+    const prevStatusRaw = job?.raw?.job_status
+    const normalizedPrev = String(prevStatusRaw || '')
+      .trim()
+      .toLowerCase()
+    const fallbackStatus = getReopenTargetStatus(job?.raw || job, { now: new Date() })
+    const prevStatus =
+      normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
+        ? normalizedPrev
+        : fallbackStatus
     const jobTitle = job?.raw?.title || job?.raw?.job_number || 'Appointment'
 
     await withStatusLock(job?.id, async () => {
@@ -627,7 +635,7 @@ export default function SnapshotView() {
     await withStatusLock(job?.id, async () => {
       try {
         const { jobService } = await import('@/services/jobService')
-        const targetStatus = getUncompleteTargetStatus(raw, { now: new Date() })
+        const targetStatus = getReopenTargetStatus(raw, { now: new Date() })
         await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
         const message = `Reopened "${jobTitle}"`
         toast?.success?.(message)

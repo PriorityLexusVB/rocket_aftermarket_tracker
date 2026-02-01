@@ -11,7 +11,7 @@ import {
   Check,
 } from 'lucide-react'
 import { getAppointmentScheduleDisplay, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
-import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules.js'
+import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules.js'
 
 const AppointmentCard = ({
   appointment,
@@ -285,7 +285,7 @@ const AppointmentCard = ({
                   onClick={(e) =>
                     handleStatusChange(
                       {
-                        status: getUncompleteTargetStatus(appointment, { now: new Date() }),
+                        status: getReopenTargetStatus(appointment, { now: new Date() }),
                         patch: { completed_at: null },
                       },
                       e

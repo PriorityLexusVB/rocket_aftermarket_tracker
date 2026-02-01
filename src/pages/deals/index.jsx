@@ -11,7 +11,7 @@ import DealDetailDrawer from './components/DealDetailDrawer'
 import { money0, pct1, titleCase, prettyPhone } from '../../lib/format'
 import ScheduleBlock from '../../components/deals/ScheduleBlock'
 import { formatEtMonthDay, toSafeDateForTimeZone } from '../../utils/scheduleDisplay'
-import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules.js'
+import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules.js'
 import { calculateDealKPIs, getDealFinancials } from '../../utils/dealKpis'
 
 import { useDropdownData } from '../../hooks/useDropdownData'
@@ -914,7 +914,15 @@ export default function DealsPage() {
 
       const undo = async () => {
         try {
-          await jobService.updateStatus(dealId, previousStatus || 'scheduled', {
+          const normalizedPrev = String(previousStatus || '')
+            .trim()
+            .toLowerCase()
+          const fallbackStatus = getReopenTargetStatus(deal, { now: new Date() })
+          const undoStatus =
+            normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
+              ? normalizedPrev
+              : fallbackStatus
+          await jobService.updateStatus(dealId, undoStatus, {
             completed_at: previousCompletedAt || null,
           })
           toast?.success?.('Undo successful')
@@ -947,7 +955,7 @@ export default function DealsPage() {
     if (statusUpdateInFlightRef.current.has(dealId)) return
     statusUpdateInFlightRef.current.add(dealId)
 
-    const targetStatus = getUncompleteTargetStatus(deal, { now: new Date() })
+    const targetStatus = getReopenTargetStatus(deal, { now: new Date() })
 
     try {
       await jobService.updateStatus(dealId, targetStatus, { completed_at: null })

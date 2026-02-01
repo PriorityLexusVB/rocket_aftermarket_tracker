@@ -10,7 +10,7 @@ import { getNeedsSchedulingPromiseItems, getScheduleItems } from '@/services/sch
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/ToastProvider'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
-import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
+import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
@@ -571,8 +571,15 @@ export default function CalendarAgenda() {
         if (toast?.success) {
           const undo = async () => {
             try {
-              const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
-              await jobService.updateStatus(job.id, previousStatus || fallbackStatus, {
+              const normalizedPrev = String(previousStatus || '')
+                .trim()
+                .toLowerCase()
+              const fallbackStatus = getReopenTargetStatus(job, { now: new Date() })
+              const undoStatus =
+                normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
+                  ? normalizedPrev
+                  : fallbackStatus
+              await jobService.updateStatus(job.id, undoStatus, {
                 completed_at: previousCompletedAt || null,
               })
               toast.success('Undo successful')
@@ -602,7 +609,7 @@ export default function CalendarAgenda() {
   async function handleReopen(job) {
     await withStatusLock(job?.id, async () => {
       try {
-        const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+        const targetStatus = getReopenTargetStatus(job, { now: new Date() })
         await jobService.updateStatus(job.id, targetStatus, { completed_at: null })
         toast?.success?.('Reopened')
         await load()

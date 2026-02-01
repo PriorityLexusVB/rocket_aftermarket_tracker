@@ -30,7 +30,7 @@ import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
-import { getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules'
+import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 
@@ -91,7 +91,6 @@ const CalendarFlowManagementCenter = () => {
   const [filters, setFilters] = useState({
     vendors: [],
     statuses: [],
-    showUnassigned: true,
     searchQuery: '',
   })
 
@@ -433,8 +432,15 @@ const CalendarFlowManagementCenter = () => {
 
         const undo = async () => {
           try {
-            const fallbackStatus = getUncompleteTargetStatus(job, { now: new Date() })
-            await jobService.updateStatus(jobId, previousStatus || fallbackStatus, {
+            const normalizedPrev = String(previousStatus || '')
+              .trim()
+              .toLowerCase()
+            const fallbackStatus = getReopenTargetStatus(job, { now: new Date() })
+            const undoStatus =
+              normalizedPrev === 'quality_check' || normalizedPrev === 'delivered'
+                ? normalizedPrev
+                : fallbackStatus
+            await jobService.updateStatus(jobId, undoStatus, {
               completed_at: previousCompletedAt || null,
             })
             toast?.success?.('Undo successful')
@@ -466,7 +472,7 @@ const CalendarFlowManagementCenter = () => {
 
       await withStatusLock(jobId, async () => {
         try {
-          const targetStatus = getUncompleteTargetStatus(job, { now: new Date() })
+          const targetStatus = getReopenTargetStatus(job, { now: new Date() })
           await jobService.updateStatus(jobId, targetStatus, { completed_at: null })
           toast?.success?.('Reopened')
           await loadCalendarData()
@@ -1341,9 +1347,8 @@ const CalendarFlowManagementCenter = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
                 {viewMode === 'month' ? (
                   renderMonthView()
-                ) : filteredJobs?.length +
-                    (filters?.showUnassigned ? filteredUnassignedJobs?.length : 0) ===
-                    0 && (needsSchedulingJobsInView?.length || 0) === 0 ? (
+                ) : filteredJobs?.length + filteredUnassignedJobs?.length === 0 &&
+                  (needsSchedulingJobsInView?.length || 0) === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center p-8 text-center">
                     <div className="text-lg font-semibold text-gray-900">
                       No jobs this {viewMode === 'day' ? 'day' : 'week'}.

@@ -85,3 +85,14 @@ export function getUncompleteTargetStatus(job, { now = new Date() } = {}) {
   // No schedule info: default to in_progress when uncompleting.
   return 'in_progress'
 }
+
+/**
+ * Reopen target:
+ * - If completed, move to the safest allowed next state (quality_check)
+ * - Otherwise, defer to uncomplete schedule logic
+ */
+export function getReopenTargetStatus(job, { now = new Date() } = {}) {
+  const base = normalizeStatus(job?.job_status)
+  if (base === 'completed') return 'quality_check'
+  return getUncompleteTargetStatus(job, { now })
+}

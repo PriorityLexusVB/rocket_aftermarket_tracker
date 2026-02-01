@@ -117,27 +117,7 @@ const QuickFilters = ({ filters, onFiltersChange, jobCounts }) => {
           })}
         </div>
 
-        {/* Additional Filters */}
-        <div className="flex items-center space-x-3">
-          <div className="text-sm text-gray-600">Show:</div>
-
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={filters?.showUnassigned || false}
-              onChange={(e) =>
-                onFiltersChange?.({
-                  ...filters,
-                  showUnassigned: e?.target?.checked,
-                })
-              }
-              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-2 h-4 w-4"
-            />
-            <span className="ml-2 text-sm text-gray-700" title="Jobs without a vendor (in-house/on-site)">
-              On-site Jobs
-            </span>
-          </label>
-        </div>
+        {/* No additional filters */}
       </div>
     </div>
   )

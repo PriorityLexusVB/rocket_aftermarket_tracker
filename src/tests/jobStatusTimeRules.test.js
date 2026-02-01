@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { getEffectiveJobStatus, getUncompleteTargetStatus } from '@/utils/jobStatusTimeRules.js'
+import {
+  getEffectiveJobStatus,
+  getReopenTargetStatus,
+  getUncompleteTargetStatus,
+} from '@/utils/jobStatusTimeRules.js'
 
 describe('jobStatusTimeRules', () => {
   describe('getEffectiveJobStatus', () => {
@@ -66,6 +70,20 @@ describe('jobStatusTimeRules', () => {
       expect(getUncompleteTargetStatus({}, { now: new Date('2026-01-22T12:00:00Z') })).toBe(
         'in_progress'
       )
+    })
+  })
+
+  describe('getReopenTargetStatus', () => {
+    it('returns quality_check for completed jobs', () => {
+      const job = { job_status: 'completed', scheduled_start_time: '2026-01-22T18:00:00Z' }
+      const now = new Date('2026-01-22T12:00:00Z')
+      expect(getReopenTargetStatus(job, { now })).toBe('quality_check')
+    })
+
+    it('defers to uncomplete logic for non-completed jobs', () => {
+      const job = { job_status: 'scheduled', scheduled_start_time: '2026-01-22T18:00:00Z' }
+      const now = new Date('2026-01-22T12:00:00Z')
+      expect(getReopenTargetStatus(job, { now })).toBe('scheduled')
     })
   })
 })
