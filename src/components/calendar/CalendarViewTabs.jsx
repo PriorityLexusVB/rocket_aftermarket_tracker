@@ -6,7 +6,7 @@ const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
 const CALENDAR_VIEWS = [
-  { key: 'grid', label: 'Grid', href: '/calendar/grid', icon: LayoutGrid },
+  { key: 'grid', label: 'Grid', href: '/calendar', icon: LayoutGrid },
   { key: 'flow', label: 'Flow', href: '/calendar-flow-management-center', icon: Calendar },
   ...(SIMPLE_AGENDA_ENABLED
     ? [{ key: 'agenda', label: 'Agenda', href: '/calendar/agenda', icon: List }]
@@ -32,17 +32,15 @@ export default function CalendarViewTabs() {
               key={item.key}
               to={item.href}
               className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                active
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white text-slate-600 hover:bg-slate-100'
+                active ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
               }`}
               aria-current={active ? 'page' : undefined}
             >
               <Icon size={14} />
               {item.label}
             </Link>
-          )}
-        )}
+          )
+        })}
       </div>
     </div>
   )

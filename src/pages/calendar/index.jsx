@@ -577,12 +577,16 @@ const CalendarSchedulingCenter = () => {
                   : safeCreateDate(job?.scheduled_start_time)
                 const normalizedStatus =
                   job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+                const isPromiseOnly =
+                  job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
                 const colors = getEventColors(job?.service_type, normalizedStatus)
-                const statusLabel = normalizedStatus
-                  ? normalizedStatus === 'scheduled'
-                    ? 'BOOKED'
-                    : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
-                  : 'SCHEDULED'
+                const statusLabel = isPromiseOnly
+                  ? 'PROMISE'
+                  : normalizedStatus
+                    ? normalizedStatus === 'scheduled'
+                      ? 'BOOKED'
+                      : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
+                    : 'SCHEDULED'
 
                 const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                 const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
@@ -660,9 +664,7 @@ const CalendarSchedulingCenter = () => {
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="text-xs opacity-80">
                         {job?.time_tbd
-                          ? promiseLabel
-                            ? `All day • ${promiseLabel}`
-                            : 'All day'
+                          ? `Promise: ${promiseLabel || '—'}`
                           : jobStartTime
                             ? safeFormatTime(jobStartTime, {
                                 hour: 'numeric',
@@ -807,12 +809,16 @@ const CalendarSchedulingCenter = () => {
                     {visibleJobs.map((job) => {
                       const normalizedStatus =
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+                      const isPromiseOnly =
+                        job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
                       const colors = getEventColors(job?.service_type, normalizedStatus)
-                      const statusLabel = normalizedStatus
-                        ? normalizedStatus === 'scheduled'
-                          ? 'BOOKED'
-                          : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
-                        : 'SCHEDULED'
+                      const statusLabel = isPromiseOnly
+                        ? 'PROMISE'
+                        : normalizedStatus
+                          ? normalizedStatus === 'scheduled'
+                            ? 'BOOKED'
+                            : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
+                          : 'SCHEDULED'
                       const jobStartTime = job?.time_tbd
                         ? null
                         : safeCreateDate(job?.scheduled_start_time)
@@ -857,9 +863,7 @@ const CalendarSchedulingCenter = () => {
                           <div className="text-[10px] opacity-90 truncate">{vendorLabel}</div>
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
-                              ? promiseLabel
-                                ? `All day • ${promiseLabel}`
-                                : 'All day'
+                              ? `Promise: ${promiseLabel || '—'}`
                               : jobStartTime
                                 ? safeFormatTime(jobStartTime, {
                                     hour: 'numeric',
@@ -893,12 +897,16 @@ const CalendarSchedulingCenter = () => {
             {jobs?.map((job) => {
               const jobStartTime = job?.time_tbd ? null : safeCreateDate(job?.scheduled_start_time)
               const normalizedStatus = job?.job_status === 'pending' ? 'scheduled' : job?.job_status
+              const isPromiseOnly =
+                job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
               const colors = getEventColors(job?.service_type, normalizedStatus)
-              const statusLabel = normalizedStatus
-                ? normalizedStatus === 'scheduled'
-                  ? 'BOOKED'
-                  : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
-                : 'SCHEDULED'
+              const statusLabel = isPromiseOnly
+                ? 'PROMISE'
+                : normalizedStatus
+                  ? normalizedStatus === 'scheduled'
+                    ? 'BOOKED'
+                    : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
+                  : 'SCHEDULED'
 
               return (
                 <div
@@ -914,7 +922,13 @@ const CalendarSchedulingCenter = () => {
                       </p>
                       <p className="text-sm text-gray-500">
                         {job?.time_tbd
-                          ? 'Time TBD'
+                          ? `Promise: ${
+                              safeFormatDate(job?.scheduled_start_time, {
+                                weekday: 'short',
+                                month: 'short',
+                                day: 'numeric',
+                              }) || '—'
+                            }`
                           : jobStartTime
                             ? jobStartTime?.toLocaleString()
                             : 'Invalid Time'}

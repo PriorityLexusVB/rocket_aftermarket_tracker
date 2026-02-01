@@ -764,8 +764,13 @@ export default function SnapshotView() {
               }
               aria-pressed={windowMode === 'all_day'}
             >
-              Scheduled (All-day)
+              Promised (All-day)
             </button>
+          </div>
+
+          <div className="mt-2 text-xs text-muted-foreground">
+            All-day promised items have a date but no time window yet. Completed jobs are hidden in
+            this view.
           </div>
 
           {SIMPLE_CAL_ON && (
@@ -817,7 +822,7 @@ export default function SnapshotView() {
       needsSplit.overdue.length === 0 &&
       needsSplit.upcoming.length === 0 ? (
         <div role="status" aria-live="polite" className="text-muted-foreground">
-          No all-day items in this range.
+          No promised all-day items in this range.
         </div>
       ) : null}
 
@@ -836,6 +841,12 @@ export default function SnapshotView() {
             const customer = j?.customerName || vehicle?.owner_name || ''
             const status = effectiveStatusForBadge(j)
             const statusBadge = getStatusBadge(status)
+            const isPromiseOnly =
+              !j?.scheduledStart &&
+              (j?.promisedAt ||
+                j?.raw?.time_tbd === true ||
+                j?.raw?.schedule_state === 'scheduled_no_time' ||
+                j?.scheduleState === 'scheduled_no_time')
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
             const hasLoaner = !!(
               j?.raw?.has_active_loaner ||
@@ -870,7 +881,7 @@ export default function SnapshotView() {
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
                   >
-                    {statusBadge?.label || status}
+                    {isPromiseOnly ? 'PROMISE' : statusBadge?.label || status}
                   </span>
                 </div>
                 {hasLoaner ? (
@@ -921,6 +932,12 @@ export default function SnapshotView() {
             const customer = j?.customerName || vehicle?.owner_name || ''
             const status = effectiveStatusForBadge(j)
             const statusBadge = getStatusBadge(status)
+            const isPromiseOnly =
+              !j?.scheduledStart &&
+              (j?.promisedAt ||
+                j?.raw?.time_tbd === true ||
+                j?.raw?.schedule_state === 'scheduled_no_time' ||
+                j?.scheduleState === 'scheduled_no_time')
             const promiseLabel = formatPromiseLabel(j?.promisedAt)
             const hasLoaner = !!(
               j?.raw?.has_active_loaner ||
@@ -952,7 +969,7 @@ export default function SnapshotView() {
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
                   >
-                    {statusBadge?.label || status}
+                    {isPromiseOnly ? 'PROMISE' : statusBadge?.label || status}
                   </span>
                 </div>
                 {hasLoaner ? (
@@ -1029,6 +1046,12 @@ export default function SnapshotView() {
                 const customer = j?.customerName || vehicle?.owner_name || ''
                 const status = effectiveStatusForBadge(j)
                 const statusBadge = getStatusBadge(status)
+                const isPromiseOnly =
+                  !hasTime &&
+                  (j?.promisedAt ||
+                    j?.raw?.time_tbd === true ||
+                    j?.raw?.schedule_state === 'scheduled_no_time' ||
+                    j?.scheduleState === 'scheduled_no_time')
                 const hasLoaner = !!(
                   j?.raw?.has_active_loaner ||
                   j?.raw?.loaner_id ||
@@ -1080,7 +1103,7 @@ export default function SnapshotView() {
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
                       >
-                        {statusBadge?.label || status}
+                        {isPromiseOnly ? 'PROMISE' : statusBadge?.label || status}
                       </span>
                     </div>
                     {hasLoaner ? (

@@ -15,6 +15,10 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
 
     const rawStatus = String(job?.job_status || '').toLowerCase()
     const hasTimeWindow = !!job?.scheduled_start_time
+    const isPromiseOnly =
+      job?.time_tbd === true ||
+      job?.schedule_state === 'scheduled_no_time' ||
+      (!hasTimeWindow && promise)
     const statusForBadge =
       !hasTimeWindow &&
       promise &&
@@ -84,9 +88,11 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
             <div
               className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
             >
-              {statusBadge?.label ||
-                statusForBadge?.toUpperCase?.() ||
-                job?.job_status?.toUpperCase?.()}
+              {isPromiseOnly
+                ? 'PROMISE'
+                : statusBadge?.label ||
+                  statusForBadge?.toUpperCase?.() ||
+                  job?.job_status?.toUpperCase?.()}
             </div>
           </div>
 

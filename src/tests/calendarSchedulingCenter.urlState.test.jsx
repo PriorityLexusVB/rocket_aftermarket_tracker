@@ -42,7 +42,7 @@ function LocationProbe() {
 describe('CalendarSchedulingCenter URL state', () => {
   it('hydrates from URL params and updates params when drilling into a day', async () => {
     render(
-      <MemoryRouter initialEntries={['/calendar/grid?view=month&date=2026-01-15']}>
+      <MemoryRouter initialEntries={['/calendar?view=month&date=2026-01-15']}>
         <LocationProbe />
         <CalendarSchedulingCenter />
       </MemoryRouter>
