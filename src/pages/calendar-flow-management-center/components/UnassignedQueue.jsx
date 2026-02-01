@@ -58,7 +58,7 @@ export default function UnassignedQueue({
       <div className={cn('flex items-center justify-between', 'border-b border-gray-200', 'p-3')}>
         <div className={cn('flex items-center', 'gap-2')}>
           <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-gray-900">Unassigned</h3>
+          <h3 className="text-sm font-semibold text-gray-900">On-Site Jobs</h3>
           <span className="text-xs text-gray-500">({rows.length})</span>
         </div>
 
@@ -82,7 +82,7 @@ export default function UnassignedQueue({
 
       <div className={cn('divide-y', 'divide-gray-100')}>
         {rows.length === 0 ? (
-          <div className="p-4 text-sm text-gray-500">No unassigned jobs.</div>
+          <div className="p-4 text-sm text-gray-500">No on-site jobs.</div>
         ) : null}
 
         {rows.map((job) => {

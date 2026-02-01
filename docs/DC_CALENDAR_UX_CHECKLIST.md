@@ -18,6 +18,7 @@
 - PROMISE items must **never** appear as BOOKED.
 - Snapshot **All-day** view = **promise-only** items.
 - **Completed jobs are hidden** in Snapshot views (until a future toggle is added).
+- Flow center: no Assigned/Unassigned filter toggle; on-site queue is always visible.
 
 ## Manual Verification (copy/paste)
 
