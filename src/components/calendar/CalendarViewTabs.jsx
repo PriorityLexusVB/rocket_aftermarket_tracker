@@ -6,7 +6,7 @@ const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
 const CALENDAR_VIEWS = [
-  { key: 'grid', label: 'Grid', href: '/calendar', icon: LayoutGrid },
+  { key: 'grid', label: 'Grid', href: '/calendar/grid', icon: LayoutGrid },
   { key: 'flow', label: 'Flow', href: '/calendar-flow-management-center', icon: Calendar },
   ...(SIMPLE_AGENDA_ENABLED
     ? [{ key: 'agenda', label: 'Agenda', href: '/calendar/agenda', icon: List }]

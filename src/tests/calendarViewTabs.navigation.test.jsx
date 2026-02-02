@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 
 describe('CalendarViewTabs navigation', () => {
-  it('renders Grid tab link to /calendar', () => {
+  it('renders Grid tab link to /calendar/grid', () => {
     render(
       <MemoryRouter initialEntries={['/calendar/agenda']}>
         <CalendarViewTabs />
@@ -13,6 +13,6 @@ describe('CalendarViewTabs navigation', () => {
     )
 
     const gridLink = screen.getByRole('link', { name: 'Grid' })
-    expect(gridLink.getAttribute('href')).toBe('/calendar')
+    expect(gridLink.getAttribute('href')).toBe('/calendar/grid')
   })
 })

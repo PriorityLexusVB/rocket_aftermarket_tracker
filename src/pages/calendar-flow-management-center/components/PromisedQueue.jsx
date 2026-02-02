@@ -78,7 +78,11 @@ export default function PromisedQueue({
                   aria-label={isCompleted ? 'Reopen' : 'Complete'}
                   title={isCompleted ? 'Reopen deal' : 'Mark completed'}
                 >
-                  {isCompleted ? <RefreshCw className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                  {isCompleted ? (
+                    <RefreshCw className="h-4 w-4" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
