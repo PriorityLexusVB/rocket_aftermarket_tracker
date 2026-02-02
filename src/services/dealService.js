@@ -1161,7 +1161,7 @@ export async function getAllDeals() {
       const result = await supabase
         ?.from('jobs')
         ?.select(baseSelect)
-        ?.in('job_status', ['draft', 'pending', 'in_progress', 'completed'])
+        ?.in('job_status', ['draft', 'pending', 'scheduled', 'in_progress', 'completed'])
         ?.order('created_at', { ascending: false })
 
       jobs = result?.data

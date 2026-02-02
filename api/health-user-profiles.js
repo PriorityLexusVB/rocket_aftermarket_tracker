@@ -3,9 +3,14 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) return null
+
+  return createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } })
+}
 
 // Allowed column names to prevent SQL injection.
 // NOTE: Currently column names are hardcoded in the handler (lines 42-44) and only
@@ -29,6 +34,9 @@ async function check(col) {
   }
 
   try {
+    const supabase = getSupabase()
+    if (!supabase) return null
+
     const { error } = await supabase.from('user_profiles').select(`id, ${col}`).limit(1)
     // If no error, column exists
     if (!error) return true
@@ -38,11 +46,17 @@ async function check(col) {
       return false
     }
     if (errMsg.includes('permission denied') || errMsg.includes('not authorized')) {
-      logOnce(`perm-${col}`, `[health-user-profiles] Permission denied checking ${col}; treating as unavailable`)
+      logOnce(
+        `perm-${col}`,
+        `[health-user-profiles] Permission denied checking ${col}; treating as unavailable`
+      )
       return null
     }
     // Other errors (RLS, network, etc.) - treat as unknown
-    logOnce(`unexpected-${col}`, `[health-user-profiles] Unexpected error checking ${col}: ${error?.message}`)
+    logOnce(
+      `unexpected-${col}`,
+      `[health-user-profiles] Unexpected error checking ${col}: ${error?.message}`
+    )
     return null
   } catch (err) {
     logOnce(`exception-${col}`, `[health-user-profiles] Exception checking ${col}: ${err?.message}`)
@@ -55,6 +69,13 @@ function sendJson(res, status, body) {
     return res.status(status).json(body)
   }
 
+  if (res && typeof res.setHeader === 'function' && typeof res.end === 'function') {
+    res.statusCode = status
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify(body))
+    return
+  }
+
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json' },
@@ -65,6 +86,17 @@ export default async function handler(req, res) {
   const started = Date.now()
   const columns = { name: null, full_name: null, display_name: null }
   try {
+    if (!getSupabase()) {
+      return sendJson(res, 200, {
+        ok: false,
+        classification: 'missing_env',
+        columns,
+        error:
+          'Missing SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY) in server env',
+        ms: Date.now() - started,
+      })
+    }
+
     columns.name = await check('name')
     columns.full_name = await check('full_name')
     columns.display_name = await check('display_name')

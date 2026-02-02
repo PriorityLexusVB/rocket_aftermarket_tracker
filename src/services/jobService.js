@@ -15,11 +15,13 @@ async function run(query) {
 }
 
 // Try an expanded jobs select; on failure, fall back to basic "*"
-async function selectJobs(baseQuery) {
+async function selectJobs(baseQuery, filters = {}) {
   // Attempt expanded with safe wildcards for relations
   try {
+    // Apply select first (Supabase v2 builder), then filters/order/limit.
+    // Calling .eq/.order on the pre-select builder will throw.
     const profileFrag = buildUserProfileSelectFragment()
-    const { data, error } = await baseQuery?.select(`
+    let q = baseQuery?.select(`
         *,
         vendor:vendors(id,name,specialty,contact_person,phone,email),
         vehicle:vehicles(*),
@@ -28,6 +30,23 @@ async function selectJobs(baseQuery) {
         delivery_coordinator:user_profiles!jobs_delivery_coordinator_id_fkey${profileFrag},
         job_parts(id,product_id,vendor_id,unit_price,quantity_used,promised_date,requires_scheduling,no_schedule_reason,is_off_site,vendor:vendors(id,name),product:products(id,name,category,brand,vendor_id))
       `)
+
+    if (filters?.id) q = q?.eq('id', filters.id)
+    if (filters?.status) q = q?.eq('job_status', filters.status)
+    if (filters?.vendorId) q = q?.eq('vendor_id', filters.vendorId)
+    if (filters?.vehicleId) q = q?.eq('vehicle_id', filters.vehicleId)
+    if (filters?.orgId) q = q?.eq('org_id', filters.orgId)
+    if (filters?.search) {
+      const s = filters.search.trim()
+      if (s) q = q?.or(`title.ilike.%${s}%,description.ilike.%${s}%,job_number.ilike.%${s}%`)
+    }
+
+    q = q?.order(filters?.orderBy ?? 'created_at', {
+      ascending: filters?.ascending ?? false,
+    })
+    if (filters?.limit) q = q?.limit(filters.limit)
+
+    const { data, error } = await q
 
     if (error) {
       // Log detailed error info for debugging
@@ -38,7 +57,25 @@ async function selectJobs(baseQuery) {
         hint: error?.hint,
       })
       // Run a basic select to surface actionable errors instead of silently masking them
-      const fallback = await run(baseQuery?.select('*'))
+      let fallbackQ = baseQuery?.select('*')
+      if (filters?.id) fallbackQ = fallbackQ?.eq('id', filters.id)
+      if (filters?.status) fallbackQ = fallbackQ?.eq('job_status', filters.status)
+      if (filters?.vendorId) fallbackQ = fallbackQ?.eq('vendor_id', filters.vendorId)
+      if (filters?.vehicleId) fallbackQ = fallbackQ?.eq('vehicle_id', filters.vehicleId)
+      if (filters?.orgId) fallbackQ = fallbackQ?.eq('org_id', filters.orgId)
+      if (filters?.search) {
+        const s = filters.search.trim()
+        if (s)
+          fallbackQ = fallbackQ?.or(
+            `title.ilike.%${s}%,description.ilike.%${s}%,job_number.ilike.%${s}%`
+          )
+      }
+      fallbackQ = fallbackQ?.order(filters?.orderBy ?? 'created_at', {
+        ascending: filters?.ascending ?? false,
+      })
+      if (filters?.limit) fallbackQ = fallbackQ?.limit(filters.limit)
+
+      const fallback = await run(fallbackQ)
       return fallback ?? []
     }
 
@@ -70,21 +107,7 @@ export const jobService = {
    */
   async getAllJobs(filters = {}) {
     try {
-      let q = supabase?.from('jobs')
-
-      if (filters?.status) q = q?.eq('job_status', filters?.status)
-      if (filters?.vendorId) q = q?.eq('vendor_id', filters?.vendorId)
-      if (filters?.vehicleId) q = q?.eq('vehicle_id', filters?.vehicleId)
-      // Optional multi-tenant scoping when jobs.org_id exists
-      if (filters?.orgId) q = q?.eq('org_id', filters?.orgId)
-      if (filters?.search) {
-        const s = filters?.search?.trim()
-        if (s) q = q?.or(`title.ilike.%${s}%,description.ilike.%${s}%,job_number.ilike.%${s}%`)
-      }
-      q = q?.order('created_at', { ascending: false })
-      if (filters?.limit) q = q?.limit(filters?.limit)
-
-      const data = await selectJobs(q)
+      const data = await selectJobs(supabase?.from('jobs'), filters)
       return data ?? []
     } catch (err) {
       console.error('[jobs] getAllJobs failed:', err?.message || err)
@@ -98,7 +121,7 @@ export const jobService = {
   async getJobById(id) {
     if (!id) return null
     try {
-      const rows = await selectJobs(supabase?.from('jobs')?.eq('id', id)?.limit(1))
+      const rows = await selectJobs(supabase?.from('jobs'), { id, limit: 1 })
       return rows?.[0] ?? null
     } catch (err) {
       console.error('[jobs] getJobById failed:', err?.message || err)

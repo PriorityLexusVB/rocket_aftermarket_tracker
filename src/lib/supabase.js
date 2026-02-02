@@ -57,9 +57,13 @@ if (isTest) {
   // Production mode - original implementation
   // Environment variables with enhanced validation
   // Support both Vite import.meta.env and injected process.env (e.g., Playwright webServer env)
-  const supabaseUrl = import.meta?.env?.VITE_SUPABASE_URL || process?.env?.VITE_SUPABASE_URL
+  // IMPORTANT: Never reference `process` directly in the browser.
+  // Optional chaining does NOT protect against an undeclared identifier.
+  const injectedEnv = globalThis?.process?.env
+
+  const supabaseUrl = import.meta?.env?.VITE_SUPABASE_URL || injectedEnv?.VITE_SUPABASE_URL
   const supabaseAnonKey =
-    import.meta?.env?.VITE_SUPABASE_ANON_KEY || process?.env?.VITE_SUPABASE_ANON_KEY
+    import.meta?.env?.VITE_SUPABASE_ANON_KEY || injectedEnv?.VITE_SUPABASE_ANON_KEY
 
   // Only log environment check in development mode
   if (import.meta?.env?.DEV) {
@@ -128,7 +132,7 @@ if (isTest) {
       }
       isSupabaseConfiguredFn = () => false
       testSupabaseConnectionFn = async () => false
-      isNetworkOnlineFn = () => navigator?.onLine ?? true
+      isNetworkOnlineFn = () => (typeof navigator !== 'undefined' ? navigator.onLine : true)
       recoverSessionFn = () => null
     }
   }
@@ -276,18 +280,20 @@ if (isTest) {
     return false
   }
 
-  // Network status monitoring
-  let isOnline = navigator?.onLine ?? true
+  // Network status monitoring (browser-only)
+  let isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true
 
-  window?.addEventListener?.('online', () => {
-    isOnline = true
-    console.log('🌐 Network connection restored')
-  })
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('online', () => {
+      isOnline = true
+      console.log('🌐 Network connection restored')
+    })
 
-  window?.addEventListener?.('offline', () => {
-    isOnline = false
-    console.warn('📡 Network connection lost')
-  })
+    window.addEventListener('offline', () => {
+      isOnline = false
+      console.warn('📡 Network connection lost')
+    })
+  }
 
   isNetworkOnlineFn = () => isOnline
 

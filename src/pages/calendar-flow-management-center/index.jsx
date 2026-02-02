@@ -53,16 +53,8 @@ const CalendarFlowManagementCenter = () => {
   // Drag and drop
   const [draggedJob, setDraggedJob] = useState(null)
 
-  // Load initial data
-  useEffect(() => {
-    loadCalendarData()
-    loadVendors()
-  }, [loadCalendarData, loadVendors])
-
-  // Apply filters whenever filters or original data change
-  useEffect(() => {
-    applyFilters()
-  }, [applyFilters])
+  // NOTE: Effects are defined after their dependent callbacks to avoid
+  // temporal-dead-zone ReferenceErrors during initial render.
 
   const getViewStartDate = useCallback(() => {
     const date = new Date(currentDate)
@@ -135,17 +127,6 @@ const CalendarFlowManagementCenter = () => {
     }
   }, [filters, getViewEndDate, getViewStartDate])
 
-  // New centralized filter application function
-  const applyFilters = useCallback(() => {
-    // Apply filters to assigned jobs
-    const filteredAssigned = applyFiltersToJobList(originalJobs)
-    setFilteredJobs(filteredAssigned)
-
-    // Apply filters to unassigned jobs
-    const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs)
-    setFilteredUnassignedJobs(filteredUnassigned)
-  }, [applyFiltersToJobList, originalJobs, originalUnassignedJobs])
-
   // Enhanced filter application function
   const applyFiltersToJobList = useCallback(
     (jobList) => {
@@ -197,6 +178,17 @@ const CalendarFlowManagementCenter = () => {
     [filters]
   )
 
+  // New centralized filter application function
+  const applyFilters = useCallback(() => {
+    // Apply filters to assigned jobs
+    const filteredAssigned = applyFiltersToJobList(originalJobs)
+    setFilteredJobs(filteredAssigned)
+
+    // Apply filters to unassigned jobs
+    const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs)
+    setFilteredUnassignedJobs(filteredUnassigned)
+  }, [applyFiltersToJobList, originalJobs, originalUnassignedJobs])
+
   const loadVendors = useCallback(async () => {
     try {
       const { data: vendorsData } = await vendorService?.getVendors({ is_active: true })
@@ -207,6 +199,17 @@ const CalendarFlowManagementCenter = () => {
       console.error('Error loading vendors:', error)
     }
   }, [])
+
+  // Load initial data
+  useEffect(() => {
+    loadCalendarData()
+    loadVendors()
+  }, [loadCalendarData, loadVendors])
+
+  // Apply filters whenever filters or original data change
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
 
   const handleJobClick = (job) => {
     setSelectedJob(job)

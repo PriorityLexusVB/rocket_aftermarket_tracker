@@ -7,6 +7,17 @@
 import { supabase } from '@/lib/supabase'
 import { classifySchemaError, SchemaErrorCode } from '@/utils/schemaErrorClassifier'
 
+function sendJson(res, status, body) {
+  if (res && typeof res.status === 'function' && typeof res.json === 'function') {
+    return res.status(status).json(body)
+  }
+
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 /**
  * Check if column exists in database schema
  */
@@ -14,21 +25,24 @@ async function checkColumnExists() {
   try {
     // Try to select the column - if it doesn't exist, we'll get a PGRST error
     const { error } = await supabase.from('job_parts').select('vendor_id').limit(0)
-    
+
     if (!error) return true
-    
+
     // Check if it's a column not found error.
     // Prefer the structured PostgREST error code and only fall back to message inspection.
     // Relies on PostgREST v11+ error code PGRST204 ("Column not found").
     if (error.code === 'PGRST204') {
       return false
     }
-    
+
     // Fallback: Check message only if code is not specific
-    if (error.message && (error.message.includes('column') || error.message.includes('vendor_id'))) {
+    if (
+      error.message &&
+      (error.message.includes('column') || error.message.includes('vendor_id'))
+    ) {
       return false
     }
-    
+
     return null // Unknown - other error
   } catch {
     return null // Unknown
@@ -41,13 +55,10 @@ async function checkColumnExists() {
 async function checkFkExists() {
   try {
     // Try to use the FK relationship - if FK doesn't exist, this will fail
-    const { error } = await supabase
-      .from('job_parts')
-      .select('vendor:vendor_id(id)')
-      .limit(0)
-    
+    const { error } = await supabase.from('job_parts').select('vendor:vendor_id(id)').limit(0)
+
     if (!error) return true
-    
+
     // Prefer structured PostgREST error codes over brittle message matching.
     // Based on PostgREST v11+ error codes, a missing relationship or FK can surface
     // as a PGRST2xx error. We treat known relationship/FK-related codes here first
@@ -56,7 +67,7 @@ async function checkFkExists() {
       // Relationship not found between tables (e.g., could not find relationship job_parts -> vendors)
       return false
     }
-    
+
     // Fallback: Check if it's a relationship/FK error by message when code is not specific.
     if (
       error.message?.includes('relationship') ||
@@ -65,7 +76,7 @@ async function checkFkExists() {
     ) {
       return false
     }
-    
+
     return null // Unknown - other error
   } catch {
     return null // Unknown
@@ -109,7 +120,7 @@ export default async function handler(req, res) {
       diagnostics.restQueryOk = false
       diagnostics.cacheRecognized = false
 
-      return res?.status(200)?.json({
+      return sendJson(res, 200, {
         ok: false,
         classification,
         ...diagnostics,
@@ -130,7 +141,7 @@ export default async function handler(req, res) {
     diagnostics.restQueryOk = true
     diagnostics.cacheRecognized = true
 
-    return res?.status(200)?.json({
+    return sendJson(res, 200, {
       ok: true,
       classification: 'ok',
       ...diagnostics,
@@ -149,7 +160,7 @@ export default async function handler(req, res) {
             ? 'stale_cache'
             : 'other'
 
-    return res?.status(500)?.json({
+    return sendJson(res, 500, {
       ok: false,
       classification,
       ...diagnostics,

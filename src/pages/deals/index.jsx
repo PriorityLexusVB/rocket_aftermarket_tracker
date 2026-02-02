@@ -27,6 +27,7 @@ const StatusPill = ({ status }) => {
   const statusColors = {
     draft: 'bg-gray-100 text-gray-700',
     pending: 'bg-blue-100 text-blue-700',
+    scheduled: 'bg-indigo-100 text-indigo-700',
     in_progress: 'bg-orange-100 text-orange-700',
     completed: 'bg-green-100 text-green-700',
     cancelled: 'bg-red-100 text-red-700',
@@ -1063,7 +1064,7 @@ export default function DealsPage() {
         <div className="mb-6 bg-white rounded-lg border p-4">
           {/* Status Tabs */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {['All', 'Draft', 'Pending', 'Active', 'Completed']?.map((status) => (
+            {['All', 'Draft', 'Pending', 'Scheduled', 'Active', 'Completed']?.map((status) => (
               <button
                 key={status}
                 onClick={() => updateFilter('status', status)}
@@ -1596,7 +1597,7 @@ export default function DealsPage() {
           const IS_TEST =
             import.meta.env?.VITEST ||
             import.meta.env?.MODE === 'test' ||
-            process.env.NODE_ENV === 'test'
+            (typeof process !== 'undefined' && process.env.NODE_ENV === 'test')
           if (IS_TEST) return null // Avoid duplicate content in test DOM assertions
           return (
             <div className="md:hidden space-y-4">
