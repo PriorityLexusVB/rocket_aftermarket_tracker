@@ -3,6 +3,8 @@ name: debug-router
 agent: 'agent'
 description: Choose the right debug prompt for the problem (network vs RLS/auth vs CORS vs UI desync vs perf vs console-only) and run the minimum evidence-gathering steps.
 argument-hint: tabHint=<URL or tab title> symptom=<one sentence> urlContains=<optional>
+tools:
+  - chrome-devtools/*
 ---
 
 Goal: Quickly classify the issue and point to the best specialized prompt + the exact args to use.
@@ -13,10 +15,11 @@ Inputs:
 - symptom: ${input:symptom}
 - urlContains: ${input:urlContains}
 
-Steps:
-1) Open the browser tab matching tabHint and open DevTools.
-2) Console: scan for actionable errors/warnings.
-3) Network: scan the last ~50 requests and summarize:
+Steps: 0) If chrome-devtools tools are not available, stop and say what’s missing.
+
+1. list_pages → set_active_page(tabHint)
+2. list_console_messages (actionable only)
+3. list_network_requests (last 50) and summarize:
    - how many failures (>= 400)
    - whether any are Supabase (/rest/v1, /auth/v1, /storage/v1)
    - whether any are OPTIONS/preflight

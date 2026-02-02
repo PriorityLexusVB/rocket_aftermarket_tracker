@@ -60,3 +60,6 @@ drizzle/
 !.vscode/settings.json
 !.vscode/extensions.json
 test-output*.log
+
+# Prompt backup folders (temporary)
+.github/prompts.bak.*
