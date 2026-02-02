@@ -19,11 +19,14 @@ export default function CalendarViewTabs() {
     location?.pathname === href || location?.pathname?.startsWith(`${href}/`)
 
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Calendar views">
+    <div
+      className="relative z-20 flex flex-wrap items-center gap-2 pointer-events-auto"
+      aria-label="Calendar views"
+    >
       <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
         Calendar views
       </span>
-      <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
+      <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 pointer-events-auto">
         {CALENDAR_VIEWS.map((item) => {
           const Icon = item.icon
           const active = isActive(item.href)

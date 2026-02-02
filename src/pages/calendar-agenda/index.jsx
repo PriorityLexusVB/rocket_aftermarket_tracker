@@ -161,10 +161,7 @@ export function getEffectiveScheduleWindow(job) {
 }
 
 // Derive filtered list
-export function applyFilters(
-  rows,
-  { q, status, dateRange, vendorFilter, assignee, deliveryCoordinatorId, now: nowOverride } = {}
-) {
+export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: nowOverride } = {}) {
   const now = nowOverride instanceof Date ? nowOverride : new Date()
   const rangeStart = zonedStartOfDay(now, TZ)
   const rangeEnd =
@@ -180,12 +177,6 @@ export function applyFilters(
     const raw = r?.raw || r
     const jobStatus = raw?.job_status ?? r?.job_status
     if (status && jobStatus !== status) return false
-
-    if (assignee === 'me') {
-      if (!deliveryCoordinatorId) return false
-      const dcId = raw?.delivery_coordinator_id ?? r?.delivery_coordinator_id
-      if (dcId !== deliveryCoordinatorId) return false
-    }
 
     const vendorId = r?.vendorId ?? r?.vendor_id ?? r?.raw?.vendor_id
     if (vendorFilter && vendorId !== vendorFilter) return false
@@ -291,34 +282,19 @@ export default function CalendarAgenda() {
       : ''
   })
 
-  const [assignee, setAssignee] = useState(() => {
-    const urlParam = new URLSearchParams(location.search).get('assignee')
-    if (urlParam) return urlParam
-    return typeof localStorage !== 'undefined'
-      ? localStorage.getItem('agendaFilter_assignee') || ''
-      : ''
-  })
-
   // Delivery coordinator view defaults: My items + next 3 days.
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const urlDateRange = params.get('dateRange')
-    const urlAssignee = params.get('assignee')
-
     const storedDateRange =
       typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_dateRange') : null
-    const storedAssignee =
-      typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_assignee') : null
 
     if (!isDeliveryCoordinator) return
 
     if (!urlDateRange && !storedDateRange && (dateRange === 'all' || !dateRange)) {
       setDateRange('next3days')
     }
-    if (!urlAssignee && !storedAssignee && !assignee) {
-      setAssignee('me')
-    }
-  }, [location.search, dateRange, assignee, isDeliveryCoordinator])
+  }, [location.search, dateRange, isDeliveryCoordinator])
 
   // When Supabase env is missing, dev fallback returns empty rows. Make that explicit.
   const supabaseNotice = <SupabaseConfigNotice className="mb-3" />
@@ -376,9 +352,6 @@ export default function CalendarAgenda() {
 
       if (vendorFilter) localStorage.setItem('agendaFilter_vendor', vendorFilter)
       else localStorage.removeItem('agendaFilter_vendor')
-
-      if (assignee) localStorage.setItem('agendaFilter_assignee', assignee)
-      else localStorage.removeItem('agendaFilter_assignee')
     }
 
     const params = new URLSearchParams(location.search)
@@ -390,18 +363,11 @@ export default function CalendarAgenda() {
     else params.delete('dateRange')
     if (vendorFilter) params.set('vendor', vendorFilter)
     else params.delete('vendor')
-    if (assignee) params.set('assignee', assignee)
-    else params.delete('assignee')
     if (focusId) params.set('focus', focusId)
     const next = params.toString()
     const current = location.search.replace(/^\?/, '')
     if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
-  }, [q, status, dateRange, vendorFilter, assignee, focusId, navigate, location.search])
-
-  // If the URL/localStorage pins assignee=me but we're not authenticated, clear it.
-  useEffect(() => {
-    if (assignee === 'me' && !session?.user?.id) setAssignee('')
-  }, [assignee, session?.user?.id])
+  }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -496,10 +462,8 @@ export default function CalendarAgenda() {
         status,
         dateRange,
         vendorFilter,
-        assignee,
-        deliveryCoordinatorId: session?.user?.id || null,
       }),
-    [jobs, q, status, dateRange, vendorFilter, assignee, session?.user?.id]
+    [jobs, q, status, dateRange, vendorFilter]
   )
   const groups = useMemo(() => {
     const map = new Map()
@@ -665,7 +629,7 @@ export default function CalendarAgenda() {
         ) : null}
 
         {/* Header with always-visible search and date range */}
-        <header className="space-y-3" aria-label="Agenda controls">
+        <header className="relative z-30 space-y-3" aria-label="Agenda controls">
           <CalendarViewTabs />
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-baseline gap-3">
@@ -694,15 +658,13 @@ export default function CalendarAgenda() {
             <button
               type="button"
               className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-              aria-label="Show my next 3 days"
+              aria-label="Show next 3 days"
               onClick={() => {
-                setAssignee('me')
                 setDateRange('next3days')
               }}
-              disabled={!session?.user?.id}
-              title={session?.user?.id ? 'Filter to your upcoming items' : 'Sign in to use this'}
+              title="Filter to the next 3 days"
             >
-              My Next 3 Days
+              Next 3 Days
             </button>
 
             {/* Filter toggle button */}
@@ -719,17 +681,6 @@ export default function CalendarAgenda() {
           {/* Collapsible filters panel */}
           {filtersExpanded && (
             <div className="flex items-center gap-4 flex-wrap rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-              <select
-                aria-label="Filter by assignment"
-                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                value={assignee}
-                onChange={(e) => setAssignee(e.target.value)}
-                disabled={!session?.user?.id}
-                title={session?.user?.id ? '' : 'Sign in to filter by assignment'}
-              >
-                <option value="">All Assignments</option>
-                <option value="me">My Items</option>
-              </select>
               <select
                 aria-label="Filter by status"
                 className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"

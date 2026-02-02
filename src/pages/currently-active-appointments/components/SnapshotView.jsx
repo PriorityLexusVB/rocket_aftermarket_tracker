@@ -206,7 +206,7 @@ export function splitNeedsSchedulingItems(items, { now = new Date() } = {}) {
 export function detectConflicts(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return new Set()
 
-  // Group jobs by vendor id (fallback to null for unassigned)
+  // Group jobs by vendor id (fallback to on-site bucket when vendor is null)
   const byVendor = new Map()
   for (const j of rows) {
     const vId = j?.vendor?.id ?? j?.vendor_id ?? j?.vendorId ?? null

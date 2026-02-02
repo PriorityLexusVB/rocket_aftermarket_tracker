@@ -24,7 +24,7 @@ import useTenant from '@/hooks/useTenant'
 import QuickFilters from './components/QuickFilters'
 import { useToast } from '@/components/ui/ToastProvider'
 
-import UnassignedQueue from './components/UnassignedQueue'
+import PromisedQueue from './components/PromisedQueue'
 import JobDrawer from './components/JobDrawer'
 import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
@@ -71,9 +71,9 @@ const CalendarFlowManagementCenter = () => {
 
   // Separate original data from filtered data
   const [originalJobs, setOriginalJobs] = useState([])
-  const [originalUnassignedJobs, setOriginalUnassignedJobs] = useState([])
+  const [originalOnSiteJobs, setOriginalOnSiteJobs] = useState([])
   const [filteredJobs, setFilteredJobs] = useState([])
-  const [filteredUnassignedJobs, setFilteredUnassignedJobs] = useState([])
+  const [filteredOnSiteJobs, setFilteredOnSiteJobs] = useState([])
 
   const [vendors, setVendors] = useState([])
   const [selectedJob, setSelectedJob] = useState(null)
@@ -204,7 +204,7 @@ const CalendarFlowManagementCenter = () => {
   const loadCalendarData = useCallback(async () => {
     if (tenantLoading || !orgId) {
       setOriginalJobs([])
-      setOriginalUnassignedJobs([])
+      setOriginalOnSiteJobs([])
       setNeedsSchedulingItems([])
       setLoadError(null)
       setLoading(false)
@@ -227,12 +227,12 @@ const CalendarFlowManagementCenter = () => {
         { label: 'Flow Center scheduled load' }
       )
 
-      const assignedJobs = jobsData?.filter((job) => job?.vendor_id)
-      const unassigned = jobsData?.filter((job) => !job?.vendor_id)
+      const vendorJobs = jobsData?.filter((job) => job?.vendor_id)
+      const onSiteJobs = jobsData?.filter((job) => !job?.vendor_id)
 
       // Store original data separately
-      setOriginalJobs(assignedJobs)
-      setOriginalUnassignedJobs(unassigned)
+      setOriginalJobs(vendorJobs)
+      setOriginalOnSiteJobs(onSiteJobs)
 
       // Promise-only needs-scheduling queue for this view window (include overdue)
       const needsStart = new Date(startDate)
@@ -251,7 +251,7 @@ const CalendarFlowManagementCenter = () => {
       console.error('Error loading calendar data:', error)
       setLoadError(error?.message || 'Failed to load calendar data')
       setOriginalJobs([])
-      setOriginalUnassignedJobs([])
+      setOriginalOnSiteJobs([])
       setNeedsSchedulingItems([])
     } finally {
       setLoading(false)
@@ -317,9 +317,9 @@ const CalendarFlowManagementCenter = () => {
     setFilteredJobs(filteredAssigned)
 
     // Apply filters to unassigned jobs
-    const filteredUnassigned = applyFiltersToJobList(originalUnassignedJobs)
-    setFilteredUnassignedJobs(filteredUnassigned)
-  }, [applyFiltersToJobList, originalJobs, originalUnassignedJobs])
+    const filteredOnSite = applyFiltersToJobList(originalOnSiteJobs)
+    setFilteredOnSiteJobs(filteredOnSite)
+  }, [applyFiltersToJobList, originalJobs, originalOnSiteJobs])
 
   const loadVendors = useCallback(async () => {
     try {
@@ -350,14 +350,14 @@ const CalendarFlowManagementCenter = () => {
     if (!focusId) return
     if (lastAutoFocusRef.current === focusId) return
 
-    const allJobs = [...(originalJobs || []), ...(originalUnassignedJobs || [])]
+    const allJobs = [...(originalJobs || []), ...(originalOnSiteJobs || [])]
     const match = allJobs.find((j) => String(j?.id) === String(focusId))
     if (!match) return
 
     setSelectedJob(match)
     setShowDrawer(true)
     lastAutoFocusRef.current = focusId
-  }, [location?.search, originalJobs, originalUnassignedJobs])
+  }, [location?.search, originalJobs, originalOnSiteJobs])
 
   // Apply filters whenever filters or original data change
   useEffect(() => {
@@ -497,14 +497,14 @@ const CalendarFlowManagementCenter = () => {
     if (!draggedJob) return
 
     try {
-      // Vendor lane drop (no explicit time slot): assign vendor/location only.
+      // Vendor lane drop (no explicit time slot): set vendor/location only.
       if (!timeSlot) {
         await calendarService?.updateJobSchedule(draggedJob?.id, {
           vendorId,
           location: vendorId ? 'off_site' : undefined,
         })
         await loadCalendarData()
-        toast?.success?.('Updated vendor assignment')
+        toast?.success?.('Updated vendor')
         return
       }
 
@@ -555,8 +555,8 @@ const CalendarFlowManagementCenter = () => {
       loadCalendarData()
       toast?.success?.('Scheduled')
     } catch (error) {
-      console.error('Error updating job assignment:', error)
-      toast?.error?.(error?.message || 'Failed to update assignment')
+      console.error('Error updating vendor:', error)
+      toast?.error?.(error?.message || 'Failed to update vendor')
     }
   }
 
@@ -1046,7 +1046,7 @@ const CalendarFlowManagementCenter = () => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
-                <h3 className="font-medium">On-Site (PLV)</h3>
+                <h3 className="font-medium">On-Site Jobs</h3>
               </div>
               <div className="text-sm text-gray-600">{onSiteCombined?.length || 0} jobs</div>
             </div>
@@ -1164,7 +1164,7 @@ const CalendarFlowManagementCenter = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
-                    <span>Vendor lane (assigned vendor)</span>
+                    <span>Vendor lane (off-site)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-3 w-3 text-red-600" />
@@ -1172,7 +1172,7 @@ const CalendarFlowManagementCenter = () => {
                   </div>
                   <div className="text-[11px] text-gray-500">
                     Drop onto a time slot to set minutes (5-min increments) or into a vendor lane to
-                    assign vendor.
+                    set vendor.
                   </div>
                 </div>
               </details>
@@ -1276,27 +1276,23 @@ const CalendarFlowManagementCenter = () => {
           filters={filters}
           onFiltersChange={setFilters}
           jobCounts={{
-            today: [
-              ...originalJobs,
-              ...originalUnassignedJobs,
-              ...needsSchedulingJobsInView,
-            ]?.filter((j) => {
-              const jobDate = new Date(j?.scheduled_start_time)
-              const today = new Date()
-              return jobDate?.toDateString() === today?.toDateString()
-            })?.length,
-            inProgress: [...originalJobs, ...originalUnassignedJobs]?.filter(
+            today: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
+              (j) => {
+                const jobDate = new Date(j?.scheduled_start_time)
+                const today = new Date()
+                return jobDate?.toDateString() === today?.toDateString()
+              }
+            )?.length,
+            inProgress: [...originalJobs, ...originalOnSiteJobs]?.filter(
               (j) => j?.job_status === 'in_progress'
             )?.length,
-            overdue: [
-              ...originalJobs,
-              ...originalUnassignedJobs,
-              ...needsSchedulingJobsInView,
-            ]?.filter((j) => isOverdue(getPromiseValue(j)))?.length,
-            noShow: [...originalJobs, ...originalUnassignedJobs]?.filter(
+            overdue: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
+              (j) => isOverdue(getPromiseValue(j))
+            )?.length,
+            noShow: [...originalJobs, ...originalOnSiteJobs]?.filter(
               (j) => j?.job_status === 'no_show'
             )?.length,
-            completed: [...originalJobs, ...originalUnassignedJobs]?.filter(
+            completed: [...originalJobs, ...originalOnSiteJobs]?.filter(
               (j) => j?.job_status === 'completed'
             )?.length,
           }}
@@ -1304,9 +1300,9 @@ const CalendarFlowManagementCenter = () => {
 
         {/* Main Content */}
         <div className="flex h-screen">
-          {/* Unassigned Queue Sidebar - Hide for month view */}
+          {/* Promised Queue Sidebar - Hide for month view */}
           {viewMode !== 'month' && (
-            <UnassignedQueue
+            <PromisedQueue
               jobs={needsSchedulingJobs}
               onJobClick={handleJobClick}
               onDragStart={handleDragStart}
@@ -1347,7 +1343,7 @@ const CalendarFlowManagementCenter = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
                 {viewMode === 'month' ? (
                   renderMonthView()
-                ) : filteredJobs?.length + filteredUnassignedJobs?.length === 0 &&
+                ) : filteredJobs?.length + filteredOnSiteJobs?.length === 0 &&
                   (needsSchedulingJobsInView?.length || 0) === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center p-8 text-center">
                     <div className="text-lg font-semibold text-gray-900">

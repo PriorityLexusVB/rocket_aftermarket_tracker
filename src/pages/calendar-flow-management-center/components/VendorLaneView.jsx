@@ -133,7 +133,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
             <div className="flex items-center">
               <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
               <div>
-                <h3 className="font-medium text-green-900">On-Site (PLV)</h3>
+                <h3 className="font-medium text-green-900">On-Site Jobs</h3>
                 <div className="text-sm text-green-700 flex items-center mt-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                   Green = On-Site

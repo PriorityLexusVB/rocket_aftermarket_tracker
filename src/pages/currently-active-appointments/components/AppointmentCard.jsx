@@ -142,12 +142,6 @@ const AppointmentCard = ({
                     Loaner
                   </span>
                 )}
-                {appointment?.assigned_to_profile && (
-                  <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    <User className="w-3 h-3 mr-1" />
-                    {appointment?.assigned_to_profile?.full_name?.split(' ')?.[0]}
-                  </div>
-                )}
               </div>
               <h3 className="text-base font-semibold text-gray-900 leading-tight">
                 {appointment?.title}
@@ -239,7 +233,7 @@ const AppointmentCard = ({
                   <div className="text-sm text-gray-600">{appointment?.vendors?.specialty}</div>
                 </>
               ) : (
-                <div className="text-sm text-gray-500 italic">No vendor assigned</div>
+                <div className="text-sm text-gray-500 italic">On-site</div>
               )}
             </div>
           </div>

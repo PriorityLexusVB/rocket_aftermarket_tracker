@@ -1,5 +1,5 @@
 // src/tests/calendarAgenda.deliveryCoordinatorFilter.test.js
-// Verifies agenda supports a "My Items" delivery coordinator filter and Next 3 Days window.
+// Verifies agenda date-range filtering, independent of delivery coordinator assignment.
 
 import { describe, it, expect } from 'vitest'
 import { applyFilters } from '@/pages/calendar-agenda'
@@ -28,7 +28,7 @@ function makeJob({
 }
 
 describe('calendar agenda delivery coordinator filter', () => {
-  it('filters to only delivery_coordinator_id when assignee=me', () => {
+  it('does not filter by delivery coordinator (assignment removed)', () => {
     const rows = [
       makeJob({ id: 'job-a', delivery_coordinator_id: 'dc-1' }),
       makeJob({ id: 'job-b', delivery_coordinator_id: 'dc-2' }),
@@ -38,11 +38,9 @@ describe('calendar agenda delivery coordinator filter', () => {
     const out = applyFilters(rows, {
       dateRange: 'today',
       now,
-      assignee: 'me',
-      deliveryCoordinatorId: 'dc-1',
     })
 
-    expect(out.map((r) => r.id)).toEqual(['job-a'])
+    expect(out.map((r) => r.id)).toEqual(['job-a', 'job-b'])
   })
 
   it('supports next3days dateRange', () => {

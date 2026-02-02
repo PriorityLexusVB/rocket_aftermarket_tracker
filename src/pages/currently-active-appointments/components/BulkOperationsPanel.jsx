@@ -1,7 +1,7 @@
 import React from 'react'
-import { X, CheckCircle, RefreshCw, Calendar, Users, AlertTriangle } from 'lucide-react'
+import { X, CheckCircle, RefreshCw, Calendar, AlertTriangle } from 'lucide-react'
 
-const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel }) => {
+const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onCancel }) => {
   return (
     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-2xl border-b border-indigo-500/20">
       <div className="px-8 py-4">
@@ -48,18 +48,6 @@ const BulkOperationsPanel = ({ selectedCount, onStatusUpdate, onAssign, onCancel
                   <span>Schedule</span>
                 </button>
               </div>
-
-              <div className="h-4 w-px bg-white/20"></div>
-
-              {/* Assignment */}
-              <button
-                type="button"
-                onClick={onAssign}
-                className="flex items-center space-x-2 px-4 py-1.5 bg-green-500/80 hover:bg-green-500 rounded-lg transition-all duration-200 text-sm font-medium"
-              >
-                <Users className="w-4 h-4" />
-                <span>Assign Staff</span>
-              </button>
 
               {/* Danger Actions */}
               <button

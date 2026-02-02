@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Clock, User, Phone, Calendar, Search } from 'lucide-react'
 
-const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
+const PromisedQueue = ({ jobs = [], onScheduleJob }) => {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Filter jobs based on search query including phone numbers
@@ -25,7 +25,7 @@ const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
       {/* Header with Search */}
       <div className="p-4 border-b border-border">
         <h3 className="text-lg font-semibold text-foreground mb-3">
-          Needs Scheduling ({filteredJobs?.length})
+          Promised (Date Only) ({filteredJobs?.length})
         </h3>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -101,13 +101,6 @@ const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
                   <Calendar className="w-3 h-3 mr-1" />
                   Schedule
                 </button>
-                <button
-                  onClick={() => onAssignJob?.(job)}
-                  className="flex items-center px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded hover:bg-secondary/90"
-                >
-                  <User className="w-3 h-3 mr-1" />
-                  Assign
-                </button>
               </div>
             </div>
           </div>
@@ -134,4 +127,4 @@ const UnassignedQueue = ({ jobs = [], onAssignJob, onScheduleJob }) => {
   )
 }
 
-export default UnassignedQueue
+export default PromisedQueue

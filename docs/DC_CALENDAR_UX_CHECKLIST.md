@@ -19,6 +19,7 @@
 - Snapshot **All-day** view = **promise-only** items.
 - **Completed jobs are hidden** in Snapshot views (until a future toggle is added).
 - Flow center: no Assigned/Unassigned filter toggle; on-site queue is always visible.
+- Reopen from completed must go to **quality_check**.
 
 ## Manual Verification (copy/paste)
 
@@ -35,6 +36,7 @@
    - ✅ Empty state says **“No promised all-day items in this range.”**
    - ✅ Microcopy present: **“All-day promised items have a date but no time window yet. Completed jobs are hidden in this view.”**
 5. **Navigation**:
+   - ✅ Grid tab is clickable from **Agenda**.
    - ✅ Calendar nav goes to **/calendar** (not /calendar/grid).
    - ✅ Grid empty state buttons route to **/calendar/agenda** and **/calendar-flow-management-center**.
 

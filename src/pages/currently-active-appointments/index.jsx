@@ -6,11 +6,9 @@ import {
   AlertTriangle,
   CheckCircle,
   RefreshCw,
-  Users,
   BarChart3,
   ArrowUpRight,
   CheckCheck,
-  UserPlus,
 } from 'lucide-react'
 import AppLayout from '../../components/layouts/AppLayout'
 import { useNavigate } from 'react-router-dom'
@@ -26,7 +24,6 @@ import AppointmentDetailPanel from './components/AppointmentDetailPanel'
 import FilterControls from './components/FilterControls'
 import BulkOperationsPanel from './components/BulkOperationsPanel'
 import PerformanceWidget from './components/PerformanceWidget'
-import AssignmentQuickPanel from './components/AssignmentQuickPanel'
 
 const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
 
@@ -78,43 +75,12 @@ const CurrentlyActiveAppointmentsLegacy = () => {
   const [selectedAppointments, setSelectedAppointments] = useState(new Set())
   const [bulkOperationsMode, setBulkOperationsMode] = useState(false)
   const [showPerformanceWidget, setShowPerformanceWidget] = useState(false)
-  const [showAssignmentPanel, setShowAssignmentPanel] = useState(false)
-  const [unassignedJobs, setUnassignedJobs] = useState([])
-  const [staffMembers, setStaffMembers] = useState([])
   const [performanceMetrics, setPerformanceMetrics] = useState({})
 
   const navigate = useNavigate()
   const { orgId, loading: tenantLoading } = useTenant()
 
   const canQuery = Boolean(orgId) && tenantLoading === false
-
-  const loadStaffMembers = useCallback(async () => {
-    try {
-      if (!canQuery) {
-        setStaffMembers([])
-        return
-      }
-      const { data, error } = await appointmentsService.listStaff({ orgId })
-      if (error) throw error
-      setStaffMembers(data || [])
-    } catch (error) {
-      console.error('Error loading staff members:', error)
-    }
-  }, [canQuery, orgId])
-
-  const loadUnassignedJobs = useCallback(async () => {
-    try {
-      if (!canQuery) {
-        setUnassignedJobs([])
-        return
-      }
-      const { data, error } = await appointmentsService.listUnassignedJobs({ orgId, limit: 10 })
-      if (error) throw error
-      setUnassignedJobs(data || [])
-    } catch (error) {
-      console.error('Error loading unassigned jobs:', error)
-    }
-  }, [canQuery, orgId])
 
   const loadPerformanceMetrics = useCallback(async () => {
     try {
@@ -223,29 +189,18 @@ const CurrentlyActiveAppointmentsLegacy = () => {
 
     loadAppointments()
     loadVendors()
-    loadStaffMembers()
-    loadUnassignedJobs()
     loadPerformanceMetrics()
 
     // Set up real-time subscription for job updates
     const subscription = appointmentsService.subscribeJobUpdates(() => {
       loadAppointments()
-      loadUnassignedJobs()
       loadPerformanceMetrics()
     })
 
     return () => {
       subscription?.unsubscribe()
     }
-  }, [
-    loadAppointments,
-    loadPerformanceMetrics,
-    loadStaffMembers,
-    loadUnassignedJobs,
-    loadVendors,
-    orgId,
-    tenantLoading,
-  ])
+  }, [loadAppointments, loadPerformanceMetrics, loadVendors, orgId, tenantLoading])
 
   useEffect(() => {
     applyFilters()
@@ -374,41 +329,9 @@ const CurrentlyActiveAppointmentsLegacy = () => {
     }
   }
 
-  const handleBulkAssignment = async (staffId) => {
-    if (selectedAppointments?.size === 0) return
-
-    try {
-      const appointmentIds = Array?.from(selectedAppointments)
-      const { error } = await appointmentsService.bulkAssignJobs({
-        jobIds: appointmentIds,
-        staffId,
-        orgId,
-      })
-      if (error) throw error
-
-      setSelectedAppointments(new Set())
-      setShowAssignmentPanel(false)
-      loadAppointments()
-    } catch (error) {
-      console.error('Error bulk assigning appointments:', error)
-    }
-  }
-
-  const handleQuickAssignJob = async (jobId, staffId) => {
-    try {
-      const { error } = await appointmentsService.quickAssignJob({ jobId, staffId, orgId })
-      if (error) throw error
-
-      loadUnassignedJobs()
-      loadAppointments()
-    } catch (error) {
-      console.error('Error assigning job:', error)
-    }
-  }
-
   const handleRefresh = async () => {
     setRefreshing(true)
-    await Promise?.all([loadAppointments(), loadUnassignedJobs(), loadPerformanceMetrics()])
+    await Promise?.all([loadAppointments(), loadPerformanceMetrics()])
     setTimeout(() => setRefreshing(false), 1000)
   }
 
@@ -423,9 +346,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
         (apt) => getEffectiveJobStatus(apt, { now: new Date() }) === 'scheduled'
       )?.length || 0
     const overdue = originalAppointments?.filter((apt) => apt?.isOverdue)?.length || 0
-    const unassigned = unassignedJobs?.length || 0
-
-    return { total, inProgress, scheduled, overdue, unassigned }
+    return { total, inProgress, scheduled, overdue }
   }
 
   const counts = getAppointmentCounts()
@@ -551,26 +472,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
                     </span>
                   </div>
                 )}
-                {counts?.unassigned > 0 && (
-                  <div className="flex items-center space-x-2 px-4 py-2 bg-purple-50 rounded-xl border border-purple-200">
-                    <UserPlus className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-800">
-                      {counts?.unassigned} Needs assignment
-                    </span>
-                  </div>
-                )}
               </div>
-
-              {counts?.unassigned > 0 && (
-                <button
-                  onClick={() => setShowAssignmentPanel(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-xl transition-all duration-200 text-sm font-medium"
-                >
-                  <Users className="w-4 h-4" />
-                  <span>Assign Jobs</span>
-                  <ArrowUpRight className="w-4 h-4" />
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -588,23 +490,10 @@ const CurrentlyActiveAppointmentsLegacy = () => {
           <BulkOperationsPanel
             selectedCount={selectedAppointments?.size}
             onStatusUpdate={handleBulkStatusUpdate}
-            onAssign={() => setShowAssignmentPanel(true)}
             onCancel={() => {
               setSelectedAppointments(new Set())
               setBulkOperationsMode(false)
             }}
-          />
-        )}
-
-        {/* Assignment Quick Panel */}
-        {showAssignmentPanel && (
-          <AssignmentQuickPanel
-            unassignedJobs={unassignedJobs}
-            staffMembers={staffMembers}
-            selectedAppointments={selectedAppointments}
-            onQuickAssign={handleQuickAssignJob}
-            onBulkAssign={handleBulkAssignment}
-            onClose={() => setShowAssignmentPanel(false)}
           />
         )}
 
