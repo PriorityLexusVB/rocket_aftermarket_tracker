@@ -1,5 +1,8 @@
 ---
-mode: agent
+name: fix-dropdowns-auto
+agent: 'agent'
+description: Repo doctor: fix uncontrolled dropdown/state desync + add guarded optimistic concurrency.
+argument-hint: none
 ---
 
 You are my Repo Doctor. Apply fixes automatically under the workspace Instructions.
@@ -16,7 +19,7 @@ Constraints:
 
 - Follow workspace Instructions verbatim (Vite + React + Supabase).
 - Touch ≤ 10 files. Minimal diffs. No styling rewrites.
-- Before edits: create branch fix/dropdowns-guarded; run pnpm run build.
+- Before edits: ask the user to create branch fix/dropdowns-guarded (do not run git commands automatically); run pnpm run build.
 - After edits: run pnpm run build. If failing, revert last change and try a smaller diff.
 
 Deliverables (after applying):
