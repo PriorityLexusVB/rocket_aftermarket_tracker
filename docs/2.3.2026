@@ -1,0 +1,1467 @@
+User: 1) Meticulous TODO list — Rocket‑Aftermarket Calendar Flow Rework
+Phase 0 — Baseline + guardrails (don’t break prod while refactoring)
+
+ Create a feature flag (recommended): calendar_unified_shell
+
+Default OFF in prod; ON in dev/staging.
+
+Acceptance: old routes still work when flag is OFF.
+
+ Capture current routes and entry points (these exist today per screenshots):
+
+/calendar/agenda
+
+/calendar/grid?...
+
+/calendar-flow-management-center
+
+/currently-active-appointments
+
+/deals
+
+Acceptance: list all routes in a short internal doc and identify which UI links/buttons point to them.
+
+ Add lightweight navigation logging (even console in dev is fine initially):
+
+Track: source route → destination route when user clicks “Calendar Views”, “Open Agenda”, “Open Scheduling Board”, etc.
+
+Acceptance: you can see logs proving how users bounce between modules today.
+
+Phase 1 — Information architecture: make Calendar ONE place
+
+Goal: one canonical Calendar module with three views (Board / Calendar / List). No more duplicate “open X” buttons.
+
+1.1 Canonical entry point
+
+ Make /calendar the canonical entry route.
+
+ Decide one of these implementation patterns (pick A if you can, B if you want minimal route change):
+
+A) Preferred (cleanest): /calendar?view=board|calendar|list&range=day|week|month|next7|next30&date=YYYY-MM-DD
+
+Acceptance: switching tabs never changes the base route; only query params change.
+
+B) Transitional (minimal changes): keep /calendar/agenda, /calendar/grid, /calendar-flow-management-center but wrap them in a shared shell + unify labels; later redirect to A.
+
+Acceptance: users see one consistent header and consistent naming everywhere even before route consolidation.
+
+1.2 Redirect / deprecate redundant routes
+
+ Add redirects so old links don’t break:
+
+/calendar/agenda → /calendar?view=list
+
+/calendar/grid → /calendar?view=calendar
+
+/calendar-flow-management-center → /calendar?view=board
+
+ Replace internal links/buttons to point to canonical route.
+
+Acceptance: any old URL still lands the user in the correct new view.
+
+1.3 Rename to match user intent (not implementation)
+
+ Rename “Grid / Flow / Agenda” → “Calendar / Board / List” (or Board / Calendar / List; pick one order and keep it everywhere).
+
+ Replace headings:
+
+“Calendar Scheduling Center” → “Calendar”
+
+“Calendar Flow Management Center” → “Calendar”
+
+Acceptance: every Calendar screen says “Calendar” and the view toggle is the only place that differentiates modes.
+
+Phase 2 — Unify the Calendar header + controls (consistency kills confusion)
+
+Goal: Same header in Board/Calendar/List.
+
+ Build a shared CalendarShell (layout component) used by all Calendar views.
+
+ Header must contain (always, same position):
+
+Title: “Calendar”
+
+View toggle: Board | Calendar | List
+
+Date control: ‹ Today › + date label + date picker
+
+Search (stock/customer/phone)
+
+Filters (popover)
+
+Legend (popover icon) — not a huge right panel
+
+Primary CTA: + New Deal
+
+Overflow menu: Refresh / Export / Round‑Up / Settings
+
+ Remove redundant “Open Scheduling Board” and “Open Agenda (List)” buttons inside Calendar.
+
+Acceptance:
+
+There is only one way to switch Calendar views: the view toggle.
+
+There is only one primary CTA in Calendar: “+ New Deal”.
+
+Phase 3 — Deal Drawer: the interaction that removes 80% of navigation confusion
+
+Goal: no “View” link that navigates away; instead: click opens a right-side drawer.
+
+ Implement an accessible Deal Drawer (right side sheet):
+
+Focus trap, ESC closes, click-outside optional
+
+Keyboard accessible (tab order)
+
+High z-index reliability
+
+ From every calendar card/row, clicking opens the drawer (not a new page).
+
+ Drawer contains:
+
+Header: stock/vehicle + customer + status pill
+
+Sections:
+
+Summary
+
+Line Items
+
+Schedule (promise date, time window, service type, vendor)
+
+History/Notes
+
+Contextual primary action:
+
+Unscheduled → “Set promise date” / “Schedule time”
+
+Promised → “Set time”
+
+Scheduled → “Mark In Progress”
+
+In Progress → “Move to QC”
+
+QC → “Complete”
+
+ Replace “View / Reschedule / Complete” link clusters with:
+
+Whole row clickable + a ⋯ menu for secondary actions
+
+Acceptance:
+
+Users never need to leave Calendar to progress a deal’s appointment status.
+
+Phase 4 — Board view (current Flow Management Center): make it a true scheduler
+
+Goal: Board becomes the “dispatcher” view DC lives in.
+
+4.1 Left sidebar becomes a true Queue (not duplicates)
+
+ Sidebar shows Unscheduled deals (no date) as draggable/clickable queue items.
+
+ “Needs Time” (date-only promises) should not duplicate the same items already visible on the board.
+
+Instead: show a badge count + “Highlight on board” toggle/filter.
+
+ Keep “Overdue” as a filter and/or badge.
+
+Acceptance: the same job is not listed twice (once in sidebar and again in lane) unless explicitly filtered/highlighted.
+
+4.2 Promise vs Booked visual rules
+
+ Promises (date-only) appear in an All‑day/Promise band and are labeled “PROMISE (No Time)”.
+
+ Booked (timed) items appear in time slots.
+
+ Dragging promise → time slot triggers “Set time” and converts to scheduled.
+
+Acceptance: no date-only promise ever appears as if it has a booked time.
+
+4.3 Vendor lanes usability
+
+ “Vendor Lanes” toggle becomes a stable control:
+
+On-site always visible
+
+Vendors collapsible
+
+“Show empty lanes” stays but is placed near lane UI, not floating randomly
+
+ Legend moves to popover (header icon).
+
+Acceptance: DC can quickly see on-site + key vendors without UI clutter.
+
+Phase 5 — List view (current Agenda): make it the “truth table”
+
+Goal: List is the fastest scan view with the least cognitive load.
+
+ Group each date into:
+
+“All‑day (Promises / Time TBD)”
+
+“Scheduled (Timed)”
+
+ Row click opens Deal Drawer.
+
+ Replace right-side text links with one ⋯ menu per row.
+
+ Keep range presets consistent with header (Today / Next 7 / Next 30 / Custom).
+
+Acceptance: user can process a full day’s workload without hunting for what is “promise vs scheduled”.
+
+Phase 6 — Calendar view (current Grid): overview only (density + drill-down)
+
+Goal: Month/Week overview that drills into Board Day.
+
+ Remove persistent right-side panel + Quick Actions navigation.
+
+ Calendar cells show counts/badges:
+
+Promises count
+
+Scheduled count
+
+Overdue count
+
+ Clicking a day opens Board (Day) by default (or List Day if you prefer).
+
+Acceptance: Grid view is not a second “calendar product”; it’s an overview.
+
+Phase 7 — Fix the “Deals missing but Calendar has jobs” problem (critical trust issue)
+
+Even though we’re focusing on Calendar, this must be included because Calendar items appear to exist while Deals = 0.
+
+ Unify data fetching: Calendar views and Deals list must use the same tenant/location filters and same “deal source of truth”.
+
+ Add “orphan” handling:
+
+If a calendar item cannot resolve a deal, the drawer shows “Unlinked appointment” with actions:
+
+“Create Deal”
+
+“Attach to Deal”
+
+ Add a safe “mismatch banner”:
+
+On Deals page: if 0 deals but calendar returns items in the current range → show warning + “Refresh / Check filters”.
+
+Acceptance:
+
+Any calendar card can open a deal drawer reliably.
+
+If it can’t, the UI explains why and offers recovery.
+
+Phase 8 — Tests + QA + rollout
+
+ Add/Update Playwright flows:
+
+/calendar loads
+
+Switching Board/Calendar/List updates URL (or state) and keeps header stable
+
+Clicking an item opens Deal Drawer
+
+Promise remains all-day; scheduling sets time
+
+Old URLs redirect correctly
+
+ Add unit tests for query param parsing (if using canonical query approach).
+
+ Rollout plan:
+
+Enable feature flag for DC only or staging first
+
+Validate with 1–2 real users
+
+Acceptance: no regressions + clear sign-off checklist.
+
+2) Markdown file for VS Code GPT‑5.2 Codex Agent
+
+Copy/paste the following into a file like:
+
+docs/CALENDAR_FLOW_REWORK_TODO.md
+
+# Rocket Aftermarket — Calendar Flow Rework (Implementation Spec for VS Code GPT‑5.2 Codex Agent)
+
+## Mission
+Fix the confusing Calendar navigation + missing-deals trust issues by making Calendar **one canonical module** with **three consistent views**:
+- **Board** (dispatch / lanes)
+- **Calendar** (overview)
+- **List** (agenda/truth table)
+
+Core rule: **DC’s primary object is a Deal**. Calendar shows Deal appointments/promises.
+
+---
+
+## Non-Negotiable UX Outcomes (Definition of Done)
+1. There is **one** Calendar entry point (canonical) and one set of view toggles.
+2. “Grid / Flow / Agenda” are renamed to **Board / Calendar / List** (or one consistent equivalent).
+3. All Calendar views share the **same header**: view toggle, date nav, search, filters, legend, + New Deal.
+4. Clicking a calendar item opens a **Deal Drawer** (side sheet). No more “View” link that bounces to another module.
+5. Promises (date-only) are **all-day** and never look “booked”.
+6. Deals list and Calendar data are consistent. If data is inconsistent, UI shows a clear recovery path (orphan handling).
+7. Old URLs keep working via redirects/wrappers.
+
+---
+
+## Current Known Pain Points (from screenshots)
+- Multiple navigation paths to the same destination (Calendar tabs + Quick Actions + “Open Agenda” elsewhere).
+- Inconsistent titles (“Calendar Scheduling Center”, “Calendar Flow Management Center”, “Calendar”).
+- Duplicate/competing controls (view toggle + day/week/month toggle in separate areas).
+- Deals page shows 0 deals while Calendar shows at least one job (trust breaker).
+
+---
+
+## Recommended Implementation Strategy
+### Prefer a Canonical Route
+Use:
+- `/calendar?view=board|calendar|list&range=day|week|month|next7|next30&date=YYYY-MM-DD`
+
+Transitional support:
+- `/calendar/agenda` → redirect to `/calendar?view=list`
+- `/calendar/grid` → redirect to `/calendar?view=calendar`
+- `/calendar-flow-management-center` → redirect to `/calendar?view=board`
+
+If the app is not ready for query-param routing, implement a shared `CalendarShell` first and keep existing routes as wrappers.
+
+---
+
+## Feature Flag (Safety)
+Create feature flag: `calendar_unified_shell`
+
+- When OFF: keep existing behavior
+- When ON: use the new CalendarShell + unified routing (or unified UI wrappers)
+
+---
+
+## Agent Workflow (Use Tools/MCP Effectively)
+> NOTE: Use all available VS Code / MCP tools you have (filesystem search, ripgrep, git, terminal, test runner, etc.).
+
+### Step 1 — Repo Recon
+Use search tools to locate:
+- routes: `calendar/agenda`, `calendar/grid`, `calendar-flow-management-center`
+- components: “Calendar Views”, “Calendar Scheduling Center”, “Flow Management Center”, “Agenda”
+- “Open Agenda”, “Open Scheduling Board”, “Quick Actions”
+- deal fetching services/hooks used by `/deals`
+- appointment/job fetching services/hooks used by Calendar
+
+Suggested commands:
+- `rg -n "/calendar/agenda|calendar-flow-management-center|Calendar Scheduling Center|Quick Actions|Open Agenda|Open Scheduling Board" .`
+- `rg -n "Deals|deals" app src pages components`
+- `rg -n "supabase|tenant|location|org_id|dealer_id" .`
+- `rg -n "appointment|appointments|job|jobs|promise" .`
+
+### Step 2 — Baseline Tests
+Run:
+- unit tests (if any)
+- lint
+- Playwright e2e (if available)
+
+Record baseline failures before changes.
+
+---
+
+## Implementation Tasks (Checklist)
+
+### A) Create Shared CalendarShell
+- [ ] Build `CalendarShell` layout component:
+  - Title: “Calendar”
+  - View toggle: Board | Calendar | List
+  - Date nav: prev / Today / next + date label + date picker
+  - Search input (stock/customer/phone)
+  - Filters popover
+  - Legend popover icon
+  - Primary CTA: “+ New Deal”
+  - Overflow menu: Refresh / Export / Round-Up / Settings
+
+Acceptance:
+- Any Calendar view rendered inside CalendarShell looks identical at the top.
+
+### B) Canonical Calendar Routing
+Choose one:
+
+**Option 1: Query-param canonical route**
+- [ ] Create `/calendar` page reading `view`, `range`, `date` from query params.
+- [ ] Render view:
+  - `view=board` => BoardView
+  - `view=calendar` => CalendarView
+  - `view=list` => ListView
+- [ ] Add redirects:
+  - `/calendar/agenda` → `/calendar?view=list`
+  - `/calendar/grid` → `/calendar?view=calendar`
+  - `/calendar-flow-management-center` → `/calendar?view=board`
+
+**Option 2: Transitional wrapper pages**
+- [ ] Keep old routes but make them render CalendarShell + correct view.
+- [ ] Remove internal “Open X” links and keep navigation only via view toggle.
+- [ ] Add redirects later.
+
+Acceptance:
+- Users always feel like they are “in Calendar” regardless of route.
+
+### C) Rename Views + Remove Redundant Buttons
+- [ ] Rename “Grid / Flow / Agenda” labels to Board / Calendar / List.
+- [ ] Remove “Quick Actions” navigation buttons:
+  - “Open Scheduling Board”
+  - “Open Agenda (List)”
+- [ ] Replace external “Open Agenda” links with `/calendar?view=list` (or the canonical equivalent).
+
+Acceptance:
+- There is one consistent view toggle across all calendar experiences.
+
+### D) Implement Deal Drawer (Side Sheet)
+- [ ] Create `DealDrawer` component (accessible dialog):
+  - opens from any calendar item (Board/Calendar/List)
+  - shows: summary, line items, schedule, history/notes
+  - context actions: Set time, Reschedule, Mark In Progress, QC, Complete
+- [ ] Replace inline “View / Reschedule / Complete” link cluster with:
+  - row click => open drawer
+  - `⋯` menu => secondary actions
+
+Acceptance:
+- User can complete the entire workflow without leaving Calendar.
+
+### E) Board View (Dispatch / Lanes)
+- [ ] Sidebar becomes Queue:
+  - Unscheduled (no date) list
+  - Needs Time (date-only) as badge + highlight toggle (avoid duplicates)
+  - Overdue as badge/filter
+- [ ] Promise items appear in All-day band, labeled clearly.
+- [ ] Ensure drag/click “Schedule” works and converts promise → scheduled correctly.
+- [ ] Vendor lanes controls simplified; legend moved to popover.
+
+Acceptance:
+- No duplicated items between sidebar and lanes (unless in a deliberate highlight mode).
+
+### F) List View (Agenda)
+- [ ] Group each date:
+  - All-day (Promises)
+  - Scheduled (Timed)
+- [ ] Row click opens drawer.
+- [ ] Replace link clutter with `⋯` menu.
+
+Acceptance:
+- A DC user can scan the next 7 days without ambiguity.
+
+### G) Calendar View (Overview)
+- [ ] Remove right-side “Quick Actions” nav panel.
+- [ ] Show daily counts (promises / scheduled / overdue).
+- [ ] Click a day → go to Board Day (default) or List Day.
+
+Acceptance:
+- Overview is about density + drill-down, not navigation confusion.
+
+### H) Data Consistency: Fix “Deals missing but Calendar has jobs”
+- [ ] Identify the “source of truth” relationship:
+  - appointment/job record must resolve to a deal record
+- [ ] Ensure Deals page and Calendar use consistent tenant/location filters.
+- [ ] Add orphan recovery:
+  - If a calendar item cannot resolve a deal, show “Unlinked appointment” banner + actions.
+- [ ] Add “mismatch banner” on Deals:
+  - if 0 deals but calendar returns items in same tenant/range, warn + suggest refresh/check filters.
+
+Acceptance:
+- Calendar item always opens a deal, or provides a clear recovery action.
+
+---
+
+## Testing / QA Requirements
+### Playwright (or equivalent E2E)
+- [ ] `/calendar` loads with default view
+- [ ] switching Board/Calendar/List preserves header + updates correct view
+- [ ] old routes redirect to canonical view
+- [ ] clicking an item opens DealDrawer
+- [ ] promise remains all-day; scheduling sets time and moves into scheduled
+- [ ] deals page mismatch banner appears only when appropriate
+
+### Accessibility
+- [ ] DealDrawer focus trap works
+- [ ] ESC closes drawer
+- [ ] keyboard nav works for toggle + menus
+
+---
+
+## Rollout Plan
+- [ ] Behind feature flag first
+- [ ] Enable for internal/DC test tenant
+- [ ] Verify:
+  - navigation clarity
+  - no data loss
+  - no regressions
+- [ ] Remove deprecated routes/buttons after adoption
+
+---
+
+## Notes for the Agent
+- Prefer small commits:
+  1) CalendarShell + renamed labels
+  2) Remove redundant nav buttons
+  3) DealDrawer
+  4) Board sidebar queue + promise handling
+  5) List grouping + actions cleanup
+  6) Data consistency/orphan handling
+  7) Tests + docs
+
+- When in doubt, optimize for:
+  - fewer paths to the same destination
+  - one canonical mental model: Deal → Appointment → Completion
+
+GitHub Copilot: Plan: (1) Load the repo’s guardrails instructions, (2) generate a meticulous phased TODO list in the VS Code TODO tracker, (3) scan the codebase to inventory current calendar-related routes + the UI entry points that link to them, and (4) create the requested markdown spec file plus a short Phase‑0 baseline doc capturing the route inventory and link sources.
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/.github/instructions/Aftermarket%20%E2%80%93%20Workspace%20Guardrails%20%28DO%20NOT%20DEVIATE%29.instructions.md)
+
+Searched for regex `/calendar/agenda|/calendar/grid|calendar-flow-management-center|currently-active-appointments|\b/deals\b` (`**/src/**`), 103 results
+
+Searched for regex `Calendar Views|Open Agenda|Open Scheduling Board|Flow Management Center|Calendar Scheduling Center|Quick Actions` (`**/src/**`), 40 results
+
+Searched for regex `createBrowserRouter|BrowserRouter|Routes\b|Route\b|useRoutes\b|react-router` (`**/src/**`), 200 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/docs)
+
+Found the existing route definitions and a bunch of “Open Agenda / Open Scheduling Board / Calendar Views” entry points; next I’ll formalize them into a Phase‑0 baseline doc and create the requested spec file + a tracked TODO plan.
+
+Created 9 todos
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/Routes.jsx)
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/components/calendar/CalendarViewTabs.jsx)
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#1040-1040), lines 1040 to 1215
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/dashboard/index.jsx#220-220), lines 220 to 503
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/components/ui/Header.jsx#1-1), lines 1 to 260
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/components/SnapshotView.jsx#760-760), lines 760 to 840
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/components/deals/ScheduleChip.jsx)
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar-flow-management-center/components/JobDrawer.jsx#1-1), lines 1 to 110
+
+Created [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/docs/CALENDAR_FLOW_REWORK_TODO.md)
+
+Created [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/docs/CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md)
+
+Task started but no terminal was found for: `DB: Supabase MCP Check (Docker-free)`
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && bash scripts/mcp/supabase-mcp.sh --check
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s verify
+
+- Created the requested spec file: CALENDAR_FLOW_REWORK_TODO.md
+- Added a short Phase‑0 baseline route/entrypoint inventory: CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md
+- Wrote a meticulous phased TODO list into the VS Code TODO tracker (Phases 0–8, with acceptance criteria and implementation notes)
+
+- Preflight: `bash supabase-mcp.sh --check` returned OK (non-prod MCP env validated)
+- Verification: `pnpm -s verify` currently fails due to an existing test/mock issue (unrelated to the doc changes): missing `isSupabaseConfigured` export in the supabase mock used by SupabaseConfigNotice.jsx, causing the smoke test to fail at pages.currently-active-appointments.smoke.test.jsx
+
+If you want, I can do Phase 0’s next actionable step: implement the new `calendar_unified_shell` feature flag + add lightweight navigation logging (source → destination) without changing any routes yet.
+
+Made changes.
+
+User: Goal: Finish Phase‑0 next actionable step: (A) fix pnpm -s verify failure, (B) add calendar_unified_shell feature flag scaffold, (C) add lightweight navigation logging and instrument all calendar-related entry points without changing routes.
+
+0) Guardrails
+
+Follow the repo’s Workspace Guardrails.
+
+No route changes in this PR.
+
+No new deps unless guardrails allow (prefer zero new deps).
+
+Logging must not include PII (no customer names; IDs are OK if already used in URLs).
+
+1) Fix pnpm -s verify failure (Supabase mock export)
+
+Run:
+
+pnpm -s verify
+
+Confirm failure is still: missing isSupabaseConfigured export in the supabase mock used by SupabaseConfigNotice.jsx (smoke test pages.currently-active-appointments.smoke.test.jsx).
+
+Locate the supabase mock module used by tests (check stack trace and search):
+
+Search: isSupabaseConfigured
+
+Search: __mocks__ + supabase
+
+Search: vi.mock( + supabase or jest.mock( + supabase
+
+Add the missing named export to the supabase mock matching production signature:
+
+Preferred (min UI disruption in smoke tests):
+
+export const isSupabaseConfigured = () => true;
+
+
+If the prod export is function isSupabaseConfigured(){} or TS typed, match that shape.
+
+Re-run:
+
+pnpm -s verify
+
+If any snapshot/UI tests now fail because notice visibility changed, keep default true and override in the specific tests that need false.
+
+2) Add feature flag scaffold: calendar_unified_shell (default OFF)
+
+Locate existing feature flag system:
+
+Search: feature flag, FEATURE, isFeatureEnabled, flags, VITE_FF_, ENABLE_
+
+Add a new flag key: calendar_unified_shell
+
+Default must be false. Add env override if that’s how flags work in this repo (e.g. VITE_FF_CALENDAR_UNIFIED_SHELL=true).
+
+Provide a helper accessor if the codebase uses them (e.g. isCalendarUnifiedShellEnabled()), otherwise use the standard isFeatureEnabled('calendar_unified_shell').
+
+Add/adjust any minimal unit test if the repo already tests feature flags (optional unless guardrails require).
+
+Acceptance: Flag compiles, is readable from UI code, default OFF, test-safe.
+
+3) Add lightweight navigation logging utility (source → destination)
+
+Create a tiny utility module in the repo’s conventions (examples—pick the existing pattern):
+
+src/lib/navigation/logNavigation.(ts|js)
+
+or src/lib/analytics/logNavigation.(ts|js)
+
+Implement a stable API:
+
+// logNavigation.js
+export function logCalendarNavigation({ source, destination, context, flags }) {
+  // MUST be safe/no-throw
+  // Avoid PII; context should be ids only.
+  // Prefer existing logger/analytics if present; otherwise no-op or dev-only debug.
+}
+
+
+Behavior:
+
+No-throw, safe in tests
+
+Prefer existing analytics/logger if available; otherwise:
+
+no-op by default, OR
+
+console.debug in dev only (avoid console.error / console.warn)
+
+Optional: gate debug logging with an env var like VITE_DEBUG_NAV=true
+
+Acceptance: Importing and calling this function never changes navigation behavior.
+
+4) Instrument all known calendar entry points (NO route changes)
+
+Add logging calls immediately before the navigation occurs. Keep destinations identical.
+
+Instrument these files (from Phase‑0 inventory):
+
+src/components/ui/Header.jsx
+
+src/pages/dashboard/index.jsx
+
+src/components/calendar/CalendarViewTabs.jsx
+
+src/pages/currently-active-appointments/components/SnapshotView.jsx
+
+src/components/deals/ScheduleChip.jsx
+
+src/pages/calendar-flow-management-center/components/JobDrawer.jsx
+
+(If needed) src/pages/calendar/index.jsx for internal view switches
+
+Implementation patterns:
+
+If using useNavigate():
+
+logCalendarNavigation({ source: 'Header.OpenAgenda', destination: '/calendar/agenda' });
+navigate('/calendar/agenda');
+
+
+If using <Link to="...">:
+
+<Link
+  to="/calendar/agenda"
+  onClick={() => logCalendarNavigation({ source: 'Header.OpenAgenda', destination: '/calendar/agenda' })}
+>
+  Open Agenda
+</Link>
+
+
+Source naming convention (keep consistent + grep-friendly):
+
+Header.CalendarViews
+
+Header.OpenAgenda
+
+Dashboard.QuickActions.OpenAgenda
+
+Dashboard.QuickActions.OpenSchedulingBoard
+
+CalendarViewTabs.SwitchToAgenda
+
+CalendarViewTabs.SwitchToGrid
+
+CurrentlyActiveAppointments.SnapshotView.OpenAgenda
+
+Deals.ScheduleChip.OpenScheduling
+
+FlowManagementCenter.JobDrawer.OpenScheduling
+
+Also include feature flag state in the payload (but DO NOT change behavior yet):
+
+const unified = isFeatureEnabled('calendar_unified_shell');
+logCalendarNavigation({ source, destination, flags: { calendar_unified_shell: unified }, context });
+
+5) Update Phase‑0 baseline doc (small addendum)
+
+In docs/CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md, append a short section:
+
+“Phase‑0 Instrumentation”
+
+list each entry point file and the source name(s) you added
+
+No need to re-inventory routes unless you discovered new ones during instrumentation.
+
+6) Verification checklist
+
+Run:
+
+pnpm -s verify
+
+Confirm:
+
+No route definitions changed (src/Routes.jsx untouched unless guardrails require adding comments only)
+
+Navigation destinations unchanged
+
+Tests pass
+
+Logging doesn’t spam console in test runs (if it does, gate it off for NODE_ENV=test)
+
+7) Deliverable
+
+Commit with message like:
+
+Phase 0: add calendar_unified_shell flag + nav logging; fix supabase mock export
+
+Include in PR description:
+
+What changed (flag + logging + mock fix)
+
+Assurance: “No route changes”
+
+GitHub Copilot: I’m going to (1) locate and fix the failing Supabase mock export, (2) find the existing feature-flag system and add `calendar_unified_shell` (default false), then (3) add a safe nav logging utility and instrument the listed calendar entry points without changing any routes.
+
+Searched for text `isSupabaseConfigured` (`**/src/**`), 15 results
+
+Searched for regex `vi\.mock\((.*supabase|@/lib/supabase|\./lib/supabase|\"@/lib/supabase\"|\'@/lib/supabase\')` (`**/src/tests/**`), 25 results
+
+Searched for regex `__mocks__.*supabase|mock.*supabase` (`**/src/**`), 117 results
+
+Searched for regex `feature flag|featureFlag|isFeatureEnabled|VITE_FF_|ENABLE_|flags\b|FEATURE_` (`**/src/**`), 55 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/setup.ts#560-560), lines 560 to 700
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/config/ui.js)
+
+Searched for regex `VITE_DEAL_FORM_V2|VITE_ORG_SCOPED_DROPDOWNS|VITE_FF_|UI_FLAGS` (`**/src/**`), 21 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/components/ui/SupabaseConfigNotice.jsx)
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/lib/supabase.ts)
+
+Searched for regex `/calendar|calendar` (`**/src/components/ui/Header.jsx`), 5 results
+
+Searched for regex `navigate\(['"](/calendar[^'"]*|/calendar-flow-management-center[^'"]*|/calendar/grid[^'"]*|/calendar/agenda[^'"]*)` (`**/src/pages/dashboard/index.jsx`), 1 result
+
+Searched for regex `to=\{?['"](/calendar[^'"]*|/calendar-flow-management-center[^'"]*|/calendar/grid[^'"]*|/calendar/agenda[^'"]*)` (`**/src/components/calendar/CalendarViewTabs.jsx`), no results
+
+Searched for regex `navigate\(['"](/calendar/agenda[^'"]*|/calendar-flow-management-center[^'"]*)` (`**/src/pages/calendar/index.jsx`), 4 results
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Created [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/config/featureFlags.js)
+
+Created [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/lib/navigation/logNavigation.js)
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#1-1), lines 1 to 80
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#1030-1030), lines 1030 to 1160
+
+Searched for regex `const location = useLocation\(|useLocation\(\)` (`**/src/pages/calendar/index.jsx`), 1 result
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#90-90), lines 90 to 140
+
+Using "Apply Patch"
+
+
+```
+
+```
+Summarized conversation historyNext I’ll append the Phase‑0 “Instrumentation” addendum to the baseline doc, then rerun `pnpm -s verify` to confirm the test fix + logging changes are clean.
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/docs/CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md)
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+`Verify: Repo (guard+lint+typecheck+test)` task finished
+
+Discovering tests...
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s vitest run src/tests/step16-deals-list-verification.test.jsx
+
+`Verify: Repo (guard+lint+typecheck+test)` task started
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/pages.currently-active-appointments.smoke.test.jsx)
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/index.jsx#1-1), lines 1 to 220
+
+Searched for regex `No Active|No active|No appointments|Active Appointments` (`**/src/pages/currently-active-appointments/index.jsx`), 3 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/index.jsx#330-330), lines 330 to 577
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/components/SnapshotView.jsx#1-1), lines 1 to 220
+
+Searched for regex `No Active Appointments|No active|No appointments|No jobs` (`**/src/pages/currently-active-appointments/components/SnapshotView.jsx`), 1 result
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/components/SnapshotView.jsx#810-810), lines 810 to 860
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+`Verify: Repo (guard+lint+typecheck+test)` task started
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/pages.currently-active-appointments.smoke.test.jsx#20-20), lines 20 to 48
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s verify
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/dealService.totalAmount.test.js#1-1), lines 1 to 260
+
+Searched for regex `export async function getAllDeals|async function getAllDeals|getAllDeals\(` (`**/src/services/dealService.*`), 1 result
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/services/dealService.js#1270-1270), lines 1270 to 1380
+
+Searched for regex `orgId|org_id|tenant|useTenant|getUser\(` (`**/src/services/dealService.js`), 20 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/setup.ts#1-1), lines 1 to 220
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/services/dealService.js#120-120), lines 120 to 270
+
+Searched for regex `getOrgContext\(|org_id|dealer_id` (`**/src/services/dealService.js`), 50 results
+
+Searched for regex `vi\.mock\('\@\/lib\/supabase'|vi\.mock\("\@\/lib\/supabase` (`**/src/tests/setup.ts`), 1 result
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/setup.ts#600-600), lines 600 to 760
+
+Searched for regex `from\('jobs'\)|eq\('dealer_id'|dealer_id\)` (`**/src/services/dealService.js`), 30 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/services/dealService.js#1380-1380), lines 1380 to 1515
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s vitest run src/tests/dealService.totalAmount.test.js
+
+Searched for regex `import\('\@\/services\/dealService'\)` (`**/src/tests/dealService.totalAmount.test.js`), 2 results
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s verify
+
+Read changed files in [](file:///home/rob/GITHUB/rocket_aftermarket_tracker)
+
+Summarized conversation history- Phase‑0 is now complete and `pnpm -s verify` is green (no route changes; instrumentation only).
+- Spec + baseline docs landed in CALENDAR_FLOW_REWORK_TODO.md and CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md.
+- Feature flag scaffold added in featureFlags.js (`calendar_unified_shell` via `VITE_FF_CALENDAR_UNIFIED_SHELL`, default OFF).
+- Dev-only, no-PII navigation logger added in logNavigation.js and wired into entry points across index.jsx, CalendarViewTabs.jsx, index.jsx, ScheduleChip.jsx, JobDrawer.jsx, SnapshotView.jsx, Header.jsx.
+- Verify fixes/stabilization: Supabase mock export parity in setup.ts plus resilient assertions/mocking in pages.currently-active-appointments.smoke.test.jsx and dealService.totalAmount.test.js.
+- To see the nav logs locally: set `VITE_DEBUG_NAV=true` and run `pnpm dev`, then click calendar entry points and watch `console.debug` for `[calendar-nav]` events.
+
+Made changes.
+
+User: Status: Phase‑0 work is done and pnpm -s verify is green. Next: package Phase‑0 into a PR, then begin Phase‑1 (calendar navigation contract refactor) without changing routes.
+
+A) Create PR for Phase‑0 (ship what we have)
+
+Confirm clean + verified:
+
+git status
+
+pnpm -s verify
+
+Create a branch if you’re not already on one:
+
+git checkout -b calendar-flow-phase0
+
+Commit with a clear message:
+
+git add -A
+
+git commit -m "Phase 0: calendar flag + nav logging + baseline docs"
+
+Push + open PR via GitHub integration / CLI:
+
+git push -u origin calendar-flow-phase0
+
+Create PR (use GitHub connection/tools available in your environment).
+
+PR title:
+
+Phase 0: calendar flow baseline + feature flag + nav logging
+
+PR description (include these bullets):
+
+Adds docs:
+
+docs/CALENDAR_FLOW_REWORK_TODO.md
+
+docs/CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md (now includes Phase‑0 Instrumentation section)
+
+Adds feature flag scaffold:
+
+calendar_unified_shell (default OFF; env override supported)
+
+Adds safe, no‑PII navigation logging:
+
+dev‑only logs enabled via VITE_DEBUG_NAV=true (or whatever you implemented)
+
+instruments: Header, Dashboard, Calendar, SnapshotView, ScheduleChip, JobDrawer, etc.
+
+Fixes/aligns test mocks:
+
+Supabase mock export parity (isSupabaseConfigured) and stabilizations noted in commit
+
+Verification:
+
+pnpm -s verify ✅
+
+Acceptance for Phase‑0 PR:
+
+No route changes (no behavior change for users unless they enable debug logging).
+
+Flag defaults OFF.
+
+Logging is no‑throw and doesn’t run in tests/CI (or is gated to avoid noise).
+
+B) Start Phase‑1 on a new branch: “calendar navigation contract” (no route changes)
+
+Goal: Replace scattered calendar navigation logic with a single helper that:
+
+chooses destinations (currently the existing routes),
+
+logs consistently (using your logNavigation util),
+
+will later flip to unified shell routing when calendar_unified_shell is enabled.
+
+Branch:
+
+git checkout -b calendar-flow-phase1-nav-contract
+
+Add a new navigation module (pick TS/JS consistent with repo):
+
+src/lib/navigation/calendarNavigation.(ts|js)
+
+API design (suggested):
+
+getCalendarDestination(target, context?) -> string
+
+openCalendar({ navigate, target, source, context }) -> void
+
+Targets to support now (map to existing routes):
+
+agenda → /calendar/agenda
+
+grid → /calendar/grid
+
+flow → /calendar-flow-management-center
+
+active → /currently-active-appointments
+
+Implementation notes:
+
+openCalendar() must:
+
+compute destination via getCalendarDestination()
+
+call logCalendarNavigation({ source, destination, context, flags: { calendar_unified_shell } })
+
+call navigate(destination)
+
+For Phase‑1, even if calendar_unified_shell is true, keep getCalendarDestination() returning the same existing routes (no behavior change yet). We’ll flip mappings in Phase‑2 when the unified shell route exists.
+
+Refactor entry points to use the helper (no destination changes):
+
+Header.jsx
+
+dashboard/index.jsx
+
+calendar/index.jsx
+
+SnapshotView.jsx
+
+ScheduleChip.jsx
+
+JobDrawer.jsx
+
+CalendarViewTabs.jsx (where applicable)
+
+Remove duplicate inline logging calls once the helper is used (logging should be centralized).
+
+Add a small unit test (if the repo has a pattern for util tests) for destination mapping:
+
+flag OFF: mapping returns existing routes
+
+flag ON (temporarily): still returns existing routes (explicit regression guard for Phase‑1)
+
+Verify:
+
+pnpm -s verify
+
+Commit:
+
+git add -A
+
+git commit -m "Phase 1: centralize calendar navigation behind helper"
+
+Acceptance for Phase‑1:
+
+No route changes.
+
+No behavior change (URLs and navigation destinations identical).
+
+Logging is still emitted (dev‑only) but now originates from one place.
+
+Tests green.
+
+C) Phase‑2 preview (don’t do yet unless requested)
+
+Once Phase‑1 is merged, Phase‑2 becomes safe:
+
+add unified shell route (new path),
+
+update getCalendarDestination() so flag ON points to the unified shell,
+
+keep old routes working.
+
+GitHub Copilot: Plan:
+1) Preflight + confirm repo state (`git status`, guard + verify).
+2) Phase‑0 PR: create branch `calendar-flow-phase0`, commit current Phase‑0 changes, push, open PR.
+3) Phase‑1: add centralized calendar navigation helper + refactor entry points to use it (no destination changes), add unit test, verify green, commit on `calendar-flow-phase1-nav-contract`.
+Proceeding to preflight + status checks now.
+
+Starting: *Phase 0 PR packaging* (1/2)
+
+Running preflight + status checks to ensure we’re clean before branching/committing.
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git status
+
+Task started but no terminal was found for: `DB: Supabase MCP Check (Docker-free)`
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s guard:client-env
+
+Status check looks good (changes are exactly the Phase‑0 set). Next I’ll run the Supabase MCP check + `pnpm -s verify`, then branch/commit Phase‑0.
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && bash scripts/mcp/supabase-mcp.sh --check
+
+`Verify: Repo (guard+lint+typecheck+test)` task started
+
+`pnpm -s verify` just flipped red again due to the currently-active-appointments smoke test expecting only the legacy empty-state text. I’m going to inspect that test and re-apply the resilient assertion so verify is green before we branch/commit the Phase‑0 PR.
+
+User: We need pnpm -s verify green before Phase‑0 branch/commit. Verify is failing because pages.currently-active-appointments.smoke.test.jsx asserts only the legacy empty-state text. Fix the test to be resilient to copy changes (no route changes).
+
+1) Fix the smoke test assertion (copy-resilient)
+
+Open: src/tests/pages.currently-active-appointments.smoke.test.jsx
+
+Find the assertion that expects only the legacy empty state text (e.g. No Active Appointments).
+
+Replace it with two assertions:
+
+Stable render check (page heading):
+
+expect(
+  await screen.findByRole('heading', { name: /currently active appointments/i })
+).toBeInTheDocument();
+
+
+Resilient empty-state check (regex matches legacy + new variants):
+
+const EMPTY_STATE_RE =
+  /(no\s+(currently\s+)?active\s+appointments|no\s+active\s+appointments|no\s+appointments|no\s+jobs)/i;
+
+expect(await screen.findByText(EMPTY_STATE_RE)).toBeInTheDocument();
+
+
+If the empty-state text is inside a specific container and the test is racing, wrap in waitFor:
+
+await waitFor(() => {
+  expect(screen.getByText(EMPTY_STATE_RE)).toBeInTheDocument();
+});
+
+
+Do not assert exact strings for smoke tests.
+
+2) Fast verify just the failing test
+
+Run:
+
+pnpm -s vitest run src/tests/pages.currently-active-appointments.smoke.test.jsx
+
+3) Full repo verify
+
+Run:
+
+pnpm -s verify
+
+4) Phase‑0 PR packaging (only after verify is green)
+
+Branch:
+
+git checkout -b calendar-flow-phase0
+
+Commit Phase‑0 set:
+
+git add -A
+
+git commit -m "Phase 0: calendar flag + nav logging + baseline docs"
+
+Push + open PR:
+
+git push -u origin calendar-flow-phase0
+
+Open PR titled: Phase 0: calendar flow baseline + feature flag + nav logging
+
+PR description must include:
+
+docs added (CALENDAR_FLOW_REWORK_TODO.md, CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md)
+
+feature flag calendar_unified_shell default OFF
+
+dev-only nav logging (no-PII), no route changes
+
+pnpm -s verify ✅
+
+Once PR is open, proceed to Phase‑1 on a new branch (calendar-flow-phase1-nav-contract).
+
+GitHub Copilot: Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/pages.currently-active-appointments.smoke.test.jsx)
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s vitest run src/tests/pages.currently-active-appointments.smoke.test.jsx
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s vitest run src/tests/pages.currently-active-appointments.smoke.test.jsx
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/index.jsx#1-1), lines 1 to 200
+
+Searched for regex `Currently Active Appointments|Active Appointments` (`**/src/pages/currently-active-appointments/**/*.jsx`), 4 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/index.jsx#360-360), lines 360 to 450
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s vitest run src/tests/pages.currently-active-appointments.smoke.test.jsx
+
+Searched for text `SNAPSHOT_ON` (`**/src/pages/currently-active-appointments/index.jsx`), 2 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/index.jsx#540-540), lines 540 to 579
+
+Using "Apply Patch"
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/currently-active-appointments/components/SnapshotView.jsx#680-680), lines 680 to 760
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s vitest run src/tests/pages.currently-active-appointments.smoke.test.jsx
+
+`Verify: Repo (guard+lint+typecheck+test)` task started
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/pages.currently-active-appointments.smoke.test.jsx)
+
+`Verify: Repo (guard+lint+typecheck+test)` task started
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s verify
+
+Searched for files matching `**/PULL_REQUEST_TEMPLATE*.md`, no matches
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git checkout -b calendar-flow-phase0
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git add -A
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git commit -m "Phase 0: calendar flag + nav logging + baseline docs"
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git push -u origin calendar-flow-phase0
+
+Ran Open new pull request 
+Completed with input: {
+  "owner": "PriorityLexusVB",
+  "repo": "rocket_aftermarket_tracker",
+  "base": "main",
+  "head": "calendar-flow-phase0",
+  "title": "Phase 0: calendar flow baseline + feature flag + nav logging",
+  "body": "## Summary\n- Adds Phase‑0 calendar flow baseline and implementation spec docs.\n- Adds `calendar_unified_shell` feature flag scaffold (default OFF; env override supported).\n- Adds dev‑only, no‑PII calendar navigation logging and instruments calendar entry points.\n- Aligns/stabilizes test mocks to keep verification green.\n\n## Details\n- **Docs added:**\n  - `docs/CALENDAR_FLOW_REWORK_TODO.md`\n  - `docs/CALENDAR_FLOW_REWORK_PHASE0_BASELINE.md` (includes Phase‑0 Instrumentation section)\n- **Feature flag:**\n  - `calendar_unified_shell` (default OFF; env override supported)\n- **Navigation logging (dev‑only, no‑PII):**\n  - Enabled via `VITE_DEBUG_NAV=true`\n  - Instrumented: Header, Dashboard, Calendar, SnapshotView, ScheduleChip, JobDrawer, CalendarViewTabs\n- **Tests/mocks:**\n  - Supabase mock export parity (`isSupabaseConfigured`) and related stabilizations included\n\n## Verification\n- `pnpm -s verify` ✅\n\n## Phase‑0 Acceptance\n- No route changes (no behavior change unless debug logging enabled)\n- Flag defaults OFF\n- Logging is no‑throw and gated (no test/CI noise)\n"
+}
+
+Searched for text `import.meta.env` (`**/src/tests/**/*.js`), no results
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git checkout -b calendar-flow-phase1-nav-contract
+
+Created [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/lib/navigation/calendarNavigation.js)
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar-flow-management-center/components/JobDrawer.jsx#1-1), lines 1 to 120
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Created [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/tests/calendarNavigation.test.js)
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s verify
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#230-230), lines 230 to 280
+
+Searched for regex `openCalendar\(` (`**/src/pages/calendar/index.jsx`), 4 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#240-240), lines 240 to 320
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#230-230), lines 230 to 320
+
+Searched for text `promiseItems` (`**/src/pages/calendar/index.jsx`), 3 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/calendar/index.jsx#200-200), lines 200 to 260
+
+Searched for text `getNeedsSchedulingPromiseItems` (`**/src/pages/calendar/index.jsx`), 1 result
+
+Searched for text `getNeedsSchedulingPromiseItems` (`**/src/**/*.js`), 4 results
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/services/scheduleItemsService.js#300-300), lines 300 to 360
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/dashboard/index.jsx#310-310), lines 310 to 360
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/dashboard/index.jsx#260-260), lines 260 to 340
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/pages/dashboard/index.jsx#340-340), lines 340 to 440
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Read [](file:///home/rob/GITHUB/rocket_aftermarket_tracker/src/lib/navigation/logNavigation.js#50-50), lines 50 to 81
+
+Using "Apply Patch"
+
+
+```
+
+```
+
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && pnpm -s verify
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git status
+
+Searched for text `openCalendar` (`**/src/components/deals/ScheduleChip.jsx`), 2 results
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git diff -- src/components/deals/ScheduleChip.jsx
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git add -A
+
+Ran terminal command:  cd /home/rob/GITHUB/rocket_aftermarket_tracker && git commit -m "Phase 1: centralize calendar navigation behind helper"
+
+Searched for text `openCalendar` (`**/src/pages/currently-active-appointments/components/SnapshotView.jsx`), 2 results
+
+Searched for text `openCalendar` (`**/src/components/ui/Header.jsx`), 2 results
+
+Searched for text `openCalendar` (`**/src/pages/calendar-flow-management-center/components/JobDrawer.jsx`), 2 results
+
+Searched for text `openCalendar` (`**/src/components/deals/ScheduleChip.jsx`), 2 results
+
+Completed: *Phase 0 PR packaging* (1/2)
+
+Phase‑0 PR opened: https://github.com/PriorityLexusVB/rocket_aftermarket_tracker/pull/277  
+`pnpm -s verify` is green.
+
+Phase‑1 work completed on branch calendar-flow-phase1-nav-contract and committed (no route changes; centralized navigation + test added). Key changes:
+- New helper: calendarNavigation.js
+- Centralized logging payload: logNavigation.js
+- Refactors: index.jsx, index.jsx, CalendarViewTabs.jsx
+- Test: calendarNavigation.test.js
+
+Smoke test resilience updates + accessible heading for stable heading assertion:
+- pages.currently-active-appointments.smoke.test.jsx
+- index.jsx
+- SnapshotView.jsx
+
+Do you want me to push the Phase‑1 branch and open its PR now?
+
+Made changes.
