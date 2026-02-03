@@ -252,7 +252,9 @@ const CalendarSchedulingCenter = () => {
           getEventColors(
             job?.service_type || (job?.vendor_id ? 'vendor' : 'onsite'),
             job?.job_status
-          )?.hex || job?.color_code || '#3b82f6',
+          )?.hex ||
+          job?.color_code ||
+          '#3b82f6',
       }))
 
       // with a Promise date show up on the grid.

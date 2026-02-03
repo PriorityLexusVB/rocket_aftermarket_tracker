@@ -17,7 +17,9 @@ describe('calendarNavigation', () => {
 
   beforeEach(() => {
     // @ts-ignore
-    originalFlag = (import.meta && import.meta.env && import.meta.env.VITE_FF_CALENDAR_UNIFIED_SHELL) || undefined
+    originalFlag =
+      (import.meta && import.meta.env && import.meta.env.VITE_FF_CALENDAR_UNIFIED_SHELL) ||
+      undefined
   })
 
   afterEach(() => {
@@ -31,7 +33,9 @@ describe('calendarNavigation', () => {
     expect(getCalendarDestination('flow')).toBe('/calendar-flow-management-center')
     expect(getCalendarDestination('active')).toBe('/currently-active-appointments')
     expect(getCalendarDestination('calendar')).toBe('/calendar')
-    expect(getCalendarDestination('agenda', { focusId: 'job-1' })).toBe('/calendar/agenda?focus=job-1')
+    expect(getCalendarDestination('agenda', { focusId: 'job-1' })).toBe(
+      '/calendar/agenda?focus=job-1'
+    )
     expect(getCalendarDestination('flow', { focusId: 'job-2' })).toBe(
       '/calendar-flow-management-center?focus=job-2'
     )
