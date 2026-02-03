@@ -250,28 +250,26 @@ const CalendarSchedulingCenter = () => {
         service_type: job?.service_type || (job?.vendor_id ? 'vendor' : 'onsite'),
         color_code:
           getEventColors(
-                        onClick={() => {
-                          openCalendar({
-                            navigate,
-                            target: 'agenda',
-                            source: 'CalendarSchedulingCenter.EmptyState.OpenAgenda',
-                            context: { from: `${location?.pathname || ''}${location?.search || ''}` },
-                          })
-                        }}
+            job?.service_type || (job?.vendor_id ? 'vendor' : 'onsite'),
+            job?.job_status
+          )?.hex || job?.color_code || '#3b82f6',
+      }))
+
       // with a Promise date show up on the grid.
       const endExclusive = (() => {
         const dt = new Date(dateRange?.end)
         if (Number.isNaN(dt.getTime())) return null
         dt.setDate(dt.getDate() + 1)
         dt.setHours(0, 0, 0, 0)
-                        onClick={() => {
-                          openCalendar({
-                            navigate,
-                            target: 'flow',
-                            source: 'CalendarSchedulingCenter.EmptyState.OpenSchedulingBoard',
-                            context: { from: `${location?.pathname || ''}${location?.search || ''}` },
-                          })
-                        }}
+        return dt
+      })()
+      let promiseItems = []
+      if (endExclusive) {
+        const res = await withTimeout(
+          getNeedsSchedulingPromiseItems({
+            orgId: orgId || null,
+            rangeStart: dateRange?.start,
+            rangeEnd: endExclusive,
           }),
           LOAD_TIMEOUT_MS,
           { label: 'Calendar promise-only load' }

@@ -324,6 +324,14 @@ const DashboardPage = () => {
               </div>
 
               {loading ? (
+                <div className="p-4 text-sm text-gray-600">Loading today’s schedule…</div>
+              ) : todayJobs.length === 0 ? (
+                <div className="p-4">
+                  <div className="text-sm text-gray-600">No appointments scheduled for today.</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
                         openCalendar({
                           navigate,
                           target: SIMPLE_AGENDA_ENABLED ? 'agenda' : 'flow',
@@ -332,20 +340,7 @@ const DashboardPage = () => {
                             : 'Dashboard.QuickActions.OpenSchedulingBoard',
                           context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                         })
-                            : '/calendar-flow-management-center'
-                          logCalendarNavigation({
-                            source: SIMPLE_AGENDA_ENABLED
-                              ? 'Dashboard.QuickActions.OpenAgenda'
-                              : 'Dashboard.QuickActions.OpenSchedulingBoard',
-                            destination,
-                            flags: { calendar_unified_shell: calendarUnifiedShell },
-                            context: {
-                              from: `${location?.pathname || ''}${location?.search || ''}`,
-                            },
-                          })
-                          navigate(destination)
-                        })()
-                      }
+                      }}
                       className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                     >
                       {SIMPLE_AGENDA_ENABLED ? 'Open Agenda' : 'Open Scheduling Board'}

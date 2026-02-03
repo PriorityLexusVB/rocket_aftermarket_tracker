@@ -67,8 +67,8 @@ export function logCalendarNavigation(args = {}) {
     const from =
       (safeContext && (safeContext.from || safeContext.fromPath)) || safeCurrentRoute() || null
 
-    // eslint-disable-next-line no-console
     console.debug('[calendar-nav]', {
+      source,
       from,
       destination,
       flags: flags && typeof flags === 'object' ? flags : null,
