@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { isFeatureEnabled } from '@/config/featureFlags'
-import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
+import { openCalendar } from '@/lib/navigation/calendarNavigation'
 import AppLayout from '@/components/layouts/AppLayout'
 import { calendarService } from '@/services/calendarService'
 import { jobService } from '@/services/jobService'
@@ -65,7 +64,6 @@ const KpiCard = ({ label, value, sublabel }) => (
 const DashboardPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
   const { orgId } = useAuth()
 
   const [loading, setLoading] = useState(true)
@@ -255,14 +253,12 @@ const DashboardPage = () => {
             <button
               type="button"
               onClick={() => {
-                const destination = SIMPLE_AGENDA_ENABLED ? '/calendar/agenda' : '/calendar'
-                logCalendarNavigation({
+                openCalendar({
+                  navigate,
+                  target: SIMPLE_AGENDA_ENABLED ? 'agenda' : 'calendar',
                   source: 'Dashboard.OpenCalendar',
-                  destination,
-                  flags: { calendar_unified_shell: calendarUnifiedShell },
                   context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                 })
-                navigate(destination)
               }}
               className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
@@ -314,14 +310,12 @@ const DashboardPage = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const destination = SIMPLE_AGENDA_ENABLED ? '/calendar/agenda' : '/calendar'
-                    logCalendarNavigation({
+                    openCalendar({
+                      navigate,
+                      target: SIMPLE_AGENDA_ENABLED ? 'agenda' : 'calendar',
                       source: 'Dashboard.QuickActions.OpenAgenda',
-                      destination,
-                      flags: { calendar_unified_shell: calendarUnifiedShell },
                       context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                     })
-                    navigate(destination)
                   }}
                   className="px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
                 >
@@ -330,20 +324,14 @@ const DashboardPage = () => {
               </div>
 
               {loading ? (
-                <div className="p-4 text-sm text-gray-600">Loading…</div>
-              ) : todayJobs.length === 0 ? (
-                <div className="p-10 text-center">
-                  <div className="text-sm font-medium text-gray-900">No jobs scheduled today</div>
-                  <div className="mt-1 text-sm text-gray-600">
-                    Use the Scheduling Board to book work.
-                  </div>
-                  <div className="mt-4 flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        (() => {
-                          const destination = SIMPLE_AGENDA_ENABLED
-                            ? '/calendar/agenda'
+                        openCalendar({
+                          navigate,
+                          target: SIMPLE_AGENDA_ENABLED ? 'agenda' : 'flow',
+                          source: SIMPLE_AGENDA_ENABLED
+                            ? 'Dashboard.QuickActions.OpenAgenda'
+                            : 'Dashboard.QuickActions.OpenSchedulingBoard',
+                          context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                        })
                             : '/calendar-flow-management-center'
                           logCalendarNavigation({
                             source: SIMPLE_AGENDA_ENABLED
@@ -452,23 +440,18 @@ const DashboardPage = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                const focus = job?.id ? `?focus=${encodeURIComponent(job.id)}` : ''
-                                const destination = SIMPLE_AGENDA_ENABLED
-                                  ? `/calendar/agenda${focus}`
-                                  : `/calendar-flow-management-center${focus}`
-                                logCalendarNavigation({
+                                openCalendar({
+                                  navigate,
+                                  target: SIMPLE_AGENDA_ENABLED ? 'agenda' : 'flow',
                                   source: SIMPLE_AGENDA_ENABLED
                                     ? 'Dashboard.Reschedule.ToAgenda'
                                     : 'Dashboard.Reschedule.ToSchedulingBoard',
-                                  destination,
-                                  flags: { calendar_unified_shell: calendarUnifiedShell },
                                   context: {
                                     from: `${location?.pathname || ''}${location?.search || ''}`,
                                     jobId: job?.id,
                                     focusId: job?.id,
                                   },
                                 })
-                                navigate(destination)
                               }}
                               className="px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
                             >
@@ -511,14 +494,12 @@ const DashboardPage = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    const destination = '/calendar-flow-management-center'
-                    logCalendarNavigation({
+                    openCalendar({
+                      navigate,
+                      target: 'flow',
                       source: 'Dashboard.QuickLinks.SchedulingBoard',
-                      destination,
-                      flags: { calendar_unified_shell: calendarUnifiedShell },
                       context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                     })
-                    navigate(destination)
                   }}
                   className="w-full px-3 py-2 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors text-left"
                 >
