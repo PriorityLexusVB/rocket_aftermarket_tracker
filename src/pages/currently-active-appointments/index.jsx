@@ -369,6 +369,8 @@ const CurrentlyActiveAppointmentsLegacy = () => {
   return (
     <AppLayout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-indigo-50">
+        <h1 className="sr-only">Currently Active Appointments</h1>
+
         {/* Enhanced Header */}
         <div className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-40">
           <div className="px-8 py-6">

@@ -1,7 +1,9 @@
 // src/pages/currently-active-appointments/components/SnapshotView.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
+import { isFeatureEnabled } from '@/config/featureFlags'
+import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
@@ -253,6 +255,8 @@ export default function SnapshotView() {
   const { orgId, loading: tenantLoading } = useTenant()
   const toast = useToast?.()
   const navigate = useNavigate()
+  const location = useLocation()
+  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [items, setItems] = useState([])
@@ -704,6 +708,7 @@ export default function SnapshotView() {
 
   return (
     <div className="p-6 space-y-4" aria-label="Active Appointments Snapshot">
+      <h1 className="sr-only">Currently Active Appointments</h1>
       {/* Accessible status announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true" role="status">
         {statusMessage}
@@ -783,7 +788,16 @@ export default function SnapshotView() {
 
           {SIMPLE_CAL_ON && (
             <button
-              onClick={() => navigate('/calendar/agenda')}
+              onClick={() => {
+                const destination = '/calendar/agenda'
+                logCalendarNavigation({
+                  source: 'CurrentlyActiveAppointments.SnapshotView.OpenAgenda',
+                  destination,
+                  flags: { calendar_unified_shell: calendarUnifiedShell },
+                  context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                })
+                navigate(destination)
+              }}
               className="text-blue-600 hover:underline"
               aria-label="Open Agenda"
             >

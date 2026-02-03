@@ -12,6 +12,8 @@ import { getEventColors } from '@/utils/calendarColors'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
+import { isFeatureEnabled } from '@/config/featureFlags'
+import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -109,6 +111,7 @@ const CalendarSchedulingCenter = () => {
   const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
+  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
   const [, setSearchParams] = useSearchParams()
   const urlParams = useMemo(() => new URLSearchParams(location.search), [location.search])
   const didInitUrlStateRef = useRef(false)
@@ -1085,14 +1088,36 @@ const CalendarSchedulingCenter = () => {
                     <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
                       <button
                         type="button"
-                        onClick={() => navigate('/calendar/agenda')}
+                        onClick={() => {
+                          const destination = '/calendar/agenda'
+                          logCalendarNavigation({
+                            source: 'CalendarSchedulingCenter.EmptyState.OpenAgenda',
+                            destination,
+                            flags: { calendar_unified_shell: calendarUnifiedShell },
+                            context: {
+                              from: `${location?.pathname || ''}${location?.search || ''}`,
+                            },
+                          })
+                          navigate(destination)
+                        }}
                         className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                       >
                         Open Agenda
                       </button>
                       <button
                         type="button"
-                        onClick={() => navigate('/calendar-flow-management-center')}
+                        onClick={() => {
+                          const destination = '/calendar-flow-management-center'
+                          logCalendarNavigation({
+                            source: 'CalendarSchedulingCenter.EmptyState.OpenSchedulingBoard',
+                            destination,
+                            flags: { calendar_unified_shell: calendarUnifiedShell },
+                            context: {
+                              from: `${location?.pathname || ''}${location?.search || ''}`,
+                            },
+                          })
+                          navigate(destination)
+                        }}
                         className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
                       >
                         Open Flow
@@ -1125,14 +1150,32 @@ const CalendarSchedulingCenter = () => {
 
               <div className="mt-3 grid grid-cols-1 gap-2">
                 <button
-                  onClick={() => navigate('/calendar-flow-management-center')}
+                  onClick={() => {
+                    const destination = '/calendar-flow-management-center'
+                    logCalendarNavigation({
+                      source: 'CalendarSchedulingCenter.QuickActions.OpenSchedulingBoard',
+                      destination,
+                      flags: { calendar_unified_shell: calendarUnifiedShell },
+                      context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                    })
+                    navigate(destination)
+                  }}
                   className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                 >
                   Open Scheduling Board
                 </button>
                 {SIMPLE_AGENDA_ENABLED ? (
                   <button
-                    onClick={() => navigate('/calendar/agenda')}
+                    onClick={() => {
+                      const destination = '/calendar/agenda'
+                      logCalendarNavigation({
+                        source: 'CalendarSchedulingCenter.QuickActions.OpenAgenda',
+                        destination,
+                        flags: { calendar_unified_shell: calendarUnifiedShell },
+                        context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                      })
+                      navigate(destination)
+                    }}
                     className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                   >
                     Open Agenda (List)

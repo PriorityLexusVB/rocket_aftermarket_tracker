@@ -1,6 +1,8 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Calendar, List, LayoutGrid } from 'lucide-react'
+import { isFeatureEnabled } from '@/config/featureFlags'
+import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -17,6 +19,14 @@ export default function CalendarViewTabs() {
   const location = useLocation()
   const isActive = (href) =>
     location?.pathname === href || location?.pathname?.startsWith(`${href}/`)
+  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
+
+  const getSourceForKey = (key) => {
+    if (key === 'grid') return 'CalendarViewTabs.SwitchToGrid'
+    if (key === 'flow') return 'CalendarViewTabs.SwitchToBoard'
+    if (key === 'agenda') return 'CalendarViewTabs.SwitchToAgenda'
+    return 'CalendarViewTabs.Switch'
+  }
 
   return (
     <div
@@ -34,6 +44,14 @@ export default function CalendarViewTabs() {
             <Link
               key={item.key}
               to={item.href}
+              onClick={() => {
+                logCalendarNavigation({
+                  source: getSourceForKey(item.key),
+                  destination: item.href,
+                  flags: { calendar_unified_shell: calendarUnifiedShell },
+                  context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                })
+              }}
               className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                 active ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'
               }`}
