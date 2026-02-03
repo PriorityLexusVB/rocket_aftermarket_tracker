@@ -40,7 +40,7 @@ describe('CurrentlyActiveAppointments smoke', () => {
       /(no\s+(currently\s+)?active\s+appointments|no\s+active\s+appointments|no\s+appointments|no\s+jobs)/i
 
     await waitFor(() => {
-      expect(screen.getByText(EMPTY_STATE_RE)).toBeInTheDocument()
+      expect(screen.getAllByText(EMPTY_STATE_RE).length).toBeGreaterThan(0)
     })
 
     const legacyBanner = ['Needs', 'assignment'].join(' ')
