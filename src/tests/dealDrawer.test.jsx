@@ -22,6 +22,15 @@ describe('DealDrawer', () => {
     expect(screen.getByRole('heading', { name: /Detail Service/i })).toBeInTheDocument()
   })
 
+  it('wires aria-labelledby to the title', () => {
+    render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
+    const labelledBy = dialog.getAttribute('aria-labelledby')
+    expect(labelledBy).toBeTruthy()
+    const title = screen.getByRole('heading', { name: /Detail Service/i })
+    expect(title).toHaveAttribute('id', labelledBy)
+  })
+
   it('closes on escape', () => {
     const onClose = vi.fn()
     render(<DealDrawer open deal={sampleDeal} onClose={onClose} />)
@@ -29,9 +38,15 @@ describe('DealDrawer', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('closes on backdrop click', () => {
+    const onClose = vi.fn()
+    render(<DealDrawer open deal={sampleDeal} onClose={onClose} />)
+    fireEvent.click(screen.getByRole('presentation', { hidden: true }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('traps focus within drawer', () => {
     render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
-    const closeButton = screen.getByLabelText('Close deal drawer')
     const openDealLink = screen.getByRole('link', { name: /Open deal/i })
     const primaryAction = screen.getByRole('button', { name: /Mark In Progress/i })
 
@@ -49,6 +64,29 @@ describe('DealDrawer', () => {
     openDealLink.focus()
     fireEvent.keyDown(document, { key: 'Tab' })
     expect(document.activeElement).not.toBe(document.body)
+  })
+
+  it('returns focus to the trigger on close', async () => {
+    function Wrapper() {
+      const [open, setOpen] = React.useState(false)
+      return (
+        <div>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open drawer
+          </button>
+          {open ? <DealDrawer open deal={sampleDeal} onClose={() => setOpen(false)} /> : null}
+        </div>
+      )
+    }
+
+    render(<Wrapper />)
+    const trigger = screen.getByRole('button', { name: /Open drawer/i })
+    trigger.focus()
+    fireEvent.click(trigger)
+
+    await screen.findByLabelText('Close deal drawer')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(trigger).toHaveFocus()
   })
 
   it('does not render when closed', () => {
