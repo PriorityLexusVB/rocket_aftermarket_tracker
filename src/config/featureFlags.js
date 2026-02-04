@@ -3,6 +3,7 @@
 
 const FLAG_ENV_KEYS = {
   calendar_unified_shell: 'VITE_FF_CALENDAR_UNIFIED_SHELL',
+  calendar_deal_drawer: 'VITE_FF_CALENDAR_DEAL_DRAWER',
 }
 
 function parseBooleanEnv(value) {
@@ -28,4 +29,8 @@ export function isFeatureEnabled(key) {
 
 export function isCalendarUnifiedShellEnabled() {
   return isFeatureEnabled('calendar_unified_shell')
+}
+
+export function isCalendarDealDrawerEnabled() {
+  return isFeatureEnabled('calendar_deal_drawer')
 }

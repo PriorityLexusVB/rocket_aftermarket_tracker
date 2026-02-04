@@ -33,7 +33,7 @@ import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDispla
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
-import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -59,7 +59,7 @@ function toEtDateKey(input) {
   return y && m && day ? `${y}-${m}-${day}` : null
 }
 
-const CalendarFlowManagementCenter = ({ embedded = false, shellState } = {}) => {
+const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDealDrawer } = {}) => {
   const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
 
   const location = useLocation()
@@ -83,6 +83,8 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState } = {}) => 
   const [roundUpType, setRoundUpType] = useState('daily')
 
   const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const dealDrawerEnabled = isCalendarDealDrawerEnabled()
+  const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
   const shellRange = shellState?.range
 
@@ -823,7 +825,13 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState } = {}) => 
           ${containerClassName}
         `}
         style={containerStyle}
-        onClick={() => handleJobClick(job)}
+        onClick={() => {
+          if (canOpenDrawer) {
+            onOpenDealDrawer(job)
+            return
+          }
+          handleJobClick(job)
+        }}
         draggable
         onDragStart={() => handleDragStart(job)}
         onDragEnd={handleDragEnd}

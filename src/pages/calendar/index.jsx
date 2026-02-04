@@ -16,7 +16,7 @@ import {
   getCalendarDestination,
   trackCalendarNavigation,
 } from '@/lib/navigation/calendarNavigation'
-import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -120,7 +120,7 @@ const safeDayKey = (value) => {
   return d ? d.toDateString() : ''
 }
 
-const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
+const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDrawer } = {}) => {
   // State management
   const { user, orgId } = useAuth()
   const toast = useToast()
@@ -130,6 +130,8 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
   const urlParams = useMemo(() => new URLSearchParams(location.search), [location.search])
   const didInitUrlStateRef = useRef(false)
   const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const dealDrawerEnabled = isCalendarDealDrawerEnabled()
+  const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
   const shellDate = shellState?.date
   const shellRange = shellState?.range
@@ -649,7 +651,13 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
                   <div
                     key={job?.calendar_key || job?.id}
                     className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
-                    onClick={() => navigate(`/deals/${job?.id}/edit`)}
+                    onClick={() => {
+                      if (canOpenDrawer) {
+                        onOpenDealDrawer(job)
+                        return
+                      }
+                      navigate(`/deals/${job?.id}/edit`)
+                    }}
                     title={job?.title || 'Open deal'}
                   >
                     <div className="flex items-center justify-between gap-2">
