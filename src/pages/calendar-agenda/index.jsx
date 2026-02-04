@@ -238,6 +238,25 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
   })
 }
 
+export function getAgendaRowClickHandler({
+  dealDrawerEnabled,
+  onOpenDealDrawer,
+  navigate,
+  deal,
+}) {
+  return () => {
+    if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
+      onOpenDealDrawer(deal)
+      return
+    }
+
+    const dealId = deal?.id
+    if (dealId && typeof navigate === 'function') {
+      navigate(`/deals/${dealId}/edit`)
+    }
+  }
+}
+
 export default function CalendarAgenda({ embedded = false, shellState, onOpenDealDrawer } = {}) {
   const { orgId, session, userProfile, loading: authLoading, profileLoading } = useAuth()
   const toast = useToast()
@@ -757,10 +776,12 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 const stock = raw?.vehicle?.stock_number || ''
                 const ops = summarizeOpCodesFromParts(raw?.job_parts, 6)
 
-                const handleOpenDrawer = () => {
-                  if (!dealDrawerEnabled || typeof onOpenDealDrawer !== 'function') return
-                  onOpenDealDrawer(raw)
-                }
+                const handleRowClick = getAgendaRowClickHandler({
+                  dealDrawerEnabled,
+                  onOpenDealDrawer,
+                  navigate,
+                  deal: raw,
+                })
 
                 return (
                   <li
@@ -769,7 +790,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     tabIndex={0}
                     aria-label={`Appointment ${title || r.id}`}
                     className={`grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
-                    onClick={handleOpenDrawer}
+                    onClick={handleRowClick}
                   >
                     {/* Time column (blank for all-day) */}
                     <div className="w-28 text-xs font-mono tabular-nums text-slate-600">

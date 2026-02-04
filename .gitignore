@@ -11,6 +11,7 @@ vite.config.*s.*
 /playwright-report/
 /test-results/
 /e2e/storageState.json
+.playwright-mcp/
 # VS Code chat state (keep out of git)
 .vscode_state/
 chatSessions/
