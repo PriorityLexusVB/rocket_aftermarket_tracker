@@ -403,6 +403,8 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
     setShowDrawer(true)
   }
 
+  const promisedQueueClick = canOpenDrawer ? onOpenDealDrawer : handleJobClick
+
   // Prevent double-clicks from sending duplicate status updates.
   const statusInFlightRef = useRef(new Set())
   const [, bumpStatusInFlightVersion] = useState(0)
@@ -1351,7 +1353,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
           {viewMode !== 'month' && (
             <PromisedQueue
               jobs={needsSchedulingJobs}
-              onJobClick={handleJobClick}
+              onJobClick={promisedQueueClick}
               onDragStart={handleDragStart}
               onComplete={(job) => handleCompleteJob(job)}
               onReopen={(job) => handleReopenJob(job)}
