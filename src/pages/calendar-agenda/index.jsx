@@ -148,6 +148,14 @@ function formatAgendaDayHeader(dateKey) {
   }).format(d)
 }
 
+function mapShellRangeToAgenda(range) {
+  const key = String(range || '').toLowerCase()
+  if (key === 'day') return 'today'
+  if (key === 'week' || key === 'next7') return 'next7days'
+  if (key === 'month' || key === 'next30') return 'all'
+  return 'all'
+}
+
 export function getEffectiveScheduleWindow(job) {
   const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
   const scheduledParts = parts
@@ -229,11 +237,13 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
   })
 }
 
-export default function CalendarAgenda() {
+export default function CalendarAgenda({ embedded = false, shellState } = {}) {
   const { orgId, session, userProfile, loading: authLoading, profileLoading } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
+  const isEmbedded = embedded === true
+  const shellRange = shellState?.range
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [jobs, setJobs] = useState([])
@@ -250,9 +260,9 @@ export default function CalendarAgenda() {
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.title = 'Calendar — Agenda'
+      document.title = isEmbedded ? 'Calendar' : 'Calendar — Agenda'
     }
-  }, [])
+  }, [isEmbedded])
 
   // Initialize filters from URL params, with localStorage fallback
   const [q, setQ] = useState(() => {
@@ -268,6 +278,7 @@ export default function CalendarAgenda() {
       : ''
   })
   const [dateRange, setDateRange] = useState(() => {
+    if (isEmbedded) return mapShellRangeToAgenda(shellRange)
     const urlParam = new URLSearchParams(location.search).get('dateRange')
     if (urlParam) return urlParam
     return typeof localStorage !== 'undefined'
@@ -295,6 +306,12 @@ export default function CalendarAgenda() {
       setDateRange('next3days')
     }
   }, [location.search, dateRange, isDeliveryCoordinator])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const nextRange = mapShellRangeToAgenda(shellRange)
+    if (nextRange !== dateRange) setDateRange(nextRange)
+  }, [isEmbedded, shellRange, dateRange])
 
   // When Supabase env is missing, dev fallback returns empty rows. Make that explicit.
   const supabaseNotice = <SupabaseConfigNotice className="mb-3" />
@@ -600,8 +617,11 @@ export default function CalendarAgenda() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900" aria-label="Calendar Agenda">
-      <Navbar />
-      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6" style={{ paddingTop: '5rem' }}>
+      {!isEmbedded && <Navbar />}
+      <div
+        className="p-4 md:p-8 max-w-7xl mx-auto space-y-6"
+        style={isEmbedded ? undefined : { paddingTop: '5rem' }}
+      >
         {/* Aria-live region for screen reader announcements */}
         <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
 
@@ -630,12 +650,14 @@ export default function CalendarAgenda() {
 
         {/* Header with always-visible search and date range */}
         <header className="relative z-30 space-y-3" aria-label="Agenda controls">
-          <CalendarViewTabs />
+          {!isEmbedded && <CalendarViewTabs />}
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-baseline gap-3">
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
-              <span className="text-sm font-medium text-gray-500">Agenda</span>
-            </div>
+            {!isEmbedded && (
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
+                <span className="text-sm font-medium text-gray-500">Agenda</span>
+              </div>
+            )}
             <input
               aria-label="Search appointments"
               placeholder="Search"

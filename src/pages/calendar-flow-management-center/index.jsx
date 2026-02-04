@@ -33,6 +33,7 @@ import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDispla
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
+import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -58,7 +59,7 @@ function toEtDateKey(input) {
   return y && m && day ? `${y}-${m}-${day}` : null
 }
 
-const CalendarFlowManagementCenter = () => {
+const CalendarFlowManagementCenter = ({ embedded = false, shellState } = {}) => {
   const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
 
   const location = useLocation()
@@ -81,11 +82,27 @@ const CalendarFlowManagementCenter = () => {
   const [showRoundUp, setShowRoundUp] = useState(false)
   const [roundUpType, setRoundUpType] = useState('daily')
 
+  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const isEmbedded = embedded === true
+  const shellRange = shellState?.range
+
+  const resolveShellViewMode = (range) => {
+    const key = String(range || '').toLowerCase()
+    if (key === 'day') return 'day'
+    if (key === 'month' || key === 'next30') return 'month'
+    if (key === 'week' || key === 'next7') return 'week'
+    return 'week'
+  }
+
   // View settings - Updated default and possible values
-  const [viewMode, setViewMode] = useState('week') // week, day, month
+  const [viewMode, setViewMode] = useState(() =>
+    isEmbedded ? resolveShellViewMode(shellRange) : 'week'
+  ) // week, day, month
   const [vendorLanesEnabled, setVendorLanesEnabled] = useState(true)
   const [showEmptyLanes, setShowEmptyLanes] = useState(false)
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState(() =>
+    isEmbedded && shellState?.date instanceof Date ? shellState.date : new Date()
+  )
 
   // Filters
   const [filters, setFilters] = useState({
@@ -103,6 +120,21 @@ const CalendarFlowManagementCenter = () => {
   const { orgId, loading: tenantLoading } = useTenant()
   const navigate = useNavigate()
   const toast = useToast()
+
+  useEffect(() => {
+    if (!isEmbedded || !(shellState?.date instanceof Date)) return
+    const nextDate = shellState.date
+    if (Number.isNaN(nextDate.getTime())) return
+    const currKey = currentDate?.toDateString?.()
+    const nextKey = nextDate?.toDateString?.()
+    if (currKey && nextKey && currKey !== nextKey) setCurrentDate(nextDate)
+  }, [isEmbedded, shellState?.date, currentDate])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const nextMode = resolveShellViewMode(shellRange)
+    if (nextMode !== viewMode) setViewMode(nextMode)
+  }, [isEmbedded, shellRange, viewMode])
 
   const getViewStartDate = useCallback(() => {
     const date = new Date(currentDate)
@@ -1095,39 +1127,44 @@ const CalendarFlowManagementCenter = () => {
     )
   }
 
-  return (
-    <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+  const content = (
+    <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Calendar Flow Management Center</h1>
-              <p className="text-gray-600">Visual scheduling and workflow management</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {unifiedShellEnabled ? 'Calendar' : 'Calendar Flow Management Center'}
+              </h1>
+              {!isEmbedded && (
+                <p className="text-gray-600">Visual scheduling and workflow management</p>
+              )}
             </div>
 
             <div className="flex items-center space-x-4">
               {/* Updated View Toggle - Replace Agenda with Month */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('day')}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === 'day' ? 'bg-white shadow-sm' : ''}`}
-                >
-                  Day
-                </button>
-                <button
-                  onClick={() => setViewMode('week')}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === 'week' ? 'bg-white shadow-sm' : ''}`}
-                >
-                  Week
-                </button>
-                <button
-                  onClick={() => setViewMode('month')}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === 'month' ? 'bg-white shadow-sm' : ''}`}
-                >
-                  Month
-                </button>
-              </div>
+              {!isEmbedded && (
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('day')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'day' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Day
+                  </button>
+                  <button
+                    onClick={() => setViewMode('week')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'week' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Week
+                  </button>
+                  <button
+                    onClick={() => setViewMode('month')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'month' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Month
+                  </button>
+                </div>
+              )}
 
               {/* Vendor Lanes Toggle - Hide for month view */}
               {viewMode !== 'month' && (
@@ -1266,9 +1303,11 @@ const CalendarFlowManagementCenter = () => {
             </div>
           </div>
 
-          <div className="mt-4">
-            <CalendarViewTabs />
-          </div>
+          {!isEmbedded && (
+            <div className="mt-4">
+              <CalendarViewTabs />
+            </div>
+          )}
         </div>
 
         {/* Quick Filters - Updated to use original data for counts */}
@@ -1429,9 +1468,12 @@ const CalendarFlowManagementCenter = () => {
           onReopen={(job) => handleReopenJob(job)}
           isStatusInFlight={isStatusInFlight}
         />
-      </div>
-    </AppLayout>
+    </div>
   )
+
+  if (isEmbedded) return content
+
+  return <AppLayout>{content}</AppLayout>
 }
 
 export default CalendarFlowManagementCenter
