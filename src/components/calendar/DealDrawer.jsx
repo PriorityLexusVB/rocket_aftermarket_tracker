@@ -21,11 +21,43 @@ export default function DealDrawer({ open, deal, onClose }) {
   const panelRef = useRef(null)
   const closeButtonRef = useRef(null)
   const title = useMemo(() => getDealTitle(deal), [deal])
+  const dealId = deal?.id
+  const dealStatus = String(deal?.job_status || deal?.status || '').toLowerCase()
+
+  const primaryAction = useMemo(() => {
+    if (!dealStatus) {
+      return { label: 'Select action', disabled: true, helper: 'Select a deal to take action.' }
+    }
+
+    if (dealStatus === 'unscheduled') {
+      return { label: 'Set promise date', helper: 'Coming soon' }
+    }
+
+    if (dealStatus === 'promised' || dealStatus === 'pending') {
+      return { label: 'Set time', helper: 'Coming soon' }
+    }
+
+    if (dealStatus === 'scheduled') {
+      return { label: 'Mark In Progress', helper: 'Coming soon' }
+    }
+
+    if (dealStatus === 'in_progress') {
+      return { label: 'Move to QC', helper: 'Coming soon' }
+    }
+
+    if (dealStatus === 'qc') {
+      return { label: 'Complete', helper: 'Coming soon' }
+    }
+
+    return { label: 'Select action', disabled: true, helper: 'Action unavailable.' }
+  }, [dealStatus])
 
   useEffect(() => {
     if (!open) return
 
     const previousActive = document.activeElement
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const focusTarget = closeButtonRef.current
     if (focusTarget) focusTarget.focus()
 
@@ -55,6 +87,7 @@ export default function DealDrawer({ open, deal, onClose }) {
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
       if (previousActive && typeof previousActive.focus === 'function') {
         previousActive.focus()
       }
@@ -65,9 +98,9 @@ export default function DealDrawer({ open, deal, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[60]">
-      <button
-        type="button"
-        aria-label="Close deal drawer"
+      <div
+        role="presentation"
+        aria-hidden="true"
         className="absolute inset-0 bg-black/40"
         onClick={() => onClose?.()}
       />
@@ -85,17 +118,49 @@ export default function DealDrawer({ open, deal, onClose }) {
             </h2>
             <p className="text-xs text-slate-500">Deal Drawer (preview)</p>
           </div>
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={() => onClose?.()}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {dealId ? (
+              <a
+                href={`/deals/${dealId}/edit`}
+                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Open deal
+              </a>
+            ) : null}
+            <button
+              ref={closeButtonRef}
+              type="button"
+              onClick={() => onClose?.()}
+              aria-label="Close deal drawer"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="space-y-6 p-6 text-sm text-slate-700">
+          <section className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Primary action
+                </div>
+                <div className="text-xs text-slate-500">{primaryAction.helper}</div>
+              </div>
+              <button
+                type="button"
+                disabled={primaryAction.disabled}
+                className={`rounded-md px-3 py-2 text-xs font-semibold ${
+                  primaryAction.disabled
+                    ? 'cursor-not-allowed bg-slate-200 text-slate-400'
+                    : 'bg-slate-900 text-white'
+                }`}
+              >
+                {primaryAction.label}
+              </button>
+            </div>
+          </section>
           <section className="space-y-1">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Summary</h3>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
