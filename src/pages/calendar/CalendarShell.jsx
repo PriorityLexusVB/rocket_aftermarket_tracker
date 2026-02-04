@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -69,6 +69,7 @@ function shiftDate(baseDate, range, direction) {
 export default function CalendarShell() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [searchValue, setSearchValue] = useState('')
 
   const { view, range, date, normalizedParams } = useMemo(
     () => parseCalendarQuery(searchParams),
@@ -238,6 +239,8 @@ export default function CalendarShell() {
                   placeholder="Search stock/customer/phone"
                   className="h-8 w-56 rounded-md border border-slate-200 bg-white pl-8 pr-2 text-xs text-slate-700"
                   aria-label="Search calendar"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
                 />
               </div>
 
@@ -250,14 +253,14 @@ export default function CalendarShell() {
                 </div>
               </details>
 
-              <button
-                type="button"
-                className="rounded-md border border-slate-200 bg-white p-2 text-slate-600"
-                aria-label="Legend"
-                title="Legend"
-              >
-                <Info className="h-4 w-4" />
-              </button>
+              <details className="group relative">
+                <summary className="flex cursor-pointer list-none items-center rounded-md border border-slate-200 bg-white p-2 text-slate-600">
+                  <Info className="h-4 w-4" />
+                </summary>
+                <div className="absolute right-0 z-30 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-lg">
+                  Legend coming soon.
+                </div>
+              </details>
 
               <button
                 type="button"
@@ -272,16 +275,28 @@ export default function CalendarShell() {
                   <MoreVertical className="h-4 w-4" />
                 </summary>
                 <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700 shadow-lg">
-                  <button type="button" className="w-full rounded px-2 py-1 text-left hover:bg-slate-100">
+                  <button
+                    type="button"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+                  >
                     Refresh
                   </button>
-                  <button type="button" className="w-full rounded px-2 py-1 text-left hover:bg-slate-100">
+                  <button
+                    type="button"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+                  >
                     Export
                   </button>
-                  <button type="button" className="w-full rounded px-2 py-1 text-left hover:bg-slate-100">
+                  <button
+                    type="button"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+                  >
                     Round-Up
                   </button>
-                  <button type="button" className="w-full rounded px-2 py-1 text-left hover:bg-slate-100">
+                  <button
+                    type="button"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+                  >
                     Settings
                   </button>
                 </div>
