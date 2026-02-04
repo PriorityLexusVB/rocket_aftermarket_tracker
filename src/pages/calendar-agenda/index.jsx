@@ -373,6 +373,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       else localStorage.removeItem('agendaFilter_vendor')
     }
 
+    if (isEmbedded) return
+
     const params = new URLSearchParams(location.search)
     if (q) params.set('q', q)
     else params.delete('q')
@@ -386,7 +388,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     const next = params.toString()
     const current = location.search.replace(/^\?/, '')
     if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
-  }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search])
+  }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search, isEmbedded])
 
   const load = useCallback(async () => {
     setLoading(true)
