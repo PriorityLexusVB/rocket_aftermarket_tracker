@@ -13,70 +13,120 @@ import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
 import {
-                    <div className="mt-1 text-sm text-gray-600">
-                      {unifiedShellEnabled
-                        ? 'Switch to List for a queue view, or open Board to book work.'
-                        : 'Switch to Agenda for a queue view, or open Flow to book work.'}
-                    </div>
-                    {!hideShellActions && (
-                      <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const destination = getCalendarDestination({ target: 'list' })
-                            trackCalendarNavigation({
-                              source: 'CalendarSchedulingCenter.EmptyState.OpenAgenda',
-                              destination,
-                              context: {
-                                from: `${location?.pathname || ''}${location?.search || ''}`,
-                              },
-                            })
-                            navigate(destination)
-                          }}
-                          className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                        >
-                          Open Agenda
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const destination = getCalendarDestination({ target: 'board' })
-                            trackCalendarNavigation({
-                              source: 'CalendarSchedulingCenter.EmptyState.OpenSchedulingBoard',
-                              destination,
-                              context: {
-                                from: `${location?.pathname || ''}${location?.search || ''}`,
-                              },
-                            })
-                            navigate(destination)
-                          }}
-                          className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
-                        >
-                          {unifiedShellEnabled ? 'Open Board' : 'Open Flow'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={goToToday}
-                          className="px-3 py-2 text-sm rounded border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 transition-colors"
-                        >
-                          Today
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
+  getCalendarDestination,
+  trackCalendarNavigation,
+} from '@/lib/navigation/calendarNavigation'
+import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
-          <div className="space-y-4">
-            <CalendarLegend showStatuses />
+const SIMPLE_AGENDA_ENABLED =
+  String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
-            {!hideShellActions && (
-              <div className="bg-white p-4 rounded-lg shadow border">
-                <h3 className="font-medium text-gray-900 mb-3">Quick Actions</h3>
-                <button
-                  onClick={refreshData}
+const LOAD_TIMEOUT_MS = 15000
+
+// Safe date creation utility
+const safeCreateDate = (input) => {
+  if (!input) return null
+  try {
+    const date = new Date(input)
+    if (isNaN(date?.getTime())) {
+      console.warn('Invalid date created from input:', input)
+      return null
+    }
+    return date
+  } catch (error) {
+    console.warn('Date creation error:', input, error)
+    return null
+  }
+}
+
+// Safe date string validation
+const safeDateString = (dateInput) => {
+  if (!dateInput) return ''
+  try {
+    const date = safeCreateDate(dateInput)
+    if (!date) return ''
+    return date?.toISOString()
+  } catch (error) {
+    console.warn('Date string conversion error:', dateInput, error)
+    return ''
+  }
+}
+
+// Safe date formatting
+const safeFormatDate = (dateInput, options = {}) => {
+  if (!dateInput) return ''
+  try {
+    const date = safeCreateDate(dateInput)
+    if (!date) return ''
+    return date?.toLocaleDateString('en-US', options)
+  } catch (error) {
+    console.warn('Date formatting error:', dateInput, error)
+    return ''
+  }
+}
+
+// Safe time formatting
+const safeFormatTime = (dateInput, options = {}) => {
+  if (!dateInput) return ''
+  try {
+    const date = safeCreateDate(dateInput)
+    if (!date) return ''
+    return date?.toLocaleTimeString('en-US', options)
+  } catch (error) {
+    console.warn('Time formatting error:', dateInput, error)
+    return ''
+  }
+}
+
+const VALID_VIEW_TYPES = new Set(['day', 'week', 'month'])
+const SHELL_RANGE_TO_VIEW = {
+  day: 'day',
+  week: 'week',
+  month: 'month',
+  next7: 'week',
+  next30: 'month',
+}
+
+const resolveShellViewType = (range) => {
+  const key = String(range || '').toLowerCase()
+  return SHELL_RANGE_TO_VIEW?.[key] || 'week'
+}
+
+const parseDateParam = (value) => {
+  if (!value) return null
+  const str = String(value).trim()
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(str)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (!y || !mo || !d) return null
+  const dt = new Date(y, mo - 1, d, 12, 0, 0, 0)
+  return Number.isNaN(dt.getTime()) ? null : dt
+}
+
+const formatDateParam = (date) => {
+  if (!date || typeof date.getTime !== 'function') return ''
+  const t = date.getTime()
+  if (Number.isNaN(t)) return ''
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const safeDayKey = (value) => {
+  const d = safeCreateDate(value)
+  return d ? d.toDateString() : ''
+}
+
+const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
+  // State management
+  const { user, orgId } = useAuth()
+  const toast = useToast()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [, setSearchParams] = useSearchParams()
   const urlParams = useMemo(() => new URLSearchParams(location.search), [location.search])
   const didInitUrlStateRef = useRef(false)
   const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
@@ -245,6 +295,9 @@ import {
           '#3b82f6',
       }))
 
+      const scheduledIds = new Set((jobsData || []).map((j) => j?.id).filter(Boolean))
+
+      // Also include promise-only items (All-day) so "Not scheduled" deals
       // with a Promise date show up on the grid.
       const endExclusive = (() => {
         const dt = new Date(dateRange?.end)
@@ -253,12 +306,13 @@ import {
         dt.setHours(0, 0, 0, 0)
         return dt
       })()
+
       let promiseItems = []
-      if (endExclusive) {
+      if (dateRange?.start && endExclusive) {
         const res = await withTimeout(
           getNeedsSchedulingPromiseItems({
             orgId: orgId || null,
-            rangeStart: dateRange?.start,
+            rangeStart: dateRange.start,
             rangeEnd: endExclusive,
           }),
           LOAD_TIMEOUT_MS,
