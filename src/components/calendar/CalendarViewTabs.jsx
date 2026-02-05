@@ -26,7 +26,7 @@ export default function CalendarViewTabs() {
     }
 
     return [
-      { key: 'grid', label: 'Grid', target: 'calendar', icon: LayoutGrid },
+      { key: 'grid', label: 'Grid', target: 'grid', icon: LayoutGrid },
       { key: 'flow', label: 'Flow', target: 'board', icon: Calendar },
       ...(agendaEnabled
         ? [{ key: 'agenda', label: 'Agenda', target: 'list', icon: List }]
