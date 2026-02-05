@@ -103,6 +103,7 @@ export default function DealDrawer({ open, deal, onClose }) {
       <div
         role="presentation"
         aria-hidden="true"
+        data-testid="deal-drawer-backdrop"
         className="absolute inset-0 bg-black/40"
         onClick={() => onClose?.()}
       />

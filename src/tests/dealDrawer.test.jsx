@@ -1,6 +1,7 @@
 import React from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import DealDrawer from '@/components/calendar/DealDrawer'
 
 const sampleDeal = {
@@ -66,8 +67,8 @@ describe('DealDrawer', () => {
     expect(document.activeElement).not.toBe(document.body)
   })
 
-  it('returns focus to the trigger on close', async () => {
-    function Wrapper() {
+  it('returns focus to the trigger after close button click', async () => {
+    function Harness() {
       const [open, setOpen] = React.useState(false)
       return (
         <div>
@@ -79,13 +80,62 @@ describe('DealDrawer', () => {
       )
     }
 
-    render(<Wrapper />)
+    const user = userEvent.setup()
+    render(<Harness />)
     const trigger = screen.getByRole('button', { name: /Open drawer/i })
     trigger.focus()
-    fireEvent.click(trigger)
+    await user.click(trigger)
 
-    await screen.findByLabelText('Close deal drawer')
-    fireEvent.keyDown(document, { key: 'Escape' })
+    const closeButton = await screen.findByRole('button', { name: /close/i })
+    await user.click(closeButton)
+    expect(trigger).toHaveFocus()
+  })
+
+  it('returns focus to the trigger after escape key close', async () => {
+    function Harness() {
+      const [open, setOpen] = React.useState(false)
+      return (
+        <div>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open drawer
+          </button>
+          {open ? <DealDrawer open deal={sampleDeal} onClose={() => setOpen(false)} /> : null}
+        </div>
+      )
+    }
+
+    const user = userEvent.setup()
+    render(<Harness />)
+    const trigger = screen.getByRole('button', { name: /Open drawer/i })
+    trigger.focus()
+    await user.click(trigger)
+
+    await screen.findByRole('dialog')
+    await user.keyboard('{Escape}')
+    expect(trigger).toHaveFocus()
+  })
+
+  it('returns focus to the trigger after backdrop click', async () => {
+    function Harness() {
+      const [open, setOpen] = React.useState(false)
+      return (
+        <div>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open drawer
+          </button>
+          {open ? <DealDrawer open deal={sampleDeal} onClose={() => setOpen(false)} /> : null}
+        </div>
+      )
+    }
+
+    const user = userEvent.setup()
+    render(<Harness />)
+    const trigger = screen.getByRole('button', { name: /Open drawer/i })
+    trigger.focus()
+    await user.click(trigger)
+
+    const backdrop = await screen.findByTestId('deal-drawer-backdrop')
+    await user.click(backdrop)
     expect(trigger).toHaveFocus()
   })
 
