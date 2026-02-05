@@ -92,6 +92,25 @@ const resolveShellViewType = (range) => {
   return SHELL_RANGE_TO_VIEW?.[key] || 'week'
 }
 
+export function getCalendarGridClickHandler({
+  dealDrawerEnabled,
+  onOpenDealDrawer,
+  navigate,
+  deal,
+}) {
+  return () => {
+    if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
+      onOpenDealDrawer(deal)
+      return
+    }
+
+    const dealId = deal?.id
+    if (dealId && typeof navigate === 'function') {
+      navigate(`/deals/${dealId}/edit`)
+    }
+  }
+}
+
 const parseDateParam = (value) => {
   if (!value) return null
   const str = String(value).trim()
@@ -647,17 +666,18 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                     })
                   : ''
 
+                const handleGridClick = getCalendarGridClickHandler({
+                  dealDrawerEnabled: canOpenDrawer,
+                  onOpenDealDrawer,
+                  navigate,
+                  deal: job,
+                })
+
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
                     className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
-                    onClick={() => {
-                      if (canOpenDrawer) {
-                        onOpenDealDrawer(job)
-                        return
-                      }
-                      navigate(`/deals/${job?.id}/edit`)
-                    }}
+                    onClick={handleGridClick}
                     title={job?.title || 'Open deal'}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -887,6 +907,12 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                             day: 'numeric',
                           })
                         : ''
+                      const handleMonthGridClick = getCalendarGridClickHandler({
+                        dealDrawerEnabled: canOpenDrawer,
+                        onOpenDealDrawer,
+                        navigate,
+                        deal: job,
+                      })
 
                       return (
                         <button
@@ -897,7 +923,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                           }`}
                           onClick={(e) => {
                             e?.stopPropagation?.()
-                            navigate(`/deals/${job?.id}/edit`)
+                            handleMonthGridClick()
                           }}
                           title={job?.title || 'Open deal'}
                         >
@@ -961,12 +987,18 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                     ? 'BOOKED'
                     : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
                   : 'SCHEDULED'
+              const handleListClick = getCalendarGridClickHandler({
+                dealDrawerEnabled: canOpenDrawer,
+                onOpenDealDrawer,
+                navigate,
+                deal: job,
+              })
 
               return (
                 <div
                   key={job?.calendar_key || job?.id}
                   className="bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => navigate(`/deals/${job?.id}/edit`)}
+                  onClick={handleListClick}
                 >
                   <div className="flex items-start justify-between">
                     <div>
