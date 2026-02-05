@@ -12,7 +12,11 @@ import { getEventColors } from '@/utils/calendarColors'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
-import { openCalendar } from '@/lib/navigation/calendarNavigation'
+import {
+  getCalendarDestination,
+  trackCalendarNavigation,
+} from '@/lib/navigation/calendarNavigation'
+import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -75,6 +79,18 @@ const safeFormatTime = (dateInput, options = {}) => {
 }
 
 const VALID_VIEW_TYPES = new Set(['day', 'week', 'month'])
+const SHELL_RANGE_TO_VIEW = {
+  day: 'day',
+  week: 'week',
+  month: 'month',
+  next7: 'week',
+  next30: 'month',
+}
+
+const resolveShellViewType = (range) => {
+  const key = String(range || '').toLowerCase()
+  return SHELL_RANGE_TO_VIEW?.[key] || 'week'
+}
 
 const parseDateParam = (value) => {
   if (!value) return null
@@ -104,7 +120,7 @@ const safeDayKey = (value) => {
   return d ? d.toDateString() : ''
 }
 
-const CalendarSchedulingCenter = () => {
+const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
   // State management
   const { user, orgId } = useAuth()
   const toast = useToast()
@@ -113,10 +129,16 @@ const CalendarSchedulingCenter = () => {
   const [, setSearchParams] = useSearchParams()
   const urlParams = useMemo(() => new URLSearchParams(location.search), [location.search])
   const didInitUrlStateRef = useRef(false)
-  const [currentDate, setCurrentDate] = useState(
-    () => parseDateParam(urlParams.get('date')) || new Date()
-  )
+  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const isEmbedded = embedded === true
+  const shellDate = shellState?.date
+  const shellRange = shellState?.range
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (isEmbedded && shellDate instanceof Date) return shellDate
+    return parseDateParam(urlParams.get('date')) || new Date()
+  })
   const [viewType, setViewType] = useState(() => {
+    if (isEmbedded) return resolveShellViewType(shellRange)
     const v = String(urlParams.get('view') || '').toLowerCase()
     return VALID_VIEW_TYPES.has(v) ? v : 'week'
   }) // 'day', 'week', 'month'
@@ -127,6 +149,7 @@ const CalendarSchedulingCenter = () => {
 
   // Keep state in sync with URL (supports refresh + browser back/forward)
   useEffect(() => {
+    if (isEmbedded) return
     const nextViewRaw = String(urlParams.get('view') || '').toLowerCase()
     const nextView = VALID_VIEW_TYPES.has(nextViewRaw) ? nextViewRaw : null
     if (nextView && nextView !== viewType) setViewType(nextView)
@@ -142,6 +165,7 @@ const CalendarSchedulingCenter = () => {
   // One-time URL normalization so the page is shareable/bookmarkable without
   // creating a state <-> URL feedback loop.
   useEffect(() => {
+    if (isEmbedded) return
     if (didInitUrlStateRef.current) return
 
     const desiredView = VALID_VIEW_TYPES.has(viewType) ? viewType : 'week'
@@ -170,6 +194,7 @@ const CalendarSchedulingCenter = () => {
 
   const setUrlState = useCallback(
     ({ nextViewType, nextDate }) => {
+      if (isEmbedded) return
       const view = VALID_VIEW_TYPES.has(nextViewType) ? nextViewType : 'week'
       const date = formatDateParam(nextDate) || ''
 
@@ -179,8 +204,21 @@ const CalendarSchedulingCenter = () => {
       else next.delete('date')
       setSearchParams(next, { replace: true })
     },
-    [location.search, setSearchParams]
+    [isEmbedded, location.search, setSearchParams]
   )
+
+  useEffect(() => {
+    if (!isEmbedded || !(shellDate instanceof Date)) return
+    const currKey = formatDateParam(currentDate)
+    const nextKey = formatDateParam(shellDate)
+    if (currKey && nextKey && currKey !== nextKey) setCurrentDate(shellDate)
+  }, [isEmbedded, shellDate, currentDate])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const nextView = resolveShellViewType(shellRange)
+    if (nextView !== viewType) setViewType(nextView)
+  }, [isEmbedded, shellRange, viewType])
 
   // Date range calculation based on view type with safe date operations
   const dateRange = useMemo(() => {
@@ -257,6 +295,9 @@ const CalendarSchedulingCenter = () => {
           '#3b82f6',
       }))
 
+      const scheduledIds = new Set((jobsData || []).map((j) => j?.id).filter(Boolean))
+
+      // Also include promise-only items (All-day) so "Not scheduled" deals
       // with a Promise date show up on the grid.
       const endExclusive = (() => {
         const dt = new Date(dateRange?.end)
@@ -265,12 +306,13 @@ const CalendarSchedulingCenter = () => {
         dt.setHours(0, 0, 0, 0)
         return dt
       })()
+
       let promiseItems = []
-      if (endExclusive) {
+      if (dateRange?.start && endExclusive) {
         const res = await withTimeout(
           getNeedsSchedulingPromiseItems({
             orgId: orgId || null,
-            rangeStart: dateRange?.start,
+            rangeStart: dateRange.start,
             rangeEnd: endExclusive,
           }),
           LOAD_TIMEOUT_MS,
@@ -1022,6 +1064,7 @@ const CalendarSchedulingCenter = () => {
   // Main calendar view component with safe date handling
   const MainCalendarView = () => {
     const viewLabel = viewType === 'week' ? 'Weekly' : viewType === 'month' ? 'Monthly' : 'Daily'
+    const hideShellActions = isEmbedded && unifiedShellEnabled
     const isEmptyRange = Array.isArray(jobs) && jobs.length === 0
     const emptyTitle =
       viewType === 'week'
@@ -1040,31 +1083,32 @@ const CalendarSchedulingCenter = () => {
               <CalendarLegend compact />
             </div>
           </div>
+          {!hideShellActions && (
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigateDate(-1)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                disabled={loading}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigateDate(-1)}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              disabled={loading}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
+              <button
+                onClick={goToToday}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Today
+              </button>
 
-            <button
-              onClick={goToToday}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            >
-              Today
-            </button>
-
-            <button
-              onClick={() => navigateDate(1)}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              disabled={loading}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+              <button
+                onClick={() => navigateDate(1)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                disabled={loading}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4">
@@ -1077,53 +1121,55 @@ const CalendarSchedulingCenter = () => {
                   <div className="max-w-md text-center rounded-lg border bg-white/95 backdrop-blur-sm p-4 shadow-sm pointer-events-auto">
                     <div className="text-base font-semibold text-gray-900">{emptyTitle}</div>
                     <div className="mt-1 text-sm text-gray-600">
-                      Switch to Agenda for a queue view, or open Flow to book work.
+                      {unifiedShellEnabled
+                        ? 'Switch to List for a queue view, or open Board to book work.'
+                        : 'Switch to Agenda for a queue view, or open Flow to book work.'}
                     </div>
-                    <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const destination = '/calendar/agenda'
-                          logCalendarNavigation({
-                            source: 'CalendarSchedulingCenter.EmptyState.OpenAgenda',
-                            destination,
-                            flags: { calendar_unified_shell: calendarUnifiedShell },
-                            context: {
-                              from: `${location?.pathname || ''}${location?.search || ''}`,
-                            },
-                          })
-                          navigate(destination)
-                        }}
-                        className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                      >
-                        Open Agenda
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const destination = '/calendar-flow-management-center'
-                          logCalendarNavigation({
-                            source: 'CalendarSchedulingCenter.EmptyState.OpenSchedulingBoard',
-                            destination,
-                            flags: { calendar_unified_shell: calendarUnifiedShell },
-                            context: {
-                              from: `${location?.pathname || ''}${location?.search || ''}`,
-                            },
-                          })
-                          navigate(destination)
-                        }}
-                        className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
-                      >
-                        Open Flow
-                      </button>
-                      <button
-                        type="button"
-                        onClick={goToToday}
-                        className="px-3 py-2 text-sm rounded border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 transition-colors"
-                      >
-                        Today
-                      </button>
-                    </div>
+                    {!hideShellActions && (
+                      <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const destination = getCalendarDestination({ target: 'list' })
+                            trackCalendarNavigation({
+                              source: 'CalendarSchedulingCenter.EmptyState.OpenAgenda',
+                              destination,
+                              context: {
+                                from: `${location?.pathname || ''}${location?.search || ''}`,
+                              },
+                            })
+                            navigate(destination)
+                          }}
+                          className="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                        >
+                          Open Agenda
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const destination = getCalendarDestination({ target: 'board' })
+                            trackCalendarNavigation({
+                              source: 'CalendarSchedulingCenter.EmptyState.OpenSchedulingBoard',
+                              destination,
+                              context: {
+                                from: `${location?.pathname || ''}${location?.search || ''}`,
+                              },
+                            })
+                            navigate(destination)
+                          }}
+                          className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+                        >
+                          {unifiedShellEnabled ? 'Open Board' : 'Open Flow'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={goToToday}
+                          className="px-3 py-2 text-sm rounded border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 transition-colors"
+                        >
+                          Today
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -1133,46 +1179,52 @@ const CalendarSchedulingCenter = () => {
           <div className="space-y-4">
             <CalendarLegend showStatuses />
 
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <h3 className="font-medium text-gray-900 mb-3">Quick Actions</h3>
-              <button
-                onClick={refreshData}
-                className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-              >
-                Refresh Data
-              </button>
-
-              <div className="mt-3 grid grid-cols-1 gap-2">
+            {!hideShellActions && (
+              <div className="bg-white p-4 rounded-lg shadow border">
+                <h3 className="font-medium text-gray-900 mb-3">Quick Actions</h3>
                 <button
-                  onClick={() => {
-                    openCalendar({
-                      navigate,
-                      target: 'flow',
-                      source: 'CalendarSchedulingCenter.QuickActions.OpenSchedulingBoard',
-                      context: { from: `${location?.pathname || ''}${location?.search || ''}` },
-                    })
-                  }}
+                  onClick={refreshData}
                   className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                 >
-                  Open Scheduling Board
+                  Refresh Data
                 </button>
-                {SIMPLE_AGENDA_ENABLED ? (
+
+                <div className="mt-3 grid grid-cols-1 gap-2">
                   <button
                     onClick={() => {
-                      openCalendar({
-                        navigate,
-                        target: 'agenda',
-                        source: 'CalendarSchedulingCenter.QuickActions.OpenAgenda',
+                      const destination = getCalendarDestination({ target: 'board' })
+                      trackCalendarNavigation({
+                        source: 'CalendarSchedulingCenter.QuickActions.OpenSchedulingBoard',
+                        destination,
                         context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                       })
+                      navigate(destination)
                     }}
                     className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                   >
-                    Open Agenda (List)
+                    {unifiedShellEnabled ? 'Open Board' : 'Open Scheduling Board'}
                   </button>
-                ) : null}
+                  {SIMPLE_AGENDA_ENABLED ? (
+                    <button
+                      onClick={() => {
+                        const destination = getCalendarDestination({ target: 'list' })
+                        trackCalendarNavigation({
+                          source: 'CalendarSchedulingCenter.QuickActions.OpenAgenda',
+                          destination,
+                          context: {
+                            from: `${location?.pathname || ''}${location?.search || ''}`,
+                          },
+                        })
+                        navigate(destination)
+                      }}
+                      className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                    >
+                      Open Agenda (List)
+                    </button>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="bg-white p-4 rounded-lg shadow border">
               <h3 className="font-medium text-gray-900 mb-3">View Settings</h3>
@@ -1224,24 +1276,32 @@ const CalendarSchedulingCenter = () => {
     )
   }
 
-  return (
-    <AppLayout>
-      <div className="max-w-7xl mx-auto p-4">
+  const content = (
+    <div className="max-w-7xl mx-auto p-4">
+      {!isEmbedded && (
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Calendar Scheduling Center</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {unifiedShellEnabled ? 'Calendar' : 'Calendar Scheduling Center'}
+          </h1>
           <div className="flex items-center gap-2">
             <div className="text-sm text-gray-600">{user?.name || 'User'}</div>
           </div>
         </div>
+      )}
 
+      {!isEmbedded && (
         <div className="mb-6">
           <CalendarViewTabs />
         </div>
+      )}
 
-        {loading ? <LoadingState /> : error ? <ErrorState /> : <MainCalendarView />}
-      </div>
-    </AppLayout>
+      {loading ? <LoadingState /> : error ? <ErrorState /> : <MainCalendarView />}
+    </div>
   )
+
+  if (isEmbedded) return content
+
+  return <AppLayout>{content}</AppLayout>
 }
 
 export default CalendarSchedulingCenter

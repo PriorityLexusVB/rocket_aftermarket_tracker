@@ -10,6 +10,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import ScrollToTop from './components/ScrollToTop'
 import ProtectedRoute from './components/ProtectedRoute'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { isCalendarUnifiedShellEnabled } from './config/featureFlags'
+import { getCalendarDestination } from './lib/navigation/calendarNavigation'
 
 // Import only the 4 consolidated pages
 import NotFound from './pages/NotFound'
@@ -27,10 +29,13 @@ const CalendarFlowManagementCenter = lazy(() => import('./pages/calendar-flow-ma
 const DashboardPage = lazy(() => import('./pages/dashboard'))
 // Real Calendar (grid)
 const CalendarSchedulingCenter = lazy(() => import('./pages/calendar'))
+const CalendarShell = lazy(() => import('./pages/calendar/CalendarShell'))
 // Simple Agenda (feature-flagged)
 const SimpleAgendaEnabled =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
-const CalendarAgenda = SimpleAgendaEnabled ? lazy(() => import('./pages/calendar-agenda')) : null
+const UnifiedShellEnabled = isCalendarUnifiedShellEnabled()
+const CalendarAgendaEnabled = SimpleAgendaEnabled || UnifiedShellEnabled
+const CalendarAgenda = CalendarAgendaEnabled ? lazy(() => import('./pages/calendar-agenda')) : null
 
 // NEW: Advanced Business Intelligence Analytics
 const AdvancedBusinessIntelligenceAnalytics = lazy(
@@ -53,7 +58,8 @@ const Routes = () => {
   const CalendarAgendaRedirect = () => {
     const location = useLocation()
     const search = location?.search || ''
-    return <Navigate to={`/calendar-flow-management-center${search}`} replace />
+    const fallback = getCalendarDestination({ target: 'board' })
+    return <Navigate to={`${fallback}${search}`} replace />
   }
 
   return (
@@ -125,7 +131,11 @@ const Routes = () => {
                 path="/calendar/grid"
                 element={
                   <ProtectedRoute>
-                    <CalendarSchedulingCenter />
+                    {UnifiedShellEnabled ? (
+                      <Navigate to={getCalendarDestination({ target: 'calendar' })} replace />
+                    ) : (
+                      <CalendarSchedulingCenter />
+                    )}
                   </ProtectedRoute>
                 }
               />
@@ -133,7 +143,11 @@ const Routes = () => {
                 path="/calendar-flow-management-center"
                 element={
                   <ProtectedRoute>
-                    <CalendarFlowManagementCenter />
+                    {UnifiedShellEnabled ? (
+                      <Navigate to={getCalendarDestination({ target: 'board' })} replace />
+                    ) : (
+                      <CalendarFlowManagementCenter />
+                    )}
                   </ProtectedRoute>
                 }
               />
@@ -141,7 +155,13 @@ const Routes = () => {
                 path="/calendar/agenda"
                 element={
                   <ProtectedRoute>
-                    {SimpleAgendaEnabled ? <CalendarAgenda /> : <CalendarAgendaRedirect />}
+                    {UnifiedShellEnabled ? (
+                      <Navigate to={getCalendarDestination({ target: 'list' })} replace />
+                    ) : CalendarAgendaEnabled ? (
+                      <CalendarAgenda />
+                    ) : (
+                      <CalendarAgendaRedirect />
+                    )}
                   </ProtectedRoute>
                 }
               />
@@ -206,10 +226,16 @@ const Routes = () => {
               <Route
                 path="/calendar"
                 element={
-                  <Navigate
-                    to={SimpleAgendaEnabled ? '/calendar/agenda' : '/calendar/grid'}
-                    replace
-                  />
+                  UnifiedShellEnabled ? (
+                    <ProtectedRoute>
+                      <CalendarShell />
+                    </ProtectedRoute>
+                  ) : (
+                    <Navigate
+                      to={SimpleAgendaEnabled ? '/calendar/agenda' : '/calendar/grid'}
+                      replace
+                    />
+                  )
                 }
               />
 
