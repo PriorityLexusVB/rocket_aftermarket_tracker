@@ -12,8 +12,7 @@ import { getEventColors } from '@/utils/calendarColors'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
-import { isFeatureEnabled } from '@/config/featureFlags'
-import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
+import { openCalendar } from '@/lib/navigation/calendarNavigation'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -111,7 +110,6 @@ const CalendarSchedulingCenter = () => {
   const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
-  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
   const [, setSearchParams] = useSearchParams()
   const urlParams = useMemo(() => new URLSearchParams(location.search), [location.search])
   const didInitUrlStateRef = useRef(false)
@@ -259,9 +257,6 @@ const CalendarSchedulingCenter = () => {
           '#3b82f6',
       }))
 
-      const scheduledIds = new Set((jobsData || []).map((j) => j?.id).filter(Boolean))
-
-      // Also include promise-only items (All-day) so "Not scheduled" deals
       // with a Promise date show up on the grid.
       const endExclusive = (() => {
         const dt = new Date(dateRange?.end)
@@ -270,13 +265,12 @@ const CalendarSchedulingCenter = () => {
         dt.setHours(0, 0, 0, 0)
         return dt
       })()
-
       let promiseItems = []
-      if (dateRange?.start && endExclusive) {
+      if (endExclusive) {
         const res = await withTimeout(
           getNeedsSchedulingPromiseItems({
             orgId: orgId || null,
-            rangeStart: dateRange.start,
+            rangeStart: dateRange?.start,
             rangeEnd: endExclusive,
           }),
           LOAD_TIMEOUT_MS,
@@ -1151,14 +1145,12 @@ const CalendarSchedulingCenter = () => {
               <div className="mt-3 grid grid-cols-1 gap-2">
                 <button
                   onClick={() => {
-                    const destination = '/calendar-flow-management-center'
-                    logCalendarNavigation({
+                    openCalendar({
+                      navigate,
+                      target: 'flow',
                       source: 'CalendarSchedulingCenter.QuickActions.OpenSchedulingBoard',
-                      destination,
-                      flags: { calendar_unified_shell: calendarUnifiedShell },
                       context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                     })
-                    navigate(destination)
                   }}
                   className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                 >
@@ -1167,14 +1159,12 @@ const CalendarSchedulingCenter = () => {
                 {SIMPLE_AGENDA_ENABLED ? (
                   <button
                     onClick={() => {
-                      const destination = '/calendar/agenda'
-                      logCalendarNavigation({
+                      openCalendar({
+                        navigate,
+                        target: 'agenda',
                         source: 'CalendarSchedulingCenter.QuickActions.OpenAgenda',
-                        destination,
-                        flags: { calendar_unified_shell: calendarUnifiedShell },
                         context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                       })
-                      navigate(destination)
                     }}
                     className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                   >

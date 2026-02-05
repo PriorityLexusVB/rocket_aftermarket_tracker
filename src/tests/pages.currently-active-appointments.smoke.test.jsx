@@ -39,9 +39,9 @@ describe('CurrentlyActiveAppointments smoke', () => {
     const EMPTY_STATE_RE =
       /(no\s+(currently\s+)?active\s+appointments|no\s+active\s+appointments|no\s+appointments|no\s+jobs)/i
 
-    await waitFor(() => {
+        await waitFor(() => {
       expect(screen.getAllByText(EMPTY_STATE_RE).length).toBeGreaterThan(0)
-    })
+        })
 
     const legacyBanner = ['Needs', 'assignment'].join(' ')
     const legacyCta = ['Assign', 'Jobs'].join(' ')

@@ -3,8 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import Icon from '../AppIcon'
 import Button from './Button'
 import { testSupabaseConnection } from '@/lib/supabase'
-import { isFeatureEnabled } from '@/config/featureFlags'
-import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
+import { openCalendar } from '@/lib/navigation/calendarNavigation'
 
 const Header = ({ onMenuToggle, isMenuOpen = false }) => {
   const location = useLocation()
@@ -12,7 +11,14 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [sbStatus, setSbStatus] = useState('unknown') // 'unknown' | 'ok' | 'error'
   const [sbChecking, setSbChecking] = useState(false)
-  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
+  const getCalendarTargetForPath = (destination) => {
+    if (destination.startsWith('/calendar/agenda')) return 'agenda'
+    if (destination.startsWith('/calendar-flow-management-center')) return 'flow'
+    if (destination.startsWith('/calendar/grid')) return 'grid'
+    if (destination.startsWith('/currently-active-appointments')) return 'active'
+    if (destination.startsWith('/calendar')) return 'calendar'
+    return null
+  }
 
   useEffect(() => {
     // lightweight background check once on mount
@@ -159,23 +165,20 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
                     if (crumb?.path === '#') return
 
                     const destination = String(crumb?.path || '')
-                    const isCalendarDestination =
-                      destination.startsWith('/calendar') || destination.startsWith('/calendar-')
+                    const calendarTarget = getCalendarTargetForPath(destination)
 
-                    if (isCalendarDestination) {
+                    if (calendarTarget) {
                       const source =
-                        destination === '/calendar-scheduling-center'
+                        calendarTarget === 'flow'
                           ? 'Header.Breadcrumb.CalendarScheduling'
                           : 'Header.Breadcrumb.Calendar'
-                      logCalendarNavigation({
+                      openCalendar({
+                        navigate,
+                        target: calendarTarget,
                         source,
-                        destination,
-                        flags: { calendar_unified_shell: calendarUnifiedShell },
-                        context: {
-                          from: `${location?.pathname || ''}${location?.search || ''}`,
-                          label: crumb?.label,
-                        },
+                        context: { label: crumb?.label },
                       })
+                      return
                     }
 
                     navigate(destination)

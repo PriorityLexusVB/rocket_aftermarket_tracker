@@ -2,8 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
-import { isFeatureEnabled } from '@/config/featureFlags'
-import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
+import { openCalendar } from '@/lib/navigation/calendarNavigation'
 import useTenant from '@/hooks/useTenant'
 import { useToast } from '@/components/ui/ToastProvider'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
@@ -256,7 +255,6 @@ export default function SnapshotView() {
   const toast = useToast?.()
   const navigate = useNavigate()
   const location = useLocation()
-  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [items, setItems] = useState([])
@@ -789,14 +787,12 @@ export default function SnapshotView() {
           {SIMPLE_CAL_ON && (
             <button
               onClick={() => {
-                const destination = '/calendar/agenda'
-                logCalendarNavigation({
+                openCalendar({
+                  navigate,
+                  target: 'agenda',
                   source: 'CurrentlyActiveAppointments.SnapshotView.OpenAgenda',
-                  destination,
-                  flags: { calendar_unified_shell: calendarUnifiedShell },
                   context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                 })
-                navigate(destination)
               }}
               className="text-blue-600 hover:underline"
               aria-label="Open Agenda"

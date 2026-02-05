@@ -1,8 +1,7 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Calendar, List, LayoutGrid } from 'lucide-react'
-import { isFeatureEnabled } from '@/config/featureFlags'
-import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
+import { getCalendarDestination, openCalendar } from '@/lib/navigation/calendarNavigation'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -17,15 +16,22 @@ const CALENDAR_VIEWS = [
 
 export default function CalendarViewTabs() {
   const location = useLocation()
+  const navigate = useNavigate()
   const isActive = (href) =>
     location?.pathname === href || location?.pathname?.startsWith(`${href}/`)
-  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
 
   const getSourceForKey = (key) => {
     if (key === 'grid') return 'CalendarViewTabs.SwitchToGrid'
     if (key === 'flow') return 'CalendarViewTabs.SwitchToBoard'
     if (key === 'agenda') return 'CalendarViewTabs.SwitchToAgenda'
     return 'CalendarViewTabs.Switch'
+  }
+
+  const getTargetForKey = (key) => {
+    if (key === 'grid') return 'grid'
+    if (key === 'flow') return 'flow'
+    if (key === 'agenda') return 'agenda'
+    return 'calendar'
   }
 
   return (
@@ -39,17 +45,20 @@ export default function CalendarViewTabs() {
       <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 pointer-events-auto">
         {CALENDAR_VIEWS.map((item) => {
           const Icon = item.icon
+          const target = getTargetForKey(item.key)
+          const destination = getCalendarDestination(target)
           const active = isActive(item.href)
           return (
             <Link
               key={item.key}
-              to={item.href}
-              onClick={() => {
-                logCalendarNavigation({
+              to={destination}
+              onClick={(event) => {
+                event.preventDefault()
+                openCalendar({
+                  navigate,
+                  target,
                   source: getSourceForKey(item.key),
-                  destination: item.href,
-                  flags: { calendar_unified_shell: calendarUnifiedShell },
-                  context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+                  context: { tab: item.key },
                 })
               }}
               className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
