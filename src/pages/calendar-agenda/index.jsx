@@ -16,6 +16,7 @@ import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import Navbar from '@/components/ui/Navbar'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
+import { isCalendarDealDrawerEnabled } from '@/config/featureFlags'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -237,13 +238,28 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
   })
 }
 
-export default function CalendarAgenda({ embedded = false, shellState } = {}) {
+export function getAgendaRowClickHandler({ dealDrawerEnabled, onOpenDealDrawer, navigate, deal }) {
+  return () => {
+    if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
+      onOpenDealDrawer(deal)
+      return
+    }
+
+    const dealId = deal?.id
+    if (dealId && typeof navigate === 'function') {
+      navigate(`/deals/${dealId}/edit`)
+    }
+  }
+}
+
+export default function CalendarAgenda({ embedded = false, shellState, onOpenDealDrawer } = {}) {
   const { orgId, session, userProfile, loading: authLoading, profileLoading } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const location = useLocation()
   const isEmbedded = embedded === true
   const shellRange = shellState?.range
+  const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [jobs, setJobs] = useState([])
@@ -371,6 +387,8 @@ export default function CalendarAgenda({ embedded = false, shellState } = {}) {
       else localStorage.removeItem('agendaFilter_vendor')
     }
 
+    if (isEmbedded) return
+
     const params = new URLSearchParams(location.search)
     if (q) params.set('q', q)
     else params.delete('q')
@@ -384,7 +402,7 @@ export default function CalendarAgenda({ embedded = false, shellState } = {}) {
     const next = params.toString()
     const current = location.search.replace(/^\?/, '')
     if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
-  }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search])
+  }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search, isEmbedded])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -753,6 +771,13 @@ export default function CalendarAgenda({ embedded = false, shellState } = {}) {
                 const stock = raw?.vehicle?.stock_number || ''
                 const ops = summarizeOpCodesFromParts(raw?.job_parts, 6)
 
+                const handleRowClick = getAgendaRowClickHandler({
+                  dealDrawerEnabled,
+                  onOpenDealDrawer,
+                  navigate,
+                  deal: raw,
+                })
+
                 return (
                   <li
                     key={r?.calendarKey || r?.calendar_key || r.id}
@@ -760,6 +785,7 @@ export default function CalendarAgenda({ embedded = false, shellState } = {}) {
                     tabIndex={0}
                     aria-label={`Appointment ${title || r.id}`}
                     className={`grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
+                    onClick={handleRowClick}
                   >
                     {/* Time column (blank for all-day) */}
                     <div className="w-28 text-xs font-mono tabular-nums text-slate-600">
@@ -815,25 +841,32 @@ export default function CalendarAgenda({ embedded = false, shellState } = {}) {
 
                     <div className="flex items-center justify-end gap-3">
                       <button
-                        onClick={() => navigate(`/deals/${r.id}/edit`)}
+                        onClick={(event) => {
+                          event?.stopPropagation?.()
+                          navigate(`/deals/${r.id}/edit`)
+                        }}
                         className="rounded-md px-2 py-1 text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                         aria-label="View deal"
                       >
                         View
                       </button>
                       <button
-                        onClick={() => handleReschedule(r)}
+                        onClick={(event) => {
+                          event?.stopPropagation?.()
+                          handleReschedule(r)
+                        }}
                         className="rounded-md px-2 py-1 text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                         aria-label="Reschedule appointment"
                       >
                         Reschedule
                       </button>
                       <button
-                        onClick={() =>
-                          String(r?.job_status || '').toLowerCase() === 'completed'
+                        onClick={(event) => {
+                          event?.stopPropagation?.()
+                          return String(r?.job_status || '').toLowerCase() === 'completed'
                             ? handleReopen(r)
                             : handleComplete(r)
-                        }
+                        }}
                         disabled={isStatusInFlight(r?.id)}
                         className={`rounded-md px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                           isStatusInFlight(r?.id)

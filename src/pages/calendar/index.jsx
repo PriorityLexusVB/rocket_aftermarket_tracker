@@ -16,7 +16,7 @@ import {
   getCalendarDestination,
   trackCalendarNavigation,
 } from '@/lib/navigation/calendarNavigation'
-import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -92,6 +92,25 @@ const resolveShellViewType = (range) => {
   return SHELL_RANGE_TO_VIEW?.[key] || 'week'
 }
 
+export function getCalendarGridClickHandler({
+  dealDrawerEnabled,
+  onOpenDealDrawer,
+  navigate,
+  deal,
+}) {
+  return () => {
+    if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
+      onOpenDealDrawer(deal)
+      return
+    }
+
+    const dealId = deal?.id
+    if (dealId && typeof navigate === 'function') {
+      navigate(`/deals/${dealId}/edit`)
+    }
+  }
+}
+
 const parseDateParam = (value) => {
   if (!value) return null
   const str = String(value).trim()
@@ -120,7 +139,7 @@ const safeDayKey = (value) => {
   return d ? d.toDateString() : ''
 }
 
-const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
+const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDrawer } = {}) => {
   // State management
   const { user, orgId } = useAuth()
   const toast = useToast()
@@ -130,6 +149,8 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
   const urlParams = useMemo(() => new URLSearchParams(location.search), [location.search])
   const didInitUrlStateRef = useRef(false)
   const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const dealDrawerEnabled = isCalendarDealDrawerEnabled()
+  const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
   const shellDate = shellState?.date
   const shellRange = shellState?.range
@@ -645,11 +666,18 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
                     })
                   : ''
 
+                const handleGridClick = getCalendarGridClickHandler({
+                  dealDrawerEnabled: canOpenDrawer,
+                  onOpenDealDrawer,
+                  navigate,
+                  deal: job,
+                })
+
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
                     className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
-                    onClick={() => navigate(`/deals/${job?.id}/edit`)}
+                    onClick={handleGridClick}
                     title={job?.title || 'Open deal'}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -879,6 +907,12 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
                             day: 'numeric',
                           })
                         : ''
+                      const handleMonthGridClick = getCalendarGridClickHandler({
+                        dealDrawerEnabled: canOpenDrawer,
+                        onOpenDealDrawer,
+                        navigate,
+                        deal: job,
+                      })
 
                       return (
                         <button
@@ -889,7 +923,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
                           }`}
                           onClick={(e) => {
                             e?.stopPropagation?.()
-                            navigate(`/deals/${job?.id}/edit`)
+                            handleMonthGridClick()
                           }}
                           title={job?.title || 'Open deal'}
                         >
@@ -953,12 +987,18 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState } = {}) => {
                     ? 'BOOKED'
                     : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
                   : 'SCHEDULED'
+              const handleListClick = getCalendarGridClickHandler({
+                dealDrawerEnabled: canOpenDrawer,
+                onOpenDealDrawer,
+                navigate,
+                deal: job,
+              })
 
               return (
                 <div
                   key={job?.calendar_key || job?.id}
                   className="bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => navigate(`/deals/${job?.id}/edit`)}
+                  onClick={handleListClick}
                 >
                   <div className="flex items-start justify-between">
                     <div>

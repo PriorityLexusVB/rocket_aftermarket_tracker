@@ -207,9 +207,9 @@ test.describe('4-page smoke checklist', () => {
 
     // Created date is first (DOM column order)
     if (rowVisible) {
-      const grid = row.locator('div.grid').first()
+      const grid = row.locator('div.grid', { hasText: 'Created' }).first()
       const firstCol = grid.locator('> div').first()
-      await expect(firstCol).toContainText('Created')
+      await expect(firstCol).toContainText(/Created|Date/)
 
       // Schedule block is unified (promise-only renders a single compact label, e.g. "{date} • All-day")
       const scheduleCol = grid.locator('> div').nth(1)

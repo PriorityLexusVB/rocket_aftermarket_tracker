@@ -1,24 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-  Info,
-  MoreVertical,
-  Plus,
-  Search,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Filter, Info, MoreVertical, Plus, Search } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout from '@/components/layouts/AppLayout'
 import CalendarSchedulingCenter from '@/pages/calendar'
 import CalendarFlowManagementCenter from '@/pages/calendar-flow-management-center'
 import CalendarAgenda from '@/pages/calendar-agenda'
+import DealDrawer from '@/components/calendar/DealDrawer'
 import {
   buildCalendarSearchParams,
   parseCalendarQuery,
   parseCalendarDateParam,
 } from '@/lib/navigation/calendarNavigation'
-import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -70,6 +63,8 @@ export default function CalendarShell() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [searchValue, setSearchValue] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerDeal, setDrawerDeal] = useState(null)
 
   const { view, range, date, normalizedParams } = useMemo(
     () => parseCalendarQuery(searchParams),
@@ -77,6 +72,7 @@ export default function CalendarShell() {
   )
 
   const agendaEnabled = SIMPLE_AGENDA_ENABLED || isCalendarUnifiedShellEnabled()
+  const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const resolvedView = view === 'list' && !agendaEnabled ? 'board' : view
 
   useEffect(() => {
@@ -135,15 +131,37 @@ export default function CalendarShell() {
   const dateInputValue = dateValue ? searchParams.get('date') : ''
 
   const shellState = useMemo(() => ({ range, date }), [range, date])
+  const handleOpenDealDrawer = useCallback(
+    (deal) => {
+      if (!dealDrawerEnabled) return
+      setDrawerDeal(deal || null)
+      setDrawerOpen(true)
+    },
+    [dealDrawerEnabled]
+  )
+
+  const handleCloseDealDrawer = useCallback(() => {
+    setDrawerOpen(false)
+  }, [])
 
   const viewContent = useMemo(() => {
     if (resolvedView === 'calendar') {
-      return <CalendarSchedulingCenter embedded shellState={shellState} />
+      return (
+        <CalendarSchedulingCenter
+          embedded
+          shellState={shellState}
+          onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
+        />
+      )
     }
 
     if (resolvedView === 'list') {
       return agendaEnabled ? (
-        <CalendarAgenda embedded shellState={shellState} />
+        <CalendarAgenda
+          embedded
+          shellState={shellState}
+          onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
+        />
       ) : (
         <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600">
           List view is unavailable in this environment.
@@ -151,8 +169,14 @@ export default function CalendarShell() {
       )
     }
 
-    return <CalendarFlowManagementCenter embedded shellState={shellState} />
-  }, [resolvedView, agendaEnabled, shellState])
+    return (
+      <CalendarFlowManagementCenter
+        embedded
+        shellState={shellState}
+        onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
+      />
+    )
+  }, [resolvedView, agendaEnabled, shellState, dealDrawerEnabled, handleOpenDealDrawer])
 
   return (
     <AppLayout>
@@ -306,6 +330,9 @@ export default function CalendarShell() {
         </section>
 
         <section className="min-h-[60vh]">{viewContent}</section>
+        {dealDrawerEnabled && (
+          <DealDrawer open={drawerOpen} deal={drawerDeal} onClose={handleCloseDealDrawer} />
+        )}
       </div>
     </AppLayout>
   )
