@@ -2,10 +2,9 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import { X } from 'lucide-react'
 
 function getDealTitle(deal) {
-  if (!deal) return 'Deal'
-  const jobNumber = deal?.job_number?.split?.('-')?.pop?.() || ''
-  const title = deal?.title || deal?.job_number || 'Deal'
-  return jobNumber ? `${jobNumber} • ${title}` : title
+  if (!deal) return 'Deal Details'
+  const identifier = deal?.job_number || deal?.id || ''
+  return identifier ? `Deal ${identifier}` : 'Deal Details'
 }
 
 function getFocusableElements(container) {
@@ -122,14 +121,6 @@ export default function DealDrawer({ open, deal, onClose }) {
             <p className="text-xs text-slate-500">Deal Drawer (preview)</p>
           </div>
           <div className="flex items-center gap-2">
-            {dealId ? (
-              <a
-                href={`/deals/${dealId}/edit`}
-                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Open deal
-              </a>
-            ) : null}
             <button
               ref={closeButtonRef}
               type="button"
@@ -139,6 +130,14 @@ export default function DealDrawer({ open, deal, onClose }) {
             >
               <X className="h-4 w-4" />
             </button>
+            {dealId ? (
+              <a
+                href={`/deals/${dealId}/edit`}
+                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Open deal
+              </a>
+            ) : null}
           </div>
         </div>
 

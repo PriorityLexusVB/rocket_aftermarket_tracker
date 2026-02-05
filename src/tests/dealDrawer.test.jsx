@@ -20,7 +20,7 @@ describe('DealDrawer', () => {
   it('renders when open and shows title', () => {
     render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Detail Service/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Deal JOB-123/i })).toBeInTheDocument()
   })
 
   it('wires aria-labelledby to the title', () => {
@@ -28,7 +28,7 @@ describe('DealDrawer', () => {
     const dialog = screen.getByRole('dialog')
     const labelledBy = dialog.getAttribute('aria-labelledby')
     expect(labelledBy).toBeTruthy()
-    const title = screen.getByRole('heading', { name: /Detail Service/i })
+    const title = screen.getByRole('heading', { name: /Deal JOB-123/i })
     expect(title).toHaveAttribute('id', labelledBy)
   })
 
@@ -49,22 +49,43 @@ describe('DealDrawer', () => {
   it('traps focus within drawer', () => {
     render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
     const openDealLink = screen.getByRole('link', { name: /Open deal/i })
+    const closeButton = screen.getByRole('button', { name: /close/i })
     const primaryAction = screen.getByRole('button', { name: /Mark In Progress/i })
 
     // Shift+Tab from first element should wrap to last
-    openDealLink.focus()
+    closeButton.focus()
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
     expect(primaryAction).toHaveFocus()
 
     // Tab from last element should wrap to first
     primaryAction.focus()
     fireEvent.keyDown(document, { key: 'Tab' })
-    expect(openDealLink).toHaveFocus()
+    expect(closeButton).toHaveFocus()
 
     // Tab between elements should keep focus within drawer
     openDealLink.focus()
     fireEvent.keyDown(document, { key: 'Tab' })
     expect(document.activeElement).not.toBe(document.body)
+  })
+
+  it('renders section scaffolding headings', () => {
+    render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
+    expect(screen.getByRole('heading', { name: /Summary/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Line Items/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Schedule/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /History/i })).toBeInTheDocument()
+  })
+
+  it('shows enabled primary action when status is available', () => {
+    render(<DealDrawer open deal={sampleDeal} onClose={() => {}} />)
+    const action = screen.getByRole('button', { name: /Mark In Progress/i })
+    expect(action).toBeEnabled()
+  })
+
+  it('shows disabled primary action when status is missing', () => {
+    render(<DealDrawer open deal={{ ...sampleDeal, job_status: undefined }} onClose={() => {}} />)
+    const action = screen.getByRole('button', { name: /Select action/i })
+    expect(action).toBeDisabled()
   })
 
   it('returns focus to the trigger after close button click', async () => {
