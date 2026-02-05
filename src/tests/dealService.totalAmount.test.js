@@ -183,7 +183,7 @@ describe('dealService - total_amount numeric coercion', () => {
     })
 
     try {
-      const { getAllDeals } = await import('@/services/dealService')
+      const { getAllDeals } = await vi.importActual('@/services/dealService')
       const deals = await getAllDeals()
 
       expect(deals).toBeDefined()
@@ -317,7 +317,7 @@ describe('dealService - total_amount numeric coercion', () => {
     })
 
     try {
-      const { getAllDeals } = await import('@/services/dealService')
+      const { getAllDeals } = await vi.importActual('@/services/dealService')
       const deals = await getAllDeals()
 
       expect(deals).toBeDefined()

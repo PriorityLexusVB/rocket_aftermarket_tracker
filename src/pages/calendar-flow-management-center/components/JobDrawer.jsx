@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   X,
   Car,
@@ -22,6 +22,8 @@ import {
 } from 'lucide-react'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
+import { isFeatureEnabled } from '@/config/featureFlags'
+import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
 
 const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [activeTab, setActiveTab] = useState('details')
@@ -29,6 +31,8 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
   const [jobNumberCopied, setJobNumberCopied] = useState(false)
   const closeButtonRef = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
+  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
 
   const useAgenda = useMemo(() => String(import.meta.env.VITE_SIMPLE_CALENDAR || '') === 'true', [])
 
@@ -53,14 +57,33 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
     if (useAgenda) {
       const qs = new URLSearchParams({ focus: String(job?.id || '') })
       onClose?.()
-      navigate(`/calendar/agenda?${qs.toString()}`)
+      const destination = `/calendar/agenda?${qs.toString()}`
+      logCalendarNavigation({
+        source: 'FlowManagementCenter.JobDrawer.OpenScheduling',
+        destination,
+        flags: { calendar_unified_shell: calendarUnifiedShell },
+        context: {
+          from: `${location?.pathname || ''}${location?.search || ''}`,
+          jobId: job?.id,
+          focusId: job?.id,
+        },
+      })
+      navigate(destination)
       return
     }
 
     // Fallback: send user to deal edit where line items/times can be adjusted.
     onClose?.()
     navigate(`/deals/${job?.id}/edit`)
-  }, [job?.id, navigate, onClose, useAgenda])
+  }, [
+    calendarUnifiedShell,
+    job?.id,
+    location?.pathname,
+    location?.search,
+    navigate,
+    onClose,
+    useAgenda,
+  ])
 
   const handleCopyJobNumber = useCallback(async () => {
     const text = job?.job_number

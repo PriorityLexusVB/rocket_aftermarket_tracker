@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import Icon from '../AppIcon'
 import Button from './Button'
 import { testSupabaseConnection } from '@/lib/supabase'
+import { isFeatureEnabled } from '@/config/featureFlags'
+import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
 
 const Header = ({ onMenuToggle, isMenuOpen = false }) => {
   const location = useLocation()
@@ -10,6 +12,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [sbStatus, setSbStatus] = useState('unknown') // 'unknown' | 'ok' | 'error'
   const [sbChecking, setSbChecking] = useState(false)
+  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
 
   useEffect(() => {
     // lightweight background check once on mount
@@ -152,7 +155,31 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
               <React.Fragment key={crumb?.path}>
                 <Icon name="ChevronRight" size={12} className="text-muted-foreground" />
                 <button
-                  onClick={() => crumb?.path !== '#' && navigate(crumb?.path)}
+                  onClick={() => {
+                    if (crumb?.path === '#') return
+
+                    const destination = String(crumb?.path || '')
+                    const isCalendarDestination =
+                      destination.startsWith('/calendar') || destination.startsWith('/calendar-')
+
+                    if (isCalendarDestination) {
+                      const source =
+                        destination === '/calendar-scheduling-center'
+                          ? 'Header.Breadcrumb.CalendarScheduling'
+                          : 'Header.Breadcrumb.Calendar'
+                      logCalendarNavigation({
+                        source,
+                        destination,
+                        flags: { calendar_unified_shell: calendarUnifiedShell },
+                        context: {
+                          from: `${location?.pathname || ''}${location?.search || ''}`,
+                          label: crumb?.label,
+                        },
+                      })
+                    }
+
+                    navigate(destination)
+                  }}
                   className={`text-sm ${
                     index === getBreadcrumbs()?.length - 1
                       ? 'text-foreground font-medium'

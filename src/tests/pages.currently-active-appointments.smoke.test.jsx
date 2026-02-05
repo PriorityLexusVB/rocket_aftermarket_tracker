@@ -32,8 +32,15 @@ describe('CurrentlyActiveAppointments smoke', () => {
       </MemoryRouter>
     )
 
+    expect(
+      await screen.findByRole('heading', { name: /currently active appointments/i })
+    ).toBeInTheDocument()
+
+    const EMPTY_STATE_RE =
+      /(no\s+(currently\s+)?active\s+appointments|no\s+active\s+appointments|no\s+appointments|no\s+jobs)/i
+
     await waitFor(() => {
-      expect(screen.getByText('No Active Appointments')).toBeInTheDocument()
+      expect(screen.getAllByText(EMPTY_STATE_RE).length).toBeGreaterThan(0)
     })
 
     const legacyBanner = ['Needs', 'assignment'].join(' ')

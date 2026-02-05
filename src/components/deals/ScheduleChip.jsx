@@ -1,8 +1,10 @@
 // src/components/deals/ScheduleChip.jsx
 // Displays a formatted schedule range and provides navigation affordances.
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { formatScheduleRange } from '@/utils/dateTimeUtils'
+import { isFeatureEnabled } from '@/config/featureFlags'
+import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
 
 /**
  * Helper to extract schedule times from a deal object with fallback logic.
@@ -56,6 +58,8 @@ export default function ScheduleChip({
   className = '',
 }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const calendarUnifiedShell = isFeatureEnabled('calendar_unified_shell')
 
   // If deal object is provided, extract times with fallback logic
   let startTime = scheduledStartTime
@@ -94,7 +98,19 @@ export default function ScheduleChip({
 
     // Otherwise, navigate based on enableAgendaNavigation flag
     if (enableAgendaNavigation && effectiveJobId) {
-      navigate(`/calendar/agenda?focus=${encodeURIComponent(effectiveJobId)}`)
+      const destination = `/calendar/agenda?focus=${encodeURIComponent(effectiveJobId)}`
+      logCalendarNavigation({
+        source: 'Deals.ScheduleChip.OpenScheduling',
+        destination,
+        flags: { calendar_unified_shell: calendarUnifiedShell },
+        context: {
+          from: `${location?.pathname || ''}${location?.search || ''}`,
+          dealId: deal?.id,
+          jobId: effectiveJobId,
+          focusId: effectiveJobId,
+        },
+      })
+      navigate(destination)
     } else if (effectiveJobId) {
       navigate(`/deals/${effectiveJobId}/edit`)
     }

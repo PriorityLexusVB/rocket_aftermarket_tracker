@@ -613,8 +613,8 @@ function tableApi(table: string) {
 // Track the current authenticated user for RLS-like policy checks
 let currentUser: Row | null = null
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
+vi.mock('@/lib/supabase', () => {
+  const supabase = {
     from: (table: string) => tableApi(table),
     rpc: (fn: string, args?: any) => {
       // Special-case delete cascade to simulate backend behavior
@@ -662,8 +662,19 @@ vi.mock('@/lib/supabase', () => ({
     __seed: (table: string, rows: Row[]) => {
       db[table] = clone(rows)
     },
-  },
-}))
+  }
+
+  return {
+    supabase,
+    default: supabase,
+    // Match production export shape used by UI components during tests.
+    // Keep default true to avoid rendering SupabaseConfigNotice in most tests.
+    isSupabaseConfigured: () => true,
+    testSupabaseConnection: async () => true,
+    isNetworkOnline: () => true,
+    recoverSession: async () => ({ ok: true }),
+  }
+})
 
 // Ensure reset also re-seeds minimal fixtures so tests relying on existing rows don't become flaky
 try {
