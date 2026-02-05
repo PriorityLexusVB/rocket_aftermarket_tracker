@@ -238,12 +238,7 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
   })
 }
 
-export function getAgendaRowClickHandler({
-  dealDrawerEnabled,
-  onOpenDealDrawer,
-  navigate,
-  deal,
-}) {
+export function getAgendaRowClickHandler({ dealDrawerEnabled, onOpenDealDrawer, navigate, deal }) {
   return () => {
     if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
       onOpenDealDrawer(deal)

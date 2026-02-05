@@ -1,13 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-  Info,
-  MoreVertical,
-  Plus,
-  Search,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Filter, Info, MoreVertical, Plus, Search } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout from '@/components/layouts/AppLayout'
 import CalendarSchedulingCenter from '@/pages/calendar'
@@ -19,10 +11,7 @@ import {
   parseCalendarQuery,
   parseCalendarDateParam,
 } from '@/lib/navigation/calendarNavigation'
-import {
-  isCalendarDealDrawerEnabled,
-  isCalendarUnifiedShellEnabled,
-} from '@/config/featureFlags'
+import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'

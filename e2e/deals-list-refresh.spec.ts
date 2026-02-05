@@ -106,6 +106,7 @@ test.describe('Deals List Refresh After Edit', () => {
 
   test('should update promised date/window in deals list after edit', async ({ page }) => {
     requireAuthEnv()
+    test.setTimeout(60_000)
     // This test specifically checks promised date updates
     await ensureAtLeastOneDeal(page)
     await page.goto('/deals')

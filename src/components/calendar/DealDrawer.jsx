@@ -20,6 +20,7 @@ function getFocusableElements(container) {
 export default function DealDrawer({ open, deal, onClose }) {
   const panelRef = useRef(null)
   const closeButtonRef = useRef(null)
+  const lastActiveElementRef = useRef(null)
   const title = useMemo(() => getDealTitle(deal), [deal])
   const dealId = deal?.id
   const dealStatus = String(deal?.job_status || deal?.status || '').toLowerCase()
@@ -55,7 +56,7 @@ export default function DealDrawer({ open, deal, onClose }) {
   useEffect(() => {
     if (!open) return
 
-    const previousActive = document.activeElement
+    lastActiveElementRef.current = document.activeElement
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const focusTarget = closeButtonRef.current
@@ -88,8 +89,9 @@ export default function DealDrawer({ open, deal, onClose }) {
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
-      if (previousActive && typeof previousActive.focus === 'function') {
-        previousActive.focus()
+      const lastActive = lastActiveElementRef.current
+      if (lastActive && document.contains(lastActive) && typeof lastActive.focus === 'function') {
+        lastActive.focus()
       }
     }
   }, [open, onClose])
@@ -162,7 +164,9 @@ export default function DealDrawer({ open, deal, onClose }) {
             </div>
           </section>
           <section className="space-y-1">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Summary</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Summary
+            </h3>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <div className="font-medium text-slate-900">{deal?.title || 'Deal details'}</div>
               <div className="text-xs text-slate-500">
@@ -172,21 +176,27 @@ export default function DealDrawer({ open, deal, onClose }) {
           </section>
 
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Line Items</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Line Items
+            </h3>
             <div className="rounded-lg border border-dashed border-slate-200 p-3 text-slate-500">
               Line item details coming soon.
             </div>
           </section>
 
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Schedule</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Schedule
+            </h3>
             <div className="rounded-lg border border-dashed border-slate-200 p-3 text-slate-500">
               Scheduling controls coming soon.
             </div>
           </section>
 
           <section className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">History / Notes</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              History / Notes
+            </h3>
             <div className="rounded-lg border border-dashed border-slate-200 p-3 text-slate-500">
               Activity history coming soon.
             </div>

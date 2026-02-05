@@ -1139,345 +1139,341 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
   const content = (
     <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {unifiedShellEnabled ? 'Calendar' : 'Calendar Flow Management Center'}
-              </h1>
-              {!isEmbedded && (
-                <p className="text-gray-600">Visual scheduling and workflow management</p>
-              )}
-            </div>
-
-            <div className="flex items-center space-x-4">
-              {/* Updated View Toggle - Replace Agenda with Month */}
-              {!isEmbedded && (
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('day')}
-                    className={`px-3 py-1 rounded text-sm ${viewMode === 'day' ? 'bg-white shadow-sm' : ''}`}
-                  >
-                    Day
-                  </button>
-                  <button
-                    onClick={() => setViewMode('week')}
-                    className={`px-3 py-1 rounded text-sm ${viewMode === 'week' ? 'bg-white shadow-sm' : ''}`}
-                  >
-                    Week
-                  </button>
-                  <button
-                    onClick={() => setViewMode('month')}
-                    className={`px-3 py-1 rounded text-sm ${viewMode === 'month' ? 'bg-white shadow-sm' : ''}`}
-                  >
-                    Month
-                  </button>
-                </div>
-              )}
-
-              {/* Vendor Lanes Toggle - Hide for month view */}
-              {viewMode !== 'month' && (
-                <button
-                  onClick={() => setVendorLanesEnabled(!vendorLanesEnabled)}
-                  className={`flex items-center px-4 py-2 rounded-lg border ${
-                    vendorLanesEnabled
-                      ? 'bg-blue-50 border-blue-200 text-blue-700'
-                      : 'bg-white border-gray-200 text-gray-700'
-                  }`}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Vendor Lanes
-                </button>
-              )}
-
-              {/* Round-up Button */}
-              <button
-                onClick={() => setShowRoundUp(true)}
-                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Round-Up
-              </button>
-
-              <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                <summary className="cursor-pointer select-none text-sm text-gray-700">
-                  Legend
-                </summary>
-                <div className="mt-2 grid gap-1 text-xs text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block h-2.5 w-2.5 rounded bg-green-500" />
-                    <span>On-site (PLV) (no vendor or on-site)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
-                    <span>Vendor lane (off-site)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-3 w-3 text-red-600" />
-                    <span>Overdue promise</span>
-                  </div>
-                  <div className="text-[11px] text-gray-500">
-                    Drop onto a time slot to set minutes (5-min increments) or into a vendor lane to
-                    set vendor.
-                  </div>
-                </div>
-              </details>
-            </div>
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {unifiedShellEnabled ? 'Calendar' : 'Calendar Flow Management Center'}
+            </h1>
+            {!isEmbedded && (
+              <p className="text-gray-600">Visual scheduling and workflow management</p>
+            )}
           </div>
 
-          {/* Navigation and Filters */}
-          <div className="flex items-center justify-between mt-6">
-            {/* Updated Date Navigation to handle month view */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => {
-                  const newDate = new Date(currentDate)
-                  if (viewMode === 'month') {
-                    newDate?.setMonth(newDate?.getMonth() - 1)
-                  } else if (viewMode === 'week') {
-                    newDate?.setDate(newDate?.getDate() - 7)
-                  } else {
-                    newDate?.setDate(newDate?.getDate() - 1)
-                  }
-                  setCurrentDate(newDate)
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-
-              <div className="text-lg font-medium">
-                {viewMode === 'month'
-                  ? currentDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                  : viewMode === 'week'
-                    ? `Week of ${currentDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-                    : currentDate?.toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-              </div>
-
-              <button
-                onClick={() => {
-                  const newDate = new Date(currentDate)
-                  if (viewMode === 'month') {
-                    newDate?.setMonth(newDate?.getMonth() + 1)
-                  } else if (viewMode === 'week') {
-                    newDate?.setDate(newDate?.getDate() + 7)
-                  } else {
-                    newDate?.setDate(newDate?.getDate() + 1)
-                  }
-                  setCurrentDate(newDate)
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-
-              <button
-                onClick={() => setCurrentDate(new Date())}
-                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
-              >
-                Today
-              </button>
-
-              {viewMode !== 'month' && (
+          <div className="flex items-center space-x-4">
+            {/* Updated View Toggle - Replace Agenda with Month */}
+            {!isEmbedded && (
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={handleJumpToNextScheduled}
-                  disabled={jumpLoading}
-                  className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
-                  title="Jump to the next scheduled job"
+                  onClick={() => setViewMode('day')}
+                  className={`px-3 py-1 rounded text-sm ${viewMode === 'day' ? 'bg-white shadow-sm' : ''}`}
                 >
-                  {jumpLoading ? 'Finding…' : 'Jump to Next Scheduled'}
+                  Day
                 </button>
-              )}
-            </div>
-
-            {/* Search */}
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search stock #, phone, customer..."
-                  value={filters?.searchQuery}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, searchQuery: e?.target?.value }))
-                  }
-                  className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-80"
-                />
+                <button
+                  onClick={() => setViewMode('week')}
+                  className={`px-3 py-1 rounded text-sm ${viewMode === 'week' ? 'bg-white shadow-sm' : ''}`}
+                >
+                  Week
+                </button>
+                <button
+                  onClick={() => setViewMode('month')}
+                  className={`px-3 py-1 rounded text-sm ${viewMode === 'month' ? 'bg-white shadow-sm' : ''}`}
+                >
+                  Month
+                </button>
               </div>
-            </div>
-          </div>
+            )}
 
-          {!isEmbedded && (
-            <div className="mt-4">
-              <CalendarViewTabs />
-            </div>
-          )}
+            {/* Vendor Lanes Toggle - Hide for month view */}
+            {viewMode !== 'month' && (
+              <button
+                onClick={() => setVendorLanesEnabled(!vendorLanesEnabled)}
+                className={`flex items-center px-4 py-2 rounded-lg border ${
+                  vendorLanesEnabled
+                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                    : 'bg-white border-gray-200 text-gray-700'
+                }`}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Vendor Lanes
+              </button>
+            )}
+
+            {/* Round-up Button */}
+            <button
+              onClick={() => setShowRoundUp(true)}
+              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Round-Up
+            </button>
+
+            <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+              <summary className="cursor-pointer select-none text-sm text-gray-700">Legend</summary>
+              <div className="mt-2 grid gap-1 text-xs text-gray-600">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 rounded bg-green-500" />
+                  <span>On-site (PLV) (no vendor or on-site)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
+                  <span>Vendor lane (off-site)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-3 w-3 text-red-600" />
+                  <span>Overdue promise</span>
+                </div>
+                <div className="text-[11px] text-gray-500">
+                  Drop onto a time slot to set minutes (5-min increments) or into a vendor lane to
+                  set vendor.
+                </div>
+              </div>
+            </details>
+          </div>
         </div>
 
-        {/* Quick Filters - Updated to use original data for counts */}
-        <QuickFilters
-          filters={filters}
-          onFiltersChange={setFilters}
-          jobCounts={{
-            today: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
-              (j) => {
-                const jobDate = new Date(j?.scheduled_start_time)
-                const today = new Date()
-                return jobDate?.toDateString() === today?.toDateString()
-              }
-            )?.length,
-            inProgress: [...originalJobs, ...originalOnSiteJobs]?.filter(
-              (j) => j?.job_status === 'in_progress'
-            )?.length,
-            overdue: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
-              (j) => isOverdue(getPromiseValue(j))
-            )?.length,
-            noShow: [...originalJobs, ...originalOnSiteJobs]?.filter(
-              (j) => j?.job_status === 'no_show'
-            )?.length,
-            completed: [...originalJobs, ...originalOnSiteJobs]?.filter(
-              (j) => j?.job_status === 'completed'
-            )?.length,
-          }}
-        />
+        {/* Navigation and Filters */}
+        <div className="flex items-center justify-between mt-6">
+          {/* Updated Date Navigation to handle month view */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => {
+                const newDate = new Date(currentDate)
+                if (viewMode === 'month') {
+                  newDate?.setMonth(newDate?.getMonth() - 1)
+                } else if (viewMode === 'week') {
+                  newDate?.setDate(newDate?.getDate() - 7)
+                } else {
+                  newDate?.setDate(newDate?.getDate() - 1)
+                }
+                setCurrentDate(newDate)
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
 
-        {/* Main Content */}
-        <div className="flex h-screen">
-          {/* Promised Queue Sidebar - Hide for month view */}
-          {viewMode !== 'month' && (
-            <PromisedQueue
-              jobs={needsSchedulingJobs}
-              onJobClick={promisedQueueClick}
-              onDragStart={handleDragStart}
-              onComplete={(job) => handleCompleteJob(job)}
-              onReopen={(job) => handleReopenJob(job)}
-              isStatusInFlight={isStatusInFlight}
-              loading={loading}
-            />
-          )}
+            <div className="text-lg font-medium">
+              {viewMode === 'month'
+                ? currentDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                : viewMode === 'week'
+                  ? `Week of ${currentDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                  : currentDate?.toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+            </div>
 
-          {/* Calendar View */}
-          <div className={`flex-1 p-4 ${viewMode === 'month' ? 'w-full' : ''}`}>
-            {loadError ? (
-              <div
-                role="alert"
-                className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"
+            <button
+              onClick={() => {
+                const newDate = new Date(currentDate)
+                if (viewMode === 'month') {
+                  newDate?.setMonth(newDate?.getMonth() + 1)
+                } else if (viewMode === 'week') {
+                  newDate?.setDate(newDate?.getDate() + 7)
+                } else {
+                  newDate?.setDate(newDate?.getDate() + 1)
+                }
+                setCurrentDate(newDate)
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
+            >
+              Today
+            </button>
+
+            {viewMode !== 'month' && (
+              <button
+                onClick={handleJumpToNextScheduled}
+                disabled={jumpLoading}
+                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+                title="Jump to the next scheduled job"
               >
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="text-sm">
-                    <span className="font-medium">Calendar didn’t load.</span>{' '}
-                    <span className="text-amber-800">{String(loadError)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => loadCalendarData()}
-                    className="h-8 rounded-md border border-amber-300 bg-white px-3 text-sm font-medium text-amber-900 hover:bg-amber-100"
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            ) : null}
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
-                {viewMode === 'month' ? (
-                  renderMonthView()
-                ) : filteredJobs?.length + filteredOnSiteJobs?.length === 0 &&
-                  (needsSchedulingJobsInView?.length || 0) === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-                    <div className="text-lg font-semibold text-gray-900">
-                      No jobs this {viewMode === 'day' ? 'day' : 'week'}.
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Try jumping forward to the next scheduled job.
-                    </div>
-                    <div className="mt-4 flex items-center gap-3">
-                      <button
-                        onClick={handleGoToNextRangeWithJobs}
-                        disabled={jumpLoading}
-                        className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-gray-800 disabled:opacity-50"
-                      >
-                        {jumpLoading
-                          ? 'Finding…'
-                          : `Go to next ${viewMode === 'day' ? 'day' : 'week'} with jobs`}
-                      </button>
-                      {vendorLanesEnabled && (
-                        <button
-                          onClick={() => setShowEmptyLanes((v) => !v)}
-                          className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
-                        >
-                          {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          if (SNAPSHOT_ON) {
-                            navigate('/currently-active-appointments?window=all_day')
-                            return
-                          }
+                {jumpLoading ? 'Finding…' : 'Jump to Next Scheduled'}
+              </button>
+            )}
+          </div>
 
-                          toast?.info(
-                            'All-day view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
-                          )
-                          navigate('/currently-active-appointments')
-                        }}
-                        className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
-                      >
-                        Go to All-day
-                      </button>
-                    </div>
+          {/* Search */}
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search stock #, phone, customer..."
+                value={filters?.searchQuery}
+                onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e?.target?.value }))}
+                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-80"
+              />
+            </div>
+          </div>
+        </div>
+
+        {!isEmbedded && (
+          <div className="mt-4">
+            <CalendarViewTabs />
+          </div>
+        )}
+      </div>
+
+      {/* Quick Filters - Updated to use original data for counts */}
+      <QuickFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        jobCounts={{
+          today: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
+            (j) => {
+              const jobDate = new Date(j?.scheduled_start_time)
+              const today = new Date()
+              return jobDate?.toDateString() === today?.toDateString()
+            }
+          )?.length,
+          inProgress: [...originalJobs, ...originalOnSiteJobs]?.filter(
+            (j) => j?.job_status === 'in_progress'
+          )?.length,
+          overdue: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
+            (j) => isOverdue(getPromiseValue(j))
+          )?.length,
+          noShow: [...originalJobs, ...originalOnSiteJobs]?.filter(
+            (j) => j?.job_status === 'no_show'
+          )?.length,
+          completed: [...originalJobs, ...originalOnSiteJobs]?.filter(
+            (j) => j?.job_status === 'completed'
+          )?.length,
+        }}
+      />
+
+      {/* Main Content */}
+      <div className="flex h-screen">
+        {/* Promised Queue Sidebar - Hide for month view */}
+        {viewMode !== 'month' && (
+          <PromisedQueue
+            jobs={needsSchedulingJobs}
+            onJobClick={promisedQueueClick}
+            onDragStart={handleDragStart}
+            onComplete={(job) => handleCompleteJob(job)}
+            onReopen={(job) => handleReopenJob(job)}
+            isStatusInFlight={isStatusInFlight}
+            loading={loading}
+          />
+        )}
+
+        {/* Calendar View */}
+        <div className={`flex-1 p-4 ${viewMode === 'month' ? 'w-full' : ''}`}>
+          {loadError ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"
+            >
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="text-sm">
+                  <span className="font-medium">Calendar didn’t load.</span>{' '}
+                  <span className="text-amber-800">{String(loadError)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadCalendarData()}
+                  className="h-8 rounded-md border border-amber-300 bg-white px-3 text-sm font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
+              {viewMode === 'month' ? (
+                renderMonthView()
+              ) : filteredJobs?.length + filteredOnSiteJobs?.length === 0 &&
+                (needsSchedulingJobsInView?.length || 0) === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+                  <div className="text-lg font-semibold text-gray-900">
+                    No jobs this {viewMode === 'day' ? 'day' : 'week'}.
                   </div>
-                ) : viewMode === 'day' ? (
-                  renderWeekView()
-                ) : vendorLanesEnabled ? (
-                  <div className="h-full">
-                    <div className="flex items-center justify-end px-4 py-3 border-b border-gray-100">
+                  <div className="text-sm text-gray-600 mt-1">
+                    Try jumping forward to the next scheduled job.
+                  </div>
+                  <div className="mt-4 flex items-center gap-3">
+                    <button
+                      onClick={handleGoToNextRangeWithJobs}
+                      disabled={jumpLoading}
+                      className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {jumpLoading
+                        ? 'Finding…'
+                        : `Go to next ${viewMode === 'day' ? 'day' : 'week'} with jobs`}
+                    </button>
+                    {vendorLanesEnabled && (
                       <button
                         onClick={() => setShowEmptyLanes((v) => !v)}
-                        className="text-sm text-gray-700 hover:text-gray-900"
+                        className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
                       >
                         {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
                       </button>
-                    </div>
-                    <div className="p-4">{renderVendorLanes()}</div>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (SNAPSHOT_ON) {
+                          navigate('/currently-active-appointments?window=all_day')
+                          return
+                        }
+
+                        toast?.info(
+                          'All-day view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
+                        )
+                        navigate('/currently-active-appointments')
+                      }}
+                      className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
+                    >
+                      Go to All-day
+                    </button>
                   </div>
-                ) : (
-                  renderWeekView()
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              ) : viewMode === 'day' ? (
+                renderWeekView()
+              ) : vendorLanesEnabled ? (
+                <div className="h-full">
+                  <div className="flex items-center justify-end px-4 py-3 border-b border-gray-100">
+                    <button
+                      onClick={() => setShowEmptyLanes((v) => !v)}
+                      className="text-sm text-gray-700 hover:text-gray-900"
+                    >
+                      {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
+                    </button>
+                  </div>
+                  <div className="p-4">{renderVendorLanes()}</div>
+                </div>
+              ) : (
+                renderWeekView()
+              )}
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Job Details Drawer */}
-        <JobDrawer
-          job={selectedJob}
-          isOpen={showDrawer}
-          onClose={() => setShowDrawer(false)}
-          onStatusUpdate={handleJobStatusUpdate}
-        />
+      {/* Job Details Drawer */}
+      <JobDrawer
+        job={selectedJob}
+        isOpen={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        onStatusUpdate={handleJobStatusUpdate}
+      />
 
-        {/* Round-up Modal - Updated to use filtered data */}
-        <RoundUpModal
-          isOpen={showRoundUp}
-          onClose={() => setShowRoundUp(false)}
-          jobs={filteredJobs}
-          type={roundUpType}
-          onTypeChange={setRoundUpType}
-          onComplete={(job) => handleCompleteJob(job)}
-          onReopen={(job) => handleReopenJob(job)}
-          isStatusInFlight={isStatusInFlight}
-        />
+      {/* Round-up Modal - Updated to use filtered data */}
+      <RoundUpModal
+        isOpen={showRoundUp}
+        onClose={() => setShowRoundUp(false)}
+        jobs={filteredJobs}
+        type={roundUpType}
+        onTypeChange={setRoundUpType}
+        onComplete={(job) => handleCompleteJob(job)}
+        onReopen={(job) => handleReopenJob(job)}
+        isStatusInFlight={isStatusInFlight}
+      />
     </div>
   )
 
