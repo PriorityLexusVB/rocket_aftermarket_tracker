@@ -115,9 +115,9 @@ For each unchecked item in TRACK A or TRACK D:
   - Accept: queue sidebar with unscheduled + needs time + overdue (no duplicates); promise items are all-day; drag/click schedule converts promise -> scheduled; vendor lane controls simplified; legend moved to popover.
   - Notes: c279827 - Added unscheduled queue + needs time/overdue toggles; PROMISE badges; simplified lane controls.
 
-- [ ] D2 List View (Agenda)
+- [x] D2 List View (Agenda)
   - Accept: grouped by date with All-day (Promises) and Scheduled (Timed); row click opens drawer when flag ON; link clutter removed in favor of row click + ⋯ menu; reschedule paths avoid bouncing to empty list (prefer drawer when flag ON).
-  - Notes:
+  - Notes: ff453df - Grouped agenda by All-day vs Scheduled; row action menu; focus opens drawer when enabled.
 
 - [ ] D3 Calendar View (Overview)
   - Accept: quick actions panel removed; daily counts shown (promises/scheduled/overdue); day click drills down to Board Day by default.
