@@ -107,9 +107,9 @@ For each unchecked item in TRACK A or TRACK D:
 
 ## TRACK D — SPEC COMPLETION (E–H + QA/Rollout)
 
-- [ ] D0 Remove duplicate chrome when embedded in CalendarShell
+- [x] D0 Remove duplicate chrome when embedded in CalendarShell
   - Accept: when unified shell is ON and embedded=true, embedded views suppress their own header/search/quick-actions so the shell header is the single header.
-  - Notes:
+  - Notes: 1e40166 - Suppressed embedded header/search/quick filters in board/list/calendar views under unified shell.
 
 - [ ] D1 Board View (Dispatch / Lanes)
   - Accept: queue sidebar with unscheduled + needs time + overdue (no duplicates); promise items are all-day; drag/click schedule converts promise -> scheduled; vendor lane controls simplified; legend moved to popover.
