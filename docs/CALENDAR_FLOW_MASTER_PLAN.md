@@ -138,3 +138,35 @@ For each unchecked item in TRACK A or TRACK D:
 - [x] D6 Rollout Notes (docs only)
   - Accept: flag notes, enable internal/DC tenant first, verify no regressions, note removal of deprecated routes/buttons after adoption.
   - Notes: CALENDAR_FLOW_ROLLOUT_NOTES.md - Added rollout steps and flag guidance.
+
+## TRACK E — “Complete Included Set” Items 6–8 (Engine options, Design toolkit, Micro-interactions)
+
+- [ ] E6 Calendar engine decision + spike harness
+  - Deliverables:
+    - ADR doc evaluating FullCalendar Scheduler vs DayPilot vs current stack
+    - Clear go/no-go criteria (resource lanes, external drag, resize, perf, a11y, cost)
+    - A minimal “spike harness” plan (NOT a rewrite) describing how we’d plug an engine in behind an adapter
+  - IMPORTANT: do NOT add FullCalendar/DayPilot deps in this track unless you can do it as a no-risk, optional spike that does not touch production code paths.
+
+- [ ] E7 Design toolkit + tokens + checklists (design.dev mapping)
+  - Deliverables:
+    - docs/DESIGN_TOOLKIT_CALENDAR.md with links + how-to steps:
+      - Grid Area Mapper (3-pane layout)
+      - Z-index visualizer (popovers/sticky headers)
+      - Contrast checker / OKLCH converter (dense status colors)
+      - CSS loaders (optional)
+      - Tokens guide
+    - Minimal token file in repo (no breaking changes):
+      - docs/design-tokens/calendar-tokens.md AND/OR src/styles/calendar-tokens.css (not necessarily applied globally yet)
+    - A short “UI QA checklist” for calendar overlays/z-index/contrast.
+
+- [ ] E8 Micro-interactions (state clarity only)
+  - Deliverables:
+    - Implement minimal, non-decorative micro-feedback for:
+      - “saved”
+      - “moved”
+      - “conflict resolved” (if conflict warnings exist; if not, skip this state)
+    - Must respect prefers-reduced-motion
+    - Must be subtle and time-boxed (e.g., 300–600ms)
+    - Must not animate constantly
+    - Must be flag-gated (prefer calendar_unified_shell OR add VITE_FF_CALENDAR_MICRO_INTERACTIONS)
