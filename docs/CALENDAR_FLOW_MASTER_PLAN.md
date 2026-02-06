@@ -119,9 +119,9 @@ For each unchecked item in TRACK A or TRACK D:
   - Accept: grouped by date with All-day (Promises) and Scheduled (Timed); row click opens drawer when flag ON; link clutter removed in favor of row click + ⋯ menu; reschedule paths avoid bouncing to empty list (prefer drawer when flag ON).
   - Notes: ff453df - Grouped agenda by All-day vs Scheduled; row action menu; focus opens drawer when enabled.
 
-- [ ] D3 Calendar View (Overview)
+- [x] D3 Calendar View (Overview)
   - Accept: quick actions panel removed; daily counts shown (promises/scheduled/overdue); day click drills down to Board Day by default.
-  - Notes:
+  - Notes: f8aa373 - Removed Quick Actions; added daily counts and board-day drilldown.
 
 - [ ] D4 Data Consistency (Deals missing but Calendar has jobs)
   - Accept: Deals and Calendar use consistent tenant/location filters; orphan recovery banner with actions; mismatch banner when deals list is empty but calendar has items in same tenant/range.
