@@ -90,6 +90,10 @@ Rules:
 
 - switching calendar libraries
 
+## Decision Log
+
+- Considered FullCalendar Scheduler/DayPilot; stayed on current stack to avoid a rewrite. Revisit only if resource-timeline limits are hit.
+
 ## Autopilot loop (MANDATORY)
 
 For each unchecked item in TRACK A or TRACK D:
