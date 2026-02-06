@@ -34,6 +34,7 @@ import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
+import { getEventColors } from '@/utils/calendarColors'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const LOAD_TIMEOUT_MS = 15000
@@ -89,6 +90,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   const isEmbedded = embedded === true
   const showTitleTooltips = unifiedShellEnabled || isEmbedded
   const showDetailPopovers = unifiedShellEnabled || isEmbedded
+  const useUnifiedColors = unifiedShellEnabled || isEmbedded
   const shellRange = shellState?.range
 
   const resolveShellViewMode = (range) => {
@@ -753,19 +755,29 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
                   {/* Jobs for this day */}
                   <div className="space-y-1">
-                    {day?.jobs?.slice(0, 2)?.map((job) => (
-                      <div
-                        key={job?.calendar_key || job?.id}
-                        className={`
-                          text-xs p-1 rounded cursor-pointer truncate
-                          ${!job?.vendor_id || job?.location === 'on_site' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-orange-100 text-orange-800 border border-orange-200'}
-                        `}
-                        onClick={() => handleJobClick(job)}
-                        title={`${job?.job_number} - ${job?.title}`}
-                      >
-                        {job?.job_number?.split('-')?.pop()}
-                      </div>
-                    ))}
+                    {day?.jobs?.slice(0, 2)?.map((job) => {
+                      const isOnSite = !job?.vendor_id || job?.location === 'on_site'
+                      const serviceType = isOnSite ? 'onsite' : 'vendor'
+                      const dayJobColors = useUnifiedColors
+                        ? getEventColors(serviceType, job?.job_status)
+                        : null
+                      const dayJobClass = useUnifiedColors
+                        ? dayJobColors?.className || ''
+                        : isOnSite
+                          ? 'bg-green-100 text-green-800 border-green-200'
+                          : 'bg-orange-100 text-orange-800 border-orange-200'
+
+                      return (
+                        <div
+                          key={job?.calendar_key || job?.id}
+                          className={`text-xs p-1 rounded cursor-pointer truncate border ${dayJobClass}`}
+                          onClick={() => handleJobClick(job)}
+                          title={`${job?.job_number} - ${job?.title}`}
+                        >
+                          {job?.job_number?.split('-')?.pop()}
+                        </div>
+                      )
+                    })}
                     {day?.jobs?.length > 2 && (
                       <div className="text-xs text-gray-500 text-center">
                         +{day?.jobs?.length - 2} more
@@ -794,9 +806,28 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
     const jobNumber = job?.job_number?.split('-')?.pop()
     const titleText = [jobNumber, job?.title].filter(Boolean).join(' • ')
-    const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
-    const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
-    const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
+    const serviceType = isOnSite ? 'onsite' : 'vendor'
+    const unifiedColors = useUnifiedColors ? getEventColors(serviceType, job?.job_status) : null
+    const chipBg = useUnifiedColors
+      ? unifiedColors?.bg || 'bg-blue-100'
+      : isOnSite
+        ? 'bg-green-50'
+        : 'bg-orange-50'
+    const chipBorder = useUnifiedColors
+      ? unifiedColors?.border || 'border-blue-300'
+      : isOnSite
+        ? 'border-green-200'
+        : 'border-orange-200'
+    const chipHoverBorder = useUnifiedColors
+      ? serviceType === 'onsite'
+        ? 'hover:border-blue-300'
+        : 'hover:border-purple-300'
+      : isOnSite
+        ? 'hover:border-green-300'
+        : 'hover:border-orange-300'
+    const chipText = useUnifiedColors
+      ? unifiedColors?.text || 'text-blue-900'
+      : 'text-gray-900'
     const rawStatus = String(job?.job_status || '').toLowerCase()
     const overdue = isOverdue(
       job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
@@ -842,7 +873,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
         aria-describedby={popoverId}
         className={`
           group relative rounded-lg border ${densityClasses} ${densityMargin} cursor-pointer transition-all duration-200 hover:shadow-md
-          ${chipBg} ${chipBorder} ${chipHoverBorder} text-gray-900
+          ${chipBg} ${chipBorder} ${chipHoverBorder} ${chipText}
           ${containerClassName}
         `}
         style={containerStyle}
