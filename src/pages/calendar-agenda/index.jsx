@@ -124,173 +124,56 @@ function zonedStartOfDay(date, timeZone) {
 
 function zonedStartOfNextDay(date, timeZone, days = 1) {
   const start = zonedStartOfDay(date, timeZone)
-  const probe = new Date(start.getTime() + days * 24 * 60 * 60 * 1000)
-  return zonedStartOfDay(probe, timeZone)
-}
+        {groups.map(([dateKey, bucket]) => {
+          const allDayRows = bucket?.allDay || []
+          const scheduledRows = bucket?.scheduled || []
 
-function dateKeyToNoonUtcDate(dateKey) {
-  if (!dateKey) return null
-  const m = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!m) return null
-  const year = Number(m[1])
-  const month = Number(m[2])
-  const day = Number(m[3])
-  if (!year || !month || !day) return null
-  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0))
-}
+          return (
+            <section
+              key={dateKey}
+              aria-label={`Appointments for ${dateKey}`}
+              className="space-y-3"
+            >
+              <div
+                className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${
+                  isEmbedded ? 'top-16' : 'top-[5rem]'
+                }`}
+              >
+                <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
+                  {formatAgendaDayHeader(dateKey)}
+                </h2>
+              </div>
 
-function formatAgendaDayHeader(dateKey) {
-  const d = dateKeyToNoonUtcDate(dateKey)
-  if (!d) return String(dateKey)
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ,
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  }).format(d)
-}
+              {allDayRows.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase text-slate-500">
+                    All-day (Promises)
+                  </div>
+                  <ul
+                    className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                    role="list"
+                  >
+                    {allDayRows.map(renderAgendaRow)}
+                  </ul>
+                </div>
+              )}
 
-function mapShellRangeToAgenda(range) {
-  const key = String(range || '').toLowerCase()
-  if (key === 'day') return 'today'
-  if (key === 'week' || key === 'next7') return 'next7days'
-  if (key === 'month' || key === 'next30') return 'all'
-  return 'all'
-}
-
-export function getEffectiveScheduleWindow(job) {
-  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
-  const scheduledParts = parts
-    .filter((p) => p?.scheduled_start_time)
-    .sort((a, b) => String(a.scheduled_start_time).localeCompare(String(b.scheduled_start_time)))
-
-  const start = scheduledParts?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
-  const end = scheduledParts?.[0]?.scheduled_end_time || job?.scheduled_end_time || start || null
-
-  return { start, end }
-}
-
-// Derive filtered list
-export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: nowOverride } = {}) {
-  const now = nowOverride instanceof Date ? nowOverride : new Date()
-  const rangeStart = zonedStartOfDay(now, TZ)
-  const rangeEnd =
-    dateRange === 'today'
-      ? zonedStartOfNextDay(now, TZ, 1)
-      : dateRange === 'next3days'
-        ? zonedStartOfNextDay(now, TZ, 3)
-        : dateRange === 'next7days'
-          ? zonedStartOfNextDay(now, TZ, 7)
-          : null
-
-  return rows.filter((r) => {
-    const raw = r?.raw || r
-    const jobStatus = raw?.job_status ?? r?.job_status
-    if (status && jobStatus !== status) return false
-
-    const vendorId = r?.vendorId ?? r?.vendor_id ?? r?.raw?.vendor_id
-    if (vendorFilter && vendorId !== vendorFilter) return false
-
-    const { start: apptStartIso, end: apptEndIso } = r?.scheduledStart
-      ? { start: r.scheduledStart, end: r.scheduledEnd }
-      : getEffectiveScheduleWindow(r)
-
-    // For day-based views, promised_date is treated as a pure day (no timezone shifting).
-    const promisedVal = raw?.promised_date ?? r?.promisedAt ?? r?.promised_date ?? null
-    const promisedKey = promisedVal ? String(promisedVal).slice(0, 10) : null
-
-    // If it has neither a schedule window nor a promised date, it can't be placed on the Agenda.
-    if (!apptStartIso && !promisedKey) return false
-
-    // Date range filter
-    if (rangeStart && rangeEnd) {
-      if (apptStartIso) {
-        const apptStart = new Date(apptStartIso)
-        const apptEnd = apptEndIso ? new Date(apptEndIso) : apptStart
-        if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false
-
-        // Overlap: appt_start < rangeEnd AND appt_end > rangeStart
-        if (!(apptStart < rangeEnd && apptEnd > rangeStart)) return false
-      } else if (promisedKey) {
-        const startKey = toYmdInTz(rangeStart, TZ)
-        const endKey = toYmdInTz(rangeEnd, TZ)
-        if (!startKey || !endKey) return false
-        if (promisedKey < startKey) return false
-        if (promisedKey >= endKey) return false
-      }
-    }
-
-    if (q) {
-      const needle = q.toLowerCase()
-      const hay = [
-        r?.raw?.title ?? r?.title,
-        r?.raw?.description ?? r?.description,
-        r?.raw?.job_number ?? r?.job_number,
-        r?.raw?.vehicle?.owner_name ?? r?.vehicle?.owner_name,
-        r?.customerName,
-        r?.vehicleLabel,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      if (!hay.includes(needle)) return false
-    }
-    return true
-  })
-}
-
-export function getAgendaRowClickHandler({ dealDrawerEnabled, onOpenDealDrawer, navigate, deal }) {
-  return () => {
-    if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
-      onOpenDealDrawer(deal)
-      return
-    }
-
-    const dealId = deal?.id
-    if (dealId && typeof navigate === 'function') {
-      navigate(`/deals/${dealId}/edit`)
-    }
-  }
-}
-
-export default function CalendarAgenda({ embedded = false, shellState, onOpenDealDrawer } = {}) {
-  const { orgId, session, userProfile, loading: authLoading, profileLoading } = useAuth()
-  const toast = useToast()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const isEmbedded = embedded === true
-  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
-  const suppressChrome = isEmbedded && unifiedShellEnabled
-  const showTitleTooltips = isEmbedded
-  const showDetailPopovers = isEmbedded
-  const shellRange = shellState?.range
-  const dealDrawerEnabled = isCalendarDealDrawerEnabled()
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(null)
-  const [jobs, setJobs] = useState([])
-  const [conflicts, setConflicts] = useState(new Map()) // jobId -> boolean
-
-  const isDeliveryCoordinator = useMemo(() => {
-    const dept = String(userProfile?.department || '')
-      .trim()
-      .toLowerCase()
-    return dept === 'delivery coordinator'
-  }, [userProfile?.department])
-
-  const authIsLoading = authLoading || profileLoading
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.title = isEmbedded ? 'Calendar' : 'Calendar — Agenda'
-    }
-  }, [isEmbedded])
-
-  // Initialize filters from URL params, with localStorage fallback
-  const [q, setQ] = useState(() => {
-    const urlParam = new URLSearchParams(location.search).get('q')
-    if (urlParam) return urlParam
-    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_q') || '' : ''
-  })
+              {scheduledRows.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-semibold uppercase text-slate-500">
+                    Scheduled (Timed)
+                  </div>
+                  <ul
+                    className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                    role="list"
+                  >
+                    {scheduledRows.map(renderAgendaRow)}
+                  </ul>
+                </div>
+              )}
+            </section>
+          )
+        })}
   const [debouncedQ, setDebouncedQ] = useState(q)
   const [status, setStatus] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('status')
@@ -353,6 +236,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     [location.search]
   )
   const focusRef = useRef(null)
+  const focusOpenedRef = useRef(null)
 
   // Reschedule modal state
   const [rescheduleModal, setRescheduleModal] = useState({
@@ -531,17 +415,29 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach((j) => {
-      const promisedKey = j?.raw?.promised_date
-        ? String(j.raw.promised_date).slice(0, 10)
+      const raw = j?.raw || j
+      const promisedKey = raw?.promised_date
+        ? String(raw.promised_date).slice(0, 10)
         : j?.promisedAt
           ? String(j.promisedAt).slice(0, 10)
           : null
 
-      const key = j?.scheduledStart
-        ? toDateKey(j.scheduledStart)
-        : promisedKey || toDateKey(getEffectiveScheduleWindow(j?.raw || j)?.start)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(j)
+      const scheduledWindow = j?.scheduledStart
+        ? { start: j.scheduledStart }
+        : getEffectiveScheduleWindow(raw)
+      const scheduledStart = scheduledWindow?.start
+      const hasTime = !!scheduledStart
+
+      const key = hasTime
+        ? toDateKey(scheduledStart)
+        : promisedKey || toDateKey(scheduledWindow?.start)
+
+      if (!key) return
+
+      const bucket = map.get(key) || { allDay: [], scheduled: [] }
+      if (hasTime) bucket.scheduled.push(j)
+      else bucket.allDay.push(j)
+      map.set(key, bucket)
     })
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [filtered])
@@ -556,6 +452,20 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       return () => clearTimeout(t)
     }
   }, [focusId])
+
+  useEffect(() => {
+    if (!focusId) return
+    if (!dealDrawerEnabled || typeof onOpenDealDrawer !== 'function') return
+    if (focusOpenedRef.current === focusId) return
+
+    const match = (jobs || []).find(
+      (row) => String(row?.id || row?.raw?.id) === String(focusId)
+    )
+    if (!match) return
+
+    onOpenDealDrawer(match?.raw || match)
+    focusOpenedRef.current = focusId
+  }, [dealDrawerEnabled, focusId, jobs, onOpenDealDrawer])
 
   function handleReschedule(job) {
     const raw = job?.raw || job
@@ -645,6 +555,154 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         toast?.error?.('Could not reopen')
       }
     })
+  }
+
+  const renderAgendaRow = (r) => {
+    const focused = r.id === focusId
+    const hasConflict = conflicts.get(r.id)
+    const raw = r?.raw || r
+    const { start, end } = r?.scheduledStart
+      ? { start: r.scheduledStart, end: r.scheduledEnd }
+      : getEffectiveScheduleWindow(raw)
+    const timeRange = start ? formatScheduleRange(start, end) : null
+    const title = raw?.title || raw?.job_number
+    const titleText = title || r.id || 'Appointment'
+    const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
+    const popoverLines = showDetailPopovers
+      ? [
+          timeRange ? `Time: ${timeRange}` : 'Time: All-day',
+          customerName ? `Customer: ${customerName}` : null,
+          vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+        ]
+      : []
+    const vehicleLabel =
+      r?.vehicleLabel ||
+      `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
+    const customerName = r?.customerName || raw?.customer_name || raw?.vehicle?.owner_name || ''
+    const stock = raw?.vehicle?.stock_number || ''
+    const ops = summarizeOpCodesFromParts(raw?.job_parts, 6)
+
+    const handleRowClick = getAgendaRowClickHandler({
+      dealDrawerEnabled,
+      onOpenDealDrawer,
+      navigate,
+      deal: raw,
+    })
+
+    return (
+      <li
+        key={r?.calendarKey || r?.calendar_key || r.id}
+        ref={focused ? focusRef : null}
+        tabIndex={0}
+        aria-label={`Appointment ${titleText}`}
+        aria-describedby={popoverId}
+        className={`group relative grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+          focused ? 'bg-amber-50' : ''
+        }`}
+        onClick={handleRowClick}
+      >
+        {/* Time column (blank for all-day) */}
+        <div className="w-28 text-xs font-mono tabular-nums text-slate-600">
+          {timeRange ? (
+            <span className="truncate" title={timeRange}>
+              {timeRange}
+            </span>
+          ) : (
+            <span className="text-slate-400">All-day</span>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <div
+            className={`font-medium flex items-center gap-2 ${showTitleTooltips ? 'min-w-0' : ''}`}
+          >
+            <span
+              className={showTitleTooltips ? 'truncate' : ''}
+              title={showTitleTooltips ? titleText : undefined}
+            >
+              {titleText}
+            </span>
+            {hasConflict && (
+              <span
+                className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"
+                title="Potential scheduling conflict"
+                aria-label="Potential scheduling conflict"
+              >
+                Conflict
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-slate-500 truncate">
+            {[customerName, vehicleLabel, stock ? `Stock ${stock}` : null]
+              .filter(Boolean)
+              .join(' • ')}
+          </div>
+          {ops.tokens.length ? (
+            <div className="mt-1 flex flex-wrap items-center gap-1" aria-label="Products">
+              {ops.tokens.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                  title={t}
+                >
+                  {t}
+                </span>
+              ))}
+              {ops.extraCount ? (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  +{ops.extraCount}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-end">
+          <details className="relative">
+            <summary
+              onClick={(event) => event.stopPropagation()}
+              className="list-none rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              aria-label="More actions"
+            >
+              ⋯
+            </summary>
+            <div className="absolute right-0 z-20 mt-2 w-40 rounded-md border border-slate-200 bg-white p-1 text-xs text-slate-700 shadow-lg">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleReschedule(r)
+                }}
+                className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+              >
+                Reschedule
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  return String(r?.job_status || '').toLowerCase() === 'completed'
+                    ? handleReopen(r)
+                    : handleComplete(r)
+                }}
+                disabled={isStatusInFlight(r?.id)}
+                className={`w-full rounded px-2 py-1 text-left hover:bg-slate-100 ${
+                  isStatusInFlight(r?.id) ? 'text-slate-300 cursor-not-allowed' : ''
+                }`}
+              >
+                {String(r?.job_status || '').toLowerCase() === 'completed'
+                  ? 'Reopen'
+                  : 'Complete'}
+              </button>
+            </div>
+          </details>
+        </div>
+
+        {showDetailPopovers ? (
+          <EventDetailPopover id={popoverId} title={titleText} lines={popoverLines} />
+        ) : null}
+      </li>
+    )
   }
 
   if (authIsLoading)
@@ -959,11 +1017,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     </div>
 
                     {showDetailPopovers ? (
-                      <EventDetailPopover
-                        id={popoverId}
-                        title={titleText}
-                        lines={popoverLines}
-                      />
+                      <EventDetailPopover id={popoverId} title={titleText} lines={popoverLines} />
                     ) : null}
                   </li>
                 )
