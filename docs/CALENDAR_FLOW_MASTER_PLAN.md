@@ -66,9 +66,9 @@ Rules:
   - Accept: stable mapping function; legend matches; contrast ok
   - Notes: c9f6cf9 - Aligned board month/chip colors with calendar color mapping in unified shell.
 
-- [ ] A6 URL-persisted search/filter state (q=)
+- [x] A6 URL-persisted search/filter state (q=)
   - Accept: query param roundtrip; shareable URL; debounced input; no loops
-  - Notes:
+  - Notes: 9cd3658 - Preserved q in calendar params and debounced embedded list URL sync.
 
 ## TRACK B — DEFER (DO NOT AUTO-RUN)
 - conflicts/buffers/overlap rules
