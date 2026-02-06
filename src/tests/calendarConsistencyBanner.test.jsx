@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import CalendarSchedulingCenter from '@/pages/calendar'
-import { getNeedsSchedulingPromiseItems, getScheduledJobsByDateRange } from '@/services/scheduleItemsService'
+import {
+  getNeedsSchedulingPromiseItems,
+  getScheduledJobsByDateRange,
+} from '@/services/scheduleItemsService'
 
 vi.mock('@/services/scheduleItemsService', () => ({
   getNeedsSchedulingPromiseItems: vi.fn(),

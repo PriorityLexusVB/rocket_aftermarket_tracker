@@ -12,9 +12,7 @@ vi.mock('@/pages/calendar', () => ({
 }))
 
 vi.mock('@/pages/calendar-flow-management-center', () => ({
-  default: (props) => (
-    <div data-testid="board-view" data-location={props.locationFilter || ''} />
-  ),
+  default: (props) => <div data-testid="board-view" data-location={props.locationFilter || ''} />,
 }))
 
 vi.mock('@/pages/calendar-agenda', () => ({
