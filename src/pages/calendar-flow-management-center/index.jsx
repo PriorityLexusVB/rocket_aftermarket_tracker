@@ -88,6 +88,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
+  const suppressChrome = isEmbedded && unifiedShellEnabled
   const showTitleTooltips = unifiedShellEnabled || isEmbedded
   const showDetailPopovers = unifiedShellEnabled || isEmbedded
   const useUnifiedColors = unifiedShellEnabled || isEmbedded
@@ -140,134 +141,138 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   useEffect(() => {
     if (!isEmbedded) return
     const nextMode = resolveShellViewMode(shellRange)
-    if (nextMode !== viewMode) setViewMode(nextMode)
-  }, [isEmbedded, shellRange, viewMode])
+      {/* Header */}
+      {!suppressChrome && (
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {unifiedShellEnabled ? 'Calendar' : 'Calendar Flow Management Center'}
+              </h1>
+              {!isEmbedded && (
+                <p className="text-gray-600">Visual scheduling and workflow management</p>
+              )}
+            </div>
 
-  const getViewStartDate = useCallback(() => {
-    const date = new Date(currentDate)
-    switch (viewMode) {
-      case 'day':
-        date?.setHours(0, 0, 0, 0)
-        return date
-      case 'week':
-        const dayOfWeek = date?.getDay()
-        const diffToMonday = (dayOfWeek + 6) % 7
-        date?.setDate(date?.getDate() - diffToMonday) // Monday start
-        date?.setHours(0, 0, 0, 0)
-        return date
-      case 'month':
-        date?.setDate(1) // First day of the month
-        date?.setHours(0, 0, 0, 0)
-        return date
-      default:
-        date?.setHours(0, 0, 0, 0)
-        return date
-    }
-  }, [currentDate, viewMode])
+            <div className="flex items-center space-x-4">
+              {/* Updated View Toggle - Replace Agenda with Month */}
+              {!isEmbedded && (
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('day')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'day' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Day
+                  </button>
+                  <button
+                    onClick={() => setViewMode('week')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'week' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Week
+                  </button>
+                  <button
+                    onClick={() => setViewMode('month')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'month' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Month
+                  </button>
+                </div>
+              )}
 
-  const getViewEndDate = useCallback(() => {
-    const date = getViewStartDate()
-    switch (viewMode) {
-      case 'day':
-        date?.setDate(date?.getDate() + 1)
-        return date
-      case 'week':
-        date?.setDate(date?.getDate() + 6) // Monday to Saturday
-        return date
-      case 'month':
-        // End-exclusive: first day of next month
-        date?.setMonth(date?.getMonth() + 1)
-        return date
-      default:
-        date?.setDate(date?.getDate() + 1)
-        return date
-    }
-  }, [getViewStartDate, viewMode])
+              {/* Vendor Lanes Toggle - Hide for month view */}
+              {viewMode !== 'month' && (
+                <button
+                  onClick={() => setVendorLanesEnabled(!vendorLanesEnabled)}
+                  className={`flex items-center px-4 py-2 rounded-lg border ${
+                    vendorLanesEnabled
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Vendor Lanes
+                </button>
+              )}
 
-  const viewDateKeys = useMemo(() => {
-    const start = getViewStartDate()
-    if (!start) return new Set()
+              {/* Round-up Button */}
+              <button
+                onClick={() => setShowRoundUp(true)}
+                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Round-Up
+              </button>
 
-    if (viewMode === 'day') {
-      const key = toEtDateKey(start)
-      return new Set(key ? [key] : [])
-    }
+              <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <summary className="cursor-pointer select-none text-sm text-gray-700">Legend</summary>
+                <div className="mt-2 grid gap-1 text-xs text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                    <span>On-site scheduled</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                    <span>Vendor scheduled</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500"></span>
+                    <span>Needs time</span>
+                  </div>
+                </div>
+              </details>
+            </div>
 
-    if (viewMode === 'week') {
-      const out = new Set()
-      for (let i = 0; i < 6; i++) {
-        const d = new Date(start)
-        d?.setDate(d?.getDate() + i)
-        const key = toEtDateKey(d)
-        if (key) out.add(key)
-      }
-      return out
-    }
+            {/* Search */}
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search stock #, phone, customer..."
+                  value={filters?.searchQuery}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e?.target?.value }))}
+                  className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-80"
+                />
+              </div>
+            </div>
+          </div>
 
-    return new Set()
-  }, [getViewStartDate, viewMode])
+          {!isEmbedded && (
+            <div className="mt-4">
+              <CalendarViewTabs />
+            </div>
+          )}
+        </div>
+      )}
 
-  const needsSchedulingJobs = useMemo(() => {
-    return (needsSchedulingItems || [])
-      .map((it) => {
-        const raw = it?.raw
-        if (!raw) return null
-
-        const promisedAt =
-          it?.promisedAt || raw?.next_promised_iso || raw?.promised_date || raw?.promisedAt || null
-
-        return {
-          ...raw,
-          calendar_key:
-            it?.calendarKey ||
-            it?.calendar_key ||
-            (it?.promisedAt ? `${raw?.id}::promise::${String(it.promisedAt).slice(0, 10)}` : null),
-          promisedAt,
-          next_promised_iso: raw?.next_promised_iso ?? promisedAt,
-          promised_date: raw?.promised_date ?? promisedAt,
-        }
-      })
-      .filter(Boolean)
-  }, [needsSchedulingItems])
-
-  const needsSchedulingJobsInView = useMemo(() => {
-    if (!needsSchedulingJobs.length) return []
-    if (!viewDateKeys || viewDateKeys.size === 0) return []
-
-    return needsSchedulingJobs.filter((job) => {
-      const key = toEtDateKey(getPromiseValue(job))
-      return !!(key && viewDateKeys.has(key))
-    })
-  }, [needsSchedulingJobs, viewDateKeys])
-
-  const loadCalendarData = useCallback(async () => {
-    if (tenantLoading || !orgId) {
-      setOriginalJobs([])
-      setOriginalOnSiteJobs([])
-      setNeedsSchedulingItems([])
-      setLoadError(null)
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    setLoadError(null)
-    try {
-      const startDate = getViewStartDate()
-      const endDate = getViewEndDate()
-
-      // Canonical scheduling truth: overlap window from calendar RPC, then hydrate job rows.
-      const { jobs: jobsData } = await withTimeout(
-        getScheduledJobsByDateRange({
-          rangeStart: startDate,
-          rangeEnd: endDate,
-          orgId,
-        }),
-        LOAD_TIMEOUT_MS,
-        { label: 'Flow Center scheduled load' }
-      )
-
-      const vendorJobs = jobsData?.filter((job) => job?.vendor_id)
-      const onSiteJobs = jobsData?.filter((job) => !job?.vendor_id)
+      {/* Quick Filters - Updated to use original data for counts */}
+      {!suppressChrome && (
+        <QuickFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          jobCounts={{
+            today: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
+              (j) => {
+                const jobDate = new Date(j?.scheduled_start_time)
+                const today = new Date()
+                return jobDate?.toDateString() === today?.toDateString()
+              }
+            )?.length,
+            inProgress: [...originalJobs, ...originalOnSiteJobs]?.filter(
+              (j) => j?.job_status === 'in_progress'
+            )?.length,
+            overdue: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
+              (j) => isOverdue(getPromiseValue(j))
+            )?.length,
+            noShow: [...originalJobs, ...originalOnSiteJobs]?.filter(
+              (j) => j?.job_status === 'no_show'
+            )?.length,
+            completed: [...originalJobs, ...originalOnSiteJobs]?.filter(
+              (j) => j?.job_status === 'completed'
+            )?.length,
+          }}
+        />
+      )}
 
       // Store original data separately
       setOriginalJobs(vendorJobs)

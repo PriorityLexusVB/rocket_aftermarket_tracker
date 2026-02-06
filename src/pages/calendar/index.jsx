@@ -153,6 +153,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
+  const suppressChrome = isEmbedded && unifiedShellEnabled
   const showTitleTooltips = isEmbedded && unifiedShellEnabled
   const showDetailPopovers = showTitleTooltips
   const shellDate = shellState?.date
@@ -1203,7 +1204,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
   // Main calendar view component with safe date handling
   const MainCalendarView = () => {
     const viewLabel = viewType === 'week' ? 'Weekly' : viewType === 'month' ? 'Monthly' : 'Daily'
-    const hideShellActions = isEmbedded && unifiedShellEnabled
+    const hideShellActions = suppressChrome
     const isEmptyRange = Array.isArray(jobs) && jobs.length === 0
     const emptyTitle =
       viewType === 'week'
@@ -1214,41 +1215,43 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
 
     return (
       <div className="p-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{viewLabel} Schedule</h1>
-            <p className="text-gray-600">{formatDisplayDate()}</p>
-            <div className="mt-2">
-              <CalendarLegend compact />
+        {!suppressChrome && (
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{viewLabel} Schedule</h1>
+              <p className="text-gray-600">{formatDisplayDate()}</p>
+              <div className="mt-2">
+                <CalendarLegend compact />
+              </div>
             </div>
+            {!hideShellActions && (
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => navigateDate(-1)}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  disabled={loading}
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                <button
+                  onClick={goToToday}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                >
+                  Today
+                </button>
+
+                <button
+                  onClick={() => navigateDate(1)}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  disabled={loading}
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            )}
           </div>
-          {!hideShellActions && (
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigateDate(-1)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                disabled={loading}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-
-              <button
-                onClick={goToToday}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-              >
-                Today
-              </button>
-
-              <button
-                onClick={() => navigateDate(1)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                disabled={loading}
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-        </div>
+        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4">
           <div className="min-w-0">
@@ -1316,7 +1319,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
           </div>
 
           <div className="space-y-4">
-            <CalendarLegend showStatuses />
+            {!suppressChrome && <CalendarLegend showStatuses />}
 
             {!hideShellActions && (
               <div className="bg-white p-4 rounded-lg shadow border">
@@ -1365,50 +1368,52 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
               </div>
             )}
 
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <h3 className="font-medium text-gray-900 mb-3">View Settings</h3>
-              <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    setViewType('day')
-                    setUrlState({ nextViewType: 'day', nextDate: currentDate })
-                  }}
-                  className={`w-full py-2 rounded transition-colors ${
-                    viewType === 'day'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Day View
-                </button>
-                <button
-                  onClick={() => {
-                    setViewType('week')
-                    setUrlState({ nextViewType: 'week', nextDate: currentDate })
-                  }}
-                  className={`w-full py-2 rounded transition-colors ${
-                    viewType === 'week'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Week View
-                </button>
-                <button
-                  onClick={() => {
-                    setViewType('month')
-                    setUrlState({ nextViewType: 'month', nextDate: currentDate })
-                  }}
-                  className={`w-full py-2 rounded transition-colors ${
-                    viewType === 'month'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Month View
-                </button>
+            {!suppressChrome && (
+              <div className="bg-white p-4 rounded-lg shadow border">
+                <h3 className="font-medium text-gray-900 mb-3">View Settings</h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setViewType('day')
+                      setUrlState({ nextViewType: 'day', nextDate: currentDate })
+                    }}
+                    className={`w-full py-2 rounded transition-colors ${
+                      viewType === 'day'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Day View
+                  </button>
+                  <button
+                    onClick={() => {
+                      setViewType('week')
+                      setUrlState({ nextViewType: 'week', nextDate: currentDate })
+                    }}
+                    className={`w-full py-2 rounded transition-colors ${
+                      viewType === 'week'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Week View
+                  </button>
+                  <button
+                    onClick={() => {
+                      setViewType('month')
+                      setUrlState({ nextViewType: 'month', nextDate: currentDate })
+                    }}
+                    className={`w-full py-2 rounded transition-colors ${
+                      viewType === 'month'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Month View
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

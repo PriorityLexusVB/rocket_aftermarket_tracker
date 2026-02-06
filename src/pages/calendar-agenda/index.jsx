@@ -17,7 +17,7 @@ import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import Navbar from '@/components/ui/Navbar'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
-import { isCalendarDealDrawerEnabled } from '@/config/featureFlags'
+import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -259,6 +259,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const navigate = useNavigate()
   const location = useLocation()
   const isEmbedded = embedded === true
+  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const suppressChrome = isEmbedded && unifiedShellEnabled
   const showTitleTooltips = isEmbedded
   const showDetailPopovers = isEmbedded
   const shellRange = shellState?.range
@@ -693,91 +695,93 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         ) : null}
 
         {/* Header with always-visible search and date range */}
-        <header className="relative z-30 space-y-3" aria-label="Agenda controls">
-          {!isEmbedded && <CalendarViewTabs />}
-          <div className="flex items-center gap-4 flex-wrap">
-            {!isEmbedded && (
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
-                <span className="text-sm font-medium text-gray-500">Agenda</span>
-              </div>
-            )}
-            <label className="sr-only" htmlFor="agenda-search">
-              Search appointments
-            </label>
-            <input
-              id="agenda-search"
-              name="agenda-search"
-              aria-label="Search appointments"
-              placeholder="Search"
-              className="h-9 w-64 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <label className="sr-only" htmlFor="agenda-date-range">
-              Filter by date range
-            </label>
-            <select
-              id="agenda-date-range"
-              name="agenda-date-range"
-              aria-label="Filter by date range"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-            >
-              <option value="all">All Dates</option>
-              <option value="today">Today</option>
-              <option value="next3days">Next 3 Days</option>
-              <option value="next7days">Next 7 Days</option>
-            </select>
-
-            <button
-              type="button"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-              aria-label="Show next 3 days"
-              onClick={() => {
-                setDateRange('next3days')
-              }}
-              title="Filter to the next 3 days"
-            >
-              Next 3 Days
-            </button>
-
-            {/* Filter toggle button */}
-            <button
-              onClick={() => setFiltersExpanded((prev) => !prev)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-              aria-expanded={filtersExpanded}
-              aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
-            >
-              Filters {filtersExpanded ? '▲' : '▼'}
-            </button>
-          </div>
-
-          {/* Collapsible filters panel */}
-          {filtersExpanded && (
-            <div className="flex items-center gap-4 flex-wrap rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-              <label className="sr-only" htmlFor="agenda-status">
-                Filter by status
+        {!suppressChrome && (
+          <header className="relative z-30 space-y-3" aria-label="Agenda controls">
+            {!isEmbedded && <CalendarViewTabs />}
+            <div className="flex items-center gap-4 flex-wrap">
+              {!isEmbedded && (
+                <div className="flex items-baseline gap-3">
+                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
+                  <span className="text-sm font-medium text-gray-500">Agenda</span>
+                </div>
+              )}
+              <label className="sr-only" htmlFor="agenda-search">
+                Search appointments
+              </label>
+              <input
+                id="agenda-search"
+                name="agenda-search"
+                aria-label="Search appointments"
+                placeholder="Search"
+                className="h-9 w-64 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+              <label className="sr-only" htmlFor="agenda-date-range">
+                Filter by date range
               </label>
               <select
-                id="agenda-status"
-                name="agenda-status"
-                aria-label="Filter by status"
+                id="agenda-date-range"
+                name="agenda-date-range"
+                aria-label="Filter by date range"
                 className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value)}
               >
-                <option value="">All Statuses</option>
-                <option value="pending">Booked (time TBD)</option>
-                <option value="scheduled">Booked (time set)</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="next3days">Next 3 Days</option>
+                <option value="next7days">Next 7 Days</option>
               </select>
-              {/* Note: vendor filter can be added here when vendor list is available */}
+
+              <button
+                type="button"
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+                aria-label="Show next 3 days"
+                onClick={() => {
+                  setDateRange('next3days')
+                }}
+                title="Filter to the next 3 days"
+              >
+                Next 3 Days
+              </button>
+
+              {/* Filter toggle button */}
+              <button
+                onClick={() => setFiltersExpanded((prev) => !prev)}
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                aria-expanded={filtersExpanded}
+                aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
+              >
+                Filters {filtersExpanded ? '▲' : '▼'}
+              </button>
             </div>
-          )}
-        </header>
+
+            {/* Collapsible filters panel */}
+            {filtersExpanded && (
+              <div className="flex items-center gap-4 flex-wrap rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                <label className="sr-only" htmlFor="agenda-status">
+                  Filter by status
+                </label>
+                <select
+                  id="agenda-status"
+                  name="agenda-status"
+                  aria-label="Filter by status"
+                  className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Booked (time TBD)</option>
+                  <option value="scheduled">Booked (time set)</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+                {/* Note: vendor filter can be added here when vendor list is available */}
+              </div>
+            )}
+          </header>
+        )}
 
         {groups.length === 0 && (
           <div role="status" aria-live="polite">
