@@ -127,9 +127,9 @@ For each unchecked item in TRACK A or TRACK D:
   - Accept: Deals and Calendar use consistent tenant/location filters; orphan recovery banner with actions; mismatch banner when deals list is empty but calendar has items in same tenant/range.
   - Notes: ac6c04d - Added location filter parity, orphan/mismatch banners, and consistency diagnostics.
 
-- [ ] D5 Testing / QA
+- [x] D5 Testing / QA
   - Accept: minimal automated coverage (Playwright if available, else Vitest/RTL) for /calendar load, view toggles header stability, old route redirects, drawer open, promise all-day behavior, mismatch banner gating; a11y focus trap + ESC + keyboard nav for toggles/menus.
-  - Notes:
+  - Notes: e922293 - Added RTL coverage for calendar location filter + mismatch banner gating.
 
 - [ ] D6 Rollout Notes (docs only)
   - Accept: flag notes, enable internal/DC tenant first, verify no regressions, note removal of deprecated routes/buttons after adoption.
