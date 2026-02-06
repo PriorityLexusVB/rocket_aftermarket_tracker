@@ -162,7 +162,7 @@ For each unchecked item in TRACK A or TRACK D:
     - A short “UI QA checklist” for calendar overlays/z-index/contrast.
   - Notes: 4af7a07 - Added design toolkit, tokens, and QA checklist.
 
-- [ ] E8 Micro-interactions (state clarity only)
+- [x] E8 Micro-interactions (state clarity only)
   - Deliverables:
     - Implement minimal, non-decorative micro-feedback for:
       - “saved”
@@ -172,3 +172,4 @@ For each unchecked item in TRACK A or TRACK D:
     - Must be subtle and time-boxed (e.g., 300–600ms)
     - Must not animate constantly
     - Must be flag-gated (prefer calendar_unified_shell OR add VITE_FF_CALENDAR_MICRO_INTERACTIONS)
+  - Notes: 8caa925 - Added micro flash class, gated feedback, and utility test.
