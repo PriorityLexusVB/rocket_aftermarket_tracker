@@ -86,6 +86,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
+  const showTitleTooltips = unifiedShellEnabled || isEmbedded
   const shellRange = shellState?.range
 
   const resolveShellViewMode = (range) => {
@@ -789,6 +790,8 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
     const containerStyle = options?.containerStyle || undefined
 
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
+    const jobNumber = job?.job_number?.split('-')?.pop()
+    const titleText = [jobNumber, job?.title].filter(Boolean).join(' • ')
     const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
     const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
     const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
@@ -847,8 +850,8 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
           <div className="flex items-center justify-between mb-1 gap-2">
             <div className="font-bold truncate flex items-center gap-2">
               <Car className="h-3 w-3 mr-1" />
-              <span className="truncate">
-                {job?.job_number?.split('-')?.pop()} • {job?.title}
+              <span className="truncate" title={showTitleTooltips ? titleText : undefined}>
+                {titleText}
               </span>
               {(job?.has_active_loaner || job?.loaner_id || job?.customer_needs_loaner) && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-800 whitespace-nowrap">

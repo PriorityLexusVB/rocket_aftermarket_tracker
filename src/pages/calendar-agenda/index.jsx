@@ -258,6 +258,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const navigate = useNavigate()
   const location = useLocation()
   const isEmbedded = embedded === true
+  const showTitleTooltips = isEmbedded
   const shellRange = shellState?.range
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const [loading, setLoading] = useState(true)
@@ -763,6 +764,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                   : getEffectiveScheduleWindow(raw)
                 const timeRange = start ? formatScheduleRange(start, end) : null
                 const title = raw?.title || raw?.job_number
+                const titleText = title || r.id || 'Appointment'
                 const vehicleLabel =
                   r?.vehicleLabel ||
                   `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
@@ -783,7 +785,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     key={r?.calendarKey || r?.calendar_key || r.id}
                     ref={focused ? focusRef : null}
                     tabIndex={0}
-                    aria-label={`Appointment ${title || r.id}`}
+                    aria-label={`Appointment ${titleText}`}
                     className={`grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
                     onClick={handleRowClick}
                   >
@@ -799,8 +801,15 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     </div>
 
                     <div className="min-w-0">
-                      <div className="font-medium truncate flex items-center gap-2">
-                        {title}
+                      <div
+                        className={`font-medium flex items-center gap-2 ${showTitleTooltips ? 'min-w-0' : ''}`}
+                      >
+                        <span
+                          className={showTitleTooltips ? 'truncate' : ''}
+                          title={showTitleTooltips ? titleText : undefined}
+                        >
+                          {titleText}
+                        </span>
                         {hasConflict && (
                           <span
                             className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"

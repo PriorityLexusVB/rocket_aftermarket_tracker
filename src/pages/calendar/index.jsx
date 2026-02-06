@@ -152,6 +152,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
+  const showTitleTooltips = isEmbedded && unifiedShellEnabled
   const shellDate = shellState?.date
   const shellRange = shellState?.range
   const [currentDate, setCurrentDate] = useState(() => {
@@ -658,6 +659,11 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                 const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                 const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
                 const vehicleLabel = job?.vehicle_info || ''
+                const titleText = job?.title || ''
+                const titleWithNumber = jobNumber
+                  ? `${jobNumber} • ${titleText || 'Open deal'}`
+                  : titleText || 'Open deal'
+                const tooltipTitle = showTitleTooltips ? titleWithNumber : titleText || 'Open deal'
                 const promiseLabel = job?.time_tbd
                   ? safeFormatDate(job?.scheduled_start_time, {
                       weekday: 'short',
@@ -678,7 +684,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                     key={job?.calendar_key || job?.id}
                     className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
-                    title={job?.title || 'Open deal'}
+                    title={tooltipTitle}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-semibold truncate min-w-0">
@@ -900,6 +906,13 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                       const vendorLabel =
                         job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+                      const titleText = job?.title || ''
+                      const titleWithNumber = jobNumber
+                        ? `${jobNumber} • ${titleText || 'Open deal'}`
+                        : titleText || 'Open deal'
+                      const tooltipTitle = showTitleTooltips
+                        ? titleWithNumber
+                        : titleText || 'Open deal'
                       const promiseLabel = job?.time_tbd
                         ? safeFormatDate(job?.scheduled_start_time, {
                             weekday: 'short',
@@ -925,7 +938,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                             e?.stopPropagation?.()
                             handleMonthGridClick()
                           }}
-                          title={job?.title || 'Open deal'}
+                          title={tooltipTitle}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="font-medium truncate">
@@ -994,6 +1007,8 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                 deal: job,
               })
 
+              const listTitle = job?.title || 'Open deal'
+
               return (
                 <div
                   key={job?.calendar_key || job?.id}
@@ -1001,8 +1016,13 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                   onClick={handleListClick}
                 >
                   <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{job?.title}</h3>
+                    <div className={showTitleTooltips ? 'min-w-0' : ''}>
+                      <h3
+                        className={`font-medium text-gray-900 ${showTitleTooltips ? 'truncate' : ''}`}
+                        title={showTitleTooltips ? listTitle : undefined}
+                      >
+                        {listTitle}
+                      </h3>
                       <p className="text-sm text-gray-600">
                         {job?.vendor_name} • {job?.vehicle_info}
                       </p>
