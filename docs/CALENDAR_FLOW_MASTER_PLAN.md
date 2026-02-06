@@ -123,9 +123,9 @@ For each unchecked item in TRACK A or TRACK D:
   - Accept: quick actions panel removed; daily counts shown (promises/scheduled/overdue); day click drills down to Board Day by default.
   - Notes: f8aa373 - Removed Quick Actions; added daily counts and board-day drilldown.
 
-- [ ] D4 Data Consistency (Deals missing but Calendar has jobs)
+- [x] D4 Data Consistency (Deals missing but Calendar has jobs)
   - Accept: Deals and Calendar use consistent tenant/location filters; orphan recovery banner with actions; mismatch banner when deals list is empty but calendar has items in same tenant/range.
-  - Notes:
+  - Notes: ac6c04d - Added location filter parity, orphan/mismatch banners, and consistency diagnostics.
 
 - [ ] D5 Testing / QA
   - Accept: minimal automated coverage (Playwright if available, else Vitest/RTL) for /calendar load, view toggles header stability, old route redirects, drawer open, promise all-day behavior, mismatch banner gating; a11y focus trap + ESC + keyboard nav for toggles/menus.
