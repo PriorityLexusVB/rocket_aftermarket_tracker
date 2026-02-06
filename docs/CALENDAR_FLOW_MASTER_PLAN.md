@@ -54,9 +54,9 @@ Rules:
   - Accept: day/group headers remain visible while scrolling
   - Notes: cb99810 - Adjusted sticky header offset for embedded list view.
 
-- [ ] A3 Hover/focus detail popover for events
+- [x] A3 Hover/focus detail popover for events
   - Accept: accessible popover (keyboard focus), shows key fields without click
-  - Notes:
+  - Notes: 535acd3 - Added hover/focus detail popovers for board, calendar, and list cards.
 
 - [ ] A4 A11y ids/names/labels for List controls
   - Accept: search/select have id+name and label association; tests use label queries
