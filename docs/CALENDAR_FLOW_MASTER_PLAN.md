@@ -58,9 +58,9 @@ Rules:
   - Accept: accessible popover (keyboard focus), shows key fields without click
   - Notes: 535acd3 - Added hover/focus detail popovers for board, calendar, and list cards.
 
-- [ ] A4 A11y ids/names/labels for List controls
+- [x] A4 A11y ids/names/labels for List controls
   - Accept: search/select have id+name and label association; tests use label queries
-  - Notes:
+  - Notes: 9b1adc7 - Added id/name + sr-only labels and RTL test for list controls.
 
 - [ ] A5 Deterministic color system + legend alignment (contrast-safe)
   - Accept: stable mapping function; legend matches; contrast ok
