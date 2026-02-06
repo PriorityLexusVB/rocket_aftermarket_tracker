@@ -16,6 +16,7 @@ import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import Navbar from '@/components/ui/Navbar'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
+import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled } from '@/config/featureFlags'
 
 const TZ = 'America/New_York'
@@ -259,6 +260,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const location = useLocation()
   const isEmbedded = embedded === true
   const showTitleTooltips = isEmbedded
+  const showDetailPopovers = isEmbedded
   const shellRange = shellState?.range
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const [loading, setLoading] = useState(true)
@@ -769,6 +771,14 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 const timeRange = start ? formatScheduleRange(start, end) : null
                 const title = raw?.title || raw?.job_number
                 const titleText = title || r.id || 'Appointment'
+                const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
+                const popoverLines = showDetailPopovers
+                  ? [
+                      timeRange ? `Time: ${timeRange}` : 'Time: All-day',
+                      customerName ? `Customer: ${customerName}` : null,
+                      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                    ]
+                  : []
                 const vehicleLabel =
                   r?.vehicleLabel ||
                   `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
@@ -790,7 +800,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     ref={focused ? focusRef : null}
                     tabIndex={0}
                     aria-label={`Appointment ${titleText}`}
-                    className={`grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
+                    aria-describedby={popoverId}
+                    className={`group relative grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
                     onClick={handleRowClick}
                   >
                     {/* Time column (blank for all-day) */}
@@ -904,6 +915,14 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                           : 'Complete'}
                       </button>
                     </div>
+
+                    {showDetailPopovers ? (
+                      <EventDetailPopover
+                        id={popoverId}
+                        title={titleText}
+                        lines={popoverLines}
+                      />
+                    ) : null}
                   </li>
                 )
               })}

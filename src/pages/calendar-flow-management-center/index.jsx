@@ -33,6 +33,7 @@ import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDispla
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
+import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const LOAD_TIMEOUT_MS = 15000
@@ -87,6 +88,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
   const showTitleTooltips = unifiedShellEnabled || isEmbedded
+  const showDetailPopovers = unifiedShellEnabled || isEmbedded
   const shellRange = shellState?.range
 
   const resolveShellViewMode = (range) => {
@@ -820,12 +822,26 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
     const densityClasses = density === 'compact' ? 'p-2 text-xs leading-snug' : 'p-3 text-sm'
     const densityMargin = density === 'compact' ? 'mb-1' : 'mb-2'
+    const timeLabel = hasTimeWindow
+      ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
+      : allDayLabel
+    const popoverId = showDetailPopovers ? `board-popover-${job?.id || job?.calendar_key}` : undefined
+    const popoverLines = showDetailPopovers
+      ? [
+          timeLabel ? `Time: ${timeLabel}` : null,
+          statusBadge?.label ? `Status: ${statusBadge.label}` : null,
+          job?.customer_name ? `Customer: ${job.customer_name}` : null,
+          job?.vehicle_info ? `Vehicle: ${job.vehicle_info}` : null,
+          !isOnSite && job?.vendor_name ? `Vendor: ${job.vendor_name}` : null,
+        ]
+      : []
 
     return (
       <div
         key={job?.calendar_key || job?.id}
+        aria-describedby={popoverId}
         className={`
-          relative rounded-lg border ${densityClasses} ${densityMargin} cursor-pointer transition-all duration-200 hover:shadow-md
+          group relative rounded-lg border ${densityClasses} ${densityMargin} cursor-pointer transition-all duration-200 hover:shadow-md
           ${chipBg} ${chipBorder} ${chipHoverBorder} text-gray-900
           ${containerClassName}
         `}
@@ -932,6 +948,10 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
               {job?.vendor_name}
             </div>
           )}
+
+          {showDetailPopovers ? (
+            <EventDetailPopover id={popoverId} title={titleText} lines={popoverLines} />
+          ) : null}
         </div>
       </div>
     )
