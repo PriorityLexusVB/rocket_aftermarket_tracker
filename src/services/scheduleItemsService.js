@@ -521,6 +521,78 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
 }
 
 /**
+ * Unscheduled queue items: requires scheduling, no promised date, and no effective time window.
+ * Returns normalized schedule items with scheduleState === 'unscheduled'.
+ */
+export async function getUnscheduledQueueItems({ orgId } = {}) {
+  try {
+    const caps = getCapabilities?.() || {}
+    let q = supabase
+      ?.from('job_parts')
+      ?.select('job_id')
+      ?.eq('requires_scheduling', true)
+      ?.is('promised_date', null)
+
+    if (caps?.jobPartsHasTimes) {
+      q = q?.is('scheduled_start_time', null)?.is('scheduled_end_time', null)
+    }
+
+    let data
+    if (orgId) {
+      try {
+        data = await safeSelect(q?.eq('dealer_id', orgId), 'scheduleItems:unscheduled:dealer_id')
+      } catch (e) {
+        if (e?.type === 'missing_column' && e?.details?.column === 'dealer_id') {
+          data = await safeSelect(q?.eq('org_id', orgId), 'scheduleItems:unscheduled:org_id')
+        } else {
+          throw e
+        }
+      }
+    } else {
+      data = await safeSelect(q, 'scheduleItems:unscheduled')
+    }
+
+    const jobIds = Array.from(
+      new Set((Array.isArray(data) ? data : []).map((row) => row?.job_id).filter(Boolean))
+    )
+
+    if (!jobIds.length) {
+      return { items: [], debug: { candidateJobs: 0, hydrated: 0, kept: 0 } }
+    }
+
+    const jobs = await jobService.getJobsByIds(jobIds, { orgId })
+    const withLoaners = await attachActiveLoanerFlags(jobs)
+
+    const now = new Date()
+    const items = []
+    for (const job of withLoaners) {
+      const item = normalizeScheduleItemFromJob(job, {
+        now,
+        scheduleOverride: { start: null, end: null, source: 'unscheduled_queue' },
+      })
+      if (!item || item?.scheduleState !== 'unscheduled') continue
+      items.push({
+        ...item,
+        calendarKey: `${item?.id || job?.id}::unscheduled`,
+      })
+    }
+
+    items.sort((a, b) => {
+      const aMs = safeDate(a?.createdAt)?.getTime() || 0
+      const bMs = safeDate(b?.createdAt)?.getTime() || 0
+      return aMs - bMs
+    })
+
+    return {
+      items,
+      debug: { candidateJobs: jobIds.length, hydrated: withLoaners.length, kept: items.length },
+    }
+  } catch {
+    return { items: [], debug: { reason: 'unscheduled_queue_failed' } }
+  }
+}
+
+/**
  * Hydrate job rows for a date range using the canonical overlap window from the calendar RPC.
  *
  * Unlike getScheduleItems(), this does NOT normalize into schedule-item shapes and does NOT
