@@ -46,9 +46,9 @@ Rules:
 - Add cheap stable tests when possible
 - After each item: verify, commit, push, update this file, comment on Issue #281
 
-- [ ] A1 Event title truncation + tooltip (Board/List/Calendar cards)
+- [x] A1 Event title truncation + tooltip (Board/List/Calendar cards)
   - Accept: no overflow; long titles clamp; hover/focus reveals full
-  - Notes:
+  - Notes: 142c09b - Added embedded-only title tooltips for board, calendar, and list cards.
 
 - [ ] A2 Sticky date headers in List view
   - Accept: day/group headers remain visible while scrolling
