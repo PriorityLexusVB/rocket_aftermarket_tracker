@@ -62,9 +62,9 @@ Rules:
   - Accept: search/select have id+name and label association; tests use label queries
   - Notes: 9b1adc7 - Added id/name + sr-only labels and RTL test for list controls.
 
-- [ ] A5 Deterministic color system + legend alignment (contrast-safe)
+- [x] A5 Deterministic color system + legend alignment (contrast-safe)
   - Accept: stable mapping function; legend matches; contrast ok
-  - Notes:
+  - Notes: c9f6cf9 - Aligned board month/chip colors with calendar color mapping in unified shell.
 
 - [ ] A6 URL-persisted search/filter state (q=)
   - Accept: query param roundtrip; shareable URL; debounced input; no loops
