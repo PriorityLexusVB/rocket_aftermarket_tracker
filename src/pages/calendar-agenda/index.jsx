@@ -746,7 +746,11 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         )}
         {groups.map(([dateKey, rows]) => (
           <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-2">
-            <div className="sticky top-[5rem] z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200">
+            <div
+              className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${
+                isEmbedded ? 'top-16' : 'top-[5rem]'
+              }`}
+            >
               <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
                 {formatAgendaDayHeader(dateKey)}
               </h2>
