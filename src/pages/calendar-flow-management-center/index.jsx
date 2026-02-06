@@ -38,6 +38,7 @@ import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { getEventColors } from '@/utils/calendarColors'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
+import { getMicroFlashClass } from '@/utils/microInteractions'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -104,6 +105,7 @@ const CalendarFlowManagementCenter = ({
   const showTitleTooltips = unifiedShellEnabled || isEmbedded
   const showDetailPopovers = unifiedShellEnabled || isEmbedded
   const useUnifiedColors = unifiedShellEnabled || isEmbedded
+  const microInteractionsEnabled = unifiedShellEnabled
   const shellRange = shellState?.range
   const locationFilterValue = locationFilter || 'All'
   const isLocationFilterActive = unifiedShellEnabled && locationFilterValue !== 'All'
@@ -144,6 +146,8 @@ const CalendarFlowManagementCenter = ({
 
   // Drag and drop
   const [draggedJob, setDraggedJob] = useState(null)
+  const [recentlyMovedId, setRecentlyMovedId] = useState(null)
+  const microFlashTimerRef = useRef(null)
 
   // All-day queue (promised day, no schedule window)
   const [needsSchedulingItems, setNeedsSchedulingItems] = useState([])
@@ -613,6 +617,25 @@ const CalendarFlowManagementCenter = ({
     setDraggedJob(null)
   }
 
+  const triggerMicroFlash = useCallback(
+    (jobId) => {
+      if (!microInteractionsEnabled || !jobId) return
+      if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
+      setRecentlyMovedId(jobId)
+      microFlashTimerRef.current = setTimeout(() => {
+        setRecentlyMovedId(null)
+        microFlashTimerRef.current = null
+      }, 600)
+    },
+    [microInteractionsEnabled]
+  )
+
+  useEffect(() => {
+    return () => {
+      if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
+    }
+  }, [])
+
   const handleDrop = async (vendorId, timeSlot) => {
     if (!draggedJob) return
 
@@ -624,6 +647,7 @@ const CalendarFlowManagementCenter = ({
           location: vendorId ? 'off_site' : undefined,
         })
         await loadCalendarData()
+        triggerMicroFlash(draggedJob?.id)
         toast?.success?.('Updated vendor')
         return
       }
@@ -672,6 +696,7 @@ const CalendarFlowManagementCenter = ({
         status: 'scheduled',
       })
 
+      triggerMicroFlash(draggedJob?.id)
       loadCalendarData()
       toast?.success?.('Scheduled')
     } catch (error) {
@@ -931,6 +956,11 @@ const CalendarFlowManagementCenter = ({
 
     const densityClasses = density === 'compact' ? 'p-2 text-xs leading-snug' : 'p-3 text-sm'
     const densityMargin = density === 'compact' ? 'mb-1' : 'mb-2'
+    const microFlashClass = getMicroFlashClass({
+      enabled: microInteractionsEnabled,
+      activeId: recentlyMovedId,
+      itemId: job?.id,
+    })
     const timeLabel = hasTimeWindow
       ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
       : allDayLabel
@@ -953,7 +983,7 @@ const CalendarFlowManagementCenter = ({
         aria-describedby={popoverId}
         className={`
           group relative rounded-lg border ${densityClasses} ${densityMargin} cursor-pointer transition-all duration-200 hover:shadow-md
-          ${chipBg} ${chipBorder} ${chipHoverBorder} ${chipText}
+          ${chipBg} ${chipBorder} ${chipHoverBorder} ${chipText} ${microFlashClass}
           ${containerClassName}
         `}
         style={containerStyle}

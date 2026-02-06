@@ -141,14 +141,15 @@ For each unchecked item in TRACK A or TRACK D:
 
 ## TRACK E — “Complete Included Set” Items 6–8 (Engine options, Design toolkit, Micro-interactions)
 
-- [ ] E6 Calendar engine decision + spike harness
+- [x] E6 Calendar engine decision + spike harness
   - Deliverables:
     - ADR doc evaluating FullCalendar Scheduler vs DayPilot vs current stack
     - Clear go/no-go criteria (resource lanes, external drag, resize, perf, a11y, cost)
     - A minimal “spike harness” plan (NOT a rewrite) describing how we’d plug an engine in behind an adapter
   - IMPORTANT: do NOT add FullCalendar/DayPilot deps in this track unless you can do it as a no-risk, optional spike that does not touch production code paths.
+  - Notes: 453e6a3 - Added calendar engine ADR and spike plan.
 
-- [ ] E7 Design toolkit + tokens + checklists (design.dev mapping)
+- [x] E7 Design toolkit + tokens + checklists (design.dev mapping)
   - Deliverables:
     - docs/DESIGN_TOOLKIT_CALENDAR.md with links + how-to steps:
       - Grid Area Mapper (3-pane layout)
@@ -159,8 +160,9 @@ For each unchecked item in TRACK A or TRACK D:
     - Minimal token file in repo (no breaking changes):
       - docs/design-tokens/calendar-tokens.md AND/OR src/styles/calendar-tokens.css (not necessarily applied globally yet)
     - A short “UI QA checklist” for calendar overlays/z-index/contrast.
+  - Notes: 4af7a07 - Added design toolkit, tokens, and QA checklist.
 
-- [ ] E8 Micro-interactions (state clarity only)
+- [x] E8 Micro-interactions (state clarity only)
   - Deliverables:
     - Implement minimal, non-decorative micro-feedback for:
       - “saved”
@@ -170,3 +172,4 @@ For each unchecked item in TRACK A or TRACK D:
     - Must be subtle and time-boxed (e.g., 300–600ms)
     - Must not animate constantly
     - Must be flag-gated (prefer calendar_unified_shell OR add VITE_FF_CALENDAR_MICRO_INTERACTIONS)
+  - Notes: 8caa925 - Added micro flash class, gated feedback, and utility test.

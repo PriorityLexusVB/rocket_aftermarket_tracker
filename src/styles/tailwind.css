@@ -37,3 +37,22 @@ body,
     overflow: hidden;
   }
 }
+
+@keyframes calendar-micro-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
+}
+
+.calendar-micro-flash {
+  animation: calendar-micro-flash 0.6s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-micro-flash {
+    animation: none;
+  }
+}
