@@ -17,6 +17,7 @@ import { calendarService } from '../../services/calendarService'
 import {
   getNeedsSchedulingPromiseItems,
   getScheduledJobsByDateRange,
+  getUnscheduledQueueItems,
 } from '@/services/scheduleItemsService'
 import { jobService } from '@/services/jobService'
 import { vendorService } from '../../services/vendorService'
@@ -36,6 +37,7 @@ import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { getEventColors } from '@/utils/calendarColors'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { getJobLocationType } from '@/utils/locationType'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -61,7 +63,12 @@ function toEtDateKey(input) {
   return y && m && day ? `${y}-${m}-${day}` : null
 }
 
-const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDealDrawer } = {}) => {
+const CalendarFlowManagementCenter = ({
+  embedded = false,
+  shellState,
+  onOpenDealDrawer,
+  locationFilter,
+} = {}) => {
   const SNAPSHOT_ON = String(import.meta.env.VITE_ACTIVE_SNAPSHOT || '').toLowerCase() === 'true'
 
   const location = useLocation()
@@ -83,15 +90,32 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   const [showDrawer, setShowDrawer] = useState(false)
   const [showRoundUp, setShowRoundUp] = useState(false)
   const [roundUpType, setRoundUpType] = useState('daily')
+  const [consistency, setConsistency] = useState({
+    rpcCount: 0,
+    jobCount: 0,
+    missingCount: 0,
+  })
 
   const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
+  const suppressChrome = isEmbedded && unifiedShellEnabled
   const showTitleTooltips = unifiedShellEnabled || isEmbedded
   const showDetailPopovers = unifiedShellEnabled || isEmbedded
   const useUnifiedColors = unifiedShellEnabled || isEmbedded
   const shellRange = shellState?.range
+  const locationFilterValue = locationFilter || 'All'
+  const isLocationFilterActive = unifiedShellEnabled && locationFilterValue !== 'All'
+
+  const filterByLocation = useCallback(
+    (items) => {
+      if (!isLocationFilterActive) return items
+      const list = Array.isArray(items) ? items : []
+      return list.filter((job) => getJobLocationType(job?.raw || job) === locationFilterValue)
+    },
+    [isLocationFilterActive, locationFilterValue]
+  )
 
   const resolveShellViewMode = (range) => {
     const key = String(range || '').toLowerCase()
@@ -123,6 +147,9 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
   // All-day queue (promised day, no schedule window)
   const [needsSchedulingItems, setNeedsSchedulingItems] = useState([])
+  const [unscheduledItems, setUnscheduledItems] = useState([])
+  const [highlightNeedsTime, setHighlightNeedsTime] = useState(false)
+  const [showOverdueOnly, setShowOverdueOnly] = useState(false)
 
   const { orgId, loading: tenantLoading } = useTenant()
   const navigate = useNavigate()
@@ -208,7 +235,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   }, [getViewStartDate, viewMode])
 
   const needsSchedulingJobs = useMemo(() => {
-    return (needsSchedulingItems || [])
+    const mapped = (needsSchedulingItems || [])
       .map((it) => {
         const raw = it?.raw
         if (!raw) return null
@@ -228,7 +255,9 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
         }
       })
       .filter(Boolean)
-  }, [needsSchedulingItems])
+
+    return filterByLocation(mapped)
+  }, [needsSchedulingItems, filterByLocation])
 
   const needsSchedulingJobsInView = useMemo(() => {
     if (!needsSchedulingJobs.length) return []
@@ -240,11 +269,37 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
     })
   }, [needsSchedulingJobs, viewDateKeys])
 
+  const overdueNeedsTimeCount = useMemo(() => {
+    return (needsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job))).length
+  }, [needsSchedulingJobs])
+
+  const needsSchedulingJobsForView = useMemo(() => {
+    if (!showOverdueOnly) return needsSchedulingJobsInView
+    return (needsSchedulingJobsInView || []).filter((job) => isOverdue(getPromiseValue(job)))
+  }, [needsSchedulingJobsInView, showOverdueOnly])
+
+  const unscheduledItemsFiltered = useMemo(
+    () => filterByLocation(unscheduledItems || []),
+    [filterByLocation, unscheduledItems]
+  )
+
+  const locationFilteredJobs = useMemo(
+    () => filterByLocation([...(originalJobs || []), ...(originalOnSiteJobs || [])]),
+    [filterByLocation, originalJobs, originalOnSiteJobs]
+  )
+
+  const locationFilteredNeedsScheduling = useMemo(
+    () => filterByLocation(needsSchedulingJobsInView || []),
+    [filterByLocation, needsSchedulingJobsInView]
+  )
+
   const loadCalendarData = useCallback(async () => {
     if (tenantLoading || !orgId) {
       setOriginalJobs([])
       setOriginalOnSiteJobs([])
       setNeedsSchedulingItems([])
+      setUnscheduledItems([])
+      setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
       setLoadError(null)
       setLoading(false)
       return
@@ -256,7 +311,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
       const endDate = getViewEndDate()
 
       // Canonical scheduling truth: overlap window from calendar RPC, then hydrate job rows.
-      const { jobs: jobsData } = await withTimeout(
+      const scheduledRes = await withTimeout(
         getScheduledJobsByDateRange({
           rangeStart: startDate,
           rangeEnd: endDate,
@@ -265,6 +320,15 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
         LOAD_TIMEOUT_MS,
         { label: 'Flow Center scheduled load' }
       )
+
+      const scheduledDebug = scheduledRes?.debug || {}
+      setConsistency({
+        rpcCount: scheduledDebug?.rpcCount || 0,
+        jobCount: scheduledDebug?.jobCount || 0,
+        missingCount: scheduledDebug?.missingCount || 0,
+      })
+
+      const jobsData = scheduledRes?.jobs || []
 
       const vendorJobs = jobsData?.filter((job) => job?.vendor_id)
       const onSiteJobs = jobsData?.filter((job) => !job?.vendor_id)
@@ -286,12 +350,21 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
         { label: 'Flow Center needs-scheduling load' }
       )
       setNeedsSchedulingItems(needsRes?.items || [])
+
+      const unscheduledRes = await withTimeout(
+        getUnscheduledQueueItems({ orgId }),
+        LOAD_TIMEOUT_MS,
+        { label: 'Flow Center unscheduled load' }
+      )
+      setUnscheduledItems(unscheduledRes?.items || [])
     } catch (error) {
       console.error('Error loading calendar data:', error)
       setLoadError(error?.message || 'Failed to load calendar data')
       setOriginalJobs([])
       setOriginalOnSiteJobs([])
       setNeedsSchedulingItems([])
+      setUnscheduledItems([])
+      setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
     } finally {
       setLoading(false)
     }
@@ -344,9 +417,15 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
         filteredJobs = filteredJobs?.filter((job) => filters?.vendors?.includes(job?.vendor_id))
       }
 
+      if (isLocationFilterActive) {
+        filteredJobs = filteredJobs?.filter(
+          (job) => getJobLocationType(job) === locationFilterValue
+        )
+      }
+
       return filteredJobs
     },
-    [filters]
+    [filters, isLocationFilterActive, locationFilterValue]
   )
 
   // New centralized filter application function
@@ -700,7 +779,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
         })
 
         const dayKey = toEtDateKey(currentDate)
-        const noTime = (needsSchedulingJobs || []).filter((job) => {
+        const noTime = (needsSchedulingJobsForView || []).filter((job) => {
           const k = toEtDateKey(getPromiseValue(job))
           return !!(dayKey && k && k === dayKey)
         })
@@ -825,9 +904,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
       : isOnSite
         ? 'hover:border-green-300'
         : 'hover:border-orange-300'
-    const chipText = useUnifiedColors
-      ? unifiedColors?.text || 'text-blue-900'
-      : 'text-gray-900'
+    const chipText = useUnifiedColors ? unifiedColors?.text || 'text-blue-900' : 'text-gray-900'
     const rawStatus = String(job?.job_status || '').toLowerCase()
     const overdue = isOverdue(
       job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
@@ -835,6 +912,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
     const hasTimeWindow = !!job?.scheduled_start_time
     const promise = getPromiseValue(job)
+    const isPromiseOnly = !hasTimeWindow && !!promise
     const allDayLabel = promise ? `All day • ${formatEtDateLabel(promise)}` : 'All day'
 
     // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
@@ -847,7 +925,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
         : rawStatus
 
     const statusBadge = getStatusBadge(statusForBadge)
-    const statusColor = statusBadge?.color || 'bg-blue-500'
+    const statusColor = isPromiseOnly ? 'bg-amber-500' : statusBadge?.color || 'bg-blue-500'
 
     const isCompleted = rawStatus === 'completed'
 
@@ -856,7 +934,9 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
     const timeLabel = hasTimeWindow
       ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
       : allDayLabel
-    const popoverId = showDetailPopovers ? `board-popover-${job?.id || job?.calendar_key}` : undefined
+    const popoverId = showDetailPopovers
+      ? `board-popover-${job?.id || job?.calendar_key}`
+      : undefined
     const popoverLines = showDetailPopovers
       ? [
           timeLabel ? `Time: ${timeLabel}` : null,
@@ -954,9 +1034,11 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
             {/* Status badge */}
             <div
-              className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge?.bg || 'bg-gray-100'} ${statusBadge?.textColor || 'text-gray-800'}`}
+              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                isPromiseOnly ? 'bg-amber-100 text-amber-900' : statusBadge?.bg || 'bg-gray-100'
+              } ${isPromiseOnly ? '' : statusBadge?.textColor || 'text-gray-800'}`}
             >
-              {statusBadge?.label || statusForBadge || job?.job_status}
+              {isPromiseOnly ? 'PROMISE' : statusBadge?.label || statusForBadge || job?.job_status}
             </div>
           </div>
 
@@ -1028,7 +1110,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
             })
 
             const dayKey = toEtDateKey(dayDate)
-            const dayNoTimeJobs = (needsSchedulingJobsInView || []).filter((job) => {
+            const dayNoTimeJobs = (needsSchedulingJobsForView || []).filter((job) => {
               const k = toEtDateKey(getPromiseValue(job))
               return !!(dayKey && k && k === dayKey)
             })
@@ -1046,7 +1128,13 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
                   </div>
                 </div>
                 {dayNoTimeJobs?.length > 0 && (
-                  <div className="py-2 border-b border-gray-100">
+                  <div
+                    className={`py-2 border-b border-gray-100 ${
+                      highlightNeedsTime || showOverdueOnly
+                        ? 'bg-amber-50/70 ring-1 ring-inset ring-amber-200'
+                        : ''
+                    }`}
+                  >
                     <div className="space-y-2">{dayNoTimeJobs?.map(renderEventChip)}</div>
                   </div>
                 )}
@@ -1120,7 +1208,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   }
 
   const renderVendorLanes = () => {
-    const allDayJobs = needsSchedulingJobsInView || []
+    const allDayJobs = needsSchedulingJobsForView || []
     const allDayOnSiteJobs = allDayJobs.filter(
       (job) => !job?.vendor_id || job?.location === 'on_site'
     )
@@ -1194,215 +1282,312 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   const content = (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {unifiedShellEnabled ? 'Calendar' : 'Calendar Flow Management Center'}
-            </h1>
-            {!isEmbedded && (
-              <p className="text-gray-600">Visual scheduling and workflow management</p>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-4">
-            {/* Updated View Toggle - Replace Agenda with Month */}
-            {!isEmbedded && (
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setViewMode('day')}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === 'day' ? 'bg-white shadow-sm' : ''}`}
-                >
-                  Day
-                </button>
-                <button
-                  onClick={() => setViewMode('week')}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === 'week' ? 'bg-white shadow-sm' : ''}`}
-                >
-                  Week
-                </button>
-                <button
-                  onClick={() => setViewMode('month')}
-                  className={`px-3 py-1 rounded text-sm ${viewMode === 'month' ? 'bg-white shadow-sm' : ''}`}
-                >
-                  Month
-                </button>
-              </div>
-            )}
-
-            {/* Vendor Lanes Toggle - Hide for month view */}
-            {viewMode !== 'month' && (
-              <button
-                onClick={() => setVendorLanesEnabled(!vendorLanesEnabled)}
-                className={`flex items-center px-4 py-2 rounded-lg border ${
-                  vendorLanesEnabled
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-white border-gray-200 text-gray-700'
-                }`}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Vendor Lanes
-              </button>
-            )}
-
-            {/* Round-up Button */}
-            <button
-              onClick={() => setShowRoundUp(true)}
-              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Round-Up
-            </button>
-
-            <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-              <summary className="cursor-pointer select-none text-sm text-gray-700">Legend</summary>
-              <div className="mt-2 grid gap-1 text-xs text-gray-600">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rounded bg-green-500" />
-                  <span>On-site (PLV) (no vendor or on-site)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
-                  <span>Vendor lane (off-site)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-3 w-3 text-red-600" />
-                  <span>Overdue promise</span>
-                </div>
-                <div className="text-[11px] text-gray-500">
-                  Drop onto a time slot to set minutes (5-min increments) or into a vendor lane to
-                  set vendor.
-                </div>
-              </div>
-            </details>
-          </div>
-        </div>
-
-        {/* Navigation and Filters */}
-        <div className="flex items-center justify-between mt-6">
-          {/* Updated Date Navigation to handle month view */}
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => {
-                const newDate = new Date(currentDate)
-                if (viewMode === 'month') {
-                  newDate?.setMonth(newDate?.getMonth() - 1)
-                } else if (viewMode === 'week') {
-                  newDate?.setDate(newDate?.getDate() - 7)
-                } else {
-                  newDate?.setDate(newDate?.getDate() - 1)
-                }
-                setCurrentDate(newDate)
-              }}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-
-            <div className="text-lg font-medium">
-              {viewMode === 'month'
-                ? currentDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-                : viewMode === 'week'
-                  ? `Week of ${currentDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-                  : currentDate?.toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
+      {!suppressChrome && (
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {unifiedShellEnabled ? 'Calendar' : 'Calendar Flow Management Center'}
+              </h1>
+              {!isEmbedded && (
+                <p className="text-gray-600">Visual scheduling and workflow management</p>
+              )}
             </div>
 
-            <button
-              onClick={() => {
-                const newDate = new Date(currentDate)
-                if (viewMode === 'month') {
-                  newDate?.setMonth(newDate?.getMonth() + 1)
-                } else if (viewMode === 'week') {
-                  newDate?.setDate(newDate?.getDate() + 7)
-                } else {
-                  newDate?.setDate(newDate?.getDate() + 1)
-                }
-                setCurrentDate(newDate)
-              }}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
+            <div className="flex items-center space-x-4">
+              {/* Updated View Toggle - Replace Agenda with Month */}
+              {!isEmbedded && (
+                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('day')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'day' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Day
+                  </button>
+                  <button
+                    onClick={() => setViewMode('week')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'week' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Week
+                  </button>
+                  <button
+                    onClick={() => setViewMode('month')}
+                    className={`px-3 py-1 rounded text-sm ${viewMode === 'month' ? 'bg-white shadow-sm' : ''}`}
+                  >
+                    Month
+                  </button>
+                </div>
+              )}
 
-            <button
-              onClick={() => setCurrentDate(new Date())}
-              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
-            >
-              Today
-            </button>
+              {/* Vendor Lanes Toggle - Hide for month view */}
+              {viewMode !== 'month' && (
+                <button
+                  onClick={() => setVendorLanesEnabled(!vendorLanesEnabled)}
+                  className={`flex items-center px-4 py-2 rounded-lg border ${
+                    vendorLanesEnabled
+                      ? 'bg-blue-50 border-blue-200 text-blue-700'
+                      : 'bg-white border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Vendor Lanes
+                </button>
+              )}
 
-            {viewMode !== 'month' && (
+              {vendorLanesEnabled && viewMode !== 'month' && (
+                <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                  <summary className="cursor-pointer select-none text-sm text-gray-700">
+                    Lane options
+                  </summary>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmptyLanes((v) => !v)}
+                      className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                    >
+                      {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
+                    </button>
+                  </div>
+                </details>
+              )}
+
+              {/* Round-up Button */}
               <button
-                onClick={handleJumpToNextScheduled}
-                disabled={jumpLoading}
-                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
-                title="Jump to the next scheduled job"
+                onClick={() => setShowRoundUp(true)}
+                className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               >
-                {jumpLoading ? 'Finding…' : 'Jump to Next Scheduled'}
+                <Download className="h-4 w-4 mr-2" />
+                Round-Up
               </button>
-            )}
-          </div>
 
-          {/* Search */}
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search stock #, phone, customer..."
-                value={filters?.searchQuery}
-                onChange={(e) => setFilters((prev) => ({ ...prev, searchQuery: e?.target?.value }))}
-                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-80"
-              />
+              <details className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <summary className="cursor-pointer select-none text-sm text-gray-700">
+                  Legend
+                </summary>
+                <div className="mt-2 grid gap-1 text-xs text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-green-500" />
+                    <span>On-site (PLV) (no vendor or on-site)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
+                    <span>Vendor lane (off-site)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-3 w-3 text-red-600" />
+                    <span>Overdue promise</span>
+                  </div>
+                  <div className="text-[11px] text-gray-500">
+                    Drop onto a time slot to set minutes (5-min increments) or into a vendor lane to
+                    set vendor.
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
-        </div>
 
-        {!isEmbedded && (
-          <div className="mt-4">
-            <CalendarViewTabs />
+          {/* Navigation and Filters */}
+          <div className="flex items-center justify-between mt-6">
+            {/* Updated Date Navigation to handle month view */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => {
+                  const newDate = new Date(currentDate)
+                  if (viewMode === 'month') {
+                    newDate?.setMonth(newDate?.getMonth() - 1)
+                  } else if (viewMode === 'week') {
+                    newDate?.setDate(newDate?.getDate() - 7)
+                  } else {
+                    newDate?.setDate(newDate?.getDate() - 1)
+                  }
+                  setCurrentDate(newDate)
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              <div className="text-lg font-medium">
+                {viewMode === 'month'
+                  ? currentDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                  : viewMode === 'week'
+                    ? `Week of ${currentDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                    : currentDate?.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+              </div>
+
+              <button
+                onClick={() => {
+                  const newDate = new Date(currentDate)
+                  if (viewMode === 'month') {
+                    newDate?.setMonth(newDate?.getMonth() + 1)
+                  } else if (viewMode === 'week') {
+                    newDate?.setDate(newDate?.getDate() + 7)
+                  } else {
+                    newDate?.setDate(newDate?.getDate() + 1)
+                  }
+                  setCurrentDate(newDate)
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              <button
+                onClick={() => setCurrentDate(new Date())}
+                className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Today
+              </button>
+
+              {viewMode !== 'month' && (
+                <button
+                  onClick={handleJumpToNextScheduled}
+                  disabled={jumpLoading}
+                  className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
+                  title="Jump to the next scheduled job"
+                >
+                  {jumpLoading ? 'Finding…' : 'Jump to Next Scheduled'}
+                </button>
+              )}
+            </div>
+
+            {/* Search */}
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search stock #, phone, customer..."
+                  value={filters?.searchQuery}
+                  onChange={(e) =>
+                    setFilters((prev) => ({ ...prev, searchQuery: e?.target?.value }))
+                  }
+                  className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-80"
+                />
+              </div>
+            </div>
+          </div>
+
+          {!isEmbedded && (
+            <div className="mt-4">
+              <CalendarViewTabs />
+            </div>
+          )}
+        </div>
+      )}
+
+      {unifiedShellEnabled &&
+        (consistency?.missingCount > 0 ||
+          (consistency?.rpcCount > 0 && consistency?.jobCount === 0)) && (
+          <div className="px-6 pt-4 space-y-2">
+            {consistency?.rpcCount > 0 && consistency?.jobCount === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex items-start gap-2 text-sm">
+                    <AlertTriangle className="mt-0.5 h-4 w-4" />
+                    <div>
+                      <div className="font-semibold">
+                        Calendar items found, but Deals are empty.
+                      </div>
+                      <div className="text-amber-800">
+                        This usually means a tenant or filter mismatch. Try refreshing or review
+                        your Deals list filters.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={loadCalendarData}
+                      className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/deals')}
+                      className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                    >
+                      Open Deals
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {consistency?.missingCount > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex items-start gap-2 text-sm">
+                    <AlertTriangle className="mt-0.5 h-4 w-4" />
+                    <div>
+                      <div className="font-semibold">Unlinked appointments detected.</div>
+                      <div className="text-amber-800">
+                        {consistency.missingCount} scheduled item
+                        {consistency.missingCount === 1 ? '' : 's'} could not be linked to a deal.
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={loadCalendarData}
+                      className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/deals')}
+                      className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                    >
+                      Open Deals
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
-      </div>
 
       {/* Quick Filters - Updated to use original data for counts */}
-      <QuickFilters
-        filters={filters}
-        onFiltersChange={setFilters}
-        jobCounts={{
-          today: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
-            (j) => {
+      {!suppressChrome && (
+        <QuickFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          jobCounts={{
+            today: [...locationFilteredJobs, ...locationFilteredNeedsScheduling]?.filter((j) => {
               const jobDate = new Date(j?.scheduled_start_time)
               const today = new Date()
               return jobDate?.toDateString() === today?.toDateString()
-            }
-          )?.length,
-          inProgress: [...originalJobs, ...originalOnSiteJobs]?.filter(
-            (j) => j?.job_status === 'in_progress'
-          )?.length,
-          overdue: [...originalJobs, ...originalOnSiteJobs, ...needsSchedulingJobsInView]?.filter(
-            (j) => isOverdue(getPromiseValue(j))
-          )?.length,
-          noShow: [...originalJobs, ...originalOnSiteJobs]?.filter(
-            (j) => j?.job_status === 'no_show'
-          )?.length,
-          completed: [...originalJobs, ...originalOnSiteJobs]?.filter(
-            (j) => j?.job_status === 'completed'
-          )?.length,
-        }}
-      />
+            })?.length,
+            inProgress: locationFilteredJobs?.filter((j) => j?.job_status === 'in_progress')
+              ?.length,
+            overdue: [...locationFilteredJobs, ...locationFilteredNeedsScheduling]?.filter((j) =>
+              isOverdue(getPromiseValue(j))
+            )?.length,
+            noShow: locationFilteredJobs?.filter((j) => j?.job_status === 'no_show')?.length,
+            completed: locationFilteredJobs?.filter((j) => j?.job_status === 'completed')?.length,
+          }}
+        />
+      )}
 
       {/* Main Content */}
       <div className="flex h-screen">
         {/* Promised Queue Sidebar - Hide for month view */}
         {viewMode !== 'month' && (
           <PromisedQueue
-            jobs={needsSchedulingJobs}
+            unscheduledJobs={unscheduledItemsFiltered}
+            needsTimeCount={needsSchedulingJobs.length}
+            overdueCount={overdueNeedsTimeCount}
+            highlightNeedsTime={highlightNeedsTime}
+            showOverdueOnly={showOverdueOnly}
+            onToggleNeedsTime={() => setHighlightNeedsTime((v) => !v)}
+            onToggleOverdueOnly={() => setShowOverdueOnly((v) => !v)}
             onJobClick={promisedQueueClick}
             onDragStart={handleDragStart}
             onComplete={(job) => handleCompleteJob(job)}
@@ -1443,7 +1628,7 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
               {viewMode === 'month' ? (
                 renderMonthView()
               ) : filteredJobs?.length + filteredOnSiteJobs?.length === 0 &&
-                (needsSchedulingJobsInView?.length || 0) === 0 ? (
+                (needsSchedulingJobsForView?.length || 0) === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-8 text-center">
                   <div className="text-lg font-semibold text-gray-900">
                     No jobs this {viewMode === 'day' ? 'day' : 'week'}.
@@ -1461,14 +1646,6 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
                         ? 'Finding…'
                         : `Go to next ${viewMode === 'day' ? 'day' : 'week'} with jobs`}
                     </button>
-                    {vendorLanesEnabled && (
-                      <button
-                        onClick={() => setShowEmptyLanes((v) => !v)}
-                        className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
-                      >
-                        {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
-                      </button>
-                    )}
                     <button
                       onClick={() => {
                         if (SNAPSHOT_ON) {
@@ -1491,14 +1668,6 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
                 renderWeekView()
               ) : vendorLanesEnabled ? (
                 <div className="h-full">
-                  <div className="flex items-center justify-end px-4 py-3 border-b border-gray-100">
-                    <button
-                      onClick={() => setShowEmptyLanes((v) => !v)}
-                      className="text-sm text-gray-700 hover:text-gray-900"
-                    >
-                      {showEmptyLanes ? 'Hide empty lanes' : 'Show empty lanes'}
-                    </button>
-                  </div>
                   <div className="p-4">{renderVendorLanes()}</div>
                 </div>
               ) : (

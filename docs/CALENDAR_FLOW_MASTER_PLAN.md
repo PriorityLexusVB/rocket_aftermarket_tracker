@@ -107,30 +107,30 @@ For each unchecked item in TRACK A or TRACK D:
 
 ## TRACK D — SPEC COMPLETION (E–H + QA/Rollout)
 
-- [ ] D0 Remove duplicate chrome when embedded in CalendarShell
+- [x] D0 Remove duplicate chrome when embedded in CalendarShell
   - Accept: when unified shell is ON and embedded=true, embedded views suppress their own header/search/quick-actions so the shell header is the single header.
-  - Notes:
+  - Notes: 1e40166 - Suppressed embedded header/search/quick filters in board/list/calendar views under unified shell.
 
-- [ ] D1 Board View (Dispatch / Lanes)
+- [x] D1 Board View (Dispatch / Lanes)
   - Accept: queue sidebar with unscheduled + needs time + overdue (no duplicates); promise items are all-day; drag/click schedule converts promise -> scheduled; vendor lane controls simplified; legend moved to popover.
-  - Notes:
+  - Notes: c279827 - Added unscheduled queue + needs time/overdue toggles; PROMISE badges; simplified lane controls.
 
-- [ ] D2 List View (Agenda)
+- [x] D2 List View (Agenda)
   - Accept: grouped by date with All-day (Promises) and Scheduled (Timed); row click opens drawer when flag ON; link clutter removed in favor of row click + ⋯ menu; reschedule paths avoid bouncing to empty list (prefer drawer when flag ON).
-  - Notes:
+  - Notes: ff453df - Grouped agenda by All-day vs Scheduled; row action menu; focus opens drawer when enabled.
 
-- [ ] D3 Calendar View (Overview)
+- [x] D3 Calendar View (Overview)
   - Accept: quick actions panel removed; daily counts shown (promises/scheduled/overdue); day click drills down to Board Day by default.
-  - Notes:
+  - Notes: f8aa373 - Removed Quick Actions; added daily counts and board-day drilldown.
 
-- [ ] D4 Data Consistency (Deals missing but Calendar has jobs)
+- [x] D4 Data Consistency (Deals missing but Calendar has jobs)
   - Accept: Deals and Calendar use consistent tenant/location filters; orphan recovery banner with actions; mismatch banner when deals list is empty but calendar has items in same tenant/range.
-  - Notes:
+  - Notes: ac6c04d - Added location filter parity, orphan/mismatch banners, and consistency diagnostics.
 
-- [ ] D5 Testing / QA
+- [x] D5 Testing / QA
   - Accept: minimal automated coverage (Playwright if available, else Vitest/RTL) for /calendar load, view toggles header stability, old route redirects, drawer open, promise all-day behavior, mismatch banner gating; a11y focus trap + ESC + keyboard nav for toggles/menus.
-  - Notes:
+  - Notes: e922293 - Added RTL coverage for calendar location filter + mismatch banner gating.
 
-- [ ] D6 Rollout Notes (docs only)
+- [x] D6 Rollout Notes (docs only)
   - Accept: flag notes, enable internal/DC tenant first, verify no regressions, note removal of deprecated routes/buttons after adoption.
-  - Notes:
+  - Notes: CALENDAR_FLOW_ROLLOUT_NOTES.md - Added rollout steps and flag guidance.

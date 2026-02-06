@@ -3,6 +3,7 @@
 // Minimal, read-only upcoming appointments list with inline actions: View Deal, Reschedule, Complete
 // Does NOT modify legacy calendar components; safe to remove.
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { jobService } from '@/services/jobService'
 import { calendarService } from '@/services/calendarService'
@@ -17,7 +18,8 @@ import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import Navbar from '@/components/ui/Navbar'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
-import { isCalendarDealDrawerEnabled } from '@/config/featureFlags'
+import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { getJobLocationType } from '@/utils/locationType'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -128,6 +130,7 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
   return zonedStartOfDay(probe, timeZone)
 }
 
+
 function dateKeyToNoonUtcDate(dateKey) {
   if (!dateKey) return null
   const m = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -165,8 +168,8 @@ export function getEffectiveScheduleWindow(job) {
     .sort((a, b) => String(a.scheduled_start_time).localeCompare(String(b.scheduled_start_time)))
 
   const start = scheduledParts?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
-  const end = scheduledParts?.[0]?.scheduled_end_time || job?.scheduled_end_time || start || null
-
+  const end =
+    scheduledParts?.[0]?.scheduled_end_time || job?.scheduled_end_time || start || null
   return { start, end }
 }
 
@@ -208,7 +211,6 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
         const apptStart = new Date(apptStartIso)
         const apptEnd = apptEndIso ? new Date(apptEndIso) : apptStart
         if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false
-
         // Overlap: appt_start < rangeEnd AND appt_end > rangeStart
         if (!(apptStart < rangeEnd && apptEnd > rangeStart)) return false
       } else if (promisedKey) {
@@ -263,10 +265,16 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const showDetailPopovers = isEmbedded
   const shellRange = shellState?.range
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
+  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const [consistency, setConsistency] = useState({
+    rpcCount: 0,
+    jobCount: 0,
+    missingCount: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [jobs, setJobs] = useState([])
-  const [conflicts, setConflicts] = useState(new Map()) // jobId -> boolean
+  const [conflicts, setConflicts] = useState(new Map())
 
   const isDeliveryCoordinator = useMemo(() => {
     const dept = String(userProfile?.department || '')
@@ -312,7 +320,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       ? localStorage.getItem('agendaFilter_vendor') || ''
       : ''
   })
-
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQ(q), 300)
     return () => clearTimeout(handle)
@@ -351,6 +358,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     [location.search]
   )
   const focusRef = useRef(null)
+  const focusOpenedRef = useRef(null)
 
   // Reschedule modal state
   const [rescheduleModal, setRescheduleModal] = useState({
@@ -437,6 +445,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       if (!orgId) {
         setJobs([])
         setConflicts(new Map())
+        setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
         return
       }
 
@@ -454,6 +463,24 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         { label: 'Agenda load' }
       )
 
+      const scheduledDebug = scheduledRes?.debug || {}
+      setConsistency({
+        rpcCount: scheduledDebug?.rpcCount || 0,
+        jobCount: scheduledDebug?.jobCount || 0,
+        missingCount: scheduledDebug?.missingCount || 0,
+      })
+
+      const locationParam = new URLSearchParams(location.search).get('location') || 'All'
+      const isLocationFilterActive = unifiedShellEnabled && locationParam !== 'All'
+      const filterByLocation = (items) => {
+        if (!isLocationFilterActive) return items
+        const list = Array.isArray(items) ? items : []
+        return list.filter((item) => {
+          const raw = item?.raw || item
+          return getJobLocationType(raw) === locationParam
+        })
+      }
+
       const excluded = new Set(['draft', 'canceled', 'cancelled'])
       const combined = [...(scheduledRes?.items || []), ...(promisedRes?.items || [])].filter(
         (it) => !excluded.has(String(it?.raw?.job_status || it?.job_status || '').toLowerCase())
@@ -467,15 +494,16 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         return aMs - bMs
       })
 
-      setJobs(combined)
+      setJobs(filterByLocation(combined))
     } catch (e) {
       console.warn('[agenda] load failed', e)
       setJobs([])
       setLoadError(e?.message || 'Failed to load agenda')
+      setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
     } finally {
       setLoading(false)
     }
-  }, [orgId])
+  }, [location.search, orgId, unifiedShellEnabled])
 
   useEffect(() => {
     if (authIsLoading) return
@@ -529,17 +557,29 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach((j) => {
-      const promisedKey = j?.raw?.promised_date
-        ? String(j.raw.promised_date).slice(0, 10)
+      const raw = j?.raw || j
+      const promisedKey = raw?.promised_date
+        ? String(raw.promised_date).slice(0, 10)
         : j?.promisedAt
           ? String(j.promisedAt).slice(0, 10)
           : null
 
-      const key = j?.scheduledStart
-        ? toDateKey(j.scheduledStart)
-        : promisedKey || toDateKey(getEffectiveScheduleWindow(j?.raw || j)?.start)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(j)
+      const scheduledWindow = j?.scheduledStart
+        ? { start: j.scheduledStart }
+        : getEffectiveScheduleWindow(raw)
+      const scheduledStart = scheduledWindow?.start
+      const hasTime = !!scheduledStart
+
+      const key = hasTime
+        ? toDateKey(scheduledStart)
+        : promisedKey || toDateKey(scheduledWindow?.start)
+
+      if (!key) return
+
+      const bucket = map.get(key) || { allDay: [], scheduled: [] }
+      if (hasTime) bucket.scheduled.push(j)
+      else bucket.allDay.push(j)
+      map.set(key, bucket)
     })
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
   }, [filtered])
@@ -554,6 +594,18 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       return () => clearTimeout(t)
     }
   }, [focusId])
+
+  useEffect(() => {
+    if (!focusId) return
+    if (!dealDrawerEnabled || typeof onOpenDealDrawer !== 'function') return
+    if (focusOpenedRef.current === focusId) return
+
+    const match = (jobs || []).find((row) => String(row?.id || row?.raw?.id) === String(focusId))
+    if (!match) return
+
+    onOpenDealDrawer(match?.raw || match)
+    focusOpenedRef.current = focusId
+  }, [dealDrawerEnabled, focusId, jobs, onOpenDealDrawer])
 
   function handleReschedule(job) {
     const raw = job?.raw || job
@@ -645,6 +697,152 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     })
   }
 
+  const renderAgendaRow = (r) => {
+    const focused = r.id === focusId
+    const hasConflict = conflicts.get(r.id)
+    const raw = r?.raw || r
+    const { start, end } = r?.scheduledStart
+      ? { start: r.scheduledStart, end: r.scheduledEnd }
+      : getEffectiveScheduleWindow(raw)
+    const timeRange = start ? formatScheduleRange(start, end) : null
+    const title = raw?.title || raw?.job_number
+    const titleText = title || r.id || 'Appointment'
+    const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
+    const popoverLines = showDetailPopovers
+      ? [
+          timeRange ? `Time: ${timeRange}` : 'Time: All-day',
+          customerName ? `Customer: ${customerName}` : null,
+          vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+        ]
+      : []
+    const vehicleLabel =
+      r?.vehicleLabel ||
+      `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
+    const customerName = r?.customerName || raw?.customer_name || raw?.vehicle?.owner_name || ''
+    const stock = raw?.vehicle?.stock_number || ''
+    const ops = summarizeOpCodesFromParts(raw?.job_parts, 6)
+
+    const handleRowClick = getAgendaRowClickHandler({
+      dealDrawerEnabled,
+      onOpenDealDrawer,
+      navigate,
+      deal: raw,
+    })
+
+    return (
+      <li
+        key={r?.calendarKey || r?.calendar_key || r.id}
+        ref={focused ? focusRef : null}
+        tabIndex={0}
+        aria-label={`Appointment ${titleText}`}
+        aria-describedby={popoverId}
+        className={`group relative grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
+          focused ? 'bg-amber-50' : ''
+        }`}
+        onClick={handleRowClick}
+      >
+        {/* Time column (blank for all-day) */}
+        <div className="w-28 text-xs font-mono tabular-nums text-slate-600">
+          {timeRange ? (
+            <span className="truncate" title={timeRange}>
+              {timeRange}
+            </span>
+          ) : (
+            <span className="text-slate-400">All-day</span>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <div
+            className={`font-medium flex items-center gap-2 ${showTitleTooltips ? 'min-w-0' : ''}`}
+          >
+            <span
+              className={showTitleTooltips ? 'truncate' : ''}
+              title={showTitleTooltips ? titleText : undefined}
+            >
+              {titleText}
+            </span>
+            {hasConflict && (
+              <span
+                className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"
+                title="Potential scheduling conflict"
+                aria-label="Potential scheduling conflict"
+              >
+                Conflict
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-slate-500 truncate">
+            {[customerName, vehicleLabel, stock ? `Stock ${stock}` : null]
+              .filter(Boolean)
+              .join(' • ')}
+          </div>
+          {ops.tokens.length ? (
+            <div className="mt-1 flex flex-wrap items-center gap-1" aria-label="Products">
+              {ops.tokens.map((t) => (
+                <span
+                  key={t}
+                  className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                  title={t}
+                >
+                  {t}
+                </span>
+              ))}
+              {ops.extraCount ? (
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  +{ops.extraCount}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center justify-end">
+          <details className="relative">
+            <summary
+              onClick={(event) => event.stopPropagation()}
+              className="list-none rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              aria-label="More actions"
+            >
+              ⋯
+            </summary>
+            <div className="absolute right-0 z-20 mt-2 w-40 rounded-md border border-slate-200 bg-white p-1 text-xs text-slate-700 shadow-lg">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  handleReschedule(r)
+                }}
+                className="w-full rounded px-2 py-1 text-left hover:bg-slate-100"
+              >
+                Reschedule
+              </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  return String(r?.job_status || '').toLowerCase() === 'completed'
+                    ? handleReopen(r)
+                    : handleComplete(r)
+                }}
+                disabled={isStatusInFlight(r?.id)}
+                className={`w-full rounded px-2 py-1 text-left hover:bg-slate-100 ${
+                  isStatusInFlight(r?.id) ? 'text-slate-300 cursor-not-allowed' : ''
+                }`}
+              >
+                {String(r?.job_status || '').toLowerCase() === 'completed' ? 'Reopen' : 'Complete'}
+              </button>
+            </div>
+          </details>
+        </div>
+
+        {showDetailPopovers ? (
+          <EventDetailPopover id={popoverId} title={titleText} lines={popoverLines} />
+        ) : null}
+      </li>
+    )
+  }
+
   if (authIsLoading)
     return (
       <div className="p-4" role="status" aria-live="polite">
@@ -671,6 +869,79 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
 
         {supabaseNotice}
 
+        {unifiedShellEnabled &&
+          (consistency?.missingCount > 0 ||
+            (consistency?.rpcCount > 0 && consistency?.jobCount === 0)) && (
+            <div className="space-y-2">
+              {consistency?.rpcCount > 0 && consistency?.jobCount === 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertTriangle className="mt-0.5 h-4 w-4" />
+                      <div>
+                        <div className="font-semibold">
+                          Calendar items found, but Deals are empty.
+                        </div>
+                        <div className="text-amber-800">
+                          This usually means a tenant or filter mismatch. Try refreshing or review
+                          your Deals list filters.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={load}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/deals')}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        Open Deals
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {consistency?.missingCount > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertTriangle className="mt-0.5 h-4 w-4" />
+                      <div>
+                        <div className="font-semibold">Unlinked appointments detected.</div>
+                        <div className="text-amber-800">
+                          {consistency.missingCount} scheduled item
+                          {consistency.missingCount === 1 ? '' : 's'} could not be linked to a deal.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={load}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/deals')}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        Open Deals
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         {loadError ? (
           <div
             role="alert"
@@ -694,89 +965,89 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
 
         {/* Header with always-visible search and date range */}
         <header className="relative z-30 space-y-3" aria-label="Agenda controls">
-          {!isEmbedded && <CalendarViewTabs />}
-          <div className="flex items-center gap-4 flex-wrap">
-            {!isEmbedded && (
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
-                <span className="text-sm font-medium text-gray-500">Agenda</span>
-              </div>
-            )}
-            <label className="sr-only" htmlFor="agenda-search">
-              Search appointments
-            </label>
-            <input
-              id="agenda-search"
-              name="agenda-search"
-              aria-label="Search appointments"
-              placeholder="Search"
-              className="h-9 w-64 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <label className="sr-only" htmlFor="agenda-date-range">
-              Filter by date range
-            </label>
-            <select
-              id="agenda-date-range"
-              name="agenda-date-range"
-              aria-label="Filter by date range"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-            >
-              <option value="all">All Dates</option>
-              <option value="today">Today</option>
-              <option value="next3days">Next 3 Days</option>
-              <option value="next7days">Next 7 Days</option>
-            </select>
-
-            <button
-              type="button"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-              aria-label="Show next 3 days"
-              onClick={() => {
-                setDateRange('next3days')
-              }}
-              title="Filter to the next 3 days"
-            >
-              Next 3 Days
-            </button>
-
-            {/* Filter toggle button */}
-            <button
-              onClick={() => setFiltersExpanded((prev) => !prev)}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-              aria-expanded={filtersExpanded}
-              aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
-            >
-              Filters {filtersExpanded ? '▲' : '▼'}
-            </button>
-          </div>
-
-          {/* Collapsible filters panel */}
-          {filtersExpanded && (
-            <div className="flex items-center gap-4 flex-wrap rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-              <label className="sr-only" htmlFor="agenda-status">
-                Filter by status
+            {!isEmbedded && <CalendarViewTabs />}
+            <div className="flex items-center gap-4 flex-wrap">
+              {!isEmbedded && (
+                <div className="flex items-baseline gap-3">
+                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Calendar</h1>
+                  <span className="text-sm font-medium text-gray-500">Agenda</span>
+                </div>
+              )}
+              <label className="sr-only" htmlFor="agenda-search">
+                Search appointments
+              </label>
+              <input
+                id="agenda-search"
+                name="agenda-search"
+                aria-label="Search appointments"
+                placeholder="Search"
+                className="h-9 w-64 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+              <label className="sr-only" htmlFor="agenda-date-range">
+                Filter by date range
               </label>
               <select
-                id="agenda-status"
-                name="agenda-status"
-                aria-label="Filter by status"
+                id="agenda-date-range"
+                name="agenda-date-range"
+                aria-label="Filter by date range"
                 className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                value={dateRange}
+                onChange={(e) => setDateRange(e.target.value)}
               >
-                <option value="">All Statuses</option>
-                <option value="pending">Booked (time TBD)</option>
-                <option value="scheduled">Booked (time set)</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="next3days">Next 3 Days</option>
+                <option value="next7days">Next 7 Days</option>
               </select>
-              {/* Note: vendor filter can be added here when vendor list is available */}
+
+              <button
+                type="button"
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
+                aria-label="Show next 3 days"
+                onClick={() => {
+                  setDateRange('next3days')
+                }}
+                title="Filter to the next 3 days"
+              >
+                Next 3 Days
+              </button>
+
+              {/* Filter toggle button */}
+              <button
+                onClick={() => setFiltersExpanded((prev) => !prev)}
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                aria-expanded={filtersExpanded}
+                aria-label={filtersExpanded ? 'Hide filters' : 'Show filters'}
+              >
+                Filters {filtersExpanded ? '▲' : '▼'}
+              </button>
             </div>
-          )}
+
+            {/* Collapsible filters panel */}
+            {filtersExpanded && (
+              <div className="flex items-center gap-4 flex-wrap rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                <label className="sr-only" htmlFor="agenda-status">
+                  Filter by status
+                </label>
+                <select
+                  id="agenda-status"
+                  name="agenda-status"
+                  aria-label="Filter by status"
+                  className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="pending">Booked (time TBD)</option>
+                  <option value="scheduled">Booked (time set)</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
+                {/* Note: vendor filter can be added here when vendor list is available */}
+              </div>
+            )}
         </header>
 
         {groups.length === 0 && (
@@ -955,11 +1226,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     </div>
 
                     {showDetailPopovers ? (
-                      <EventDetailPopover
-                        id={popoverId}
-                        title={titleText}
-                        lines={popoverLines}
-                      />
+                      <EventDetailPopover id={popoverId} title={titleText} lines={popoverLines} />
                     ) : null}
                   </li>
                 )

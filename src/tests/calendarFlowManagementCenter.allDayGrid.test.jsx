@@ -13,6 +13,7 @@ vi.mock('@/hooks/useTenant', () => ({
 vi.mock('@/services/scheduleItemsService', () => ({
   getScheduledJobsByDateRange: (...args) => mockGetScheduledJobsByDateRange(...args),
   getNeedsSchedulingPromiseItems: (...args) => mockGetNeedsSchedulingPromiseItems(...args),
+  getUnscheduledQueueItems: vi.fn(() => Promise.resolve({ items: [] })),
 }))
 
 vi.mock('@/services/vendorService', () => ({
@@ -80,7 +81,10 @@ describe('CalendarFlowManagementCenter all-day grid', () => {
     })
 
     // Renders the All-day queue item (title + vehicle info may duplicate the label).
-    await screen.findAllByText('2025 RX 350')
+    const matches = await screen.findAllByText((_, node) =>
+      node?.textContent?.includes('2025 RX 350')
+    )
+    expect(matches.length).toBeGreaterThan(0)
 
     expect(screen.queryByText(/No jobs this week\./i)).not.toBeInTheDocument()
 

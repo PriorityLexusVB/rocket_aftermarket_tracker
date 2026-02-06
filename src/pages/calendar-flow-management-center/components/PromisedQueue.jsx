@@ -3,7 +3,13 @@ import { CheckCircle, Clock, RefreshCw } from 'lucide-react'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 export default function PromisedQueue({
-  jobs,
+  unscheduledJobs,
+  needsTimeCount,
+  overdueCount,
+  highlightNeedsTime,
+  showOverdueOnly,
+  onToggleNeedsTime,
+  onToggleOverdueOnly,
   onJobClick,
   onDragStart,
   onComplete,
@@ -11,50 +17,88 @@ export default function PromisedQueue({
   isStatusInFlight,
   loading,
 }) {
-  const rows = useMemo(() => jobs ?? [], [jobs])
+  const rows = useMemo(() => unscheduledJobs ?? [], [unscheduledJobs])
+  const needsTimeTotal = Number.isFinite(needsTimeCount) ? needsTimeCount : 0
+  const overdueTotal = Number.isFinite(overdueCount) ? overdueCount : 0
 
   return (
     <div className="w-80 shrink-0 rounded-lg border border-gray-200 bg-white">
-      <div className="flex items-center justify-between border-b border-gray-200 p-3">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
-          <h3 className="text-sm font-semibold text-gray-900">Promised (Date Only)</h3>
-          <span className="text-xs text-gray-500">({rows.length})</span>
+      <div className="border-b border-gray-200 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-gray-900">Queue</h3>
+          </div>
+          <span className="text-xs text-gray-500">{rows.length} unscheduled</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleNeedsTime}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${
+              highlightNeedsTime
+                ? 'bg-amber-100 text-amber-900'
+                : 'bg-slate-100 text-slate-700'
+            }`}
+            aria-pressed={highlightNeedsTime}
+          >
+            Needs Time
+            <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
+              {needsTimeTotal}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onToggleOverdueOnly}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${
+              showOverdueOnly ? 'bg-red-100 text-red-900' : 'bg-slate-100 text-slate-700'
+            }`}
+            aria-pressed={showOverdueOnly}
+          >
+            Overdue
+            <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
+              {overdueTotal}
+            </span>
+          </button>
+        </div>
+        <div className="text-[11px] text-gray-500">
+          Needs Time items render all-day on the board.
         </div>
       </div>
 
       <div className="divide-y divide-gray-100">
         {loading ? <div className="p-4 text-sm text-gray-500">Loading…</div> : null}
         {!loading && rows.length === 0 ? (
-          <div className="p-4 text-sm text-gray-500">No promised date-only jobs.</div>
+          <div className="p-4 text-sm text-gray-500">No unscheduled jobs.</div>
         ) : null}
 
         {rows.map((job) => {
-          const isCompleted = String(job?.job_status || '').toLowerCase() === 'completed'
-          const isBusy = Boolean(isStatusInFlight?.(job?.id))
-          const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+          const raw = job?.raw || job
+          const isCompleted = String(raw?.job_status || '').toLowerCase() === 'completed'
+          const isBusy = Boolean(isStatusInFlight?.(raw?.id))
+          const promise = raw?.next_promised_iso || raw?.promised_date || raw?.promisedAt || null
 
           return (
             <div
-              key={job?.calendar_key || job?.id}
+              key={job?.calendarKey || job?.calendar_key || raw?.id}
               className={`p-3 ${isBusy ? 'opacity-60' : ''}`}
-              onClick={() => onJobClick?.(job)}
+              onClick={() => onJobClick?.(raw)}
               draggable
-              onDragStart={() => onDragStart?.(job)}
+              onDragStart={() => onDragStart?.(raw)}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <div className="truncate text-sm font-medium text-gray-900">
-                      {job?.job_number ? `${job.job_number} • ` : ''}
-                      {job?.title || job?.vehicle_description || '(Untitled)'}
+                      {raw?.job_number ? `${raw.job_number} • ` : ''}
+                      {raw?.title || raw?.vehicle_description || '(Untitled)'}
                     </div>
                     <span className="inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      PROMISE
+                      UNSCHEDULED
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-gray-600">
-                    Promise: {formatEtDateLabel(promise) || '—'}
+                    {promise ? `Promise: ${formatEtDateLabel(promise) || '—'}` : 'No promised day'}
                   </div>
                 </div>
 
@@ -62,8 +106,8 @@ export default function PromisedQueue({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (isCompleted) onReopen?.(job)
-                    else onComplete?.(job)
+                    if (isCompleted) onReopen?.(raw)
+                    else onComplete?.(raw)
                   }}
                   disabled={isBusy}
                   className={

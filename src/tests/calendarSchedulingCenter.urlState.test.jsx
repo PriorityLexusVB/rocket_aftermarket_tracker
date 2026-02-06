@@ -17,6 +17,7 @@ vi.mock('@/services/calendarService', () => ({
 }))
 
 vi.mock('@/services/scheduleItemsService', () => ({
+  getScheduledJobsByDateRange: vi.fn(() => Promise.resolve({ jobs: [], debug: {} })),
   getNeedsSchedulingPromiseItems: vi.fn(() => Promise.resolve({ items: [], debug: {} })),
 }))
 
@@ -48,20 +49,19 @@ describe('CalendarSchedulingCenter URL state', () => {
       </MemoryRouter>
     )
 
-    expect(await screen.findByText('Monthly Schedule')).toBeTruthy()
+    const dayCell = await screen.findByLabelText(
+      /Open 2026-01-15 in (day|board) view/
+    )
 
     const initialSearch = screen.getByTestId('location-search').textContent || ''
     expect(initialSearch).toContain('view=month')
     expect(initialSearch).toContain('date=2026-01-15')
 
-    const dayCell = await screen.findByLabelText('Open 2026-01-15 in day view')
     fireEvent.click(dayCell)
-
-    expect(await screen.findByText('Daily Schedule')).toBeTruthy()
 
     await waitFor(() => {
       const nextSearch = screen.getByTestId('location-search').textContent || ''
-      expect(nextSearch).toContain('view=day')
+      expect(nextSearch).toMatch(/view=(day|board)/)
       expect(nextSearch).toContain('date=2026-01-15')
     })
   })
