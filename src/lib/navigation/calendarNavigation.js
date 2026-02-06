@@ -1,7 +1,7 @@
 // Centralized calendar navigation helpers.
 // Phase-1: preserve existing routes (no behavior change).
 
-import { isFeatureEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { logCalendarNavigation } from '@/lib/navigation/logNavigation'
 
 const buildFocusQuery = (focusId) => {

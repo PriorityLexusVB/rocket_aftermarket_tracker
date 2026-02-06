@@ -23,9 +23,6 @@ import {
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
 
-const SIMPLE_AGENDA_ENABLED =
-  String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
-
 const LOAD_TIMEOUT_MS = 15000
 
 // Safe date creation utility
@@ -210,7 +207,7 @@ const CalendarSchedulingCenter = ({
       const nextKey = formatDateParam(nextDate)
       if (currKey && nextKey && currKey !== nextKey) setCurrentDate(nextDate)
     }
-  }, [urlParams, viewType, currentDate])
+  }, [isEmbedded, urlParams, viewType, currentDate])
 
   // One-time URL normalization so the page is shareable/bookmarkable without
   // creating a state <-> URL feedback loop.
@@ -240,7 +237,7 @@ const CalendarSchedulingCenter = ({
 
     didInitUrlStateRef.current = true
     if (changed) setSearchParams(next, { replace: true })
-  }, [viewType, currentDate, urlParams, setSearchParams])
+  }, [isEmbedded, viewType, currentDate, urlParams, setSearchParams])
 
   const setUrlState = useCallback(
     ({ nextViewType, nextDate }) => {

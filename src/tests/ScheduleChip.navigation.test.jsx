@@ -1,9 +1,10 @@
 // src/tests/ScheduleChip.navigation.test.jsx
 // Tests for ScheduleChip navigation behavior with SIMPLE_CALENDAR flag
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import ScheduleChip from '@/components/deals/ScheduleChip'
+import { getCalendarDestination } from '@/lib/navigation/calendarNavigation'
 
 // Mock useNavigate
 const mockNavigate = vi.fn()
@@ -16,8 +17,30 @@ vi.mock('react-router-dom', async () => {
 })
 
 describe('ScheduleChip Navigation', () => {
+  const setFlag = (value) => {
+    try {
+      Object.assign((import.meta && import.meta.env) || {}, {
+        VITE_FF_CALENDAR_UNIFIED_SHELL: value,
+      })
+    } catch {}
+  }
+
   beforeEach(() => {
     mockNavigate.mockClear()
+    if (typeof vi.stubEnv === 'function') {
+      vi.stubEnv('VITE_FF_CALENDAR_UNIFIED_SHELL', 'true')
+    } else {
+      setFlag('true')
+    }
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-02-06T12:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    if (typeof vi.unstubAllEnvs === 'function') {
+      vi.unstubAllEnvs()
+    }
   })
 
   it('should navigate to agenda view when enableAgendaNavigation is true', () => {
@@ -35,7 +58,11 @@ describe('ScheduleChip Navigation', () => {
     const chip = screen.getByTestId('schedule-chip')
     fireEvent.click(chip)
 
-    expect(mockNavigate).toHaveBeenCalledWith('/calendar/agenda?focus=job-123')
+    const expected = getCalendarDestination({
+      target: 'agenda',
+      context: { focusId: 'job-123' },
+    })
+    expect(mockNavigate).toHaveBeenCalledWith(expected)
   })
 
   it('should navigate to deal edit when enableAgendaNavigation is false', () => {

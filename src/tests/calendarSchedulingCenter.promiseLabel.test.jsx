@@ -12,14 +12,9 @@ vi.mock('@/contexts/AuthContext', () => ({
 
 const todayIso = new Date().toISOString()
 
-const mockGetJobsByDateRange = vi.fn()
+const mockGetScheduledJobsByDateRange = vi.fn()
+const mockGetNeedsSchedulingPromiseItems = vi.fn()
 const mockUpdateStatus = vi.fn()
-
-vi.mock('@/services/calendarService', () => ({
-  calendarService: {
-    getJobsByDateRange: (...args) => mockGetJobsByDateRange(...args),
-  },
-}))
 
 vi.mock('@/services/jobService', () => ({
   jobService: {
@@ -28,7 +23,8 @@ vi.mock('@/services/jobService', () => ({
 }))
 
 vi.mock('@/services/scheduleItemsService', () => ({
-  getNeedsSchedulingPromiseItems: vi.fn(() => Promise.resolve({ items: [], debug: {} })),
+  getScheduledJobsByDateRange: (...args) => mockGetScheduledJobsByDateRange(...args),
+  getNeedsSchedulingPromiseItems: (...args) => mockGetNeedsSchedulingPromiseItems(...args),
 }))
 
 vi.mock('@/components/layouts/AppLayout', () => ({
@@ -39,13 +35,14 @@ import CalendarSchedulingCenter from '@/pages/calendar/index.jsx'
 
 describe('CalendarSchedulingCenter promise-only label', () => {
   beforeEach(() => {
-    mockGetJobsByDateRange.mockReset()
+    mockGetScheduledJobsByDateRange.mockReset()
+    mockGetNeedsSchedulingPromiseItems.mockReset()
     mockUpdateStatus.mockReset()
   })
 
   it('renders PROMISE for time_tbd scheduled items (never BOOKED)', async () => {
-    mockGetJobsByDateRange.mockResolvedValue({
-      data: [
+    mockGetScheduledJobsByDateRange.mockResolvedValue({
+      jobs: [
         {
           id: 'job-1',
           title: 'Promise Only Job',
@@ -58,8 +55,9 @@ describe('CalendarSchedulingCenter promise-only label', () => {
           vendor_id: null,
         },
       ],
-      error: null,
+      debug: {},
     })
+    mockGetNeedsSchedulingPromiseItems.mockResolvedValue({ items: [], debug: {} })
 
     render(
       <MemoryRouter>
@@ -80,8 +78,8 @@ describe('CalendarSchedulingCenter promise-only label', () => {
   })
 
   it('reopens completed jobs to quality_check', async () => {
-    mockGetJobsByDateRange.mockResolvedValue({
-      data: [
+    mockGetScheduledJobsByDateRange.mockResolvedValue({
+      jobs: [
         {
           id: 'job-2',
           title: 'Completed Job',
@@ -94,8 +92,9 @@ describe('CalendarSchedulingCenter promise-only label', () => {
           vendor_id: null,
         },
       ],
-      error: null,
+      debug: {},
     })
+    mockGetNeedsSchedulingPromiseItems.mockResolvedValue({ items: [], debug: {} })
 
     render(
       <MemoryRouter>

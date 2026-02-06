@@ -126,54 +126,177 @@ function zonedStartOfDay(date, timeZone) {
 
 function zonedStartOfNextDay(date, timeZone, days = 1) {
   const start = zonedStartOfDay(date, timeZone)
-  {
-    groups.map(([dateKey, bucket]) => {
-      const allDayRows = bucket?.allDay || []
-      const scheduledRows = bucket?.scheduled || []
+  const probe = new Date(start.getTime() + days * 24 * 60 * 60 * 1000)
+  return zonedStartOfDay(probe, timeZone)
+}
 
-      return (
-        <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-3">
-          <div
-            className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${
-              isEmbedded ? 'top-16' : 'top-[5rem]'
-            }`}
-          >
-            <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
-              {formatAgendaDayHeader(dateKey)}
-            </h2>
-          </div>
 
-          {allDayRows.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase text-slate-500">
-                All-day (Promises)
-              </div>
-              <ul
-                className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                role="list"
-              >
-                {allDayRows.map(renderAgendaRow)}
-              </ul>
-            </div>
-          )}
+function dateKeyToNoonUtcDate(dateKey) {
+  if (!dateKey) return null
+  const m = String(dateKey).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const year = Number(m[1])
+  const month = Number(m[2])
+  const day = Number(m[3])
+  if (!year || !month || !day) return null
+  return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0))
+}
 
-          {scheduledRows.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-[11px] font-semibold uppercase text-slate-500">
-                Scheduled (Timed)
-              </div>
-              <ul
-                className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                role="list"
-              >
-                {scheduledRows.map(renderAgendaRow)}
-              </ul>
-            </div>
-          )}
-        </section>
-      )
-    })
+function formatAgendaDayHeader(dateKey) {
+  const d = dateKeyToNoonUtcDate(dateKey)
+  if (!d) return String(dateKey)
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(d)
+}
+
+function mapShellRangeToAgenda(range) {
+  const key = String(range || '').toLowerCase()
+  if (key === 'day') return 'today'
+  if (key === 'week' || key === 'next7') return 'next7days'
+  if (key === 'month' || key === 'next30') return 'all'
+  return 'all'
+}
+
+export function getEffectiveScheduleWindow(job) {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  const scheduledParts = parts
+    .filter((p) => p?.scheduled_start_time)
+    .sort((a, b) => String(a.scheduled_start_time).localeCompare(String(b.scheduled_start_time)))
+
+  const start = scheduledParts?.[0]?.scheduled_start_time || job?.scheduled_start_time || null
+  const end =
+    scheduledParts?.[0]?.scheduled_end_time || job?.scheduled_end_time || start || null
+  return { start, end }
+}
+
+// Derive filtered list
+export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: nowOverride } = {}) {
+  const now = nowOverride instanceof Date ? nowOverride : new Date()
+  const rangeStart = zonedStartOfDay(now, TZ)
+  const rangeEnd =
+    dateRange === 'today'
+      ? zonedStartOfNextDay(now, TZ, 1)
+      : dateRange === 'next3days'
+        ? zonedStartOfNextDay(now, TZ, 3)
+        : dateRange === 'next7days'
+          ? zonedStartOfNextDay(now, TZ, 7)
+          : null
+
+  return rows.filter((r) => {
+    const raw = r?.raw || r
+    const jobStatus = raw?.job_status ?? r?.job_status
+    if (status && jobStatus !== status) return false
+
+    const vendorId = r?.vendorId ?? r?.vendor_id ?? r?.raw?.vendor_id
+    if (vendorFilter && vendorId !== vendorFilter) return false
+
+    const { start: apptStartIso, end: apptEndIso } = r?.scheduledStart
+      ? { start: r.scheduledStart, end: r.scheduledEnd }
+      : getEffectiveScheduleWindow(r)
+
+    // For day-based views, promised_date is treated as a pure day (no timezone shifting).
+    const promisedVal = raw?.promised_date ?? r?.promisedAt ?? r?.promised_date ?? null
+    const promisedKey = promisedVal ? String(promisedVal).slice(0, 10) : null
+
+    // If it has neither a schedule window nor a promised date, it can't be placed on the Agenda.
+    if (!apptStartIso && !promisedKey) return false
+
+    // Date range filter
+    if (rangeStart && rangeEnd) {
+      if (apptStartIso) {
+        const apptStart = new Date(apptStartIso)
+        const apptEnd = apptEndIso ? new Date(apptEndIso) : apptStart
+        if (Number.isNaN(apptStart.getTime()) || Number.isNaN(apptEnd.getTime())) return false
+        // Overlap: appt_start < rangeEnd AND appt_end > rangeStart
+        if (!(apptStart < rangeEnd && apptEnd > rangeStart)) return false
+      } else if (promisedKey) {
+        const startKey = toYmdInTz(rangeStart, TZ)
+        const endKey = toYmdInTz(rangeEnd, TZ)
+        if (!startKey || !endKey) return false
+        if (promisedKey < startKey) return false
+        if (promisedKey >= endKey) return false
+      }
+    }
+
+    if (q) {
+      const needle = q.toLowerCase()
+      const hay = [
+        r?.raw?.title ?? r?.title,
+        r?.raw?.description ?? r?.description,
+        r?.raw?.job_number ?? r?.job_number,
+        r?.raw?.vehicle?.owner_name ?? r?.vehicle?.owner_name,
+        r?.customerName,
+        r?.vehicleLabel,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      if (!hay.includes(needle)) return false
+    }
+    return true
+  })
+}
+
+export function getAgendaRowClickHandler({ dealDrawerEnabled, onOpenDealDrawer, navigate, deal }) {
+  return () => {
+    if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
+      onOpenDealDrawer(deal)
+      return
+    }
+
+    const dealId = deal?.id
+    if (dealId && typeof navigate === 'function') {
+      navigate(`/deals/${dealId}/edit`)
+    }
   }
+}
+
+export default function CalendarAgenda({ embedded = false, shellState, onOpenDealDrawer } = {}) {
+  const { orgId, session, userProfile, loading: authLoading, profileLoading } = useAuth()
+  const toast = useToast()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isEmbedded = embedded === true
+  const showTitleTooltips = isEmbedded
+  const showDetailPopovers = isEmbedded
+  const shellRange = shellState?.range
+  const dealDrawerEnabled = isCalendarDealDrawerEnabled()
+  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const [consistency, setConsistency] = useState({
+    rpcCount: 0,
+    jobCount: 0,
+    missingCount: 0,
+  })
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [jobs, setJobs] = useState([])
+  const [conflicts, setConflicts] = useState(new Map())
+
+  const isDeliveryCoordinator = useMemo(() => {
+    const dept = String(userProfile?.department || '')
+      .trim()
+      .toLowerCase()
+    return dept === 'delivery coordinator'
+  }, [userProfile?.department])
+
+  const authIsLoading = authLoading || profileLoading
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = isEmbedded ? 'Calendar' : 'Calendar — Agenda'
+    }
+  }, [isEmbedded])
+
+  // Initialize filters from URL params, with localStorage fallback
+  const [q, setQ] = useState(() => {
+    const urlParam = new URLSearchParams(location.search).get('q')
+    if (urlParam) return urlParam
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_q') || '' : ''
+  })
   const [debouncedQ, setDebouncedQ] = useState(q)
   const [status, setStatus] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('status')
@@ -197,7 +320,6 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
       ? localStorage.getItem('agendaFilter_vendor') || ''
       : ''
   })
-
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQ(q), 300)
     return () => clearTimeout(handle)
@@ -270,12 +392,6 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
 
   // Filters toggle state
   const [filtersExpanded, setFiltersExpanded] = useState(false)
-  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
-  const [consistency, setConsistency] = useState({
-    rpcCount: 0,
-    jobCount: 0,
-    missingCount: 0,
-  })
 
   // Sync filters to URL and localStorage
   useEffect(() => {
@@ -848,8 +964,7 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
         ) : null}
 
         {/* Header with always-visible search and date range */}
-        {!suppressChrome && (
-          <header className="relative z-30 space-y-3" aria-label="Agenda controls">
+        <header className="relative z-30 space-y-3" aria-label="Agenda controls">
             {!isEmbedded && <CalendarViewTabs />}
             <div className="flex items-center gap-4 flex-wrap">
               {!isEmbedded && (
@@ -933,8 +1048,7 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
                 {/* Note: vendor filter can be added here when vendor list is available */}
               </div>
             )}
-          </header>
-        )}
+        </header>
 
         {groups.length === 0 && (
           <div role="status" aria-live="polite">

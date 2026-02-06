@@ -49,13 +49,6 @@ export default function CalendarViewTabs() {
     return 'CalendarViewTabs.Switch'
   }
 
-  const getTargetForKey = (key) => {
-    if (key === 'grid') return 'grid'
-    if (key === 'flow') return 'flow'
-    if (key === 'agenda') return 'agenda'
-    return 'calendar'
-  }
-
   return (
     <div
       className="relative z-20 flex flex-wrap items-center gap-2 pointer-events-auto"

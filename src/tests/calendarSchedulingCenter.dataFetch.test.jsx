@@ -10,13 +10,10 @@ vi.mock('@/contexts/AuthContext', () => ({
   }),
 }))
 
-vi.mock('@/services/calendarService', () => ({
-  calendarService: {
-    getJobsByDateRange: vi.fn(() => Promise.resolve({ data: [], error: null })),
-  },
-}))
+const mockGetScheduledJobsByDateRange = vi.fn(() => Promise.resolve({ jobs: [], debug: {} }))
 
 vi.mock('@/services/scheduleItemsService', () => ({
+  getScheduledJobsByDateRange: (...args) => mockGetScheduledJobsByDateRange(...args),
   getNeedsSchedulingPromiseItems: vi.fn(() => Promise.resolve({ items: [], debug: {} })),
 }))
 
@@ -25,10 +22,9 @@ vi.mock('@/components/layouts/AppLayout', () => ({
 }))
 
 import CalendarSchedulingCenter from '@/pages/calendar/index.jsx'
-import { calendarService } from '@/services/calendarService'
 
 describe('CalendarSchedulingCenter data fetch', () => {
-  it('loads jobs via calendarService.getJobsByDateRange (org-scoped)', async () => {
+  it('loads jobs via getScheduledJobsByDateRange (org-scoped)', async () => {
     render(
       <MemoryRouter>
         <CalendarSchedulingCenter />
@@ -36,13 +32,12 @@ describe('CalendarSchedulingCenter data fetch', () => {
     )
 
     await waitFor(() => {
-      expect(calendarService.getJobsByDateRange).toHaveBeenCalled()
+      expect(mockGetScheduledJobsByDateRange).toHaveBeenCalled()
     })
 
-    expect(calendarService.getJobsByDateRange).toHaveBeenCalledWith(
-      expect.any(Date),
-      expect.any(Date),
-      { orgId: 'test-org-id' }
-    )
+    const call = mockGetScheduledJobsByDateRange.mock.calls[0]?.[0] || {}
+    expect(call).toMatchObject({ orgId: 'test-org-id' })
+    expect(call.rangeStart).toBeInstanceOf(Date)
+    expect(call.rangeEnd).toBeInstanceOf(Date)
   })
 })
