@@ -141,12 +141,13 @@ For each unchecked item in TRACK A or TRACK D:
 
 ## TRACK E — “Complete Included Set” Items 6–8 (Engine options, Design toolkit, Micro-interactions)
 
-- [ ] E6 Calendar engine decision + spike harness
+- [x] E6 Calendar engine decision + spike harness
   - Deliverables:
     - ADR doc evaluating FullCalendar Scheduler vs DayPilot vs current stack
     - Clear go/no-go criteria (resource lanes, external drag, resize, perf, a11y, cost)
     - A minimal “spike harness” plan (NOT a rewrite) describing how we’d plug an engine in behind an adapter
   - IMPORTANT: do NOT add FullCalendar/DayPilot deps in this track unless you can do it as a no-risk, optional spike that does not touch production code paths.
+  - Notes: 453e6a3 - Added calendar engine ADR and spike plan.
 
 - [ ] E7 Design toolkit + tokens + checklists (design.dev mapping)
   - Deliverables:
