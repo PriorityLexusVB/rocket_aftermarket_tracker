@@ -20,6 +20,7 @@ import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
+import { getMicroFlashClass } from '@/utils/microInteractions'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -266,6 +267,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const shellRange = shellState?.range
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const microInteractionsEnabled = unifiedShellEnabled
   const [consistency, setConsistency] = useState({
     rpcCount: 0,
     jobCount: 0,
@@ -359,6 +361,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   )
   const focusRef = useRef(null)
   const focusOpenedRef = useRef(null)
+  const microFlashTimerRef = useRef(null)
+  const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null)
 
   // Reschedule modal state
   const [rescheduleModal, setRescheduleModal] = useState({
@@ -619,11 +623,41 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     if (!rescheduleModal.job) return
 
     try {
+      const jobId = rescheduleModal.job.id
+      const vendorId = rescheduleModal.job?.vendor_id
+      const hadConflict = microInteractionsEnabled && conflicts.get(jobId)
+      const { startTime, endTime } = scheduleData || {}
+
       // Update line item schedules using the new service method
-      await jobService.updateLineItemSchedules(rescheduleModal.job.id, scheduleData)
+      await jobService.updateLineItemSchedules(jobId, scheduleData)
+
+      if (microInteractionsEnabled && jobId) {
+        if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
+        setRecentlyUpdatedId(jobId)
+        microFlashTimerRef.current = setTimeout(() => {
+          setRecentlyUpdatedId(null)
+          microFlashTimerRef.current = null
+        }, 600)
+      }
+
+      if (microInteractionsEnabled && hadConflict && vendorId && startTime && endTime) {
+        try {
+          const { hasConflict } = await calendarService.checkSchedulingConflict(
+            vendorId,
+            new Date(startTime),
+            new Date(endTime),
+            jobId
+          )
+          if (!hasConflict) {
+            toast?.success?.('Conflict resolved')
+          }
+        } catch (err) {
+          console.debug('[agenda] conflict recheck skipped', err)
+        }
+      }
 
       // Show success message
-      toast?.success?.('Schedule updated successfully')
+      toast?.success?.(microInteractionsEnabled ? 'Saved' : 'Schedule updated successfully')
 
       // Close modal and refresh
       setRescheduleModal({ open: false, job: null, initialStart: null, initialEnd: null })
@@ -633,6 +667,12 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       toast?.error?.(e?.message || 'Failed to reschedule')
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
+    }
+  }, [])
 
   async function handleComplete(job) {
     const previousStatus = job.job_status
@@ -700,6 +740,11 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const renderAgendaRow = (r) => {
     const focused = r.id === focusId
     const hasConflict = conflicts.get(r.id)
+    const microFlash = getMicroFlashClass({
+      enabled: microInteractionsEnabled,
+      activeId: recentlyUpdatedId,
+      itemId: r.id,
+    })
     const raw = r?.raw || r
     const { start, end } = r?.scheduledStart
       ? { start: r.scheduledStart, end: r.scheduledEnd }
@@ -738,7 +783,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         aria-describedby={popoverId}
         className={`group relative grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
           focused ? 'bg-amber-50' : ''
-        }`}
+        } ${microFlash}`}
         onClick={handleRowClick}
       >
         {/* Time column (blank for all-day) */}
