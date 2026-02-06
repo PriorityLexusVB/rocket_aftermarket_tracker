@@ -13,6 +13,7 @@ import { getEventColors } from '@/utils/calendarColors'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import { useToast } from '@/components/ui/ToastProvider'
+import { isOverdue } from '@/lib/time'
 import {
   getCalendarDestination,
   trackCalendarNavigation,
@@ -468,6 +469,21 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
     }
   }
 
+  const handleDayDrilldown = useCallback(
+    (dayDate) => {
+      if (!unifiedShellEnabled) return
+      const destination = trackCalendarNavigation({
+        source: 'CalendarSchedulingCenter.MonthCell.Drilldown',
+        target: 'board',
+        range: 'day',
+        date: dayDate,
+        context: { from: `${location?.pathname || ''}${location?.search || ''}` },
+      })
+      navigate(destination)
+    },
+    [location?.pathname, location?.search, navigate, unifiedShellEnabled]
+  )
+
   // Prevent double-clicks from sending duplicate status updates.
   const statusInFlightRef = useRef(new Set())
   const [, bumpStatusInFlightVersion] = useState(0)
@@ -857,6 +873,10 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                 dayDate?.getMonth?.() === monthStart.getMonth()
 
               const jumpToDay = () => {
+                if (unifiedShellEnabled) {
+                  handleDayDrilldown(dayDate)
+                  return
+                }
                 try {
                   const nextDate = new Date(dayDate)
                   // Avoid edge-case day drift in some TZ/DST boundaries by anchoring away from midnight.
@@ -873,8 +893,21 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
 
               const dayJobs = jobsByDayKey.get(dayKey) || []
 
+              const promiseCount = dayJobs.filter(
+                (job) => job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
+              ).length
+              const scheduledCount = Math.max((dayJobs?.length || 0) - promiseCount, 0)
+              const overdueCount = dayJobs.filter((job) =>
+                isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt)
+              ).length
+
               const visibleJobs = dayJobs?.slice?.(0, 4) || []
               const remainingCount = Math.max((dayJobs?.length || 0) - visibleJobs.length, 0)
+
+              const dayAriaLabel = unifiedShellEnabled
+                ? `Open ${formatDateParam(dayDate)} in board view`
+                : `Open ${formatDateParam(dayDate)} in day view`
+              const dayTitle = unifiedShellEnabled ? 'Open Board day view' : 'Open day view'
 
               return (
                 <div
@@ -895,8 +928,8 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                         ? 'bg-white hover:bg-gray-50'
                         : 'bg-gray-50 hover:bg-gray-100'
                   }`}
-                  aria-label={`Open ${formatDateParam(dayDate)} in day view`}
-                  title="Open day view"
+                  aria-label={dayAriaLabel}
+                  title={dayTitle}
                 >
                   <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100">
                     <div
@@ -906,8 +939,22 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                     >
                       {dayDate?.getDate?.()}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {dayJobs?.length ? `${dayJobs.length}` : ''}
+                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                      {promiseCount > 0 ? (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-900">
+                          P {promiseCount}
+                        </span>
+                      ) : null}
+                      {scheduledCount > 0 ? (
+                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-900">
+                          S {scheduledCount}
+                        </span>
+                      ) : null}
+                      {overdueCount > 0 ? (
+                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-900">
+                          O {overdueCount}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
@@ -1320,53 +1367,6 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
 
           <div className="space-y-4">
             {!suppressChrome && <CalendarLegend showStatuses />}
-
-            {!hideShellActions && (
-              <div className="bg-white p-4 rounded-lg shadow border">
-                <h3 className="font-medium text-gray-900 mb-3">Quick Actions</h3>
-                <button
-                  onClick={refreshData}
-                  className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                >
-                  Refresh Data
-                </button>
-
-                <div className="mt-3 grid grid-cols-1 gap-2">
-                  <button
-                    onClick={() => {
-                      const destination = getCalendarDestination({ target: 'board' })
-                      trackCalendarNavigation({
-                        source: 'CalendarSchedulingCenter.QuickActions.OpenSchedulingBoard',
-                        destination,
-                        context: { from: `${location?.pathname || ''}${location?.search || ''}` },
-                      })
-                      navigate(destination)
-                    }}
-                    className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                  >
-                    {unifiedShellEnabled ? 'Open Board' : 'Open Scheduling Board'}
-                  </button>
-                  {SIMPLE_AGENDA_ENABLED ? (
-                    <button
-                      onClick={() => {
-                        const destination = getCalendarDestination({ target: 'list' })
-                        trackCalendarNavigation({
-                          source: 'CalendarSchedulingCenter.QuickActions.OpenAgenda',
-                          destination,
-                          context: {
-                            from: `${location?.pathname || ''}${location?.search || ''}`,
-                          },
-                        })
-                        navigate(destination)
-                      }}
-                      className="w-full py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                    >
-                      Open Agenda (List)
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            )}
 
             {!suppressChrome && (
               <div className="bg-white p-4 rounded-lg shadow border">
