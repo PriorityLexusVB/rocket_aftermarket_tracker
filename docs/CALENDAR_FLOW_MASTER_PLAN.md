@@ -50,9 +50,9 @@ Rules:
   - Accept: no overflow; long titles clamp; hover/focus reveals full
   - Notes: 142c09b - Added embedded-only title tooltips for board, calendar, and list cards.
 
-- [ ] A2 Sticky date headers in List view
+- [x] A2 Sticky date headers in List view
   - Accept: day/group headers remain visible while scrolling
-  - Notes:
+  - Notes: cb99810 - Adjusted sticky header offset for embedded list view.
 
 - [ ] A3 Hover/focus detail popover for events
   - Accept: accessible popover (keyboard focus), shows key fields without click
