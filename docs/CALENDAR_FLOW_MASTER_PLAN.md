@@ -149,7 +149,7 @@ For each unchecked item in TRACK A or TRACK D:
   - IMPORTANT: do NOT add FullCalendar/DayPilot deps in this track unless you can do it as a no-risk, optional spike that does not touch production code paths.
   - Notes: 453e6a3 - Added calendar engine ADR and spike plan.
 
-- [ ] E7 Design toolkit + tokens + checklists (design.dev mapping)
+- [x] E7 Design toolkit + tokens + checklists (design.dev mapping)
   - Deliverables:
     - docs/DESIGN_TOOLKIT_CALENDAR.md with links + how-to steps:
       - Grid Area Mapper (3-pane layout)
@@ -160,6 +160,7 @@ For each unchecked item in TRACK A or TRACK D:
     - Minimal token file in repo (no breaking changes):
       - docs/design-tokens/calendar-tokens.md AND/OR src/styles/calendar-tokens.css (not necessarily applied globally yet)
     - A short “UI QA checklist” for calendar overlays/z-index/contrast.
+  - Notes: 4af7a07 - Added design toolkit, tokens, and QA checklist.
 
 - [ ] E8 Micro-interactions (state clarity only)
   - Deliverables:
