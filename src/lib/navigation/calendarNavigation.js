@@ -67,21 +67,23 @@ export function normalizeCalendarRange(range) {
   return VALID_CANONICAL_RANGES.has(r) ? r : 'day'
 }
 
-export function buildCalendarSearchParams({ view, range, date } = {}) {
+export function buildCalendarSearchParams({ view, range, date, q } = {}) {
   const normalizedView = normalizeCalendarView(view)
   const normalizedRange = normalizeCalendarRange(range)
   const dateValue = date instanceof Date ? date : parseCalendarDateParam(date)
   const dateParam = formatCalendarDateParam(dateValue || new Date())
+  const query = typeof q === 'string' ? q.trim() : ''
 
   const params = new URLSearchParams()
   params.set('view', normalizedView)
   params.set('range', normalizedRange)
   if (dateParam) params.set('date', dateParam)
+  if (query) params.set('q', query)
   return params
 }
 
-export function buildCalendarUrl({ view, range, date } = {}) {
-  const params = buildCalendarSearchParams({ view, range, date })
+export function buildCalendarUrl({ view, range, date, q } = {}) {
+  const params = buildCalendarSearchParams({ view, range, date, q })
   return `/calendar?${params.toString()}`
 }
 
@@ -94,12 +96,14 @@ export function parseCalendarQuery(input) {
   const view = normalizeCalendarView(params.get('view'))
   const range = normalizeCalendarRange(params.get('range'))
   const parsedDate = parseCalendarDateParam(params.get('date')) || new Date()
-  const normalizedParams = buildCalendarSearchParams({ view, range, date: parsedDate })
+  const q = params.get('q') || ''
+  const normalizedParams = buildCalendarSearchParams({ view, range, date: parsedDate, q })
 
   return {
     view,
     range,
     date: parsedDate,
+    q,
     normalizedParams,
   }
 }

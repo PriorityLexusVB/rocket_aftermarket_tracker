@@ -289,6 +289,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     if (urlParam) return urlParam
     return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_q') || '' : ''
   })
+  const [debouncedQ, setDebouncedQ] = useState(q)
   const [status, setStatus] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('status')
     if (urlParam) return urlParam
@@ -312,6 +313,11 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       : ''
   })
 
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(handle)
+  }, [q])
+
   // Delivery coordinator view defaults: My items + next 3 days.
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -331,6 +337,12 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     const nextRange = mapShellRangeToAgenda(shellRange)
     if (nextRange !== dateRange) setDateRange(nextRange)
   }, [isEmbedded, shellRange, dateRange])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const urlQ = new URLSearchParams(location.search).get('q') || ''
+    if (urlQ !== q) setQ(urlQ)
+  }, [isEmbedded, location.search, q])
 
   // When Supabase env is missing, dev fallback returns empty rows. Make that explicit.
   const supabaseNotice = <SupabaseConfigNotice className="mb-3" />
@@ -406,6 +418,17 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     const current = location.search.replace(/^\?/, '')
     if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
   }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search, isEmbedded])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const params = new URLSearchParams(location.search)
+    const nextQ = debouncedQ.trim()
+    if (nextQ) params.set('q', nextQ)
+    else params.delete('q')
+    const next = params.toString()
+    const current = location.search.replace(/^\?/, '')
+    if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
+  }, [debouncedQ, isEmbedded, navigate, location.search])
 
   const load = useCallback(async () => {
     setLoading(true)
