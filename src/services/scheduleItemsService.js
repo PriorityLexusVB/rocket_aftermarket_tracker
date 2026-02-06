@@ -471,7 +471,9 @@ export async function getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeE
       const schedule = getEffectiveScheduleWindowFromJob(job)
       if (schedule?.start) continue
 
-      const dateKeys = Array.from(promiseDatesByJobId.get(job?.id) || []).filter(Boolean).sort()
+      const dateKeys = Array.from(promiseDatesByJobId.get(job?.id) || [])
+        .filter(Boolean)
+        .sort()
       if (!dateKeys.length) continue
 
       for (const dateKey of dateKeys) {
@@ -627,6 +629,8 @@ export async function getScheduledJobsByDateRange({ rangeStart, rangeEnd, orgId 
 
   const jobs = await jobService.getJobsByIds(ids, { orgId })
   const withLoaners = await attachActiveLoanerFlags(jobs)
+  const foundIds = new Set(withLoaners.map((job) => job?.id).filter(Boolean))
+  const missingIds = ids.filter((id) => !foundIds.has(id))
 
   const patched = withLoaners.map((job) => {
     const override = scheduleById.get(job?.id)
@@ -652,7 +656,12 @@ export async function getScheduledJobsByDateRange({ rangeStart, rangeEnd, orgId 
 
   return {
     jobs: patched,
-    debug: { rpcCount: ids.length, jobCount: patched.length },
+    debug: {
+      rpcCount: ids.length,
+      jobCount: patched.length,
+      missingCount: missingIds.length,
+      missingSample: missingIds.slice(0, 3),
+    },
   }
 }
 
@@ -735,6 +744,8 @@ export async function getScheduleItems({ rangeStart, rangeEnd, orgId } = {}) {
 
   const jobs = await jobService.getJobsByIds(ids, { orgId })
   const withLoaners = await attachActiveLoanerFlags(jobs)
+  const foundIds = new Set(withLoaners.map((job) => job?.id).filter(Boolean))
+  const missingIds = ids.filter((id) => !foundIds.has(id))
 
   const normalized = []
   let scheduleFromJobParts = 0
@@ -765,6 +776,8 @@ export async function getScheduleItems({ rangeStart, rangeEnd, orgId } = {}) {
     debug: {
       rpcCount: ids.length,
       jobCount: withLoaners.length,
+      missingCount: missingIds.length,
+      missingSample: missingIds.slice(0, 3),
       normalized: normalized.length,
       scheduleSources: {
         job_parts: scheduleFromJobParts,

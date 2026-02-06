@@ -12,6 +12,7 @@ import {
   parseCalendarDateParam,
 } from '@/lib/navigation/calendarNavigation'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { LOCATION_FILTER_OPTIONS } from '@/utils/locationType'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -66,10 +67,13 @@ export default function CalendarShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerDeal, setDrawerDeal] = useState(null)
 
-  const { view, range, date, normalizedParams } = useMemo(
-    () => parseCalendarQuery(searchParams),
-    [searchParams]
-  )
+  const {
+    view,
+    range,
+    date,
+    location: locationFilter,
+    normalizedParams,
+  } = useMemo(() => parseCalendarQuery(searchParams), [searchParams])
 
   const agendaEnabled = SIMPLE_AGENDA_ENABLED || isCalendarUnifiedShellEnabled()
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
@@ -97,10 +101,11 @@ export default function CalendarShell() {
         range,
         date,
         q: currentQuery,
+        location: locationFilter,
       })
       setSearchParams(nextParams, { replace: true })
     }
-  }, [resolvedView, view, range, date, searchParams, setSearchParams])
+  }, [resolvedView, view, range, date, searchParams, setSearchParams, locationFilter])
 
   const updateParams = useCallback(
     (next) => {
@@ -110,10 +115,11 @@ export default function CalendarShell() {
         range: next?.range ?? range,
         date: next?.date ?? date,
         q: currentQuery,
+        location: next?.location ?? locationFilter,
       })
       setSearchParams(nextParams)
     },
-    [resolvedView, range, date, searchParams, setSearchParams]
+    [resolvedView, range, date, searchParams, setSearchParams, locationFilter]
   )
 
   const handleViewChange = (nextView) => {
@@ -128,6 +134,11 @@ export default function CalendarShell() {
   const handleDateInput = (event) => {
     const nextDate = parseCalendarDateParam(event?.target?.value) || new Date()
     updateParams({ date: nextDate })
+  }
+
+  const handleLocationChange = (event) => {
+    const nextLocation = event?.target?.value || 'All'
+    updateParams({ location: nextLocation })
   }
 
   const handlePrev = () => updateParams({ date: shiftDate(date, range, -1) })
@@ -158,6 +169,7 @@ export default function CalendarShell() {
         <CalendarSchedulingCenter
           embedded
           shellState={shellState}
+          locationFilter={locationFilter}
           onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
         />
       )
@@ -168,6 +180,7 @@ export default function CalendarShell() {
         <CalendarAgenda
           embedded
           shellState={shellState}
+          locationFilter={locationFilter}
           onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
         />
       ) : (
@@ -181,10 +194,18 @@ export default function CalendarShell() {
       <CalendarFlowManagementCenter
         embedded
         shellState={shellState}
+        locationFilter={locationFilter}
         onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
       />
     )
-  }, [resolvedView, agendaEnabled, shellState, dealDrawerEnabled, handleOpenDealDrawer])
+  }, [
+    resolvedView,
+    agendaEnabled,
+    shellState,
+    dealDrawerEnabled,
+    handleOpenDealDrawer,
+    locationFilter,
+  ])
 
   return (
     <AppLayout>
@@ -281,7 +302,24 @@ export default function CalendarShell() {
                   <Filter className="h-4 w-4" /> Filters
                 </summary>
                 <div className="absolute right-0 z-30 mt-2 w-56 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-lg">
-                  Filters coming soon.
+                  <label
+                    className="block text-[11px] font-semibold text-slate-500"
+                    htmlFor="calendar-location-filter"
+                  >
+                    Location
+                  </label>
+                  <select
+                    id="calendar-location-filter"
+                    className="mt-2 h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700"
+                    value={locationFilter || 'All'}
+                    onChange={handleLocationChange}
+                  >
+                    {LOCATION_FILTER_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </details>
 

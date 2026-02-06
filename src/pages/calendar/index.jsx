@@ -2,8 +2,10 @@ import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { calendarService } from '@/services/calendarService'
-import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
+import {
+  getNeedsSchedulingPromiseItems,
+  getScheduledJobsByDateRange,
+} from '@/services/scheduleItemsService'
 import { jobService } from '@/services/jobService'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
@@ -19,6 +21,7 @@ import {
   trackCalendarNavigation,
 } from '@/lib/navigation/calendarNavigation'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { getJobLocationType } from '@/utils/locationType'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -141,7 +144,12 @@ const safeDayKey = (value) => {
   return d ? d.toDateString() : ''
 }
 
-const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDrawer } = {}) => {
+const CalendarSchedulingCenter = ({
+  embedded = false,
+  shellState,
+  onOpenDealDrawer,
+  locationFilter,
+} = {}) => {
   // State management
   const { user, orgId } = useAuth()
   const toast = useToast()
@@ -172,6 +180,22 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [debugInfo, setDebugInfo] = useState('')
+  const [consistency, setConsistency] = useState({
+    rpcCount: 0,
+    jobCount: 0,
+    missingCount: 0,
+  })
+  const locationFilterValue = locationFilter || 'All'
+  const isLocationFilterActive = unifiedShellEnabled && locationFilterValue !== 'All'
+
+  const filterByLocation = useCallback(
+    (items) => {
+      if (!isLocationFilterActive) return items
+      const list = Array.isArray(items) ? items : []
+      return list.filter((job) => getJobLocationType(job?.raw || job) === locationFilterValue)
+    },
+    [isLocationFilterActive, locationFilterValue]
+  )
 
   // Keep state in sync with URL (supports refresh + browser back/forward)
   useEffect(() => {
@@ -291,21 +315,24 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
       setLoading(true)
       setError(null)
 
-      const { data, error } = await withTimeout(
-        calendarService?.getJobsByDateRange(dateRange?.start, dateRange?.end, {
+      const scheduledRes = await withTimeout(
+        getScheduledJobsByDateRange({
+          rangeStart: dateRange?.start,
+          rangeEnd: dateRange?.end,
           orgId: orgId || null,
         }),
         LOAD_TIMEOUT_MS,
         { label: 'Calendar load' }
       )
 
-      if (error) {
-        console.error('Error loading jobs:', error)
-        setError('Failed to load jobs')
-        return
-      }
+      const scheduledDebug = scheduledRes?.debug || {}
+      setConsistency({
+        rpcCount: scheduledDebug?.rpcCount || 0,
+        jobCount: scheduledDebug?.jobCount || 0,
+        missingCount: scheduledDebug?.missingCount || 0,
+      })
 
-      const jobsData = data?.map((job) => ({
+      const jobsData = (scheduledRes?.jobs || []).map((job) => ({
         ...job,
         scheduled_start_time: safeDateString(job?.scheduled_start_time),
         scheduled_end_time: safeDateString(job?.scheduled_end_time),
@@ -321,7 +348,8 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
           '#3b82f6',
       }))
 
-      const scheduledIds = new Set((jobsData || []).map((j) => j?.id).filter(Boolean))
+      const locationFilteredJobs = filterByLocation(jobsData)
+      const scheduledIds = new Set((locationFilteredJobs || []).map((j) => j?.id).filter(Boolean))
 
       // Also include promise-only items (All-day) so "Not scheduled" deals
       // with a Promise date show up on the grid.
@@ -380,7 +408,8 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
         })
         .filter(Boolean)
 
-      const mergedJobs = [...(jobsData || []), ...(promiseJobs || [])]
+      const locationFilteredPromises = filterByLocation(promiseJobs)
+      const mergedJobs = [...(locationFilteredJobs || []), ...(locationFilteredPromises || [])]
       setJobs(mergedJobs)
 
       // Update debug info
@@ -389,6 +418,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
       )
     } catch (error) {
       console.error('Error loading calendar data:', error)
+      setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
       setError(
         error?.message
           ? `Failed to load calendar data: ${error.message}`
@@ -397,7 +427,7 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
     } finally {
       setLoading(false)
     }
-  }, [dateRange, orgId])
+  }, [dateRange, orgId, filterByLocation])
 
   // Load data on component mount and date range changes
   useEffect(() => {
@@ -798,7 +828,11 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                     </div>
 
                     {showDetailPopovers ? (
-                      <EventDetailPopover id={popoverId} title={titleWithNumber} lines={popoverLines} />
+                      <EventDetailPopover
+                        id={popoverId}
+                        title={titleWithNumber}
+                        lines={popoverLines}
+                      />
                     ) : null}
                   </div>
                 )
@@ -1262,6 +1296,78 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
 
     return (
       <div className="p-4">
+        {unifiedShellEnabled &&
+          (consistency?.missingCount > 0 ||
+            (consistency?.rpcCount > 0 && consistency?.jobCount === 0)) && (
+            <div className="mb-4 space-y-2">
+              {consistency?.rpcCount > 0 && consistency?.jobCount === 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertTriangle className="mt-0.5 h-4 w-4" />
+                      <div>
+                        <div className="font-semibold">
+                          Calendar items found, but Deals are empty.
+                        </div>
+                        <div className="text-amber-800">
+                          This usually means a tenant or filter mismatch. Try refreshing or review
+                          your Deals list filters.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={refreshData}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/deals')}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        Open Deals
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {consistency?.missingCount > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertTriangle className="mt-0.5 h-4 w-4" />
+                      <div>
+                        <div className="font-semibold">Unlinked appointments detected.</div>
+                        <div className="text-amber-800">
+                          {consistency.missingCount} scheduled item
+                          {consistency.missingCount === 1 ? '' : 's'} could not be linked to a deal.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={refreshData}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/deals')}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        Open Deals
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         {!suppressChrome && (
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>

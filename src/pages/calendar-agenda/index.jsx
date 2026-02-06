@@ -3,6 +3,7 @@
 // Minimal, read-only upcoming appointments list with inline actions: View Deal, Reschedule, Complete
 // Does NOT modify legacy calendar components; safe to remove.
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { jobService } from '@/services/jobService'
 import { calendarService } from '@/services/calendarService'
@@ -18,6 +19,7 @@ import Navbar from '@/components/ui/Navbar'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
+import { getJobLocationType } from '@/utils/locationType'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -124,56 +126,54 @@ function zonedStartOfDay(date, timeZone) {
 
 function zonedStartOfNextDay(date, timeZone, days = 1) {
   const start = zonedStartOfDay(date, timeZone)
-        {groups.map(([dateKey, bucket]) => {
-          const allDayRows = bucket?.allDay || []
-          const scheduledRows = bucket?.scheduled || []
+  {
+    groups.map(([dateKey, bucket]) => {
+      const allDayRows = bucket?.allDay || []
+      const scheduledRows = bucket?.scheduled || []
 
-          return (
-            <section
-              key={dateKey}
-              aria-label={`Appointments for ${dateKey}`}
-              className="space-y-3"
-            >
-              <div
-                className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${
-                  isEmbedded ? 'top-16' : 'top-[5rem]'
-                }`}
-              >
-                <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
-                  {formatAgendaDayHeader(dateKey)}
-                </h2>
+      return (
+        <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-3">
+          <div
+            className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${
+              isEmbedded ? 'top-16' : 'top-[5rem]'
+            }`}
+          >
+            <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
+              {formatAgendaDayHeader(dateKey)}
+            </h2>
+          </div>
+
+          {allDayRows.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase text-slate-500">
+                All-day (Promises)
               </div>
+              <ul
+                className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                role="list"
+              >
+                {allDayRows.map(renderAgendaRow)}
+              </ul>
+            </div>
+          )}
 
-              {allDayRows.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold uppercase text-slate-500">
-                    All-day (Promises)
-                  </div>
-                  <ul
-                    className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                    role="list"
-                  >
-                    {allDayRows.map(renderAgendaRow)}
-                  </ul>
-                </div>
-              )}
-
-              {scheduledRows.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold uppercase text-slate-500">
-                    Scheduled (Timed)
-                  </div>
-                  <ul
-                    className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                    role="list"
-                  >
-                    {scheduledRows.map(renderAgendaRow)}
-                  </ul>
-                </div>
-              )}
-            </section>
-          )
-        })}
+          {scheduledRows.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase text-slate-500">
+                Scheduled (Timed)
+              </div>
+              <ul
+                className="divide-y overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                role="list"
+              >
+                {scheduledRows.map(renderAgendaRow)}
+              </ul>
+            </div>
+          )}
+        </section>
+      )
+    })
+  }
   const [debouncedQ, setDebouncedQ] = useState(q)
   const [status, setStatus] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('status')
@@ -270,6 +270,12 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
 
   // Filters toggle state
   const [filtersExpanded, setFiltersExpanded] = useState(false)
+  const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
+  const [consistency, setConsistency] = useState({
+    rpcCount: 0,
+    jobCount: 0,
+    missingCount: 0,
+  })
 
   // Sync filters to URL and localStorage
   useEffect(() => {
@@ -323,6 +329,7 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
       if (!orgId) {
         setJobs([])
         setConflicts(new Map())
+        setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
         return
       }
 
@@ -340,6 +347,24 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
         { label: 'Agenda load' }
       )
 
+      const scheduledDebug = scheduledRes?.debug || {}
+      setConsistency({
+        rpcCount: scheduledDebug?.rpcCount || 0,
+        jobCount: scheduledDebug?.jobCount || 0,
+        missingCount: scheduledDebug?.missingCount || 0,
+      })
+
+      const locationParam = new URLSearchParams(location.search).get('location') || 'All'
+      const isLocationFilterActive = unifiedShellEnabled && locationParam !== 'All'
+      const filterByLocation = (items) => {
+        if (!isLocationFilterActive) return items
+        const list = Array.isArray(items) ? items : []
+        return list.filter((item) => {
+          const raw = item?.raw || item
+          return getJobLocationType(raw) === locationParam
+        })
+      }
+
       const excluded = new Set(['draft', 'canceled', 'cancelled'])
       const combined = [...(scheduledRes?.items || []), ...(promisedRes?.items || [])].filter(
         (it) => !excluded.has(String(it?.raw?.job_status || it?.job_status || '').toLowerCase())
@@ -353,15 +378,16 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
         return aMs - bMs
       })
 
-      setJobs(combined)
+      setJobs(filterByLocation(combined))
     } catch (e) {
       console.warn('[agenda] load failed', e)
       setJobs([])
       setLoadError(e?.message || 'Failed to load agenda')
+      setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
     } finally {
       setLoading(false)
     }
-  }, [orgId])
+  }, [location.search, orgId, unifiedShellEnabled])
 
   useEffect(() => {
     if (authIsLoading) return
@@ -458,9 +484,7 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
     if (!dealDrawerEnabled || typeof onOpenDealDrawer !== 'function') return
     if (focusOpenedRef.current === focusId) return
 
-    const match = (jobs || []).find(
-      (row) => String(row?.id || row?.raw?.id) === String(focusId)
-    )
+    const match = (jobs || []).find((row) => String(row?.id || row?.raw?.id) === String(focusId))
     if (!match) return
 
     onOpenDealDrawer(match?.raw || match)
@@ -690,9 +714,7 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
                   isStatusInFlight(r?.id) ? 'text-slate-300 cursor-not-allowed' : ''
                 }`}
               >
-                {String(r?.job_status || '').toLowerCase() === 'completed'
-                  ? 'Reopen'
-                  : 'Complete'}
+                {String(r?.job_status || '').toLowerCase() === 'completed' ? 'Reopen' : 'Complete'}
               </button>
             </div>
           </details>
@@ -730,6 +752,79 @@ function zonedStartOfNextDay(date, timeZone, days = 1) {
         <div className="sr-only" aria-live="polite" aria-atomic="true"></div>
 
         {supabaseNotice}
+
+        {unifiedShellEnabled &&
+          (consistency?.missingCount > 0 ||
+            (consistency?.rpcCount > 0 && consistency?.jobCount === 0)) && (
+            <div className="space-y-2">
+              {consistency?.rpcCount > 0 && consistency?.jobCount === 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertTriangle className="mt-0.5 h-4 w-4" />
+                      <div>
+                        <div className="font-semibold">
+                          Calendar items found, but Deals are empty.
+                        </div>
+                        <div className="text-amber-800">
+                          This usually means a tenant or filter mismatch. Try refreshing or review
+                          your Deals list filters.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={load}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/deals')}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        Open Deals
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {consistency?.missingCount > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-start gap-2 text-sm">
+                      <AlertTriangle className="mt-0.5 h-4 w-4" />
+                      <div>
+                        <div className="font-semibold">Unlinked appointments detected.</div>
+                        <div className="text-amber-800">
+                          {consistency.missingCount} scheduled item
+                          {consistency.missingCount === 1 ? '' : 's'} could not be linked to a deal.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={load}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/deals')}
+                        className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                      >
+                        Open Deals
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         {loadError ? (
           <div
