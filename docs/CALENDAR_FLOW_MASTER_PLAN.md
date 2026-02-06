@@ -131,6 +131,6 @@ For each unchecked item in TRACK A or TRACK D:
   - Accept: minimal automated coverage (Playwright if available, else Vitest/RTL) for /calendar load, view toggles header stability, old route redirects, drawer open, promise all-day behavior, mismatch banner gating; a11y focus trap + ESC + keyboard nav for toggles/menus.
   - Notes: e922293 - Added RTL coverage for calendar location filter + mismatch banner gating.
 
-- [ ] D6 Rollout Notes (docs only)
+- [x] D6 Rollout Notes (docs only)
   - Accept: flag notes, enable internal/DC tenant first, verify no regressions, note removal of deprecated routes/buttons after adoption.
-  - Notes:
+  - Notes: CALENDAR_FLOW_ROLLOUT_NOTES.md - Added rollout steps and flag guidance.
