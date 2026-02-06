@@ -16,6 +16,7 @@ import RescheduleModal from './RescheduleModal'
 import SupabaseConfigNotice from '@/components/ui/SupabaseConfigNotice'
 import Navbar from '@/components/ui/Navbar'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
+import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled } from '@/config/featureFlags'
 
 const TZ = 'America/New_York'
@@ -258,6 +259,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const navigate = useNavigate()
   const location = useLocation()
   const isEmbedded = embedded === true
+  const showTitleTooltips = isEmbedded
+  const showDetailPopovers = isEmbedded
   const shellRange = shellState?.range
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const [loading, setLoading] = useState(true)
@@ -286,6 +289,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     if (urlParam) return urlParam
     return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_q') || '' : ''
   })
+  const [debouncedQ, setDebouncedQ] = useState(q)
   const [status, setStatus] = useState(() => {
     const urlParam = new URLSearchParams(location.search).get('status')
     if (urlParam) return urlParam
@@ -309,6 +313,11 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       : ''
   })
 
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(handle)
+  }, [q])
+
   // Delivery coordinator view defaults: My items + next 3 days.
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -328,6 +337,12 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     const nextRange = mapShellRangeToAgenda(shellRange)
     if (nextRange !== dateRange) setDateRange(nextRange)
   }, [isEmbedded, shellRange, dateRange])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const urlQ = new URLSearchParams(location.search).get('q') || ''
+    if (urlQ !== q) setQ(urlQ)
+  }, [isEmbedded, location.search, q])
 
   // When Supabase env is missing, dev fallback returns empty rows. Make that explicit.
   const supabaseNotice = <SupabaseConfigNotice className="mb-3" />
@@ -403,6 +418,17 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     const current = location.search.replace(/^\?/, '')
     if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
   }, [q, status, dateRange, vendorFilter, focusId, navigate, location.search, isEmbedded])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const params = new URLSearchParams(location.search)
+    const nextQ = debouncedQ.trim()
+    if (nextQ) params.set('q', nextQ)
+    else params.delete('q')
+    const next = params.toString()
+    const current = location.search.replace(/^\?/, '')
+    if (next !== current) navigate({ search: next ? `?${next}` : '' }, { replace: true })
+  }, [debouncedQ, isEmbedded, navigate, location.search])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -676,14 +702,24 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 <span className="text-sm font-medium text-gray-500">Agenda</span>
               </div>
             )}
+            <label className="sr-only" htmlFor="agenda-search">
+              Search appointments
+            </label>
             <input
+              id="agenda-search"
+              name="agenda-search"
               aria-label="Search appointments"
               placeholder="Search"
               className="h-9 w-64 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
+            <label className="sr-only" htmlFor="agenda-date-range">
+              Filter by date range
+            </label>
             <select
+              id="agenda-date-range"
+              name="agenda-date-range"
               aria-label="Filter by date range"
               className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               value={dateRange}
@@ -721,7 +757,12 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
           {/* Collapsible filters panel */}
           {filtersExpanded && (
             <div className="flex items-center gap-4 flex-wrap rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+              <label className="sr-only" htmlFor="agenda-status">
+                Filter by status
+              </label>
               <select
+                id="agenda-status"
+                name="agenda-status"
                 aria-label="Filter by status"
                 className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                 value={status}
@@ -745,7 +786,11 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         )}
         {groups.map(([dateKey, rows]) => (
           <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-2">
-            <div className="sticky top-[5rem] z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200">
+            <div
+              className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${
+                isEmbedded ? 'top-16' : 'top-[5rem]'
+              }`}
+            >
               <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
                 {formatAgendaDayHeader(dateKey)}
               </h2>
@@ -763,6 +808,15 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                   : getEffectiveScheduleWindow(raw)
                 const timeRange = start ? formatScheduleRange(start, end) : null
                 const title = raw?.title || raw?.job_number
+                const titleText = title || r.id || 'Appointment'
+                const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
+                const popoverLines = showDetailPopovers
+                  ? [
+                      timeRange ? `Time: ${timeRange}` : 'Time: All-day',
+                      customerName ? `Customer: ${customerName}` : null,
+                      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                    ]
+                  : []
                 const vehicleLabel =
                   r?.vehicleLabel ||
                   `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
@@ -783,8 +837,9 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     key={r?.calendarKey || r?.calendar_key || r.id}
                     ref={focused ? focusRef : null}
                     tabIndex={0}
-                    aria-label={`Appointment ${title || r.id}`}
-                    className={`grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
+                    aria-label={`Appointment ${titleText}`}
+                    aria-describedby={popoverId}
+                    className={`group relative grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
                     onClick={handleRowClick}
                   >
                     {/* Time column (blank for all-day) */}
@@ -799,8 +854,15 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     </div>
 
                     <div className="min-w-0">
-                      <div className="font-medium truncate flex items-center gap-2">
-                        {title}
+                      <div
+                        className={`font-medium flex items-center gap-2 ${showTitleTooltips ? 'min-w-0' : ''}`}
+                      >
+                        <span
+                          className={showTitleTooltips ? 'truncate' : ''}
+                          title={showTitleTooltips ? titleText : undefined}
+                        >
+                          {titleText}
+                        </span>
                         {hasConflict && (
                           <span
                             className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800"
@@ -891,6 +953,14 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                           : 'Complete'}
                       </button>
                     </div>
+
+                    {showDetailPopovers ? (
+                      <EventDetailPopover
+                        id={popoverId}
+                        title={titleText}
+                        lines={popoverLines}
+                      />
+                    ) : null}
                   </li>
                 )
               })}

@@ -68,4 +68,18 @@ describe('calendarNavigation', () => {
     expect(params.get('range')).toBe('next7')
     expect(params.get('date')).toBe('2025-02-03')
   })
+
+  it('roundtrips search query params', () => {
+    const params = buildCalendarSearchParams({
+      view: 'list',
+      range: 'day',
+      date: '2025-02-03',
+      q: 'tint',
+    })
+
+    expect(params.get('q')).toBe('tint')
+
+    const parsed = parseCalendarQuery(params.toString())
+    expect(parsed.q).toBe('tint')
+  })
 })

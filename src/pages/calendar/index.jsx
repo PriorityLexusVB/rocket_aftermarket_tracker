@@ -7,6 +7,7 @@ import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
 import { jobService } from '@/services/jobService'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
+import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import AppLayout from '@/components/layouts/AppLayout'
 import { getEventColors } from '@/utils/calendarColors'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
@@ -152,6 +153,8 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
+  const showTitleTooltips = isEmbedded && unifiedShellEnabled
+  const showDetailPopovers = showTitleTooltips
   const shellDate = shellState?.date
   const shellRange = shellState?.range
   const [currentDate, setCurrentDate] = useState(() => {
@@ -658,6 +661,11 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                 const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                 const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
                 const vehicleLabel = job?.vehicle_info || ''
+                const titleText = job?.title || ''
+                const titleWithNumber = jobNumber
+                  ? `${jobNumber} • ${titleText || 'Open deal'}`
+                  : titleText || 'Open deal'
+                const tooltipTitle = showTitleTooltips ? titleWithNumber : titleText || 'Open deal'
                 const promiseLabel = job?.time_tbd
                   ? safeFormatDate(job?.scheduled_start_time, {
                       weekday: 'short',
@@ -665,7 +673,25 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                       day: 'numeric',
                     })
                   : ''
-
+                const timeLabel = job?.time_tbd
+                  ? `Promise: ${promiseLabel || '—'}`
+                  : jobStartTime
+                    ? safeFormatTime(jobStartTime, {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })
+                    : 'Invalid Time'
+                const popoverId = showDetailPopovers
+                  ? `calendar-popover-${job?.id || job?.calendar_key}`
+                  : undefined
+                const popoverLines = showDetailPopovers
+                  ? [
+                      timeLabel ? `Time: ${timeLabel}` : null,
+                      vendorLabel ? `Vendor: ${vendorLabel}` : null,
+                      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                      statusLabel ? `Status: ${statusLabel}` : null,
+                    ]
+                  : []
                 const handleGridClick = getCalendarGridClickHandler({
                   dealDrawerEnabled: canOpenDrawer,
                   onOpenDealDrawer,
@@ -676,9 +702,10 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
-                    className={`mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
+                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
-                    title={job?.title || 'Open deal'}
+                    title={tooltipTitle}
+                    aria-describedby={popoverId}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-semibold truncate min-w-0">
@@ -752,6 +779,10 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                         ? 'Vendor/Offsite'
                         : 'Onsite'}
                     </div>
+
+                    {showDetailPopovers ? (
+                      <EventDetailPopover id={popoverId} title={titleWithNumber} lines={popoverLines} />
+                    ) : null}
                   </div>
                 )
               })}
@@ -900,6 +931,31 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                       const vendorLabel =
                         job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+                      const titleText = job?.title || ''
+                      const titleWithNumber = jobNumber
+                        ? `${jobNumber} • ${titleText || 'Open deal'}`
+                        : titleText || 'Open deal'
+                      const tooltipTitle = showTitleTooltips
+                        ? titleWithNumber
+                        : titleText || 'Open deal'
+                      const timeLabel = job?.time_tbd
+                        ? `Promise: ${promiseLabel || '—'}`
+                        : jobStartTime
+                          ? safeFormatTime(jobStartTime, {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : ''
+                      const popoverId = showDetailPopovers
+                        ? `calendar-month-popover-${job?.id || job?.calendar_key}`
+                        : undefined
+                      const popoverLines = showDetailPopovers
+                        ? [
+                            timeLabel ? `Time: ${timeLabel}` : null,
+                            vendorLabel ? `Vendor: ${vendorLabel}` : null,
+                            statusLabel ? `Status: ${statusLabel}` : null,
+                          ]
+                        : []
                       const promiseLabel = job?.time_tbd
                         ? safeFormatDate(job?.scheduled_start_time, {
                             weekday: 'short',
@@ -918,14 +974,15 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                         <button
                           type="button"
                           key={job?.calendar_key || job?.id}
-                          className={`w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${
+                          className={`group relative w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${
                             colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'
                           }`}
                           onClick={(e) => {
                             e?.stopPropagation?.()
                             handleMonthGridClick()
                           }}
-                          title={job?.title || 'Open deal'}
+                          title={tooltipTitle}
+                          aria-describedby={popoverId}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="font-medium truncate">
@@ -951,6 +1008,14 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                                   })
                                 : ''}
                           </div>
+
+                          {showDetailPopovers ? (
+                            <EventDetailPopover
+                              id={popoverId}
+                              title={titleWithNumber}
+                              lines={popoverLines}
+                            />
+                          ) : null}
                         </button>
                       )
                     })}
@@ -987,6 +1052,28 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                     ? 'BOOKED'
                     : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
                   : 'SCHEDULED'
+              const timeLabel = job?.time_tbd
+                ? `Promise: ${
+                    safeFormatDate(job?.scheduled_start_time, {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    }) || '—'
+                  }`
+                : jobStartTime
+                  ? jobStartTime?.toLocaleString()
+                  : 'Invalid Time'
+              const popoverId = showDetailPopovers
+                ? `calendar-list-popover-${job?.id || job?.calendar_key}`
+                : undefined
+              const popoverLines = showDetailPopovers
+                ? [
+                    timeLabel ? `Time: ${timeLabel}` : null,
+                    job?.vendor_name ? `Vendor: ${job.vendor_name}` : null,
+                    job?.vehicle_info ? `Vehicle: ${job.vehicle_info}` : null,
+                    statusLabel ? `Status: ${statusLabel}` : null,
+                  ]
+                : []
               const handleListClick = getCalendarGridClickHandler({
                 dealDrawerEnabled: canOpenDrawer,
                 onOpenDealDrawer,
@@ -994,15 +1081,23 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                 deal: job,
               })
 
+              const listTitle = job?.title || 'Open deal'
+
               return (
                 <div
                   key={job?.calendar_key || job?.id}
-                  className="bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
+                  className="group relative bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
                   onClick={handleListClick}
+                  aria-describedby={popoverId}
                 >
                   <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{job?.title}</h3>
+                    <div className={showTitleTooltips ? 'min-w-0' : ''}>
+                      <h3
+                        className={`font-medium text-gray-900 ${showTitleTooltips ? 'truncate' : ''}`}
+                        title={showTitleTooltips ? listTitle : undefined}
+                      >
+                        {listTitle}
+                      </h3>
                       <p className="text-sm text-gray-600">
                         {job?.vendor_name} • {job?.vehicle_info}
                       </p>
@@ -1068,6 +1163,10 @@ const CalendarSchedulingCenter = ({ embedded = false, shellState, onOpenDealDraw
                       ></div>
                     </div>
                   </div>
+
+                  {showDetailPopovers ? (
+                    <EventDetailPopover id={popoverId} title={listTitle} lines={popoverLines} />
+                  ) : null}
                 </div>
               )
             })}

@@ -33,6 +33,8 @@ import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDispla
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
+import EventDetailPopover from '@/components/calendar/EventDetailPopover'
+import { getEventColors } from '@/utils/calendarColors'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
 const LOAD_TIMEOUT_MS = 15000
@@ -86,6 +88,9 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const canOpenDrawer = dealDrawerEnabled && typeof onOpenDealDrawer === 'function'
   const isEmbedded = embedded === true
+  const showTitleTooltips = unifiedShellEnabled || isEmbedded
+  const showDetailPopovers = unifiedShellEnabled || isEmbedded
+  const useUnifiedColors = unifiedShellEnabled || isEmbedded
   const shellRange = shellState?.range
 
   const resolveShellViewMode = (range) => {
@@ -750,19 +755,29 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
                   {/* Jobs for this day */}
                   <div className="space-y-1">
-                    {day?.jobs?.slice(0, 2)?.map((job) => (
-                      <div
-                        key={job?.calendar_key || job?.id}
-                        className={`
-                          text-xs p-1 rounded cursor-pointer truncate
-                          ${!job?.vendor_id || job?.location === 'on_site' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-orange-100 text-orange-800 border border-orange-200'}
-                        `}
-                        onClick={() => handleJobClick(job)}
-                        title={`${job?.job_number} - ${job?.title}`}
-                      >
-                        {job?.job_number?.split('-')?.pop()}
-                      </div>
-                    ))}
+                    {day?.jobs?.slice(0, 2)?.map((job) => {
+                      const isOnSite = !job?.vendor_id || job?.location === 'on_site'
+                      const serviceType = isOnSite ? 'onsite' : 'vendor'
+                      const dayJobColors = useUnifiedColors
+                        ? getEventColors(serviceType, job?.job_status)
+                        : null
+                      const dayJobClass = useUnifiedColors
+                        ? dayJobColors?.className || ''
+                        : isOnSite
+                          ? 'bg-green-100 text-green-800 border-green-200'
+                          : 'bg-orange-100 text-orange-800 border-orange-200'
+
+                      return (
+                        <div
+                          key={job?.calendar_key || job?.id}
+                          className={`text-xs p-1 rounded cursor-pointer truncate border ${dayJobClass}`}
+                          onClick={() => handleJobClick(job)}
+                          title={`${job?.job_number} - ${job?.title}`}
+                        >
+                          {job?.job_number?.split('-')?.pop()}
+                        </div>
+                      )
+                    })}
                     {day?.jobs?.length > 2 && (
                       <div className="text-xs text-gray-500 text-center">
                         +{day?.jobs?.length - 2} more
@@ -789,9 +804,30 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
     const containerStyle = options?.containerStyle || undefined
 
     const isOnSite = !job?.vendor_id || job?.location === 'on_site'
-    const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
-    const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
-    const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
+    const jobNumber = job?.job_number?.split('-')?.pop()
+    const titleText = [jobNumber, job?.title].filter(Boolean).join(' • ')
+    const serviceType = isOnSite ? 'onsite' : 'vendor'
+    const unifiedColors = useUnifiedColors ? getEventColors(serviceType, job?.job_status) : null
+    const chipBg = useUnifiedColors
+      ? unifiedColors?.bg || 'bg-blue-100'
+      : isOnSite
+        ? 'bg-green-50'
+        : 'bg-orange-50'
+    const chipBorder = useUnifiedColors
+      ? unifiedColors?.border || 'border-blue-300'
+      : isOnSite
+        ? 'border-green-200'
+        : 'border-orange-200'
+    const chipHoverBorder = useUnifiedColors
+      ? serviceType === 'onsite'
+        ? 'hover:border-blue-300'
+        : 'hover:border-purple-300'
+      : isOnSite
+        ? 'hover:border-green-300'
+        : 'hover:border-orange-300'
+    const chipText = useUnifiedColors
+      ? unifiedColors?.text || 'text-blue-900'
+      : 'text-gray-900'
     const rawStatus = String(job?.job_status || '').toLowerCase()
     const overdue = isOverdue(
       job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
@@ -817,13 +853,27 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
 
     const densityClasses = density === 'compact' ? 'p-2 text-xs leading-snug' : 'p-3 text-sm'
     const densityMargin = density === 'compact' ? 'mb-1' : 'mb-2'
+    const timeLabel = hasTimeWindow
+      ? `${formatTime(job?.scheduled_start_time)}–${formatTime(job?.scheduled_end_time)}`
+      : allDayLabel
+    const popoverId = showDetailPopovers ? `board-popover-${job?.id || job?.calendar_key}` : undefined
+    const popoverLines = showDetailPopovers
+      ? [
+          timeLabel ? `Time: ${timeLabel}` : null,
+          statusBadge?.label ? `Status: ${statusBadge.label}` : null,
+          job?.customer_name ? `Customer: ${job.customer_name}` : null,
+          job?.vehicle_info ? `Vehicle: ${job.vehicle_info}` : null,
+          !isOnSite && job?.vendor_name ? `Vendor: ${job.vendor_name}` : null,
+        ]
+      : []
 
     return (
       <div
         key={job?.calendar_key || job?.id}
+        aria-describedby={popoverId}
         className={`
-          relative rounded-lg border ${densityClasses} ${densityMargin} cursor-pointer transition-all duration-200 hover:shadow-md
-          ${chipBg} ${chipBorder} ${chipHoverBorder} text-gray-900
+          group relative rounded-lg border ${densityClasses} ${densityMargin} cursor-pointer transition-all duration-200 hover:shadow-md
+          ${chipBg} ${chipBorder} ${chipHoverBorder} ${chipText}
           ${containerClassName}
         `}
         style={containerStyle}
@@ -847,8 +897,8 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
           <div className="flex items-center justify-between mb-1 gap-2">
             <div className="font-bold truncate flex items-center gap-2">
               <Car className="h-3 w-3 mr-1" />
-              <span className="truncate">
-                {job?.job_number?.split('-')?.pop()} • {job?.title}
+              <span className="truncate" title={showTitleTooltips ? titleText : undefined}>
+                {titleText}
               </span>
               {(job?.has_active_loaner || job?.loaner_id || job?.customer_needs_loaner) && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-800 whitespace-nowrap">
@@ -929,6 +979,10 @@ const CalendarFlowManagementCenter = ({ embedded = false, shellState, onOpenDeal
               {job?.vendor_name}
             </div>
           )}
+
+          {showDetailPopovers ? (
+            <EventDetailPopover id={popoverId} title={titleText} lines={popoverLines} />
+          ) : null}
         </div>
       </div>
     )

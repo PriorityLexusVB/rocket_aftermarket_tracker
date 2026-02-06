@@ -91,21 +91,29 @@ export default function CalendarShell() {
 
   useEffect(() => {
     if (resolvedView !== view) {
-      const nextParams = buildCalendarSearchParams({ view: resolvedView, range, date })
+      const currentQuery = searchParams.get('q') || ''
+      const nextParams = buildCalendarSearchParams({
+        view: resolvedView,
+        range,
+        date,
+        q: currentQuery,
+      })
       setSearchParams(nextParams, { replace: true })
     }
-  }, [resolvedView, view, range, date, setSearchParams])
+  }, [resolvedView, view, range, date, searchParams, setSearchParams])
 
   const updateParams = useCallback(
     (next) => {
+      const currentQuery = searchParams.get('q') || ''
       const nextParams = buildCalendarSearchParams({
         view: next?.view ?? resolvedView,
         range: next?.range ?? range,
         date: next?.date ?? date,
+        q: currentQuery,
       })
       setSearchParams(nextParams)
     },
-    [resolvedView, range, date, setSearchParams]
+    [resolvedView, range, date, searchParams, setSearchParams]
   )
 
   const handleViewChange = (nextView) => {
