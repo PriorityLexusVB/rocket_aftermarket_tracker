@@ -59,6 +59,8 @@ describe('DealsPage - complete auto-returns loaner', () => {
     cleanup()
     vi.clearAllMocks()
 
+    const currentDate = new Date()
+
     updateStatusMock.mockResolvedValue({ data: null, error: null })
 
     dealService.getAllDeals.mockResolvedValue([
@@ -67,6 +69,7 @@ describe('DealsPage - complete auto-returns loaner', () => {
         job_number: 'JOB-001',
         title: 'Test Deal',
         job_status: 'scheduled',
+        created_at: currentDate,
         customer_name: 'Customer',
         has_active_loaner: true,
         loaner_id: 'loaner-1',

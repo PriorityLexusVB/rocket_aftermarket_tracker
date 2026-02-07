@@ -703,9 +703,11 @@ export default function DealsPage() {
   // ✅ FIXED: Added missing error state management
   const [error, setError] = useState('')
 
+  const currentMonthKey = getEtDayKey(new Date()).slice(0, 7)
+
   // ✅ UPDATED: Status tabs & quick search with enhanced filtering
   const [filters, setFilters] = useState({
-    status: 'Open',
+    status: 'All',
     presetView: 'All',
     salesAssigned: null,
     deliveryAssigned: null,
@@ -716,6 +718,7 @@ export default function DealsPage() {
     loanerStatus: 'All', // All | Active | Due Today | Overdue | None
     promiseStartDate: '', // YYYY-MM-DD
     promiseEndDate: '', // YYYY-MM-DD
+    createdMonth: currentMonthKey, // YYYY-MM (ET)
     search: '',
   })
   const [searchDebounce, setSearchDebounce] = useState('')
@@ -1290,6 +1293,21 @@ export default function DealsPage() {
       }
     }
 
+    // Created month filter (ET, YYYY-MM)
+    if (filters?.createdMonth) {
+      const rawCreated =
+        deal?.created_at ||
+        deal?.createdAt ||
+        deal?.created ||
+        deal?.inserted_at ||
+        deal?.deal_date ||
+        deal?.dealDate ||
+        deal?.date ||
+        null
+      const createdKey = rawCreated ? getEtDayKey(rawCreated) : ''
+      if (!createdKey || !createdKey.startsWith(filters.createdMonth)) return false
+    }
+
     // Sales assigned filter
     if (filters?.salesAssigned && deal?.assigned_to !== filters?.salesAssigned) {
       return false
@@ -1376,6 +1394,9 @@ export default function DealsPage() {
         deal?.customer_email,
         deal?.customerEmail,
         deal?.job_number,
+        deal?.delivery_coordinator_name,
+        deal?.sales_consultant_name,
+        deal?.finance_manager_name,
         deal?.vehicle?.make,
         deal?.vehicle?.model,
         deal?.vehicle?.owner_name,
@@ -1499,7 +1520,7 @@ export default function DealsPage() {
   // Clear all filters
   const clearAllFilters = () => {
     setFilters({
-      status: 'Open',
+      status: 'All',
       presetView: 'All',
       salesAssigned: null,
       deliveryAssigned: null,
@@ -1510,6 +1531,7 @@ export default function DealsPage() {
       loanerStatus: 'All',
       promiseStartDate: '',
       promiseEndDate: '',
+      createdMonth: currentMonthKey,
       search: '',
     })
     clearSearch()
@@ -1799,6 +1821,72 @@ export default function DealsPage() {
                 />
               </div>
             </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-xs font-medium text-slate-500" htmlFor="deals-month-filter">
+                Month
+              </label>
+              <input
+                id="deals-month-filter"
+                type="month"
+                value={filters?.createdMonth || ''}
+                onChange={(e) => updateFilter('createdMonth', e?.target?.value || '')}
+                className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => updateFilter('createdMonth', '')}
+                className="text-slate-600 hover:text-slate-800"
+              >
+                All months
+              </Button>
+            </div>
+
+            <details className="group relative">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                <Icon name="Filter" size={14} /> Filters
+              </summary>
+              <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-lg">
+                <label
+                  className="block text-[11px] font-semibold text-slate-500"
+                  htmlFor="deals-location-filter"
+                >
+                  Location
+                </label>
+                <select
+                  id="deals-location-filter"
+                  className="mt-2 h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  value={filters?.location || 'All'}
+                  onChange={(e) => updateFilter('location', e?.target?.value || 'All')}
+                >
+                  <option value="All">All</option>
+                  <option value="In-House">In-House</option>
+                  <option value="Off-Site">Off-Site</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+
+                <label
+                  className="mt-3 block text-[11px] font-semibold text-slate-500"
+                  htmlFor="deals-loaner-filter"
+                >
+                  Loaner
+                </label>
+                <select
+                  id="deals-loaner-filter"
+                  className="mt-2 h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-700"
+                  value={filters?.loanerStatus || 'All'}
+                  onChange={(e) => updateFilter('loanerStatus', e?.target?.value || 'All')}
+                >
+                  <option value="All">All</option>
+                  <option value="Active">Active</option>
+                  <option value="Due Today">Due Today</option>
+                  <option value="Overdue">Overdue</option>
+                  <option value="None">None</option>
+                </select>
+              </div>
+            </details>
 
             {/* Clear Filters */}
             <div className="flex items-center">
