@@ -25,6 +25,15 @@ const RANGE_OPTIONS = [
   { value: 'next30', label: 'Next 30' },
 ]
 
+const RANGE_OPTIONS_BY_VIEW = {
+  calendar: new Set(['day', 'week', 'month']),
+  board: new Set(['day', 'week', 'next7', 'next30']),
+  list: new Set(['day', 'week', 'next7', 'next30']),
+}
+
+const getAllowedRangesForView = (view) =>
+  RANGE_OPTIONS_BY_VIEW?.[view] || RANGE_OPTIONS_BY_VIEW.board
+
 function formatDateLabel(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
   return date.toLocaleDateString('en-US', {
@@ -78,6 +87,15 @@ export default function CalendarShell() {
   const agendaEnabled = SIMPLE_AGENDA_ENABLED || isCalendarUnifiedShellEnabled()
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
   const resolvedView = view === 'list' && !agendaEnabled ? 'board' : view
+  const allowedRanges = useMemo(() => getAllowedRangesForView(resolvedView), [resolvedView])
+  const clampedRange = useMemo(
+    () => (allowedRanges.has(range) ? range : 'week'),
+    [allowedRanges, range]
+  )
+  const rangeOptions = useMemo(
+    () => RANGE_OPTIONS.filter((option) => allowedRanges.has(option.value)),
+    [allowedRanges]
+  )
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -98,29 +116,35 @@ export default function CalendarShell() {
       const currentQuery = searchParams.get('q') || ''
       const nextParams = buildCalendarSearchParams({
         view: resolvedView,
-        range,
+        range: clampedRange,
         date,
         q: currentQuery,
         location: locationFilter,
       })
       setSearchParams(nextParams, { replace: true })
     }
-  }, [resolvedView, view, range, date, searchParams, setSearchParams, locationFilter])
+  }, [resolvedView, view, clampedRange, date, searchParams, setSearchParams, locationFilter])
 
   const updateParams = useCallback(
     (next) => {
       const currentQuery = searchParams.get('q') || ''
       const nextParams = buildCalendarSearchParams({
         view: next?.view ?? resolvedView,
-        range: next?.range ?? range,
+        range: next?.range ?? clampedRange,
         date: next?.date ?? date,
         q: currentQuery,
         location: next?.location ?? locationFilter,
       })
       setSearchParams(nextParams)
     },
-    [resolvedView, range, date, searchParams, setSearchParams, locationFilter]
+    [resolvedView, clampedRange, date, searchParams, setSearchParams, locationFilter]
   )
+
+  useEffect(() => {
+    if (!allowedRanges.has(range)) {
+      updateParams({ range: clampedRange })
+    }
+  }, [allowedRanges, range, clampedRange, updateParams])
 
   const handleViewChange = (nextView) => {
     updateParams({ view: nextView })
@@ -128,7 +152,8 @@ export default function CalendarShell() {
 
   const handleRangeChange = (event) => {
     const nextRange = event?.target?.value
-    updateParams({ range: nextRange })
+    const resolvedRange = allowedRanges.has(nextRange) ? nextRange : 'week'
+    updateParams({ range: resolvedRange })
   }
 
   const handleDateInput = (event) => {
@@ -141,15 +166,15 @@ export default function CalendarShell() {
     updateParams({ location: nextLocation })
   }
 
-  const handlePrev = () => updateParams({ date: shiftDate(date, range, -1) })
-  const handleNext = () => updateParams({ date: shiftDate(date, range, 1) })
+  const handlePrev = () => updateParams({ date: shiftDate(date, clampedRange, -1) })
+  const handleNext = () => updateParams({ date: shiftDate(date, clampedRange, 1) })
   const handleToday = () => updateParams({ date: new Date() })
 
   const dateLabel = formatDateLabel(date)
   const dateValue = parseCalendarDateParam(searchParams.get('date'))
   const dateInputValue = dateValue ? searchParams.get('date') : ''
 
-  const shellState = useMemo(() => ({ range, date }), [range, date])
+  const shellState = useMemo(() => ({ range: clampedRange, date }), [clampedRange, date])
   const handleOpenDealDrawer = useCallback(
     (deal) => {
       if (!dealDrawerEnabled) return
@@ -273,12 +298,12 @@ export default function CalendarShell() {
               </div>
 
               <select
-                value={range}
+                value={clampedRange}
                 onChange={handleRangeChange}
                 className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700"
                 aria-label="Select date range"
               >
-                {RANGE_OPTIONS.map((option) => (
+                {rangeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
