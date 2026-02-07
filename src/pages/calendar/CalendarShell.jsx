@@ -6,6 +6,7 @@ import CalendarSchedulingCenter from '@/pages/calendar'
 import CalendarFlowManagementCenter from '@/pages/calendar-flow-management-center'
 import CalendarAgenda from '@/pages/calendar-agenda'
 import DealDrawer from '@/components/calendar/DealDrawer'
+import CalendarLegend from '@/components/calendar/CalendarLegend'
 import {
   buildCalendarSearchParams,
   parseCalendarQuery,
@@ -234,7 +235,7 @@ export default function CalendarShell() {
 
   return (
     <AppLayout>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 min-h-[calc(100vh-120px)]">
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -353,7 +354,7 @@ export default function CalendarShell() {
                   <Info className="h-4 w-4" />
                 </summary>
                 <div className="absolute right-0 z-30 mt-2 w-52 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-lg">
-                  Legend coming soon.
+                  <CalendarLegend compact showStatuses />
                 </div>
               </details>
 
@@ -400,7 +401,9 @@ export default function CalendarShell() {
           </div>
         </section>
 
-        <section className="min-h-[60vh]">{viewContent}</section>
+        <section className="flex-1 min-h-0 overflow-hidden">
+          <div className="h-full overflow-auto rounded-xl">{viewContent}</div>
+        </section>
         {dealDrawerEnabled && (
           <DealDrawer open={drawerOpen} deal={drawerDeal} onClose={handleCloseDealDrawer} />
         )}
