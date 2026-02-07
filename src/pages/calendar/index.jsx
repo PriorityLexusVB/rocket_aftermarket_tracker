@@ -1017,6 +1017,13 @@ const CalendarSchedulingCenter = ({
                       const tooltipTitle = showTitleTooltips
                         ? titleWithNumber
                         : titleText || 'Open deal'
+                      const promiseLabel = job?.time_tbd
+                        ? safeFormatDate(job?.scheduled_start_time, {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                          })
+                        : ''
                       const timeLabel = job?.time_tbd
                         ? `Promise: ${promiseLabel || '—'}`
                         : jobStartTime
@@ -1035,13 +1042,6 @@ const CalendarSchedulingCenter = ({
                             statusLabel ? `Status: ${statusLabel}` : null,
                           ]
                         : []
-                      const promiseLabel = job?.time_tbd
-                        ? safeFormatDate(job?.scheduled_start_time, {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                          })
-                        : ''
                       const handleMonthGridClick = getCalendarGridClickHandler({
                         dealDrawerEnabled: canOpenDrawer,
                         onOpenDealDrawer,
