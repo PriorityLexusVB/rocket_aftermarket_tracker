@@ -583,7 +583,9 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       else bucket.allDay.push(j)
       map.set(key, bucket)
     })
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+    return Array.from(map.entries())
+      .map(([key, bucket]) => [key, [...bucket.allDay, ...bucket.scheduled]])
+      .sort((a, b) => a[0].localeCompare(b[0]))
   }, [filtered])
 
   // Focus highlight
