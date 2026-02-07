@@ -1,15 +1,25 @@
 {
-  "short_name": "rocket-aftermarket-tracker",
-  "name": "rocket-aftermarket-tracker",
+  "short_name": "Rocket Tracker",
+  "name": "Rocket Aftermarket Tracker",
   "icons": [
     {
-      "src": "favicon.ico",
+      "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "/brand/icons/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icons/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#0B0F14",
+  "background_color": "#0B0F14"
 }
