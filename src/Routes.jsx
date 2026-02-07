@@ -55,6 +55,29 @@ const CommunicationsCenter = lazy(() => import('./pages/communications'))
 const ProfileSettings = lazy(() => import('./pages/profile'))
 
 const Routes = () => {
+  const mergeRedirectParams = (destination, search) => {
+    const [path, query = ''] = String(destination || '').split('?')
+    const destParams = new URLSearchParams(query)
+    const sourceParams = new URLSearchParams(search || '')
+    const keysToCopy = ['focus', 'q', 'location']
+
+    keysToCopy.forEach((key) => {
+      if (!destParams.has(key) && sourceParams.has(key)) {
+        destParams.set(key, sourceParams.get(key))
+      }
+    })
+
+    const mergedQuery = destParams.toString()
+    return mergedQuery ? `${path}?${mergedQuery}` : path
+  }
+
+  const CalendarUnifiedRedirect = ({ target }) => {
+    const location = useLocation()
+    const destination = getCalendarDestination({ target })
+    const merged = mergeRedirectParams(destination, location?.search || '')
+    return <Navigate to={merged} replace />
+  }
+
   const CalendarAgendaRedirect = () => {
     const location = useLocation()
     const search = location?.search || ''
@@ -132,7 +155,7 @@ const Routes = () => {
                 element={
                   <ProtectedRoute>
                     {UnifiedShellEnabled ? (
-                      <Navigate to={getCalendarDestination({ target: 'calendar' })} replace />
+                      <CalendarUnifiedRedirect target="calendar" />
                     ) : (
                       <CalendarSchedulingCenter />
                     )}
@@ -144,7 +167,7 @@ const Routes = () => {
                 element={
                   <ProtectedRoute>
                     {UnifiedShellEnabled ? (
-                      <Navigate to={getCalendarDestination({ target: 'board' })} replace />
+                      <CalendarUnifiedRedirect target="board" />
                     ) : (
                       <CalendarFlowManagementCenter />
                     )}
@@ -156,7 +179,7 @@ const Routes = () => {
                 element={
                   <ProtectedRoute>
                     {UnifiedShellEnabled ? (
-                      <Navigate to={getCalendarDestination({ target: 'list' })} replace />
+                      <CalendarUnifiedRedirect target="list" />
                     ) : CalendarAgendaEnabled ? (
                       <CalendarAgenda />
                     ) : (
