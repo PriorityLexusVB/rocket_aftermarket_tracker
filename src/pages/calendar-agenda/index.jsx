@@ -21,6 +21,7 @@ import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
 import { getMicroFlashClass } from '@/utils/microInteractions'
+import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
@@ -221,21 +222,7 @@ export function applyFilters(rows, { q, status, dateRange, vendorFilter, now: no
       }
     }
 
-    if (q) {
-      const needle = q.toLowerCase()
-      const hay = [
-        r?.raw?.title ?? r?.title,
-        r?.raw?.description ?? r?.description,
-        r?.raw?.job_number ?? r?.job_number,
-        r?.raw?.vehicle?.owner_name ?? r?.vehicle?.owner_name,
-        r?.customerName,
-        r?.vehicleLabel,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-      if (!hay.includes(needle)) return false
-    }
+    if (q && !calendarQueryMatches(r, q)) return false
     return true
   })
 }
@@ -293,6 +280,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
 
   // Initialize filters from URL params, with localStorage fallback
   const [q, setQ] = useState(() => {
+    if (isEmbedded && shellState?.q) return shellState.q
     const urlParam = new URLSearchParams(location.search).get('q')
     if (urlParam) return urlParam
     return typeof localStorage !== 'undefined' ? localStorage.getItem('agendaFilter_q') || '' : ''
@@ -348,8 +336,9 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   useEffect(() => {
     if (!isEmbedded) return
     const urlQ = new URLSearchParams(location.search).get('q') || ''
-    if (urlQ !== q) setQ(urlQ)
-  }, [isEmbedded, location.search, q])
+    const nextQ = shellState?.q ?? urlQ
+    if (nextQ !== q) setQ(nextQ)
+  }, [isEmbedded, location.search, q, shellState?.q])
 
   // When Supabase env is missing, dev fallback returns empty rows. Make that explicit.
   const supabaseNotice = <SupabaseConfigNotice className="mb-3" />

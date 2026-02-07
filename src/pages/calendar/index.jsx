@@ -22,6 +22,7 @@ import {
 } from '@/lib/navigation/calendarNavigation'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
+import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -184,6 +185,11 @@ const CalendarSchedulingCenter = ({
   })
   const locationFilterValue = locationFilter || 'All'
   const isLocationFilterActive = unifiedShellEnabled && locationFilterValue !== 'All'
+  const shellQuery = shellState?.q ?? ''
+  const searchQuery = useMemo(() => {
+    if (isEmbedded) return shellQuery
+    return new URLSearchParams(location.search).get('q') || ''
+  }, [isEmbedded, location.search, shellQuery])
 
   const filterByLocation = useCallback(
     (items) => {
@@ -431,9 +437,14 @@ const CalendarSchedulingCenter = ({
     loadCalendarData()
   }, [dateRange, loadCalendarData])
 
+  const filteredJobs = useMemo(() => {
+    if (!searchQuery) return jobs
+    return (jobs || []).filter((job) => calendarQueryMatches(job, searchQuery))
+  }, [jobs, searchQuery])
+
   const jobsByDayKey = useMemo(() => {
     const map = new Map()
-    for (const job of jobs || []) {
+    for (const job of filteredJobs || []) {
       const key = safeDayKey(job?.scheduled_start_time)
       if (!key) continue
       const existing = map.get(key)
@@ -441,7 +452,7 @@ const CalendarSchedulingCenter = ({
       else map.set(key, [job])
     }
     return map
-  }, [jobs])
+  }, [filteredJobs])
 
   // Navigation handlers with safe date operations
   const navigateDate = (direction) => {
@@ -1283,7 +1294,7 @@ const CalendarSchedulingCenter = ({
   const MainCalendarView = () => {
     const viewLabel = viewType === 'week' ? 'Weekly' : viewType === 'month' ? 'Monthly' : 'Daily'
     const hideShellActions = suppressChrome
-    const isEmptyRange = Array.isArray(jobs) && jobs.length === 0
+    const isEmptyRange = Array.isArray(filteredJobs) && filteredJobs.length === 0
     const emptyTitle =
       viewType === 'week'
         ? 'No jobs scheduled for this week'
@@ -1406,7 +1417,7 @@ const CalendarSchedulingCenter = ({
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4">
           <div className="min-w-0">
             <div className="relative">
-              <CalendarGrid jobs={jobs} viewType={viewType} />
+              <CalendarGrid jobs={filteredJobs} viewType={viewType} />
 
               {isEmptyRange ? (
                 <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
