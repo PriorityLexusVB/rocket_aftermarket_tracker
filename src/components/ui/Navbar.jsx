@@ -195,7 +195,7 @@ const Navbar = () => {
     <>
       {/* Mobile Bottom Navigation - Updated for 6 items with better spacing */}
       {!isTest && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B0F14] border-t border-white/10 shadow-lg">
           <div className="grid grid-cols-6 h-16">
             {navigationLinks?.slice(0, 6)?.map((link) => {
               const Icon = link?.icon
@@ -207,8 +207,8 @@ const Navbar = () => {
                   to={link?.href}
                   className={`flex flex-col items-center justify-center space-y-1 px-1 transition-colors duration-200 ${
                     isActive
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                      ? 'text-white bg-white/10'
+                      : 'text-gray-300 hover:text-white hover:bg-white/5'
                   }`}
                   aria-current={isActive ? 'page' : undefined}
                 >
@@ -224,14 +224,19 @@ const Navbar = () => {
       )}
 
       {/* Desktop Header Navigation - Streamlined for space */}
-      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-[#0B0F14] border-b border-white/10 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             {/* Logo - Compact for space */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2 group">
-                <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-md group-hover:bg-blue-700 transition-colors duration-200">
-                  <Car className="w-4 h-4 text-white" />
+                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                  <img
+                    src="/brand/logos/rocket-mark-white.png"
+                    alt="Rocket Aftermarket Tracker"
+                    className="w-6 h-6"
+                    draggable="false"
+                  />
                 </div>
                 {/* Reserved space for future logo - no text for now */}
                 <div className="w-2"></div>
@@ -249,8 +254,8 @@ const Navbar = () => {
                     to={link?.href}
                     className={`flex items-center space-x-1.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                        ? 'bg-white/10 text-white border border-white/10'
+                        : 'text-gray-300 hover:text-white hover:bg-white/5'
                     }`}
                     aria-current={isActive ? 'page' : undefined}
                   >
@@ -278,7 +283,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="relative p-2 text-gray-400 hover:text-blue-600 transition-colors duration-200 rounded-lg hover:bg-gray-50"
+                  className="relative p-2 text-gray-300 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/5"
                   aria-label="Notifications"
                   aria-haspopup="menu"
                   aria-expanded={isNotificationOpen}
@@ -293,12 +298,12 @@ const Navbar = () => {
 
                 {/* Notification Dropdown */}
                 {isNotificationOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 max-h-96 overflow-y-auto">
-                    <div className="px-4 py-3 border-b border-gray-200">
+                  <div className="absolute right-0 mt-2 w-80 bg-[#0B0F14] rounded-lg shadow-lg border border-white/10 py-2 z-50 max-h-96 overflow-y-auto text-gray-200">
+                    <div className="px-4 py-3 border-b border-white/10">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-gray-900">Recent Activity</h3>
+                        <h3 className="text-sm font-medium text-white">Recent Activity</h3>
                         {notificationLoading && (
-                          <div className="text-xs text-gray-500">Loading...</div>
+                          <div className="text-xs text-gray-400">Loading...</div>
                         )}
                       </div>
                     </div>
@@ -308,7 +313,7 @@ const Navbar = () => {
                         notifications?.map((notification) => (
                           <div
                             key={notification?.id}
-                            className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                            className="px-4 py-3 hover:bg-white/5 border-b border-white/10 last:border-b-0"
                           >
                             <div className="flex items-start space-x-3">
                               <div className="flex-shrink-0 mt-1">
@@ -319,14 +324,14 @@ const Navbar = () => {
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-gray-900 truncate">
+                                <p className="text-sm text-white truncate">
                                   {notification?.subject || 'Communication'}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                <p className="text-xs text-gray-300 mt-1 line-clamp-2">
                                   {notification?.message ||
                                     `${notification?.communication_type} to ${notification?.recipient}`}
                                 </p>
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-gray-500 mt-1">
                                   {formatNotificationTime(notification?.sent_at)}
                                 </p>
                               </div>
@@ -335,20 +340,20 @@ const Navbar = () => {
                         ))
                       ) : (
                         <div className="px-4 py-6 text-center">
-                          <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                          <p className="text-sm text-gray-500">No recent notifications</p>
-                          <p className="text-xs text-gray-400 mt-1">
+                          <Bell className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                          <p className="text-sm text-gray-300">No recent notifications</p>
+                          <p className="text-xs text-gray-500 mt-1">
                             Communications will appear here
                           </p>
                         </div>
                       )}
 
                       {notifications?.length > 0 && (
-                        <div className="px-4 py-3 border-t border-gray-200">
+                        <div className="px-4 py-3 border-t border-white/10">
                           <Link
                             to="/communications"
                             onClick={() => setIsNotificationOpen(false)}
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="text-sm text-gray-200 hover:text-white font-medium"
                           >
                             View all communications →
                           </Link>
@@ -364,19 +369,19 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-3 p-2 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                  className="flex items-center space-x-3 p-2 text-gray-300 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-200"
                   aria-label="Profile menu"
                   aria-haspopup="menu"
                   aria-expanded={isProfileOpen}
                 >
-                  <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
-                    <User className="w-4 h-4" />
+                  <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                    <User className="w-4 h-4 text-gray-200" />
                   </div>
                   <div className="hidden xl:block text-left">
                     <p className="text-sm font-medium">
                       {userProfile?.full_name || user?.email?.split('@')?.[0] || 'User'}
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">
+                    <p className="text-xs text-gray-400 capitalize">
                       {userProfile?.role || 'Staff'}
                     </p>
                   </div>
@@ -384,19 +389,19 @@ const Navbar = () => {
 
                 {/* Dropdown Menu */}
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                    <div className="px-4 py-3 border-b border-gray-200">
+                  <div className="absolute right-0 mt-2 w-56 bg-[#0B0F14] rounded-lg shadow-lg border border-white/10 py-1 z-50 text-gray-200">
+                    <div className="px-4 py-3 border-b border-white/10">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <User className="w-5 h-5 text-gray-600" />
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                          <User className="w-5 h-5 text-gray-200" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-white">
                             {userProfile?.full_name || 'User'}
                           </p>
-                          <p className="text-xs text-gray-500">{user?.email}</p>
+                          <p className="text-xs text-gray-400">{user?.email}</p>
                           {userProfile?.role && (
-                            <p className="text-xs text-blue-600 capitalize font-medium">
+                            <p className="text-xs text-gray-300 capitalize font-medium">
                               {userProfile?.role}
                             </p>
                           )}
@@ -410,7 +415,7 @@ const Navbar = () => {
                           setIsProfileOpen(false)
                           navigate('/profile')
                         }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors duration-200"
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-200 hover:bg-white/5 hover:text-white transition-colors duration-200"
                       >
                         <User className="w-4 h-4 mr-3" />
                         Profile Settings
@@ -418,7 +423,7 @@ const Navbar = () => {
 
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors duration-200"
                       >
                         <LogOut className="w-4 h-4 mr-3" />
                         Sign Out
@@ -433,12 +438,17 @@ const Navbar = () => {
       </nav>
 
       {/* Mobile Top Header - Simplified */}
-      <nav className="md:hidden bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
+      <nav className="md:hidden bg-[#0B0F14] border-b border-white/10 shadow-sm sticky top-0 z-40">
         <div className="flex items-center justify-between h-16 px-4">
           {/* Logo - Compact */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Car className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+              <img
+                src="/brand/logos/rocket-mark-white.png"
+                alt="Rocket Aftermarket Tracker"
+                className="w-5 h-5"
+                draggable="false"
+              />
             </div>
             {/* Reserved minimal space for future logo */}
             <div className="w-1"></div>
@@ -450,7 +460,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-              className="relative p-2 text-gray-400 hover:text-blue-600"
+              className="relative p-2 text-gray-300 hover:text-white"
               aria-label="Notifications"
               aria-haspopup="menu"
               aria-expanded={isNotificationOpen}
@@ -467,7 +477,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-gray-600 hover:text-blue-600 rounded-lg hover:bg-gray-50"
+              className="p-2 text-gray-300 hover:text-white rounded-lg hover:bg-white/5"
               aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}
@@ -479,15 +489,15 @@ const Navbar = () => {
 
         {/* Mobile Notification Dropdown */}
         {isNotificationOpen && (
-          <div className="border-t border-gray-200 bg-white max-h-60 overflow-y-auto">
-            <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-medium text-gray-900">Recent Activity</h3>
+          <div className="border-t border-white/10 bg-[#0B0F14] max-h-60 overflow-y-auto">
+            <div className="px-4 py-3 border-b border-white/10">
+              <h3 className="text-sm font-medium text-white">Recent Activity</h3>
             </div>
             {notifications?.length > 0 ? (
               notifications?.slice(0, 3)?.map((notification) => (
                 <div
                   key={notification?.id}
-                  className="px-4 py-3 border-b border-gray-100 last:border-b-0"
+                  className="px-4 py-3 border-b border-white/10 last:border-b-0"
                 >
                   <div className="flex items-start space-x-3">
                     <div
@@ -496,10 +506,10 @@ const Navbar = () => {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900 truncate">
+                      <p className="text-sm text-white truncate">
                         {notification?.subject || 'Communication'}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-400 mt-1">
                         {formatNotificationTime(notification?.sent_at)}
                       </p>
                     </div>
@@ -508,7 +518,7 @@ const Navbar = () => {
               ))
             ) : (
               <div className="px-4 py-6 text-center">
-                <p className="text-sm text-gray-500">No recent notifications</p>
+                <p className="text-sm text-gray-300">No recent notifications</p>
               </div>
             )}
           </div>
@@ -518,20 +528,20 @@ const Navbar = () => {
         {isMenuOpen && (
           <>
             <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />
-            <div className="fixed top-16 right-0 w-72 h-full bg-white shadow-xl z-50 overflow-y-auto border-l border-gray-200">
+            <div className="fixed top-16 right-0 w-72 h-full bg-[#0B0F14] shadow-xl z-50 overflow-y-auto border-l border-white/10">
               <div className="p-6">
                 {/* User Profile Section */}
-                <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl mb-6">
-                  <div className="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center">
-                    <User className="w-6 h-6 text-gray-600" />
+                <div className="flex items-center space-x-4 p-4 bg-white/5 rounded-xl mb-6">
+                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                    <User className="w-6 h-6 text-gray-200" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-white">
                       {userProfile?.full_name || user?.email?.split('@')?.[0] || 'User'}
                     </p>
-                    <p className="text-xs text-gray-500">{user?.email}</p>
+                    <p className="text-xs text-gray-400">{user?.email}</p>
                     {userProfile?.role && (
-                      <p className="text-xs text-blue-600 capitalize font-medium">
+                      <p className="text-xs text-gray-300 capitalize font-medium">
                         {userProfile?.role}
                       </p>
                     )}
@@ -545,7 +555,7 @@ const Navbar = () => {
 
                 {/* Navigation Links */}
                 <div className="space-y-1 mb-6">
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
                     Navigation
                   </h3>
                   {navigationLinks?.map((link) => {
@@ -558,8 +568,8 @@ const Navbar = () => {
                         onClick={() => setIsMenuOpen(false)}
                         className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
                           isActive
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                            ? 'bg-white/10 text-white border border-white/10'
+                            : 'text-gray-300 hover:text-white hover:bg-white/5'
                         }`}
                       >
                         <Icon className="w-5 h-5" />
@@ -570,8 +580,8 @@ const Navbar = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-2 pt-6 border-t border-gray-200">
-                  <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+                <div className="space-y-2 pt-6 border-t border-white/10">
+                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
                     Account
                   </h3>
 
@@ -580,7 +590,7 @@ const Navbar = () => {
                       setIsMenuOpen(false)
                       navigate('/profile')
                     }}
-                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors duration-200"
                   >
                     <User className="w-5 h-5" />
                     <span>Profile Settings</span>
@@ -588,7 +598,7 @@ const Navbar = () => {
 
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-red-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
                   >
                     <LogOut className="w-5 h-5" />
                     <span>Sign Out</span>
@@ -615,7 +625,7 @@ const Navbar = () => {
 
       {buildLabel ? (
         <div
-          className="pointer-events-none fixed bottom-20 right-2 z-[60] select-none text-[10px] text-gray-400 md:bottom-2"
+          className="pointer-events-none fixed bottom-20 right-2 z-[60] select-none text-[10px] text-gray-300 md:bottom-2"
           aria-label="Build info"
           title={`Build ${buildLabel}${buildTimeIso ? ` @ ${buildTimeIso}` : ''}`}
         >
