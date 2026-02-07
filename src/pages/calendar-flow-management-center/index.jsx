@@ -39,6 +39,7 @@ import { getEventColors } from '@/utils/calendarColors'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
 import { getMicroFlashClass } from '@/utils/microInteractions'
+import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -107,6 +108,7 @@ const CalendarFlowManagementCenter = ({
   const useUnifiedColors = unifiedShellEnabled || isEmbedded
   const microInteractionsEnabled = unifiedShellEnabled
   const shellRange = shellState?.range
+  const shellQuery = shellState?.q ?? ''
   const locationFilterValue = locationFilter || 'All'
   const isLocationFilterActive = unifiedShellEnabled && locationFilterValue !== 'All'
 
@@ -173,6 +175,14 @@ const CalendarFlowManagementCenter = ({
     const nextMode = resolveShellViewMode(shellRange)
     if (nextMode !== viewMode) setViewMode(nextMode)
   }, [isEmbedded, shellRange, viewMode])
+
+  useEffect(() => {
+    if (!isEmbedded) return
+    const nextQuery = shellQuery
+    setFilters((prev) =>
+      prev?.searchQuery === nextQuery ? prev : { ...prev, searchQuery: nextQuery }
+    )
+  }, [isEmbedded, shellQuery])
 
   const getViewStartDate = useCallback(() => {
     const date = new Date(currentDate)
@@ -263,29 +273,55 @@ const CalendarFlowManagementCenter = ({
     return filterByLocation(mapped)
   }, [needsSchedulingItems, filterByLocation])
 
+  const filteredNeedsSchedulingJobs = useMemo(() => {
+    if (!filters?.searchQuery) return needsSchedulingJobs
+    return (needsSchedulingJobs || []).filter((job) =>
+      calendarQueryMatches(job, filters?.searchQuery)
+    )
+  }, [needsSchedulingJobs, filters?.searchQuery])
+
   const needsSchedulingJobsInView = useMemo(() => {
-    if (!needsSchedulingJobs.length) return []
+    if (!filteredNeedsSchedulingJobs.length) return []
     if (!viewDateKeys || viewDateKeys.size === 0) return []
 
-    return needsSchedulingJobs.filter((job) => {
+    return filteredNeedsSchedulingJobs.filter((job) => {
       const key = toEtDateKey(getPromiseValue(job))
       return !!(key && viewDateKeys.has(key))
     })
-  }, [needsSchedulingJobs, viewDateKeys])
+  }, [filteredNeedsSchedulingJobs, viewDateKeys])
 
   const overdueNeedsTimeCount = useMemo(() => {
-    return (needsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job))).length
-  }, [needsSchedulingJobs])
+    return (filteredNeedsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job)))
+      .length
+  }, [filteredNeedsSchedulingJobs])
+
+  const overdueNeedsTimeInView = useMemo(() => {
+    return (needsSchedulingJobsInView || []).filter((job) => isOverdue(getPromiseValue(job))).length
+  }, [needsSchedulingJobsInView])
+
+  const needsTimeOutsideViewCount = useMemo(() => {
+    const total = filteredNeedsSchedulingJobs?.length || 0
+    const inView = needsSchedulingJobsInView?.length || 0
+    return Math.max(total - inView, 0)
+  }, [filteredNeedsSchedulingJobs, needsSchedulingJobsInView])
+
+  const overdueOutsideViewCount = useMemo(() => {
+    return Math.max(overdueNeedsTimeCount - overdueNeedsTimeInView, 0)
+  }, [overdueNeedsTimeCount, overdueNeedsTimeInView])
+
+  const showNeedsTimeBanner =
+    unifiedShellEnabled && (needsTimeOutsideViewCount > 0 || overdueOutsideViewCount > 0)
 
   const needsSchedulingJobsForView = useMemo(() => {
     if (!showOverdueOnly) return needsSchedulingJobsInView
     return (needsSchedulingJobsInView || []).filter((job) => isOverdue(getPromiseValue(job)))
   }, [needsSchedulingJobsInView, showOverdueOnly])
 
-  const unscheduledItemsFiltered = useMemo(
-    () => filterByLocation(unscheduledItems || []),
-    [filterByLocation, unscheduledItems]
-  )
+  const unscheduledItemsFiltered = useMemo(() => {
+    const locationFiltered = filterByLocation(unscheduledItems || [])
+    if (!filters?.searchQuery) return locationFiltered
+    return locationFiltered.filter((job) => calendarQueryMatches(job, filters?.searchQuery))
+  }, [filterByLocation, unscheduledItems, filters?.searchQuery])
 
   const locationFilteredJobs = useMemo(
     () => filterByLocation([...(originalJobs || []), ...(originalOnSiteJobs || [])]),
@@ -383,14 +419,8 @@ const CalendarFlowManagementCenter = ({
 
       // Apply search filter
       if (filters?.searchQuery) {
-        const query = filters?.searchQuery?.toLowerCase()
-        filteredJobs = filteredJobs?.filter(
-          (job) =>
-            job?.job_number?.toLowerCase()?.includes(query) ||
-            job?.title?.toLowerCase()?.includes(query) ||
-            job?.vehicle_info?.toLowerCase()?.includes(query) ||
-            job?.customer_name?.toLowerCase()?.includes(query) ||
-            job?.customer_phone?.toLowerCase()?.includes(query)
+        filteredJobs = filteredJobs?.filter((job) =>
+          calendarQueryMatches(job, filters?.searchQuery)
         )
       }
 
@@ -776,6 +806,43 @@ const CalendarFlowManagementCenter = ({
       setJumpLoading(false)
     }
   }, [findNextScheduledJob, getViewEndDate])
+
+  const resolvePromiseDate = useCallback((job) => {
+    const value = getPromiseValue(job)
+    if (!value) return null
+    const tzDate = toSafeDateForTimeZone(value)
+    if (tzDate && !Number.isNaN(tzDate.getTime())) return tzDate
+    const fallback = new Date(value)
+    return Number.isNaN(fallback.getTime()) ? null : fallback
+  }, [])
+
+  const pickEarliestPromiseDate = useCallback(
+    (items) => {
+      let earliest = null
+      for (const job of items || []) {
+        const dt = resolvePromiseDate(job)
+        if (!dt) continue
+        if (!earliest || dt.getTime() < earliest.getTime()) earliest = dt
+      }
+      return earliest
+    },
+    [resolvePromiseDate]
+  )
+
+  const handleJumpToNeedsTime = useCallback(
+    (mode) => {
+      const list =
+        mode === 'overdue'
+          ? (filteredNeedsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job)))
+          : filteredNeedsSchedulingJobs || []
+      const nextDate = pickEarliestPromiseDate(list)
+      if (!nextDate) return
+      setCurrentDate(nextDate)
+      setHighlightNeedsTime(true)
+      setShowOverdueOnly(mode === 'overdue')
+    },
+    [filteredNeedsSchedulingJobs, pickEarliestPromiseDate]
+  )
 
   // New month view render function
   const renderMonthView = () => {
@@ -1584,6 +1651,47 @@ const CalendarFlowManagementCenter = ({
           </div>
         )}
 
+      {showNeedsTimeBanner && (
+        <div className="px-6 pt-4">
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-indigo-900">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="flex items-start gap-2 text-sm">
+                <Clock className="mt-0.5 h-4 w-4" />
+                <div>
+                  <div className="font-semibold">Needs time outside this view.</div>
+                  <div className="text-indigo-800">
+                    {overdueOutsideViewCount > 0
+                      ? `${overdueOutsideViewCount} overdue`
+                      : 'No overdue items'}
+                    {needsTimeOutsideViewCount > 0
+                      ? ` • ${needsTimeOutsideViewCount} promised without a time`
+                      : ''}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleJumpToNeedsTime('overdue')}
+                  disabled={overdueOutsideViewCount === 0}
+                  className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-3 py-1 text-xs font-medium text-indigo-900 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  View overdue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleJumpToNeedsTime('all')}
+                  disabled={needsTimeOutsideViewCount === 0}
+                  className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-3 py-1 text-xs font-medium text-indigo-900 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  View needs time
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Filters - Updated to use original data for counts */}
       {!suppressChrome && (
         <QuickFilters
@@ -1612,7 +1720,7 @@ const CalendarFlowManagementCenter = ({
         {viewMode !== 'month' && (
           <PromisedQueue
             unscheduledJobs={unscheduledItemsFiltered}
-            needsTimeCount={needsSchedulingJobs.length}
+            needsTimeCount={filteredNeedsSchedulingJobs.length}
             overdueCount={overdueNeedsTimeCount}
             highlightNeedsTime={highlightNeedsTime}
             showOverdueOnly={showOverdueOnly}

@@ -73,7 +73,8 @@ function shiftDate(baseDate, range, direction) {
 export default function CalendarShell() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [searchValue, setSearchValue] = useState('')
+  const [searchValue, setSearchValue] = useState(() => searchParams.get('q') || '')
+  const [debouncedSearch, setDebouncedSearch] = useState(searchValue)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerDeal, setDrawerDeal] = useState(null)
 
@@ -84,6 +85,7 @@ export default function CalendarShell() {
     location: locationFilter,
     normalizedParams,
   } = useMemo(() => parseCalendarQuery(searchParams), [searchParams])
+  const urlQuery = useMemo(() => searchParams.get('q') || '', [searchParams])
 
   const agendaEnabled = SIMPLE_AGENDA_ENABLED || isCalendarUnifiedShellEnabled()
   const dealDrawerEnabled = isCalendarDealDrawerEnabled()
@@ -126,6 +128,15 @@ export default function CalendarShell() {
     }
   }, [resolvedView, view, clampedRange, date, searchParams, setSearchParams, locationFilter])
 
+  useEffect(() => {
+    setSearchValue((prev) => (prev === urlQuery ? prev : urlQuery))
+  }, [urlQuery])
+
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(searchValue), 300)
+    return () => clearTimeout(handle)
+  }, [searchValue])
+
   const updateParams = useCallback(
     (next) => {
       const currentQuery = searchParams.get('q') || ''
@@ -140,6 +151,29 @@ export default function CalendarShell() {
     },
     [resolvedView, clampedRange, date, searchParams, setSearchParams, locationFilter]
   )
+
+  useEffect(() => {
+    const nextQuery = debouncedSearch.trim()
+    const currentQuery = searchParams.get('q') || ''
+    if (nextQuery === currentQuery) return
+
+    const nextParams = buildCalendarSearchParams({
+      view: resolvedView,
+      range: clampedRange,
+      date,
+      q: nextQuery,
+      location: locationFilter,
+    })
+    setSearchParams(nextParams, { replace: true })
+  }, [
+    debouncedSearch,
+    resolvedView,
+    clampedRange,
+    date,
+    locationFilter,
+    searchParams,
+    setSearchParams,
+  ])
 
   useEffect(() => {
     if (!allowedRanges.has(range)) {
@@ -175,7 +209,10 @@ export default function CalendarShell() {
   const dateValue = parseCalendarDateParam(searchParams.get('date'))
   const dateInputValue = dateValue ? searchParams.get('date') : ''
 
-  const shellState = useMemo(() => ({ range: clampedRange, date }), [clampedRange, date])
+  const shellState = useMemo(
+    () => ({ range: clampedRange, date, q: searchValue }),
+    [clampedRange, date, searchValue]
+  )
   const handleOpenDealDrawer = useCallback(
     (deal) => {
       if (!dealDrawerEnabled) return
@@ -322,6 +359,19 @@ export default function CalendarShell() {
                   onChange={(event) => setSearchValue(event.target.value)}
                 />
               </div>
+
+              <details className="group relative">
+                <summary className="flex cursor-pointer list-none items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
+                  Help
+                </summary>
+                <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 shadow-lg">
+                  <div className="font-semibold text-slate-700">Search tips</div>
+                  <div className="mt-2 space-y-1">
+                    <div>Matches job number, customer, phone, vehicle, and notes.</div>
+                    <div>Search applies across Board, Calendar, and List views.</div>
+                  </div>
+                </div>
+              </details>
 
               <details className="group relative">
                 <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
