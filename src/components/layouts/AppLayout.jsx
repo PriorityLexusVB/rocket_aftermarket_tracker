@@ -12,7 +12,7 @@ const AppLayout = ({ children }) => {
   const shouldShowNavbar = !excludeNavbarPaths?.includes(location?.pathname)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0B0F14]">
       {/* Conditionally render Navbar - exclude for guest claims form */}
       {shouldShowNavbar && <Navbar />}
 
@@ -20,14 +20,10 @@ const AppLayout = ({ children }) => {
       {shouldShowNavbar && import.meta.env.DEV && <DiagnosticsBanner />}
 
       {/* Main content area with proper spacing for top navbar */}
-      <main className={`${shouldShowNavbar ? 'pt-16 md:pt-16' : ''}`}>
-        {children}
-      </main>
+      <main className={`${shouldShowNavbar ? 'pt-16 md:pt-16' : ''}`}>{children}</main>
 
       {/* Build SHA badge: show here only on routes where Navbar is excluded */}
-      {!shouldShowNavbar && (
-        <NavbarBuildBadge />
-      )}
+      {!shouldShowNavbar && <NavbarBuildBadge />}
     </div>
   )
 }

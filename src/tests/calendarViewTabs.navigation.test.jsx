@@ -39,7 +39,7 @@ describe('CalendarViewTabs navigation', () => {
     )
 
     const calendarLink = screen.getByRole('link', { name: 'Calendar' })
-    const expected = getCalendarDestination({ target: 'calendar' })
+    const expected = getCalendarDestination({ target: 'calendar', range: 'month' })
     expect(calendarLink.getAttribute('href')).toBe(expected)
   })
 })

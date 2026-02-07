@@ -20,6 +20,7 @@ import QuickNavigation from '../common/QuickNavigation'
 import ThemeSelector from '../common/ThemeSelector'
 import EnvChip from '../common/EnvChip'
 import { isTest } from '../../lib/env'
+import { getCalendarDestination } from '../../lib/navigation/calendarNavigation'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -72,7 +73,7 @@ const Navbar = () => {
   const navigationLinks = [
     {
       name: 'Calendar',
-      href: '/calendar',
+      href: getCalendarDestination({ target: 'calendar', range: 'month' }),
       icon: Calendar,
     },
     {
@@ -225,7 +226,7 @@ const Navbar = () => {
 
       {/* Desktop Header Navigation - Streamlined for space */}
       <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-[#0B0F14] border-b border-white/10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+        <div className="w-full px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             {/* Logo - Compact for space */}
             <div className="flex items-center">

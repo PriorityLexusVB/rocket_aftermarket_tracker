@@ -114,10 +114,10 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-[#0B0F14] flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-4 text-lg text-gray-600">Loading analytics dashboard...</p>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
+            <p className="mt-4 text-lg text-gray-300">Loading analytics dashboard...</p>
           </div>
         </div>
       </AppLayout>
@@ -126,16 +126,16 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#0B0F14]">
         {/* Header */}
-        <div className="bg-white shadow-sm border-b">
+        <div className="bg-white/5 border-b border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-gray-100">
                   Advanced Business Intelligence Analytics
                 </h1>
-                <p className="mt-2 text-gray-600">
+                <p className="mt-2 text-gray-400">
                   Comprehensive aftermarket performance insights and multi-dimensional analysis
                 </p>
               </div>
@@ -143,7 +143,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2"
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 flex items-center space-x-2 text-gray-200"
                 >
                   <Filter className="w-4 h-4" />
                   <span>Filters</span>
@@ -154,7 +154,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
                 <button
                   onClick={handleExportData}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-2"
+                  className="px-4 py-2 bg-white text-[#0B0F14] rounded-lg hover:bg-white/90 flex items-center space-x-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export</span>
@@ -163,7 +163,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2 disabled:opacity-50"
+                  className="px-4 py-2 bg-white/10 text-gray-100 rounded-lg hover:bg-white/20 flex items-center space-x-2 disabled:opacity-50"
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                   <span>Refresh</span>
@@ -173,16 +173,16 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
             {/* Filters Panel */}
             {showFilters && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+              <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/10">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                       Time Frame
                     </label>
                     <select
                       value={timeframe}
                       onChange={(e) => handleTimeframeChange(e?.target?.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-white/10 rounded-lg bg-[#0B0F14] text-gray-200 focus:ring-2 focus:ring-white/20 focus:border-transparent"
                     >
                       <option value="1month">Last 1 Month</option>
                       <option value="3months">Last 3 Months</option>
@@ -192,13 +192,13 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
                       Product Category
                     </label>
                     <select
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e?.target?.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-3 py-2 border border-white/10 rounded-lg bg-[#0B0F14] text-gray-200 focus:ring-2 focus:ring-white/20 focus:border-transparent"
                     >
                       <option value="all">All Categories</option>
                       {dashboardData?.category_analysis?.map((category) => (
@@ -217,18 +217,18 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
         {/* Error State */}
         {error && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <Activity className="w-5 h-5 text-red-400" />
+                  <Activity className="w-5 h-5 text-red-300" />
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
+                  <p className="text-sm text-red-200">{error}</p>
                 </div>
                 <div className="ml-auto">
                   <button
                     onClick={() => loadDashboardData()}
-                    className="text-red-700 hover:text-red-800 text-sm font-medium"
+                    className="text-red-200 hover:text-red-100 text-sm font-medium"
                   >
                     Try Again
                   </button>

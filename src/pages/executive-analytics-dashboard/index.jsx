@@ -78,7 +78,7 @@ const ExecutiveAnalyticsDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-[#0B0F14] text-gray-100">
         <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
         <Sidebar
           isOpen={isSidebarOpen}
@@ -99,7 +99,7 @@ const ExecutiveAnalyticsDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0B0F14] text-gray-100">
       <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
       <Sidebar
         isOpen={isSidebarOpen}
@@ -115,10 +115,10 @@ const ExecutiveAnalyticsDashboard = () => {
           <div className="mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
+                <h1 className="text-2xl font-bold text-gray-100 mb-2">
                   Executive Analytics Dashboard
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-gray-400">
                   Comprehensive aftermarket department performance and profitability insights
                 </p>
               </div>
@@ -191,44 +191,44 @@ const ExecutiveAnalyticsDashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-card border border-border rounded-lg p-6 shadow-elevation-1">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
+          <div className="bg-white/5 border border-white/10 rounded-lg p-6 shadow-elevation-1">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">Quick Actions</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <button
                 onClick={() => handleQuickNavigation('/vehicle-management-hub')}
-                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
+                className="h-auto p-4 flex flex-col space-y-2 border border-white/10 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <Icon name="Car" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Vehicle Hub</span>
-                <span className="text-xs text-muted-foreground">Manage inventory</span>
+                <span className="text-xs text-gray-500">Manage inventory</span>
               </button>
 
               <button
                 onClick={() => handleQuickNavigation('/vendor-operations-center')}
-                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
+                className="h-auto p-4 flex flex-col space-y-2 border border-white/10 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <Icon name="Users" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Vendor Center</span>
-                <span className="text-xs text-muted-foreground">Manage vendors</span>
+                <span className="text-xs text-gray-500">Manage vendors</span>
               </button>
 
               <button
                 onClick={() => handleQuickNavigation('/sales-transaction-interface')}
-                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
+                className="h-auto p-4 flex flex-col space-y-2 border border-white/10 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <Icon name="DollarSign" size={24} className="text-primary" />
                 <span className="text-sm font-medium">Sales Interface</span>
-                <span className="text-xs text-muted-foreground">Log transactions</span>
+                <span className="text-xs text-gray-500">Log transactions</span>
               </button>
 
               <button
                 onClick={() => handleQuickNavigation('/business-intelligence-reports')}
-                className="h-auto p-4 flex flex-col space-y-2 border border-border rounded-lg bg-card hover:bg-accent transition-colors"
+                className="h-auto p-4 flex flex-col space-y-2 border border-white/10 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
               >
                 <Icon name="BarChart3" size={24} className="text-primary" />
                 <span className="text-sm font-medium">BI Reports</span>
-                <span className="text-xs text-muted-foreground">Generate reports</span>
+                <span className="text-xs text-gray-500">Generate reports</span>
               </button>
             </div>
           </div>

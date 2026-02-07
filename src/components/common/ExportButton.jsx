@@ -138,12 +138,10 @@ const ExportButton = ({
 
       {/* Export Options Dropdown */}
       {showOptions && !isExporting && (
-        <div className="absolute top-full left-0 mt-2 w-64 bg-card border border-border rounded-lg shadow-lg z-50">
+        <div className="absolute top-full left-0 mt-2 w-64 bg-[#0B0F14] border border-white/10 rounded-lg shadow-lg z-50 text-gray-200">
           <div className="p-4 space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
-                Export Format
-              </label>
+              <label className="text-sm font-medium text-gray-200 mb-2 block">Export Format</label>
               <Select
                 value={exportFormat}
                 onChange={setExportFormat}
@@ -153,7 +151,7 @@ const ExportButton = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">Export Scope</label>
+              <label className="text-sm font-medium text-gray-200 mb-2 block">Export Scope</label>
               <Select
                 value={exportScope}
                 onChange={setExportScope}
@@ -163,26 +161,26 @@ const ExportButton = ({
             </div>
 
             {exportScope === 'filtered' && Object?.keys(filters)?.length === 0 && (
-              <div className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+              <div className="text-xs text-amber-300 bg-amber-500/10 p-2 rounded">
                 <Icon name="AlertTriangle" size={12} className="inline mr-1" />
                 No filters applied. This will export all records.
               </div>
             )}
 
             {exportScope === 'selected' && (
-              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+              <div className="text-xs text-blue-200 bg-blue-500/10 p-2 rounded">
                 <Icon name="Info" size={12} className="inline mr-1" />
                 Exporting {selectedIds?.length} selected record
                 {selectedIds?.length !== 1 ? 's' : ''}.
               </div>
             )}
 
-            <div className="flex justify-end space-x-2 pt-2 border-t border-border">
+            <div className="flex justify-end space-x-2 pt-2 border-t border-white/10">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowOptions(false)}
-                className="min-w-0"
+                className="min-w-0 text-gray-200 hover:bg-white/10"
                 aria-label="Cancel export"
               >
                 Cancel

@@ -302,9 +302,9 @@ const AdvancedFilters = ({
               type="checkbox"
               checked={!!value}
               onChange={(e) => handleFilterChange(filterKey, e?.target?.checked)}
-              className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-ring focus:ring-2"
+              className="w-4 h-4 text-white bg-[#0B0F14] border-white/10 rounded focus:ring-white/20 focus:ring-2"
             />
-            <span className="text-sm text-foreground">{config?.label}</span>
+            <span className="text-sm text-gray-200">{config?.label}</span>
           </label>
         )
 
@@ -318,7 +318,7 @@ const AdvancedFilters = ({
   const hasActiveFilters = activeFilterCount > 0
 
   return (
-    <div className={`bg-card border border-border rounded-lg p-4 space-y-4 ${className}`}>
+    <div className={`bg-white/5 border border-white/10 rounded-lg p-4 space-y-4 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -328,7 +328,7 @@ const AdvancedFilters = ({
             onClick={() => setIsExpanded(!isExpanded)}
             iconName={isExpanded ? 'ChevronUp' : 'ChevronDown'}
             iconPosition="left"
-            className="flex items-center space-x-2"
+            className="flex items-center space-x-2 text-gray-200 hover:bg-white/10"
             aria-label="Toggle advanced filters"
             aria-labelledBy=""
             aria-describedBy=""
@@ -337,7 +337,7 @@ const AdvancedFilters = ({
           </Button>
 
           {hasActiveFilters && (
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/10 text-gray-200">
               {activeFilterCount} active
             </span>
           )}
@@ -352,7 +352,7 @@ const AdvancedFilters = ({
                 onClick={() => setShowSaveDialog(true)}
                 iconName="Save"
                 iconPosition="left"
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 text-gray-200 border-white/10 hover:bg-white/10"
                 aria-label="Save current filters as preset"
                 aria-labelledBy=""
                 aria-describedBy=""
@@ -366,7 +366,7 @@ const AdvancedFilters = ({
                 onClick={handleClearAll}
                 iconName="X"
                 iconPosition="left"
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 text-gray-300 hover:bg-white/10"
                 aria-label="Clear all filters"
                 aria-labelledBy=""
                 aria-describedBy=""
@@ -411,10 +411,10 @@ const AdvancedFilters = ({
 
       {/* Filter Controls */}
       {isExpanded && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-border">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-white/10">
           {Object.entries(currentFilterConfig || {})?.map(([filterKey, config]) => (
             <div key={filterKey} className="space-y-2">
-              <label className="text-sm font-medium text-foreground">{config?.label}</label>
+              <label className="text-sm font-medium text-gray-200">{config?.label}</label>
               {renderFilterInput(filterKey, config)}
             </div>
           ))}
@@ -424,14 +424,12 @@ const AdvancedFilters = ({
       {/* Save Preset Dialog */}
       {showSaveDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Save Filter Preset</h3>
+          <div className="bg-[#0B0F14] border border-white/10 rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">Save Filter Preset</h3>
 
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Preset Name
-                </label>
+                <label className="text-sm font-medium text-gray-200 mb-2 block">Preset Name</label>
                 <Input
                   id="preset-name"
                   type="text"
@@ -455,9 +453,9 @@ const AdvancedFilters = ({
                   type="checkbox"
                   checked={isPublic}
                   onChange={(e) => setIsPublic(e?.target?.checked)}
-                  className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-ring focus:ring-2"
+                  className="w-4 h-4 text-white bg-[#0B0F14] border-white/10 rounded focus:ring-white/20 focus:ring-2"
                 />
-                <span className="text-sm text-foreground">
+                <span className="text-sm text-gray-200">
                   Make this preset public (visible to all users)
                 </span>
               </label>
@@ -467,7 +465,7 @@ const AdvancedFilters = ({
               <Button
                 variant="outline"
                 onClick={() => setShowSaveDialog(false)}
-                className="px-4 py-2"
+                className="px-4 py-2 text-gray-200 border-white/10 hover:bg-white/10"
                 aria-label="Cancel save preset"
                 aria-labelledBy=""
                 aria-describedBy=""

@@ -196,9 +196,10 @@ const SearchableSelect = ({
           disabled={disabled || loading}
           className={`
             w-full px-3 py-2 border rounded-lg
-            ${error ? 'border-red-500' : 'border-gray-300'}
-            ${disabled || loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
-            focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+            ${error ? 'border-red-500' : 'border-white/10'}
+            ${disabled || loading ? 'bg-white/5 cursor-not-allowed' : 'bg-[#0B0F14]'}
+            text-gray-100 placeholder:text-gray-500
+            focus:ring-2 focus:ring-white/20 focus:border-transparent
             appearance-none text-base
           `}
         >
@@ -232,15 +233,16 @@ const SearchableSelect = ({
         disabled={disabled || loading}
         className={`
           w-full px-3 py-2 text-left border rounded-lg
-          ${error ? 'border-red-500' : 'border-gray-300'}
-          ${disabled || loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'}
-          ${isOpen ? 'ring-1 ring-blue-500 border-blue-500' : ''}
-          focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+          ${error ? 'border-red-500' : 'border-white/10'}
+          ${disabled || loading ? 'bg-white/5 cursor-not-allowed' : 'bg-[#0B0F14] hover:border-white/20'}
+          ${isOpen ? 'ring-1 ring-white/20 border-white/20' : ''}
+          text-gray-100
+          focus:ring-2 focus:ring-white/20 focus:border-transparent
           flex items-center justify-between
         `}
       >
         {/* Display text */}
-        <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
+        <span className={selectedOption ? 'text-gray-100' : 'text-gray-500'}>
           {selectedOption ? selectedOption?.[optionLabel] || selectedOption?.label : placeholder}
         </span>
 
@@ -248,8 +250,8 @@ const SearchableSelect = ({
         <div className="flex items-center space-x-1">
           {loading && <Icon name="Loader2" size={16} className="animate-spin text-gray-400" />}
           {clearable && selectedOption && !loading && (
-            <button type="button" onClick={handleClear} className="p-0.5 hover:bg-gray-200 rounded">
-              <Icon name="X" size={14} className="text-gray-400 hover:text-gray-600" />
+            <button type="button" onClick={handleClear} className="p-0.5 hover:bg-white/10 rounded">
+              <Icon name="X" size={14} className="text-gray-400 hover:text-gray-200" />
             </button>
           )}
           <Icon name={isOpen ? 'ChevronUp' : 'ChevronDown'} size={16} className="text-gray-400" />
@@ -267,18 +269,18 @@ const SearchableSelect = ({
                 width: `${dropdownPosition?.width}px`,
                 zIndex: 9999,
               }}
-              className="bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden"
+              className="bg-[#0B0F14] border border-white/10 rounded-lg shadow-lg max-h-60 overflow-hidden"
               onClick={(e) => e?.stopPropagation()}
             >
               {/* Search input */}
               {searchable && (
-                <div className="p-2 border-b border-gray-200">
+                <div className="p-2 border-b border-white/10">
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e?.target?.value)}
                     placeholder="Search..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-white/10 rounded bg-white/5 text-gray-100 placeholder:text-gray-500 focus:ring-2 focus:ring-white/20 focus:border-transparent"
                     autoFocus
                   />
                 </div>
@@ -287,7 +289,7 @@ const SearchableSelect = ({
               {/* Options list */}
               <div className="max-h-48 overflow-auto">
                 {filteredOptions?.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">
+                  <div className="px-3 py-2 text-sm text-gray-400">
                     {searchTerm ? 'No results found' : 'No options available'}
                   </div>
                 ) : (
@@ -297,9 +299,9 @@ const SearchableSelect = ({
                       type="button"
                       onClick={() => handleSelect(option)}
                       className={`
-                        w-full px-3 py-2 text-left text-sm hover:bg-gray-50
-                        ${isSelected(option) ? 'bg-blue-50 text-blue-700' : 'text-gray-900'}
-                        focus:bg-gray-50 focus:outline-none
+                        w-full px-3 py-2 text-left text-sm hover:bg-white/5
+                        ${isSelected(option) ? 'bg-white/10 text-white' : 'text-gray-200'}
+                        focus:bg-white/5 focus:outline-none
                       `}
                     >
                       {option?.[optionLabel] || option?.label || option?.name}

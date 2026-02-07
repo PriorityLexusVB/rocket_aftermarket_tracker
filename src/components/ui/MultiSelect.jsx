@@ -175,14 +175,14 @@ const MultiSelect = ({
   const defaultRenderOption = (option, isHighlighted, isSelected) => (
     <div
       className={`flex items-center px-3 py-2 cursor-pointer transition-colors ${
-        isHighlighted ? 'bg-blue-50 text-blue-900' : 'text-gray-900 hover:bg-gray-50'
+        isHighlighted ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/5'
       }`}
     >
       <input
         type="checkbox"
         checked={isSelected}
         onChange={() => {}} // Handled by parent click
-        className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        className="mr-3 rounded border-white/10 bg-[#0B0F14] text-white focus:ring-white/20"
         tabIndex={-1}
       />
       <div className="flex-1">
@@ -196,12 +196,12 @@ const MultiSelect = ({
 
   // Default selected item renderer
   const defaultRenderSelected = (option) => (
-    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white/10 text-gray-200">
       {option?.name}
       <button
         type="button"
         onClick={(e) => handleRemoveSelection(option?.id, e)}
-        className="ml-1 hover:bg-blue-200 rounded p-0.5"
+        className="ml-1 hover:bg-white/10 rounded p-0.5"
       >
         <Icon name="X" size={12} />
       </button>
@@ -214,17 +214,17 @@ const MultiSelect = ({
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {/* Label */}
-      {label && <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>}
+      {label && <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>}
       {/* Main select button */}
       <div
-        className={`relative w-full border rounded-lg px-3 py-2 bg-white cursor-pointer transition-colors min-h-[2.5rem] ${
+        className={`relative w-full border rounded-lg px-3 py-2 bg-white/5 cursor-pointer transition-colors min-h-[2.5rem] ${
           disabled
-            ? 'bg-gray-50 cursor-not-allowed border-gray-200'
+            ? 'bg-white/5 cursor-not-allowed border-white/10'
             : isOpen
-              ? 'border-blue-500 ring-1 ring-blue-500'
+              ? 'border-white/30 ring-1 ring-white/20'
               : error
-                ? 'border-red-300 hover:border-red-400'
-                : 'border-gray-300 hover:border-gray-400'
+                ? 'border-red-400 hover:border-red-300'
+                : 'border-white/10 hover:border-white/20'
         }`}
         onClick={() => {
           if (disabled) return
@@ -257,7 +257,7 @@ const MultiSelect = ({
               <button
                 type="button"
                 onClick={handleClearAll}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 hover:bg-white/10 rounded transition-colors"
                 tabIndex={-1}
                 title="Clear all"
               >
@@ -276,17 +276,17 @@ const MultiSelect = ({
 
         {/* Selection count indicator */}
         {selectedOptions?.length > 0 && (
-          <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          <div className="absolute -top-2 -right-2 bg-white text-[#0B0F14] text-xs rounded-full h-5 w-5 flex items-center justify-center">
             {selectedOptions?.length}
           </div>
         )}
       </div>
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-hidden">
+        <div className="absolute z-50 w-full mt-1 bg-[#0B0F14] border border-white/10 rounded-lg shadow-lg max-h-60 overflow-hidden">
           {/* Search input */}
           {searchable && (
-            <div className="p-2 border-b border-gray-200">
+            <div className="p-2 border-b border-white/10">
               <div className="relative">
                 <Icon
                   name="Search"
@@ -296,7 +296,7 @@ const MultiSelect = ({
                 <input
                   ref={searchInputRef}
                   type="text"
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-white/10 rounded bg-white/5 text-gray-100 placeholder:text-gray-500 focus:ring-2 focus:ring-white/20 focus:border-transparent"
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e?.target?.value)}
@@ -308,7 +308,7 @@ const MultiSelect = ({
 
           {/* Selection summary */}
           {selectedOptions?.length > 0 && (
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 text-sm text-gray-600">
+            <div className="px-3 py-2 bg-white/5 border-b border-white/10 text-sm text-gray-400">
               {selectedOptions?.length} selected
               {maxSelections && ` of ${maxSelections} max`}
             </div>
@@ -317,14 +317,14 @@ const MultiSelect = ({
           {/* Options list */}
           <div className="max-h-48 overflow-y-auto" role="listbox">
             {filteredOptions?.length === 0 ? (
-              <div className="px-3 py-4 text-sm text-gray-500 text-center">
+              <div className="px-3 py-4 text-sm text-gray-400 text-center">
                 {searchTerm ? 'No matching options found' : 'No options available'}
               </div>
             ) : groupedOptions ? (
               // Grouped options
               Object?.entries(groupedOptions)?.map(([groupName, groupOptions]) => (
                 <div key={groupName}>
-                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-white/5 border-b border-white/10">
                     {groupName}
                   </div>
                   {groupOptions?.map((option) => {
@@ -365,7 +365,7 @@ const MultiSelect = ({
       {/* Error message */}
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       {/* Helper text */}
-      {helperText && !error && <p className="mt-1 text-sm text-gray-500">{helperText}</p>}
+      {helperText && !error && <p className="mt-1 text-sm text-gray-400">{helperText}</p>}
     </div>
   )
 }

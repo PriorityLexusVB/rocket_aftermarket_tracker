@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Icon from '../AppIcon'
 import Button from './Button'
 import { testSupabaseConnection } from '@/lib/supabase'
@@ -135,31 +135,42 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-card border-b border-border shadow-elevation-1">
-      <div className="flex items-center justify-between h-16 px-4 lg:px-6 lg:ml-60">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0B0F14] border-b border-white/10 shadow-sm">
+      <div className="flex items-center justify-between h-16 px-4 lg:px-6 lg:ml-60 text-gray-100">
         {/* Left Section - Menu Toggle & Breadcrumbs */}
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={onMenuToggle}
-            className="lg:hidden"
+            className="lg:hidden text-gray-100 hover:bg-white/10"
             aria-label="Toggle menu"
           >
             <Icon name={isMenuOpen ? 'X' : 'Menu'} size={20} />
           </Button>
 
+          <Link to="/" className="flex items-center">
+            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+              <img
+                src="/brand/logos/rocket-mark-white.png"
+                alt="Rocket Aftermarket Tracker"
+                className="w-5 h-5"
+                draggable="false"
+              />
+            </div>
+          </Link>
+
           {/* Mobile Title */}
           <div className="block lg:hidden">
-            <h2 className="text-sm font-medium text-foreground">{getPageTitle()}</h2>
+            <h2 className="text-sm font-medium text-gray-100">{getPageTitle()}</h2>
           </div>
 
           {/* Desktop Breadcrumbs */}
           <div className="hidden lg:flex items-center space-x-2">
-            <Icon name="Home" size={14} className="text-muted-foreground" />
+            <Icon name="Home" size={14} className="text-gray-500" />
             {getBreadcrumbs()?.map((crumb, index) => (
               <React.Fragment key={crumb?.path}>
-                <Icon name="ChevronRight" size={12} className="text-muted-foreground" />
+                <Icon name="ChevronRight" size={12} className="text-gray-500" />
                 <button
                   onClick={() => {
                     if (crumb?.path === '#') return
@@ -185,8 +196,8 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
                   }}
                   className={`text-sm ${
                     index === getBreadcrumbs()?.length - 1
-                      ? 'text-foreground font-medium'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'text-gray-100 font-medium'
+                      : 'text-gray-400 hover:text-white'
                   } transition-colors duration-200 ${crumb?.path === '#' ? 'cursor-default' : 'cursor-pointer'}`}
                   disabled={crumb?.path === '#'}
                 >
@@ -205,14 +216,14 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
               <Icon
                 name="Search"
                 size={16}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
               />
               <input
                 type="text"
                 placeholder="Search VINs, vendors, sales..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e?.target?.value)}
-                className="w-72 pl-10 pr-4 py-2 text-sm bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200 focus:w-80"
+                className="w-72 pl-10 pr-4 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent transition-all duration-200 focus:w-80"
               />
               {searchQuery && (
                 <Button
@@ -220,7 +231,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-200 hover:bg-white/10"
                 >
                   <Icon name="X" size={12} />
                 </Button>
@@ -234,7 +245,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
             <Button
               variant="ghost"
               size="icon"
-              className="relative"
+              className="relative text-gray-100 hover:bg-white/10"
               aria-label="Supabase status"
               title={
                 sbStatus === 'ok'
@@ -274,13 +285,18 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
               variant="ghost"
               size="icon"
               onClick={() => navigate('/sales-tracker')}
-              className="relative"
+              className="relative text-gray-100 hover:bg-white/10"
               aria-label="Quick Sales Entry"
             >
               <Icon name="Plus" size={18} />
             </Button>
 
-            <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-gray-100 hover:bg-white/10"
+              aria-label="Notifications"
+            >
               <Icon name="Bell" size={18} />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full"></span>
             </Button>
@@ -290,7 +306,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full"
+            className="rounded-full text-gray-100 hover:bg-white/10"
             aria-label="User menu"
             onClick={() => navigate('/administrative-configuration-center')}
           >

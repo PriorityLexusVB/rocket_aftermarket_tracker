@@ -226,7 +226,7 @@ const VehicleManagementHub = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0B0F14] text-gray-100">
       <Header onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)} isMenuOpen={isSidebarOpen} />
       <Sidebar
         isOpen={isSidebarOpen}
@@ -239,8 +239,8 @@ const VehicleManagementHub = () => {
         <div className="p-6 max-w-full">
           {/* Page Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Vehicle Management Hub</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold text-gray-100 mb-2">Vehicle Management Hub</h1>
+            <p className="text-gray-400">
               Centralized vehicle inventory with integrated aftermarket work tracking
             </p>
           </div>

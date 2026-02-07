@@ -6,9 +6,9 @@ const MobileCard = ({
   className = '',
   padding = 'p-4',
   shadow = 'shadow-sm',
-  border = 'border border-gray-200',
+  border = 'border border-white/10',
   rounded = 'rounded-lg',
-  background = 'bg-white',
+  background = 'bg-white/5',
   ...props
 }) => {
   return (
@@ -33,10 +33,11 @@ const MobileButton = ({
     'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2'
 
   const variants = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500',
-    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-900 focus:ring-gray-500',
-    outline: 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 focus:ring-blue-500',
-    ghost: 'hover:bg-gray-100 text-gray-700 focus:ring-blue-500',
+    primary: 'bg-white text-[#0B0F14] hover:bg-white/90 focus:ring-white/20',
+    secondary: 'bg-white/10 hover:bg-white/20 text-gray-100 focus:ring-white/20',
+    outline:
+      'border border-white/10 bg-transparent hover:bg-white/5 text-gray-200 focus:ring-white/20',
+    ghost: 'hover:bg-white/5 text-gray-200 focus:ring-white/20',
   }
 
   const sizes = {
@@ -64,14 +65,14 @@ const MobileButton = ({
 const MobileInput = ({ label, error, className = '', ...props }) => {
   return (
     <div className="space-y-1">
-      {label && <label className="block text-sm font-medium text-gray-700">{label}</label>}
+      {label && <label className="block text-sm font-medium text-gray-300">{label}</label>}
       <input
         className={cn(
-          'block w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg',
-          'focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-          'placeholder-gray-400',
+          'block w-full px-3 py-2.5 text-base border border-white/10 rounded-lg bg-white/5 text-gray-100',
+          'focus:ring-2 focus:ring-white/20 focus:border-transparent',
+          'placeholder-gray-500',
           'min-h-[44px]', // Touch target size
-          error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : '',
+          error ? 'border-red-400 focus:ring-red-500 focus:border-red-400' : '',
           className
         )}
         {...props}
@@ -96,12 +97,17 @@ const MobileModal = ({ isOpen, onClose, title, children, size = 'md', fullScreen
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose} />
-      <div className={cn('relative bg-white overflow-visible', getModalSize())}>
-        <div className="flex items-center justify-between p-6 border-b-2 border-gray-200 bg-white sticky top-0 z-10 rounded-t-xl">
-          <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+      <div
+        className={cn(
+          'relative bg-[#0B0F14] border border-white/10 overflow-visible',
+          getModalSize()
+        )}
+      >
+        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#0B0F14] sticky top-0 z-10 rounded-t-xl">
+          <h3 className="text-xl font-bold text-gray-100">{title}</h3>
           <button
             onClick={onClose}
-            className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+            className="p-3 text-gray-400 hover:text-gray-200 hover:bg-white/10 rounded-xl transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -148,23 +154,23 @@ const MobileTable = ({ data = [], renderCard, renderDesktopRow, headers = [], cl
       <div className="hidden md:block overflow-x-auto">
         <table className={cn('w-full', className)}>
           {headers?.length > 0 && (
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-white/5 border-b border-white/10">
               <tr>
                 {headers?.map((header, index) => (
-                  <th key={index} className="text-left px-6 py-4 text-sm font-medium text-gray-900">
+                  <th key={index} className="text-left px-6 py-4 text-sm font-medium text-gray-200">
                     {header}
                   </th>
                 ))}
               </tr>
             </thead>
           )}
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-white/10">
             {data?.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
+              <tr key={index} className="hover:bg-white/5">
                 {renderDesktopRow ? (
                   renderDesktopRow(item, index)
                 ) : (
-                  <td className="px-6 py-4 text-sm text-gray-900">Row {index + 1}</td>
+                  <td className="px-6 py-4 text-sm text-gray-200">Row {index + 1}</td>
                 )}
               </tr>
             ))}
@@ -181,11 +187,14 @@ const MobileBottomSheet = ({ isOpen, onClose, title, children }) => {
   return (
     <div className="fixed inset-0 z-50">
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
-      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-lg max-h-[80vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-[#0B0F14] border-t border-white/10 rounded-t-lg max-h-[80vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[#0B0F14] border-b border-white/10 px-4 py-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-            <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-200">{title}</h3>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-200 hover:bg-white/10 rounded-lg"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -208,9 +217,9 @@ const MobileFloatingAction = ({ onClick, icon, className = '' }) => {
     <button
       onClick={onClick}
       className={cn(
-        'fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg',
+        'fixed bottom-6 right-6 w-14 h-14 bg-white hover:bg-white/90 text-[#0B0F14] rounded-full shadow-lg',
         'flex items-center justify-center transition-colors z-40',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+        'focus:outline-none focus:ring-2 focus:ring-white/30 focus:ring-offset-2 focus:ring-offset-[#0B0F14]',
         className
       )}
     >

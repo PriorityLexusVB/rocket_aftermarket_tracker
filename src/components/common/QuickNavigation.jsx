@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Calendar, Car, BarChart3, Settings, Package } from 'lucide-react'
+import { getCalendarDestination } from '@/lib/navigation/calendarNavigation'
 
 const QuickNavigation = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -13,7 +14,7 @@ const QuickNavigation = () => {
     () => [
       {
         name: 'Calendar & Scheduling',
-        path: '/calendar',
+        path: getCalendarDestination({ target: 'calendar', range: 'month' }),
         icon: Calendar,
         description: 'Manage appointments and scheduling',
         keywords: ['calendar', 'appointments', 'schedule', 'time'],

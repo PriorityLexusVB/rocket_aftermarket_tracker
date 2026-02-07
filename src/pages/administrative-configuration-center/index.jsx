@@ -64,10 +64,10 @@ const AdministrativeConfigurationCenter = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0B0F14] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading Administrative Configuration Center...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mx-auto"></div>
+          <p className="mt-4 text-gray-300">Loading Administrative Configuration Center...</p>
         </div>
       </div>
     )
@@ -75,11 +75,11 @@ const AdministrativeConfigurationCenter = () => {
 
   if (!isManager) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0B0F14] flex items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
-          <p className="text-gray-600">
+          <h2 className="text-2xl font-bold text-gray-100 mb-2">Access Denied</h2>
+          <p className="text-gray-300">
             You need manager or administrator privileges to access this page.
           </p>
         </div>
@@ -123,23 +123,23 @@ const AdministrativeConfigurationCenter = () => {
           <SmsTemplateManager className="mb-8" />
 
           {/* System Information */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">System Information</h3>
+          <div className="bg-white/5 border border-white/10 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">System Information</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">{totalUsers}</div>
-                <div className="text-sm text-muted-foreground">Total Users</div>
+              <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                <div className="text-2xl font-bold text-gray-100 mb-1">{totalUsers}</div>
+                <div className="text-sm text-gray-400">Total Users</div>
               </div>
 
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">{totalProducts}</div>
-                <div className="text-sm text-muted-foreground">Active Products</div>
+              <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                <div className="text-2xl font-bold text-gray-100 mb-1">{totalProducts}</div>
+                <div className="text-sm text-gray-400">Active Products</div>
               </div>
 
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-primary mb-1">{totalVendors}</div>
-                <div className="text-sm text-muted-foreground">Active Vendors</div>
+              <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                <div className="text-2xl font-bold text-gray-100 mb-1">{totalVendors}</div>
+                <div className="text-sm text-gray-400">Active Vendors</div>
               </div>
             </div>
           </div>

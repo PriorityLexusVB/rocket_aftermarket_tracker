@@ -4,6 +4,7 @@ import { Calendar, List, LayoutGrid } from 'lucide-react'
 import {
   getCalendarDestination,
   trackCalendarNavigation,
+  parseCalendarQuery,
 } from '@/lib/navigation/calendarNavigation'
 import { isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 
@@ -15,6 +16,8 @@ export default function CalendarViewTabs() {
   const [searchParams] = useSearchParams()
   const unifiedShellEnabled = isCalendarUnifiedShellEnabled()
   const agendaEnabled = SIMPLE_AGENDA_ENABLED || unifiedShellEnabled
+
+  const { range, date } = useMemo(() => parseCalendarQuery(searchParams), [searchParams])
 
   const viewItems = useMemo(() => {
     if (unifiedShellEnabled) {
@@ -60,7 +63,13 @@ export default function CalendarViewTabs() {
       <div className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 pointer-events-auto">
         {viewItems.map((item) => {
           const Icon = item.icon
-          const href = getCalendarDestination({ target: item.target })
+          const nextRange =
+            item.target === 'calendar'
+              ? range === 'week' || range === 'month'
+                ? range
+                : 'month'
+              : range
+          const href = getCalendarDestination({ target: item.target, range: nextRange, date })
           const active = isActive(href, item)
           const isDisabled = !!item.disabled
           return (
