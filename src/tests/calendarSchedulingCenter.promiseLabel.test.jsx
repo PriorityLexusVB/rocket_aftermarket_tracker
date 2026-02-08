@@ -86,7 +86,7 @@ describe('CalendarSchedulingCenter promise-only label', () => {
           job_status: 'completed',
           time_tbd: false,
           schedule_state: 'scheduled',
-          scheduled_start_time: '2026-02-05T18:00:00Z',
+          scheduled_start_time: todayIso,
           scheduled_end_time: null,
           service_type: 'onsite',
           vendor_id: null,
@@ -102,8 +102,11 @@ describe('CalendarSchedulingCenter promise-only label', () => {
       </MemoryRouter>
     )
 
-    const title = await screen.findByText('Completed Job')
-    const card = title.closest('[title="Completed Job"]')
+    await waitFor(() => {
+      expect(mockGetScheduledJobsByDateRange).toHaveBeenCalled()
+    })
+
+    const card = document.querySelector('[title="Completed Job"]')
     expect(card).toBeTruthy()
 
     const reopenButton = within(card).getByRole('button', { name: /reopen/i })
