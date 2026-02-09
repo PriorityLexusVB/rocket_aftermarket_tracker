@@ -1,17 +1,36 @@
-/* ✅ ENFORCED: Light-only theme per user requirements - no dark UI anywhere */
+/* ✅ Dual-mode semantic token foundation (light default, dark opt-in) */
 :root {
-  --bg-app: #f8fafc; /* slate-50 */
-  --bg-card: #ffffff;
-  --border: #e5e7eb;
-  --text: #0f172a; /* slate-900 */
-  --text-muted: #475569; /* slate-600 */
-  --primary: #2563eb; /* blue-600 */
-  --primary-hover: #1d4ed8; /* blue-700 */
+  --background: 248 250 252;
+  --foreground: 15 23 42;
+  --card: 255 255 255;
+  --card-foreground: 15 23 42;
+  --popover: 255 255 255;
+  --popover-foreground: 15 23 42;
+  --primary: 37 99 235;
+  --primary-foreground: 255 255 255;
+  --secondary: 241 245 249;
+  --secondary-foreground: 15 23 42;
+  --muted: 241 245 249;
+  --muted-foreground: 71 85 105;
+  --accent: 226 232 240;
+  --accent-foreground: 15 23 42;
+  --destructive: 239 68 68;
+  --destructive-foreground: 255 255 255;
+  --border: 226 232 240;
+  --input: 226 232 240;
+  --ring: 37 99 235;
+
+  --bg-app: rgb(var(--background));
+  --bg-card: rgb(var(--card));
+  --text: rgb(var(--foreground));
+  --text-muted: rgb(var(--muted-foreground));
+
+  --primary-hover: 29 78 216;
 
   /* Form elements */
-  --input-bg: #ffffff;
-  --input-border: #d1d5db;
-  --input-focus: #2563eb;
+  --input-bg: rgb(var(--background));
+  --input-border: rgb(var(--input));
+  --input-focus: rgb(var(--ring));
 
   /* Status colors */
   --status-draft: #6b7280;
@@ -25,35 +44,33 @@
   --service-offsite: #f97316; /* exact orange Off-Site */
 }
 
+[data-theme='dark'] {
+  --background: 11 15 20;
+  --foreground: 245 247 250;
+  --card: 17 22 29;
+  --card-foreground: 236 240 244;
+  --popover: 17 22 29;
+  --popover-foreground: 236 240 244;
+  --primary: 96 165 250;
+  --primary-foreground: 10 14 20;
+  --secondary: 30 41 59;
+  --secondary-foreground: 241 245 249;
+  --muted: 30 41 59;
+  --muted-foreground: 148 163 184;
+  --accent: 51 65 85;
+  --accent-foreground: 241 245 249;
+  --destructive: 248 113 113;
+  --destructive-foreground: 15 23 42;
+  --border: 51 65 85;
+  --input: 51 65 85;
+  --ring: 96 165 250;
+  --primary-hover: 74 129 214;
+}
+
 html,
 body {
   background: var(--bg-app);
   color: var(--text);
-}
-
-/* ✅ HARD KILL: Disable any dark mode completely per requirements */
-[data-theme='dark'],
-.dark,
-html[data-theme='dark'],
-body[data-theme='dark'] {
-  all: unset !important;
-  background: var(--bg-app) !important;
-  color: var(--text) !important;
-}
-
-/* Remove any dark mode toggles or switches */
-.theme-toggle,
-.dark-mode-switch,
-[data-testid='theme-toggle'] {
-  display: none !important;
-}
-
-/* Ensure all components use light theme */
-.bg-gray-900,
-.bg-slate-900,
-.text-white {
-  background-color: var(--bg-card) !important;
-  color: var(--text) !important;
 }
 
 /* Light theme for all modal overlays */
@@ -91,12 +108,12 @@ textarea:focus {
 
 /* Button light theme */
 .btn-primary {
-  background-color: var(--primary) !important;
+  background-color: rgb(var(--primary)) !important;
   color: white !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-hover) !important;
+  background-color: rgb(var(--primary-hover)) !important;
 }
 
 /* Card components light theme */
@@ -132,16 +149,6 @@ textarea:focus {
   color: #991b1b !important;
 }
 
-/* Ensure navigation and headers are light */
-nav,
-header,
-.navbar,
-.header {
-  background-color: var(--bg-card) !important;
-  color: var(--text) !important;
-  border-bottom: 1px solid var(--border) !important;
-}
-
 /* Table styling light theme */
 table,
 .table {
@@ -164,7 +171,7 @@ tbody tr:hover {
 .select-dropdown {
   background-color: var(--bg-card) !important;
   color: var(--text) !important;
-  border: 1px solid var(--border) !important;
+  border: 1px solid rgb(var(--border)) !important;
 }
 
 .dropdown-option:hover {
