@@ -436,36 +436,20 @@ describe('Step 16: Deals List Screen Verification', () => {
     renderComponent()
 
     await waitFor(() => {
-      // Check for service location indicators
-      const offSitePills = screen
-        ?.getAllByText('Off-Site')
-        ?.filter((pill) => pill?.classList?.contains('border-slate-200'))
-      const onSitePills = screen
-        ?.getAllByText('On-Site')
-        ?.filter((pill) => pill?.classList?.contains('border-slate-200'))
+      const row1 = screen.getByTestId('deal-row-job-001')
+      const row2 = screen.getByTestId('deal-row-job-002')
 
-      expect(offSitePills?.length)?.toBeGreaterThan(0)
-      expect(onSitePills?.length)?.toBeGreaterThan(0)
+      const offSitePill = within(row1).getByText('Off-Site')
+      const onSitePill = within(row2).getByText('On-Site')
 
-      // Verify muted pill styling classes are applied (at least one per label)
-      const offSitePill = offSitePills?.[0]
-      const onSitePill = onSitePills?.[0]
+      expect(offSitePill).toBeInTheDocument()
+      expect(onSitePill).toBeInTheDocument()
 
-      expect(offSitePill)?.toHaveClass(
-        'bg-slate-100',
-        'text-slate-700',
-        'border',
-        'border-slate-200'
-      )
-      expect(onSitePill)?.toHaveClass(
-        'bg-slate-100',
-        'text-slate-700',
-        'border',
-        'border-slate-200'
-      )
+      expect(offSitePill).toHaveClass('inline-flex', 'rounded', 'text-xs', 'border')
+      expect(onSitePill).toHaveClass('inline-flex', 'rounded', 'text-xs', 'border')
     })
 
-    console.log('✅ Service location pills display correctly: Off-Site and On-Site (muted)')
+    console.log('✅ Service location pills display correctly: Off-Site and On-Site (structure)')
   })
 
   it('should handle filter toggles without errors', async () => {

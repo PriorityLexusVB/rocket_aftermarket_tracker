@@ -46,9 +46,9 @@ export function DiagnosticsBanner({ showInProd = false }) {
   }
 
   const hasFallbacks = totalFallbacks > 0
-  const bannerColor = hasFallbacks ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200'
-  const textColor = hasFallbacks ? 'text-yellow-900' : 'text-blue-900'
-  const iconColor = hasFallbacks ? 'text-yellow-600' : 'text-blue-600'
+  const bannerColor = hasFallbacks ? 'bg-muted/70 border-border' : 'bg-card border-border'
+  const textColor = hasFallbacks ? 'text-foreground' : 'text-foreground'
+  const iconColor = hasFallbacks ? 'text-destructive' : 'text-primary'
 
   return (
     <div className={`border-b ${bannerColor}`}>
@@ -56,7 +56,9 @@ export function DiagnosticsBanner({ showInProd = false }) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className={`flex h-6 w-6 items-center justify-center rounded-full ${hasFallbacks ? 'bg-yellow-200' : 'bg-blue-200'}`}
+              className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                hasFallbacks ? 'bg-destructive/10' : 'bg-accent/60'
+              }`}
             >
               {hasFallbacks ? (
                 <svg
@@ -99,7 +101,7 @@ export function DiagnosticsBanner({ showInProd = false }) {
               )}
             </div>
             {isDev && (
-              <span className="rounded bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+              <span className="rounded bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                 DEV
               </span>
             )}
@@ -113,29 +115,29 @@ export function DiagnosticsBanner({ showInProd = false }) {
         </div>
 
         {isExpanded && (
-          <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+          <div className="mt-3 space-y-2 border-t border-border pt-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Telemetry Counters
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-5">
-              <div className="rounded bg-white px-3 py-2 shadow-sm">
-                <div className="text-xs text-gray-500">Vendor Fallback</div>
+              <div className="rounded bg-card px-3 py-2 shadow-sm border border-border">
+                <div className="text-xs text-muted-foreground">Vendor Fallback</div>
                 <div className="text-lg font-semibold">{telemetry.vendorFallback || 0}</div>
               </div>
-              <div className="rounded bg-white px-3 py-2 shadow-sm">
-                <div className="text-xs text-gray-500">Vendor ID</div>
+              <div className="rounded bg-card px-3 py-2 shadow-sm border border-border">
+                <div className="text-xs text-muted-foreground">Vendor ID</div>
                 <div className="text-lg font-semibold">{telemetry.vendorIdFallback || 0}</div>
               </div>
-              <div className="rounded bg-white px-3 py-2 shadow-sm">
-                <div className="text-xs text-gray-500">Vendor Rel</div>
+              <div className="rounded bg-card px-3 py-2 shadow-sm border border-border">
+                <div className="text-xs text-muted-foreground">Vendor Rel</div>
                 <div className="text-lg font-semibold">{telemetry.vendorRelFallback || 0}</div>
               </div>
-              <div className="rounded bg-white px-3 py-2 shadow-sm">
-                <div className="text-xs text-gray-500">Scheduled Times</div>
+              <div className="rounded bg-card px-3 py-2 shadow-sm border border-border">
+                <div className="text-xs text-muted-foreground">Scheduled Times</div>
                 <div className="text-lg font-semibold">{telemetry.scheduledTimesFallback || 0}</div>
               </div>
-              <div className="rounded bg-white px-3 py-2 shadow-sm">
-                <div className="text-xs text-gray-500">Profile Name</div>
+              <div className="rounded bg-card px-3 py-2 shadow-sm border border-border">
+                <div className="text-xs text-muted-foreground">Profile Name</div>
                 <div className="text-lg font-semibold">
                   {telemetry.userProfileNameFallback || 0}
                 </div>
@@ -144,7 +146,7 @@ export function DiagnosticsBanner({ showInProd = false }) {
 
             {capabilities && (
               <>
-                <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Capability Flags
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
@@ -173,7 +175,7 @@ export function DiagnosticsBanner({ showInProd = false }) {
                 onClick={() => {
                   window.location.href = '/api/health/capabilities'
                 }}
-                className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Check Health
               </button>
@@ -190,7 +192,7 @@ export function DiagnosticsBanner({ showInProd = false }) {
                   a.click()
                   URL.revokeObjectURL(url)
                 }}
-                className="rounded bg-gray-600 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700"
+                className="rounded bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground hover:bg-secondary/80"
               >
                 Export Telemetry
               </button>
@@ -204,11 +206,11 @@ export function DiagnosticsBanner({ showInProd = false }) {
 
 function CapabilityStatus({ label, enabled }) {
   return (
-    <div className="flex items-center gap-2 rounded bg-white px-3 py-2 shadow-sm">
-      <div className={`h-2 w-2 rounded-full ${enabled ? 'bg-green-500' : 'bg-red-500'}`} />
+    <div className="flex items-center gap-2 rounded bg-card px-3 py-2 shadow-sm border border-border">
+      <div className={`h-2 w-2 rounded-full ${enabled ? 'bg-primary' : 'bg-destructive'}`} />
       <div className="text-xs">
-        <div className="font-medium text-gray-700">{label}</div>
-        <div className="text-gray-500">{enabled ? 'Enabled' : 'Disabled'}</div>
+        <div className="font-medium text-foreground">{label}</div>
+        <div className="text-muted-foreground">{enabled ? 'Enabled' : 'Disabled'}</div>
       </div>
     </div>
   )

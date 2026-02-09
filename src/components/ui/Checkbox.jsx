@@ -37,10 +37,10 @@ const Checkbox = ({
 
   // Color variants
   const colorClasses = {
-    blue: 'text-blue-600 focus:ring-blue-500',
-    green: 'text-green-600 focus:ring-green-500',
-    red: 'text-red-600 focus:ring-red-500',
-    gray: 'text-gray-600 focus:ring-gray-500',
+    blue: 'text-primary focus:ring-ring',
+    green: 'text-foreground focus:ring-ring',
+    red: 'text-destructive focus:ring-ring',
+    gray: 'text-muted-foreground focus:ring-ring',
   }
 
   return (
@@ -53,7 +53,7 @@ const Checkbox = ({
           disabled={disabled}
           className={cn(
             // Base styles
-            'border-gray-300 rounded focus:ring-2 focus:ring-offset-0',
+            'border-input rounded focus:ring-2 focus:ring-ring focus:ring-offset-2 ring-offset-background',
             // Size
             sizeClasses?.[size],
             // Color
@@ -61,7 +61,7 @@ const Checkbox = ({
             // Disabled state
             disabled && 'opacity-50 cursor-not-allowed',
             // Interactive state
-            !disabled && 'cursor-pointer hover:border-gray-400'
+            !disabled && 'cursor-pointer hover:border-ring'
           )}
           {...props}
         />
@@ -71,7 +71,7 @@ const Checkbox = ({
           {label && (
             <label
               className={cn(
-                'font-medium text-gray-900',
+                'font-medium text-foreground',
                 disabled && 'opacity-50 cursor-not-allowed',
                 !disabled && 'cursor-pointer'
               )}
@@ -81,7 +81,7 @@ const Checkbox = ({
             </label>
           )}
           {description && (
-            <p className={cn('text-gray-500', disabled && 'opacity-50')}>{description}</p>
+            <p className={cn('text-muted-foreground', disabled && 'opacity-50')}>{description}</p>
           )}
         </div>
       )}

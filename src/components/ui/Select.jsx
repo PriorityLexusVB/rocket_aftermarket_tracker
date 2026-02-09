@@ -13,7 +13,7 @@ const Select = React.forwardRef(
         {label && (
           <label
             htmlFor={selectId}
-            className="block text-sm font-medium text-gray-700 mb-1 cursor-pointer select-none"
+            className="block text-sm font-medium text-foreground mb-1 cursor-pointer select-none"
           >
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
@@ -30,7 +30,7 @@ const Select = React.forwardRef(
             'text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2',
             'focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
             // H1: Error state styling
-            error ? 'border-red-300 focus-visible:ring-red-500' : 'border-gray-300',
+            error ? 'border-destructive focus-visible:ring-destructive' : 'border-input',
             className
           )}
           aria-invalid={error ? 'true' : 'false'}

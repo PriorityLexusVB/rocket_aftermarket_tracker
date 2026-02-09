@@ -239,7 +239,7 @@
   }
 
   .border-border {
-    border-color: var(--border) !important;
+    border-color: rgb(var(--border)) !important;
   }
 
   .text-foreground {
@@ -248,22 +248,6 @@
 
   .text-muted-foreground {
     color: var(--text-muted) !important;
-  }
-}
-
-/* Dark mode media query override for light theme preference */
-@media (prefers-color-scheme: dark) {
-  .theme-neutral-luxe {
-    /* Force light theme even in dark mode preference */
-    background: var(--bg);
-    color: var(--text);
-  }
-
-  .theme-neutral-luxe .card-light-mobile,
-  .theme-neutral-luxe .card-light-elevated {
-    background: var(--surface);
-    border-color: var(--line);
-    color: var(--text);
   }
 }
 
