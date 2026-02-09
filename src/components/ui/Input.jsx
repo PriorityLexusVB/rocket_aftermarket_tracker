@@ -24,7 +24,7 @@ const Input = React.forwardRef(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-gray-700 mb-1 cursor-pointer select-none"
+            className="block text-sm font-medium text-foreground mb-1 cursor-pointer select-none"
           >
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
@@ -43,7 +43,7 @@ const Input = React.forwardRef(
             'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2',
             'focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
             // H1: Error state styling
-            error ? 'border-red-300 focus-visible:ring-red-500' : 'border-gray-300',
+            error ? 'border-destructive focus-visible:ring-destructive' : 'border-input',
             className
           )}
           aria-invalid={error ? 'true' : 'false'}
@@ -65,7 +65,7 @@ const Input = React.forwardRef(
 
         {/* Optional helper text below the input (not forwarded to DOM attribute) */}
         {!error && helperText ? (
-          <div className="mt-1 text-xs text-gray-500" id={`${inputId}-help`}>
+          <div className="mt-1 text-xs text-muted-foreground" id={`${inputId}-help`}>
             {helperText}
           </div>
         ) : null}
