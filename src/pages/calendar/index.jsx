@@ -163,6 +163,14 @@ const CalendarSchedulingCenter = ({
   const suppressChrome = isEmbedded && unifiedShellEnabled
   const showTitleTooltips = isEmbedded && unifiedShellEnabled
   const showDetailPopovers = showTitleTooltips
+  const darkUi = isEmbedded && unifiedShellEnabled
+  const cx = (...parts) => parts.filter(Boolean).join(' ')
+  const surface = darkUi
+    ? 'bg-white/5 border-white/10 text-gray-200'
+    : 'bg-white border-gray-200 text-gray-900'
+  const cellBgToday = darkUi ? 'bg-white/10' : 'bg-blue-50/30'
+  const cellBg = darkUi ? 'bg-[#0B0F14]' : 'bg-white'
+  const cellBgAlt = darkUi ? 'bg-[#0B0F14]' : 'bg-gray-50'
   const shellDate = shellState?.date
   const shellRange = shellState?.range
   const [currentDate, setCurrentDate] = useState(() => {
@@ -682,9 +690,19 @@ const CalendarSchedulingCenter = ({
           {weekDays?.map((day, index) => (
             <div
               key={`header-${index}`}
-              className={`p-1 border-b font-semibold text-center ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50' : 'bg-gray-50'}`}
+              className={cx(
+                'p-1 border-b font-semibold text-center',
+                darkUi ? 'border-white/10 text-gray-300' : 'border-gray-200',
+                day?.date?.toDateString?.() === todayKey
+                  ? darkUi
+                    ? 'bg-white/10'
+                    : 'bg-blue-50'
+                  : darkUi
+                    ? 'bg-white/5'
+                    : 'bg-gray-50'
+              )}
             >
-              <div className="text-sm text-gray-600">
+              <div className={cx('text-sm', darkUi ? 'text-gray-300' : 'text-gray-600')}>
                 {safeFormatDate(day?.date, { weekday: 'short' }) || 'N/A'}
               </div>
               <div className="text-base">{day?.date?.getDate() || '?'}</div>
@@ -694,7 +712,11 @@ const CalendarSchedulingCenter = ({
           {weekDays?.map((day, index) => (
             <div
               key={`content-${index}`}
-              className={`p-1 border-r border-gray-200 min-h-80 overflow-y-auto ${day?.date?.toDateString?.() === todayKey ? 'bg-blue-50/30' : 'bg-white'}`}
+              className={cx(
+                'p-1 border-r min-h-80 overflow-y-auto',
+                darkUi ? 'border-white/10' : 'border-gray-200',
+                day?.date?.toDateString?.() === todayKey ? cellBgToday : cellBg
+              )}
             >
               {day?.jobs?.map((job) => {
                 const jobStartTime = job?.time_tbd
@@ -901,7 +923,10 @@ const CalendarSchedulingCenter = ({
             {weekdayLabels.map((label) => (
               <div
                 key={label}
-                className="bg-gray-50 p-2 border-b font-semibold text-center text-sm text-gray-700"
+                className={cx(
+                  'p-2 border-b font-semibold text-center text-sm',
+                  darkUi ? 'bg-white/5 text-gray-300 border-white/10' : 'bg-gray-50 text-gray-700'
+                )}
               >
                 {label}
               </div>
@@ -963,37 +988,75 @@ const CalendarSchedulingCenter = ({
                       jumpToDay()
                     }
                   }}
-                  className={`min-h-32 border border-gray-200 rounded-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                  className={cx(
+                    'min-h-32 border rounded-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300',
+                    darkUi ? 'border-white/10' : 'border-gray-200',
                     isToday
-                      ? 'bg-blue-50/30 border-blue-200'
+                      ? darkUi
+                        ? 'bg-white/10 border-white/10'
+                        : 'bg-blue-50/30 border-blue-200'
                       : isInMonth
-                        ? 'bg-white hover:bg-gray-50'
-                        : 'bg-gray-50 hover:bg-gray-100'
-                  }`}
+                        ? cx(cellBg, darkUi ? '' : 'hover:bg-gray-50')
+                        : cx(cellBgAlt, darkUi ? '' : 'hover:bg-gray-100')
+                  )}
                   aria-label={dayAriaLabel}
                   title={dayTitle}
                 >
-                  <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100">
+                  <div
+                    className={cx(
+                      'flex items-center justify-between px-2 py-1 border-b',
+                      darkUi ? 'border-white/10' : 'border-gray-100'
+                    )}
+                  >
                     <div
-                      className={`text-sm font-semibold ${
-                        isInMonth ? 'text-gray-900' : 'text-gray-400'
-                      }`}
+                      className={cx(
+                        'text-sm font-semibold',
+                        isInMonth
+                          ? darkUi
+                            ? 'text-gray-100'
+                            : 'text-gray-900'
+                          : darkUi
+                            ? 'text-gray-500'
+                            : 'text-gray-400'
+                      )}
                     >
                       {dayDate?.getDate?.()}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                    <div
+                      className={cx(
+                        'flex items-center gap-1 text-[10px]',
+                        darkUi ? 'text-gray-400' : 'text-gray-500'
+                      )}
+                    >
                       {promiseCount > 0 ? (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-900">
+                        <span
+                          className={cx(
+                            'rounded px-1.5 py-0.5',
+                            darkUi
+                              ? 'bg-amber-500/20 text-amber-200'
+                              : 'bg-amber-100 text-amber-900'
+                          )}
+                        >
                           P {promiseCount}
                         </span>
                       ) : null}
                       {scheduledCount > 0 ? (
-                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-900">
+                        <span
+                          className={cx(
+                            'rounded px-1.5 py-0.5',
+                            darkUi ? 'bg-blue-500/20 text-blue-200' : 'bg-blue-100 text-blue-900'
+                          )}
+                        >
                           S {scheduledCount}
                         </span>
                       ) : null}
                       {overdueCount > 0 ? (
-                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-900">
+                        <span
+                          className={cx(
+                            'rounded px-1.5 py-0.5',
+                            darkUi ? 'bg-red-500/20 text-red-200' : 'bg-red-100 text-red-900'
+                          )}
+                        >
                           O {overdueCount}
                         </span>
                       ) : null}
@@ -1176,22 +1239,29 @@ const CalendarSchedulingCenter = ({
               return (
                 <div
                   key={job?.calendar_key || job?.id}
-                  className="group relative bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
+                  className={cx(
+                    'group relative p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow',
+                    darkUi ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white'
+                  )}
                   onClick={handleListClick}
                   aria-describedby={popoverId}
                 >
                   <div className="flex items-start justify-between">
                     <div className={showTitleTooltips ? 'min-w-0' : ''}>
                       <h3
-                        className={`font-medium text-gray-900 ${showTitleTooltips ? 'truncate' : ''}`}
+                        className={cx(
+                          'font-medium',
+                          darkUi ? 'text-gray-100' : 'text-gray-900',
+                          showTitleTooltips ? 'truncate' : ''
+                        )}
                         title={showTitleTooltips ? listTitle : undefined}
                       >
                         {listTitle}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className={cx('text-sm', darkUi ? 'text-gray-400' : 'text-gray-600')}>
                         {job?.vendor_name} • {job?.vehicle_info}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className={cx('text-sm', darkUi ? 'text-gray-500' : 'text-gray-500')}>
                         {job?.time_tbd
                           ? `Promise: ${
                               safeFormatDate(job?.scheduled_start_time, {
@@ -1210,7 +1280,7 @@ const CalendarSchedulingCenter = ({
                         >
                           {statusLabel}
                         </span>
-                        <span className="text-xs text-gray-600">
+                        <span className={cx('text-xs', darkUi ? 'text-gray-400' : 'text-gray-600')}>
                           {job?.service_type === 'vendor' || job?.service_type === 'offsite'
                             ? 'Vendor/Offsite'
                             : 'Onsite'}
@@ -1227,7 +1297,9 @@ const CalendarSchedulingCenter = ({
                         }
                         className={
                           String(job?.job_status || '').toLowerCase() === 'completed'
-                            ? 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                            ? darkUi
+                              ? 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10'
+                              : 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                             : 'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                         }
                         aria-label={
@@ -1421,9 +1493,21 @@ const CalendarSchedulingCenter = ({
 
               {isEmptyRange ? (
                 <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-                  <div className="max-w-md text-center rounded-lg border bg-white/95 backdrop-blur-sm p-4 shadow-sm pointer-events-auto">
-                    <div className="text-base font-semibold text-gray-900">{emptyTitle}</div>
-                    <div className="mt-1 text-sm text-gray-600">
+                  <div
+                    className={cx(
+                      'max-w-md text-center rounded-lg border backdrop-blur-sm p-4 shadow-sm pointer-events-auto',
+                      darkUi ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white/95'
+                    )}
+                  >
+                    <div
+                      className={cx(
+                        'text-base font-semibold',
+                        darkUi ? 'text-gray-100' : 'text-gray-900'
+                      )}
+                    >
+                      {emptyTitle}
+                    </div>
+                    <div className={cx('mt-1 text-sm', darkUi ? 'text-gray-400' : 'text-gray-600')}>
                       {unifiedShellEnabled
                         ? 'Switch to List for a queue view, or open Board to book work.'
                         : 'Switch to Agenda for a queue view, or open Flow to book work.'}
@@ -1460,14 +1544,24 @@ const CalendarSchedulingCenter = ({
                             })
                             navigate(destination)
                           }}
-                          className="px-3 py-2 text-sm rounded bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+                          className={cx(
+                            'px-3 py-2 text-sm rounded transition-colors',
+                            darkUi
+                              ? 'bg-white/10 text-gray-100 border border-white/10 hover:bg-white/20'
+                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          )}
                         >
                           {unifiedShellEnabled ? 'Open Board' : 'Open Flow'}
                         </button>
                         <button
                           type="button"
                           onClick={goToToday}
-                          className="px-3 py-2 text-sm rounded border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 transition-colors"
+                          className={cx(
+                            'px-3 py-2 text-sm rounded border transition-colors',
+                            darkUi
+                              ? 'border-white/10 bg-white/5 text-gray-100 hover:bg-white/10'
+                              : 'border-gray-200 bg-white text-gray-800 hover:bg-gray-50'
+                          )}
                         >
                           Today
                         </button>
@@ -1483,19 +1577,24 @@ const CalendarSchedulingCenter = ({
             {!suppressChrome && <CalendarLegend showStatuses />}
 
             {!suppressChrome && (
-              <div className="bg-white p-4 rounded-lg shadow border">
-                <h3 className="font-medium text-gray-900 mb-3">View Settings</h3>
+              <div className={cx('p-4 rounded-lg shadow border', darkUi ? surface : 'bg-white')}>
+                <h3 className={cx('font-medium mb-3', darkUi ? 'text-gray-100' : 'text-gray-900')}>
+                  View Settings
+                </h3>
                 <div className="space-y-2">
                   <button
                     onClick={() => {
                       setViewType('day')
                       setUrlState({ nextViewType: 'day', nextDate: currentDate })
                     }}
-                    className={`w-full py-2 rounded transition-colors ${
+                    className={cx(
+                      'w-full py-2 rounded transition-colors',
                       viewType === 'day'
                         ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                        : darkUi
+                          ? 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    )}
                   >
                     Day View
                   </button>
@@ -1504,11 +1603,14 @@ const CalendarSchedulingCenter = ({
                       setViewType('week')
                       setUrlState({ nextViewType: 'week', nextDate: currentDate })
                     }}
-                    className={`w-full py-2 rounded transition-colors ${
+                    className={cx(
+                      'w-full py-2 rounded transition-colors',
                       viewType === 'week'
                         ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                        : darkUi
+                          ? 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    )}
                   >
                     Week View
                   </button>
@@ -1517,11 +1619,14 @@ const CalendarSchedulingCenter = ({
                       setViewType('month')
                       setUrlState({ nextViewType: 'month', nextDate: currentDate })
                     }}
-                    className={`w-full py-2 rounded transition-colors ${
+                    className={cx(
+                      'w-full py-2 rounded transition-colors',
                       viewType === 'month'
                         ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                        : darkUi
+                          ? 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    )}
                   >
                     Month View
                   </button>
