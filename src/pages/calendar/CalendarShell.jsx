@@ -286,7 +286,7 @@ export default function CalendarShell() {
 
   return (
     <AppLayout>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 min-h-[calc(100vh-120px)]">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-4 p-4 min-h-[calc(100vh-120px)]">
         <section className="rounded-xl border border-white/10 bg-white/5 p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
