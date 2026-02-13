@@ -56,13 +56,13 @@ const formatCreatedShort = (input) => {
 // ✅ UPDATED: StatusPill with enhanced styling
 const StatusPill = ({ status }) => {
   const statusColors = {
-    draft: 'bg-white/10 text-gray-200',
+    draft: 'bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))]',
     pending: 'bg-blue-500/10 text-blue-200',
     in_progress: 'bg-amber-500/10 text-amber-200',
     completed: 'bg-emerald-500/10 text-emerald-200',
     cancelled: 'bg-red-500/10 text-red-200',
   }
-  const color = statusColors?.[status] || 'bg-white/10 text-gray-200'
+  const color = statusColors?.[status] || 'bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))]'
   const displayStatus = status?.replace('_', ' ')?.toUpperCase() || 'UNKNOWN'
 
   return <span className={`px-2 py-1 rounded text-xs font-medium ${color}`}>{displayStatus}</span>
@@ -74,7 +74,7 @@ const LoanerBadge = ({ deal }) => {
     ? formatEtMonthDay(deal.loaner_eta_return_date)
     : null
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-gray-200 border border-white/10">
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]">
       <Icon name="Car" size={12} className="mr-1" />
       {deal?.loaner_number ? `#${deal.loaner_number}` : 'Loaner'}
       {dueShort ? ` • Due ${dueShort}` : ''}
@@ -279,7 +279,7 @@ const getDealVehicleDisplay = (deal) => {
 
 const Pill = ({ children, className = '' }) => (
   <span
-    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-white/10 text-gray-200 ${className}`}
+    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))] ${className}`}
   >
     {children}
   </span>
@@ -287,7 +287,7 @@ const Pill = ({ children, className = '' }) => (
 
 // ✅ ADDED: Customer display helper so table renders without missing component
 const CustomerDisplay = ({ deal }) => {
-  if (!deal) return <span className="text-sm text-gray-300">—</span>
+  if (!deal) return <span className="text-sm text-[rgb(var(--muted-foreground))]">—</span>
 
   const rawName =
     deal?.customer_name ||
@@ -306,7 +306,7 @@ const CustomerDisplay = ({ deal }) => {
   return (
     <div className="flex flex-col gap-1" title={title}>
       <span
-        className="text-sm font-medium text-gray-100"
+        className="text-sm font-medium text-[rgb(var(--foreground))]"
         data-testid={deal?.id ? `deal-customer-name-${deal.id}` : 'deal-customer-name'}
       >
         {name}
@@ -324,7 +324,7 @@ const CustomerDisplay = ({ deal }) => {
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-xs text-gray-300"
+              className="inline-flex items-center rounded-full bg-[rgb(var(--accent)/0.5)] px-2 py-0.5 text-xs text-[rgb(var(--muted-foreground))]"
             >
               {tag}
             </span>
@@ -428,7 +428,7 @@ const SheetSummaryRow = ({ deal, dense = false }) => {
       className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
         isOn
           ? 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30'
-          : 'bg-white/5 text-gray-500 border-white/10'
+          : 'bg-[rgb(var(--card))] text-gray-500 border-[rgb(var(--border))]'
       }`}
     >
       {label}
@@ -437,10 +437,10 @@ const SheetSummaryRow = ({ deal, dense = false }) => {
 
   return (
     <div
-      className={`grid gap-2 text-xs text-gray-300 ${
+      className={`grid gap-2 text-xs text-[rgb(var(--muted-foreground))] ${
         dense
           ? 'grid-cols-2 sm:grid-cols-3'
-          : 'grid-cols-12 items-start rounded-lg border border-white/10 bg-white/5 px-3 py-2'
+          : 'grid-cols-12 items-start rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2'
       }`}
     >
       <div className={dense ? 'min-w-0' : 'col-span-2'}>
@@ -492,9 +492,9 @@ const SheetViewTable = ({ deals = [], onRowClick }) => {
   const renderCheck = (value) => (value ? '✓' : '—')
 
   return (
-    <div className="bg-white/5 rounded-lg border border-white/10 overflow-x-auto">
+    <div className="bg-[rgb(var(--card))] rounded-lg border border-[rgb(var(--border))] overflow-x-auto">
       <table className="min-w-[1100px] w-full text-xs">
-        <thead className="bg-white/5 text-gray-400 uppercase text-[11px] tracking-wide">
+        <thead className="bg-[rgb(var(--card))] text-[rgb(var(--muted-foreground))] uppercase text-[11px] tracking-wide">
           <tr>
             <th className="px-3 py-2 text-left font-semibold">Date</th>
             <th className="px-3 py-2 text-left font-semibold">Customer</th>
@@ -523,7 +523,7 @@ const SheetViewTable = ({ deals = [], onRowClick }) => {
               <tr
                 key={deal?.id}
                 data-testid={`sheet-row-${deal?.id}`}
-                className="hover:bg-white/5 cursor-pointer"
+                className="hover:bg-[rgb(var(--card))] cursor-pointer"
                 role="button"
                 tabIndex={0}
                 onClick={() => onRowClick?.(deal)}
@@ -534,11 +534,11 @@ const SheetViewTable = ({ deals = [], onRowClick }) => {
                   }
                 }}
               >
-                <td className="px-3 py-2 text-gray-300 tabular-nums">{getSheetDateLabel(deal)}</td>
-                <td className="px-3 py-2 text-gray-100" title={customer}>
+                <td className="px-3 py-2 text-[rgb(var(--muted-foreground))] tabular-nums">{getSheetDateLabel(deal)}</td>
+                <td className="px-3 py-2 text-[rgb(var(--foreground))]" title={customer}>
                   {customer}
                 </td>
-                <td className="px-3 py-2 text-gray-300" title={vehicle?.title || ''}>
+                <td className="px-3 py-2 text-[rgb(var(--muted-foreground))]" title={vehicle?.title || ''}>
                   {vehicle?.main || '—'}
                 </td>
                 <td className="px-3 py-2 text-center" data-testid={`sheet-${deal?.id}-exterior`}>
@@ -553,18 +553,18 @@ const SheetViewTable = ({ deals = [], onRowClick }) => {
                 <td className="px-3 py-2 text-center" data-testid={`sheet-${deal?.id}-rg`}>
                   {renderCheck(flags.rg)}
                 </td>
-                <td className="px-3 py-2 text-gray-300">{additionalLabel}</td>
-                <td className="px-3 py-2 text-right tabular-nums text-gray-100">
+                <td className="px-3 py-2 text-[rgb(var(--muted-foreground))]">{additionalLabel}</td>
+                <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--foreground))]">
                   {formatMoney0OrDash(fin.sale)}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-gray-100">
+                <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--foreground))]">
                   {formatMoney0OrDash(fin.cost)}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums text-gray-100">
+                <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--foreground))]">
                   {formatMoney0OrDash(fin.profit)}
                 </td>
-                <td className="px-3 py-2 text-gray-300">{getSheetSalesLabel(deal)}</td>
-                <td className="px-3 py-2 text-gray-300 tabular-nums">
+                <td className="px-3 py-2 text-[rgb(var(--muted-foreground))]">{getSheetSalesLabel(deal)}</td>
+                <td className="px-3 py-2 text-[rgb(var(--muted-foreground))] tabular-nums">
                   {getSheetTrackingRef(deal)}
                 </td>
               </tr>
@@ -620,10 +620,10 @@ const ServiceLocationTag = ({ jobParts }) => {
   if (hasOffSiteItems && hasOnSiteItems) {
     return (
       <div className="flex flex-col space-y-1">
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white/10 text-gray-200 border border-white/10">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]">
           Off-Site
         </span>
-        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white/10 text-gray-200 border border-white/10">
+        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]">
           On-Site
         </span>
       </div>
@@ -632,14 +632,14 @@ const ServiceLocationTag = ({ jobParts }) => {
 
   if (hasOffSiteItems) {
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white/10 text-gray-200 border border-white/10">
+      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]">
         Off-Site
       </span>
     )
   }
 
   return (
-    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-white/10 text-gray-200 border border-white/10">
+    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]">
       On-Site
     </span>
   )
@@ -1578,12 +1578,12 @@ export default function DealsPage() {
   // ✅ FIXED: Enhanced loading state without dropdown dependency
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0F14] text-gray-100">
+      <div className="min-h-screen bg-[rgb(var(--background))] text-[rgb(var(--foreground))]">
         <Navbar />
         <div className="p-4 md:p-8" style={{ paddingTop: '5rem' }}>
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <div className="text-gray-300">Loading deals...</div>
+              <div className="text-[rgb(var(--muted-foreground))]">Loading deals...</div>
             </div>
           </div>
         </div>
@@ -1592,7 +1592,7 @@ export default function DealsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F14] text-gray-100">
+    <div className="min-h-screen bg-[rgb(var(--background))] text-[rgb(var(--foreground))]">
       {/* ✅ FIXED: Ensure navbar is always visible */}
       <Navbar />
       <div className="p-4 md:p-8 max-w-7xl mx-auto" style={{ paddingTop: '5rem' }}>
@@ -1606,7 +1606,7 @@ export default function DealsPage() {
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-100">Deals</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-[rgb(var(--foreground))]">Deals</h1>
           <div className="flex items-center space-x-3">
             <ExportButton
               exportType="jobs"
@@ -1618,12 +1618,12 @@ export default function DealsPage() {
               onExportError={(errorMessage) => setError(`Export failed: ${errorMessage}`)}
               variant="outline"
               size="sm"
-              className="bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10"
+              className="bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)]"
               data-testid="export-button"
             />
             <Button
               onClick={() => setShowNewDealModal(true)}
-              className="bg-white/10 hover:bg-white/20 text-white border border-white/10 px-4 py-2 h-11"
+              className="bg-[rgb(var(--accent)/0.5)] hover:bg-[rgb(var(--accent)/0.75)] text-white border border-[rgb(var(--border))] px-4 py-2 h-11"
               aria-label="Create new deal"
             >
               <Icon name="Plus" size={16} className="mr-2" />
@@ -1642,31 +1642,31 @@ export default function DealsPage() {
         <div className="mb-6" data-testid="kpi-row">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             {/* Active Jobs */}
-            <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
+            <div className="bg-[rgb(var(--card))] p-6 rounded-xl border border-[rgb(var(--border))] shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-white/10 mr-4">
-                  <Icon name="Clock" size={24} className="text-gray-200" />
+                <div className="p-3 rounded-lg bg-[rgb(var(--accent)/0.5)] mr-4">
+                  <Icon name="Clock" size={24} className="text-[rgb(var(--foreground))]" />
                 </div>
                 <div>
-                  <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-[rgb(var(--muted-foreground))] text-sm font-medium uppercase tracking-wide">
                     Active
                   </h3>
-                  <p className="text-gray-100 text-2xl font-bold">{kpis?.active}</p>
+                  <p className="text-[rgb(var(--foreground))] text-2xl font-bold">{kpis?.active}</p>
                 </div>
               </div>
             </div>
 
             {/* Revenue */}
-            <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
+            <div className="bg-[rgb(var(--card))] p-6 rounded-xl border border-[rgb(var(--border))] shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-white/10 mr-4">
-                  <Icon name="DollarSign" size={24} className="text-gray-200" />
+                <div className="p-3 rounded-lg bg-[rgb(var(--accent)/0.5)] mr-4">
+                  <Icon name="DollarSign" size={24} className="text-[rgb(var(--foreground))]" />
                 </div>
                 <div>
-                  <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-[rgb(var(--muted-foreground))] text-sm font-medium uppercase tracking-wide">
                     Revenue
                   </h3>
-                  <p className="text-gray-100 text-2xl font-bold">
+                  <p className="text-[rgb(var(--foreground))] text-2xl font-bold">
                     {money0.format(parseFloat(kpis?.revenue) || 0)}
                   </p>
                 </div>
@@ -1674,16 +1674,16 @@ export default function DealsPage() {
             </div>
 
             {/* Profit */}
-            <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
+            <div className="bg-[rgb(var(--card))] p-6 rounded-xl border border-[rgb(var(--border))] shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-white/10 mr-4">
-                  <Icon name="TrendingUp" size={24} className="text-gray-200" />
+                <div className="p-3 rounded-lg bg-[rgb(var(--accent)/0.5)] mr-4">
+                  <Icon name="TrendingUp" size={24} className="text-[rgb(var(--foreground))]" />
                 </div>
                 <div>
-                  <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-[rgb(var(--muted-foreground))] text-sm font-medium uppercase tracking-wide">
                     Profit
                   </h3>
-                  <p className="text-gray-100 text-2xl font-bold">
+                  <p className="text-[rgb(var(--foreground))] text-2xl font-bold">
                     {kpis?.profit === '' || kpis?.profit == null
                       ? '—'
                       : money0.format(parseFloat(kpis?.profit) || 0)}
@@ -1693,16 +1693,16 @@ export default function DealsPage() {
             </div>
 
             {/* Margin */}
-            <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
+            <div className="bg-[rgb(var(--card))] p-6 rounded-xl border border-[rgb(var(--border))] shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-white/10 mr-4">
-                  <Icon name="Percent" size={24} className="text-gray-200" />
+                <div className="p-3 rounded-lg bg-[rgb(var(--accent)/0.5)] mr-4">
+                  <Icon name="Percent" size={24} className="text-[rgb(var(--foreground))]" />
                 </div>
                 <div>
-                  <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-[rgb(var(--muted-foreground))] text-sm font-medium uppercase tracking-wide">
                     Margin
                   </h3>
-                  <p className="text-gray-100 text-2xl font-bold">
+                  <p className="text-[rgb(var(--foreground))] text-2xl font-bold">
                     {kpis?.margin === '' || kpis?.margin == null
                       ? '—'
                       : pct1(parseFloat(kpis?.margin) / 100 || 0)}
@@ -1712,31 +1712,31 @@ export default function DealsPage() {
             </div>
 
             {/* Booked (time TBD) */}
-            <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
+            <div className="bg-[rgb(var(--card))] p-6 rounded-xl border border-[rgb(var(--border))] shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-white/10 mr-4">
-                  <Icon name="Clock" size={24} className="text-gray-200" />
+                <div className="p-3 rounded-lg bg-[rgb(var(--accent)/0.5)] mr-4">
+                  <Icon name="Clock" size={24} className="text-[rgb(var(--foreground))]" />
                 </div>
                 <div>
-                  <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-[rgb(var(--muted-foreground))] text-sm font-medium uppercase tracking-wide">
                     Booked (time TBD)
                   </h3>
-                  <p className="text-gray-100 text-2xl font-bold">{kpis?.pending}</p>
+                  <p className="text-[rgb(var(--foreground))] text-2xl font-bold">{kpis?.pending}</p>
                 </div>
               </div>
             </div>
 
             {/* Drafts */}
-            <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
+            <div className="bg-[rgb(var(--card))] p-6 rounded-xl border border-[rgb(var(--border))] shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg bg-white/10 mr-4">
-                  <Icon name="File" size={24} className="text-gray-200" />
+                <div className="p-3 rounded-lg bg-[rgb(var(--accent)/0.5)] mr-4">
+                  <Icon name="File" size={24} className="text-[rgb(var(--foreground))]" />
                 </div>
                 <div>
-                  <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
+                  <h3 className="text-[rgb(var(--muted-foreground))] text-sm font-medium uppercase tracking-wide">
                     Drafts
                   </h3>
-                  <p className="text-gray-100 text-2xl font-bold">{kpis?.drafts}</p>
+                  <p className="text-[rgb(var(--foreground))] text-2xl font-bold">{kpis?.drafts}</p>
                 </div>
               </div>
             </div>
@@ -1744,7 +1744,7 @@ export default function DealsPage() {
         </div>
 
         {/* Status tabs and search (advanced dropdowns removed) */}
-        <div className="mb-6 bg-white/5 rounded-lg border border-white/10 p-4">
+        <div className="mb-6 bg-[rgb(var(--card))] rounded-lg border border-[rgb(var(--border))] p-4">
           {/* Status Tabs */}
           <div className="flex flex-wrap gap-2 mb-4">
             {[
@@ -1762,8 +1762,8 @@ export default function DealsPage() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
                   ${
                     filters?.status === value
-                      ? 'bg-white/10 text-white border border-white/10'
-                      : 'bg-transparent border border-white/10 text-gray-300 hover:bg-white/5'
+                      ? 'bg-[rgb(var(--accent)/0.5)] text-white border border-[rgb(var(--border))]'
+                      : 'bg-transparent border border-[rgb(var(--border))] text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--card))]'
                   }`}
               >
                 {label}
@@ -1793,8 +1793,8 @@ export default function DealsPage() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border
                     ${
                       filters?.presetView === view
-                        ? 'bg-white/10 text-white border-white/10'
-                        : 'bg-transparent text-gray-300 border-white/10 hover:bg-white/5'
+                        ? 'bg-[rgb(var(--accent)/0.5)] text-white border-[rgb(var(--border))]'
+                        : 'bg-transparent text-[rgb(var(--muted-foreground))] border-[rgb(var(--border))] hover:bg-[rgb(var(--card))]'
                     }`}
                 >
                   {view}
@@ -1817,13 +1817,13 @@ export default function DealsPage() {
                   placeholder="Search deals, customers, vehicles..."
                   value={filters?.search}
                   onChange={(e) => updateFilter('search', e?.target?.value)}
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 pl-9 pr-3 text-gray-200 placeholder:text-gray-500 focus:ring-2 focus:ring-white/20 focus:border-transparent"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 pl-9 pr-3 text-[rgb(var(--foreground))] placeholder:text-gray-500 focus:ring-2 focus:ring-[rgb(var(--ring)/0.35)] focus:border-transparent"
                 />
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <label className="text-xs font-medium text-gray-400" htmlFor="deals-month-filter">
+              <label className="text-xs font-medium text-[rgb(var(--muted-foreground))]" htmlFor="deals-month-filter">
                 Month
               </label>
               <input
@@ -1831,33 +1831,33 @@ export default function DealsPage() {
                 type="month"
                 value={filters?.createdMonth || ''}
                 onChange={(e) => updateFilter('createdMonth', e?.target?.value || '')}
-                className="h-11 rounded-lg border border-white/10 bg-[#0B0F14] px-3 text-sm text-gray-200"
+                className="h-11 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--background))] px-3 text-sm text-[rgb(var(--foreground))]"
               />
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => updateFilter('createdMonth', '')}
-                className="text-gray-300 hover:text-gray-100"
+                className="text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))]"
               >
                 All months
               </Button>
             </div>
 
             <details className="group relative">
-              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
+              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2 text-sm text-[rgb(var(--muted-foreground))]">
                 <Icon name="Filter" size={14} /> Filters
               </summary>
-              <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-white/10 bg-[#0B0F14] p-3 text-xs text-gray-300 shadow-lg">
+              <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--background))] p-3 text-xs text-[rgb(var(--muted-foreground))] shadow-lg">
                 <label
-                  className="block text-[11px] font-semibold text-gray-400"
+                  className="block text-[11px] font-semibold text-[rgb(var(--muted-foreground))]"
                   htmlFor="deals-location-filter"
                 >
                   Location
                 </label>
                 <select
                   id="deals-location-filter"
-                  className="mt-2 h-9 w-full rounded-md border border-white/10 bg-[#0B0F14] px-2 text-sm text-gray-200"
+                  className="mt-2 h-9 w-full rounded-md border border-[rgb(var(--border))] bg-[rgb(var(--background))] px-2 text-sm text-[rgb(var(--foreground))]"
                   value={filters?.location || 'All'}
                   onChange={(e) => updateFilter('location', e?.target?.value || 'All')}
                 >
@@ -1868,14 +1868,14 @@ export default function DealsPage() {
                 </select>
 
                 <label
-                  className="mt-3 block text-[11px] font-semibold text-gray-400"
+                  className="mt-3 block text-[11px] font-semibold text-[rgb(var(--muted-foreground))]"
                   htmlFor="deals-loaner-filter"
                 >
                   Loaner
                 </label>
                 <select
                   id="deals-loaner-filter"
-                  className="mt-2 h-9 w-full rounded-md border border-white/10 bg-[#0B0F14] px-2 text-sm text-gray-200"
+                  className="mt-2 h-9 w-full rounded-md border border-[rgb(var(--border))] bg-[rgb(var(--background))] px-2 text-sm text-[rgb(var(--foreground))]"
                   value={filters?.loanerStatus || 'All'}
                   onChange={(e) => updateFilter('loanerStatus', e?.target?.value || 'All')}
                 >
@@ -1894,7 +1894,7 @@ export default function DealsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={clearAllFilters}
-                className="text-gray-300 hover:text-gray-100"
+                className="text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))]"
                 aria-label="Clear all filters"
               >
                 <Icon name="X" size={16} className="mr-1" />
@@ -1909,8 +1909,8 @@ export default function DealsPage() {
                 onClick={() => setShowSheetView(false)}
                 className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
                   showSheetView
-                    ? 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
-                    : 'bg-white/10 text-white border-white/10'
+                    ? 'bg-[rgb(var(--card))] text-[rgb(var(--muted-foreground))] border-[rgb(var(--border))] hover:bg-[rgb(var(--accent)/0.5)]'
+                    : 'bg-[rgb(var(--accent)/0.5)] text-white border-[rgb(var(--border))]'
                 }`}
                 aria-pressed={!showSheetView}
               >
@@ -1921,8 +1921,8 @@ export default function DealsPage() {
                 onClick={() => setShowSheetView(true)}
                 className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
                   showSheetView
-                    ? 'bg-white/10 text-white border-white/10'
-                    : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+                    ? 'bg-[rgb(var(--accent)/0.5)] text-white border-[rgb(var(--border))]'
+                    : 'bg-[rgb(var(--card))] text-[rgb(var(--muted-foreground))] border-[rgb(var(--border))] hover:bg-[rgb(var(--accent)/0.5)]'
                 }`}
                 aria-pressed={showSheetView}
               >
@@ -1936,9 +1936,9 @@ export default function DealsPage() {
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Vendor */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Vendor</label>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">Vendor</label>
                 <select
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                   value={filters.vendor || ''}
                   onChange={(e) => updateFilter('vendor', e.target.value || null)}
                 >
@@ -1953,9 +1953,9 @@ export default function DealsPage() {
 
               {/* Sales */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Sales</label>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">Sales</label>
                 <select
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                   value={filters.salesAssigned || ''}
                   onChange={(e) => updateFilter('salesAssigned', e.target.value || null)}
                 >
@@ -1970,9 +1970,9 @@ export default function DealsPage() {
 
               {/* Finance */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Finance</label>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">Finance</label>
                 <select
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                   value={filters.financeAssigned || ''}
                   onChange={(e) => updateFilter('financeAssigned', e.target.value || null)}
                 >
@@ -1987,9 +1987,9 @@ export default function DealsPage() {
 
               {/* Delivery */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Delivery</label>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">Delivery</label>
                 <select
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                   value={filters.deliveryAssigned || ''}
                   onChange={(e) => updateFilter('deliveryAssigned', e.target.value || null)}
                 >
@@ -2004,9 +2004,9 @@ export default function DealsPage() {
 
               {/* Location */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Location</label>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">Location</label>
                 <select
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                   value={filters.location}
                   onChange={(e) => updateFilter('location', e.target.value)}
                 >
@@ -2020,9 +2020,9 @@ export default function DealsPage() {
 
               {/* Loaner */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Loaner</label>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">Loaner</label>
                 <select
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                   value={filters.loanerStatus}
                   onChange={(e) => updateFilter('loanerStatus', e.target.value)}
                 >
@@ -2037,23 +2037,23 @@ export default function DealsPage() {
               {/* Promise Date Range */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">
+                  <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">
                     Promise from
                   </label>
                   <input
                     type="date"
-                    className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                    className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                     value={filters.promiseStartDate}
                     onChange={(e) => updateFilter('promiseStartDate', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1">
+                  <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">
                     Promise to
                   </label>
                   <input
                     type="date"
-                    className="bg-[#0B0F14] border border-white/10 rounded-lg w-full h-11 px-3 text-gray-200"
+                    className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full h-11 px-3 text-[rgb(var(--foreground))]"
                     value={filters.promiseEndDate}
                     onChange={(e) => updateFilter('promiseEndDate', e.target.value)}
                   />
@@ -2062,10 +2062,10 @@ export default function DealsPage() {
 
               {/* Work tags (multi-select) */}
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Work tags</label>
+                <label className="block text-xs font-medium text-[rgb(var(--muted-foreground))] mb-1">Work tags</label>
                 <select
                   multiple
-                  className="bg-[#0B0F14] border border-white/10 rounded-lg w-full min-h-[44px] px-3 py-2 text-gray-200"
+                  className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full min-h-[44px] px-3 py-2 text-[rgb(var(--foreground))]"
                   value={filters.workTags}
                   onChange={(e) => {
                     const selected = Array.from(e.target.selectedOptions).map((o) => o.value)
@@ -2084,7 +2084,7 @@ export default function DealsPage() {
         </div>
 
         {/* Results count */}
-        <div className="mb-4 text-sm text-gray-400 flex items-center gap-3">
+        <div className="mb-4 text-sm text-[rgb(var(--muted-foreground))] flex items-center gap-3">
           <span>
             Showing {sortedDeals?.length} of {deals?.length} deals
             {filters?.search && <span className="ml-2 text-blue-300">(filtered)</span>}
@@ -2125,14 +2125,14 @@ export default function DealsPage() {
         <div className="hidden md:block">
           {showSheetView ? (
             sortedDeals?.length === 0 ? (
-              <div className="bg-white/5 rounded-lg border border-white/10 p-10 text-center">
-                <div className="text-gray-200 font-medium">
+              <div className="bg-[rgb(var(--card))] rounded-lg border border-[rgb(var(--border))] p-10 text-center">
+                <div className="text-[rgb(var(--foreground))] font-medium">
                   {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
                 </div>
                 {(deals?.length || 0) > 0 ? (
                   <button
                     type="button"
-                    className="mt-3 inline-flex items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-200 hover:bg-white/10"
+                    className="mt-3 inline-flex items-center justify-center rounded-md border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)]"
                     onClick={clearAllFilters}
                   >
                     Clear filters
@@ -2143,14 +2143,14 @@ export default function DealsPage() {
               <SheetViewTable deals={sortedDeals} onRowClick={handleOpenDetail} />
             )
           ) : sortedDeals?.length === 0 ? (
-            <div className="bg-white/5 rounded-lg border border-white/10 p-10 text-center">
-              <div className="text-gray-200 font-medium">
+            <div className="bg-[rgb(var(--card))] rounded-lg border border-[rgb(var(--border))] p-10 text-center">
+              <div className="text-[rgb(var(--foreground))] font-medium">
                 {(deals?.length || 0) > 0 ? 'No results match your filters' : 'No deals'}
               </div>
               {(deals?.length || 0) > 0 ? (
                 <button
                   type="button"
-                  className="mt-3 inline-flex items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-200 hover:bg-white/10"
+                  className="mt-3 inline-flex items-center justify-center rounded-md border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-1.5 text-xs font-medium text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)]"
                   onClick={clearAllFilters}
                 >
                   Clear filters
@@ -2171,7 +2171,7 @@ export default function DealsPage() {
                   <div
                     key={deal?.id}
                     data-testid={`deal-row-${deal?.id}`}
-                    className="group cursor-pointer rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-4"
+                    className="group cursor-pointer rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] hover:bg-[rgb(var(--accent)/0.5)] px-4 py-4"
                     onClick={() => {
                       if (isDealsDebugEnabled()) {
                         console.info(
@@ -2196,13 +2196,13 @@ export default function DealsPage() {
                     <div className="grid grid-cols-12 gap-x-4 gap-y-3">
                       {/* Created */}
                       <div className="col-span-12 lg:col-span-2 min-w-0">
-                        <div className="text-xs text-gray-400">Created</div>
+                        <div className="text-xs text-[rgb(var(--muted-foreground))]">Created</div>
                         <div className="mt-0.5 flex items-baseline gap-2">
-                          <div className="text-sm text-gray-100 tabular-nums">
+                          <div className="text-sm text-[rgb(var(--foreground))] tabular-nums">
                             {createdShort || '—'}
                           </div>
                           {typeof deal?.age_days === 'number' ? (
-                            <div className="text-xs text-gray-400 tabular-nums">
+                            <div className="text-xs text-[rgb(var(--muted-foreground))] tabular-nums">
                               {deal?.age_days}d
                             </div>
                           ) : null}
@@ -2227,7 +2227,7 @@ export default function DealsPage() {
                               <CustomerDisplay deal={deal} />
                             </div>
 
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[rgb(var(--muted-foreground))]">
                               {deal?.delivery_coordinator_name ? (
                                 <span>{formatStaffName(deal?.delivery_coordinator_name)}</span>
                               ) : null}
@@ -2274,7 +2274,7 @@ export default function DealsPage() {
                           return (
                             <div
                               data-testid={`deal-vehicle-${deal?.id}`}
-                              className="truncate text-sm text-gray-100"
+                              className="truncate text-sm text-[rgb(var(--foreground))]"
                               title={v?.title || ''}
                             >
                               {v?.isMissing ? <span className="text-gray-500">—</span> : v?.main}
@@ -2284,7 +2284,7 @@ export default function DealsPage() {
                             </div>
                           )
                         })()}
-                        <div className="mt-0.5 text-xs text-gray-400">
+                        <div className="mt-0.5 text-xs text-[rgb(var(--muted-foreground))]">
                           {getDisplayPhone(deal)}
                         </div>
                         {(() => {
@@ -2298,14 +2298,14 @@ export default function DealsPage() {
                               {summary.labels.map((label) => (
                                 <span
                                   key={label}
-                                  className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-gray-200"
+                                  className="inline-flex items-center rounded-full bg-[rgb(var(--accent)/0.5)] px-2 py-0.5 text-[11px] font-medium text-[rgb(var(--foreground))]"
                                   title={label}
                                 >
                                   {label}
                                 </span>
                               ))}
                               {summary.extraCount ? (
-                                <span className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-medium text-gray-300">
+                                <span className="inline-flex items-center rounded-full bg-[rgb(var(--accent)/0.5)] px-2 py-0.5 text-[11px] font-medium text-[rgb(var(--muted-foreground))]">
                                   +{summary.extraCount}
                                 </span>
                               ) : null}
@@ -2370,7 +2370,7 @@ export default function DealsPage() {
                                 return next
                               })
                             }}
-                            className="h-9 px-3 rounded-lg flex items-center gap-2 border border-white/10 bg-white/5 text-gray-200 hover:bg-white/10 hover:text-white"
+                            className="h-9 px-3 rounded-lg flex items-center gap-2 border border-[rgb(var(--border))] bg-[rgb(var(--card))] text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)] hover:text-white"
                             aria-label={
                               isExpanded ? 'Collapse deal details' : 'Expand deal details'
                             }
@@ -2382,13 +2382,13 @@ export default function DealsPage() {
                             <span className="text-xs font-semibold">Details</span>
                           </button>
 
-                          <div className="inline-flex items-center justify-end gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+                          <div className="inline-flex items-center justify-end gap-1 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-1">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleEditDeal(deal?.id)
                               }}
-                              className="h-9 w-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10"
+                              className="h-9 w-9 rounded-lg flex items-center justify-center text-[rgb(var(--muted-foreground))] hover:text-white hover:bg-[rgb(var(--accent)/0.5)]"
                               aria-label="Edit deal"
                               title="Edit deal"
                             >
@@ -2402,7 +2402,7 @@ export default function DealsPage() {
                                   e.stopPropagation()
                                   handleMarkDealComplete(deal)
                                 }}
-                                className="h-9 w-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10"
+                                className="h-9 w-9 rounded-lg flex items-center justify-center text-[rgb(var(--muted-foreground))] hover:text-white hover:bg-[rgb(var(--accent)/0.5)]"
                                 aria-label="Complete job"
                                 title="Complete"
                               >
@@ -2417,7 +2417,7 @@ export default function DealsPage() {
                                 setError('')
                                 setDeleteConfirm(deal)
                               }}
-                              className="h-9 w-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10"
+                              className="h-9 w-9 rounded-lg flex items-center justify-center text-[rgb(var(--muted-foreground))] hover:text-white hover:bg-[rgb(var(--accent)/0.5)]"
                               aria-label="Delete deal"
                               title="Delete deal"
                             >
@@ -2431,12 +2431,12 @@ export default function DealsPage() {
 
                     {isExpanded ? (
                       <div
-                        className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4"
+                        className="mt-4 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-4"
                         role="region"
                         aria-label="Deal details"
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          <div className="text-xs font-semibold text-[rgb(var(--muted-foreground))] uppercase tracking-wider">
                             Items purchased
                           </div>
                           <button
@@ -2451,7 +2451,7 @@ export default function DealsPage() {
                                 return next
                               })
                             }}
-                            className="text-xs text-gray-400 hover:text-white"
+                            className="text-xs text-[rgb(var(--muted-foreground))] hover:text-white"
                             aria-label="Close deal details"
                           >
                             Close
@@ -2459,9 +2459,9 @@ export default function DealsPage() {
                         </div>
 
                         {Array.isArray(deal?.job_parts) && deal.job_parts.length > 0 ? (
-                          <div className="mt-3 overflow-hidden rounded-lg border border-white/10">
+                          <div className="mt-3 overflow-hidden rounded-lg border border-[rgb(var(--border))]">
                             <table className="w-full text-sm">
-                              <thead className="bg-white/5 text-xs text-gray-400">
+                              <thead className="bg-[rgb(var(--card))] text-xs text-[rgb(var(--muted-foreground))]">
                                 <tr>
                                   <th className="px-3 py-2 text-left font-medium">Op</th>
                                   <th className="px-3 py-2 text-left font-medium">Product</th>
@@ -2470,7 +2470,7 @@ export default function DealsPage() {
                                   <th className="px-3 py-2 text-right font-medium">Total</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-white/10">
+                              <tbody className="divide-y divide-[rgb(var(--border))]">
                                 {deal.job_parts.map((p) => {
                                   const op =
                                     (p?.product?.op_code || p?.product?.opCode || p?.op_code || '')
@@ -2490,19 +2490,19 @@ export default function DealsPage() {
                                   return (
                                     <tr
                                       key={p?.id || `${name}-${op}`}
-                                      className="hover:bg-white/5"
+                                      className="hover:bg-[rgb(var(--card))]"
                                     >
-                                      <td className="px-3 py-2 text-xs font-mono tabular-nums text-gray-200">
+                                      <td className="px-3 py-2 text-xs font-mono tabular-nums text-[rgb(var(--foreground))]">
                                         {op || '—'}
                                       </td>
-                                      <td className="px-3 py-2 text-gray-100">{name}</td>
-                                      <td className="px-3 py-2 text-right tabular-nums text-gray-200">
+                                      <td className="px-3 py-2 text-[rgb(var(--foreground))]">{name}</td>
+                                      <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--foreground))]">
                                         {qty}
                                       </td>
-                                      <td className="px-3 py-2 text-right tabular-nums text-gray-200">
+                                      <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--foreground))]">
                                         {formatMoney0OrDash(unit)}
                                       </td>
-                                      <td className="px-3 py-2 text-right tabular-nums text-gray-100">
+                                      <td className="px-3 py-2 text-right tabular-nums text-[rgb(var(--foreground))]">
                                         {formatMoney0OrDash(total)}
                                       </td>
                                     </tr>
@@ -2512,7 +2512,7 @@ export default function DealsPage() {
                             </table>
                           </div>
                         ) : (
-                          <div className="mt-3 text-sm text-gray-400">No line items found.</div>
+                          <div className="mt-3 text-sm text-[rgb(var(--muted-foreground))]">No line items found.</div>
                         )}
                       </div>
                     ) : null}
@@ -2530,8 +2530,8 @@ export default function DealsPage() {
           return (
             <div className="md:hidden space-y-4">
               {sortedDeals?.length === 0 ? (
-                <div className="bg-white/5 rounded-lg border border-white/10 p-8 text-center">
-                  <div className="text-gray-400">
+                <div className="bg-[rgb(var(--card))] rounded-lg border border-[rgb(var(--border))] p-8 text-center">
+                  <div className="text-[rgb(var(--muted-foreground))]">
                     {filters?.status === 'All'
                       ? 'No deals found'
                       : `No ${filters?.status?.toLowerCase()} deals found`}
@@ -2543,13 +2543,13 @@ export default function DealsPage() {
                   return (
                     <div
                       key={deal?.id}
-                      className="bg-white/5 rounded-xl border border-white/10 overflow-hidden"
+                      className="bg-[rgb(var(--card))] rounded-xl border border-[rgb(var(--border))] overflow-hidden"
                     >
                       {/* Card Header */}
-                      <div className="p-4 border-b border-white/10 bg-white/5">
+                      <div className="p-4 border-b border-[rgb(var(--border))] bg-[rgb(var(--card))]">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-[rgb(var(--muted-foreground))]">
                               {formatCreatedShort(
                                 deal?.created_at ||
                                   deal?.createdAt ||
@@ -2565,7 +2565,7 @@ export default function DealsPage() {
                                 </span>
                               ) : null}
                             </div>
-                            <div className="font-medium text-gray-100">
+                            <div className="font-medium text-[rgb(var(--foreground))]">
                               {deal?.customer_name || '—'}
                               {isDealsDebugEnabled() && deal?.id ? (
                                 <span className="ml-2 text-[10px] text-gray-500">
@@ -2573,14 +2573,14 @@ export default function DealsPage() {
                                 </span>
                               ) : null}
                             </div>
-                            <div className="text-sm text-gray-300 truncate">
+                            <div className="text-sm text-[rgb(var(--muted-foreground))] truncate">
                               {deal?.sales_consultant_name
                                 ? formatStaffName(deal?.sales_consultant_name)
                                 : deal?.delivery_coordinator_name
                                   ? formatStaffName(deal?.delivery_coordinator_name)
                                   : '—'}
                             </div>
-                            <div className="mt-1 text-xs text-gray-400 truncate">
+                            <div className="mt-1 text-xs text-[rgb(var(--muted-foreground))] truncate">
                               {(deal?.vehicle
                                 ? titleCase(
                                     `${deal?.vehicle?.year || ''} ${deal?.vehicle?.make || ''} ${deal?.vehicle?.model || ''}`.trim()
@@ -2593,7 +2593,7 @@ export default function DealsPage() {
                                 </span>
                               ) : null}
                             </div>
-                            <div className="mt-1 text-xs text-gray-400 truncate">
+                            <div className="mt-1 text-xs text-[rgb(var(--muted-foreground))] truncate">
                               {deal?.customer_phone_e164 ||
                               deal?.customer_phone ||
                               deal?.customer_mobile ? (
@@ -2674,14 +2674,14 @@ export default function DealsPage() {
                       </div>
 
                       {/* ✅ FIXED: Enhanced mobile footer with proper loaner actions */}
-                      <div className="p-4 border-t border-white/10 bg-white/5">
+                      <div className="p-4 border-t border-[rgb(var(--border))] bg-[rgb(var(--card))]">
                         {/* Primary actions row */}
                         <div className="grid grid-cols-2 gap-2 mb-2">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleEditDeal(deal?.id)}
-                            className="h-11 w-full bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10"
+                            className="h-11 w-full bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)]"
                             aria-label="Edit deal"
                           >
                             <Icon name="Edit" size={16} className="mr-2" />
@@ -2749,10 +2749,10 @@ export default function DealsPage() {
         {/* ✅ UPDATED: Delete Confirmation Modal */}
         {deleteConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#0B0F14] border border-white/10 rounded-lg w-full max-w-md max-h-[80vh] overflow-y-auto p-4">
+            <div className="bg-[rgb(var(--background))] border border-[rgb(var(--border))] rounded-lg w-full max-w-md max-h-[80vh] overflow-y-auto p-4">
               <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4 text-gray-100">Delete Deal</h3>
-                <p className="text-gray-400 mb-6">
+                <h3 className="text-lg font-semibold mb-4 text-[rgb(var(--foreground))]">Delete Deal</h3>
+                <p className="text-[rgb(var(--muted-foreground))] mb-6">
                   Delete deal and its line items? This cannot be undone.
                 </p>
                 {!!error && (
@@ -2764,7 +2764,7 @@ export default function DealsPage() {
                   <Button
                     variant="outline"
                     onClick={() => setDeleteConfirm(null)}
-                    className="flex-1 h-11 bg-white/5 border border-white/10 text-gray-200 hover:bg-white/10"
+                    className="flex-1 h-11 bg-[rgb(var(--card))] border border-[rgb(var(--border))] text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)]"
                     aria-label="Cancel deletion"
                     disabled={deletingDeal}
                   >
