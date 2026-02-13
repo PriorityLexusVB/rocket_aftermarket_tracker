@@ -913,7 +913,20 @@ export default function DealsPage() {
     const previousCompletedAt = deal?.completed_at
 
     try {
-      await jobService.updateStatus(dealId, 'completed', { completed_at: new Date().toISOString() })
+      const completedAt = new Date().toISOString()
+      try {
+        await jobService.updateStatus(dealId, 'completed', { completed_at: completedAt })
+      } catch (statusErr) {
+        const message = String(statusErr?.message || '')
+        if (!message.includes('Invalid status progression')) {
+          throw statusErr
+        }
+
+        // Some environments enforce strict progression (e.g., pending -> in_progress -> completed).
+        // Apply a best-effort intermediate transition to reduce avoidable 400s for one-click complete.
+        await jobService.updateStatus(dealId, 'in_progress')
+        await jobService.updateStatus(dealId, 'completed', { completed_at: completedAt })
+      }
 
       const undo = async () => {
         try {
