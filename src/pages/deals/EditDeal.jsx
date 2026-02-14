@@ -1,6 +1,6 @@
 // src/pages/deals/EditDeal.jsx
 import React, { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import AppLayout from '../../components/layouts/AppLayout'
 import DealFormV2 from '../../components/deals/DealFormV2'
 import * as dealService from '../../services/dealService'
@@ -8,6 +8,7 @@ import * as dealService from '../../services/dealService'
 export default function EditDeal() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [dealData, setDealData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -50,6 +51,15 @@ export default function EditDeal() {
   const dealNumber = dealData?.job_number || `#${id}`
   const stockNumber = dealData?.vehicle?.stock_number || dealData?.stock_number || '—'
 
+  const returnTo =
+    typeof location?.state?.from === 'string' && location.state.from.startsWith('/')
+      ? location.state.from
+      : '/deals'
+
+  const backLabel = returnTo.startsWith('/currently-active-appointments')
+    ? '← Back to Appointments'
+    : '← Back to Deals'
+
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl p-4 md:p-8" style={{ paddingTop: '5rem' }}>
@@ -75,10 +85,10 @@ export default function EditDeal() {
 
             <button
               type="button"
-              onClick={() => navigate('/deals')}
+              onClick={() => navigate(returnTo)}
               className="h-10 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 text-sm font-medium text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)]"
             >
-              ← Back to Deals
+              {backLabel}
             </button>
           </div>
 
@@ -94,7 +104,7 @@ export default function EditDeal() {
                 mode="edit"
                 job={dealData || {}}
                 onSave={handleSave}
-                onCancel={() => navigate('/deals')}
+                onCancel={() => navigate(returnTo)}
               />
             )}
           </div>
