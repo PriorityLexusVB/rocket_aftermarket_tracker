@@ -196,7 +196,7 @@ const Navbar = () => {
     <>
       {/* Mobile Bottom Navigation - Updated for 6 items with better spacing */}
       {!isTest && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B0F14] border-t border-white/10 shadow-lg">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[rgb(var(--card)/0.92)] backdrop-blur-xl border-t border-[rgb(var(--border)/0.8)] shadow-lg">
           <div className="grid grid-cols-6 h-16">
             {navigationLinks?.slice(0, 6)?.map((link) => {
               const Icon = link?.icon
@@ -208,8 +208,8 @@ const Navbar = () => {
                   to={link?.href}
                   className={`flex flex-col items-center justify-center space-y-1 px-1 transition-colors duration-200 ${
                     isActive
-                      ? 'text-white bg-white/10'
-                      : 'text-gray-300 hover:text-white hover:bg-white/5'
+                      ? 'text-[rgb(var(--foreground))] bg-[rgb(var(--accent)/0.45)]'
+                      : 'text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]'
                   }`}
                   aria-current={isActive ? 'page' : undefined}
                 >
@@ -225,13 +225,13 @@ const Navbar = () => {
       )}
 
       {/* Desktop Header Navigation - Streamlined for space */}
-      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-[#0B0F14] border-b border-white/10 shadow-sm">
+      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-[rgb(var(--card)/0.92)] backdrop-blur-xl border-b border-[rgb(var(--border)/0.8)] shadow-sm">
         <div className="w-full px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             {/* Logo - Compact for space */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2 group">
-                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-[rgb(var(--accent)/0.25)] border border-[rgb(var(--border))] flex items-center justify-center">
                   <img
                     src="/brand/logos/rocket-mark-white.png"
                     alt="Rocket Aftermarket Tracker"
@@ -255,8 +255,8 @@ const Navbar = () => {
                     to={link?.href}
                     className={`flex items-center space-x-1.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-white/10 text-white border border-white/10'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
+                        ? 'bg-[rgb(var(--accent)/0.45)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]'
+                        : 'text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]'
                     }`}
                     aria-current={isActive ? 'page' : undefined}
                   >
@@ -284,7 +284,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="relative p-2 text-gray-300 hover:text-white transition-colors duration-200 rounded-lg hover:bg-white/5"
+                  className="relative p-2 text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))] transition-colors duration-200 rounded-lg hover:bg-[rgb(var(--accent)/0.35)]"
                   aria-label="Notifications"
                   aria-haspopup="menu"
                   aria-expanded={isNotificationOpen}
@@ -299,12 +299,12 @@ const Navbar = () => {
 
                 {/* Notification Dropdown */}
                 {isNotificationOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-[#0B0F14] rounded-lg shadow-lg border border-white/10 py-2 z-50 max-h-96 overflow-y-auto text-gray-200">
-                    <div className="px-4 py-3 border-b border-white/10">
+                  <div className="absolute right-0 mt-2 w-80 bg-[rgb(var(--card))] rounded-lg shadow-lg border border-[rgb(var(--border))] py-2 z-50 max-h-96 overflow-y-auto text-[rgb(var(--foreground))]">
+                    <div className="px-4 py-3 border-b border-[rgb(var(--border))]">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-white">Recent Activity</h3>
+                        <h3 className="text-sm font-medium text-[rgb(var(--foreground))]">Recent Activity</h3>
                         {notificationLoading && (
-                          <div className="text-xs text-gray-400">Loading...</div>
+                          <div className="text-xs text-[rgb(var(--muted-foreground))]">Loading...</div>
                         )}
                       </div>
                     </div>
@@ -314,7 +314,7 @@ const Navbar = () => {
                         notifications?.map((notification) => (
                           <div
                             key={notification?.id}
-                            className="px-4 py-3 hover:bg-white/5 border-b border-white/10 last:border-b-0"
+                            className="px-4 py-3 hover:bg-[rgb(var(--accent)/0.35)] border-b border-[rgb(var(--border))] last:border-b-0"
                           >
                             <div className="flex items-start space-x-3">
                               <div className="flex-shrink-0 mt-1">
@@ -325,14 +325,14 @@ const Navbar = () => {
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm text-white truncate">
+                                <p className="text-sm text-[rgb(var(--foreground))] truncate">
                                   {notification?.subject || 'Communication'}
                                 </p>
-                                <p className="text-xs text-gray-300 mt-1 line-clamp-2">
+                                <p className="text-xs text-[rgb(var(--muted-foreground))] mt-1 line-clamp-2">
                                   {notification?.message ||
                                     `${notification?.communication_type} to ${notification?.recipient}`}
                                 </p>
-                                <p className="text-xs text-gray-500 mt-1">
+                                <p className="text-xs text-[rgb(var(--muted-foreground))] mt-1">
                                   {formatNotificationTime(notification?.sent_at)}
                                 </p>
                               </div>
@@ -342,19 +342,19 @@ const Navbar = () => {
                       ) : (
                         <div className="px-4 py-6 text-center">
                           <Bell className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-300">No recent notifications</p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-sm text-[rgb(var(--muted-foreground))]">No recent notifications</p>
+                          <p className="text-xs text-[rgb(var(--muted-foreground))] mt-1">
                             Communications will appear here
                           </p>
                         </div>
                       )}
 
                       {notifications?.length > 0 && (
-                        <div className="px-4 py-3 border-t border-white/10">
+                        <div className="px-4 py-3 border-t border-[rgb(var(--border))]">
                           <Link
                             to="/communications"
                             onClick={() => setIsNotificationOpen(false)}
-                            className="text-sm text-gray-200 hover:text-white font-medium"
+                            className="text-sm text-[rgb(var(--foreground))] hover:text-[rgb(var(--foreground))] font-medium"
                           >
                             View all communications →
                           </Link>
@@ -370,19 +370,19 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-3 p-2 text-gray-300 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-200"
+                  className="flex items-center space-x-3 p-2 text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))] rounded-lg hover:bg-[rgb(var(--accent)/0.35)] transition-colors duration-200"
                   aria-label="Profile menu"
                   aria-haspopup="menu"
                   aria-expanded={isProfileOpen}
                 >
-                  <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                    <User className="w-4 h-4 text-gray-200" />
+                  <div className="w-8 h-8 bg-[rgb(var(--accent)/0.45)] rounded-lg flex items-center justify-center">
+                    <User className="w-4 h-4 text-[rgb(var(--foreground))]" />
                   </div>
                   <div className="hidden xl:block text-left">
                     <p className="text-sm font-medium">
                       {userProfile?.full_name || user?.email?.split('@')?.[0] || 'User'}
                     </p>
-                    <p className="text-xs text-gray-400 capitalize">
+                    <p className="text-xs text-[rgb(var(--muted-foreground))] capitalize">
                       {userProfile?.role || 'Staff'}
                     </p>
                   </div>
@@ -390,19 +390,19 @@ const Navbar = () => {
 
                 {/* Dropdown Menu */}
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-[#0B0F14] rounded-lg shadow-lg border border-white/10 py-1 z-50 text-gray-200">
-                    <div className="px-4 py-3 border-b border-white/10">
+                  <div className="absolute right-0 mt-2 w-56 bg-[rgb(var(--card))] rounded-lg shadow-lg border border-[rgb(var(--border))] py-1 z-50 text-[rgb(var(--foreground))]">
+                    <div className="px-4 py-3 border-b border-[rgb(var(--border))]">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                          <User className="w-5 h-5 text-gray-200" />
+                        <div className="w-10 h-10 bg-[rgb(var(--accent)/0.45)] rounded-lg flex items-center justify-center">
+                          <User className="w-5 h-5 text-[rgb(var(--foreground))]" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">
+                          <p className="text-sm font-medium text-[rgb(var(--foreground))]">
                             {userProfile?.full_name || 'User'}
                           </p>
-                          <p className="text-xs text-gray-400">{user?.email}</p>
+                          <p className="text-xs text-[rgb(var(--muted-foreground))]">{user?.email}</p>
                           {userProfile?.role && (
-                            <p className="text-xs text-gray-300 capitalize font-medium">
+                            <p className="text-xs text-[rgb(var(--muted-foreground))] capitalize font-medium">
                               {userProfile?.role}
                             </p>
                           )}
@@ -416,7 +416,7 @@ const Navbar = () => {
                           setIsProfileOpen(false)
                           navigate('/profile')
                         }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-200 hover:bg-white/5 hover:text-white transition-colors duration-200"
+                        className="flex items-center w-full px-4 py-2 text-sm text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)] hover:text-[rgb(var(--foreground))] transition-colors duration-200"
                       >
                         <User className="w-4 h-4 mr-3" />
                         Profile Settings
@@ -424,7 +424,7 @@ const Navbar = () => {
 
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors duration-200"
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-[rgb(var(--accent)/0.35)] transition-colors duration-200"
                       >
                         <LogOut className="w-4 h-4 mr-3" />
                         Sign Out
@@ -439,11 +439,11 @@ const Navbar = () => {
       </nav>
 
       {/* Mobile Top Header - Simplified */}
-      <nav className="md:hidden bg-[#0B0F14] border-b border-white/10 shadow-sm sticky top-0 z-40">
+      <nav className="md:hidden bg-[rgb(var(--card)/0.92)] backdrop-blur-xl border-b border-[rgb(var(--border)/0.8)] shadow-sm sticky top-0 z-40">
         <div className="flex items-center justify-between h-16 px-4">
           {/* Logo - Compact */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[rgb(var(--accent)/0.25)] border border-[rgb(var(--border))] flex items-center justify-center">
               <img
                 src="/brand/logos/rocket-mark-white.png"
                 alt="Rocket Aftermarket Tracker"
@@ -461,7 +461,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-              className="relative p-2 text-gray-300 hover:text-white"
+              className="relative p-2 text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))]"
               aria-label="Notifications"
               aria-haspopup="menu"
               aria-expanded={isNotificationOpen}
@@ -478,7 +478,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 text-gray-300 hover:text-white rounded-lg hover:bg-white/5"
+              className="p-2 text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))] rounded-lg hover:bg-[rgb(var(--accent)/0.35)]"
               aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}
@@ -490,15 +490,15 @@ const Navbar = () => {
 
         {/* Mobile Notification Dropdown */}
         {isNotificationOpen && (
-          <div className="border-t border-white/10 bg-[#0B0F14] max-h-60 overflow-y-auto">
-            <div className="px-4 py-3 border-b border-white/10">
-              <h3 className="text-sm font-medium text-white">Recent Activity</h3>
+          <div className="border-t border-[rgb(var(--border))] bg-[rgb(var(--card))] max-h-60 overflow-y-auto">
+            <div className="px-4 py-3 border-b border-[rgb(var(--border))]">
+              <h3 className="text-sm font-medium text-[rgb(var(--foreground))]">Recent Activity</h3>
             </div>
             {notifications?.length > 0 ? (
               notifications?.slice(0, 3)?.map((notification) => (
                 <div
                   key={notification?.id}
-                  className="px-4 py-3 border-b border-white/10 last:border-b-0"
+                  className="px-4 py-3 border-b border-[rgb(var(--border))] last:border-b-0"
                 >
                   <div className="flex items-start space-x-3">
                     <div
@@ -507,10 +507,10 @@ const Navbar = () => {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-white truncate">
+                      <p className="text-sm text-[rgb(var(--foreground))] truncate">
                         {notification?.subject || 'Communication'}
                       </p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-[rgb(var(--muted-foreground))] mt-1">
                         {formatNotificationTime(notification?.sent_at)}
                       </p>
                     </div>
@@ -519,7 +519,7 @@ const Navbar = () => {
               ))
             ) : (
               <div className="px-4 py-6 text-center">
-                <p className="text-sm text-gray-300">No recent notifications</p>
+                <p className="text-sm text-[rgb(var(--muted-foreground))]">No recent notifications</p>
               </div>
             )}
           </div>
@@ -529,20 +529,20 @@ const Navbar = () => {
         {isMenuOpen && (
           <>
             <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />
-            <div className="fixed top-16 right-0 w-72 h-full bg-[#0B0F14] shadow-xl z-50 overflow-y-auto border-l border-white/10">
+            <div className="fixed top-16 right-0 w-72 h-full bg-[rgb(var(--card))] shadow-xl z-50 overflow-y-auto border-l border-[rgb(var(--border))]">
               <div className="p-6">
                 {/* User Profile Section */}
-                <div className="flex items-center space-x-4 p-4 bg-white/5 rounded-xl mb-6">
-                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-                    <User className="w-6 h-6 text-gray-200" />
+                <div className="flex items-center space-x-4 p-4 bg-[rgb(var(--accent)/0.25)] rounded-xl mb-6">
+                  <div className="w-12 h-12 bg-[rgb(var(--accent)/0.45)] rounded-xl flex items-center justify-center">
+                    <User className="w-6 h-6 text-[rgb(var(--foreground))]" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-[rgb(var(--foreground))]">
                       {userProfile?.full_name || user?.email?.split('@')?.[0] || 'User'}
                     </p>
-                    <p className="text-xs text-gray-400">{user?.email}</p>
+                    <p className="text-xs text-[rgb(var(--muted-foreground))]">{user?.email}</p>
                     {userProfile?.role && (
-                      <p className="text-xs text-gray-300 capitalize font-medium">
+                      <p className="text-xs text-[rgb(var(--muted-foreground))] capitalize font-medium">
                         {userProfile?.role}
                       </p>
                     )}
@@ -556,7 +556,7 @@ const Navbar = () => {
 
                 {/* Navigation Links */}
                 <div className="space-y-1 mb-6">
-                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+                  <h3 className="text-xs font-medium text-[rgb(var(--muted-foreground))] uppercase tracking-wider mb-3">
                     Navigation
                   </h3>
                   {navigationLinks?.map((link) => {
@@ -569,8 +569,8 @@ const Navbar = () => {
                         onClick={() => setIsMenuOpen(false)}
                         className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
                           isActive
-                            ? 'bg-white/10 text-white border border-white/10'
-                            : 'text-gray-300 hover:text-white hover:bg-white/5'
+                            ? 'bg-[rgb(var(--accent)/0.45)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]'
+                            : 'text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]'
                         }`}
                       >
                         <Icon className="w-5 h-5" />
@@ -581,8 +581,8 @@ const Navbar = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="space-y-2 pt-6 border-t border-white/10">
-                  <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+                <div className="space-y-2 pt-6 border-t border-[rgb(var(--border))]">
+                  <h3 className="text-xs font-medium text-[rgb(var(--muted-foreground))] uppercase tracking-wider mb-3">
                     Account
                   </h3>
 
@@ -591,7 +591,7 @@ const Navbar = () => {
                       setIsMenuOpen(false)
                       navigate('/profile')
                     }}
-                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors duration-200"
+                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)] rounded-lg transition-colors duration-200"
                   >
                     <User className="w-5 h-5" />
                     <span>Profile Settings</span>
@@ -599,7 +599,7 @@ const Navbar = () => {
 
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-red-400 hover:bg-white/5 rounded-lg transition-colors duration-200"
+                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-red-400 hover:bg-[rgb(var(--accent)/0.35)] rounded-lg transition-colors duration-200"
                   >
                     <LogOut className="w-5 h-5" />
                     <span>Sign Out</span>
@@ -626,7 +626,7 @@ const Navbar = () => {
 
       {buildLabel ? (
         <div
-          className="pointer-events-none fixed bottom-20 right-2 z-[60] select-none text-[10px] text-gray-300 md:bottom-2"
+          className="pointer-events-none fixed bottom-20 right-2 z-[60] select-none text-[10px] text-[rgb(var(--muted-foreground))] md:bottom-2"
           aria-label="Build info"
           title={`Build ${buildLabel}${buildTimeIso ? ` @ ${buildTimeIso}` : ''}`}
         >

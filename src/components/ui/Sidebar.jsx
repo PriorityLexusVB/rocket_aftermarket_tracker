@@ -64,17 +64,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       {/* Sidebar */}
       <div
         className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-80 bg-[#0B0F14] border-r border-white/10
+        fixed lg:static inset-y-0 left-0 z-50 w-80 bg-[rgb(var(--card))] border-r border-[rgb(var(--border))]
         transform transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}
       >
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-8 border-b border-white/10">
+          <div className="p-8 border-b border-[rgb(var(--border))]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-[rgb(var(--accent)/0.25)] border border-[rgb(var(--border))] flex items-center justify-center">
                   <img
                     src="/brand/logos/rocket-mark-white.png"
                     alt="Rocket Aftermarket Tracker"
@@ -83,15 +83,15 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-white">Rocket Aftermarket</h2>
-                  <p className="text-sm text-gray-400 font-medium mt-1">Aftermarket Management</p>
+                  <h2 className="text-xl font-semibold text-[rgb(var(--foreground))]">Rocket Aftermarket</h2>
+                  <p className="text-sm text-[rgb(var(--muted-foreground))] font-medium mt-1">Aftermarket Management</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="lg:hidden w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                className="lg:hidden w-8 h-8 rounded-lg bg-[rgb(var(--accent)/0.25)] hover:bg-[rgb(var(--accent)/0.45)] flex items-center justify-center transition-colors"
               >
-                <X className="w-5 h-5 text-gray-300" />
+                <X className="w-5 h-5 text-[rgb(var(--muted-foreground))]" />
               </button>
             </div>
           </div>
@@ -109,8 +109,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                       w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-200 group
                       ${
                         isActive
-                          ? 'bg-white/10 text-white border border-white/10'
-                          : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                          ? 'bg-[rgb(var(--accent)/0.45)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))]'
+                          : 'text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--accent)/0.35)] hover:text-[rgb(var(--foreground))]'
                       }
                     `}
                   >
@@ -118,20 +118,20 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                       <div
                         className={`
                         w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200
-                        ${isActive ? 'bg-white/10' : 'bg-white/5 group-hover:bg-white/10'}
+                        ${isActive ? 'bg-[rgb(var(--accent)/0.45)]' : 'bg-[rgb(var(--accent)/0.25)] group-hover:bg-[rgb(var(--accent)/0.45)]'}
                       `}
                       >
                         <item.icon
-                          className={`w-5 h-5 ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}
+                          className={`w-5 h-5 ${isActive ? 'text-[rgb(var(--foreground))]' : 'text-[rgb(var(--muted-foreground))] group-hover:text-[rgb(var(--foreground))]'}`}
                         />
                       </div>
                       <div className="text-left">
                         <div
-                          className={`font-semibold ${isActive ? 'text-white' : 'text-gray-200'}`}
+                          className={`font-semibold ${isActive ? 'text-[rgb(var(--foreground))]' : 'text-[rgb(var(--foreground))]'}`}
                         >
                           {item?.label}
                         </div>
-                        <div className={`text-sm ${isActive ? 'text-white/70' : 'text-gray-500'}`}>
+                        <div className={`text-sm ${isActive ? 'text-[rgb(var(--foreground))]/70' : 'text-[rgb(var(--muted-foreground))]'}`}>
                           {item?.description}
                         </div>
                       </div>
@@ -139,7 +139,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     <ChevronRight
                       className={`
                       w-4 h-4 transition-all duration-200
-                      ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}
+                      ${isActive ? 'text-[rgb(var(--foreground))]' : 'text-[rgb(var(--muted-foreground))] group-hover:text-[rgb(var(--muted-foreground))]'}
                     `}
                     />
                   </button>
@@ -149,15 +149,15 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </nav>
 
           {/* Footer */}
-          <div className="p-6 border-t border-white/10">
-            <div className="rounded-2xl p-4 border border-white/10 bg-white/5">
+          <div className="p-6 border-t border-[rgb(var(--border))]">
+            <div className="rounded-2xl p-4 border border-[rgb(var(--border))] bg-[rgb(var(--accent)/0.25)]">
               <div className="flex items-center space-x-3 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-gray-200" />
+                <div className="w-8 h-8 rounded-lg bg-[rgb(var(--accent)/0.45)] flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-[rgb(var(--foreground))]" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-gray-200">System Status</div>
-                  <div className="text-xs text-gray-500">All systems operational</div>
+                  <div className="text-sm font-semibold text-[rgb(var(--foreground))]">System Status</div>
+                  <div className="text-xs text-[rgb(var(--muted-foreground))]">All systems operational</div>
                 </div>
               </div>
             </div>
