@@ -704,6 +704,13 @@ export default function SnapshotView() {
 
   if (loading) return <div className="p-6">Loading…</div>
 
+  const snapshotToggleClass = (mode) =>
+    `px-3 py-1.5 text-sm font-medium transition-colors ${
+      windowMode === mode
+        ? 'bg-primary text-primary-foreground'
+        : 'text-muted-foreground hover:bg-muted/60'
+    }`
+
   return (
     <div className="p-6 space-y-4" aria-label="Active Appointments Snapshot">
       <h1 className="sr-only">Currently Active Appointments</h1>
@@ -735,9 +742,7 @@ export default function SnapshotView() {
                 setSearchParams(next, { replace: true })
               }}
               className={
-                windowMode === 'today'
-                  ? 'px-3 py-1.5 text-sm font-medium btn-primary'
-                  : 'px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-gray-50'
+                snapshotToggleClass('today')
               }
               aria-pressed={windowMode === 'today'}
             >
@@ -752,9 +757,7 @@ export default function SnapshotView() {
                 setSearchParams(next, { replace: true })
               }}
               className={
-                windowMode === 'next7'
-                  ? 'px-3 py-1.5 text-sm font-medium btn-primary'
-                  : 'px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-gray-50'
+                snapshotToggleClass('next7')
               }
               aria-pressed={windowMode === 'next7'}
             >
@@ -769,9 +772,7 @@ export default function SnapshotView() {
                 setSearchParams(next, { replace: true })
               }}
               className={
-                windowMode === 'all_day'
-                  ? 'px-3 py-1.5 text-sm font-medium btn-primary'
-                  : 'px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-gray-50'
+                snapshotToggleClass('all_day')
               }
               aria-pressed={windowMode === 'all_day'}
             >
@@ -794,7 +795,7 @@ export default function SnapshotView() {
                   context: { from: `${location?.pathname || ''}${location?.search || ''}` },
                 })
               }}
-              className="text-blue-600 hover:underline"
+              className="text-primary font-medium hover:underline"
               aria-label="Open Agenda"
             >
               Open Agenda
@@ -914,15 +915,15 @@ export default function SnapshotView() {
                 <div className="flex items-center gap-2 sm:ml-auto">
                   <button
                     onClick={() => navigate(`/deals/${j.id}/edit`)}
-                    className="text-blue-600 hover:underline"
-                    aria-label="View deal"
+                    className="text-primary font-medium hover:underline"
+                    aria-label="Edit deal"
                   >
-                    View
+                    Edit
                   </button>
                   {SIMPLE_CAL_ON && (
                     <button
                       onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
-                      className="text-blue-600 hover:underline"
+                      className="text-primary font-medium hover:underline"
                       aria-label="Schedule in Agenda"
                     >
                       Schedule
@@ -1002,15 +1003,15 @@ export default function SnapshotView() {
                 <div className="flex items-center gap-2 sm:ml-auto">
                   <button
                     onClick={() => navigate(`/deals/${j.id}/edit`)}
-                    className="text-blue-600 hover:underline"
-                    aria-label="View deal"
+                    className="text-primary font-medium hover:underline"
+                    aria-label="Edit deal"
                   >
-                    View
+                    Edit
                   </button>
                   {SIMPLE_CAL_ON && (
                     <button
                       onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
-                      className="text-blue-600 hover:underline"
+                      className="text-primary font-medium hover:underline"
                       aria-label="Schedule in Agenda"
                     >
                       Schedule
@@ -1031,7 +1032,7 @@ export default function SnapshotView() {
               <button
                 type="button"
                 onClick={() => setShowOlderOverdue((v) => !v)}
-                className="text-blue-600 hover:underline"
+                className="text-primary font-medium hover:underline"
                 aria-label={
                   showOlderOverdue
                     ? 'Hide older overdue'
@@ -1136,17 +1137,17 @@ export default function SnapshotView() {
                     <div className="flex items-center gap-2 sm:ml-auto">
                       <button
                         onClick={() => navigate(`/deals/${j.id}/edit`)}
-                        className="text-blue-600 hover:underline"
-                        aria-label="View deal"
+                        className="text-primary font-medium hover:underline"
+                        aria-label="Edit deal"
                       >
-                        View
+                        Edit
                       </button>
                       {SIMPLE_CAL_ON && (
                         <button
                           onClick={() =>
                             navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
                           }
-                          className="text-blue-600 hover:underline"
+                          className="text-primary font-medium hover:underline"
                           aria-label="Reschedule in Agenda"
                         >
                           Reschedule
@@ -1222,17 +1223,17 @@ export default function SnapshotView() {
                     <div className="flex items-center gap-2 ml-auto">
                       <button
                         onClick={() => navigate(`/deals/${j.id}/edit`)}
-                        className="text-blue-600 hover:underline"
-                        aria-label="View deal"
+                        className="text-primary font-medium hover:underline"
+                        aria-label="Edit deal"
                       >
-                        View
+                        Edit
                       </button>
                       {SIMPLE_CAL_ON && (
                         <button
                           onClick={() =>
                             navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
                           }
-                          className="text-blue-600 hover:underline"
+                          className="text-primary font-medium hover:underline"
                           aria-label="Reschedule in Agenda"
                         >
                           Reschedule
@@ -1308,17 +1309,17 @@ export default function SnapshotView() {
                     <div className="flex items-center gap-2 ml-auto">
                       <button
                         onClick={() => navigate(`/deals/${j.id}/edit`)}
-                        className="text-blue-600 hover:underline"
-                        aria-label="View deal"
+                        className="text-primary font-medium hover:underline"
+                        aria-label="Edit deal"
                       >
-                        View
+                        Edit
                       </button>
                       {SIMPLE_CAL_ON && (
                         <button
                           onClick={() =>
                             navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
                           }
-                          className="text-blue-600 hover:underline"
+                          className="text-primary font-medium hover:underline"
                           aria-label="Reschedule in Agenda"
                         >
                           Reschedule
@@ -1387,17 +1388,17 @@ export default function SnapshotView() {
                     <div className="flex items-center gap-2 ml-auto">
                       <button
                         onClick={() => navigate(`/deals/${j.id}/edit`)}
-                        className="text-blue-600 hover:underline"
-                        aria-label="View deal"
+                        className="text-primary font-medium hover:underline"
+                        aria-label="Edit deal"
                       >
-                        View
+                        Edit
                       </button>
                       {SIMPLE_CAL_ON && (
                         <button
                           onClick={() =>
                             navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)
                           }
-                          className="text-blue-600 hover:underline"
+                          className="text-primary font-medium hover:underline"
                           aria-label="Reschedule in Agenda"
                         >
                           Reschedule
@@ -1459,15 +1460,15 @@ export default function SnapshotView() {
               <div className="flex items-center gap-2 ml-auto">
                 <button
                   onClick={() => navigate(`/deals/${j.id}/edit`)}
-                  className="text-blue-600 hover:underline"
-                  aria-label="View deal"
+                  className="text-primary font-medium hover:underline"
+                  aria-label="Edit deal"
                 >
-                  View
+                  Edit
                 </button>
                 {SIMPLE_CAL_ON && (
                   <button
                     onClick={() => navigate(`/calendar/agenda?focus=${encodeURIComponent(j.id)}`)}
-                    className="text-blue-600 hover:underline"
+                    className="text-primary font-medium hover:underline"
                     aria-label="Reschedule in Agenda"
                   >
                     Reschedule
@@ -1523,10 +1524,10 @@ export default function SnapshotView() {
                       <div className="flex items-center gap-2 ml-auto">
                         <button
                           onClick={() => navigate(`/deals/${j.id}/edit`)}
-                          className="text-blue-600 hover:underline"
-                          aria-label="View deal"
+                          className="text-primary font-medium hover:underline"
+                          aria-label="Edit deal"
                         >
-                          View
+                          Edit
                         </button>
                         {renderCompletionAction(j)}
                       </div>
