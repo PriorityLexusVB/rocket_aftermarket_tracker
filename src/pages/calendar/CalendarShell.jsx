@@ -261,7 +261,7 @@ export default function CalendarShell() {
           onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
         />
       ) : (
-        <div className="rounded-lg border border-white/10 bg-white/5 p-6 text-sm text-gray-300">
+        <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
           List view is unavailable in this environment.
         </div>
       )
@@ -286,12 +286,12 @@ export default function CalendarShell() {
 
   return (
     <AppLayout>
-      <div className="mx-auto flex w-full max-w-none flex-col gap-4 p-4 min-h-[calc(100vh-120px)]">
-        <section className="rounded-xl border border-white/10 bg-white/5 p-4 shadow-sm">
+      <div className="mx-auto flex w-full max-w-none min-h-[calc(100vh-120px)] flex-col gap-4 p-4 md:px-6">
+        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold text-gray-100">Calendar</h1>
-              <div className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
+              <h1 className="text-xl font-semibold text-foreground">Calendar</h1>
+              <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
                 {[
                   { key: 'board', label: 'Board' },
                   { key: 'calendar', label: 'Calendar' },
@@ -304,8 +304,8 @@ export default function CalendarShell() {
                     disabled={item.disabled}
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                       resolvedView === item.key
-                        ? 'bg-white/10 text-white border border-white/10'
-                        : 'bg-transparent text-gray-300 hover:bg-white/5'
+                        ? 'border border-primary bg-primary text-primary-foreground'
+                        : 'border border-transparent bg-transparent text-muted-foreground hover:bg-muted'
                     } ${item.disabled ? 'cursor-not-allowed opacity-50' : ''}`}
                   >
                     {item.label}
@@ -314,12 +314,12 @@ export default function CalendarShell() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1">
                 <button
                   type="button"
                   onClick={handlePrev}
-                  className="rounded-md p-1 text-gray-300 hover:bg-white/10"
+                  className="rounded-md p-1 text-muted-foreground hover:bg-muted"
                   aria-label="Previous"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -327,24 +327,24 @@ export default function CalendarShell() {
                 <button
                   type="button"
                   onClick={handleToday}
-                  className="rounded-md px-2 py-1 text-xs font-medium text-gray-200 hover:bg-white/10"
+                  className="rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
                 >
                   Today
                 </button>
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="rounded-md p-1 text-gray-300 hover:bg-white/10"
+                  className="rounded-md p-1 text-muted-foreground hover:bg-muted"
                   aria-label="Next"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
-                <span className="text-sm font-medium text-gray-200">{dateLabel}</span>
+                <span className="text-sm font-medium text-foreground">{dateLabel}</span>
                 <input
                   type="date"
                   value={dateInputValue}
                   onChange={handleDateInput}
-                  className="h-8 rounded-md border border-white/10 bg-[#0B0F14] px-2 text-xs text-gray-200"
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
                   aria-label="Pick a date"
                 />
               </div>
@@ -352,7 +352,7 @@ export default function CalendarShell() {
               <select
                 value={clampedRange}
                 onChange={handleRangeChange}
-                className="h-8 rounded-md border border-white/10 bg-[#0B0F14] px-2 text-xs text-gray-200"
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
                 aria-label="Select date range"
               >
                 {rangeOptions.map((option) => (
@@ -362,12 +362,12 @@ export default function CalendarShell() {
                 ))}
               </select>
 
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-gray-500" />
+              <div className="relative min-w-[220px]">
+                <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search stock/customer/phone"
-                  className="h-8 w-56 rounded-md border border-white/10 bg-[#0B0F14] pl-8 pr-2 text-xs text-gray-200 placeholder:text-gray-500"
+                  className="h-8 w-56 max-w-full rounded-md border border-input bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-muted-foreground"
                   aria-label="Search calendar"
                   value={searchValue}
                   onChange={(event) => setSearchValue(event.target.value)}
@@ -375,11 +375,11 @@ export default function CalendarShell() {
               </div>
 
               <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-gray-300">
+                <summary className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
                   Help
                 </summary>
-                <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-white/10 bg-[#0B0F14] p-3 text-xs text-gray-300 shadow-lg">
-                  <div className="font-semibold text-gray-200">Search tips</div>
+                <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+                  <div className="font-semibold text-foreground">Search tips</div>
                   <div className="mt-2 space-y-1">
                     <div>Matches job number, customer, phone, vehicle, and notes.</div>
                     <div>Search applies across Board, Calendar, and List views.</div>
@@ -388,19 +388,19 @@ export default function CalendarShell() {
               </details>
 
               <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-gray-300">
+                <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground">
                   <Filter className="h-4 w-4" /> Filters
                 </summary>
-                <div className="absolute right-0 z-30 mt-2 w-56 rounded-lg border border-white/10 bg-[#0B0F14] p-3 text-xs text-gray-300 shadow-lg">
+                <div className="absolute right-0 z-30 mt-2 w-56 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
                   <label
-                    className="block text-[11px] font-semibold text-gray-400"
+                    className="block text-[11px] font-semibold text-muted-foreground"
                     htmlFor="calendar-location-filter"
                   >
                     Location
                   </label>
                   <select
                     id="calendar-location-filter"
-                    className="mt-2 h-8 w-full rounded-md border border-white/10 bg-[#0B0F14] px-2 text-xs text-gray-200"
+                    className="mt-2 h-8 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
                     value={locationFilter || 'All'}
                     onChange={handleLocationChange}
                   >
@@ -414,10 +414,10 @@ export default function CalendarShell() {
               </details>
 
               <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center rounded-md border border-white/10 bg-white/5 p-2 text-gray-300">
+                <summary className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background p-2 text-muted-foreground">
                   <Info className="h-4 w-4" />
                 </summary>
-                <div className="absolute right-0 z-30 mt-2 w-52 rounded-lg border border-white/10 bg-[#0B0F14] p-3 text-xs text-gray-300 shadow-lg">
+                <div className="absolute right-0 z-30 mt-2 w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
                   <CalendarLegend compact showStatuses />
                 </div>
               </details>
@@ -425,37 +425,37 @@ export default function CalendarShell() {
               <button
                 type="button"
                 onClick={() => navigate('/deals/new')}
-                className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-[#0B0F14]"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
               >
                 <Plus className="h-4 w-4" /> New Deal
               </button>
 
               <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center rounded-md border border-white/10 bg-white/5 p-2 text-gray-300">
+                <summary className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background p-2 text-muted-foreground">
                   <MoreVertical className="h-4 w-4" />
                 </summary>
-                <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-white/10 bg-[#0B0F14] p-2 text-xs text-gray-200 shadow-lg">
+                <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-border bg-popover p-2 text-xs text-popover-foreground shadow-lg">
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-white/10"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
                   >
                     Refresh
                   </button>
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-white/10"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
                   >
                     Export
                   </button>
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-white/10"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
                   >
                     Round-Up
                   </button>
                   <button
                     type="button"
-                    className="w-full rounded px-2 py-1 text-left hover:bg-white/10"
+                    className="w-full rounded px-2 py-1 text-left hover:bg-muted"
                   >
                     Settings
                   </button>
