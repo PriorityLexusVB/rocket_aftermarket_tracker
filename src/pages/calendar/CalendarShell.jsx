@@ -288,8 +288,8 @@ export default function CalendarShell() {
     <AppLayout>
       <div className="mx-auto flex w-full max-w-none min-h-[calc(100vh-120px)] flex-col gap-4 p-4 md:px-6">
         <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold text-foreground">Calendar</h1>
               <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
                 {[
@@ -314,7 +314,7 @@ export default function CalendarShell() {
               </div>
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 sm:gap-3 xl:justify-end">
               <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1">
                 <button
                   type="button"
