@@ -568,6 +568,12 @@ export default function SnapshotView() {
     load()
   }, [load, tenantLoading])
 
+  useEffect(() => {
+    if (windowMode !== 'next7' && showOlderOverdue) {
+      setShowOlderOverdue(false)
+    }
+  }, [showOlderOverdue, windowMode])
+
   async function handleComplete(job) {
     const prevStatusRaw = job?.raw?.job_status
     const normalizedPrev = String(prevStatusRaw || '')
@@ -1038,9 +1044,9 @@ export default function SnapshotView() {
 
       {windowMode === 'all_day' ? null : (
         <>
-          {split.overdueOld.length > 0 ? (
+          {windowMode === 'next7' && split.overdueOld.length > 0 ? (
             <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-              <div className="text-muted-foreground">Overdue Old</div>
+              <div className="text-muted-foreground">Overdue (Older than 7 days)</div>
               <button
                 type="button"
                 onClick={() => setShowOlderOverdue((v) => !v)}
@@ -1194,10 +1200,10 @@ export default function SnapshotView() {
                 return (
                   <li
                     key={j?.calendarKey || j?.calendar_key || j.id}
-                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
-                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="w-full flex items-center gap-1 text-xs text-muted-foreground sm:w-28">
                       <span>
                         {hasTime ? (
                           <>
@@ -1230,9 +1236,9 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
+                    <div className="flex items-center gap-2 sm:ml-auto">
                       <button
                         onClick={() => navigateToDealEdit(j.id)}
                         className="text-primary font-medium hover:underline"
@@ -1280,10 +1286,10 @@ export default function SnapshotView() {
                 return (
                   <li
                     key={j?.calendarKey || j?.calendar_key || j.id}
-                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
-                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="w-full flex items-center gap-1 text-xs text-muted-foreground sm:w-28">
                       <span>
                         {hasTime ? (
                           <>
@@ -1316,9 +1322,9 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
+                    <div className="flex items-center gap-2 sm:ml-auto">
                       <button
                         onClick={() => navigateToDealEdit(j.id)}
                         className="text-primary font-medium hover:underline"
@@ -1359,10 +1365,10 @@ export default function SnapshotView() {
                 return (
                   <li
                     key={j?.calendarKey || j?.calendar_key || j.id}
-                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                    className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                     aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                   >
-                    <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="w-full flex items-center gap-1 text-xs text-muted-foreground sm:w-28">
                       <span>
                         {hasTime ? (
                           <>
@@ -1395,9 +1401,9 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-40 truncate text-muted-foreground">{vendorName}</div>
-                    <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                    <div className="flex items-center gap-2 ml-auto">
+                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
+                    <div className="flex items-center gap-2 sm:ml-auto">
                       <button
                         onClick={() => navigateToDealEdit(j.id)}
                         className="text-primary font-medium hover:underline"
@@ -1469,7 +1475,7 @@ export default function SnapshotView() {
               </div>
               <div className="w-40 text-gray-600 truncate">{vendorName}</div>
               <div className="w-28 text-gray-600">{statusLabel}</div>
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2 sm:ml-auto">
                 <button
                   onClick={() => navigateToDealEdit(j.id)}
                   className="text-primary font-medium hover:underline"
@@ -1514,10 +1520,10 @@ export default function SnapshotView() {
                   return (
                     <li
                       key={j?.calendarKey || j?.calendar_key || j.id}
-                      className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50"
+                      className="flex flex-col gap-2 px-3 py-2 text-sm hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
                       aria-label={`Appointment ${j?.raw?.title || j?.raw?.job_number || j?.id}`}
                     >
-                      <div className="w-28 flex items-center gap-1 text-xs text-muted-foreground">
+                      <div className="w-full flex items-center gap-1 text-xs text-muted-foreground sm:w-28">
                         <span>Unscheduled</span>
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1531,9 +1537,9 @@ export default function SnapshotView() {
                             : ''}
                         </div>
                       </div>
-                      <div className="w-40 text-muted-foreground truncate">{locationLabel}</div>
-                      <div className="w-28 text-muted-foreground">{statusLabel}</div>
-                      <div className="flex items-center gap-2 ml-auto">
+                      <div className="w-full text-muted-foreground truncate sm:w-40">{locationLabel}</div>
+                      <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
+                      <div className="flex items-center gap-2 sm:ml-auto">
                         <button
                           onClick={() => navigateToDealEdit(j.id)}
                           className="text-primary font-medium hover:underline"
