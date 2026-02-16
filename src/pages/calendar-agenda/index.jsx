@@ -241,7 +241,7 @@ export function getAgendaRowClickHandler({ dealDrawerEnabled, onOpenDealDrawer, 
   }
 }
 
-export default function CalendarAgenda({ embedded = false, shellState, onOpenDealDrawer } = {}) {
+export default function CalendarAgenda({ embedded = false, shellState, onOpenDealDrawer, hideEmbeddedControls = false } = {}) {
   const { orgId, session, userProfile, loading: authLoading, profileLoading } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
@@ -998,7 +998,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         ) : null}
 
         {/* Header with always-visible search and date range */}
-        <header className="relative z-30 space-y-3" aria-label="Agenda controls">
+        {(!isEmbedded || !hideEmbeddedControls) && (
+          <header className="relative z-30 space-y-3" aria-label="Agenda controls">
           {!isEmbedded && <CalendarViewTabs />}
           <div className="flex items-center gap-4 flex-wrap">
             {!isEmbedded && (
@@ -1083,6 +1084,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
             </div>
           )}
         </header>
+        )}
 
         {groups.length === 0 && (
           <div role="status" aria-live="polite">

@@ -258,6 +258,7 @@ export default function CalendarShell() {
           embedded
           shellState={shellState}
           locationFilter={locationFilter}
+          hideEmbeddedControls
           onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
         />
       ) : (
