@@ -439,7 +439,7 @@ const Navbar = () => {
       </nav>
 
       {/* Mobile Top Header - Simplified */}
-      <nav className="md:hidden bg-[rgb(var(--card)/0.92)] backdrop-blur-xl border-b border-[rgb(var(--border)/0.8)] shadow-sm sticky top-0 z-40">
+      <nav className="md:hidden bg-[rgb(var(--card)/0.92)] backdrop-blur-xl border-b border-[rgb(var(--border)/0.8)] shadow-sm sticky top-0 z-[70]">
         <div className="flex items-center justify-between h-16 px-4">
           {/* Logo - Compact */}
           <Link to="/" className="flex items-center space-x-2">
@@ -528,8 +528,8 @@ const Navbar = () => {
         {/* Mobile Slide-out Menu */}
         {isMenuOpen && (
           <>
-            <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />
-            <div className="fixed top-16 right-0 w-72 h-full bg-[rgb(var(--card))] shadow-xl z-50 overflow-y-auto border-l border-[rgb(var(--border))]">
+            <div className="fixed inset-0 bg-black/50 z-[75]" onClick={() => setIsMenuOpen(false)} />
+            <div className="fixed top-16 right-0 bottom-0 w-[min(18rem,100vw)] bg-[rgb(var(--card))] shadow-xl z-[80] overflow-y-auto border-l border-[rgb(var(--border))]">
               <div className="p-6">
                 {/* User Profile Section */}
                 <div className="flex items-center space-x-4 p-4 bg-[rgb(var(--accent)/0.25)] rounded-xl mb-6">
