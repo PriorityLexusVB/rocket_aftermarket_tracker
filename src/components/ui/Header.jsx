@@ -135,22 +135,22 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[rgb(var(--card)/0.92)] backdrop-blur-xl border-b border-[rgb(var(--border)/0.8)] shadow-sm">
-      <div className="flex items-center justify-between h-16 px-4 lg:px-6 lg:ml-60 text-[rgb(var(--foreground))]">
+    <header className="fixed top-0 left-0 right-0 z-50 0 backdrop-blur-xl border-b 0 shadow-sm">
+      <div className="flex items-center justify-between h-16 px-4 lg:px-6 lg:ml-60 text-foreground">
         {/* Left Section - Menu Toggle & Breadcrumbs */}
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={onMenuToggle}
-            className="lg:hidden text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]"
+            className="lg:hidden text-foreground 0"
             aria-label="Toggle menu"
           >
             <Icon name={isMenuOpen ? 'X' : 'Menu'} size={20} />
           </Button>
 
           <Link to="/" className="flex items-center">
-            <div className="w-8 h-8 rounded-lg bg-[rgb(var(--accent)/0.25)] border border-[rgb(var(--border))] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
               <img
                 src="/brand/logos/rocket-mark-white.png"
                 alt="Rocket Aftermarket Tracker"
@@ -162,15 +162,15 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
 
           {/* Mobile Title */}
           <div className="block lg:hidden">
-            <h2 className="text-sm font-medium text-[rgb(var(--foreground))]">{getPageTitle()}</h2>
+            <h2 className="text-sm font-medium text-foreground">{getPageTitle()}</h2>
           </div>
 
           {/* Desktop Breadcrumbs */}
           <div className="hidden lg:flex items-center space-x-2">
-            <Icon name="Home" size={14} className="text-[rgb(var(--muted-foreground))]" />
+            <Icon name="Home" size={14} className="text-muted-foreground" />
             {getBreadcrumbs()?.map((crumb, index) => (
               <React.Fragment key={crumb?.path}>
-                <Icon name="ChevronRight" size={12} className="text-[rgb(var(--muted-foreground))]" />
+                <Icon name="ChevronRight" size={12} className="text-muted-foreground" />
                 <button
                   onClick={() => {
                     if (crumb?.path === '#') return
@@ -196,8 +196,8 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
                   }}
                   className={`text-sm ${
                     index === getBreadcrumbs()?.length - 1
-                      ? 'text-[rgb(var(--foreground))] font-medium'
-                      : 'text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))]'
+                      ? 'text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground'
                   } transition-colors duration-200 ${crumb?.path === '#' ? 'cursor-default' : 'cursor-pointer'}`}
                   disabled={crumb?.path === '#'}
                 >
@@ -216,14 +216,14 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
               <Icon
                 name="Search"
                 size={16}
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[rgb(var(--muted-foreground))]"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"
               />
               <input
                 type="text"
                 placeholder="Search VINs, vendors, sales..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e?.target?.value)}
-                className="w-72 pl-10 pr-4 py-2 text-sm bg-[rgb(var(--accent)/0.25)] border border-[rgb(var(--border))] rounded-lg text-[rgb(var(--foreground))] placeholder:text-[rgb(var(--muted-foreground))] focus:outline-none focus:ring-2 focus:ring-[rgb(var(--ring)/0.35)] focus:border-transparent transition-all duration-200 focus:w-80"
+                className="w-72 pl-10 pr-4 py-2 text-sm bg-accent/25 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/35 focus:border-transparent transition-all duration-200 focus:w-80"
               />
               {searchQuery && (
                 <Button
@@ -231,7 +231,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-200 hover:bg-[rgb(var(--accent)/0.35)]"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-200 0"
                 >
                   <Icon name="X" size={12} />
                 </Button>
@@ -245,7 +245,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
             <Button
               variant="ghost"
               size="icon"
-              className="relative text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]"
+              className="relative text-foreground 0"
               aria-label="Supabase status"
               title={
                 sbStatus === 'ok'
@@ -285,7 +285,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
               variant="ghost"
               size="icon"
               onClick={() => navigate('/sales-tracker')}
-              className="relative text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]"
+              className="relative text-foreground 0"
               aria-label="Quick Sales Entry"
             >
               <Icon name="Plus" size={18} />
@@ -294,7 +294,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
             <Button
               variant="ghost"
               size="icon"
-              className="relative text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]"
+              className="relative text-foreground 0"
               aria-label="Notifications"
             >
               <Icon name="Bell" size={18} />
@@ -306,7 +306,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.35)]"
+            className="rounded-full text-foreground 0"
             aria-label="User menu"
             onClick={() => navigate('/administrative-configuration-center')}
           >

@@ -114,10 +114,10 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
   if (loading) {
     return (
       <AppLayout>
-        <div className="min-h-screen bg-[rgb(var(--background))] flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto"></div>
-            <p className="mt-4 text-lg text-[rgb(var(--muted-foreground))]">Loading analytics dashboard...</p>
+            <p className="mt-4 text-lg text-muted-foreground">Loading analytics dashboard...</p>
           </div>
         </div>
       </AppLayout>
@@ -126,16 +126,16 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-[rgb(var(--background))]">
+      <div className="min-h-screen bg-background">
         {/* Header */}
-        <div className="bg-[rgb(var(--card))] border-b border-[rgb(var(--border))]">
+        <div className="bg-card border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-[rgb(var(--foreground))]">
+                <h1 className="text-3xl font-bold text-foreground">
                   Advanced Business Intelligence Analytics
                 </h1>
-                <p className="mt-2 text-[rgb(var(--muted-foreground))]">
+                <p className="mt-2 text-muted-foreground">
                   Comprehensive aftermarket performance insights and multi-dimensional analysis
                 </p>
               </div>
@@ -143,7 +143,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
               <div className="flex items-center space-x-4">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="px-4 py-2 bg-[rgb(var(--card))] border border-[rgb(var(--border))] rounded-lg hover:bg-[rgb(var(--accent)/0.5)] flex items-center space-x-2 text-[rgb(var(--foreground))]"
+                  className="px-4 py-2 bg-card border border-border rounded-lg 0 flex items-center space-x-2 text-foreground"
                 >
                   <Filter className="w-4 h-4" />
                   <span>Filters</span>
@@ -163,7 +163,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                 <button
                   onClick={handleRefresh}
                   disabled={refreshing}
-                  className="px-4 py-2 bg-[rgb(var(--accent)/0.5)] text-[rgb(var(--foreground))] rounded-lg hover:bg-[rgb(var(--accent)/0.75)] flex items-center space-x-2 disabled:opacity-50"
+                  className="px-4 py-2 0 text-foreground rounded-lg 0 flex items-center space-x-2 disabled:opacity-50"
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                   <span>Refresh</span>
@@ -173,16 +173,16 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
             {/* Filters Panel */}
             {showFilters && (
-              <div className="mt-6 p-4 bg-[rgb(var(--card))] rounded-lg border border-[rgb(var(--border))]">
+              <div className="mt-6 p-4 bg-card rounded-lg border border-border">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[rgb(var(--muted-foreground))] mb-2">
+                    <label className="block text-sm font-medium text-muted-foreground mb-2">
                       Time Frame
                     </label>
                     <select
                       value={timeframe}
                       onChange={(e) => handleTimeframeChange(e?.target?.value)}
-                      className="w-full px-3 py-2 border border-[rgb(var(--border))] rounded-lg bg-[rgb(var(--background))] text-[rgb(var(--foreground))] focus:ring-2 focus:ring-[rgb(var(--ring)/0.35)] focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:0 focus:border-transparent"
                     >
                       <option value="1month">Last 1 Month</option>
                       <option value="3months">Last 3 Months</option>
@@ -192,13 +192,13 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[rgb(var(--muted-foreground))] mb-2">
+                    <label className="block text-sm font-medium text-muted-foreground mb-2">
                       Product Category
                     </label>
                     <select
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e?.target?.value)}
-                      className="w-full px-3 py-2 border border-[rgb(var(--border))] rounded-lg bg-[rgb(var(--background))] text-[rgb(var(--foreground))] focus:ring-2 focus:ring-[rgb(var(--ring)/0.35)] focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground focus:ring-2 focus:0 focus:border-transparent"
                     >
                       <option value="all">All Categories</option>
                       {dashboardData?.category_analysis?.map((category) => (

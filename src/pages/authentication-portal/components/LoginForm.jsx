@@ -77,8 +77,8 @@ const LoginForm = () => {
   return (
     <div className="w-full space-y-5">
       <div>
-        <h2 className="text-2xl font-bold text-[rgb(var(--foreground))]">Welcome back</h2>
-        <p className="mt-1 text-sm text-[rgb(var(--muted-foreground))]">
+        <h2 className="text-2xl font-bold text-foreground">Welcome back</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Sign in to access your dealership operations workspace.
         </p>
       </div>
@@ -95,7 +95,7 @@ const LoginForm = () => {
           required
           label="Email"
           id="email"
-          className="bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--foreground))]"
+          className="bg-card border-border text-foreground"
           aria-label="Email"
         />
 
@@ -108,7 +108,7 @@ const LoginForm = () => {
           required
           label="Password"
           id="password"
-          className="bg-[rgb(var(--card))] border-[rgb(var(--border))] text-[rgb(var(--foreground))]"
+          className="bg-card border-border text-foreground"
           aria-label="Password"
         />
 
@@ -121,7 +121,7 @@ const LoginForm = () => {
             id="rememberMe"
             description="Keep me logged in"
           />
-          <a href="#" className="text-sm text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))]">
+          <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
             Forgot password?
           </a>
         </div>
@@ -132,7 +132,7 @@ const LoginForm = () => {
 
         <Button
           type="submit"
-          className="w-full bg-[rgb(var(--accent)/0.75)] text-[rgb(var(--foreground))] border border-[rgb(var(--border))] hover:bg-[rgb(var(--accent))]"
+          className="w-full 0 text-foreground border border-border hover:bg-accent"
           disabled={isLoading || !supabaseConfigured}
           onClick={handleSubmit}
           aria-label="Sign In"
