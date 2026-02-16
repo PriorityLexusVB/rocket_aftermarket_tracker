@@ -53,6 +53,7 @@ describe('CalendarSchedulingCenter promise-only label', () => {
           scheduled_end_time: null,
           service_type: 'onsite',
           vendor_id: null,
+          customer_name: 'Jane Customer',
         },
       ],
       debug: {},
@@ -73,6 +74,7 @@ describe('CalendarSchedulingCenter promise-only label', () => {
       expect(within(card).getByText('PROMISE')).toBeTruthy()
     })
 
+    expect(within(card).getByText('Jane Customer')).toBeTruthy()
     expect(within(card).queryByText('BOOKED')).toBeNull()
     expect(within(card).getByText(/Promise:/i)).toBeTruthy()
   })
@@ -90,6 +92,7 @@ describe('CalendarSchedulingCenter promise-only label', () => {
           scheduled_end_time: null,
           service_type: 'onsite',
           vendor_id: null,
+          customer_name: 'Jane Customer',
         },
       ],
       debug: {},
