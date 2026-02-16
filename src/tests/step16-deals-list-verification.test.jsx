@@ -334,6 +334,37 @@ describe('Step 16: Deals List Screen Verification', () => {
     console.log('✅ Customer names render from vehicle.owner_name; placeholder used when missing')
   })
 
+
+  it('shows core deal snapshot fields in priority order for delivery coordinators', async () => {
+    renderComponent()
+
+    const expectedDate = currentDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+
+    await waitFor(() => {
+      const row1 = screen.getByTestId('deal-row-job-001')
+      const snapshot = within(row1).getByTestId('deal-core-snapshot-job-001')
+
+      expect(within(snapshot).getByText('Customer')).toBeInTheDocument()
+      expect(within(snapshot).getByText('John Smith')).toBeInTheDocument()
+      expect(within(snapshot).getByText('Vehicle')).toBeInTheDocument()
+      expect(within(snapshot).getByText('2024 Honda Accord')).toBeInTheDocument()
+      expect(within(snapshot).getByText('Date')).toBeInTheDocument()
+      expect(within(snapshot).getByText(expectedDate)).toBeInTheDocument()
+      expect(within(snapshot).getByText('Deal #')).toBeInTheDocument()
+      expect(within(snapshot).getByText('JOB-001')).toBeInTheDocument()
+      expect(within(snapshot).getByText('Profit')).toBeInTheDocument()
+      expect(within(snapshot).getByText('$126')).toBeInTheDocument()
+      expect(within(snapshot).getByText('Items Bought')).toBeInTheDocument()
+      expect(within(snapshot).getByText(/PPF×2/)).toBeInTheDocument()
+    })
+
+    console.log('✅ Core snapshot shows customer, vehicle, date, deal #, profit, and items bought')
+  })
+
   it('should display product summary with qty only when >1', async () => {
     renderComponent()
 

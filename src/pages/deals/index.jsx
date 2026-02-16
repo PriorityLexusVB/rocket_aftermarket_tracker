@@ -577,6 +577,90 @@ const SheetViewTable = ({ deals = [], onRowClick }) => {
 }
 
 // Determine primary label for a deal card/table row (job number > title > stock > customer)
+
+const getDealNumberDisplay = (deal) => {
+  if (!deal) return '—'
+  return (
+    deal?.job_number ||
+    deal?.jobNumber ||
+    deal?.deal_number ||
+    deal?.dealNumber ||
+    deal?.transaction_number ||
+    '—'
+  )
+}
+
+const getDealDateDisplay = (deal) => {
+  const raw =
+    deal?.deal_date ||
+    deal?.dealDate ||
+    deal?.created_at ||
+    deal?.createdAt ||
+    deal?.created ||
+    deal?.inserted_at
+  return formatCreatedShort(raw) || '—'
+}
+
+const DealCoreSnapshot = ({ deal }) => {
+  if (!deal) return null
+
+  const fin = getDealFinancials(deal)
+  const vehicle = getDealVehicleDisplay(deal)
+  const customer =
+    deal?.customer_name || deal?.customerName || deal?.vehicle?.owner_name || deal?.customer_email || '—'
+  const dealNumber = getDealNumberDisplay(deal)
+  const dateLabel = getDealDateDisplay(deal)
+  const productSummary = getDealProductLabelSummary(deal, 4)
+  const itemsBought =
+    productSummary.labels.length > 0
+      ? `${productSummary.labels.join(', ')}${productSummary.extraCount ? ` +${productSummary.extraCount}` : ''}`
+      : '—'
+
+  return (
+    <div
+      className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-2"
+      data-testid={deal?.id ? `deal-core-snapshot-${deal.id}` : 'deal-core-snapshot'}
+    >
+      <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Customer</div>
+          <div className="truncate font-semibold text-[rgb(var(--foreground))]" title={customer}>
+            {customer}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Vehicle</div>
+          <div className="truncate font-semibold text-[rgb(var(--foreground))]" title={vehicle?.title || ''}>
+            {vehicle?.isMissing ? '—' : vehicle?.main}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Date</div>
+          <div className="font-semibold tabular-nums text-[rgb(var(--foreground))]">{dateLabel}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Deal #</div>
+          <div className="truncate font-semibold tabular-nums text-[rgb(var(--foreground))]" title={dealNumber}>
+            {dealNumber}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Profit</div>
+          <div className="font-semibold tabular-nums text-[rgb(var(--foreground))]">
+            {formatMoney0OrDash(fin?.profit)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Items Bought</div>
+          <div className="truncate font-semibold text-[rgb(var(--foreground))]" title={itemsBought}>
+            {itemsBought}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const getDealPrimaryRef = (deal) => {
   if (!deal) return 'Deal'
 
@@ -2202,7 +2286,7 @@ export default function DealsPage() {
                     }}
                   >
                     <div className="mb-3">
-                      <SheetSummaryRow deal={deal} />
+                      <DealCoreSnapshot deal={deal} />
                     </div>
 
                     {/* Column order (desktop): Created | Schedule | Customer/Sales | Vehicle | Pills | Actions */}
