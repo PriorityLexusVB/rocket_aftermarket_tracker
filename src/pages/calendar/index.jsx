@@ -142,6 +142,15 @@ const safeDayKey = (value) => {
   return d ? d.toDateString() : ''
 }
 
+const getAppointmentCustomerName = (job) =>
+  (
+    job?.customer_name ||
+    job?.customerName ||
+    job?.vehicle?.owner_name ||
+    job?.vehicles?.owner_name ||
+    ''
+  ).trim()
+
 const CalendarSchedulingCenter = ({
   embedded = false,
   shellState,
@@ -716,6 +725,7 @@ const CalendarSchedulingCenter = ({
                 const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                 const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
                 const vehicleLabel = job?.vehicle_info || ''
+                const customerName = getAppointmentCustomerName(job)
                 const titleText = job?.title || ''
                 const titleWithNumber = jobNumber
                   ? `${jobNumber} • ${titleText || 'Open deal'}`
@@ -740,13 +750,14 @@ const CalendarSchedulingCenter = ({
                   ? `calendar-popover-${job?.id || job?.calendar_key}`
                   : undefined
                 const popoverLines = showDetailPopovers
-                  ? [
-                      timeLabel ? `Time: ${timeLabel}` : null,
-                      vendorLabel ? `Vendor: ${vendorLabel}` : null,
-                      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
-                      statusLabel ? `Status: ${statusLabel}` : null,
-                    ]
-                  : []
+                    ? [
+                        timeLabel ? `Time: ${timeLabel}` : null,
+                        vendorLabel ? `Vendor: ${vendorLabel}` : null,
+                        customerName ? `Customer: ${customerName}` : null,
+                        vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                        statusLabel ? `Status: ${statusLabel}` : null,
+                      ]
+                    : []
                 const handleGridClick = getCalendarGridClickHandler({
                   dealDrawerEnabled: canOpenDrawer,
                   onOpenDealDrawer,
@@ -814,6 +825,9 @@ const CalendarSchedulingCenter = ({
                       </div>
                     </div>
                     <div className="text-[11px] opacity-90 truncate">{vendorLabel}</div>
+                    {customerName ? (
+                      <div className="text-[11px] opacity-90 truncate">{customerName}</div>
+                    ) : null}
                     {vehicleLabel ? (
                       <div className="text-[11px] opacity-90 truncate">{vehicleLabel}</div>
                     ) : null}
@@ -1021,6 +1035,7 @@ const CalendarSchedulingCenter = ({
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
                       const vendorLabel =
                         job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+                      const customerName = getAppointmentCustomerName(job)
                       const titleText = job?.title || ''
                       const titleWithNumber = jobNumber
                         ? `${jobNumber} • ${titleText || 'Open deal'}`
@@ -1050,6 +1065,7 @@ const CalendarSchedulingCenter = ({
                         ? [
                             timeLabel ? `Time: ${timeLabel}` : null,
                             vendorLabel ? `Vendor: ${vendorLabel}` : null,
+                            customerName ? `Customer: ${customerName}` : null,
                             statusLabel ? `Status: ${statusLabel}` : null,
                           ]
                         : []
@@ -1088,6 +1104,9 @@ const CalendarSchedulingCenter = ({
                             </span>
                           </div>
                           <div className="text-[10px] opacity-90 truncate">{vendorLabel}</div>
+                          {customerName ? (
+                            <div className="text-[10px] opacity-90 truncate">{customerName}</div>
+                          ) : null}
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
                               ? `Promise: ${promiseLabel || '—'}`
@@ -1172,6 +1191,10 @@ const CalendarSchedulingCenter = ({
               })
 
               const listTitle = job?.title || 'Open deal'
+              const customerName = getAppointmentCustomerName(job)
+              const metaLine = [job?.vendor_name, customerName, job?.vehicle_info]
+                .filter(Boolean)
+                .join(' • ')
 
               return (
                 <div
@@ -1188,9 +1211,7 @@ const CalendarSchedulingCenter = ({
                       >
                         {listTitle}
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        {job?.vendor_name} • {job?.vehicle_info}
-                      </p>
+                      <p className="text-sm text-gray-600">{metaLine}</p>
                       <p className="text-sm text-gray-500">
                         {job?.time_tbd
                           ? `Promise: ${
