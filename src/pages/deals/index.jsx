@@ -1762,7 +1762,7 @@ export default function DealsPage() {
             {/* Profit */}
             <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg 0 mr-4">
+                <div className="p-3 rounded-lg bg-accent/50 mr-4">
                   <Icon name="TrendingUp" size={24} className="text-foreground" />
                 </div>
                 <div>
@@ -1781,7 +1781,7 @@ export default function DealsPage() {
             {/* Margin */}
             <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg 0 mr-4">
+                <div className="p-3 rounded-lg bg-accent/50 mr-4">
                   <Icon name="Percent" size={24} className="text-foreground" />
                 </div>
                 <div>
@@ -1800,7 +1800,7 @@ export default function DealsPage() {
             {/* Booked (time TBD) */}
             <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
               <div className="flex items-center">
-                <div className="p-3 rounded-lg 0 mr-4">
+                <div className="p-3 rounded-lg bg-accent/50 mr-4">
                   <Icon name="Clock" size={24} className="text-foreground" />
                 </div>
                 <div>

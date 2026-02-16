@@ -196,7 +196,7 @@ const Navbar = () => {
     <>
       {/* Mobile Bottom Navigation - Updated for 6 items with better spacing */}
       {!isTest && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 0 backdrop-blur-xl border-t 0 shadow-lg">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-t border-border/80 shadow-lg">
           <div className="grid grid-cols-6 h-16">
             {navigationLinks?.slice(0, 6)?.map((link) => {
               const Icon = link?.icon
@@ -208,8 +208,8 @@ const Navbar = () => {
                   to={link?.href}
                   className={`flex flex-col items-center justify-center space-y-1 px-1 transition-colors duration-200 ${
                     isActive
-                      ? 'text-foreground 0'
-                      : 'text-muted-foreground hover:text-foreground 0'
+                      ? 'text-foreground bg-accent/25'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/35'
                   }`}
                   aria-current={isActive ? 'page' : undefined}
                 >
@@ -225,13 +225,13 @@ const Navbar = () => {
       )}
 
       {/* Desktop Header Navigation - Streamlined for space */}
-      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 0 backdrop-blur-xl border-b 0 shadow-sm">
+      <nav className="hidden md:block fixed top-0 left-0 right-0 z-50 bg-card/90 backdrop-blur-xl border-b border-border/80 shadow-sm">
         <div className="w-full px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             {/* Logo - Compact for space */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2 group">
-                <div className="w-9 h-9 rounded-lg 0 border border-border flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
                   <img
                     src="/brand/logos/rocket-mark-white.png"
                     alt="Rocket Aftermarket Tracker"
@@ -314,7 +314,7 @@ const Navbar = () => {
                         notifications?.map((notification) => (
                           <div
                             key={notification?.id}
-                            className="px-4 py-3 0 border-b border-border last:border-b-0"
+                            className="px-4 py-3 hover:bg-accent/35 border-b border-border last:border-b-0"
                           >
                             <div className="flex items-start space-x-3">
                               <div className="flex-shrink-0 mt-1">
@@ -370,12 +370,12 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-3 p-2 text-muted-foreground hover:text-foreground rounded-lg 0 transition-colors duration-200"
+                  className="flex items-center space-x-3 p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent/35 transition-colors duration-200"
                   aria-label="Profile menu"
                   aria-haspopup="menu"
                   aria-expanded={isProfileOpen}
                 >
-                  <div className="w-8 h-8 0 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-accent/25 rounded-lg flex items-center justify-center">
                     <User className="w-4 h-4 text-foreground" />
                   </div>
                   <div className="hidden xl:block text-left">
@@ -393,7 +393,7 @@ const Navbar = () => {
                   <div className="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-lg border border-border py-1 z-50 text-foreground">
                     <div className="px-4 py-3 border-b border-border">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 0 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-accent/25 rounded-lg flex items-center justify-center">
                           <User className="w-5 h-5 text-foreground" />
                         </div>
                         <div>
@@ -416,7 +416,7 @@ const Navbar = () => {
                           setIsProfileOpen(false)
                           navigate('/profile')
                         }}
-                        className="flex items-center w-full px-4 py-2 text-sm text-foreground 0 hover:text-foreground transition-colors duration-200"
+                        className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-accent/35 hover:text-foreground transition-colors duration-200"
                       >
                         <User className="w-4 h-4 mr-3" />
                         Profile Settings
@@ -424,7 +424,7 @@ const Navbar = () => {
 
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-400 0 transition-colors duration-200"
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors duration-200"
                       >
                         <LogOut className="w-4 h-4 mr-3" />
                         Sign Out
@@ -439,11 +439,11 @@ const Navbar = () => {
       </nav>
 
       {/* Mobile Top Header - Simplified */}
-      <nav className="md:hidden 0 backdrop-blur-xl border-b 0 shadow-sm sticky top-0 z-[70]">
+      <nav className="md:hidden bg-card/90 backdrop-blur-xl border-b border-border/80 shadow-sm sticky top-0 z-[70]">
         <div className="flex items-center justify-between h-16 px-4">
           {/* Logo - Compact */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg 0 border border-border flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
               <img
                 src="/brand/logos/rocket-mark-white.png"
                 alt="Rocket Aftermarket Tracker"
@@ -532,8 +532,8 @@ const Navbar = () => {
             <div className="fixed top-16 right-0 bottom-0 w-[min(18rem,100vw)] bg-card shadow-xl z-[80] overflow-y-auto border-l border-border">
               <div className="p-6">
                 {/* User Profile Section */}
-                <div className="flex items-center space-x-4 p-4 0 rounded-xl mb-6">
-                  <div className="w-12 h-12 0 rounded-xl flex items-center justify-center">
+                <div className="flex items-center space-x-4 p-4 bg-card rounded-xl mb-6">
+                  <div className="w-12 h-12 bg-accent/25 rounded-xl flex items-center justify-center">
                     <User className="w-6 h-6 text-foreground" />
                   </div>
                   <div className="flex-1">
@@ -591,7 +591,7 @@ const Navbar = () => {
                       setIsMenuOpen(false)
                       navigate('/profile')
                     }}
-                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-muted-foreground hover:text-foreground 0 rounded-lg transition-colors duration-200"
+                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/35 rounded-lg transition-colors duration-200"
                   >
                     <User className="w-5 h-5" />
                     <span>Profile Settings</span>
@@ -599,7 +599,7 @@ const Navbar = () => {
 
                   <button
                     onClick={handleSignOut}
-                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-red-400 0 rounded-lg transition-colors duration-200"
+                    className="flex items-center w-full space-x-3 px-3 py-3 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors duration-200"
                   >
                     <LogOut className="w-5 h-5" />
                     <span>Sign Out</span>

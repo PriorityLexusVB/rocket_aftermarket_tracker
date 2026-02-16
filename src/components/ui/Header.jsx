@@ -150,7 +150,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
           </Button>
 
           <Link to="/" className="flex items-center">
-            <div className="w-8 h-8 rounded-lg 0 border border-border flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
               <img
                 src="/brand/logos/rocket-mark-white.png"
                 alt="Rocket Aftermarket Tracker"
@@ -223,7 +223,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
                 placeholder="Search VINs, vendors, sales..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e?.target?.value)}
-                className="w-72 pl-10 pr-4 py-2 text-sm 0 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:0 focus:border-transparent transition-all duration-200 focus:w-80"
+                className="w-72 pl-10 pr-4 py-2 text-sm bg-accent/25 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/35 focus:border-transparent transition-all duration-200 focus:w-80"
               />
               {searchQuery && (
                 <Button

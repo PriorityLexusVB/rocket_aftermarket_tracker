@@ -74,7 +74,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <div className="p-8 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg 0 border border-border flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
                   <img
                     src="/brand/logos/rocket-mark-white.png"
                     alt="Rocket Aftermarket Tracker"
@@ -89,7 +89,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="lg:hidden w-8 h-8 rounded-lg 0 0 flex items-center justify-center transition-colors"
+                className="lg:hidden w-8 h-8 rounded-lg bg-accent/25 hover:bg-accent/45 flex items-center justify-center transition-colors"
               >
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
@@ -109,8 +109,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                       w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-200 group
                       ${
                         isActive
-                          ? '0 text-foreground border border-border'
-                          : 'text-muted-foreground 0 hover:text-foreground'
+                          ? 'bg-accent/45 text-foreground border border-border'
+                          : 'text-muted-foreground hover:bg-accent/35 hover:text-foreground'
                       }
                     `}
                   >
@@ -118,7 +118,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                       <div
                         className={`
                         w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200
-                        ${isActive ? '0' : '0 group-0'}
+                        ${isActive ? 'bg-accent/45' : 'bg-accent/25 group-hover:bg-accent/45'}
                       `}
                       >
                         <item.icon
@@ -150,9 +150,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
           {/* Footer */}
           <div className="p-6 border-t border-border">
-            <div className="rounded-2xl p-4 border border-border 0">
+            <div className="rounded-2xl p-4 border border-border bg-accent/25">
               <div className="flex items-center space-x-3 mb-2">
-                <div className="w-8 h-8 rounded-lg 0 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-accent/45 flex items-center justify-center">
                   <BarChart3 className="w-4 h-4 text-foreground" />
                 </div>
                 <div>
