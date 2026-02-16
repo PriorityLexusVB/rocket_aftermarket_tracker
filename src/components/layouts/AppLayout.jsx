@@ -12,7 +12,7 @@ const AppLayout = ({ children }) => {
   const shouldShowNavbar = !excludeNavbarPaths?.includes(location?.pathname)
 
   return (
-    <div className="min-h-screen bg-[rgb(var(--background))] text-[rgb(var(--foreground))] transition-colors duration-300">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* Conditionally render Navbar - exclude for guest claims form */}
       {shouldShowNavbar && <Navbar />}
 

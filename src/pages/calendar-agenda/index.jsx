@@ -895,7 +895,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
     <div className="min-h-screen bg-slate-50 text-slate-900" aria-label="Calendar Agenda">
       {!isEmbedded && <Navbar />}
       <div
-        className="p-4 md:p-8 max-w-none mx-auto space-y-6"
+        className="p-4 md:p-8 max-w-7xl mx-auto space-y-6"
         style={isEmbedded ? undefined : { paddingTop: '5rem' }}
       >
         {/* Aria-live region for screen reader announcements */}
