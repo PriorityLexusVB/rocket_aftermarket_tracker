@@ -554,12 +554,14 @@ export default function SnapshotView() {
 
   useEffect(() => {
     const mode = String(searchParams?.get?.('window') || '')
+    if (!mode) return
+
     const normalized = mode === 'needs_scheduling' ? 'all_day' : mode
     const allowedModes = new Set(['today', 'next7', 'all_day'])
-    const nextMode = allowedModes.has(normalized) ? normalized : 'today'
+    if (!allowedModes.has(normalized)) return
 
-    if (nextMode !== windowMode) {
-      setWindowMode(nextMode)
+    if (normalized !== windowMode) {
+      setWindowMode(normalized)
     }
   }, [searchParams, windowMode])
 
