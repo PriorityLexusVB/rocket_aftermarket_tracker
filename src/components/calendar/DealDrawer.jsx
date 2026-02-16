@@ -111,9 +111,9 @@ export default function DealDrawer({ open, deal, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="deal-drawer-title"
-        className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto bg-white shadow-xl"
+        className="absolute right-0 top-16 h-[calc(100%-4rem)] w-full max-w-xl overflow-y-auto bg-white shadow-xl md:top-0 md:h-full"
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">
           <div>
             <h2 id="deal-drawer-title" className="text-lg font-semibold text-slate-900">
               {title}
@@ -141,7 +141,7 @@ export default function DealDrawer({ open, deal, onClose }) {
           </div>
         </div>
 
-        <div className="space-y-6 p-6 text-sm text-slate-700">
+        <div className="space-y-5 p-4 pb-24 text-sm text-slate-700 md:space-y-6 md:p-6 md:pb-6">
           <section className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
