@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import AppLayout from '../../components/layouts/AppLayout'
-import DealFormV2 from '../../components/deals/DealFormV2'
+import DealForm from './DealForm'
 import * as dealService from '../../services/dealService'
 
 export default function EditDeal() {
@@ -63,15 +63,15 @@ export default function EditDeal() {
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl p-4 md:p-8" style={{ paddingTop: '5rem' }}>
-        <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-sm">
-          <div className="flex items-start justify-between gap-3 border-b border-[rgb(var(--border))] p-6">
+        <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex items-start justify-between gap-3 border-b border-border p-6">
             <div>
-              <h1 className="text-2xl font-semibold text-[rgb(var(--foreground))]">Edit Deal</h1>
-              <p className="mt-1 text-sm text-[rgb(var(--muted-foreground))]">
+              <h1 className="text-2xl font-semibold text-foreground">Edit Deal</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Deal {dealNumber} / Stock # {stockNumber}
               </p>
               {lastSavedAt ? (
-                <p className="mt-1 text-xs text-[rgb(var(--muted-foreground))]" data-testid="last-saved-timestamp">
+                <p className="mt-1 text-xs text-muted-foreground" data-testid="last-saved-timestamp">
                   Last saved:{' '}
                   {lastSavedAt.toLocaleTimeString('en-US', {
                     hour12: false,
@@ -86,7 +86,7 @@ export default function EditDeal() {
             <button
               type="button"
               onClick={() => navigate(returnTo)}
-              className="h-10 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 text-sm font-medium text-[rgb(var(--foreground))] hover:bg-[rgb(var(--accent)/0.5)]"
+              className="h-10 rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground 0"
             >
               {backLabel}
             </button>
@@ -94,16 +94,15 @@ export default function EditDeal() {
 
           <div className="p-6">
             {loading ? (
-              <div className="py-8 text-sm text-[rgb(var(--muted-foreground))]">Loading deal...</div>
+              <div className="py-8 text-sm text-muted-foreground">Loading deal...</div>
             ) : error ? (
               <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-700">
                 {error}
               </div>
             ) : (
-              <DealFormV2
-                mode="edit"
-                job={dealData || {}}
-                onSave={handleSave}
+              <DealForm
+                initial={dealData || {}}
+                onSubmit={handleSave}
                 onCancel={() => navigate(returnTo)}
               />
             )}

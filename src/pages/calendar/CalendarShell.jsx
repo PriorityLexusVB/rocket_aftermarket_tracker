@@ -257,7 +257,6 @@ export default function CalendarShell() {
         <CalendarAgenda
           embedded
           shellState={shellState}
-          locationFilter={locationFilter}
           hideEmbeddedControls
           onOpenDealDrawer={dealDrawerEnabled ? handleOpenDealDrawer : undefined}
         />
@@ -287,7 +286,7 @@ export default function CalendarShell() {
 
   return (
     <AppLayout>
-      <div className="mx-auto flex w-full max-w-none min-h-[calc(100vh-120px)] flex-col gap-4 p-4 md:px-6">
+      <div className="mx-auto flex w-full max-w-7xl min-h-[calc(100vh-120px)] flex-col gap-4 p-4 md:px-6">
         <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-3">
