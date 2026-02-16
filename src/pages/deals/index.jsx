@@ -2464,7 +2464,7 @@ export default function DealsPage() {
                                 return next
                               })
                             }}
-                            className="text-xs text-[rgb(var(--muted-foreground))] hover:text-white"
+                            className="text-xs text-[rgb(var(--muted-foreground))] hover:text-[rgb(var(--foreground))]"
                             aria-label="Close deal details"
                           >
                             Close
@@ -2472,8 +2472,8 @@ export default function DealsPage() {
                         </div>
 
                         {Array.isArray(deal?.job_parts) && deal.job_parts.length > 0 ? (
-                          <div className="mt-3 overflow-hidden rounded-lg border border-[rgb(var(--border))]">
-                            <table className="w-full text-sm">
+                          <div className="mt-3 overflow-hidden rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))]">
+                            <table className="w-full text-sm bg-[rgb(var(--card))] text-[rgb(var(--foreground))]">
                               <thead className="bg-[rgb(var(--card))] text-xs text-[rgb(var(--muted-foreground))]">
                                 <tr>
                                   <th className="px-3 py-2 text-left font-medium">Op</th>
@@ -2503,7 +2503,7 @@ export default function DealsPage() {
                                   return (
                                     <tr
                                       key={p?.id || `${name}-${op}`}
-                                      className="hover:bg-[rgb(var(--card))]"
+                                      className="bg-[rgb(var(--card))] hover:bg-[rgb(var(--accent)/0.35)]"
                                     >
                                       <td className="px-3 py-2 text-xs font-mono tabular-nums text-[rgb(var(--foreground))]">
                                         {op || '—'}
