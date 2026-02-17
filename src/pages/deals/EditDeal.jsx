@@ -102,7 +102,8 @@ export default function EditDeal() {
             ) : (
               <DealForm
                 initial={dealData || {}}
-                onSubmit={handleSave}
+                mode="edit"
+                onSave={handleSave}
                 onCancel={() => navigate(returnTo)}
               />
             )}
