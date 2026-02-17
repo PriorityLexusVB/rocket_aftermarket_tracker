@@ -111,7 +111,7 @@ export default function DealDrawer({ open, deal, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="deal-drawer-title"
-        className="absolute right-0 top-16 h-[calc(100%-4rem)] w-full max-w-xl overflow-y-auto bg-white shadow-xl md:top-0 md:h-full"
+        className="absolute right-0 top-16 h-[calc(100%-4rem)] w-full max-w-xl overflow-hidden bg-white shadow-xl md:top-0 md:h-full flex flex-col"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">
           <div>
@@ -120,7 +120,7 @@ export default function DealDrawer({ open, deal, onClose }) {
             </h2>
             <p className="text-xs text-slate-500">Deal Drawer (preview)</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <button
               ref={closeButtonRef}
               type="button"
@@ -130,18 +130,10 @@ export default function DealDrawer({ open, deal, onClose }) {
             >
               <X className="h-4 w-4" />
             </button>
-            {dealId ? (
-              <a
-                href={`/deals/${dealId}/edit`}
-                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Open deal
-              </a>
-            ) : null}
           </div>
         </div>
 
-        <div className="space-y-5 p-4 pb-24 text-sm text-slate-700 md:space-y-6 md:p-6 md:pb-6">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-5 p-4 text-sm text-slate-700 md:space-y-6 md:p-6">
           <section className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -150,17 +142,6 @@ export default function DealDrawer({ open, deal, onClose }) {
                 </div>
                 <div className="text-xs text-slate-500">{primaryAction.helper}</div>
               </div>
-              <button
-                type="button"
-                disabled={primaryAction.disabled}
-                className={`rounded-md px-3 py-2 text-xs font-semibold ${
-                  primaryAction.disabled
-                    ? 'cursor-not-allowed bg-slate-200 text-slate-400'
-                    : 'bg-slate-900 text-white'
-                }`}
-              >
-                {primaryAction.label}
-              </button>
             </div>
           </section>
           <section className="space-y-1">
@@ -201,6 +182,40 @@ export default function DealDrawer({ open, deal, onClose }) {
               Activity history coming soon.
             </div>
           </section>
+        </div>
+
+        <div className="sticky bottom-0 z-10 border-t border-slate-200 bg-white px-4 py-3 md:px-6">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => onClose?.()}
+              aria-label="Dismiss drawer"
+              className="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Dismiss
+            </button>
+            <div className="flex items-center gap-2">
+              {dealId ? (
+                <a
+                  href={`/deals/${dealId}/edit`}
+                  className="rounded-md border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Open deal
+                </a>
+              ) : null}
+              <button
+                type="button"
+                disabled={primaryAction.disabled}
+                className={`rounded-md px-3 py-2 text-xs font-semibold ${
+                  primaryAction.disabled
+                    ? 'cursor-not-allowed bg-slate-200 text-slate-400'
+                    : 'bg-slate-900 text-white'
+                }`}
+              >
+                {primaryAction.label}
+              </button>
+            </div>
+          </div>
         </div>
       </aside>
     </div>

@@ -1005,7 +1005,7 @@ const CalendarFlowManagementCenter = ({
     const hasTimeWindow = !!job?.scheduled_start_time
     const promise = getPromiseValue(job)
     const isPromiseOnly = !hasTimeWindow && !!promise
-    const allDayLabel = promise ? `All day • ${formatEtDateLabel(promise)}` : 'All day'
+    const allDayLabel = promise ? `Time TBD • Promise: ${formatEtDateLabel(promise)}` : 'Time TBD'
 
     // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
     // Avoid confusing "Pending" badges for these rows.
@@ -1377,7 +1377,7 @@ const CalendarFlowManagementCenter = ({
   }
 
   const content = (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`${isEmbedded ? 'h-full min-h-0 flex flex-col' : 'min-h-screen'} bg-gray-50`}>
       {/* Header */}
       {!suppressChrome && (
         <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -1715,7 +1715,7 @@ const CalendarFlowManagementCenter = ({
       )}
 
       {/* Main Content */}
-      <div className="flex h-screen">
+      <div className={`${isEmbedded ? 'flex flex-1 min-h-0' : 'flex h-screen'}`}>
         {/* Promised Queue Sidebar - Hide for month view */}
         {viewMode !== 'month' && (
           <PromisedQueue

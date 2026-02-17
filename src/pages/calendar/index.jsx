@@ -761,7 +761,7 @@ const CalendarSchedulingCenter = ({
                     })
                   : ''
                 const timeLabel = job?.time_tbd
-                  ? `Promise: ${promiseLabel || '—'}`
+                  ? `Time TBD • Promise: ${promiseLabel || '—'}`
                   : jobStartTime
                     ? safeFormatTime(jobStartTime, {
                         hour: 'numeric',
@@ -792,7 +792,7 @@ const CalendarSchedulingCenter = ({
                     key={job?.calendar_key || job?.id}
                     className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
-                    title={tooltipTitle}
+                    title={titleText}
                     aria-describedby={popoverId}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -856,7 +856,7 @@ const CalendarSchedulingCenter = ({
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="text-xs opacity-80">
                         {job?.time_tbd
-                          ? `Promise: ${promiseLabel || '—'}`
+                          ? `Time TBD • Promise: ${promiseLabel || '—'}`
                           : jobStartTime
                             ? safeFormatTime(jobStartTime, {
                                 hour: 'numeric',
@@ -1114,7 +1114,7 @@ const CalendarSchedulingCenter = ({
                           })
                         : ''
                       const timeLabel = job?.time_tbd
-                        ? `Promise: ${promiseLabel || '—'}`
+                        ? `Time TBD • Promise: ${promiseLabel || '—'}`
                         : jobStartTime
                           ? safeFormatTime(jobStartTime, {
                               hour: 'numeric',
@@ -1150,7 +1150,7 @@ const CalendarSchedulingCenter = ({
                             e?.stopPropagation?.()
                             handleMonthGridClick()
                           }}
-                          title={tooltipTitle}
+                          title={titleText}
                           aria-describedby={popoverId}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -1172,7 +1172,7 @@ const CalendarSchedulingCenter = ({
                           ) : null}
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
-                              ? `Promise: ${promiseLabel || '—'}`
+                              ? `Time TBD • Promise: ${promiseLabel || '—'}`
                               : jobStartTime
                                 ? safeFormatTime(jobStartTime, {
                                     hour: 'numeric',
@@ -1225,7 +1225,7 @@ const CalendarSchedulingCenter = ({
                     : String(normalizedStatus).replace(/_/g, ' ').toUpperCase()
                   : 'SCHEDULED'
               const timeLabel = job?.time_tbd
-                ? `Promise: ${
+                ? `Time TBD • Promise: ${
                     safeFormatDate(job?.scheduled_start_time, {
                       weekday: 'short',
                       month: 'short',
