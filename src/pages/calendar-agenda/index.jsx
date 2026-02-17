@@ -20,7 +20,6 @@ import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { getJobLocationType } from '@/utils/locationType'
-import { getMicroFlashClass } from '@/utils/microInteractions'
 import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const TZ = 'America/New_York'
@@ -349,7 +348,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   const focusRef = useRef(null)
   const focusOpenedRef = useRef(null)
   const microFlashTimerRef = useRef(null)
-  const [recentlyUpdatedId, setRecentlyUpdatedId] = useState(null)
+  const [, setRecentlyUpdatedId] = useState(null)
 
   // Reschedule modal state
   const [rescheduleModal, setRescheduleModal] = useState({
