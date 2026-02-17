@@ -619,15 +619,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       // Update line item schedules using the new service method
       await jobService.updateLineItemSchedules(jobId, scheduleData)
 
-      if (microInteractionsEnabled && jobId) {
-        if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
-        setRecentlyUpdatedId(jobId)
-        microFlashTimerRef.current = setTimeout(() => {
-          setRecentlyUpdatedId(null)
-          microFlashTimerRef.current = null
-        }, 600)
-      }
-
       if (microInteractionsEnabled && hadConflict && vendorId && startTime && endTime) {
         try {
           const { hasConflict } = await calendarService.checkSchedulingConflict(
@@ -655,12 +646,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       toast?.error?.(e?.message || 'Failed to reschedule')
     }
   }
-
-  useEffect(() => {
-    return () => {
-      if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
-    }
-  }, [])
 
   async function handleComplete(job) {
     const previousStatus = job.job_status
@@ -923,7 +908,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">All Statuses</option>
-                <option value="pending">Booked (time TBD)</option>
+                <option value="pending">Needs Work (time TBD)</option>
                 <option value="scheduled">Booked (time set)</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>

@@ -254,7 +254,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
         text: 'text-gray-700',
         border: 'border-gray-200',
         icon: Clock,
-        label: 'Booked (time TBD)',
+        label: 'Needs Work (time TBD)',
       },
     }
     return configs?.[status] || configs?.pending

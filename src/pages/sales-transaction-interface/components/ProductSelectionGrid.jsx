@@ -558,7 +558,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                         </span>
                         {isOffsite && service?.requiresSchedule && (
                           <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                            Requires Schedule
+                            Promise Date Needed
                           </span>
                         )}
                       </div>
@@ -599,12 +599,12 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                   <div className="mt-4 pt-4 border-t border-border">
                     <h5 className="text-sm font-medium text-foreground mb-3 flex items-center space-x-2">
                       <Icon name="Calendar" size={14} />
-                      <span>Scheduling Requirements</span>
+                      <span>Promise Date Requirements</span>
                     </h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="flex flex-col">
                         <label className="text-sm font-medium text-foreground mb-2">
-                          Requires Scheduling
+                          Track Promise Date
                         </label>
                         <div className="flex items-center h-10">
                           <input
@@ -624,14 +624,14 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                             htmlFor={`schedule-${service?.id}`}
                             className="ml-2 text-sm text-foreground cursor-pointer"
                           >
-                            Service requires scheduling
+                            Service needs promised completion date
                           </label>
                         </div>
                       </div>
 
                       <div className="flex flex-col">
                         <label className="text-sm font-medium text-foreground mb-2">
-                          Off-Site Service
+                          Off-Site (Tint/Vendor)
                         </label>
                         <div className="flex items-center h-10">
                           <input
@@ -641,7 +641,7 @@ const ProductSelectionGrid = ({ selectedProducts, onProductToggle, onProductUpda
                             className="w-4 h-4 text-orange bg-background border-border rounded"
                           />
                           <span className="ml-2 text-sm text-muted-foreground">
-                            Work performed at vendor location
+                            Work performed at tint/vendor location
                           </span>
                         </div>
                       </div>

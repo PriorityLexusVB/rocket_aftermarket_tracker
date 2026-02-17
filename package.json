@@ -68,6 +68,7 @@
   "scripts": {
     "dev": "vite",
     "dev:5174": "vite --port 5174 --strictPort",
+    "generate:icons": "node scripts/generate-icons.mjs",
     "guard:client-env": "node scripts/guard-client-env.mjs",
     "guard:instructions": "node scripts/guard-instructions.mjs",
     "test": "node --max-old-space-size=4096 ./node_modules/vitest/vitest.mjs run",
@@ -156,6 +157,7 @@
     "postcss": "8.5.6",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "sharp": "^0.34.5",
     "supabase": "^2.65.6",
     "tailwindcss": "3.4.18",
     "typescript": "^5.9.3",
