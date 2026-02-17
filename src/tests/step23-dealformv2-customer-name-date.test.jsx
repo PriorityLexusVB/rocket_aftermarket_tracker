@@ -252,14 +252,7 @@ describe('Step 23: DealFormV2 - Customer Name + Deal Date at top; Vendor per lin
       expect(priceInput.value).toBe('100')
     })
 
-    // Uncheck requires scheduling and provide reason
-    const requiresSchedulingCheckbox = screen.getByTestId('requires-scheduling-0')
-    fireEvent.click(requiresSchedulingCheckbox)
-
-    await waitFor(() => {
-      const reasonInput = screen.getByPlaceholderText('e.g., installed at delivery')
-      fireEvent.change(reasonInput, { target: { value: 'Test reason' } })
-    })
+    // Keep scheduling enabled so promised date is retained (time can remain TBD)
 
     // Save the deal
     const saveButton =
@@ -323,14 +316,9 @@ describe('Step 23: DealFormV2 - Customer Name + Deal Date at top; Vendor per lin
     const vendorSelect = screen.getByTestId('line-vendor-0')
     fireEvent.change(vendorSelect, { target: { value: 'vendor-1' } })
 
-    // Uncheck requires scheduling and provide reason
-    const requiresSchedulingCheckbox = screen.getByTestId('requires-scheduling-0')
-    fireEvent.click(requiresSchedulingCheckbox)
-
-    await waitFor(() => {
-      const reasonInput = screen.getByPlaceholderText('e.g., installed at delivery')
-      fireEvent.change(reasonInput, { target: { value: 'Test reason' } })
-    })
+    // Keep scheduling enabled and set promised date (time can remain TBD)
+    const promisedDateInput = screen.getByTestId('date-scheduled-0')
+    fireEvent.change(promisedDateInput, { target: { value: toDateInputValue(new Date()) } })
 
     // Save the deal
     const saveButton =

@@ -1711,7 +1711,7 @@ export default function DealsPage() {
               </div>
             </div>
 
-            {/* Booked (time TBD) */}
+            {/* Needs Work (time TBD) */}
             <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-white/10 mr-4">
@@ -1719,24 +1719,24 @@ export default function DealsPage() {
                 </div>
                 <div>
                   <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
-                    Booked (time TBD)
+                    Needs Work (time TBD)
                   </h3>
                   <p className="text-gray-100 text-2xl font-bold">{kpis?.pending}</p>
                 </div>
               </div>
             </div>
 
-            {/* Drafts */}
+            {/* Products Sold */}
             <div className="bg-white/5 p-6 rounded-xl border border-white/10 shadow-sm">
               <div className="flex items-center">
                 <div className="p-3 rounded-lg bg-white/10 mr-4">
-                  <Icon name="File" size={24} className="text-gray-200" />
+                  <Icon name="Package" size={24} className="text-gray-200" />
                 </div>
                 <div>
                   <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wide">
-                    Drafts
+                    Items Sold
                   </h3>
-                  <p className="text-gray-100 text-2xl font-bold">{kpis?.drafts}</p>
+                  <p className="text-gray-100 text-2xl font-bold">{kpis?.productsSold || 0}</p>
                 </div>
               </div>
             </div>
@@ -1751,7 +1751,7 @@ export default function DealsPage() {
               { value: 'All', label: 'All' },
               { value: 'Open', label: 'Open' },
               { value: 'Draft', label: 'Draft' },
-              { value: 'Pending', label: 'Booked (time TBD)' },
+              { value: 'Pending', label: 'Needs Work (time TBD)' },
               { value: 'Scheduled', label: 'Scheduled' },
               { value: 'Active', label: 'Active' },
               { value: 'Completed', label: 'Completed' },

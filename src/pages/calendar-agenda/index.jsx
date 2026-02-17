@@ -905,7 +905,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">All Statuses</option>
-                <option value="pending">Booked (time TBD)</option>
+                <option value="pending">Needs Work (time TBD)</option>
                 <option value="scheduled">Booked (time set)</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
