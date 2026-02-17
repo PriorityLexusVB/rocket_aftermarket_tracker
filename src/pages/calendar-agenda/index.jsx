@@ -347,9 +347,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   )
   const focusRef = useRef(null)
   const focusOpenedRef = useRef(null)
-  const microFlashTimerRef = useRef(null)
-  const [, setRecentlyUpdatedId] = useState(null)
-
   // Reschedule modal state
   const [rescheduleModal, setRescheduleModal] = useState({
     open: false,

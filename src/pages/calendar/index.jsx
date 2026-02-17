@@ -1283,8 +1283,6 @@ const CalendarSchedulingCenter = ({
                       </h3>
                       <p className="text-sm text-gray-600">{metaLine}</p>
                       <p className="text-sm text-gray-500">
-                      <p className="text-sm text-gray-600">{metaLine}</p>
-                      <p className="text-sm text-gray-500">
                         {job?.time_tbd
                           ? `Promise: ${
                               safeFormatDate(job?.scheduled_start_time, {
