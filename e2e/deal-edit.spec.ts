@@ -24,6 +24,14 @@ test.describe('Deal create + edit flow', () => {
     // Wait for the form to render
     await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })
 
+    const dealNumber = page.getByTestId('deal-number-input')
+    await expect(dealNumber).toBeVisible()
+
+    const uniqueJobNumber = `E2E-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    // Job/Deal number must be globally unique in shared E2E DB
+    await dealNumber.fill(uniqueJobNumber)
+    await expect(dealNumber).toHaveValue(uniqueJobNumber)
+
     const description = page.getByTestId('description-input')
     await expect(description).toBeVisible()
     const initialDescription = `E2E Deal ${Date.now()}`
