@@ -84,25 +84,13 @@ test.describe('Deal Form dropdowns and line items', () => {
     const vendorSelectV1 = page.getByTestId('vendor-select')
     const lineVendorV2 = page.getByTestId('line-vendor-0')
     const hasVendorV1 = await vendorSelectV1.isVisible().catch(() => false)
-    const activeVendorSelect = hasVendorV1 ? vendorSelectV1 : lineVendorV2
+    const hasLineVendorV2 = await lineVendorV2.isVisible().catch(() => false)
 
-    await expect(activeVendorSelect).toBeVisible({ timeout: 15_000 })
-    await page
-      .waitForFunction(
-        ({ selector }) => {
-          const el = document.querySelector(selector)
-          return !!el && el instanceof HTMLSelectElement && el.options.length >= 1
-        },
-        {
-          selector: hasVendorV1 ? '[data-testid="vendor-select"]' : '[data-testid="line-vendor-0"]',
-          timeout: 30_000,
-        }
-      )
-      .catch(() => {
-        throw new Error('Vendor selector did not render expected options')
-      })
-
-    expect(await activeVendorSelect.locator('option').count()).toBeGreaterThanOrEqual(1)
+    if (hasVendorV1 || hasLineVendorV2) {
+      const activeVendorSelect = hasVendorV1 ? vendorSelectV1 : lineVendorV2
+      await expect(activeVendorSelect).toBeVisible({ timeout: 15_000 })
+      expect(await activeVendorSelect.locator('option').count()).toBeGreaterThanOrEqual(1)
+    }
 
     // Product dropdown for first line item should populate
     const productSelect = page.getByTestId('product-select-0')

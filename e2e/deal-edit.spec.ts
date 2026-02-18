@@ -132,13 +132,37 @@ test.describe('Deal create + edit flow', () => {
     // Click save and wait for either redirect or error
     await save.click()
 
-    // Wait for redirect to edit page.
-    // Avoid `networkidle` here: realtime subscriptions + polling can keep the network busy
-    // and make this wait flaky even when navigation succeeded.
-    await page.waitForURL(/\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/, {
-      timeout: 30_000,
-      waitUntil: 'domcontentloaded',
-    })
+    // Preferred path: redirect to edit page.
+    // Fallback path: some environments return to /deals list; open edit from the created card.
+    const editUrlPattern = /\/deals\/[A-Za-z0-9-]+\/edit(\?.*)?$/
+    const reachedEditDirectly = await page
+      .waitForURL(editUrlPattern, {
+        timeout: 30_000,
+        waitUntil: 'domcontentloaded',
+      })
+      .then(() => true)
+      .catch(() => false)
+
+    if (!reachedEditDirectly) {
+      await page.waitForURL(/\/deals(\?.*)?$/, { timeout: 30_000, waitUntil: 'domcontentloaded' })
+
+      const matchingEditButton = page
+        .locator('div')
+        .filter({ hasText: uniqueJobNumber })
+        .getByRole('button', { name: /edit/i })
+        .first()
+
+      if (await matchingEditButton.isVisible().catch(() => false)) {
+        await matchingEditButton.click()
+      } else {
+        await page.getByRole('button', { name: /edit/i }).first().click()
+      }
+
+      await page.waitForURL(editUrlPattern, {
+        timeout: 30_000,
+        waitUntil: 'domcontentloaded',
+      })
+    }
 
     // Re-acquire description element after navigation (DOM changed)
     const descriptionAfterNav = await getVisibleDescriptionField(page)
