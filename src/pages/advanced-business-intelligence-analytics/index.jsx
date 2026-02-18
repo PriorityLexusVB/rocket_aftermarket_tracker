@@ -154,7 +154,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
 
                 <button
                   onClick={handleExportData}
-                  className="px-4 py-2 bg-white text-[#0B0F14] rounded-lg hover:bg-white/90 flex items-center space-x-2"
+                  className="px-4 py-2 bg-white/10 text-gray-100 border border-white/10 rounded-lg hover:bg-white/20 flex items-center space-x-2"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export</span>
