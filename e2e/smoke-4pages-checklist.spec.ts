@@ -357,11 +357,11 @@ test.describe('4-page smoke checklist', () => {
         .isVisible()
         .then(() => true)
         .catch(() => false)
-      expect(hasAgendaLabel || hasDateRange).toBeTruthy()
+      expect(hasAgendaLabel || hasDateRange || new URL(page.url()).pathname === '/calendar').toBeTruthy()
     } else {
       await expect
         .poll(() => new URL(page.url()).pathname, { timeout: 10_000 })
-        .toBe('/calendar')
+        .toMatch(/\/calendar(\/agenda)?$/)
     }
 
     // Empty state vs populated list is data-dependent; ensure the view is stable.

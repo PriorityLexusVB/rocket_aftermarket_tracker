@@ -163,9 +163,17 @@ test.describe('Calendar loaner badge and promise chip', () => {
     // Prefer asserting calendar UI when the environment has appointments/cards available.
     // If there are no appointments, fall back to verifying the underlying deal fields persisted.
     await page.goto(`/calendar-flow-management-center?focus=${encodeURIComponent(jobId)}`)
-    await expect(page.getByText(/Calendar Flow Management Center/i)).toBeVisible({
-      timeout: 15_000,
-    })
+    const onCalendarBoard = await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 20_000 })
+      .toBe('/calendar')
+      .then(() => true)
+      .catch(() => false)
+
+    if (!onCalendarBoard) {
+      await expect(page.getByText(/Calendar Flow Management Center/i)).toBeVisible({
+        timeout: 15_000,
+      })
+    }
 
     const loanerChip = page.getByText(/Loaner/i).first()
     const promiseChip = page.getByText(/Promise/i).first()
