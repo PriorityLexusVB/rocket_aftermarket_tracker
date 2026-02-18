@@ -1,12 +1,30 @@
 import { test, expect } from '@playwright/test'
 import { requireAuthEnv } from './_authEnv'
 
+function normalizedPath(input: string) {
+  if (input === '/calendar-flow-management-center') return '/calendar'
+  return input
+}
+
+async function expectResolvedPath(page: import('@playwright/test').Page, path: string) {
+  const expected = normalizedPath(path)
+  await expect
+    .poll(
+      () => {
+        const current = new URL(page.url()).pathname
+        return current
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(expected)
+}
+
 // Minimal nav smoke: verify navbar links navigate correctly (desktop),
 // and routes load when directly visited (mobile).
 
 test.describe('Navigation smoke', () => {
   const desktopLinks: Array<{ name: string; path: string }> = [
-    { name: 'Calendar', path: '/calendar-flow-management-center' },
+    { name: 'Calendar', path: '/calendar' },
     { name: 'Appointments', path: '/currently-active-appointments' },
     { name: 'Claims', path: '/claims-management-center' },
     { name: 'Deals', path: '/deals' },
@@ -25,11 +43,11 @@ test.describe('Navigation smoke', () => {
       const visible = await link.isVisible().catch(() => false)
       if (visible) {
         await link.click()
-        await expect(page).toHaveURL(new RegExp(path.replaceAll('/', '\\/')))
+        await expectResolvedPath(page, path)
       } else {
         // Fallback: direct navigation if navbar link not present (e.g., role-gated)
         await page.goto(path)
-        await expect(page).toHaveURL(new RegExp(path.replaceAll('/', '\\/')))
+        await expectResolvedPath(page, path)
       }
     }
 
@@ -49,7 +67,7 @@ test.describe('Navigation smoke', () => {
     await page.setViewportSize({ width: 390, height: 844 })
 
     const paths = [
-      '/calendar-flow-management-center',
+      '/calendar',
       '/currently-active-appointments',
       '/claims-management-center',
       '/deals',
@@ -61,7 +79,7 @@ test.describe('Navigation smoke', () => {
 
     for (const p of paths) {
       await page.goto(p)
-      await expect(page).toHaveURL(new RegExp(`${p.replace('/', '\\/')}`))
+      await expectResolvedPath(page, p)
     }
   })
 })
