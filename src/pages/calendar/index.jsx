@@ -178,8 +178,8 @@ const CalendarSchedulingCenter = ({
     ? 'bg-white/5 border-white/10 text-gray-200'
     : 'bg-white border-gray-200 text-gray-900'
   const cellBgToday = darkUi ? 'bg-white/10' : 'bg-blue-50/30'
-  const cellBg = darkUi ? 'bg-[#0B0F14]' : 'bg-white'
-  const cellBgAlt = darkUi ? 'bg-[#0B0F14]' : 'bg-gray-50'
+  const cellBg = darkUi ? 'bg-background' : 'bg-white'
+  const cellBgAlt = darkUi ? 'bg-background' : 'bg-gray-50'
   const shellDate = shellState?.date
   const shellRange = shellState?.range
   const [currentDate, setCurrentDate] = useState(() => {

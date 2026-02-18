@@ -687,7 +687,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
       const offSiteLineItems = lineItemsPayload?.filter((li) => li?.is_off_site)
       const hasOffSiteWithoutPromise = offSiteLineItems?.some((li) => !li?.promised_date)
       if (hasOffSiteWithoutPromise) {
-        setError('Off-site line items require a promised date')
+        setError('Off-site line items require a Promised Completion Date')
         setIsSubmitting(false)
         savingRef.current = false
         return

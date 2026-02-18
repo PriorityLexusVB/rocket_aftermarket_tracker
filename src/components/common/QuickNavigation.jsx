@@ -1,9 +1,16 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Calendar, Car, BarChart3, Settings, Package, Clock, Plus } from 'lucide-react'
 import { getCalendarDestination } from '@/lib/navigation/calendarNavigation'
 
 const GROUP_ORDER = ['Actions', 'Navigation']
+
+const isEditableTarget = (target) => {
+  const el = target
+  if (!el) return false
+  const tag = String(el.tagName || '').toLowerCase()
+  return tag === 'input' || tag === 'textarea' || el.isContentEditable
+}
 
 const QuickNavigation = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -15,7 +22,6 @@ const QuickNavigation = () => {
   const inputRef = useRef()
 
   const items = useMemo(() => {
-    // Phase 1: “Actions” + existing navigation links (no new deps, no AI).
     const actions = [
       {
         id: 'action:new-deal',
@@ -130,27 +136,34 @@ const QuickNavigation = () => {
       },
     ]
 
-    // Put Actions first (more “command palette” feel).
     return [...actions, ...navigation]
   }, [])
 
-  const close = () => {
+  const close = useCallback(() => {
     setIsOpen(false)
     setQuery('')
     setSelectedIndex(0)
-  }
+  }, [])
 
-  const open = () => {
+  const open = useCallback(() => {
     setIsOpen(true)
     setTimeout(() => inputRef?.current?.focus(), 100)
-  }
+  }, [])
 
-  const isEditableTarget = (target) => {
-    const el = target
-    if (!el) return false
-    const tag = String(el.tagName || '').toLowerCase()
-    return tag === 'input' || tag === 'textarea' || el.isContentEditable
-  }
+  const handleSelect = useCallback(
+    async (item) => {
+      try {
+        if (item?.type === 'action' && typeof item?.run === 'function') {
+          await item.run({ navigate })
+        } else if (item?.path) {
+          navigate(item.path)
+        }
+      } finally {
+        close()
+      }
+    },
+    [close, navigate]
+  )
 
   useEffect(() => {
     const q = String(query || '').trim().toLowerCase()
@@ -167,20 +180,16 @@ const QuickNavigation = () => {
       })
       setResults(filtered)
     } else {
-      // Default set when empty: show Actions + a few nav items (no “huge list”).
-      const defaults = items.slice(0, 8)
-      setResults(defaults)
+      setResults(items.slice(0, 8))
     }
   }, [items, query])
 
-  // Keep selectedIndex valid when results change.
   useEffect(() => {
     setSelectedIndex(0)
   }, [query, results?.length])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Cmd/Ctrl+K opens palette (don’t block if user is typing in an input).
       if ((e?.metaKey || e?.ctrlKey) && e?.key === 'k') {
         if (isEditableTarget(e.target) && !isOpen) return
         e?.preventDefault()
@@ -221,20 +230,7 @@ const QuickNavigation = () => {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, results, selectedIndex])
-
-  const handleSelect = async (item) => {
-    try {
-      if (item?.type === 'action' && typeof item?.run === 'function') {
-        await item.run({ navigate })
-      } else if (item?.path) {
-        navigate(item.path)
-      }
-    } finally {
-      close()
-    }
-  }
+  }, [close, handleSelect, isOpen, open, results, selectedIndex])
 
   const handleBackdropClick = () => close()
 
@@ -294,7 +290,7 @@ const QuickNavigation = () => {
       >
         <Search className="w-4 h-4" />
         <span>Quick search...</span>
-        <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 border border-border rounded text-xs text-muted-foreground">
+        <kbd className="hidden sm:inline-flex px-1.5 py-0.5 text-xs bg-muted rounded border border-border">
           ⌘K
         </kbd>
       </button>
@@ -302,14 +298,10 @@ const QuickNavigation = () => {
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-25 flex items-start justify-center pt-16 z-50"
-      onClick={handleBackdropClick}
-    >
-      <div
-        className="bg-popover text-popover-foreground rounded-lg shadow-xl w-full max-w-md mx-4 border border-border"
-        onClick={(e) => e?.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={handleBackdropClick} />
+
+      <div className="relative w-full max-w-2xl bg-background border border-border rounded-xl shadow-2xl overflow-hidden">
         <div className="p-4 border-b border-border">
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
@@ -324,9 +316,7 @@ const QuickNavigation = () => {
           </div>
         </div>
 
-        <div className="max-h-96 overflow-y-auto">
-          {GROUP_ORDER.map((g) => renderGroup(g))}
-        </div>
+        <div className="max-h-96 overflow-y-auto">{GROUP_ORDER.map((g) => renderGroup(g))}</div>
 
         <div className="p-3 border-t border-border text-xs text-muted-foreground flex items-center justify-between">
           <span>Esc to close</span>
