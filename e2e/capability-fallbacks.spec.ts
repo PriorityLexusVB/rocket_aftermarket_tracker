@@ -5,8 +5,6 @@ import { test, expect } from '@playwright/test'
 import { requireAuthEnv } from './_authEnv'
 
 test.describe('Capability Fallbacks', () => {
-  test.skip(!!process.env.CI, 'Flaky in shared CI environment; covered by local verification')
-
   test.beforeEach(async ({ page }) => {
     requireAuthEnv()
     // Navigate to deals page
@@ -60,7 +58,10 @@ test.describe('Capability Fallbacks', () => {
 
     // Page should render without per-line scheduling fields when capability is disabled
     // The form should still be functional
-    const customerNameInput = page.getByLabel(/customer name/i)
+    const customerNameInput = page
+      .getByLabel(/customer name/i)
+      .or(page.getByTestId('customer-name-input'))
+      .or(page.getByPlaceholder(/enter customer name/i).first())
     await expect(customerNameInput).toBeVisible()
 
     // Verify capability flag

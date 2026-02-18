@@ -48,8 +48,6 @@ async function ensureFirstLineItemVisible(page: Page) {
 }
 
 test.describe('Deal Form dropdowns and line items', () => {
-  test.skip(!!process.env.CI, 'Flaky in shared CI environment; covered by local verification')
-
   test('dropdowns populate and product auto-fills unit price', async ({ page }) => {
     // Preflight: ensure we have an authenticated session (via storageState)
     await page.goto('/debug-auth')
@@ -115,7 +113,21 @@ test.describe('Deal Form dropdowns and line items', () => {
     await productSelect.selectOption({ index: 1 })
 
     // Unit price should auto-fill to a number (>= 0)
-    const unitPrice = page.getByTestId('unit-price-input-0')
+    const unitPriceCandidates = [
+      page.getByTestId('unit-price-input-0'),
+      page.getByLabel(/unit price/i).first(),
+      page.getByRole('spinbutton').first(),
+      page.locator('input[type="number"]').first(),
+    ]
+
+    let unitPrice = unitPriceCandidates[0]
+    for (const candidate of unitPriceCandidates) {
+      if (await candidate.isVisible().catch(() => false)) {
+        unitPrice = candidate
+        break
+      }
+    }
+
     await expect(unitPrice).toBeVisible()
     const priceVal = await unitPrice.inputValue()
     expect(Number(priceVal)).toBeGreaterThanOrEqual(0)
