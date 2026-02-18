@@ -1,18 +1,79 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Calendar, Car, BarChart3, Settings, Package } from 'lucide-react'
+import { Search, Calendar, Car, BarChart3, Settings, Package, Clock, Plus } from 'lucide-react'
 import { getCalendarDestination } from '@/lib/navigation/calendarNavigation'
+
+const GROUP_ORDER = ['Actions', 'Navigation']
 
 const QuickNavigation = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
   const navigate = useNavigate()
   const inputRef = useRef()
 
-  const navigationItems = useMemo(
-    () => [
+  const items = useMemo(() => {
+    // Phase 1: “Actions” + existing navigation links (no new deps, no AI).
+    const actions = [
       {
+        id: 'action:new-deal',
+        group: 'Actions',
+        type: 'nav',
+        name: 'New Deal',
+        path: '/deals/new',
+        icon: Plus,
+        description: 'Start a new deal',
+        keywords: ['new', 'create', 'deal', 'start', 'sale'],
+      },
+      {
+        id: 'action:calendar-month',
+        group: 'Actions',
+        type: 'nav',
+        name: 'Calendar (Month)',
+        path: getCalendarDestination({ target: 'calendar', range: 'month' }),
+        icon: Calendar,
+        description: 'Open calendar in month view',
+        keywords: ['calendar', 'month', 'schedule', 'appointments'],
+      },
+      {
+        id: 'action:calendar-week',
+        group: 'Actions',
+        type: 'nav',
+        name: 'Calendar (Week)',
+        path: getCalendarDestination({ target: 'calendar', range: 'week' }),
+        icon: Calendar,
+        description: 'Open calendar in week view',
+        keywords: ['calendar', 'week', 'schedule', 'appointments'],
+      },
+      {
+        id: 'action:active-appts',
+        group: 'Actions',
+        type: 'nav',
+        name: 'Active Appointments',
+        path: '/currently-active-appointments',
+        icon: Clock,
+        description: 'Open currently active appointments',
+        keywords: ['active', 'appointments', 'today', 'status', 'in progress'],
+      },
+      {
+        id: 'action:deals-list',
+        group: 'Actions',
+        type: 'nav',
+        name: 'Deals List',
+        path: '/deals',
+        icon: Package,
+        description: 'Open deals list',
+        keywords: ['deals', 'sales', 'transactions', 'pipeline'],
+      },
+    ]
+
+    const navigation = [
+      {
+        id: 'nav:calendar-scheduling',
+        group: 'Navigation',
+        type: 'nav',
         name: 'Calendar & Scheduling',
         path: getCalendarDestination({ target: 'calendar', range: 'month' }),
         icon: Calendar,
@@ -20,6 +81,9 @@ const QuickNavigation = () => {
         keywords: ['calendar', 'appointments', 'schedule', 'time'],
       },
       {
+        id: 'nav:vehicle-management',
+        group: 'Navigation',
+        type: 'nav',
         name: 'Vehicle Management',
         path: '/vehicles',
         icon: Car,
@@ -27,6 +91,9 @@ const QuickNavigation = () => {
         keywords: ['vehicles', 'inventory', 'stock', 'cars'],
       },
       {
+        id: 'nav:active-deals',
+        group: 'Navigation',
+        type: 'nav',
         name: 'Active Deals',
         path: '/deals',
         icon: Package,
@@ -34,6 +101,9 @@ const QuickNavigation = () => {
         keywords: ['deals', 'sales', 'transactions', 'money'],
       },
       {
+        id: 'nav:administration',
+        group: 'Navigation',
+        type: 'nav',
         name: 'Administration',
         path: '/admin',
         icon: Settings,
@@ -49,63 +119,177 @@ const QuickNavigation = () => {
         ],
       },
       {
+        id: 'nav:analytics',
+        group: 'Navigation',
+        type: 'nav',
         name: 'Analytics Dashboard',
-        path: '/calendar',
+        path: '/advanced-business-intelligence-analytics',
         icon: BarChart3,
         description: 'Business intelligence and reports',
         keywords: ['analytics', 'reports', 'dashboard', 'insights'],
       },
-    ],
-    []
-  )
+    ]
+
+    // Put Actions first (more “command palette” feel).
+    return [...actions, ...navigation]
+  }, [])
+
+  const close = () => {
+    setIsOpen(false)
+    setQuery('')
+    setSelectedIndex(0)
+  }
+
+  const open = () => {
+    setIsOpen(true)
+    setTimeout(() => inputRef?.current?.focus(), 100)
+  }
+
+  const isEditableTarget = (target) => {
+    const el = target
+    if (!el) return false
+    const tag = String(el.tagName || '').toLowerCase()
+    return tag === 'input' || tag === 'textarea' || el.isContentEditable
+  }
+
   useEffect(() => {
-    if (query?.length > 1) {
-      const filtered = navigationItems?.filter(
-        (item) =>
-          item?.name?.toLowerCase()?.includes(query?.toLowerCase()) ||
-          item?.description?.toLowerCase()?.includes(query?.toLowerCase()) ||
-          item?.keywords?.some((keyword) => keyword?.toLowerCase()?.includes(query?.toLowerCase()))
-      )
+    const q = String(query || '').trim().toLowerCase()
+    if (q.length > 1) {
+      const filtered = items.filter((item) => {
+        const name = String(item?.name || '').toLowerCase()
+        const desc = String(item?.description || '').toLowerCase()
+        const keywords = Array.isArray(item?.keywords) ? item.keywords : []
+        return (
+          name.includes(q) ||
+          desc.includes(q) ||
+          keywords.some((kw) => String(kw || '').toLowerCase().includes(q))
+        )
+      })
       setResults(filtered)
     } else {
-      setResults(navigationItems?.slice(0, 6))
+      // Default set when empty: show Actions + a few nav items (no “huge list”).
+      const defaults = items.slice(0, 8)
+      setResults(defaults)
     }
-  }, [navigationItems, query])
+  }, [items, query])
+
+  // Keep selectedIndex valid when results change.
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [query, results?.length])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Cmd/Ctrl+K opens palette (don’t block if user is typing in an input).
       if ((e?.metaKey || e?.ctrlKey) && e?.key === 'k') {
+        if (isEditableTarget(e.target) && !isOpen) return
         e?.preventDefault()
-        setIsOpen(true)
-        setTimeout(() => inputRef?.current?.focus(), 100)
+        open()
+        return
       }
 
+      if (!isOpen) return
+
       if (e?.key === 'Escape') {
-        setIsOpen(false)
-        setQuery('')
+        e?.preventDefault()
+        close()
+        return
+      }
+
+      if (e?.key === 'ArrowDown') {
+        e?.preventDefault()
+        setSelectedIndex((prev) => {
+          const max = Math.max(0, (results?.length || 0) - 1)
+          return Math.min(max, prev + 1)
+        })
+        return
+      }
+
+      if (e?.key === 'ArrowUp') {
+        e?.preventDefault()
+        setSelectedIndex((prev) => Math.max(0, prev - 1))
+        return
+      }
+
+      if (e?.key === 'Enter') {
+        const item = results?.[selectedIndex]
+        if (!item) return
+        e?.preventDefault()
+        handleSelect(item)
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, results, selectedIndex])
 
-  const handleSelect = (item) => {
-    navigate(item?.path)
-    setIsOpen(false)
-    setQuery('')
+  const handleSelect = async (item) => {
+    try {
+      if (item?.type === 'action' && typeof item?.run === 'function') {
+        await item.run({ navigate })
+      } else if (item?.path) {
+        navigate(item.path)
+      }
+    } finally {
+      close()
+    }
   }
 
-  // Close popup when clicking outside
-  const handleBackdropClick = () => {
-    setIsOpen(false)
-    setQuery('')
+  const handleBackdropClick = () => close()
+
+  const grouped = useMemo(() => {
+    const map = new Map()
+    ;(results || []).forEach((item) => {
+      const group = item?.group || 'Other'
+      if (!map.has(group)) map.set(group, [])
+      map.get(group).push(item)
+    })
+    return map
+  }, [results])
+
+  const renderGroup = (groupName) => {
+    const groupItems = grouped.get(groupName) || []
+    if (!groupItems.length) return null
+
+    return (
+      <div key={groupName}>
+        <div className="px-4 pt-3 pb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          {groupName}
+        </div>
+
+        {groupItems.map((item) => {
+          const idx = results.findIndex((r) => r?.id === item?.id)
+          const Icon = item?.icon || Search
+          const isSelected = idx === selectedIndex
+
+          return (
+            <button
+              key={item?.id || item?.path || item?.name}
+              onMouseEnter={() => setSelectedIndex(idx)}
+              onClick={() => handleSelect(item)}
+              className={`w-full text-left px-4 py-3 border-b border-border last:border-b-0 focus:outline-none ${
+                isSelected ? 'bg-accent' : 'hover:bg-accent'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Icon className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <div className="font-medium text-foreground">{item?.name}</div>
+                  <div className="text-sm text-muted-foreground">{item?.description}</div>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    )
   }
 
   if (!isOpen) {
     return (
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={open}
         className="flex items-center space-x-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-accent transition-colors"
       >
         <Search className="w-4 h-4" />
@@ -132,7 +316,7 @@ const QuickNavigation = () => {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search pages and features..."
+              placeholder="Type a command or search… (e.g., 'new deal', 'calendar week')"
               value={query}
               onChange={(e) => setQuery(e?.target?.value)}
               className="w-full pl-10 pr-4 py-2 border border-input bg-background rounded-lg focus:ring-2 focus:ring-ring focus:ring-offset-2 ring-offset-background"
@@ -141,29 +325,12 @@ const QuickNavigation = () => {
         </div>
 
         <div className="max-h-96 overflow-y-auto">
-          {results?.map((item) => {
-            const Icon = item?.icon
-            return (
-              <button
-                key={item?.path}
-                onClick={() => handleSelect(item)}
-                className="w-full text-left px-4 py-3 hover:bg-accent focus:bg-accent focus:outline-none border-b border-border last:border-b-0"
-              >
-                <div className="flex items-center space-x-3">
-                  <Icon className="w-5 h-5 text-muted-foreground" />
-                  <div>
-                    <div className="font-medium text-foreground">{item?.name}</div>
-                    <div className="text-sm text-muted-foreground">{item?.description}</div>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+          {GROUP_ORDER.map((g) => renderGroup(g))}
         </div>
 
         <div className="p-3 border-t border-border text-xs text-muted-foreground flex items-center justify-between">
-          <span>Press ESC to close</span>
-          <span>↵ to navigate</span>
+          <span>Esc to close</span>
+          <span>↑/↓ select • Enter run</span>
         </div>
       </div>
     </div>
