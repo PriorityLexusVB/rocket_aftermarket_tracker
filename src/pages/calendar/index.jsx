@@ -179,7 +179,7 @@ const CalendarSchedulingCenter = ({
   const suppressChrome = isEmbedded && unifiedShellEnabled
   const showTitleTooltips = isEmbedded && unifiedShellEnabled
   const showDetailPopovers = showTitleTooltips
-  const darkUi = isEmbedded && unifiedShellEnabled
+  const darkUi = false
   const cx = (...parts) => parts.filter(Boolean).join(' ')
   const surface = darkUi
     ? 'bg-white/5 border-white/10 text-gray-200'
