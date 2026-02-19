@@ -1781,7 +1781,11 @@ const CalendarFlowManagementCenter = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
+            <div
+              className={`bg-white rounded-lg shadow-sm border border-gray-200 h-full ${
+                isEmbedded ? 'overflow-visible' : 'overflow-auto'
+              }`}
+            >
               {viewMode === 'month' ? (
                 renderMonthView()
               ) : filteredJobs?.length + filteredOnSiteJobs?.length === 0 &&

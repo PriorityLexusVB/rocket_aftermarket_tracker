@@ -729,7 +729,8 @@ const CalendarSchedulingCenter = ({
             <div
               key={`content-${index}`}
               className={cx(
-                'p-1 border-r min-h-80 overflow-y-auto',
+                'p-1 border-r min-h-80',
+                isEmbedded ? 'overflow-visible' : 'overflow-y-auto',
                 darkUi ? 'border-white/10' : 'border-gray-200',
                 day?.date?.toDateString?.() === todayKey ? cellBgToday : cellBg
               )}
