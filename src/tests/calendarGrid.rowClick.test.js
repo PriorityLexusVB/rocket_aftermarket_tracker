@@ -1,7 +1,4 @@
-import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { getCalendarGridClickHandler, handleCalendarCardKeyDown } from '@/pages/calendar'
 
 describe('getCalendarGridClickHandler', () => {
@@ -58,31 +55,14 @@ describe('getCalendarGridClickHandler', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('activates a focusable card with keyboard Enter after tabbing', async () => {
-    const user = userEvent.setup()
+  it('activates card handler on Enter and Space keys', () => {
     const onActivate = vi.fn()
+    const preventDefault = vi.fn()
 
-    render(
-      <div>
-        <button type="button">Before</button>
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Open deal"
-          onKeyDown={(event) => handleCalendarCardKeyDown(event, onActivate)}
-        >
-          Calendar card
-        </div>
-      </div>
-    )
+    handleCalendarCardKeyDown({ key: 'Enter', preventDefault }, onActivate)
+    handleCalendarCardKeyDown({ key: ' ', preventDefault }, onActivate)
 
-    await user.tab()
-    await user.tab()
-
-    const card = screen.getByRole('button', { name: 'Open deal' })
-    expect(card).toHaveFocus()
-
-    fireEvent.keyDown(card, { key: 'Enter', code: 'Enter' })
-    expect(onActivate).toHaveBeenCalledTimes(1)
+    expect(preventDefault).toHaveBeenCalledTimes(2)
+    expect(onActivate).toHaveBeenCalledTimes(2)
   })
 })
