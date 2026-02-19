@@ -1037,7 +1037,7 @@ const CalendarSchedulingCenter = ({
                     }
                   }}
                   className={cx(
-                    'h-32 border rounded-lg overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300',
+                    'min-h-40 border rounded-lg overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300',
                     darkUi ? 'border-white/10' : 'border-gray-200',
                     isToday
                       ? darkUi
@@ -1072,14 +1072,14 @@ const CalendarSchedulingCenter = ({
                     </div>
                     <div
                       className={cx(
-                        'flex items-center gap-1 text-[9px]',
+                        'flex items-center gap-1 text-[10px]',
                         darkUi ? 'text-gray-400' : 'text-gray-500'
                       )}
                     >
                       {promiseCount > 0 ? (
                         <span
                           className={cx(
-                            'rounded px-1 py-0.5',
+                            'rounded px-1.5 py-0.5',
                             darkUi
                               ? 'bg-amber-500/20 text-amber-200'
                               : 'bg-amber-100 text-amber-900'
@@ -1091,7 +1091,7 @@ const CalendarSchedulingCenter = ({
                       {scheduledCount > 0 ? (
                         <span
                           className={cx(
-                            'rounded px-1 py-0.5',
+                            'rounded px-1.5 py-0.5',
                             darkUi ? 'bg-blue-500/20 text-blue-200' : 'bg-blue-100 text-blue-900'
                           )}
                         >
@@ -1101,7 +1101,7 @@ const CalendarSchedulingCenter = ({
                       {overdueCount > 0 ? (
                         <span
                           className={cx(
-                            'rounded px-1 py-0.5',
+                            'rounded px-1.5 py-0.5',
                             darkUi ? 'bg-red-500/20 text-red-200' : 'bg-red-100 text-red-900'
                           )}
                         >
@@ -1111,7 +1111,7 @@ const CalendarSchedulingCenter = ({
                     </div>
                   </div>
 
-                  <div className="p-1 space-y-1 max-h-24 overflow-y-auto">
+                  <div className="p-1.5 space-y-1 max-h-32 overflow-y-auto">
                     {visibleJobs.map((job) => {
                       const normalizedStatus =
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
