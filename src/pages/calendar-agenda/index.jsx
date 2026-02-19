@@ -240,6 +240,13 @@ export function getAgendaRowClickHandler({ dealDrawerEnabled, onOpenDealDrawer, 
   }
 }
 
+export function handleAgendaRowKeyDown(event, onActivate) {
+  const key = event?.key
+  if (key !== 'Enter' && key !== ' ') return
+  event?.preventDefault?.()
+  if (typeof onActivate === 'function') onActivate()
+}
+
 export default function CalendarAgenda({ embedded = false, shellState, onOpenDealDrawer, hideEmbeddedControls = false } = {}) {
   const { orgId, userProfile, loading: authLoading, profileLoading } = useAuth()
   const toast = useToast()
@@ -347,9 +354,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
   )
   const focusRef = useRef(null)
   const focusOpenedRef = useRef(null)
-  const microFlashTimerRef = useRef(null)
-  const [, setRecentlyUpdatedId] = useState(null)
-
   // Reschedule modal state
   const [rescheduleModal, setRescheduleModal] = useState({
     open: false,
@@ -619,15 +623,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       // Update line item schedules using the new service method
       await jobService.updateLineItemSchedules(jobId, scheduleData)
 
-      if (microInteractionsEnabled && jobId) {
-        if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
-        setRecentlyUpdatedId(jobId)
-        microFlashTimerRef.current = setTimeout(() => {
-          setRecentlyUpdatedId(null)
-          microFlashTimerRef.current = null
-        }, 600)
-      }
-
       if (microInteractionsEnabled && hadConflict && vendorId && startTime && endTime) {
         try {
           const { hasConflict } = await calendarService.checkSchedulingConflict(
@@ -655,12 +650,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       toast?.error?.(e?.message || 'Failed to reschedule')
     }
   }
-
-  useEffect(() => {
-    return () => {
-      if (microFlashTimerRef.current) clearTimeout(microFlashTimerRef.current)
-    }
-  }, [])
 
   async function handleComplete(job) {
     const previousStatus = job.job_status
@@ -739,8 +728,18 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
       </div>
     )
 
+  const stickyDayHeaderTopClass =
+    isEmbedded && hideEmbeddedControls
+      ? 'top-0'
+      : isEmbedded
+        ? 'top-16'
+        : 'top-[5rem]'
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900" aria-label="Calendar Agenda">
+    <div
+      className={`${isEmbedded ? 'h-full min-h-0' : 'min-h-screen'} bg-slate-50 text-slate-900`}
+      aria-label="Calendar Agenda"
+    >
       {!isEmbedded && <Navbar />}
       <div
         className="p-4 md:p-8 max-w-7xl mx-auto space-y-6"
@@ -923,7 +922,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">All Statuses</option>
-                <option value="pending">Booked (time TBD)</option>
+                <option value="pending">Needs Work (time TBD)</option>
                 <option value="scheduled">Booked (time set)</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
@@ -942,9 +941,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         {groups.map(([dateKey, rows]) => (
           <section key={dateKey} aria-label={`Appointments for ${dateKey}`} className="space-y-2">
             <div
-              className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${
-                isEmbedded ? 'top-16' : 'top-[5rem]'
-              }`}
+              className={`sticky z-10 -mx-4 md:-mx-8 px-4 md:px-8 py-2 bg-slate-50/90 backdrop-blur border-b border-slate-200 ${stickyDayHeaderTopClass}`}
             >
               <h2 className="text-sm font-semibold text-slate-900 tracking-wide">
                 {formatAgendaDayHeader(dateKey)}
@@ -964,19 +961,19 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 const timeRange = start ? formatScheduleRange(start, end) : null
                 const title = raw?.title || raw?.job_number
                 const titleText = title || r.id || 'Appointment'
-                const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
-                const popoverLines = showDetailPopovers
-                  ? [
-                      timeRange ? `Time: ${timeRange}` : 'Time: All-day',
-                      customerName ? `Customer: ${customerName}` : null,
-                      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
-                    ]
-                  : []
                 const vehicleLabel =
                   r?.vehicleLabel ||
                   `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
                 const customerName =
                   r?.customerName || raw?.customer_name || raw?.vehicle?.owner_name || ''
+                const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
+                const popoverLines = showDetailPopovers
+                  ? [
+                      timeRange ? `Time: ${timeRange}` : 'Time: Time TBD',
+                      customerName ? `Customer: ${customerName}` : null,
+                      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                    ]
+                  : []
                 const stock = raw?.vehicle?.stock_number || ''
                 const ops = summarizeOpCodesFromParts(raw?.job_parts, 6)
 
@@ -992,10 +989,12 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     key={r?.calendarKey || r?.calendar_key || r.id}
                     ref={focused ? focusRef : null}
                     tabIndex={0}
+                    role="button"
                     aria-label={`Appointment ${titleText}`}
                     aria-describedby={popoverId}
                     className={`group relative grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
                     onClick={handleRowClick}
+                    onKeyDown={(event) => handleAgendaRowKeyDown(event, handleRowClick)}
                   >
                     {/* Time column (blank for all-day) */}
                     <div className="w-28 text-xs font-mono tabular-nums text-slate-600">
@@ -1004,7 +1003,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                           {timeRange}
                         </span>
                       ) : (
-                        <span className="text-slate-400">All-day</span>
+                        <span className="text-slate-400">Time TBD</span>
                       )}
                     </div>
 

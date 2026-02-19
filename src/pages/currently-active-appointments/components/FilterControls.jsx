@@ -31,7 +31,7 @@ const FilterControls = ({
             <option value="scheduled">Scheduled</option>
             <option value="in_progress">In Progress</option>
             <option value="quality_check">Quality Check</option>
-            <option value="pending">Booked (time TBD)</option>
+            <option value="pending">Needs Work (time TBD)</option>
             <option value="overdue">Overdue Items</option>
           </select>
         </div>
@@ -87,7 +87,7 @@ const FilterControls = ({
                 <span>
                   Status:{' '}
                   {statusFilter === 'pending'
-                    ? 'booked (time TBD)'
+                    ? 'needs work (time TBD)'
                     : statusFilter?.replace('_', ' ')}
                 </span>
                 <button

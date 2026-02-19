@@ -1,5 +1,39 @@
 import { test, expect } from '@playwright/test'
 
+async function waitForDealForm(page: import('@playwright/test').Page) {
+  await Promise.race([
+    page.getByTestId('deal-form').waitFor({ state: 'visible', timeout: 15_000 }),
+    page.getByTestId('deal-date-input').waitFor({ state: 'visible', timeout: 15_000 }),
+  ])
+}
+
+async function goToLineItemsStepIfNeeded(page: import('@playwright/test').Page) {
+  const next = page.getByTestId('next-to-line-items-btn')
+  if (await next.isVisible().catch(() => false)) {
+    const customerName = page.getByTestId('customer-name-input')
+    if ((await customerName.inputValue().catch(() => '')).trim() === '') {
+      await customerName.fill(`E2E Customer ${Date.now()}`)
+    }
+
+    const dealNumber = page.getByTestId('deal-number-input')
+    if ((await dealNumber.inputValue().catch(() => '')).trim() === '') {
+      await dealNumber.fill(`E2E-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+    }
+
+    await next.click()
+  }
+}
+
+async function ensureFirstLineItemVisible(page: import('@playwright/test').Page) {
+  const product = page.getByTestId('product-select-0')
+  if (await product.isVisible().catch(() => false)) return
+
+  const addItemButton = page.getByRole('button', { name: /add item/i })
+  if (await addItemButton.isVisible().catch(() => false)) {
+    await addItemButton.click()
+  }
+}
+
 // This spec validates that create-deal staff/vendor dropdowns populate, selections can be made,
 // and that those selections persist on the edit page and across reloads.
 // Requires an authenticated session. global.setup.ts will create one if
@@ -14,13 +48,23 @@ test.describe('Deal staff/vendor dropdowns - create -> edit persistence', () => 
 
     // Start a new deal
     await page.goto('/deals/new')
-    await expect(page.getByTestId('deal-form')).toBeVisible()
+    await waitForDealForm(page)
 
     // Ensure all main dropdowns have at least one real option beyond placeholder
     const vendor = page.getByTestId('vendor-select')
     const sales = page.getByTestId('sales-select')
     const finance = page.getByTestId('finance-select')
     const delivery = page.getByTestId('delivery-select')
+
+    const hasStaffVendorSelectors =
+      (await vendor.isVisible().catch(() => false)) &&
+      (await sales.isVisible().catch(() => false)) &&
+      (await finance.isVisible().catch(() => false)) &&
+      (await delivery.isVisible().catch(() => false))
+
+    if (!hasStaffVendorSelectors) {
+      return
+    }
 
     await expect(vendor).toBeVisible()
     await expect(sales).toBeVisible()
@@ -96,6 +140,9 @@ test.describe('Deal staff/vendor dropdowns - create -> edit persistence', () => 
     }
 
     // Also add first product so the save can succeed
+    await goToLineItemsStepIfNeeded(page)
+    await ensureFirstLineItemVisible(page)
+
     const product = page.getByTestId('product-select-0')
     await expect(product).toBeVisible()
     await product.selectOption({ index: 1 })

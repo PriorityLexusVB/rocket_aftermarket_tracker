@@ -683,17 +683,20 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
         }
       })
 
-      // For vendor deals, ensure at least one scheduled line item with a start time exists
-      const scheduledLineItems = lineItemsPayload
-        ?.filter((li) => li?.requires_scheduling)
-        ?.filter((li) => li?.scheduled_start_time)
-
-      if (customerData?.vendorId && (!scheduledLineItems || scheduledLineItems.length === 0)) {
-        setError('Vendor jobs require at least one scheduled line item with a start time')
+      // Off-site work can be time-TBD, but must always carry a promised date
+      const offSiteLineItems = lineItemsPayload?.filter((li) => li?.is_off_site)
+      const hasOffSiteWithoutPromise = offSiteLineItems?.some((li) => !li?.promised_date)
+      if (hasOffSiteWithoutPromise) {
+        setError('Off-site line items require a Promised Completion Date')
         setIsSubmitting(false)
         savingRef.current = false
         return
       }
+
+      // Derive job-level schedule when explicit times are provided
+      const scheduledLineItems = lineItemsPayload
+        ?.filter((li) => li?.requires_scheduling)
+        ?.filter((li) => li?.scheduled_start_time)
 
       // Derive job-level schedule from earliest scheduled line item to satisfy DB constraint
       let jobScheduledStartTime = null
@@ -1277,7 +1280,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                             className="h-5 w-5 accent-blue-600"
                             data-testid={`is-off-site-${index}`}
                           />
-                          <span className="text-sm">Off-Site (Vendor)</span>
+                          <span className="text-sm">Off-Site (Tint/Vendor)</span>
                         </label>
 
                         {item?.isOffSite && (
@@ -1324,14 +1327,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                             className="h-5 w-5 accent-blue-600"
                             data-testid={`requires-scheduling-${index}`}
                           />
-                          <span className="text-sm">Requires Scheduling</span>
+                          <span className="text-sm">Track Promise Date</span>
                         </label>
 
                         {item?.requiresScheduling ? (
                           <div className="space-y-3">
                             <div>
                               <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Date Scheduled <span className="text-red-500">*</span>
+                                Promised Completion Date <span className="text-red-500">*</span>
                               </label>
                               <input
                                 type="date"
@@ -1343,6 +1346,9 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                                 className="w-full p-3 border border-gray-300 rounded-lg"
                                 data-testid={`date-scheduled-${index}`}
                               />
+                              <p className="mt-1 text-xs text-gray-500">
+                                Time is optional for off-site work. Promise date is required.
+                              </p>
                             </div>
                             <div>
                               <label className="flex items-center gap-2">
@@ -1355,7 +1361,7 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                                   className="h-5 w-5 accent-blue-600"
                                   data-testid={`multi-day-${index}`}
                                 />
-                                <span className="text-sm">Multi-Day Scheduling</span>
+                                <span className="text-sm">Work spans multiple days</span>
                               </label>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

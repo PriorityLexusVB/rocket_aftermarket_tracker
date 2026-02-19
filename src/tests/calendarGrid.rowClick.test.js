@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getCalendarGridClickHandler } from '@/pages/calendar'
+import { getCalendarGridClickHandler, handleCalendarCardKeyDown } from '@/pages/calendar'
 
 describe('getCalendarGridClickHandler', () => {
   it('opens the deal drawer when enabled', () => {
@@ -53,5 +53,16 @@ describe('getCalendarGridClickHandler', () => {
 
     expect(onOpenDealDrawer).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('activates card handler on Enter and Space keys', () => {
+    const onActivate = vi.fn()
+    const preventDefault = vi.fn()
+
+    handleCalendarCardKeyDown({ key: 'Enter', preventDefault }, onActivate)
+    handleCalendarCardKeyDown({ key: ' ', preventDefault }, onActivate)
+
+    expect(preventDefault).toHaveBeenCalledTimes(2)
+    expect(onActivate).toHaveBeenCalledTimes(2)
   })
 })

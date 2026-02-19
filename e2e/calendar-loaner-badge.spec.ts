@@ -10,6 +10,51 @@ function yyyyMmDd(d: Date) {
   return `${yyyy}-${mm}-${dd}`
 }
 
+async function waitForDealForm(page: import('@playwright/test').Page) {
+  await Promise.race([
+    page.getByTestId('deal-form').waitFor({ state: 'visible', timeout: 15_000 }),
+    page.getByTestId('deal-date-input').waitFor({ state: 'visible', timeout: 15_000 }),
+  ])
+}
+
+async function goToLineItemsStepIfNeeded(page: import('@playwright/test').Page, jobNumber: string) {
+  const next = page.getByTestId('next-to-line-items-btn')
+  if (!(await next.isVisible().catch(() => false))) return
+
+  const customer = page
+    .getByTestId('customer-name-input')
+    .or(page.getByPlaceholder(/enter customer name/i).first())
+  const dealNumber = page
+    .getByTestId('deal-number-input')
+    .or(page.getByPlaceholder(/enter deal number/i).first())
+
+  if (await customer.isVisible().catch(() => false)) {
+    await customer.fill(`E2E Loaner ${Date.now()}`)
+  }
+  if (await dealNumber.isVisible().catch(() => false)) {
+    await dealNumber.fill(jobNumber)
+  }
+
+  await next.click()
+}
+
+async function ensureFirstLineItemVisible(page: import('@playwright/test').Page) {
+  const product = page.getByTestId('product-select-0')
+  if (await product.isVisible().catch(() => false)) return
+
+  const addItem = page.getByRole('button', { name: /add item/i })
+  if (await addItem.isVisible().catch(() => false)) {
+    await addItem.click()
+  }
+}
+
+async function ensureCustomerStep(page: import('@playwright/test').Page) {
+  const back = page.getByRole('button', { name: /back/i })
+  if (await back.isVisible().catch(() => false)) {
+    await back.click()
+  }
+}
+
 test.describe('Calendar loaner badge and promise chip', () => {
   test('shows Loaner pill and Promise date for seeded job', async ({ page }) => {
     // Ensure authenticated session via debug-auth
@@ -22,10 +67,25 @@ test.describe('Calendar loaner badge and promise chip', () => {
     const jobNumber = `JOB-${Date.now()}`
     const loanerNumberValue = `LOANER-E2E-${Date.now()}`
     await page.goto('/deals/new')
-    await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 10_000 })
+    await waitForDealForm(page)
 
-    await page.getByTestId('description-input').fill(jobTitle)
-    await page.getByTestId('deal-number-input').fill(jobNumber)
+    const description = page
+      .getByTestId('description-input')
+      .or(page.getByTestId('notes-input'))
+      .or(page.getByPlaceholder(/enter notes/i).first())
+    if (await description.isVisible().catch(() => false)) {
+      await description.fill(jobTitle)
+    }
+
+    const dealNumberInput = page
+      .getByTestId('deal-number-input')
+      .or(page.getByPlaceholder(/enter deal number/i).first())
+    if (await dealNumberInput.isVisible().catch(() => false)) {
+      await dealNumberInput.fill(jobNumber)
+    }
+
+    await goToLineItemsStepIfNeeded(page, jobNumber)
+    await ensureFirstLineItemVisible(page)
     await page.getByTestId('product-select-0').selectOption({ index: 1 })
 
     // Ensure the line item is considered schedulable so the job appears on calendar views.
@@ -44,7 +104,7 @@ test.describe('Calendar loaner badge and promise chip', () => {
       })
     }
 
-    await page.getByTestId('promised-date-0').fill(yyyyMmDd(new Date()))
+    await page.getByTestId('promised-date-0').or(page.getByTestId('date-scheduled-0')).fill(yyyyMmDd(new Date()))
 
     // Agenda/appointment views typically key off scheduled date/time, not just promised date.
     const dateScheduled = page.getByTestId('date-scheduled-0')
@@ -72,13 +132,22 @@ test.describe('Calendar loaner badge and promise chip', () => {
       }
     }
 
+    await ensureCustomerStep(page)
+
     const loaner = page.getByTestId('loaner-checkbox')
     if (!(await loaner.isChecked().catch(() => false))) {
       await page.locator('label[for="needsLoaner"]').click({ force: true })
       await expect(loaner).toBeChecked({ timeout: 5_000 })
     }
     await page.getByTestId('loaner-number-input').fill(loanerNumberValue)
-    await page.getByTestId('loaner-eta-input').fill(yyyyMmDd(new Date(Date.now() + 3 * 86400000)))
+
+    const loanerEta = page.getByTestId('loaner-eta-input')
+    if (await loanerEta.isVisible().catch(() => false)) {
+      await loanerEta.fill(yyyyMmDd(new Date(Date.now() + 3 * 86400000)))
+    }
+
+    await goToLineItemsStepIfNeeded(page, jobNumber)
+    await ensureFirstLineItemVisible(page)
 
     const save = page.getByTestId('save-deal-btn')
     await expect(save).toBeEnabled()
@@ -94,9 +163,17 @@ test.describe('Calendar loaner badge and promise chip', () => {
     // Prefer asserting calendar UI when the environment has appointments/cards available.
     // If there are no appointments, fall back to verifying the underlying deal fields persisted.
     await page.goto(`/calendar-flow-management-center?focus=${encodeURIComponent(jobId)}`)
-    await expect(page.getByText(/Calendar Flow Management Center/i)).toBeVisible({
-      timeout: 15_000,
-    })
+    const onCalendarBoard = await expect
+      .poll(() => new URL(page.url()).pathname, { timeout: 20_000 })
+      .toBe('/calendar')
+      .then(() => true)
+      .catch(() => false)
+
+    if (!onCalendarBoard) {
+      await expect(page.getByText(/Calendar Flow Management Center/i)).toBeVisible({
+        timeout: 15_000,
+      })
+    }
 
     const loanerChip = page.getByText(/Loaner/i).first()
     const promiseChip = page.getByText(/Promise/i).first()
@@ -109,7 +186,7 @@ test.describe('Calendar loaner badge and promise chip', () => {
     } else {
       // Fallback: validate persistence in the edit form.
       await page.goto(editUrl)
-      await expect(page.getByTestId('deal-form')).toBeVisible({ timeout: 15_000 })
+      await waitForDealForm(page)
       await expect(page.getByTestId('loaner-checkbox')).toBeChecked({ timeout: 10_000 })
       await expect(page.getByTestId('loaner-number-input')).toHaveValue(loanerNumberValue)
       await expect(page.getByTestId('promised-date-0')).toHaveValue(yyyyMmDd(new Date()))

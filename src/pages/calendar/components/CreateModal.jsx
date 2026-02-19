@@ -367,7 +367,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
     }
 
     if (!dateData?.promised_date) {
-      throw new Error('Date Scheduled is required')
+      throw new Error('Promised Completion Date is required')
     }
 
     if (!lineItems || lineItems?.length === 0) {
@@ -948,7 +948,7 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <span className="text-red-500">*</span> Date Scheduled (no time component)
+                      <span className="text-red-500">*</span> Promised Completion Date
                     </label>
                     <input
                       type="date"
@@ -1077,10 +1077,10 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
                         <Checkbox
                           id={`off_site_work_${index}`}
                           name={`off_site_work_${index}`}
-                          description="Check if this work needs to be done off-site"
+                          description="Check if this work is off-site (tint/vendor)"
                           checked={item?.off_site_work}
                           onChange={(checked) => updateLineItem(index, 'off_site_work', checked)}
-                          label="Off-Site Work"
+                          label="Off-Site (Tint/Vendor)"
                           className="text-sm"
                         />
                       </div>
@@ -1106,10 +1106,10 @@ const CreateModal = ({ initialData, onClose, onSuccess, vendors, onSMSEnqueue })
                         </div>
                       )}
 
-                      {/* Per-line Date Scheduled (optional) */}
+                      {/* Per-line Promised Completion Date (optional) */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Per-line Date Scheduled (optional)
+                          Per-line Promised Completion Date (optional)
                         </label>
                         <input
                           type="date"
