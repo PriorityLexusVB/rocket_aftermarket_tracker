@@ -734,7 +734,14 @@ const CalendarSchedulingCenter = ({
                 day?.date?.toDateString?.() === todayKey ? cellBgToday : cellBg
               )}
             >
-              {day?.jobs?.map((job) => {
+              {(() => {
+                const dayJobs = Array.isArray(day?.jobs) ? day.jobs : []
+                const isPromiseJob = (job) =>
+                  job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
+                const allDayPromiseJobs = dayJobs.filter(isPromiseJob)
+                const scheduledTimedJobs = dayJobs.filter((job) => !isPromiseJob(job))
+
+                const renderWeekCard = (job) => {
                 const jobStartTime = job?.time_tbd
                   ? null
                   : safeCreateDate(job?.scheduled_start_time)
@@ -891,7 +898,23 @@ const CalendarSchedulingCenter = ({
                     ) : null}
                   </div>
                 )
-              })}
+                }
+
+                return (
+                  <>
+                    {allDayPromiseJobs.length > 0 ? (
+                      <div className="mb-2 rounded-md border border-amber-200/70 bg-amber-50/60 p-2">
+                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                          All-day (Promises)
+                        </div>
+                        {allDayPromiseJobs.map(renderWeekCard)}
+                      </div>
+                    ) : null}
+
+                    {scheduledTimedJobs.map(renderWeekCard)}
+                  </>
+                )
+              })()}
             </div>
           ))}
         </div>
