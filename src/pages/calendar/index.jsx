@@ -114,6 +114,13 @@ export function getCalendarGridClickHandler({
   }
 }
 
+export function handleCalendarCardKeyDown(event, onActivate) {
+  const key = event?.key
+  if (key !== 'Enter' && key !== ' ') return
+  event?.preventDefault?.()
+  if (typeof onActivate === 'function') onActivate()
+}
+
 const parseDateParam = (value) => {
   if (!value) return null
   const str = String(value).trim()
@@ -722,12 +729,20 @@ const CalendarSchedulingCenter = ({
             <div
               key={`content-${index}`}
               className={cx(
-                'p-1 border-r min-h-80 overflow-y-auto',
+                'p-1 border-r min-h-80',
+                isEmbedded ? 'overflow-visible' : 'overflow-y-auto',
                 darkUi ? 'border-white/10' : 'border-gray-200',
                 day?.date?.toDateString?.() === todayKey ? cellBgToday : cellBg
               )}
             >
-              {day?.jobs?.map((job) => {
+              {(() => {
+                const dayJobs = Array.isArray(day?.jobs) ? day.jobs : []
+                const isPromiseJob = (job) =>
+                  job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
+                const allDayPromiseJobs = dayJobs.filter(isPromiseJob)
+                const scheduledTimedJobs = dayJobs.filter((job) => !isPromiseJob(job))
+
+                const renderWeekCard = (job) => {
                 const jobStartTime = job?.time_tbd
                   ? null
                   : safeCreateDate(job?.scheduled_start_time)
@@ -792,6 +807,10 @@ const CalendarSchedulingCenter = ({
                     key={job?.calendar_key || job?.id}
                     className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
+                    onKeyDown={(event) => handleCalendarCardKeyDown(event, handleGridClick)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open deal ${titleWithNumber}`}
                     title={titleText}
                     aria-describedby={popoverId}
                   >
@@ -880,7 +899,23 @@ const CalendarSchedulingCenter = ({
                     ) : null}
                   </div>
                 )
-              })}
+                }
+
+                return (
+                  <>
+                    {allDayPromiseJobs.length > 0 ? (
+                      <div className="mb-2 rounded-md border border-amber-200/70 bg-amber-50/60 p-2">
+                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
+                          All-day (Promises)
+                        </div>
+                        {allDayPromiseJobs.map(renderWeekCard)}
+                      </div>
+                    ) : null}
+
+                    {scheduledTimedJobs.map(renderWeekCard)}
+                  </>
+                )
+              })()}
             </div>
           ))}
         </div>
@@ -1267,6 +1302,10 @@ const CalendarSchedulingCenter = ({
                     darkUi ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white'
                   )}
                   onClick={handleListClick}
+                  onKeyDown={(event) => handleCalendarCardKeyDown(event, handleListClick)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open deal ${listTitle}`}
                   aria-describedby={popoverId}
                 >
                   <div className="flex items-start justify-between">
