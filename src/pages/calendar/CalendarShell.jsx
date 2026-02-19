@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Filter, Info, MoreVertical, Plus, Search } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AppLayout from '@/components/layouts/AppLayout'
@@ -99,6 +99,9 @@ export default function CalendarShell() {
     () => RANGE_OPTIONS.filter((option) => allowedRanges.has(option.value)),
     [allowedRanges]
   )
+  const lastCalendarRangeRef = useRef(
+    range === 'day' || range === 'week' || range === 'month' ? range : 'month'
+  )
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -181,15 +184,23 @@ export default function CalendarShell() {
     }
   }, [allowedRanges, range, clampedRange, updateParams])
 
+  useEffect(() => {
+    if (resolvedView === 'calendar' && (clampedRange === 'day' || clampedRange === 'week' || clampedRange === 'month')) {
+      lastCalendarRangeRef.current = clampedRange
+    }
+  }, [resolvedView, clampedRange])
+
   const handleViewChange = (nextView) => {
     const nextAllowedRanges = getAllowedRangesForView(nextView)
     let nextRange = clampedRange
 
     if (nextView === 'calendar') {
-      // Calendar view is primarily used as a week/month grid.
-      // Preserve explicit week/month, otherwise default to month to avoid landing
-      // on an unexpected day-only calendar state when coming from board day.
-      nextRange = clampedRange === 'week' || clampedRange === 'month' ? clampedRange : 'month'
+      const remembered = lastCalendarRangeRef.current
+      if (resolvedView !== 'calendar' && nextAllowedRanges.has(remembered)) {
+        nextRange = remembered
+      } else {
+        nextRange = clampedRange === 'week' || clampedRange === 'month' ? clampedRange : 'month'
+      }
     }
 
     if (!nextAllowedRanges.has(nextRange)) {

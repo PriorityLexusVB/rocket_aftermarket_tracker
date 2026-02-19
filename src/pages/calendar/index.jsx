@@ -911,11 +911,11 @@ const CalendarSchedulingCenter = ({
 
       return (
         <div className="h-full">
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-2">
             {weekdayLabels.map((label) => (
               <div
                 key={label}
-                className="bg-gray-50 p-2 border-b font-semibold text-center text-sm text-gray-700"
+                className="border-b border-gray-200 py-2 text-center text-sm font-medium text-gray-500"
               >
                 {label}
               </div>
@@ -957,7 +957,7 @@ const CalendarSchedulingCenter = ({
                 isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt)
               ).length
 
-              const visibleJobs = dayJobs?.slice?.(0, 4) || []
+              const visibleJobs = dayJobs?.slice?.(0, 3) || []
               const remainingCount = Math.max((dayJobs?.length || 0) - visibleJobs.length, 0)
 
               const dayAriaLabel = unifiedShellEnabled
@@ -977,7 +977,7 @@ const CalendarSchedulingCenter = ({
                       jumpToDay()
                     }
                   }}
-                  className={`min-h-32 border border-gray-200 rounded-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                  className={`h-32 border border-gray-200 rounded-lg overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 ${
                     isToday
                       ? 'bg-blue-50/30 border-blue-200'
                       : isInMonth
@@ -987,7 +987,7 @@ const CalendarSchedulingCenter = ({
                   aria-label={dayAriaLabel}
                   title={dayTitle}
                 >
-                  <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100">
+                  <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-gray-100">
                     <div
                       className={`text-sm font-semibold ${
                         isInMonth ? 'text-gray-900' : 'text-gray-400'
@@ -995,26 +995,26 @@ const CalendarSchedulingCenter = ({
                     >
                       {dayDate?.getDate?.()}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-1 text-[9px] text-gray-500">
                       {promiseCount > 0 ? (
-                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-900">
+                        <span className="rounded bg-amber-100 px-1 py-0.5 text-amber-900">
                           P {promiseCount}
                         </span>
                       ) : null}
                       {scheduledCount > 0 ? (
-                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-900">
+                        <span className="rounded bg-blue-100 px-1 py-0.5 text-blue-900">
                           S {scheduledCount}
                         </span>
                       ) : null}
                       {overdueCount > 0 ? (
-                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-900">
+                        <span className="rounded bg-red-100 px-1 py-0.5 text-red-900">
                           O {overdueCount}
                         </span>
                       ) : null}
                     </div>
                   </div>
 
-                  <div className="p-1 space-y-1 max-h-28 overflow-y-auto">
+                  <div className="p-1 space-y-1 max-h-24 overflow-y-auto">
                     {visibleJobs.map((job) => {
                       const normalizedStatus =
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
