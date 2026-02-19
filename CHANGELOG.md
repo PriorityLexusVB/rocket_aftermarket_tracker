@@ -1,5 +1,40 @@
 # Changelog - Calendar-First Aftermarket Tracker
 
+## [2026-02-19] Calendar Range Stability & Month Grid Parity
+
+### Fixed
+
+- **Board/Calendar Range Restoration**:
+  - Preserved the last calendar-native range when switching between Calendar and Board views.
+  - Fixed the `Calendar -> Board -> Next 30 -> Calendar` flow so Calendar restores to `month` instead of inheriting board-only ranges.
+  - File: `src/pages/calendar/CalendarShell.jsx`
+
+### Enhanced
+
+- **Calendar Month Grid Visual Parity**:
+  - Aligned month-tile sizing and spacing to better match Board `Next 30` readability.
+  - Updated weekday header styling for closer visual consistency.
+  - Tuned day-tile header/counter chip density for improved scanability.
+  - Tightened month tile content density to show 3 items before `+more`.
+  - File: `src/pages/calendar/index.jsx`
+
+### Added
+
+- **Regression Coverage**:
+  - Added test coverage for range restoration across `month -> board -> next30 -> calendar`.
+  - File: `src/tests/calendarShell.viewRangeRestore.test.jsx`
+
+### Verified
+
+- `pnpm -s vitest run src/tests/calendarShell.viewRangeRestore.test.jsx` ✅
+- `pnpm lint` ✅
+- `pnpm -s verify` ✅
+- `pnpm build` ✅
+
+### Follow-up
+
+- Track non-blocking Baseline warning maintenance (`baseline-browser-mapping` data staleness) as separate housekeeping work.
+
 ## [2025-11-09] Job Parts Scheduling & Vendor Capability Hardening
 
 ### Added
