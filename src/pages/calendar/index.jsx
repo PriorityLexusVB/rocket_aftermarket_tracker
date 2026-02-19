@@ -114,6 +114,13 @@ export function getCalendarGridClickHandler({
   }
 }
 
+export function handleCalendarCardKeyDown(event, onActivate) {
+  const key = event?.key
+  if (key !== 'Enter' && key !== ' ') return
+  event?.preventDefault?.()
+  if (typeof onActivate === 'function') onActivate()
+}
+
 const parseDateParam = (value) => {
   if (!value) return null
   const str = String(value).trim()
@@ -792,6 +799,10 @@ const CalendarSchedulingCenter = ({
                     key={job?.calendar_key || job?.id}
                     className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
+                    onKeyDown={(event) => handleCalendarCardKeyDown(event, handleGridClick)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open deal ${titleWithNumber}`}
                     title={titleText}
                     aria-describedby={popoverId}
                   >
@@ -1267,6 +1278,10 @@ const CalendarSchedulingCenter = ({
                     darkUi ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white'
                   )}
                   onClick={handleListClick}
+                  onKeyDown={(event) => handleCalendarCardKeyDown(event, handleListClick)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open deal ${listTitle}`}
                   aria-describedby={popoverId}
                 >
                   <div className="flex items-start justify-between">

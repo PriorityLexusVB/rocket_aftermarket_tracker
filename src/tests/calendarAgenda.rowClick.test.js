@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getAgendaRowClickHandler } from '@/pages/calendar-agenda'
+import { getAgendaRowClickHandler, handleAgendaRowKeyDown } from '@/pages/calendar-agenda'
 
 describe('getAgendaRowClickHandler', () => {
   it('opens the deal drawer when enabled', () => {
@@ -53,5 +53,16 @@ describe('getAgendaRowClickHandler', () => {
 
     expect(onOpenDealDrawer).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('triggers row activation on Enter and Space keys', () => {
+    const onActivate = vi.fn()
+    const preventDefault = vi.fn()
+
+    handleAgendaRowKeyDown({ key: 'Enter', preventDefault }, onActivate)
+    handleAgendaRowKeyDown({ key: ' ', preventDefault }, onActivate)
+
+    expect(preventDefault).toHaveBeenCalledTimes(2)
+    expect(onActivate).toHaveBeenCalledTimes(2)
   })
 })

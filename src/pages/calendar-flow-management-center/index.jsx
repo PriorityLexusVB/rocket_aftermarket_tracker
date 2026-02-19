@@ -65,6 +65,13 @@ function toEtDateKey(input) {
   return y && m && day ? `${y}-${m}-${day}` : null
 }
 
+function handleBoardCardKeyDown(event, onActivate) {
+  const key = event?.key
+  if (key !== 'Enter' && key !== ' ') return
+  event?.preventDefault?.()
+  if (typeof onActivate === 'function') onActivate()
+}
+
 const CalendarFlowManagementCenter = ({
   embedded = false,
   shellState,
@@ -1061,6 +1068,18 @@ const CalendarFlowManagementCenter = ({
           }
           handleJobClick(job)
         }}
+        onKeyDown={(event) =>
+          handleBoardCardKeyDown(event, () => {
+            if (canOpenDrawer) {
+              onOpenDealDrawer(job)
+              return
+            }
+            handleJobClick(job)
+          })
+        }
+        role="button"
+        tabIndex={0}
+        aria-label={`Open deal ${titleText}`}
         draggable
         onDragStart={() => handleDragStart(job)}
         onDragEnd={handleDragEnd}
