@@ -4,7 +4,7 @@ This app expects Supabase env vars at runtime. When they’re missing (common in
 
 ## Quick setup
 
-1. Create `.env.local` by copying `.env.local.example`.
+1. Create `.env.local` by copying `.env.example`.
 2. Set:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
