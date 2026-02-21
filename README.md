@@ -144,7 +144,7 @@ These tools help keep tenant data clean without requiring additional logins for 
 - `/calendar/agenda`
   - unified shell ON → redirects to unified `view=list`
   - unified shell OFF + `VITE_SIMPLE_CALENDAR=true` → renders `src/pages/calendar-agenda/index.jsx`
-  - unified shell OFF + `VITE_SIMPLE_CALENDAR` unset/false → redirects to board destination
+  - unified shell OFF + `VITE_SIMPLE_CALENDAR` unset/false → redirects to `/calendar-flow-management-center`
 - `/calendar-flow-management-center`
   - unified shell ON → redirects to unified `view=board`
   - unified shell OFF → renders `src/pages/calendar-flow-management-center/index.jsx`
@@ -315,7 +315,14 @@ Build/test env names used in CI:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
-E2E-supported env aliases (names only):
+Local E2E required env vars (canonical names):
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `E2E_EMAIL`
+- `E2E_PASSWORD`
+
+CI workflow alias mapping (names only; mapped by workflow/job env):
 
 - `E2E_VITE_SUPABASE_URL` / `VITE_SUPABASE_URL`
 - `E2E_VITE_SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY`
