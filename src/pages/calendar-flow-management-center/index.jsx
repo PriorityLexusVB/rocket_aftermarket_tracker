@@ -1677,7 +1677,16 @@ const CalendarFlowManagementCenter = ({
               <div className="flex items-start gap-2 text-sm">
                 <Clock className="mt-0.5 h-4 w-4" />
                 <div>
-                  <div className="font-semibold">Needs time outside this view.</div>
+                  <div className="font-semibold inline-flex items-center gap-2">
+                    <span>Needs time outside this view.</span>
+                    <span
+                      title="Overdue = promised date/time has passed and is outside the current visible range. Promised without a time = promised items not yet assigned a scheduled time in the current visible range."
+                      aria-label="Help: overdue and promised without a time"
+                      className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-indigo-300 bg-white text-[10px] font-bold text-indigo-700 cursor-help"
+                    >
+                      ?
+                    </span>
+                  </div>
                   <div className="text-indigo-800">
                     {overdueOutsideViewCount > 0
                       ? `${overdueOutsideViewCount} overdue`
