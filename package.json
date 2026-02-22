@@ -173,6 +173,7 @@
       ]
     },
     "overrides": {
+      "ajv": "6.14.0",
       "schema-utils>ajv": "^8.18.0",
       "esbuild": "0.25.12",
       "next": "16.1.6",
