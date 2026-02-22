@@ -16,8 +16,38 @@ jobs:
 
       - name: Setup pnpm via corepack
         run: |
-          corepack enable
-          corepack prepare pnpm@10.15.0 --activate
+          set -euo pipefail
+
+          echo "Node: $(node -v)"
+          echo "Corepack: $(corepack --version || echo 'unknown')"
+          corepack enable || true
+
+          PNPM_VER="10.15.0"
+          echo "Requested pnpm@${PNPM_VER}"
+
+          for i in 1 2 3; do
+            echo "corepack prepare attempt $i..."
+            if corepack prepare "pnpm@${PNPM_VER}" --activate; then
+              echo "corepack prepare succeeded"
+              pnpm -v
+              exit 0
+            fi
+            sleep $((i * 5))
+          done
+
+          echo "corepack prepare failed; falling back to npm install -g pnpm@${PNPM_VER}" >&2
+
+          for i in 1 2 3; do
+            echo "npm install attempt $i..."
+            if npm i -g "pnpm@${PNPM_VER}"; then
+              pnpm -v
+              exit 0
+            fi
+            sleep $((i * 5))
+          done
+
+          echo "npm fallback failed after retries" >&2
+          exit 1
 
       - name: Set up Node
         uses: actions/setup-node@v4
