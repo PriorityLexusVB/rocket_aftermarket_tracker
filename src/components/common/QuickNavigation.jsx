@@ -34,6 +34,7 @@ const QuickNavigation = () => {
   const [results, setResults] = useState([])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [recentIds, setRecentIds] = useState([])
+  const [hasLoadedRecents, setHasLoadedRecents] = useState(false)
 
   const navigate = useNavigate()
   const inputRef = useRef()
@@ -190,16 +191,19 @@ const QuickNavigation = () => {
       setRecentIds(cleaned)
     } catch {
       setRecentIds([])
+    } finally {
+      setHasLoadedRecents(true)
     }
   }, [])
 
   useEffect(() => {
+    if (!hasLoadedRecents) return
     try {
       localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify((recentIds || []).slice(0, MAX_RECENT_ITEMS)))
     } catch {
       void 0
     }
-  }, [recentIds])
+  }, [hasLoadedRecents, recentIds])
 
   const close = useCallback(() => {
     setIsOpen(false)
@@ -230,6 +234,7 @@ const QuickNavigation = () => {
 
   useEffect(() => {
     const q = String(query || '').trim().toLowerCase()
+    const recents = (recentItems || []).map((item) => ({ ...item, group: 'Recent' }))
     const recentSet = new Set((recentItems || []).map((item) => item?.id).filter(Boolean))
     if (q.length > 1) {
       const filtered = items.filter((item) => {
@@ -243,10 +248,10 @@ const QuickNavigation = () => {
         )
       })
       const deduped = filtered.filter((item) => !recentSet.has(item?.id))
-      setResults([...(recentItems || []), ...deduped])
+      setResults([...recents, ...deduped])
     } else {
       const deduped = items.slice(0, 8).filter((item) => !recentSet.has(item?.id))
-      setResults([...(recentItems || []), ...deduped])
+      setResults([...recents, ...deduped])
     }
   }, [items, query, recentItems])
 
