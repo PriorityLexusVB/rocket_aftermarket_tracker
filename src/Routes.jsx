@@ -30,6 +30,7 @@ const DashboardPage = lazy(() => import('./pages/dashboard'))
 // Real Calendar (grid)
 const CalendarSchedulingCenter = lazy(() => import('./pages/calendar'))
 const CalendarShell = lazy(() => import('./pages/calendar/CalendarShell'))
+const OverdueInbox = lazy(() => import('./pages/overdue-inbox'))
 // Simple Agenda (feature-flagged)
 const SimpleAgendaEnabled =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -259,6 +260,15 @@ const Routes = () => {
                       replace
                     />
                   )
+                }
+              />
+
+              <Route
+                path="/overdue"
+                element={
+                  <ProtectedRoute>
+                    <OverdueInbox />
+                  </ProtectedRoute>
                 }
               />
 
