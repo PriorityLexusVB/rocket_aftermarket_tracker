@@ -25,31 +25,89 @@ import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 const TZ = 'America/New_York'
 const LOAD_TIMEOUT_MS = 15000
 
-function summarizeOpCodesFromParts(parts, max = 5) {
-  const list = Array.isArray(parts) ? parts : []
-  const byCode = new Map()
+function truncateDisplayText(value, max = 30) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
+}
 
-  for (const p of list) {
-    const code = String(p?.product?.op_code || p?.product?.opCode || '')
-      .trim()
-      .toUpperCase()
-    if (!code) continue
+function buildProductsLabel(raw, max = 30) {
+  const parts = Array.isArray(raw?.job_parts) ? raw.job_parts : []
+  const names = parts
+    .map((part) => {
+      const product = part?.product || {}
+      return (
+        product?.name ||
+        product?.title ||
+        product?.op_code ||
+        product?.opCode ||
+        part?.product_name ||
+        ''
+      )
+    })
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
 
-    const qtyRaw = p?.quantity_used ?? p?.quantity ?? 1
-    const qtyNum = Number(qtyRaw)
-    const qty = Number.isFinite(qtyNum) && qtyNum > 0 ? qtyNum : 1
+  if (!names.length) return ''
+  return truncateDisplayText(Array.from(new Set(names)).join(', '), max)
+}
 
-    const existing = byCode.get(code)
-    if (!existing) byCode.set(code, qty)
-    else byCode.set(code, existing + qty)
+function buildAgendaDisplay(row) {
+  const raw = row?.raw || row || {}
+  const vehicle = raw?.vehicle || raw?.vehicles || {}
+  const customerName =
+    String(row?.customerName || raw?.customer_name || vehicle?.owner_name || 'Unknown').trim() ||
+    'Unknown'
+
+  const stockRaw =
+    raw?.stock_number ||
+    raw?.stockNumber ||
+    vehicle?.stock_number ||
+    vehicle?.stockNumber ||
+    ''
+  const vin = raw?.vin || vehicle?.vin || ''
+  const stock = stockRaw || (vin ? `VIN ${String(vin).slice(-6)}` : '')
+
+  const vehicleLabel =
+    String(
+      row?.vehicleLabel ||
+        [vehicle?.year || raw?.vehicle_year, vehicle?.make || raw?.vehicle_make, vehicle?.model || raw?.vehicle_model]
+          .filter(Boolean)
+          .join(' ')
+    ).trim()
+
+  const salesperson =
+    String(
+      row?.salesName ||
+        raw?.sales_consultant_name ||
+        raw?.salesName ||
+        raw?.assigned_to_profile?.display_name ||
+        raw?.assigned_to_profile?.full_name ||
+        ''
+    ).trim()
+
+  const productsLabel = buildProductsLabel(raw, 30)
+
+  return {
+    customerName,
+    stock,
+    vehicleLabel,
+    salesperson,
+    productsLabel,
   }
+}
 
-  const tokens = Array.from(byCode.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([code, qty]) => (qty > 1 ? `${code}×${qty}` : code))
-
-  const clipped = tokens.slice(0, max)
-  return { tokens: clipped, extraCount: Math.max(0, tokens.length - clipped.length) }
+function buildAgendaTooltip(row, display, timeRange) {
+  const raw = row?.raw || row || {}
+  return [
+    `Deal: ${raw?.job_number || row?.id || raw?.id || '—'}`,
+    `Time: ${timeRange || 'Time TBD'}`,
+    `Customer: ${display?.customerName || 'Unknown'}`,
+    `Stock: ${display?.stock || '—'}`,
+    `Vehicle: ${display?.vehicleLabel || '—'}`,
+    `Salesperson: ${display?.salesperson || '—'}`,
+    `Products: ${display?.productsLabel || '—'}`,
+  ].join('\n')
 }
 
 function toYmdInTz(date, timeZone) {
@@ -488,7 +546,12 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
         return aMs - bMs
       })
 
-      setJobs(filterByLocation(combined))
+      const combinedWithDisplay = combined.map((item) => ({
+        ...item,
+        display: item?.display || buildAgendaDisplay(item),
+      }))
+
+      setJobs(filterByLocation(combinedWithDisplay))
     } catch (e) {
       console.warn('[agenda] load failed', e)
       setJobs([])
@@ -959,23 +1022,20 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                   ? { start: r.scheduledStart, end: r.scheduledEnd }
                   : getEffectiveScheduleWindow(raw)
                 const timeRange = start ? formatScheduleRange(start, end) : null
-                const title = raw?.title || raw?.job_number
-                const titleText = title || r.id || 'Appointment'
-                const vehicleLabel =
-                  r?.vehicleLabel ||
-                  `${raw?.vehicle?.make || ''} ${raw?.vehicle?.model || ''} ${raw?.vehicle?.year || ''}`.trim()
-                const customerName =
-                  r?.customerName || raw?.customer_name || raw?.vehicle?.owner_name || ''
+                const display = r?.display || buildAgendaDisplay(r)
+                const titleText =
+                  `${display?.customerName || 'Unknown'}${display?.stock ? ` • ${display.stock}` : ''}`
                 const popoverId = showDetailPopovers ? `agenda-popover-${r.id}` : undefined
                 const popoverLines = showDetailPopovers
                   ? [
                       timeRange ? `Time: ${timeRange}` : 'Time: Time TBD',
-                      customerName ? `Customer: ${customerName}` : null,
-                      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                      display?.customerName ? `Customer: ${display.customerName}` : null,
+                      display?.stock ? `Stock: ${display.stock}` : null,
+                      display?.vehicleLabel ? `Vehicle: ${display.vehicleLabel}` : null,
+                      display?.salesperson ? `Salesperson: ${display.salesperson}` : null,
+                      display?.productsLabel ? `Products: ${display.productsLabel}` : null,
                     ]
                   : []
-                const stock = raw?.vehicle?.stock_number || ''
-                const ops = summarizeOpCodesFromParts(raw?.job_parts, 6)
 
                 const handleRowClick = getAgendaRowClickHandler({
                   dealDrawerEnabled,
@@ -995,6 +1055,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                     className={`group relative grid grid-cols-[7rem_1fr_auto] items-center gap-4 px-4 py-3 text-sm hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${focused ? 'bg-amber-50' : ''}`}
                     onClick={handleRowClick}
                     onKeyDown={(event) => handleAgendaRowKeyDown(event, handleRowClick)}
+                    title={buildAgendaTooltip(r, display, timeRange)}
                   >
                     {/* Time column (blank for all-day) */}
                     <div className="w-28 text-xs font-mono tabular-nums text-slate-600">
@@ -1028,31 +1089,11 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                         )}
                       </div>
                       <div className="text-xs text-slate-500 truncate">
-                        {[customerName, vehicleLabel, stock ? `Stock ${stock}` : null]
-                          .filter(Boolean)
-                          .join(' • ')}
+                        {display?.vehicleLabel || '—'}
                       </div>
-                      {ops.tokens.length ? (
-                        <div
-                          className="mt-1 flex flex-wrap items-center gap-1"
-                          aria-label="Products"
-                        >
-                          {ops.tokens.map((t) => (
-                            <span
-                              key={t}
-                              className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
-                              title={t}
-                            >
-                              {t}
-                            </span>
-                          ))}
-                          {ops.extraCount ? (
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                              +{ops.extraCount}
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : null}
+                      <div className="mt-1 text-[11px] text-slate-500 truncate">
+                        {[display?.salesperson, display?.productsLabel].filter(Boolean).join(' • ') || '—'}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-end gap-3">

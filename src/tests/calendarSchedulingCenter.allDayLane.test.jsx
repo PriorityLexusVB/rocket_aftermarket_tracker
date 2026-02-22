@@ -45,6 +45,7 @@ describe('CalendarSchedulingCenter all-day promise lane', () => {
           id: 'job-timed-1',
           calendar_key: 'job-timed-1',
           title: 'Timed Scheduled Job',
+          customer_name: 'Timed Customer',
           job_status: 'scheduled',
           scheduled_start_time: start.toISOString(),
           scheduled_end_time: end.toISOString(),
@@ -63,6 +64,7 @@ describe('CalendarSchedulingCenter all-day promise lane', () => {
           raw: {
             id: 'job-promise-1',
             title: 'Promise Only Job',
+            customer_name: 'Promise Customer',
             job_status: 'pending',
             service_type: 'onsite',
             vendor_id: null,
@@ -82,11 +84,11 @@ describe('CalendarSchedulingCenter all-day promise lane', () => {
     const laneContainer = laneHeader.closest('div')?.parentElement
     expect(laneContainer).toBeTruthy()
 
-    expect(within(laneContainer).getByText('Promise Only Job')).toBeInTheDocument()
+    expect(within(laneContainer).getByText('Promise Customer')).toBeInTheDocument()
     expect(within(laneContainer).getByText('PROMISE')).toBeInTheDocument()
-    expect(screen.getByText('Timed Scheduled Job')).toBeInTheDocument()
+    expect(screen.getByText('Timed Customer')).toBeInTheDocument()
     expect(screen.getByText('BOOKED')).toBeInTheDocument()
 
-    expect(screen.getAllByText('Promise Only Job')).toHaveLength(1)
+    expect(screen.getAllByText('Promise Customer')).toHaveLength(1)
   })
 })
