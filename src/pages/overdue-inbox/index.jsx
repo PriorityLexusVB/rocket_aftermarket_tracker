@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import AppLayout from '@/components/layouts/AppLayout'
 import DealDrawer from '@/components/calendar/DealDrawer'
 import useTenant from '@/hooks/useTenant'
-import { getNeedsSchedulingPromiseItems } from '@/services/scheduleItemsService'
-import { isOverdue } from '@/lib/time'
+import { jobService } from '@/services/jobService'
+import { useToast } from '@/components/ui/ToastProvider'
 
 const EXCLUDED_STATUSES = new Set(['completed', 'cancelled', 'canceled', 'draft'])
 
@@ -14,6 +14,20 @@ function getPromiseValue(job) {
 function toDate(input) {
   const d = input ? new Date(input) : null
   return d && !Number.isNaN(d.getTime()) ? d : null
+}
+
+function getRowKey(job) {
+  return String(job?.id || job?.job_number || '')
+}
+
+export function isStrictOverdueJob(job, now = new Date()) {
+  const status = String(job?.job_status || job?.status || '').toLowerCase()
+  if (EXCLUDED_STATUSES.has(status)) return false
+
+  const promise = toDate(getPromiseValue(job))
+  if (!promise) return false
+
+  return promise.getTime() < now.getTime()
 }
 
 function formatDateTime(input) {
@@ -44,29 +58,46 @@ function formatOverdueBy(input) {
   return `${days}d ${hours}h`
 }
 
-function normalizeOverdueRows(items) {
+export function normalizeOverdueRows(items, now = new Date()) {
   const list = Array.isArray(items) ? items : []
-  return list
-    .map((item) => item?.raw || item)
-    .filter(Boolean)
-    .filter((job) => {
-      const status = String(job?.job_status || job?.status || '').toLowerCase()
-      if (EXCLUDED_STATUSES.has(status)) return false
-      return isOverdue(getPromiseValue(job))
-    })
-    .sort((a, b) => {
-      const aTime = toDate(getPromiseValue(a))?.getTime() || 0
-      const bTime = toDate(getPromiseValue(b))?.getTime() || 0
-      return aTime - bTime
-    })
+  const deduped = new Map()
+
+  for (const item of list) {
+    const job = item?.raw || item
+    if (!job) continue
+    if (!isStrictOverdueJob(job, now)) continue
+
+    const key = getRowKey(job)
+    if (!key) continue
+
+    const existing = deduped.get(key)
+    if (!existing) {
+      deduped.set(key, job)
+      continue
+    }
+
+    const existingPromise = toDate(getPromiseValue(existing))?.getTime() || Number.POSITIVE_INFINITY
+    const nextPromise = toDate(getPromiseValue(job))?.getTime() || Number.POSITIVE_INFINITY
+    if (nextPromise < existingPromise) {
+      deduped.set(key, job)
+    }
+  }
+
+  return Array.from(deduped.values()).sort((a, b) => {
+    const aTime = toDate(getPromiseValue(a))?.getTime() || 0
+    const bTime = toDate(getPromiseValue(b))?.getTime() || 0
+    return aTime - bTime
+  })
 }
 
 export default function OverdueInbox() {
   const { orgId, loading: tenantLoading } = useTenant()
+  const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rows, setRows] = useState([])
   const [query, setQuery] = useState('')
+  const [completingId, setCompletingId] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerDeal, setDrawerDeal] = useState(null)
 
@@ -79,28 +110,24 @@ export default function OverdueInbox() {
   useEffect(() => {
     let active = true
 
-    const load = async () => {
+    const load = async (silent = false) => {
       if (tenantLoading) return
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError('')
 
       try {
-        const rangeStart = new Date('2000-01-01T00:00:00.000Z')
-        const rangeEnd = new Date()
-        rangeEnd.setDate(rangeEnd.getDate() + 1)
-
-        const { items } = await getNeedsSchedulingPromiseItems({ orgId, rangeStart, rangeEnd })
+        const jobs = await jobService.getAllJobs({ orgId })
         if (!active) return
-        setRows(normalizeOverdueRows(items))
+        setRows(normalizeOverdueRows(jobs))
       } catch (e) {
         if (!active) return
         setError(e?.message || 'Failed to load overdue items')
       } finally {
-        if (active) setLoading(false)
+        if (active && !silent) setLoading(false)
       }
     }
 
-    load()
+    load(false)
     return () => {
       active = false
     }
@@ -124,6 +151,31 @@ export default function OverdueInbox() {
     })
   }, [rows, query])
 
+  const handleMarkComplete = async (job, event) => {
+    event?.stopPropagation?.()
+    const jobId = String(job?.id || '')
+    if (!jobId || completingId) return
+
+    const previousRows = rows
+    setCompletingId(jobId)
+    setRows((prev) => prev.filter((item) => String(item?.id || '') !== jobId))
+
+    try {
+      await jobService.updateStatus(jobId, 'completed', {
+        completed_at: new Date().toISOString(),
+      })
+      toast?.success?.('Marked complete')
+
+      const jobs = await jobService.getAllJobs({ orgId })
+      setRows(normalizeOverdueRows(jobs))
+    } catch (e) {
+      setRows(previousRows)
+      toast?.error?.(e?.message || 'Failed to mark complete')
+    } finally {
+      setCompletingId('')
+    }
+  }
+
   return (
     <AppLayout>
       <div className="mx-auto w-full max-w-7xl p-4 md:px-6">
@@ -134,6 +186,9 @@ export default function OverdueInbox() {
               <p className="text-sm text-muted-foreground">
                 Overdue promised items waiting for delivery coordinator action.
               </p>
+                <p className="text-xs font-medium text-muted-foreground mt-1">
+                  {filteredRows.length} items
+                </p>
             </div>
             <input
               type="text"
@@ -165,10 +220,12 @@ export default function OverdueInbox() {
                     <th className="px-4 py-3">Location</th>
                     <th className="px-4 py-3">Updated</th>
                     <th className="px-4 py-3">Overdue by</th>
+                    <th className="px-4 py-3">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredRows.map((job) => {
+                    const jobId = String(job?.id || '')
                     const promise = getPromiseValue(job)
                     const status = String(job?.job_status || job?.status || 'pending')
                     const location =
@@ -192,6 +249,16 @@ export default function OverdueInbox() {
                         <td className="px-4 py-3 text-foreground">{location}</td>
                         <td className="px-4 py-3 text-foreground">{formatDateTime(job?.updated_at)}</td>
                         <td className="px-4 py-3 font-medium text-red-700">{formatOverdueBy(promise)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={(event) => handleMarkComplete(job, event)}
+                            disabled={completingId === jobId}
+                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {completingId === jobId ? 'Saving…' : 'Mark Complete'}
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
