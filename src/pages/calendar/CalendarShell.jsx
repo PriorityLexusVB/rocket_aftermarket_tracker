@@ -307,6 +307,11 @@ export default function CalendarShell() {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold text-foreground">Calendar</h1>
+              {banner === 'overdue' ? (
+                <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                  Overdue filter active
+                </span>
+              ) : null}
               <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
                 {[
                   { key: 'board', label: 'Board' },

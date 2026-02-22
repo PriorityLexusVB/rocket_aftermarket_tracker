@@ -40,6 +40,7 @@ import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/co
 import { getJobLocationType } from '@/utils/locationType'
 import { getMicroFlashClass } from '@/utils/microInteractions'
 import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
+import { withCalendarBannerParam } from '@/lib/navigation/calendarNavigation'
 
 const LOAD_TIMEOUT_MS = 15000
 
@@ -843,8 +844,7 @@ const CalendarFlowManagementCenter = ({
       const persistUrl = options?.persistUrl !== false
 
       if (persistUrl) {
-        const next = new URLSearchParams(searchParams)
-        next.set('banner', mode === 'overdue' ? 'overdue' : 'needs_time')
+        const next = withCalendarBannerParam(searchParams, mode === 'overdue' ? 'overdue' : 'needs_time')
         setSearchParams(next, { replace: false })
       }
 
@@ -853,7 +853,16 @@ const CalendarFlowManagementCenter = ({
           ? (filteredNeedsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job)))
           : filteredNeedsSchedulingJobs || []
       const nextDate = pickEarliestPromiseDate(list)
-      if (!nextDate) return false
+      if (!nextDate) {
+        if (mode === 'overdue') {
+          setShowOverdueOnly(true)
+          setHighlightNeedsTime(true)
+          toast?.info?.('No overdue items found')
+        } else {
+          toast?.info?.('No items needing time found')
+        }
+        return false
+      }
 
       setCurrentDate(nextDate)
       setHighlightNeedsTime(true)
@@ -861,7 +870,7 @@ const CalendarFlowManagementCenter = ({
 
       return true
     },
-    [filteredNeedsSchedulingJobs, pickEarliestPromiseDate, searchParams, setSearchParams]
+    [filteredNeedsSchedulingJobs, pickEarliestPromiseDate, searchParams, setSearchParams, toast]
   )
 
   useEffect(() => {

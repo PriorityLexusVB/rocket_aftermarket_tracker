@@ -125,6 +125,25 @@ export function parseCalendarQuery(input) {
   }
 }
 
+export function withCalendarBannerParam(input, banner) {
+  const params =
+    input instanceof URLSearchParams
+      ? new URLSearchParams(input)
+      : new URLSearchParams(typeof input === 'string' ? input : '')
+
+  const value = String(banner || '')
+    .trim()
+    .toLowerCase()
+
+  if (value === 'overdue' || value === 'needs_time') {
+    params.set('banner', value)
+  } else {
+    params.delete('banner')
+  }
+
+  return params
+}
+
 function buildLegacyDestination(target, context = {}) {
   const base = LEGACY_DESTINATIONS[target] || '/calendar'
   if (['agenda', 'list', 'flow', 'board'].includes(target)) {

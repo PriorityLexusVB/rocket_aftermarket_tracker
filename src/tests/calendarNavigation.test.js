@@ -3,6 +3,7 @@ import {
   buildCalendarSearchParams,
   getCalendarDestination,
   parseCalendarQuery,
+  withCalendarBannerParam,
 } from '@/lib/navigation/calendarNavigation'
 
 const setFlag = (value) => {
@@ -97,5 +98,14 @@ describe('calendarNavigation', () => {
     const parsed = parseCalendarQuery(params.toString())
     expect(parsed.banner).toBe('overdue')
     expect(parsed.normalizedParams.get('banner')).toBe('overdue')
+  })
+
+  it('sets banner while preserving existing params', () => {
+    const base = new URLSearchParams('view=board&range=week&q=test&location=Service')
+    const next = withCalendarBannerParam(base, 'overdue')
+    expect(next.get('view')).toBe('board')
+    expect(next.get('q')).toBe('test')
+    expect(next.get('location')).toBe('Service')
+    expect(next.get('banner')).toBe('overdue')
   })
 })
