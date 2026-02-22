@@ -66,8 +66,8 @@ describe('CalendarSchedulingCenter promise-only label', () => {
       </MemoryRouter>
     )
 
-    const title = await screen.findByText('Promise Only Job')
-    const card = title.closest('[title="Promise Only Job"]')
+    const customer = await screen.findByText('Jane Customer')
+    const card = customer.closest('[role="button"]')
     expect(card).toBeTruthy()
 
     await waitFor(() => {
@@ -109,7 +109,8 @@ describe('CalendarSchedulingCenter promise-only label', () => {
       expect(mockGetScheduledJobsByDateRange).toHaveBeenCalled()
     })
 
-    const card = document.querySelector('[title="Completed Job"]')
+    const customer = await screen.findByText('Jane Customer')
+    const card = customer.closest('[role="button"]')
     expect(card).toBeTruthy()
 
     const reopenButton = within(card).getByRole('button', { name: /reopen/i })

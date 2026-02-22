@@ -158,6 +158,94 @@ const getAppointmentCustomerName = (job) =>
     ''
   ).trim()
 
+const truncateDisplayText = (value, max = 30) => {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
+}
+
+const buildProductsLabel = (job, max = 30) => {
+  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
+  const names = parts
+    .map((part) => {
+      const product = part?.product || {}
+      return (
+        product?.name ||
+        product?.title ||
+        product?.op_code ||
+        product?.opCode ||
+        part?.product_name ||
+        ''
+      )
+    })
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+
+  if (!names.length) return ''
+  return truncateDisplayText(Array.from(new Set(names)).join(', '), max)
+}
+
+const buildEventDisplay = (job, fallback = {}) => {
+  const vehicle = job?.vehicle || job?.vehicles || fallback?.vehicle || null
+  const rawStock =
+    job?.stock_number ||
+    job?.stockNumber ||
+    vehicle?.stock_number ||
+    vehicle?.stockNumber ||
+    fallback?.stock ||
+    ''
+  const vin = job?.vin || vehicle?.vin || fallback?.vin || ''
+  const stock = rawStock || (vin ? `VIN ${String(vin).slice(-6)}` : '')
+
+  const vehicleLabel =
+    fallback?.vehicleLabel ||
+    [vehicle?.year || job?.vehicle_year, vehicle?.make || job?.vehicle_make, vehicle?.model || job?.vehicle_model]
+      .filter(Boolean)
+      .join(' ')
+      .trim()
+
+  const customerName =
+    (fallback?.customerName ||
+      getAppointmentCustomerName(job) ||
+      job?.vehicle?.owner_name ||
+      job?.vehicles?.owner_name ||
+      'Unknown')
+      .toString()
+      .trim() || 'Unknown'
+
+  const salesperson =
+    (fallback?.salesperson ||
+      job?.sales_consultant_name ||
+      job?.salesName ||
+      job?.assigned_to_profile?.display_name ||
+      job?.assigned_to_profile?.full_name ||
+      '')
+      .toString()
+      .trim()
+
+  const productsLabel = fallback?.productsLabel || buildProductsLabel(job, 30)
+
+  return {
+    customerName,
+    stock,
+    vehicleLabel,
+    salesperson,
+    productsLabel,
+  }
+}
+
+const buildDisplayTooltip = (job, display) => {
+  const lines = [
+    `Deal: ${job?.job_number || job?.id || '—'}`,
+    `Customer: ${display?.customerName || 'Unknown'}`,
+    `Stock: ${display?.stock || '—'}`,
+    `Vehicle: ${display?.vehicleLabel || '—'}`,
+    `Salesperson: ${display?.salesperson || '—'}`,
+    `Products: ${display?.productsLabel || '—'}`,
+  ]
+  return lines.join('\n')
+}
+
 const CalendarSchedulingCenter = ({
   embedded = false,
   shellState,
@@ -373,6 +461,7 @@ const CalendarSchedulingCenter = ({
           )?.hex ||
           job?.color_code ||
           '#3b82f6',
+        display: buildEventDisplay(job),
       }))
 
       const locationFilteredJobs = filterByLocation(jobsData)
@@ -431,12 +520,20 @@ const CalendarSchedulingCenter = ({
             schedule_state: item?.scheduleState || 'scheduled_no_time',
             color_code:
               getEventColors(serviceType, raw?.job_status)?.hex || raw?.color_code || '#3b82f6',
+            display: buildEventDisplay(raw, {
+              customerName: item?.customerName || raw?.customer_name,
+              vehicleLabel: item?.vehicleLabel,
+              salesperson: item?.salesName || raw?.sales_consultant_name,
+            }),
           }
         })
         .filter(Boolean)
 
       const locationFilteredPromises = filterByLocation(promiseJobs)
-      const mergedJobs = [...(locationFilteredJobs || []), ...(locationFilteredPromises || [])]
+      const mergedJobs = [...(locationFilteredJobs || []), ...(locationFilteredPromises || [])].map((job) => ({
+        ...job,
+        display: job?.display || buildEventDisplay(job),
+      }))
       setJobs(mergedJobs)
 
       // Update debug info
@@ -760,9 +857,7 @@ const CalendarSchedulingCenter = ({
                     : 'SCHEDULED'
 
                 const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
-                const vehicleLabel = job?.vehicle_info || ''
-                const customerName = getAppointmentCustomerName(job)
+                const display = job?.display || buildEventDisplay(job)
                 const titleText = job?.title || ''
                 const titleWithNumber = jobNumber
                   ? `${jobNumber} • ${titleText || 'Open deal'}`
@@ -788,9 +883,11 @@ const CalendarSchedulingCenter = ({
                 const popoverLines = showDetailPopovers
                     ? [
                         timeLabel ? `Time: ${timeLabel}` : null,
-                        vendorLabel ? `Vendor: ${vendorLabel}` : null,
-                        customerName ? `Customer: ${customerName}` : null,
-                        vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+                        display?.customerName ? `Customer: ${display.customerName}` : null,
+                        display?.stock ? `Stock: ${display.stock}` : null,
+                        display?.vehicleLabel ? `Vehicle: ${display.vehicleLabel}` : null,
+                        display?.salesperson ? `Salesperson: ${display.salesperson}` : null,
+                        display?.productsLabel ? `Products: ${display.productsLabel}` : null,
                         statusLabel ? `Status: ${statusLabel}` : null,
                       ]
                     : []
@@ -810,13 +907,13 @@ const CalendarSchedulingCenter = ({
                     role="button"
                     tabIndex={0}
                     aria-label={`Open deal ${titleWithNumber}`}
-                    title={titleText}
+                    title={buildDisplayTooltip(job, display)}
                     aria-describedby={popoverId}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-semibold truncate min-w-0">
-                        {jobNumber ? `${jobNumber} • ` : ''}
-                        {job?.title}
+                        {display?.customerName || 'Unknown'}
+                        {display?.stock ? ` • ${display.stock}` : ''}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -864,13 +961,10 @@ const CalendarSchedulingCenter = ({
                         </span>
                       </div>
                     </div>
-                    <div className="text-[11px] opacity-90 truncate">{vendorLabel}</div>
-                    {customerName ? (
-                      <div className="text-[11px] opacity-90 truncate">{customerName}</div>
-                    ) : null}
-                    {vehicleLabel ? (
-                      <div className="text-[11px] opacity-90 truncate">{vehicleLabel}</div>
-                    ) : null}
+                    <div className="text-[11px] opacity-90 truncate">{display?.vehicleLabel || '—'}</div>
+                    <div className="text-[11px] opacity-80 truncate">
+                      {[display?.salesperson, display?.productsLabel].filter(Boolean).join(' • ') || '—'}
+                    </div>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="text-xs opacity-80">
                         {job?.time_tbd
@@ -1130,9 +1224,7 @@ const CalendarSchedulingCenter = ({
                         : safeCreateDate(job?.scheduled_start_time)
 
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                      const vendorLabel =
-                        job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
-                      const customerName = getAppointmentCustomerName(job)
+                      const display = job?.display || buildEventDisplay(job)
                       const titleText = job?.title || ''
                       const titleWithNumber = jobNumber
                         ? `${jobNumber} • ${titleText || 'Open deal'}`
@@ -1158,8 +1250,11 @@ const CalendarSchedulingCenter = ({
                       const popoverLines = showDetailPopovers
                         ? [
                             timeLabel ? `Time: ${timeLabel}` : null,
-                            vendorLabel ? `Vendor: ${vendorLabel}` : null,
-                            customerName ? `Customer: ${customerName}` : null,
+                            display?.customerName ? `Customer: ${display.customerName}` : null,
+                            display?.stock ? `Stock: ${display.stock}` : null,
+                            display?.vehicleLabel ? `Vehicle: ${display.vehicleLabel}` : null,
+                            display?.salesperson ? `Salesperson: ${display.salesperson}` : null,
+                            display?.productsLabel ? `Products: ${display.productsLabel}` : null,
                             statusLabel ? `Status: ${statusLabel}` : null,
                           ]
                         : []
@@ -1181,13 +1276,13 @@ const CalendarSchedulingCenter = ({
                             e?.stopPropagation?.()
                             handleMonthGridClick()
                           }}
-                          title={titleText}
+                          title={buildDisplayTooltip(job, display)}
                           aria-describedby={popoverId}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="font-medium truncate">
-                              {jobNumber ? `${jobNumber} • ` : ''}
-                              {job?.title}
+                              {display?.customerName || 'Unknown'}
+                              {display?.stock ? ` • ${display.stock}` : ''}
                             </div>
                             <span
                               className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${
@@ -1197,10 +1292,10 @@ const CalendarSchedulingCenter = ({
                               {statusLabel}
                             </span>
                           </div>
-                          <div className="text-[10px] opacity-90 truncate">{vendorLabel}</div>
-                          {customerName ? (
-                            <div className="text-[10px] opacity-90 truncate">{customerName}</div>
-                          ) : null}
+                          <div className="text-[10px] opacity-90 truncate">{display?.vehicleLabel || '—'}</div>
+                          <div className="text-[10px] opacity-80 truncate">
+                            {[display?.salesperson, display?.productsLabel].filter(Boolean).join(' • ') || '—'}
+                          </div>
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
                               ? `Time TBD • Promise: ${promiseLabel || '—'}`
@@ -1284,9 +1379,9 @@ const CalendarSchedulingCenter = ({
                 deal: job,
               })
 
-              const listTitle = job?.title || 'Open deal'
-              const customerName = getAppointmentCustomerName(job)
-              const metaLine = [job?.vendor_name, customerName, job?.vehicle_info]
+              const display = job?.display || buildEventDisplay(job)
+              const listTitle = `${display?.customerName || 'Unknown'}${display?.stock ? ` • ${display.stock}` : ''}`
+              const compactMeta = [display?.salesperson, display?.productsLabel]
                 .filter(Boolean)
                 .join(' • ')
 
@@ -1316,7 +1411,8 @@ const CalendarSchedulingCenter = ({
                       >
                         {listTitle}
                       </h3>
-                      <p className="text-sm text-gray-600">{metaLine}</p>
+                      <p className="text-sm text-gray-600 truncate">{display?.vehicleLabel || '—'}</p>
+                      <p className="text-xs text-gray-500 truncate">{compactMeta || '—'}</p>
                       <p className="text-sm text-gray-500">
                         {job?.time_tbd
                           ? `Promise: ${
