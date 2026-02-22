@@ -29,7 +29,7 @@ import PromisedQueue from './components/PromisedQueue'
 import JobDrawer from './components/JobDrawer'
 import RoundUpModal from './components/RoundUpModal'
 import { formatTime, isOverdue, getStatusBadge } from '../../lib/time'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { formatEtDateLabel, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules'
 import { withTimeout } from '@/utils/promiseTimeout'
@@ -167,6 +167,7 @@ const CalendarFlowManagementCenter = ({
 
   const { orgId, loading: tenantLoading } = useTenant()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
 
   useEffect(() => {
@@ -840,6 +841,13 @@ const CalendarFlowManagementCenter = ({
   const handleJumpToNeedsTime = useCallback(
     (mode, options = {}) => {
       const persistUrl = options?.persistUrl !== false
+
+      if (persistUrl) {
+        const next = new URLSearchParams(searchParams)
+        next.set('banner', mode === 'overdue' ? 'overdue' : 'needs_time')
+        setSearchParams(next, { replace: false })
+      }
+
       const list =
         mode === 'overdue'
           ? (filteredNeedsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job)))
@@ -847,24 +855,17 @@ const CalendarFlowManagementCenter = ({
       const nextDate = pickEarliestPromiseDate(list)
       if (!nextDate) return false
 
-      if (persistUrl) {
-        const qs = new URLSearchParams(location?.search || '')
-        qs.set('banner', mode === 'overdue' ? 'overdue' : 'needs_time')
-        navigate(`${location?.pathname}?${qs.toString()}`, { replace: true })
-      }
-
       setCurrentDate(nextDate)
       setHighlightNeedsTime(true)
       setShowOverdueOnly(mode === 'overdue')
 
       return true
     },
-    [filteredNeedsSchedulingJobs, pickEarliestPromiseDate, location?.search, location?.pathname, navigate]
+    [filteredNeedsSchedulingJobs, pickEarliestPromiseDate, searchParams, setSearchParams]
   )
 
   useEffect(() => {
-    const qs = new URLSearchParams(location?.search || '')
-    const banner = qs.get('banner')
+    const banner = searchParams.get('banner')
     if (!banner) {
       lastAppliedBannerRef.current = null
       return
@@ -878,7 +879,7 @@ const CalendarFlowManagementCenter = ({
     if (applied) {
       lastAppliedBannerRef.current = banner
     }
-  }, [location?.search, handleJumpToNeedsTime])
+  }, [searchParams, handleJumpToNeedsTime])
 
   // New month view render function
   const renderMonthView = () => {
@@ -1707,14 +1708,7 @@ const CalendarFlowManagementCenter = ({
                 <Clock className="mt-0.5 h-4 w-4" />
                 <div>
                   <div className="font-semibold inline-flex items-center gap-2">
-                    <button
-                      type="button"
-                      aria-label="Filter by needs time outside this view"
-                      onClick={() => handleJumpToNeedsTime('all')}
-                      className="text-left underline-offset-2 hover:underline"
-                    >
-                      Needs time outside this view.
-                    </button>
+                    <span>Needs time outside this view.</span>
                     <span
                       title="Overdue = promised date/time has passed and is outside the current visible range. Promised without a time = promised items not yet assigned a scheduled time in the current visible range."
                       aria-label="Help: overdue and promised without a time"
@@ -1723,31 +1717,30 @@ const CalendarFlowManagementCenter = ({
                       ?
                     </span>
                   </div>
-                  <div className="text-indigo-800 flex items-center gap-1 flex-wrap">
+                  <div className="text-indigo-800 flex items-center gap-2 flex-wrap">
                     {overdueOutsideViewCount > 0 ? (
                       <button
                         type="button"
-                        aria-label="Filter overdue items"
+                        aria-label="Show overdue"
                         onClick={() => handleJumpToNeedsTime('overdue')}
-                        className="underline-offset-2 hover:underline"
+                        className="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-white px-2 py-0.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
                       >
-                        {`${overdueOutsideViewCount} overdue`}
+                        <span>{overdueOutsideViewCount}</span>
+                        <span>Overdue</span>
                       </button>
                     ) : (
                       <span>No overdue items</span>
                     )}
                     {needsTimeOutsideViewCount > 0 ? (
-                      <>
-                        <span aria-hidden="true">•</span>
-                        <button
-                          type="button"
-                          aria-label="Filter items that need time"
-                          onClick={() => handleJumpToNeedsTime('all')}
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {`${needsTimeOutsideViewCount} promised without a time`}
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        aria-label="Show items needing time"
+                        onClick={() => handleJumpToNeedsTime('all')}
+                        className="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-white px-2 py-0.5 text-xs font-medium text-indigo-900 hover:bg-indigo-100"
+                      >
+                        <span>{needsTimeOutsideViewCount}</span>
+                        <span>Needs time</span>
+                      </button>
                     ) : null}
                   </div>
                 </div>
