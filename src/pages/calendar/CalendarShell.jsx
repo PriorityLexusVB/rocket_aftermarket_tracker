@@ -83,6 +83,7 @@ export default function CalendarShell() {
     range,
     date,
     location: locationFilter,
+    banner,
     normalizedParams,
   } = useMemo(() => parseCalendarQuery(searchParams), [searchParams])
   const urlQuery = useMemo(() => searchParams.get('q') || '', [searchParams])
@@ -126,10 +127,11 @@ export default function CalendarShell() {
         date,
         q: currentQuery,
         location: locationFilter,
+        banner,
       })
       setSearchParams(nextParams, { replace: true })
     }
-  }, [resolvedView, view, clampedRange, date, searchParams, setSearchParams, locationFilter])
+  }, [resolvedView, view, clampedRange, date, searchParams, setSearchParams, locationFilter, banner])
 
   useEffect(() => {
     setSearchValue((prev) => (prev === urlQuery ? prev : urlQuery))
@@ -149,10 +151,11 @@ export default function CalendarShell() {
         date: next?.date ?? date,
         q: currentQuery,
         location: next?.location ?? locationFilter,
+        banner,
       })
       setSearchParams(nextParams)
     },
-    [resolvedView, clampedRange, date, searchParams, setSearchParams, locationFilter]
+    [resolvedView, clampedRange, date, searchParams, setSearchParams, locationFilter, banner]
   )
 
   useEffect(() => {
@@ -166,6 +169,7 @@ export default function CalendarShell() {
       date,
       q: nextQuery,
       location: locationFilter,
+      banner,
     })
     setSearchParams(nextParams, { replace: true })
   }, [
@@ -174,6 +178,7 @@ export default function CalendarShell() {
     clampedRange,
     date,
     locationFilter,
+    banner,
     searchParams,
     setSearchParams,
   ])

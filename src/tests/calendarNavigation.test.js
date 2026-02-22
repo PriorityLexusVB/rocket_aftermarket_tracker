@@ -82,4 +82,20 @@ describe('calendarNavigation', () => {
     const parsed = parseCalendarQuery(params.toString())
     expect(parsed.q).toBe('tint')
   })
+
+  it('preserves banner query params through normalization', () => {
+    const params = buildCalendarSearchParams({
+      view: 'board',
+      range: 'week',
+      date: '2025-02-03',
+      q: 'test',
+      banner: 'overdue',
+    })
+
+    expect(params.get('banner')).toBe('overdue')
+
+    const parsed = parseCalendarQuery(params.toString())
+    expect(parsed.banner).toBe('overdue')
+    expect(parsed.normalizedParams.get('banner')).toBe('overdue')
+  })
 })

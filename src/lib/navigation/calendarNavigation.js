@@ -67,13 +67,16 @@ export function normalizeCalendarRange(range) {
   return VALID_CANONICAL_RANGES.has(r) ? r : 'day'
 }
 
-export function buildCalendarSearchParams({ view, range, date, q, location } = {}) {
+export function buildCalendarSearchParams({ view, range, date, q, location, banner } = {}) {
   const normalizedView = normalizeCalendarView(view)
   const normalizedRange = normalizeCalendarRange(range)
   const dateValue = date instanceof Date ? date : parseCalendarDateParam(date)
   const dateParam = formatCalendarDateParam(dateValue || new Date())
   const query = typeof q === 'string' ? q.trim() : ''
   const locationValue = typeof location === 'string' ? location.trim() : ''
+  const bannerValue = String(banner || '').trim().toLowerCase()
+  const normalizedBanner =
+    bannerValue === 'overdue' || bannerValue === 'needs_time' ? bannerValue : ''
 
   const params = new URLSearchParams()
   params.set('view', normalizedView)
@@ -81,11 +84,12 @@ export function buildCalendarSearchParams({ view, range, date, q, location } = {
   if (dateParam) params.set('date', dateParam)
   if (query) params.set('q', query)
   if (locationValue && locationValue !== 'All') params.set('location', locationValue)
+  if (normalizedBanner) params.set('banner', normalizedBanner)
   return params
 }
 
-export function buildCalendarUrl({ view, range, date, q, location } = {}) {
-  const params = buildCalendarSearchParams({ view, range, date, q, location })
+export function buildCalendarUrl({ view, range, date, q, location, banner } = {}) {
+  const params = buildCalendarSearchParams({ view, range, date, q, location, banner })
   return `/calendar?${params.toString()}`
 }
 
@@ -100,7 +104,15 @@ export function parseCalendarQuery(input) {
   const parsedDate = parseCalendarDateParam(params.get('date')) || new Date()
   const q = params.get('q') || ''
   const location = params.get('location') || 'All'
-  const normalizedParams = buildCalendarSearchParams({ view, range, date: parsedDate, q, location })
+  const banner = params.get('banner') || ''
+  const normalizedParams = buildCalendarSearchParams({
+    view,
+    range,
+    date: parsedDate,
+    q,
+    location,
+    banner,
+  })
 
   return {
     view,
@@ -108,6 +120,7 @@ export function parseCalendarQuery(input) {
     date: parsedDate,
     q,
     location,
+    banner,
     normalizedParams,
   }
 }

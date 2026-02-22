@@ -59,7 +59,7 @@ const Routes = () => {
     const [path, query = ''] = String(destination || '').split('?')
     const destParams = new URLSearchParams(query)
     const sourceParams = new URLSearchParams(search || '')
-    const keysToCopy = ['focus', 'q', 'location']
+    const keysToCopy = ['focus', 'q', 'location', 'banner']
 
     keysToCopy.forEach((key) => {
       if (!destParams.has(key) && sourceParams.has(key)) {
