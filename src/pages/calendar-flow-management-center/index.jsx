@@ -157,6 +157,7 @@ const CalendarFlowManagementCenter = ({
   const [draggedJob, setDraggedJob] = useState(null)
   const [recentlyMovedId, setRecentlyMovedId] = useState(null)
   const microFlashTimerRef = useRef(null)
+  const lastAppliedBannerRef = useRef(null)
 
   // All-day queue (promised day, no schedule window)
   const [needsSchedulingItems, setNeedsSchedulingItems] = useState([])
@@ -837,19 +838,47 @@ const CalendarFlowManagementCenter = ({
   )
 
   const handleJumpToNeedsTime = useCallback(
-    (mode) => {
+    (mode, options = {}) => {
+      const persistUrl = options?.persistUrl !== false
       const list =
         mode === 'overdue'
           ? (filteredNeedsSchedulingJobs || []).filter((job) => isOverdue(getPromiseValue(job)))
           : filteredNeedsSchedulingJobs || []
       const nextDate = pickEarliestPromiseDate(list)
-      if (!nextDate) return
+      if (!nextDate) return false
+
+      if (persistUrl) {
+        const qs = new URLSearchParams(location?.search || '')
+        qs.set('banner', mode === 'overdue' ? 'overdue' : 'needs_time')
+        navigate(`${location?.pathname}?${qs.toString()}`, { replace: true })
+      }
+
       setCurrentDate(nextDate)
       setHighlightNeedsTime(true)
       setShowOverdueOnly(mode === 'overdue')
+
+      return true
     },
-    [filteredNeedsSchedulingJobs, pickEarliestPromiseDate]
+    [filteredNeedsSchedulingJobs, pickEarliestPromiseDate, location?.search, location?.pathname, navigate]
   )
+
+  useEffect(() => {
+    const qs = new URLSearchParams(location?.search || '')
+    const banner = qs.get('banner')
+    if (!banner) {
+      lastAppliedBannerRef.current = null
+      return
+    }
+
+    if (banner !== 'overdue' && banner !== 'needs_time') return
+    if (lastAppliedBannerRef.current === banner) return
+
+    const mode = banner === 'overdue' ? 'overdue' : 'all'
+    const applied = handleJumpToNeedsTime(mode, { persistUrl: false })
+    if (applied) {
+      lastAppliedBannerRef.current = banner
+    }
+  }, [location?.search, handleJumpToNeedsTime])
 
   // New month view render function
   const renderMonthView = () => {
@@ -1678,7 +1707,14 @@ const CalendarFlowManagementCenter = ({
                 <Clock className="mt-0.5 h-4 w-4" />
                 <div>
                   <div className="font-semibold inline-flex items-center gap-2">
-                    <span>Needs time outside this view.</span>
+                    <button
+                      type="button"
+                      aria-label="Filter by needs time outside this view"
+                      onClick={() => handleJumpToNeedsTime('all')}
+                      className="text-left underline-offset-2 hover:underline"
+                    >
+                      Needs time outside this view.
+                    </button>
                     <span
                       title="Overdue = promised date/time has passed and is outside the current visible range. Promised without a time = promised items not yet assigned a scheduled time in the current visible range."
                       aria-label="Help: overdue and promised without a time"
@@ -1687,13 +1723,32 @@ const CalendarFlowManagementCenter = ({
                       ?
                     </span>
                   </div>
-                  <div className="text-indigo-800">
-                    {overdueOutsideViewCount > 0
-                      ? `${overdueOutsideViewCount} overdue`
-                      : 'No overdue items'}
-                    {needsTimeOutsideViewCount > 0
-                      ? ` • ${needsTimeOutsideViewCount} promised without a time`
-                      : ''}
+                  <div className="text-indigo-800 flex items-center gap-1 flex-wrap">
+                    {overdueOutsideViewCount > 0 ? (
+                      <button
+                        type="button"
+                        aria-label="Filter overdue items"
+                        onClick={() => handleJumpToNeedsTime('overdue')}
+                        className="underline-offset-2 hover:underline"
+                      >
+                        {`${overdueOutsideViewCount} overdue`}
+                      </button>
+                    ) : (
+                      <span>No overdue items</span>
+                    )}
+                    {needsTimeOutsideViewCount > 0 ? (
+                      <>
+                        <span aria-hidden="true">•</span>
+                        <button
+                          type="button"
+                          aria-label="Filter items that need time"
+                          onClick={() => handleJumpToNeedsTime('all')}
+                          className="underline-offset-2 hover:underline"
+                        >
+                          {`${needsTimeOutsideViewCount} promised without a time`}
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </div>
