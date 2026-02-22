@@ -11,6 +11,7 @@ import {
   buildCalendarSearchParams,
   parseCalendarQuery,
   parseCalendarDateParam,
+  withCalendarBannerParam,
 } from '@/lib/navigation/calendarNavigation'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
 import { LOCATION_FILTER_OPTIONS } from '@/utils/locationType'
@@ -234,6 +235,10 @@ export default function CalendarShell() {
   const handlePrev = () => updateParams({ date: shiftDate(date, clampedRange, -1) })
   const handleNext = () => updateParams({ date: shiftDate(date, clampedRange, 1) })
   const handleToday = () => updateParams({ date: new Date() })
+  const handleClearBanner = useCallback(() => {
+    const next = withCalendarBannerParam(searchParams, '')
+    setSearchParams(next, { replace: false })
+  }, [searchParams, setSearchParams])
 
   const dateLabel = formatDateLabel(date)
   const dateValue = parseCalendarDateParam(searchParams.get('date'))
@@ -308,8 +313,16 @@ export default function CalendarShell() {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold text-foreground">Calendar</h1>
               {banner === 'overdue' ? (
-                <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-                  Overdue filter active
+                <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+                  <span>Overdue filter active</span>
+                  <button
+                    type="button"
+                    aria-label="Clear overdue filter"
+                    onClick={handleClearBanner}
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-full text-red-700 hover:bg-red-100"
+                  >
+                    ×
+                  </button>
                 </span>
               ) : null}
               <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">

@@ -8,8 +8,6 @@ export default function PromisedQueue({
   overdueCount,
   highlightNeedsTime,
   showOverdueOnly,
-  onToggleNeedsTime,
-  onToggleOverdueOnly,
   onJobClick,
   onDragStart,
   onComplete,
@@ -32,34 +30,28 @@ export default function PromisedQueue({
           <span className="text-xs text-gray-500">{rows.length} unscheduled</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onToggleNeedsTime}
+          <span
             className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${
               highlightNeedsTime
                 ? 'bg-amber-100 text-amber-900'
                 : 'bg-slate-100 text-slate-700'
             }`}
-            aria-pressed={highlightNeedsTime}
           >
             Needs Time
             <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
               {needsTimeTotal}
             </span>
-          </button>
-          <button
-            type="button"
-            onClick={onToggleOverdueOnly}
+          </span>
+          <span
             className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${
               showOverdueOnly ? 'bg-red-100 text-red-900' : 'bg-slate-100 text-slate-700'
             }`}
-            aria-pressed={showOverdueOnly}
           >
             Overdue
             <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold">
               {overdueTotal}
             </span>
-          </button>
+          </span>
         </div>
         <div className="text-[11px] text-gray-500">
           Needs Time items render all-day on the board.

@@ -1754,24 +1754,6 @@ const CalendarFlowManagementCenter = ({
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleJumpToNeedsTime('overdue')}
-                  disabled={overdueOutsideViewCount === 0}
-                  className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-3 py-1 text-xs font-medium text-indigo-900 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  View overdue
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleJumpToNeedsTime('all')}
-                  disabled={needsTimeOutsideViewCount === 0}
-                  className="inline-flex items-center gap-2 rounded-md border border-indigo-300 bg-white px-3 py-1 text-xs font-medium text-indigo-900 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  View needs time
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -1809,8 +1791,6 @@ const CalendarFlowManagementCenter = ({
             overdueCount={overdueNeedsTimeCount}
             highlightNeedsTime={highlightNeedsTime}
             showOverdueOnly={showOverdueOnly}
-            onToggleNeedsTime={() => setHighlightNeedsTime((v) => !v)}
-            onToggleOverdueOnly={() => setShowOverdueOnly((v) => !v)}
             onJobClick={promisedQueueClick}
             onDragStart={handleDragStart}
             onComplete={(job) => handleCompleteJob(job)}
