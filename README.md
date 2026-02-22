@@ -32,27 +32,17 @@ Canonical / start-here docs:
 
 Historical one-off reports and fix summaries live under [docs/archive/](docs/archive/).
 
-## Development Environment Setup
+## Development Environment Setup (WSL + Node 20 + pnpm)
 
-### Using Dev Containers (Recommended)
+Canonical local setup is WSL/Linux/macOS with Node 20 and pnpm via corepack.
 
-For a consistent development environment across machines:
-
-1. Open the repository in VS Code
-2. When prompted, click "Reopen in Container" (or run `Dev Containers: Reopen in Container` from the command palette)
-3. The container will automatically set up Node 20 and install dependencies
-
-The Dev Container configuration (`.devcontainer/devcontainer.json`) ensures everyone uses the same Node version, pnpm, and VS Code extensions.
-
-### Manual Setup
-
-If not using Dev Containers:
-
-1. Ensure you have Node 20 installed (check with `node -v`)
-   - If using nvm: `nvm use` (reads from `.nvmrc`)
-2. Enable pnpm: `corepack enable`
+1. Ensure Node 20 is active (`node -v` should be `v20.x`)
+   - If using nvm: `nvm use` (reads `.nvmrc`)
+2. Enable corepack + pinned pnpm:
+   - `corepack enable`
+   - `corepack prepare pnpm@10.15.0 --activate`
 3. Install dependencies: `pnpm install`
-4. Install recommended VS Code extensions (listed in `.vscode/extensions.json`)
+4. Install recommended VS Code extensions from `.vscode/extensions.json` (optional)
 
 Alternatively, run the setup script on Windows:
 
@@ -93,7 +83,7 @@ If you already have another app on 5173, use `pnpm dev:5174` to run this repo at
 
 Create a `.env.local` with your Supabase config and any feature flags.
 
-- Template: `.env.local.example` → copy to `.env.local`
+- Template: `.env.example` → copy to `.env.local`
 - Setup guide: [docs/LOCAL_DEV_SUPABASE.md](docs/LOCAL_DEV_SUPABASE.md)
 
 If `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing, the dev server intentionally falls back to an in-memory stub and data-driven screens may look empty.
@@ -101,8 +91,9 @@ If `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing, the dev server in
 Optional feature flags:
 
 - **`VITE_DEAL_FORM_V2`** (default: `true` in development) – When `true`, deal creation and editing flows use unified form adapters for safer data handling. Set to `false` to revert to legacy behavior without modifying services or database. Recommended to keep `true` for local and preview environments. See [Feature Flag Guide](docs/FEATURE_FLAG_GUIDE.md) for detailed usage instructions.
-- **`VITE_SIMPLE_CALENDAR`** (default: `false`) – Enables the lean Agenda view at `/calendar/agenda` and redirects newly scheduled deals there (with focus highlighting). When disabled the legacy calendar flow management center remains the default.
+- **`VITE_SIMPLE_CALENDAR`** (default: `false`) – When unified shell is OFF, this controls whether `/calendar` redirects to `/calendar/agenda` (`true`) or `/calendar/grid` (`false`).
 - **`VITE_ACTIVE_SNAPSHOT`** (default: `false`) – Replaces the "Currently Active Appointments" workflow center with a vendor‑centric snapshot list (schedule + in‑progress). Safe rollback: set to `false` or remove from env; legacy workflow center code path is preserved.
+- **`VITE_FF_CALENDAR_UNIFIED_SHELL`** (default: `false`) – Enables `CalendarShell` on `/calendar` and redirects `/calendar/grid`, `/calendar/agenda`, and `/calendar-flow-management-center` into unified shell views.
 - Deprecated: `VITE_ORG_SCOPED_DROPDOWNS` – previously scoped dropdowns via a database helper. This flag is now ignored and dropdowns are unscoped by default. Prefer tenant-aware lists via `tenantService` or Admin filters where applicable.
 
 Snapshot + Agenda notes:
@@ -141,6 +132,27 @@ These tools help keep tenant data clean without requiring additional logins for 
 - Deals list supports **Card View** and **Sheet View** (spreadsheet-style intake layout) so teams can scan sales, categories, and profit at a glance.
 - Loaners are considered **returned when the customer picks up their vehicle**. Set the expected return date in the Deal form and manage loaners in the Loaner drawer.
 - Customer claims intake is available at `/guest-claims-submission-form` (linked from the sign-in page) to keep walk-ins from bypassing the claims process.
+
+## Calendar routes and flags (current behavior)
+
+- `/calendar`
+  - `VITE_FF_CALENDAR_UNIFIED_SHELL=true` → renders `CalendarShell`
+  - otherwise redirects to `/calendar/agenda` when `VITE_SIMPLE_CALENDAR=true`, else `/calendar/grid`
+- `/calendar/grid`
+  - unified shell ON → redirects to unified `view=calendar`
+  - unified shell OFF → renders `src/pages/calendar/index.jsx`
+- `/calendar/agenda`
+  - unified shell ON → redirects to unified `view=list`
+  - unified shell OFF + `VITE_SIMPLE_CALENDAR=true` → renders `src/pages/calendar-agenda/index.jsx`
+  - unified shell OFF + `VITE_SIMPLE_CALENDAR` unset/false → redirects to `/calendar-flow-management-center`
+- `/calendar-flow-management-center`
+  - unified shell ON → redirects to unified `view=board`
+  - unified shell OFF → renders `src/pages/calendar-flow-management-center/index.jsx`
+
+Defaults when flags are unset:
+
+- `VITE_FF_CALENDAR_UNIFIED_SHELL` defaults OFF unless explicitly `true`
+- `VITE_SIMPLE_CALENDAR` defaults false unless explicitly `true`
 
 ## Error Handling
 
@@ -290,25 +302,41 @@ Notes:
 
 - A manual fallback GitHub Action exists at `.github/workflows/deploy-vercel.yml` (manual only) for emergencies. Normally, you won't need it, as Vercel Git integration handles auto-deploys.
 
-## CI (GitHub Actions)
+## CI and E2E (GitHub Actions)
 
-This repo includes a CI workflow at `.github/workflows/ci.yml` that runs:
+Workflows are split by responsibility:
 
-- Typecheck (tsc) against `tsconfig.e2e.json`
-- Build (Vite)
-- Optional E2E seed (Node-based) if `DATABASE_URL` is provided
-- Unit tests (Vitest)
-- E2E tests (Playwright) with artifacts on failure
+- `.github/workflows/ci.yml` — build + typecheck + unit tests + guard checks
+- `.github/workflows/ci-pnpm.yml` — pnpm-focused lint/test guard lane
+- `.github/workflows/e2e.yml` — Playwright E2E smoke/full with artifacts
 
-Required repository secrets:
+Build/test env names used in CI:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
-Optional secrets:
+Local E2E required env vars (canonical names):
 
-- `DATABASE_URL` — Postgres connection string for the seed runner (`pnpm run db:seed-e2e`)
-- `E2E_EMAIL`, `E2E_PASSWORD` — only used if you prefer env-based login instead of the bundled `e2e/storageState.json`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `E2E_EMAIL`
+- `E2E_PASSWORD`
+
+CI workflow alias mapping (names only; mapped by workflow/job env):
+
+- `E2E_VITE_SUPABASE_URL` / `VITE_SUPABASE_URL`
+- `E2E_VITE_SUPABASE_ANON_KEY` / `VITE_SUPABASE_ANON_KEY`
+- `E2E_EMAIL` / `E2E_TEST_EMAIL`
+- `E2E_PASSWORD` / `E2E_TEST_PASSWORD`
+- `E2E_DATABASE_URL` / `DATABASE_URL` / `SUPABASE_DB_URL`
+
+Migration workflows use:
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_DB_PASSWORD`
+- `SUPABASE_PROJECT_REF`
+
+Security reminder: never commit secrets. Use local env vars for local E2E and GitHub Secrets for CI.
 
 ## Additional Docs
 
