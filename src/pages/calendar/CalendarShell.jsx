@@ -27,7 +27,7 @@ const RANGE_OPTIONS = [
 ]
 
 const RANGE_OPTIONS_BY_VIEW = {
-  calendar: new Set(['day', 'week', 'month']),
+  calendar: new Set(['week', 'month']),
   board: new Set(['day', 'week', 'next7', 'next30']),
   list: new Set(['day', 'week', 'next7', 'next30']),
 }

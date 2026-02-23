@@ -152,7 +152,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
           <Link to="/" className="flex items-center">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center">
               <img
-                src="/brand/rat-icon-master-white.svg"
+                src="/brand/rat-icon-master.svg"
                 alt="Rocket Aftermarket Tracker"
                 className="h-8 w-8"
                 draggable="false"

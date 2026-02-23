@@ -76,7 +76,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center">
                   <img
-                    src="/brand/rat-icon-master-white.svg"
+                    src="/brand/rat-icon-master.svg"
                     alt="Rocket Aftermarket Tracker"
                     className="h-8 w-8"
                     draggable="false"
