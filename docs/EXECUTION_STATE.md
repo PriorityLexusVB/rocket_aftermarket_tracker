@@ -33,6 +33,21 @@ J) THEN (only after A–I are complete + clean): apply Skills/Guardrails/CI vali
 
 ## Evidence Log (Current HEAD)
 
+### 2026-02-22 — HEAD evidence snapshot (post calendar/logo/snapshot polish)
+
+- `pnpm -s guard:client-env`
+  - Output: `✅ guard:client-env passed (no forbidden client env references in src/**)`
+- `pnpm lint`
+  - Output: completed without eslint errors
+- `pnpm typecheck`
+  - Output: completed (`tsc -p tsconfig.e2e.json --noEmit`)
+- `pnpm -s verify`
+  - Output (summary): `Test Files 135 passed (135); Tests 1059 passed | 2 skipped (1061)`
+- Recent calendar/UI follow-up commits on main:
+  - `4243f26` — ui(calendar): show customer/stock/vehicle/sales/products on calendar events
+  - `485240f` — Fix header logo visibility and remove day range from calendar view
+  - `70e5686` — Fix snapshot page width alignment and debug text wrapping
+
 ### 2026-01-30 — HEAD evidence snapshot (commit: 85028e8)
 
 - `bash scripts/mcp/supabase-mcp.sh --check`
