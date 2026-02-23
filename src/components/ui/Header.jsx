@@ -150,11 +150,11 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
           </Button>
 
           <Link to="/" className="flex items-center">
-            <div className="w-8 h-8 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
               <img
-                src="/brand/logos/rocket-mark-white.png"
+                src="/brand/rat-icon-master-white.svg"
                 alt="Rocket Aftermarket Tracker"
-                className="w-5 h-5"
+                className="h-8 w-8"
                 draggable="false"
               />
             </div>

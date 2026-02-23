@@ -231,16 +231,16 @@ const Navbar = () => {
             {/* Logo - Compact for space */}
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-2 group">
-                <div className="w-9 h-9 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center">
                   <img
-                    src="/brand/logos/rocket-mark-white.png"
+                    src="/brand/rat-icon-master-white.svg"
                     alt="Rocket Aftermarket Tracker"
-                    className="w-6 h-6"
+                    className="h-8 w-8"
                     draggable="false"
                   />
                 </div>
                 {/* Reserved space for future logo - no text for now */}
-                <div className="w-2"></div>
+                <div className="w-1"></div>
               </Link>
             </div>
 
@@ -443,11 +443,11 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16 px-4">
           {/* Logo - Compact */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
               <img
-                src="/brand/logos/rocket-mark-white.png"
+                src="/brand/rat-icon-master-white.svg"
                 alt="Rocket Aftermarket Tracker"
-                className="w-5 h-5"
+                className="h-8 w-8"
                 draggable="false"
               />
             </div>

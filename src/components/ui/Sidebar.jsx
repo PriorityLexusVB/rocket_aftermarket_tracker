@@ -74,11 +74,11 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <div className="p-8 border-b border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/25 border border-border flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center">
                   <img
-                    src="/brand/logos/rocket-mark-white.png"
+                    src="/brand/rat-icon-master-white.svg"
                     alt="Rocket Aftermarket Tracker"
-                    className="w-6 h-6"
+                    className="h-8 w-8"
                     draggable="false"
                   />
                 </div>
