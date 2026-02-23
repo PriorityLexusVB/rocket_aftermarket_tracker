@@ -732,7 +732,10 @@ export default function SnapshotView() {
     }`
 
   return (
-    <div className="p-6 space-y-4" aria-label="Active Appointments Snapshot">
+    <div
+      className="mx-auto w-full max-w-7xl space-y-4 p-4 md:px-6 md:py-6"
+      aria-label="Active Appointments Snapshot"
+    >
       <h1 className="sr-only">Currently Active Appointments</h1>
       {/* Accessible status announcements */}
       <div className="sr-only" aria-live="polite" aria-atomic="true" role="status">
@@ -825,7 +828,7 @@ export default function SnapshotView() {
       </header>
 
       {import.meta.env.DEV && sourceDebug ? (
-        <div className="text-[11px] text-muted-foreground" aria-label="Source Debug">
+        <div className="text-[11px] text-muted-foreground break-all" aria-label="Source Debug">
           DEV • window:{sourceDebug?.effectiveFilters?.window} • org:
           {sourceDebug?.effectiveFilters?.org_id} • vendor:
           {sourceDebug?.effectiveFilters?.vendor}
@@ -840,7 +843,7 @@ export default function SnapshotView() {
       ) : null}
 
       {import.meta.env.DEV && sourceDebug?.effectiveFilters?.window === 'all_day' ? (
-        <div className="text-[11px] text-muted-foreground" aria-label="All-day Debug">
+        <div className="text-[11px] text-muted-foreground break-all" aria-label="All-day Debug">
           needs:{JSON.stringify(sourceDebug?.needsScheduling || null)}
         </div>
       ) : null}
