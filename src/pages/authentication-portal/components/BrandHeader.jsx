@@ -1,5 +1,4 @@
 import React from 'react'
-import Icon from '../../../components/AppIcon'
 
 const BrandHeader = () => {
   return (
@@ -7,7 +6,12 @@ const BrandHeader = () => {
       {/* Logo */}
       <div className="flex items-center justify-center mb-6">
         <div className="flex items-center justify-center w-16 h-16 bg-primary rounded-2xl shadow-elevation-2">
-          <Icon name="Rocket" size={32} color="white" />
+          <img
+            src="/brand/rat-icon-master.svg"
+            alt="Rocket Aftermarket Tracker"
+            className="h-10 w-10"
+            draggable="false"
+          />
         </div>
       </div>
 

@@ -78,13 +78,15 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   <img
                     src="/brand/rat-icon-master.svg"
                     alt="Rocket Aftermarket Tracker"
-                    className="h-8 w-8"
+                    className="h-8 w-8 object-contain opacity-100 saturate-100 grayscale-0"
                     draggable="false"
                   />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">Rocket Aftermarket</h2>
-                  <p className="text-sm text-muted-foreground font-medium mt-1">Aftermarket Management</p>
+                  <p className="text-sm text-muted-foreground font-medium mt-1">
+                    Aftermarket Management
+                  </p>
                 </div>
               </div>
               <button
@@ -131,7 +133,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                         >
                           {item?.label}
                         </div>
-                        <div className={`text-sm ${isActive ? 'text-foreground/70' : 'text-muted-foreground'}`}>
+                        <div
+                          className={`text-sm ${isActive ? 'text-foreground/70' : 'text-muted-foreground'}`}
+                        >
                           {item?.description}
                         </div>
                       </div>

@@ -235,7 +235,7 @@ const Navbar = () => {
                   <img
                     src="/brand/rat-icon-master.svg"
                     alt="Rocket Aftermarket Tracker"
-                    className="h-8 w-8"
+                    className="h-8 w-8 object-contain opacity-100 saturate-100 grayscale-0"
                     draggable="false"
                   />
                 </div>
@@ -447,7 +447,7 @@ const Navbar = () => {
               <img
                 src="/brand/rat-icon-master.svg"
                 alt="Rocket Aftermarket Tracker"
-                className="h-8 w-8"
+                className="h-8 w-8 object-contain opacity-100 saturate-100 grayscale-0"
                 draggable="false"
               />
             </div>
@@ -528,7 +528,10 @@ const Navbar = () => {
         {/* Mobile Slide-out Menu */}
         {isMenuOpen && (
           <>
-            <div className="fixed inset-0 bg-black/50 z-[75]" onClick={() => setIsMenuOpen(false)} />
+            <div
+              className="fixed inset-0 bg-black/50 z-[75]"
+              onClick={() => setIsMenuOpen(false)}
+            />
             <div className="fixed top-16 right-0 bottom-0 w-[min(18rem,100vw)] bg-card shadow-xl z-[80] overflow-y-auto border-l border-border">
               <div className="p-6">
                 {/* User Profile Section */}

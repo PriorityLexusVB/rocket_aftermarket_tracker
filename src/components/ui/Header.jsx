@@ -154,7 +154,7 @@ const Header = ({ onMenuToggle, isMenuOpen = false }) => {
               <img
                 src="/brand/rat-icon-master.svg"
                 alt="Rocket Aftermarket Tracker"
-                className="h-8 w-8"
+                className="h-8 w-8 object-contain opacity-100 saturate-100 grayscale-0"
                 draggable="false"
               />
             </div>
