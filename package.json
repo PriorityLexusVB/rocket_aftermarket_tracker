@@ -86,6 +86,7 @@
     "typecheck": "tsc -p tsconfig.e2e.json --noEmit",
     "dev:create-test-user": "node scripts/bootstrapTestUser.js",
     "e2e": "playwright test",
+    "e2e:smoke": "playwright test e2e/smoke-4pages-checklist.spec.ts e2e/mobile-fetch-resilience.spec.ts e2e/calendar-month-layout.spec.ts --project=chromium --reporter=list",
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "PWDEBUG=1 playwright test",
     "release:check": "node scripts/releaseChecklist.mjs",
@@ -173,12 +174,10 @@
       ]
     },
     "overrides": {
-      "ajv": "6.14.0",
       "schema-utils>ajv": "^8.18.0",
       "esbuild": "0.25.12",
       "next": "16.1.6",
       "@remix-run/router": "1.23.2",
-      "minimatch": "10.2.1",
       "tar": "7.5.8",
       "webpack": "^5.104.1"
     }

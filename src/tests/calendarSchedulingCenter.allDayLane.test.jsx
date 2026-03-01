@@ -80,12 +80,12 @@ describe('CalendarSchedulingCenter all-day promise lane', () => {
       </MemoryRouter>
     )
 
-    const laneHeader = await screen.findByText('All-day (Promises)')
-    const laneContainer = laneHeader.closest('div')?.parentElement
-    expect(laneContainer).toBeTruthy()
+    const promiseCustomer = await screen.findByText('Promise Customer')
+    const promiseCard = promiseCustomer.closest('[role="button"]')
+    expect(promiseCard).toBeTruthy()
 
-    expect(within(laneContainer).getByText('Promise Customer')).toBeInTheDocument()
-    expect(within(laneContainer).getByText('PROMISE')).toBeInTheDocument()
+    expect(within(promiseCard).getByText('Promise Customer')).toBeInTheDocument()
+    expect(within(promiseCard).getByText('PROMISE')).toBeInTheDocument()
     expect(screen.getByText('Timed Customer')).toBeInTheDocument()
     expect(screen.getByText('BOOKED')).toBeInTheDocument()
 

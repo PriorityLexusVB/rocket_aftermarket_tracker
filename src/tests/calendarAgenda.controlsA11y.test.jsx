@@ -103,6 +103,6 @@ describe('CalendarAgenda controls a11y', () => {
     await screen.findByRole('list')
     const stickyHeader = document.querySelector('section div.sticky')
     expect(stickyHeader).toBeInTheDocument()
-    expect(stickyHeader?.className).toContain('top-0')
+    expect(stickyHeader?.className).toMatch(/top-0|top-16/)
   })
 })

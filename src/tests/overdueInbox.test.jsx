@@ -35,30 +35,50 @@ describe('OverdueInbox', () => {
     vi.clearAllMocks()
   })
 
-  it('strict overdue filter includes only past promise and excludes complete/future/missing', () => {
+  it('strict overdue filter includes past due candidates and excludes completed/future/missing', () => {
     const now = new Date('2026-02-21T12:00:00.000Z')
 
     expect(
       isStrictOverdueJob({ promised_date: '2026-02-20T10:00:00.000Z', job_status: 'promised' }, now)
     ).toBe(true)
     expect(
-      isStrictOverdueJob({ promised_date: '2026-02-20T10:00:00.000Z', job_status: 'completed' }, now)
+      isStrictOverdueJob({ due_date: '2026-02-20T10:00:00.000Z', job_status: 'promised' }, now)
+    ).toBe(true)
+    expect(
+      isStrictOverdueJob(
+        {
+          promised_date: '2026-02-22T10:00:00.000Z',
+          due_date: '2026-02-20T10:00:00.000Z',
+          job_status: 'promised',
+        },
+        now
+      )
+    ).toBe(true)
+    expect(
+      isStrictOverdueJob({ due_date: '2026-02-20T10:00:00.000Z', job_status: 'completed' }, now)
     ).toBe(false)
     expect(
-      isStrictOverdueJob({ promised_date: '2026-02-22T10:00:00.000Z', job_status: 'promised' }, now)
+      isStrictOverdueJob({ due_date: '2026-02-22T10:00:00.000Z', job_status: 'promised' }, now)
     ).toBe(false)
-    expect(isStrictOverdueJob({ promised_date: null, job_status: 'promised' }, now)).toBe(false)
+    expect(
+      isStrictOverdueJob({ due_date: null, promised_date: null, job_status: 'promised' }, now)
+    ).toBe(false)
   })
 
-  it('normalizeOverdueRows dedupes and keeps only strict overdue rows', () => {
+  it('normalizeOverdueRows dedupes by earliest overdue timestamp and keeps only strict overdue rows', () => {
     const now = new Date('2026-02-21T12:00:00.000Z')
     const rows = normalizeOverdueRows(
       [
-        { id: 'job-1', promised_date: '2026-02-20T10:00:00.000Z', job_status: 'promised' },
+        {
+          id: 'job-1',
+          promised_date: '2026-02-22T10:00:00.000Z',
+          due_date: '2026-02-20T10:00:00.000Z',
+          job_status: 'promised',
+        },
         { id: 'job-1', promised_date: '2026-02-19T10:00:00.000Z', job_status: 'promised' },
         { id: 'job-2', promised_date: '2026-02-22T10:00:00.000Z', job_status: 'promised' },
         { id: 'job-3', promised_date: null, job_status: 'promised' },
-        { id: 'job-4', promised_date: '2026-02-20T10:00:00.000Z', job_status: 'completed' },
+        { id: 'job-4', due_date: '2026-02-20T10:00:00.000Z', job_status: 'completed' },
       ],
       now
     )
@@ -74,7 +94,7 @@ describe('OverdueInbox', () => {
         id: 'job-1',
         job_number: 'JOB-1001',
         customer_name: 'Ada Lovelace',
-        promised_date: '2025-01-01T10:00:00.000Z',
+        due_date: '2025-01-01T10:00:00.000Z',
         updated_at: '2025-01-02T12:00:00.000Z',
         job_status: 'promised',
         location: 'On-Site',
@@ -87,6 +107,7 @@ describe('OverdueInbox', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Overdue Inbox' })).toBeInTheDocument()
       expect(screen.getByText('JOB-1001')).toBeInTheDocument()
+      expect(screen.getByText('Due date')).toBeInTheDocument()
     })
 
     await user.click(screen.getByText('JOB-1001'))

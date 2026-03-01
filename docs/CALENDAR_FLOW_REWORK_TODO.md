@@ -26,6 +26,7 @@ Core rule: **DC’s primary object is a Deal**. Calendar shows Deal appointments
 
 ## Current Known Pain Points (from screenshots)
 
+- TOP PRIORITY: `/currently-active-appointments?window=all_day` can show month-old rows due to wide lookback, which reads as stale/incorrect to users. Keep deep-link behavior, cap lookback to 30 days, and show explicit active window context in UI.
 - Multiple navigation paths to the same destination (Calendar tabs + Quick Actions + “Open Agenda” elsewhere).
 - Inconsistent titles (“Calendar Scheduling Center”, “Calendar Flow Management Center”, “Calendar”).
 - Duplicate/competing controls (view toggle + day/week/month toggle in separate areas).

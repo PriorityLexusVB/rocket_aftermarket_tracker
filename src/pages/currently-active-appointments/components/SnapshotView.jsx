@@ -21,6 +21,7 @@ import {
 const SIMPLE_CAL_ON = String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
 
 const MS_DAY = 24 * 60 * 60 * 1000
+const ALL_DAY_LOOKBACK_DAYS = 30
 
 function addDays(d, days) {
   const base = d instanceof Date ? d : new Date(d)
@@ -359,7 +360,7 @@ export default function SnapshotView() {
       const nowDate = new Date()
 
       if (windowMode === 'all_day') {
-        const start = addDays(nowDate, -365)
+        const start = addDays(nowDate, -ALL_DAY_LOOKBACK_DAYS)
         const end = addDays(nowDate, 7)
         const res = await getNeedsSchedulingPromiseItems({
           orgId,
@@ -748,6 +749,14 @@ export default function SnapshotView() {
           <div className="text-xs text-muted-foreground">
             Operations view: scheduled + controlled unscheduled
           </div>
+          <div className="text-xs text-muted-foreground">
+            Window:{' '}
+            {windowMode === 'all_day'
+              ? `Promised (All-day, last ${ALL_DAY_LOOKBACK_DAYS} days)`
+              : windowMode === 'next7'
+                ? 'Next 7 Days'
+                : 'Today'}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
@@ -764,9 +773,7 @@ export default function SnapshotView() {
                 next.delete('window')
                 setSearchParams(next, { replace: true })
               }}
-              className={
-                snapshotToggleClass('today')
-              }
+              className={snapshotToggleClass('today')}
               aria-pressed={windowMode === 'today'}
             >
               Today
@@ -779,9 +786,7 @@ export default function SnapshotView() {
                 next.delete('window')
                 setSearchParams(next, { replace: true })
               }}
-              className={
-                snapshotToggleClass('next7')
-              }
+              className={snapshotToggleClass('next7')}
               aria-pressed={windowMode === 'next7'}
             >
               Next 7 Days
@@ -794,9 +799,7 @@ export default function SnapshotView() {
                 next.set('window', 'all_day')
                 setSearchParams(next, { replace: true })
               }}
-              className={
-                snapshotToggleClass('all_day')
-              }
+              className={snapshotToggleClass('all_day')}
               aria-pressed={windowMode === 'all_day'}
             >
               Promised (All-day)
@@ -1241,7 +1244,9 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full truncate text-muted-foreground sm:w-40">
+                      {vendorName}
+                    </div>
                     <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
                     <div className="flex items-center gap-2 sm:ml-auto">
                       <button
@@ -1327,7 +1332,9 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full truncate text-muted-foreground sm:w-40">
+                      {vendorName}
+                    </div>
                     <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
                     <div className="flex items-center gap-2 sm:ml-auto">
                       <button
@@ -1406,7 +1413,9 @@ export default function SnapshotView() {
                           : ''}
                       </div>
                     </div>
-                    <div className="w-full truncate text-muted-foreground sm:w-40">{vendorName}</div>
+                    <div className="w-full truncate text-muted-foreground sm:w-40">
+                      {vendorName}
+                    </div>
                     <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
                     <div className="flex items-center gap-2 sm:ml-auto">
                       <button
@@ -1542,7 +1551,9 @@ export default function SnapshotView() {
                             : ''}
                         </div>
                       </div>
-                      <div className="w-full text-muted-foreground truncate sm:w-40">{locationLabel}</div>
+                      <div className="w-full text-muted-foreground truncate sm:w-40">
+                        {locationLabel}
+                      </div>
                       <div className="w-full text-muted-foreground sm:w-28">{statusLabel}</div>
                       <div className="flex items-center gap-2 sm:ml-auto">
                         <button

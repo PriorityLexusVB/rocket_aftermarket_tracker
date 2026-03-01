@@ -190,6 +190,7 @@ Reset (manual):
 
 - Unit tests: `pnpm test`
 - E2E tests: `pnpm e2e` (requires `E2E_EMAIL`/`E2E_PASSWORD` for the E2E user)
+- E2E smoke: `pnpm e2e:smoke` (4-page flow + mobile fetch-resilience guard + month-layout guard)
 - List E2E tests: `pnpm exec playwright test --list`
 - Error handling tests: `pnpm test src/tests/schemaErrorClassifier.test.js src/tests/capabilityTelemetry.test.js`
 

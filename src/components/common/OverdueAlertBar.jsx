@@ -45,7 +45,7 @@ const OverdueAlertBar = ({ className = '' }) => {
   }
 
   const handleViewOverdue = () => {
-    navigate('/kanban-status-board?filter=overdue')
+    navigate('/overdue')
   }
 
   const handleDismiss = () => {

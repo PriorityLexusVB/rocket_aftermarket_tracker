@@ -72,6 +72,20 @@ function handleBoardCardKeyDown(event, onActivate) {
   if (typeof onActivate === 'function') onActivate()
 }
 
+export function getFlowDealClickHandler({ dealDrawerEnabled, onOpenDealDrawer, navigate, deal }) {
+  return () => {
+    if (dealDrawerEnabled && typeof onOpenDealDrawer === 'function') {
+      onOpenDealDrawer(deal)
+      return
+    }
+
+    const dealId = deal?.id
+    if (dealId && typeof navigate === 'function') {
+      navigate(`/deals/${dealId}/edit`)
+    }
+  }
+}
+
 const CalendarFlowManagementCenter = ({
   embedded = false,
   shellState,
@@ -513,22 +527,34 @@ const CalendarFlowManagementCenter = ({
     const match = allJobs.find((j) => String(j?.id) === String(focusId))
     if (!match) return
 
-    setSelectedJob(match)
-    setShowDrawer(true)
+    if (canOpenDrawer) {
+      onOpenDealDrawer(match)
+    } else {
+      setSelectedJob(match)
+      setShowDrawer(true)
+    }
     lastAutoFocusRef.current = focusId
-  }, [location?.search, originalJobs, originalOnSiteJobs])
+  }, [canOpenDrawer, location?.search, onOpenDealDrawer, originalJobs, originalOnSiteJobs])
 
   // Apply filters whenever filters or original data change
   useEffect(() => {
     applyFilters()
   }, [applyFilters])
 
-  const handleJobClick = (job) => {
-    setSelectedJob(job)
-    setShowDrawer(true)
-  }
+  const activateDeal = useCallback(
+    (job) => {
+      const handler = getFlowDealClickHandler({
+        dealDrawerEnabled: canOpenDrawer,
+        onOpenDealDrawer,
+        navigate,
+        deal: job,
+      })
+      handler()
+    },
+    [canOpenDrawer, navigate, onOpenDealDrawer]
+  )
 
-  const promisedQueueClick = canOpenDrawer ? onOpenDealDrawer : handleJobClick
+  const promisedQueueClick = activateDeal
 
   // Prevent double-clicks from sending duplicate status updates.
   const statusInFlightRef = useRef(new Set())
@@ -949,7 +975,7 @@ const CalendarFlowManagementCenter = ({
                         <div
                           key={job?.calendar_key || job?.id}
                           className={`text-xs p-1 rounded cursor-pointer truncate border ${dayJobClass}`}
-                          onClick={() => handleJobClick(job)}
+                          onClick={() => activateDeal(job)}
                           title={`${job?.job_number} - ${job?.title}`}
                         >
                           {job?.job_number?.split('-')?.pop()}
@@ -1061,22 +1087,8 @@ const CalendarFlowManagementCenter = ({
           ${containerClassName}
         `}
         style={containerStyle}
-        onClick={() => {
-          if (canOpenDrawer) {
-            onOpenDealDrawer(job)
-            return
-          }
-          handleJobClick(job)
-        }}
-        onKeyDown={(event) =>
-          handleBoardCardKeyDown(event, () => {
-            if (canOpenDrawer) {
-              onOpenDealDrawer(job)
-              return
-            }
-            handleJobClick(job)
-          })
-        }
+        onClick={() => activateDeal(job)}
+        onKeyDown={(event) => handleBoardCardKeyDown(event, () => activateDeal(job))}
         role="button"
         tabIndex={0}
         aria-label={`Open deal ${titleText}`}
@@ -1781,11 +1793,7 @@ const CalendarFlowManagementCenter = ({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             </div>
           ) : (
-            <div
-              className={`bg-white rounded-lg shadow-sm border border-gray-200 h-full ${
-                isEmbedded ? 'overflow-visible' : 'overflow-auto'
-              }`}
-            >
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full overflow-auto">
               {viewMode === 'month' ? (
                 renderMonthView()
               ) : filteredJobs?.length + filteredOnSiteJobs?.length === 0 &&

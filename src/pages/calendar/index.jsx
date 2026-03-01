@@ -158,94 +158,6 @@ const getAppointmentCustomerName = (job) =>
     ''
   ).trim()
 
-const truncateDisplayText = (value, max = 30) => {
-  const text = String(value || '').trim()
-  if (!text) return ''
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text
-}
-
-const buildProductsLabel = (job, max = 30) => {
-  const parts = Array.isArray(job?.job_parts) ? job.job_parts : []
-  const names = parts
-    .map((part) => {
-      const product = part?.product || {}
-      return (
-        product?.name ||
-        product?.title ||
-        product?.op_code ||
-        product?.opCode ||
-        part?.product_name ||
-        ''
-      )
-    })
-    .map((value) => String(value || '').trim())
-    .filter(Boolean)
-
-  if (!names.length) return ''
-  return truncateDisplayText(Array.from(new Set(names)).join(', '), max)
-}
-
-const buildEventDisplay = (job, fallback = {}) => {
-  const vehicle = job?.vehicle || job?.vehicles || fallback?.vehicle || null
-  const rawStock =
-    job?.stock_number ||
-    job?.stockNumber ||
-    vehicle?.stock_number ||
-    vehicle?.stockNumber ||
-    fallback?.stock ||
-    ''
-  const vin = job?.vin || vehicle?.vin || fallback?.vin || ''
-  const stock = rawStock || (vin ? `VIN ${String(vin).slice(-6)}` : '')
-
-  const vehicleLabel =
-    fallback?.vehicleLabel ||
-    [vehicle?.year || job?.vehicle_year, vehicle?.make || job?.vehicle_make, vehicle?.model || job?.vehicle_model]
-      .filter(Boolean)
-      .join(' ')
-      .trim()
-
-  const customerName =
-    (fallback?.customerName ||
-      getAppointmentCustomerName(job) ||
-      job?.vehicle?.owner_name ||
-      job?.vehicles?.owner_name ||
-      'Unknown')
-      .toString()
-      .trim() || 'Unknown'
-
-  const salesperson =
-    (fallback?.salesperson ||
-      job?.sales_consultant_name ||
-      job?.salesName ||
-      job?.assigned_to_profile?.display_name ||
-      job?.assigned_to_profile?.full_name ||
-      '')
-      .toString()
-      .trim()
-
-  const productsLabel = fallback?.productsLabel || buildProductsLabel(job, 30)
-
-  return {
-    customerName,
-    stock,
-    vehicleLabel,
-    salesperson,
-    productsLabel,
-  }
-}
-
-const buildDisplayTooltip = (job, display) => {
-  const lines = [
-    `Deal: ${job?.job_number || job?.id || '—'}`,
-    `Customer: ${display?.customerName || 'Unknown'}`,
-    `Stock: ${display?.stock || '—'}`,
-    `Vehicle: ${display?.vehicleLabel || '—'}`,
-    `Salesperson: ${display?.salesperson || '—'}`,
-    `Products: ${display?.productsLabel || '—'}`,
-  ]
-  return lines.join('\n')
-}
-
 const CalendarSchedulingCenter = ({
   embedded = false,
   shellState,
@@ -267,7 +179,7 @@ const CalendarSchedulingCenter = ({
   const suppressChrome = isEmbedded && unifiedShellEnabled
   const showTitleTooltips = isEmbedded && unifiedShellEnabled
   const showDetailPopovers = showTitleTooltips
-  const darkUi = false
+  const darkUi = isEmbedded && unifiedShellEnabled
   const cx = (...parts) => parts.filter(Boolean).join(' ')
   const surface = darkUi
     ? 'bg-white/5 border-white/10 text-gray-200'
@@ -461,7 +373,6 @@ const CalendarSchedulingCenter = ({
           )?.hex ||
           job?.color_code ||
           '#3b82f6',
-        display: buildEventDisplay(job),
       }))
 
       const locationFilteredJobs = filterByLocation(jobsData)
@@ -520,20 +431,12 @@ const CalendarSchedulingCenter = ({
             schedule_state: item?.scheduleState || 'scheduled_no_time',
             color_code:
               getEventColors(serviceType, raw?.job_status)?.hex || raw?.color_code || '#3b82f6',
-            display: buildEventDisplay(raw, {
-              customerName: item?.customerName || raw?.customer_name,
-              vehicleLabel: item?.vehicleLabel,
-              salesperson: item?.salesName || raw?.sales_consultant_name,
-            }),
           }
         })
         .filter(Boolean)
 
       const locationFilteredPromises = filterByLocation(promiseJobs)
-      const mergedJobs = [...(locationFilteredJobs || []), ...(locationFilteredPromises || [])].map((job) => ({
-        ...job,
-        display: job?.display || buildEventDisplay(job),
-      }))
+      const mergedJobs = [...(locationFilteredJobs || []), ...(locationFilteredPromises || [])]
       setJobs(mergedJobs)
 
       // Update debug info
@@ -826,20 +729,12 @@ const CalendarSchedulingCenter = ({
             <div
               key={`content-${index}`}
               className={cx(
-                'p-1 border-r min-h-80',
-                isEmbedded ? 'overflow-visible' : 'overflow-y-auto',
+                'p-1 border-r min-h-80 overflow-y-auto',
                 darkUi ? 'border-white/10' : 'border-gray-200',
                 day?.date?.toDateString?.() === todayKey ? cellBgToday : cellBg
               )}
             >
-              {(() => {
-                const dayJobs = Array.isArray(day?.jobs) ? day.jobs : []
-                const isPromiseJob = (job) =>
-                  job?.time_tbd === true || job?.schedule_state === 'scheduled_no_time'
-                const allDayPromiseJobs = dayJobs.filter(isPromiseJob)
-                const scheduledTimedJobs = dayJobs.filter((job) => !isPromiseJob(job))
-
-                const renderWeekCard = (job) => {
+              {day?.jobs?.map((job) => {
                 const jobStartTime = job?.time_tbd
                   ? null
                   : safeCreateDate(job?.scheduled_start_time)
@@ -857,7 +752,9 @@ const CalendarSchedulingCenter = ({
                     : 'SCHEDULED'
 
                 const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                const display = job?.display || buildEventDisplay(job)
+                const vendorLabel = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+                const vehicleLabel = job?.vehicle_info || ''
+                const customerName = getAppointmentCustomerName(job)
                 const titleText = job?.title || ''
                 const titleWithNumber = jobNumber
                   ? `${jobNumber} • ${titleText || 'Open deal'}`
@@ -883,11 +780,9 @@ const CalendarSchedulingCenter = ({
                 const popoverLines = showDetailPopovers
                     ? [
                         timeLabel ? `Time: ${timeLabel}` : null,
-                        display?.customerName ? `Customer: ${display.customerName}` : null,
-                        display?.stock ? `Stock: ${display.stock}` : null,
-                        display?.vehicleLabel ? `Vehicle: ${display.vehicleLabel}` : null,
-                        display?.salesperson ? `Salesperson: ${display.salesperson}` : null,
-                        display?.productsLabel ? `Products: ${display.productsLabel}` : null,
+                        vendorLabel ? `Vendor: ${vendorLabel}` : null,
+                        customerName ? `Customer: ${customerName}` : null,
+                        vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
                         statusLabel ? `Status: ${statusLabel}` : null,
                       ]
                     : []
@@ -907,13 +802,13 @@ const CalendarSchedulingCenter = ({
                     role="button"
                     tabIndex={0}
                     aria-label={`Open deal ${titleWithNumber}`}
-                    title={buildDisplayTooltip(job, display)}
+                    title={titleText}
                     aria-describedby={popoverId}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-semibold truncate min-w-0">
-                        {display?.customerName || 'Unknown'}
-                        {display?.stock ? ` • ${display.stock}` : ''}
+                        {jobNumber ? `${jobNumber} • ` : ''}
+                        {job?.title}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -961,10 +856,13 @@ const CalendarSchedulingCenter = ({
                         </span>
                       </div>
                     </div>
-                    <div className="text-[11px] opacity-90 truncate">{display?.vehicleLabel || '—'}</div>
-                    <div className="text-[11px] opacity-80 truncate">
-                      {[display?.salesperson, display?.productsLabel].filter(Boolean).join(' • ') || '—'}
-                    </div>
+                    <div className="text-[11px] opacity-90 truncate">{vendorLabel}</div>
+                    {customerName ? (
+                      <div className="text-[11px] opacity-90 truncate">{customerName}</div>
+                    ) : null}
+                    {vehicleLabel ? (
+                      <div className="text-[11px] opacity-90 truncate">{vehicleLabel}</div>
+                    ) : null}
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="text-xs opacity-80">
                         {job?.time_tbd
@@ -992,23 +890,7 @@ const CalendarSchedulingCenter = ({
                     ) : null}
                   </div>
                 )
-                }
-
-                return (
-                  <>
-                    {allDayPromiseJobs.length > 0 ? (
-                      <div className="mb-2 rounded-md border border-amber-200/70 bg-amber-50/60 p-2">
-                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
-                          All-day (Promises)
-                        </div>
-                        {allDayPromiseJobs.map(renderWeekCard)}
-                      </div>
-                    ) : null}
-
-                    {scheduledTimedJobs.map(renderWeekCard)}
-                  </>
-                )
-              })()}
+              })}
             </div>
           ))}
         </div>
@@ -1061,13 +943,13 @@ const CalendarSchedulingCenter = ({
 
       return (
         <div className="h-full">
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1">
             {weekdayLabels.map((label) => (
               <div
                 key={label}
                 className={cx(
-                  'border-b py-2 text-center text-sm font-medium',
-                  darkUi ? 'text-gray-300 border-white/10' : 'text-gray-500 border-gray-200'
+                  'p-2 border-b font-semibold text-center text-sm',
+                  darkUi ? 'bg-white/5 text-gray-300 border-white/10' : 'bg-gray-50 text-gray-700'
                 )}
               >
                 {label}
@@ -1110,7 +992,7 @@ const CalendarSchedulingCenter = ({
                 isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt)
               ).length
 
-              const visibleJobs = dayJobs?.slice?.(0, 3) || []
+              const visibleJobs = dayJobs?.slice?.(0, 4) || []
               const remainingCount = Math.max((dayJobs?.length || 0) - visibleJobs.length, 0)
 
               const dayAriaLabel = unifiedShellEnabled
@@ -1131,7 +1013,7 @@ const CalendarSchedulingCenter = ({
                     }
                   }}
                   className={cx(
-                    'min-h-40 border rounded-lg overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300',
+                    'min-h-32 border rounded-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300',
                     darkUi ? 'border-white/10' : 'border-gray-200',
                     isToday
                       ? darkUi
@@ -1146,7 +1028,7 @@ const CalendarSchedulingCenter = ({
                 >
                   <div
                     className={cx(
-                      'flex items-center justify-between px-2.5 py-1.5 border-b',
+                      'flex items-center justify-between px-2 py-1 border-b',
                       darkUi ? 'border-white/10' : 'border-gray-100'
                     )}
                   >
@@ -1205,7 +1087,7 @@ const CalendarSchedulingCenter = ({
                     </div>
                   </div>
 
-                  <div className="p-1.5 space-y-1 max-h-32 overflow-y-auto">
+                  <div className="p-1 space-y-1 max-h-28 overflow-y-auto">
                     {visibleJobs.map((job) => {
                       const normalizedStatus =
                         job?.job_status === 'pending' ? 'scheduled' : job?.job_status
@@ -1224,7 +1106,9 @@ const CalendarSchedulingCenter = ({
                         : safeCreateDate(job?.scheduled_start_time)
 
                       const jobNumber = job?.job_number?.split?.('-')?.pop?.() || ''
-                      const display = job?.display || buildEventDisplay(job)
+                      const vendorLabel =
+                        job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+                      const customerName = getAppointmentCustomerName(job)
                       const titleText = job?.title || ''
                       const titleWithNumber = jobNumber
                         ? `${jobNumber} • ${titleText || 'Open deal'}`
@@ -1250,11 +1134,8 @@ const CalendarSchedulingCenter = ({
                       const popoverLines = showDetailPopovers
                         ? [
                             timeLabel ? `Time: ${timeLabel}` : null,
-                            display?.customerName ? `Customer: ${display.customerName}` : null,
-                            display?.stock ? `Stock: ${display.stock}` : null,
-                            display?.vehicleLabel ? `Vehicle: ${display.vehicleLabel}` : null,
-                            display?.salesperson ? `Salesperson: ${display.salesperson}` : null,
-                            display?.productsLabel ? `Products: ${display.productsLabel}` : null,
+                            vendorLabel ? `Vendor: ${vendorLabel}` : null,
+                            customerName ? `Customer: ${customerName}` : null,
                             statusLabel ? `Status: ${statusLabel}` : null,
                           ]
                         : []
@@ -1276,13 +1157,13 @@ const CalendarSchedulingCenter = ({
                             e?.stopPropagation?.()
                             handleMonthGridClick()
                           }}
-                          title={buildDisplayTooltip(job, display)}
+                          title={titleText}
                           aria-describedby={popoverId}
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="font-medium truncate">
-                              {display?.customerName || 'Unknown'}
-                              {display?.stock ? ` • ${display.stock}` : ''}
+                              {jobNumber ? `${jobNumber} • ` : ''}
+                              {job?.title}
                             </div>
                             <span
                               className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${
@@ -1292,10 +1173,10 @@ const CalendarSchedulingCenter = ({
                               {statusLabel}
                             </span>
                           </div>
-                          <div className="text-[10px] opacity-90 truncate">{display?.vehicleLabel || '—'}</div>
-                          <div className="text-[10px] opacity-80 truncate">
-                            {[display?.salesperson, display?.productsLabel].filter(Boolean).join(' • ') || '—'}
-                          </div>
+                          <div className="text-[10px] opacity-90 truncate">{vendorLabel}</div>
+                          {customerName ? (
+                            <div className="text-[10px] opacity-90 truncate">{customerName}</div>
+                          ) : null}
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
                               ? `Time TBD • Promise: ${promiseLabel || '—'}`
@@ -1379,9 +1260,9 @@ const CalendarSchedulingCenter = ({
                 deal: job,
               })
 
-              const display = job?.display || buildEventDisplay(job)
-              const listTitle = `${display?.customerName || 'Unknown'}${display?.stock ? ` • ${display.stock}` : ''}`
-              const compactMeta = [display?.salesperson, display?.productsLabel]
+              const listTitle = job?.title || 'Open deal'
+              const customerName = getAppointmentCustomerName(job)
+              const metaLine = [job?.vendor_name, customerName, job?.vehicle_info]
                 .filter(Boolean)
                 .join(' • ')
 
@@ -1393,10 +1274,6 @@ const CalendarSchedulingCenter = ({
                     darkUi ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white'
                   )}
                   onClick={handleListClick}
-                  onKeyDown={(event) => handleCalendarCardKeyDown(event, handleListClick)}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open deal ${listTitle}`}
                   aria-describedby={popoverId}
                 >
                   <div className="flex items-start justify-between">
@@ -1411,8 +1288,7 @@ const CalendarSchedulingCenter = ({
                       >
                         {listTitle}
                       </h3>
-                      <p className="text-sm text-gray-600 truncate">{display?.vehicleLabel || '—'}</p>
-                      <p className="text-xs text-gray-500 truncate">{compactMeta || '—'}</p>
+                      <p className="text-sm text-gray-600">{metaLine}</p>
                       <p className="text-sm text-gray-500">
                         {job?.time_tbd
                           ? `Promise: ${
@@ -1638,7 +1514,13 @@ const CalendarSchedulingCenter = ({
           </div>
         )}
 
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4">
+        <div
+          data-testid="calendar-main-grid"
+          className={cx(
+            'grid gap-4',
+            suppressChrome ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]'
+          )}
+        >
           <div className="min-w-0">
             <div className="relative">
               <CalendarGrid jobs={filteredJobs} viewType={viewType} />

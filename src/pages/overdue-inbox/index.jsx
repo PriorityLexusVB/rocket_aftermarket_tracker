@@ -6,34 +6,70 @@ import { jobService } from '@/services/jobService'
 import { useToast } from '@/components/ui/ToastProvider'
 
 const EXCLUDED_STATUSES = new Set(['completed', 'cancelled', 'canceled', 'draft'])
+const OVERDUE_CANDIDATE_FIELDS = [
+  'next_promised_iso',
+  'promised_date',
+  'promisedAt',
+  'due_date',
+  'dueDate',
+  'next_due_iso',
+  'dueAt',
+]
 
-function getPromiseValue(job) {
-  return job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
+const OVERDUE_SOURCE_LABELS = {
+  next_promised_iso: 'Promised date',
+  promised_date: 'Promised date',
+  promisedAt: 'Promised date',
+  due_date: 'Due date',
+  dueDate: 'Due date',
+  next_due_iso: 'Due date',
+  dueAt: 'Due date',
 }
 
 function toDate(input) {
-  const d = input ? new Date(input) : null
-  return d && !Number.isNaN(d.getTime()) ? d : null
+  const date = input ? new Date(input) : null
+  return date && !Number.isNaN(date.getTime()) ? date : null
 }
 
 function getRowKey(job) {
   return String(job?.id || job?.job_number || '')
 }
 
+function getEarliestOverdueMeta(job, now = new Date()) {
+  const nowTs = now.getTime()
+  let earliestMeta = null
+
+  for (const field of OVERDUE_CANDIDATE_FIELDS) {
+    const ts = toDate(job?.[field])?.getTime()
+    if (typeof ts !== 'number') continue
+    if (ts >= nowTs) continue
+
+    if (!earliestMeta || ts < earliestMeta.timestamp) {
+      earliestMeta = {
+        timestamp: ts,
+        label: OVERDUE_SOURCE_LABELS[field] || 'Past due date',
+      }
+    }
+  }
+
+  return earliestMeta
+}
+
+function getEarliestOverdueTimestamp(job, now = new Date()) {
+  return getEarliestOverdueMeta(job, now)?.timestamp ?? null
+}
+
 export function isStrictOverdueJob(job, now = new Date()) {
   const status = String(job?.job_status || job?.status || '').toLowerCase()
   if (EXCLUDED_STATUSES.has(status)) return false
 
-  const promise = toDate(getPromiseValue(job))
-  if (!promise) return false
-
-  return promise.getTime() < now.getTime()
+  return getEarliestOverdueTimestamp(job, now) !== null
 }
 
 function formatDateTime(input) {
-  const d = toDate(input)
-  if (!d) return '—'
-  return d.toLocaleString('en-US', {
+  const date = toDate(input)
+  if (!date) return '—'
+  return date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -43,10 +79,10 @@ function formatDateTime(input) {
 }
 
 function formatOverdueBy(input) {
-  const d = toDate(input)
-  if (!d) return '—'
+  const date = toDate(input)
+  if (!date) return '—'
 
-  const diffMs = Date.now() - d.getTime()
+  const diffMs = Date.now() - date.getTime()
   if (diffMs <= 0) return '—'
 
   const totalHours = Math.floor(diffMs / (60 * 60 * 1000))
@@ -76,16 +112,16 @@ export function normalizeOverdueRows(items, now = new Date()) {
       continue
     }
 
-    const existingPromise = toDate(getPromiseValue(existing))?.getTime() || Number.POSITIVE_INFINITY
-    const nextPromise = toDate(getPromiseValue(job))?.getTime() || Number.POSITIVE_INFINITY
-    if (nextPromise < existingPromise) {
+    const existingOverdueTs = getEarliestOverdueTimestamp(existing, now) ?? Number.POSITIVE_INFINITY
+    const nextOverdueTs = getEarliestOverdueTimestamp(job, now) ?? Number.POSITIVE_INFINITY
+    if (nextOverdueTs < existingOverdueTs) {
       deduped.set(key, job)
     }
   }
 
   return Array.from(deduped.values()).sort((a, b) => {
-    const aTime = toDate(getPromiseValue(a))?.getTime() || 0
-    const bTime = toDate(getPromiseValue(b))?.getTime() || 0
+    const aTime = getEarliestOverdueTimestamp(a, now) ?? 0
+    const bTime = getEarliestOverdueTimestamp(b, now) ?? 0
     return aTime - bTime
   })
 }
@@ -184,11 +220,9 @@ export default function OverdueInbox() {
             <div>
               <h1 className="text-xl font-semibold text-foreground">Overdue Inbox</h1>
               <p className="text-sm text-muted-foreground">
-                Overdue promised items waiting for delivery coordinator action.
+                Past-due items waiting for delivery coordinator action.
               </p>
-                <p className="text-xs font-medium text-muted-foreground mt-1">
-                  {filteredRows.length} items
-                </p>
+              <p className="text-xs font-medium text-muted-foreground mt-1">{filteredRows.length} items</p>
             </div>
             <input
               type="text"
@@ -215,7 +249,7 @@ export default function OverdueInbox() {
                   <tr>
                     <th className="px-4 py-3">Deal #</th>
                     <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">Promise</th>
+                    <th className="px-4 py-3">Past due date</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Location</th>
                     <th className="px-4 py-3">Updated</th>
@@ -226,7 +260,8 @@ export default function OverdueInbox() {
                 <tbody className="divide-y divide-border">
                   {filteredRows.map((job) => {
                     const jobId = String(job?.id || '')
-                    const promise = getPromiseValue(job)
+                    const overdueMeta = getEarliestOverdueMeta(job)
+                    const overdueDateValue = overdueMeta?.timestamp ? new Date(overdueMeta.timestamp) : null
                     const status = String(job?.job_status || job?.status || 'pending')
                     const location =
                       job?.location || job?.service_type || job?.location_type || job?.locationType || '—'
@@ -244,11 +279,20 @@ export default function OverdueInbox() {
                         <td className="px-4 py-3 text-foreground">
                           {job?.customer_name || job?.vehicle?.owner_name || '—'}
                         </td>
-                        <td className="px-4 py-3 text-foreground">{formatDateTime(promise)}</td>
+                        <td className="px-4 py-3 text-foreground">
+                          <div className="flex flex-col gap-1">
+                            <span>{formatDateTime(overdueDateValue)}</span>
+                            {overdueMeta?.label ? (
+                              <span className="inline-flex w-fit rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                {overdueMeta.label}
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-foreground">{status}</td>
                         <td className="px-4 py-3 text-foreground">{location}</td>
                         <td className="px-4 py-3 text-foreground">{formatDateTime(job?.updated_at)}</td>
-                        <td className="px-4 py-3 font-medium text-red-700">{formatOverdueBy(promise)}</td>
+                        <td className="px-4 py-3 font-medium text-red-700">{formatOverdueBy(overdueDateValue)}</td>
                         <td className="px-4 py-3 text-right">
                           <button
                             type="button"

@@ -44,6 +44,9 @@ async function ensureFirstLineItemVisible(page: import('@playwright/test').Page)
 }
 
 async function expectAgendaOrCalendarLoaded(page: import('@playwright/test').Page) {
+  await expect(page.getByTestId('agenda-ready')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText('Loading agenda…')).toHaveCount(0, { timeout: 20_000 })
+
   await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible({
     timeout: 20_000,
   })
@@ -193,6 +196,7 @@ test.describe('Agenda View', () => {
 
     // Navigate to agenda
     await page.goto('/calendar/agenda')
+    await expectAgendaOrCalendarLoaded(page)
 
     // Expand the filters panel to reveal status filter
     const filtersButton = page.locator('button:has-text("Filters")')
@@ -212,6 +216,7 @@ test.describe('Agenda View', () => {
     // Navigate away and back
     await page.goto('/')
     await page.goto('/calendar/agenda')
+    await expectAgendaOrCalendarLoaded(page)
 
     // Expand filters again to check persistence
     await expect(filtersButton).toBeVisible()
