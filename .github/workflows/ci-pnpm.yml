@@ -11,7 +11,7 @@ concurrency:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -84,5 +84,11 @@ jobs:
       - name: Lint
         run: pnpm --if-present lint
 
+      - name: Typecheck
+        run: pnpm --if-present typecheck
+
       - name: Test
+        env:
+          VITE_SUPABASE_URL: http://localhost
+          VITE_SUPABASE_ANON_KEY: test_anon_key
         run: pnpm --if-present test
