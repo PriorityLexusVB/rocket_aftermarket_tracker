@@ -4,6 +4,22 @@ import { Search, Calendar, Car, BarChart3, Settings, Package, Clock, Plus } from
 import { getCalendarDestination } from '@/lib/navigation/calendarNavigation'
 
 const GROUP_ORDER = ['Actions', 'Navigation']
+const RECENT_STORAGE_KEY = 'quick-navigation:recent-ids'
+const MAX_RECENT_ITEMS = 6
+const HOTKEY_CODE_INDEX_MAP = {
+  Digit1: 0,
+  Digit2: 1,
+  Digit3: 2,
+  Digit4: 3,
+  Digit5: 4,
+  Digit6: 5,
+  Numpad1: 0,
+  Numpad2: 1,
+  Numpad3: 2,
+  Numpad4: 3,
+  Numpad5: 4,
+  Numpad6: 5,
+}
 
 const isEditableTarget = (target) => {
   const el = target
@@ -17,6 +33,8 @@ const QuickNavigation = () => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [recentIds, setRecentIds] = useState([])
+  const [hasLoadedRecents, setHasLoadedRecents] = useState(false)
 
   const navigate = useNavigate()
   const inputRef = useRef()
@@ -139,6 +157,54 @@ const QuickNavigation = () => {
     return [...actions, ...navigation]
   }, [])
 
+  const itemsById = useMemo(() => {
+    const map = new Map()
+    ;(items || []).forEach((item) => {
+      if (item?.id) map.set(item.id, item)
+    })
+    return map
+  }, [items])
+
+  const recentItems = useMemo(() => {
+    return recentIds.map((id) => itemsById.get(id)).filter(Boolean)
+  }, [itemsById, recentIds])
+
+  const hasRecents = recentItems.length > 0
+
+  const addRecentId = useCallback((id) => {
+    if (!id) return
+    setRecentIds((prev) => {
+      const next = [id, ...(prev || []).filter((existingId) => existingId !== id)]
+      return next.slice(0, MAX_RECENT_ITEMS)
+    })
+  }, [])
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+      const cleaned = parsed
+        .filter((id) => typeof id === 'string' && id.length > 0)
+        .slice(0, MAX_RECENT_ITEMS)
+      setRecentIds(cleaned)
+    } catch {
+      setRecentIds([])
+    } finally {
+      setHasLoadedRecents(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hasLoadedRecents) return
+    try {
+      localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify((recentIds || []).slice(0, MAX_RECENT_ITEMS)))
+    } catch {
+      void 0
+    }
+  }, [hasLoadedRecents, recentIds])
+
   const close = useCallback(() => {
     setIsOpen(false)
     setQuery('')
@@ -152,6 +218,7 @@ const QuickNavigation = () => {
 
   const handleSelect = useCallback(
     async (item) => {
+      addRecentId(item?.id)
       try {
         if (item?.type === 'action' && typeof item?.run === 'function') {
           await item.run({ navigate })
@@ -162,11 +229,13 @@ const QuickNavigation = () => {
         close()
       }
     },
-    [close, navigate]
+    [addRecentId, close, navigate]
   )
 
   useEffect(() => {
     const q = String(query || '').trim().toLowerCase()
+    const recents = (recentItems || []).map((item) => ({ ...item, group: 'Recent' }))
+    const recentSet = new Set((recentItems || []).map((item) => item?.id).filter(Boolean))
     if (q.length > 1) {
       const filtered = items.filter((item) => {
         const name = String(item?.name || '').toLowerCase()
@@ -178,11 +247,13 @@ const QuickNavigation = () => {
           keywords.some((kw) => String(kw || '').toLowerCase().includes(q))
         )
       })
-      setResults(filtered)
+      const deduped = filtered.filter((item) => !recentSet.has(item?.id))
+      setResults([...recents, ...deduped])
     } else {
-      setResults(items.slice(0, 8))
+      const deduped = items.slice(0, 8).filter((item) => !recentSet.has(item?.id))
+      setResults([...recents, ...deduped])
     }
-  }, [items, query])
+  }, [items, query, recentItems])
 
   useEffect(() => {
     setSelectedIndex(0)
@@ -225,12 +296,30 @@ const QuickNavigation = () => {
         if (!item) return
         e?.preventDefault()
         handleSelect(item)
+        return
+      }
+
+      if (e?.altKey && !e?.ctrlKey && !e?.metaKey) {
+        const code = String(e?.code || '')
+        const fallbackKey = String(e?.key || '')
+        const fallbackIndex =
+          fallbackKey >= '1' && fallbackKey <= '6' ? Number.parseInt(fallbackKey, 10) - 1 : null
+        const hotkeyIndex = HOTKEY_CODE_INDEX_MAP[code] ?? fallbackIndex
+        if (hotkeyIndex == null) return
+
+        const item = recentItems[hotkeyIndex]
+        if (!item) return
+
+        e?.preventDefault()
+        e?.stopPropagation()
+        handleSelect(item)
+        return
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [close, handleSelect, isOpen, open, results, selectedIndex])
+  }, [close, handleSelect, isOpen, open, recentItems, results, selectedIndex])
 
   const handleBackdropClick = () => close()
 
@@ -316,11 +405,14 @@ const QuickNavigation = () => {
           </div>
         </div>
 
-        <div className="max-h-96 overflow-y-auto">{GROUP_ORDER.map((g) => renderGroup(g))}</div>
+        <div className="max-h-96 overflow-y-auto">
+          {renderGroup('Recent')}
+          {GROUP_ORDER.map((g) => renderGroup(g))}
+        </div>
 
         <div className="p-3 border-t border-border text-xs text-muted-foreground flex items-center justify-between">
           <span>Esc to close</span>
-          <span>↑/↓ select • Enter run</span>
+          <span>{`↑/↓ select • Enter run${hasRecents ? ' • Alt+1..6 recent' : ''}`}</span>
         </div>
       </div>
     </div>
