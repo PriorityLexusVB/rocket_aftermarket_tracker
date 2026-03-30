@@ -180,8 +180,8 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1(eslint@9.39.2(jiti@1.21.7))
       happy-dom:
-        specifier: ^20.6.1
-        version: 20.6.2
+        specifier: ^20.8.9
+        version: 20.8.9
       jsdom:
         specifier: ^27.4.0
         version: 27.4.0
@@ -220,7 +220,7 @@ importers:
         version: 3.6.0(vite@5.4.21(@types/node@24.10.13)(terser@5.44.1))
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/node@24.10.13)(happy-dom@20.6.2)(jsdom@27.4.0)(terser@5.44.1)
+        version: 3.2.4(@types/node@24.10.13)(happy-dom@20.8.9)(jsdom@27.4.0)(terser@5.44.1)
       webpack:
         specifier: ^5.104.1
         version: 5.105.0(esbuild@0.25.12)
@@ -2320,8 +2320,8 @@ packages:
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
-  happy-dom@20.6.2:
-    resolution: {integrity: sha512-Xk/Y0cuq9ngN/my8uvK4gKoyDl6sBKkIl8A/hJ0IabZVH7E5SJLHNE7uKRPVmSrQbhJaLIHTEcvTct4GgNtsRA==}
+  happy-dom@20.8.9:
+    resolution: {integrity: sha512-Tz23LR9T9jOGVZm2x1EPdXqwA37G/owYMxRwU0E4miurAtFsPMQ1d2Jc2okUaSjZqAFz2oEn3FLXC5a0a+siyA==}
     engines: {node: '>=20.0.0'}
 
   has-bigints@1.1.0:
@@ -5960,7 +5960,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  happy-dom@20.6.2:
+  happy-dom@20.8.9:
     dependencies:
       '@types/node': 24.10.13
       '@types/whatwg-mimetype': 3.0.2
@@ -7374,7 +7374,7 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.44.1
 
-  vitest@3.2.4(@types/node@24.10.13)(happy-dom@20.6.2)(jsdom@27.4.0)(terser@5.44.1):
+  vitest@3.2.4(@types/node@24.10.13)(happy-dom@20.8.9)(jsdom@27.4.0)(terser@5.44.1):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -7401,7 +7401,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.10.13
-      happy-dom: 20.6.2
+      happy-dom: 20.8.9
       jsdom: 27.4.0
     transitivePeerDependencies:
       - less
