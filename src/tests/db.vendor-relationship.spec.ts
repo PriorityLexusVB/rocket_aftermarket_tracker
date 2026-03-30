@@ -189,9 +189,10 @@ describe('Database Vendor Relationship - Mock Mode Tests', () => {
   // These tests always run (no env vars required) to verify test structure
 
   it('should have test file in correct location', () => {
-    // Updated to match actual test location: src/tests/
-    expect(__filename).toContain('src/tests')
-    expect(__filename).toContain('db.vendor-relationship.spec')
+    // Updated to match actual test location: src/tests/ (normalize for Windows backslashes)
+    const normalized = __filename.replace(/\\/g, '/')
+    expect(normalized).toContain('src/tests')
+    expect(normalized).toContain('db.vendor-relationship.spec')
   })
 
   it('should document relationship query syntax', () => {
