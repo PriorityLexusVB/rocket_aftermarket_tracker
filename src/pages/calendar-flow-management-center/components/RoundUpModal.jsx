@@ -133,7 +133,6 @@ const RoundUpModal = ({
   }
 
   const handleExport = (format) => {
-    console.log(`Export ${format} for selected jobs:`, Array.from(selectedJobs))
     // Implement export functionality
   }
 
@@ -223,14 +222,14 @@ const RoundUpModal = ({
               )}
             </button>
             <button
-              onClick={() => console.log(`no_show job ${job?.id}`)}
+              onClick={() => {}}
               className="p-1 hover:bg-gray-100 rounded text-gray-600"
               title="No-Show"
             >
               <XCircle className="h-3 w-3" />
             </button>
             <button
-              onClick={() => console.log(`reschedule job ${job?.id}`)}
+              onClick={() => {}}
               className="p-1 hover:bg-orange-100 rounded text-orange-600"
               title="Reschedule"
             >

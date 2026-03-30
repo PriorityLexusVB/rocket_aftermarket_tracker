@@ -132,8 +132,6 @@ const VendorManagement = () => {
   })
 
   const handleEditVendor = (vendor) => {
-    console.log('Edit button clicked for vendor:', vendor?.name)
-
     try {
       setSelectedVendor(vendor)
       // Section 20: Use react-hook-form reset to populate form
@@ -158,8 +156,6 @@ const VendorManagement = () => {
   }
 
   const handleDeleteVendor = async (vendorId) => {
-    console.log('Delete button clicked for vendor ID:', vendorId)
-
     if (!window.confirm('Are you sure you want to delete this vendor?')) return
 
     try {
@@ -190,8 +186,6 @@ const VendorManagement = () => {
   }
 
   const handleAddNewVendor = () => {
-    console.log('Add New Vendor button clicked')
-
     try {
       setFormMode('add')
       setSelectedVendor(null)

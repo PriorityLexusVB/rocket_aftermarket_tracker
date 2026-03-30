@@ -485,7 +485,7 @@ const EnhancedVehicleTable = ({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => console.log('Edit vehicle', vehicle?.id)}
+                            onClick={() => {}}
                             className="w-8 h-8 hover:bg-muted"
                             aria-label="Edit vehicle"
                           >

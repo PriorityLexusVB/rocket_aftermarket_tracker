@@ -51,8 +51,6 @@ const ExecutiveAnalyticsDashboard = () => {
       exportDate: new Date()?.toISOString(),
     }
 
-    console.log('Exporting dashboard data:', exportData)
-
     const csvContent = `Dashboard Export - ${new Date()?.toLocaleDateString()}\n\nMetrics Summary:\n(No metrics data available)\n\nFilters Applied:\nDate Range: ${filters?.dateRange} days\nDepartment: ${filters?.department}\nProduct: ${filters?.productFilter}\nVendor: ${filters?.vendorFilter}`
 
     const blob = new Blob([csvContent], { type: 'text/csv' })

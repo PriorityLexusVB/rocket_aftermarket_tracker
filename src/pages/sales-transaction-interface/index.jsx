@@ -143,8 +143,6 @@ const SalesTransactionInterface = () => {
         ...additionalData,
       }
 
-      console.log('Creating deal with data:', dealData)
-
       // Create deal with line items using jobService
       const result = await jobService?.createDealWithLineItems(dealData)
 

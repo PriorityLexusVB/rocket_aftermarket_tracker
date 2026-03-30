@@ -116,7 +116,7 @@ const VehicleTable = ({
               size="sm"
               iconName="Download"
               iconPosition="left"
-              onClick={() => console.log('Export selected vehicles')}
+              onClick={() => {}}
             >
               Export
             </Button>
@@ -295,7 +295,7 @@ const VehicleTable = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => console.log('Edit vehicle', vehicle?.id)}
+                      onClick={() => {}}
                       className="w-8 h-8"
                       aria-label="Edit vehicle"
                     >

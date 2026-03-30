@@ -276,7 +276,6 @@ export const vehicleService = {
         throw new Error(error.message || 'Failed to create vehicle')
       }
 
-      console.log('Vehicle created successfully:', data)
       return data
     } catch (error) {
       console.error('Error in vehicleService.create:', error)
@@ -286,8 +285,6 @@ export const vehicleService = {
 
   async createVehicleWithProducts(vehicleData) {
     try {
-      console.log('Creating vehicle with products:', vehicleData)
-
       const { initial_products, total_initial_product_value, ...vehicleInsert } = vehicleData || {}
       const initialProducts = Array.isArray(initial_products) ? initial_products : []
 

@@ -97,9 +97,6 @@ const VehiclesPage = () => {
   }
 
   const handleScheduleService = (vehicle) => {
-    // Navigate directly to calendar without add vehicle functionality
-    console.log('Scheduling service for vehicle:', vehicle?.stock_number)
-
     // Navigate to calendar with vehicle context
     navigate('/calendar', {
       state: {

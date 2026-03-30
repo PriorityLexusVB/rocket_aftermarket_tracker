@@ -143,24 +143,20 @@ const VehicleManagementHub = () => {
   }, [filters, userProfile, isManager, isVendor, vendorId])
 
   const handleVehicleUpdate = (vehicleId, updates) => {
-    console.log('Update vehicle:', vehicleId, updates)
     // In real app, this would update the vehicle in the database
   }
 
   const handleBulkStatusUpdate = async (status) => {
-    console.log('Bulk status update:', selectedVehicles, status)
     // In real app, this would update multiple vehicles
     setSelectedVehicles([])
   }
 
   const handleBulkExport = async () => {
-    console.log('Bulk export:', selectedVehicles)
     // In real app, this would export selected vehicles
     setSelectedVehicles([])
   }
 
   const handleBulkDelete = async () => {
-    console.log('Bulk delete:', selectedVehicles)
     // In real app, this would delete selected vehicles
     setSelectedVehicles([])
   }
@@ -195,13 +191,10 @@ const VehicleManagementHub = () => {
 
   const handleRefresh = () => {
     setLastUpdated(new Date())
-    console.log('Refreshing vehicle data...')
   }
 
   const handleAddVehicle = async (vehicleData) => {
     try {
-      console.log('Adding new vehicle with aftermarket products:', vehicleData)
-
       // Use the new service method that handles products
       await createVehicleWithProducts(vehicleData)
 

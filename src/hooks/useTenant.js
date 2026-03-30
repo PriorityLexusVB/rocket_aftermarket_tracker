@@ -122,7 +122,7 @@ function useTenant() {
             if (!error && data && Object.prototype.hasOwnProperty.call(data, col)) {
               resolvedOrg = data[col] ?? null
               if (resolvedOrg) {
-                console.log('[useTenant] Found org_id via email fallback')
+                // org_id resolved via email fallback
               }
               break
             }

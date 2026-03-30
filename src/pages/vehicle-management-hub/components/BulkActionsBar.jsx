@@ -27,16 +27,16 @@ const BulkActionsBar = ({
       switch (action) {
         case 'update-status':
           // This would open a modal or dropdown for status selection
-          console.log('Update status for selected vehicles')
+          // TODO: open status selection modal
           break
         case 'export-selected':
           await onBulkExport()
           break
         case 'assign-vendor':
-          console.log('Assign vendor to selected vehicles')
+          // TODO: assign vendor to selected vehicles
           break
         case 'mark-priority':
-          console.log('Mark selected vehicles as priority')
+          // TODO: mark selected vehicles as priority
           break
         case 'delete':
           if (window.confirm(`Are you sure you want to delete ${selectedCount} vehicles?`)) {
