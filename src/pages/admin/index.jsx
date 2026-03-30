@@ -5,8 +5,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
 import AppLayout from '../../components/layouts/AppLayout'
 import UIButton from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import QRCodeGenerator from '../../components/common/QRCodeGenerator'
 import {
   Users,
   Package,
@@ -15,9 +13,6 @@ import {
   UserCheck,
   AlertCircle,
   RefreshCw,
-  Edit,
-  Trash2,
-  Plus,
   QrCode,
 } from 'lucide-react'
 import { useLogger } from '../../hooks/useLogger'
