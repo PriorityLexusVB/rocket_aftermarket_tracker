@@ -5,8 +5,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import useTenant from '../../hooks/useTenant'
 import AppLayout from '../../components/layouts/AppLayout'
 import UIButton from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import QRCodeGenerator from '../../components/common/QRCodeGenerator'
 import {
   Users,
   Package,
@@ -15,9 +13,6 @@ import {
   UserCheck,
   AlertCircle,
   RefreshCw,
-  Edit,
-  Trash2,
-  Plus,
   QrCode,
 } from 'lucide-react'
 import { useLogger } from '../../hooks/useLogger'
@@ -29,6 +24,13 @@ import {
   SMS_TEMPLATES_TABLE_AVAILABLE,
   disableSmsTemplatesCapability,
 } from '../../utils/capabilityTelemetry'
+import UserAccountsTab from './components/UserAccountsTab'
+import StaffRecordsTab from './components/StaffRecordsTab'
+import VendorsTab from './components/VendorsTab'
+import ProductsTab from './components/ProductsTab'
+import SmsTemplatesTab from './components/SmsTemplatesTab'
+import QRCodeTab from './components/QRCodeTab'
+import AdminModal from './components/AdminModal'
 
 const AdminPage = () => {
   const { userProfile, user, loading: authLoading } = useAuth()
@@ -925,1212 +927,6 @@ const AdminPage = () => {
     }
   }
 
-  // Render functions for each tab
-  const renderUserAccountsTab = () => (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">User Accounts ({userAccounts.length})</h3>
-        <div className="flex items-center gap-3">
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-blue-600 appearance-auto"
-              checked={onlyMyOrg}
-              onChange={(e) => setOnlyMyOrg(e.target.checked)}
-            />
-            <span className="text-sm">Only my org</span>
-          </label>
-          <UIButton
-            onClick={assignOrgToAccounts}
-            disabled={!orgId || submitting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50"
-          >
-            <Building className="w-4 h-4" />
-            Assign Org to Accounts
-          </UIButton>
-          <UIButton
-            onClick={() => openModal('userAccount')}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add User Account
-          </UIButton>
-        </div>
-      </div>
-
-      <div className="mb-3 text-sm text-gray-600">
-        Tip: You can edit any account. If it belongs to another org, you’ll be prompted to reassign
-        it to your org on save. Or click the building icon to attach immediately.
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-3 mb-4">
-        <input
-          type="text"
-          value={accountsQuery}
-          onChange={(e) => setAccountsQuery(e.target.value)}
-          placeholder="Search by name or email"
-          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-sm"
-        />
-        <select
-          value={accountsDeptFilter}
-          onChange={(e) => setAccountsDeptFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-xs"
-        >
-          <option value="">All departments</option>
-          {userDepartmentOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Role
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Department
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Org
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {(userAccounts || [])
-              .filter((a) => {
-                const q = accountsQuery.trim().toLowerCase()
-                if (!q) return true
-                return (
-                  String(a?.full_name || '')
-                    .toLowerCase()
-                    .includes(q) ||
-                  String(a?.email || '')
-                    .toLowerCase()
-                    .includes(q)
-                )
-              })
-              .filter((a) => {
-                if (!accountsDeptFilter) return true
-                return String(a?.department || '') === accountsDeptFilter
-              })
-              .map((account) => (
-                <tr key={account?.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {account?.full_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {account?.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        account?.role === 'admin'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                    >
-                      {account?.role}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {account?.department}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center gap-2">
-                      <span>
-                        {account?.dealer_id || account?.org_id
-                          ? String(account?.dealer_id || account?.org_id).slice(0, 8)
-                          : '—'}
-                      </span>
-                      {orgId &&
-                      (account?.dealer_id || account?.org_id) &&
-                      (account?.dealer_id || account?.org_id) !== orgId ? (
-                        <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
-                          Other org
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        account?.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {account?.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openModal('userAccount', account)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title={
-                          orgId &&
-                          (account?.dealer_id || account?.org_id) &&
-                          (account?.dealer_id || account?.org_id) !== orgId
-                            ? 'Edit user (will prompt to reassign to your org on save)'
-                            : 'Edit user'
-                        }
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      {orgId &&
-                        (account?.dealer_id || account?.org_id) &&
-                        (account?.dealer_id || account?.org_id) !== orgId && (
-                          <button
-                            title="Attach to my org"
-                            onClick={() => attachProfileToMyOrg(account?.id)}
-                            className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                            disabled={submitting}
-                          >
-                            <Building className="w-4 h-4" />
-                          </button>
-                        )}
-                      <button
-                        onClick={() => handleDelete('user_profiles', account?.id, 'userAccount')}
-                        disabled={deletingId === account?.id}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-
-      {userAccounts?.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No user accounts found. Click "Add User Account" to create one.
-        </div>
-      )}
-      {accountsActionMsg ? (
-        <div className="mt-3 p-3 rounded bg-blue-50 text-blue-700">{accountsActionMsg}</div>
-      ) : null}
-    </div>
-  )
-
-  const renderStaffRecordsTab = () => (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">Staff Records ({staffRecords.length})</h3>
-        <div className="flex items-center gap-3">
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-blue-600 appearance-auto"
-              checked={onlyMyOrg}
-              onChange={(e) => setOnlyMyOrg(e.target.checked)}
-            />
-            <span className="text-sm">Only my org</span>
-          </label>
-          <UIButton
-            onClick={assignOrgToActiveStaff}
-            disabled={!orgId || submitting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50"
-          >
-            <Building className="w-4 h-4" />
-            Assign Org to Staff
-          </UIButton>
-          <UIButton
-            onClick={() => openModal('staff')}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Staff Member
-          </UIButton>
-        </div>
-      </div>
-
-      <div className="mb-3 text-sm text-gray-600">
-        Tip: You can edit any staff profile. If it belongs to another org, you’ll be prompted to
-        reassign it to your org on save. Or click the building icon to attach immediately.
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-3 mb-4">
-        <input
-          type="text"
-          value={staffQuery}
-          onChange={(e) => setStaffQuery(e.target.value)}
-          placeholder="Search by name, phone or email"
-          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-sm"
-        />
-        <select
-          value={staffDeptFilter}
-          onChange={(e) => setStaffDeptFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md w-full md:max-w-xs"
-        >
-          <option value="">All departments</option>
-          {staffDepartmentOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Department
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Phone
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Org
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {(staffRecords || [])
-              .filter((s) => {
-                const q = staffQuery.trim().toLowerCase()
-                if (!q) return true
-                return (
-                  String(s?.full_name || '')
-                    .toLowerCase()
-                    .includes(q) ||
-                  String(s?.phone || '')
-                    .toLowerCase()
-                    .includes(q) ||
-                  String(s?.email || '')
-                    .toLowerCase()
-                    .includes(q)
-                )
-              })
-              .filter((s) => {
-                if (!staffDeptFilter) return true
-                return String(s?.department || '') === staffDeptFilter
-              })
-              .map((staff) => (
-                <tr key={staff?.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {staff?.full_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        staff?.department === 'Sales Consultants'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-purple-100 text-purple-800'
-                      }`}
-                    >
-                      {staff?.department}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {staff?.phone || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {staff?.email || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center gap-2">
-                      <span>
-                        {staff?.dealer_id || staff?.org_id
-                          ? String(staff?.dealer_id || staff?.org_id).slice(0, 8)
-                          : '—'}
-                      </span>
-                      {orgId &&
-                      (staff?.dealer_id || staff?.org_id) &&
-                      (staff?.dealer_id || staff?.org_id) !== orgId ? (
-                        <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">
-                          Other org
-                        </span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        staff?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {staff?.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openModal('staff', staff)}
-                        className="text-blue-600 hover:text-blue-900"
-                        title={
-                          orgId &&
-                          (staff?.dealer_id || staff?.org_id) &&
-                          (staff?.dealer_id || staff?.org_id) !== orgId
-                            ? 'Edit staff (will prompt to reassign to your org on save)'
-                            : 'Edit staff'
-                        }
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      {orgId &&
-                        (staff?.dealer_id || staff?.org_id) &&
-                        (staff?.dealer_id || staff?.org_id) !== orgId && (
-                          <button
-                            title="Attach to my org"
-                            onClick={() => attachProfileToMyOrg(staff?.id)}
-                            className="text-emerald-600 hover:text-emerald-800 disabled:opacity-50"
-                            disabled={submitting}
-                          >
-                            <Building className="w-4 h-4" />
-                          </button>
-                        )}
-                      <button
-                        onClick={() => handleDelete('user_profiles', staff?.id, 'staff')}
-                        disabled={deletingId === staff?.id}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-
-      {staffRecords?.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No staff records found. Click "Add Staff Member" to create one.
-        </div>
-      )}
-      {staffActionMsg ? (
-        <div className="mt-3 p-3 rounded bg-blue-50 text-blue-700">{staffActionMsg}</div>
-      ) : null}
-    </div>
-  )
-
-  const renderVendorsTab = () => (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">Vendors ({vendors.length})</h3>
-        <div className="flex items-center gap-3">
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-blue-600 appearance-auto"
-              checked={onlyMyOrg}
-              onChange={(e) => setOnlyMyOrg(e.target.checked)}
-            />
-            <span className="text-sm">Only my org</span>
-          </label>
-          <UIButton
-            onClick={assignOrgToVendors}
-            disabled={!orgId || submitting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50"
-          >
-            <Building className="w-4 h-4" />
-            Assign Org to Vendors
-          </UIButton>
-          <UIButton
-            onClick={() => openModal('vendor')}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Vendor
-          </UIButton>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Contact Person
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Phone
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Specialty
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Rating
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {vendors?.map((vendor) => (
-              <tr key={vendor?.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {vendor?.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {vendor?.contact_person || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {vendor?.phone || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {vendor?.specialty || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {vendor?.rating ? `${vendor?.rating}/5` : 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      vendor?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {vendor?.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openModal('vendor', vendor)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete('vendors', vendor?.id)}
-                      disabled={deletingId === vendor?.id}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {vendors?.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No vendors found. Click "Add Vendor" to create one.
-        </div>
-      )}
-      {vendorsActionMsg ? (
-        <div className="mt-3 p-3 rounded bg-blue-50 text-blue-700">{vendorsActionMsg}</div>
-      ) : null}
-    </div>
-  )
-
-  const renderProductsTab = () => (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">Aftermarket Products ({products.length})</h3>
-        <div className="flex items-center gap-3">
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 accent-blue-600 appearance-auto"
-              checked={onlyMyOrg}
-              onChange={(e) => setOnlyMyOrg(e.target.checked)}
-            />
-            <span className="text-sm">Only my org</span>
-          </label>
-          <UIButton
-            onClick={assignOrgToProducts}
-            disabled={!orgId || submitting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 disabled:opacity-50"
-          >
-            <Building className="w-4 h-4" />
-            Assign Org to Products
-          </UIButton>
-          <UIButton
-            onClick={() => openModal('product')}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Product
-          </UIButton>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Brand
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Op Code
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Cost
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Unit Price
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {products?.map((product) => (
-              <tr key={product?.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {product?.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {product?.brand || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {product?.category || 'N/A'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-mono bg-gray-100 text-gray-800 rounded">
-                    {product?.op_code || 'N/A'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  ${product?.cost || '0.00'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  ${product?.unit_price || '0.00'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      product?.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {product?.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openModal('product', product)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete('products', product?.id)}
-                      disabled={deletingId === product?.id}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {products?.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No products found. Click "Add Product" to create one.
-        </div>
-      )}
-      {productsActionMsg ? (
-        <div className="mt-3 p-3 rounded bg-blue-50 text-blue-700">{productsActionMsg}</div>
-      ) : null}
-    </div>
-  )
-
-  const renderSmsTemplatesTab = () => (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold">SMS Templates ({smsTemplates?.length || 0})</h3>
-        <UIButton
-          onClick={() => openModal('template')}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Template
-        </UIButton>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Type
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Message Preview
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {smsTemplates?.map((template) => (
-              <tr key={template?.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {template?.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    {template?.template_type?.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                  {template?.message_template}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      template?.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {template?.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openModal('template', template)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete('sms_templates', template?.id)}
-                      disabled={deletingId === template?.id}
-                      className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {smsTemplates?.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No SMS templates found. Click "Add Template" to create one.
-        </div>
-      )}
-    </div>
-  )
-
-  // New QR Code Generator Tab
-  const renderQRCodeTab = () => {
-    const guestClaimsUrl = `${window?.location?.origin}/guest-claims-submission-form`
-
-    return (
-      <div className="space-y-8">
-        {/* Header */}
-        <div>
-          <h3 className="text-lg font-semibold mb-2">QR Code Generator</h3>
-          <p className="text-gray-600">
-            Generate QR codes for easy access to your guest claims form and other important links.
-          </p>
-        </div>
-
-        {/* Guest Claims Form QR Code */}
-        <div>
-          <QRCodeGenerator
-            url={guestClaimsUrl}
-            title="Guest Claims Submission Form"
-            description="Generate a QR code for customers to quickly access your guest claims form. Perfect for printing on business cards, flyers, or displaying in your shop."
-            size={250}
-            showControls={true}
-          />
-        </div>
-
-        {/* Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h4 className="font-semibold text-blue-900 mb-3">How to Use QR Codes:</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-blue-800">
-            <div>
-              <h5 className="font-medium mb-2">📱 For Customers:</h5>
-              <ul className="space-y-1">
-                <li>• Open camera app on smartphone</li>
-                <li>• Point camera at QR code</li>
-                <li>• Tap notification to open claims form</li>
-                <li>• No app download required</li>
-              </ul>
-            </div>
-            <div>
-              <h5 className="font-medium mb-2">🖨️ For Your Business:</h5>
-              <ul className="space-y-1">
-                <li>• Download and print QR codes</li>
-                <li>• Add to business cards</li>
-                <li>• Display in waiting areas</li>
-                <li>• Include in email signatures</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Usage Statistics */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <h4 className="font-semibold text-gray-900 mb-3">QR Code Benefits:</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="text-center p-4 bg-white rounded-lg">
-              <div className="text-2xl font-bold text-green-600">95%</div>
-              <div className="text-gray-600">Smartphone QR Support</div>
-            </div>
-            <div className="text-center p-4 bg-white rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">3x</div>
-              <div className="text-gray-600">Faster Than Typing URLs</div>
-            </div>
-            <div className="text-center p-4 bg-white rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">100%</div>
-              <div className="text-gray-600">Contactless Access</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Modal rendering function
-  const renderModal = () => {
-    if (!showModal) return null
-
-    const getModalTitle = () => {
-      switch (modalType) {
-        case 'userAccount':
-          return editingItem ? 'Edit User Account' : 'Add User Account'
-        case 'staff':
-          return editingItem ? 'Edit Staff Member' : 'Add Staff Member'
-        case 'vendor':
-          return editingItem ? 'Edit Vendor' : 'Add Vendor'
-        case 'product':
-          return editingItem ? 'Edit Product' : 'Add Product'
-        case 'template':
-          return editingItem ? 'Edit SMS Template' : 'Add SMS Template'
-        default:
-          return 'Form'
-      }
-    }
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">{getModalTitle()}</h3>
-            <button
-              onClick={() => setShowModal(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              ×
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {modalType === 'userAccount' && (
-              <>
-                <Input
-                  label="Full Name"
-                  value={userAccountForm?.full_name}
-                  onChange={(e) =>
-                    setUserAccountForm({ ...userAccountForm, full_name: e?.target?.value })
-                  }
-                  required
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  value={userAccountForm?.email}
-                  onChange={(e) =>
-                    setUserAccountForm({ ...userAccountForm, email: e?.target?.value })
-                  }
-                  required
-                />
-                {!editingItem && (
-                  <Input
-                    label="Password"
-                    type="password"
-                    value={userAccountForm?.password}
-                    onChange={(e) =>
-                      setUserAccountForm({ ...userAccountForm, password: e?.target?.value })
-                    }
-                    required
-                  />
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select
-                    value={userAccountForm?.role}
-                    onChange={(e) =>
-                      setUserAccountForm({ ...userAccountForm, role: e?.target?.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  >
-                    {roleOptions?.map((option) => (
-                      <option key={option?.value} value={option?.value}>
-                        {option?.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <select
-                    value={userAccountForm?.department}
-                    onChange={(e) =>
-                      setUserAccountForm({ ...userAccountForm, department: e?.target?.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  >
-                    <option value="">Select Department</option>
-                    {userDepartmentOptions?.map((option) => (
-                      <option key={option?.value} value={option?.value}>
-                        {option?.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Input
-                  label="Phone"
-                  value={userAccountForm?.phone}
-                  onChange={(e) =>
-                    setUserAccountForm({ ...userAccountForm, phone: e?.target?.value })
-                  }
-                />
-              </>
-            )}
-
-            {modalType === 'staff' && (
-              <>
-                <Input
-                  label="Full Name"
-                  value={staffForm?.full_name}
-                  onChange={(e) => setStaffForm({ ...staffForm, full_name: e?.target?.value })}
-                  required
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                  <select
-                    value={staffForm?.department}
-                    onChange={(e) => setStaffForm({ ...staffForm, department: e?.target?.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  >
-                    <option value="">Select Department</option>
-                    {staffDepartmentOptions?.map((option) => (
-                      <option key={option?.value} value={option?.value}>
-                        {option?.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <Input
-                  label="Phone"
-                  value={staffForm?.phone}
-                  onChange={(e) => setStaffForm({ ...staffForm, phone: e?.target?.value })}
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  value={staffForm?.email}
-                  onChange={(e) => setStaffForm({ ...staffForm, email: e?.target?.value })}
-                />
-              </>
-            )}
-
-            {modalType === 'vendor' && (
-              <>
-                <Input label="Vendor Name" {...vendorFormMethods.register('name')} required />
-                {vendorFormMethods.formState.errors?.name && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {vendorFormMethods.formState.errors.name.message}
-                  </p>
-                )}
-                <Input label="Contact Person" {...vendorFormMethods.register('contactPerson')} />
-                {vendorFormMethods.formState.errors?.contactPerson && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {vendorFormMethods.formState.errors.contactPerson.message}
-                  </p>
-                )}
-                <Input label="Phone" {...vendorFormMethods.register('phone')} />
-                {vendorFormMethods.formState.errors?.phone && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {vendorFormMethods.formState.errors.phone.message}
-                  </p>
-                )}
-                <Input label="Email" type="email" {...vendorFormMethods.register('email')} />
-                {vendorFormMethods.formState.errors?.email && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {vendorFormMethods.formState.errors.email.message}
-                  </p>
-                )}
-                <Input label="Specialty" {...vendorFormMethods.register('specialty')} />
-                {vendorFormMethods.formState.errors?.specialty && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {vendorFormMethods.formState.errors.specialty.message}
-                  </p>
-                )}
-                <Input
-                  label="Rating (0-5)"
-                  type="number"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  {...vendorFormMethods.register('rating')}
-                />
-                {vendorFormMethods.formState.errors?.rating && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {vendorFormMethods.formState.errors.rating.message}
-                  </p>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Organization
-                  </label>
-                  <select
-                    {...vendorFormMethods.register('orgId')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">Unassigned</option>
-                    {(organizations || []).map((org) => (
-                      <option key={org?.id} value={org?.id}>
-                        {org?.name}
-                      </option>
-                    ))}
-                  </select>
-                  {vendorFormMethods.formState.errors?.orgId && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {vendorFormMethods.formState.errors.orgId.message}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    {...vendorFormMethods.register('isActive')}
-                    className="rounded"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">Active Vendor</label>
-                  {vendorFormMethods.formState.errors?.isActive && (
-                    <p className="ml-2 text-sm text-red-600">
-                      {vendorFormMethods.formState.errors.isActive.message}
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-
-            {modalType === 'product' && (
-              <>
-                <Input
-                  label="Product Name"
-                  value={productForm?.name}
-                  onChange={(e) => setProductForm({ ...productForm, name: e?.target?.value })}
-                  required
-                />
-                <Input
-                  label="Brand"
-                  value={productForm?.brand}
-                  onChange={(e) => setProductForm({ ...productForm, brand: e?.target?.value })}
-                />
-                <Input
-                  label="Category"
-                  value={productForm?.category}
-                  onChange={(e) => setProductForm({ ...productForm, category: e?.target?.value })}
-                />
-                <Input
-                  label="Op Code"
-                  value={productForm?.op_code}
-                  onChange={(e) => setProductForm({ ...productForm, op_code: e?.target?.value })}
-                  placeholder="e.g., EN3, EN5"
-                />
-                <Input
-                  label="Cost"
-                  type="number"
-                  step="0.01"
-                  value={productForm?.cost}
-                  onChange={(e) => setProductForm({ ...productForm, cost: e?.target?.value })}
-                  required
-                />
-                <Input
-                  label="Unit Price"
-                  type="number"
-                  step="0.01"
-                  value={productForm?.unit_price}
-                  onChange={(e) => setProductForm({ ...productForm, unit_price: e?.target?.value })}
-                  required
-                />
-                <Input
-                  label="Part Number"
-                  value={productForm?.part_number}
-                  onChange={(e) =>
-                    setProductForm({ ...productForm, part_number: e?.target?.value })
-                  }
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={productForm?.description}
-                    onChange={(e) =>
-                      setProductForm({ ...productForm, description: e?.target?.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    rows="3"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Organization
-                  </label>
-                  <select
-                    value={productForm?.dealer_id || productForm?.org_id || ''}
-                    onChange={(e) =>
-                      setProductForm({ ...productForm, dealer_id: e?.target?.value || null })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">Unassigned</option>
-                    {(organizations || []).map((org) => (
-                      <option key={org?.id} value={org?.id}>
-                        {org?.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            )}
-
-            {modalType === 'template' && (
-              <>
-                <Input
-                  label="Template Name"
-                  value={templateForm?.name}
-                  onChange={(e) => setTemplateForm({ ...templateForm, name: e?.target?.value })}
-                  required
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Template Type
-                  </label>
-                  <select
-                    value={templateForm?.template_type}
-                    onChange={(e) =>
-                      setTemplateForm({ ...templateForm, template_type: e?.target?.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  >
-                    {templateTypeOptions?.map((option) => (
-                      <option key={option?.value} value={option?.value}>
-                        {option?.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Message Template ({templateForm?.message_template?.length || 0}/160)
-                  </label>
-                  <textarea
-                    value={templateForm?.message_template}
-                    onChange={(e) =>
-                      setTemplateForm({ ...templateForm, message_template: e?.target?.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    rows="4"
-                    maxLength="160"
-                    placeholder="Use {{stock_number}}, {{vehicle_info}}, {{status}} as variables"
-                    required
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="flex justify-end gap-2 pt-4">
-              <UIButton
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200"
-              >
-                Cancel
-              </UIButton>
-              <UIButton
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {submitting ? 'Saving...' : editingItem ? 'Update' : 'Create'}
-              </UIButton>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <AppLayout>
@@ -2327,17 +1123,109 @@ const AdminPage = () => {
 
           {/* Tab Content - RESTORED WORKING FUNCTIONALITY */}
           <div className="bg-white rounded-lg shadow p-6">
-            {activeTab === 'userAccounts' && renderUserAccountsTab()}
-            {activeTab === 'staffRecords' && renderStaffRecordsTab()}
-            {activeTab === 'vendors' && renderVendorsTab()}
-            {activeTab === 'products' && renderProductsTab()}
-            {activeTab === 'smsTemplates' && renderSmsTemplatesTab()}
-            {activeTab === 'qrCodes' && renderQRCodeTab()}
+            {activeTab === 'userAccounts' && (
+              <UserAccountsTab
+                userAccounts={userAccounts}
+                onlyMyOrg={onlyMyOrg}
+                setOnlyMyOrg={setOnlyMyOrg}
+                orgId={orgId}
+                submitting={submitting}
+                deletingId={deletingId}
+                accountsQuery={accountsQuery}
+                setAccountsQuery={setAccountsQuery}
+                accountsDeptFilter={accountsDeptFilter}
+                setAccountsDeptFilter={setAccountsDeptFilter}
+                userDepartmentOptions={userDepartmentOptions}
+                accountsActionMsg={accountsActionMsg}
+                assignOrgToAccounts={assignOrgToAccounts}
+                openModal={openModal}
+                attachProfileToMyOrg={attachProfileToMyOrg}
+                handleDelete={handleDelete}
+              />
+            )}
+            {activeTab === 'staffRecords' && (
+              <StaffRecordsTab
+                staffRecords={staffRecords}
+                onlyMyOrg={onlyMyOrg}
+                setOnlyMyOrg={setOnlyMyOrg}
+                orgId={orgId}
+                submitting={submitting}
+                deletingId={deletingId}
+                staffQuery={staffQuery}
+                setStaffQuery={setStaffQuery}
+                staffDeptFilter={staffDeptFilter}
+                setStaffDeptFilter={setStaffDeptFilter}
+                staffDepartmentOptions={staffDepartmentOptions}
+                staffActionMsg={staffActionMsg}
+                assignOrgToActiveStaff={assignOrgToActiveStaff}
+                openModal={openModal}
+                attachProfileToMyOrg={attachProfileToMyOrg}
+                handleDelete={handleDelete}
+              />
+            )}
+            {activeTab === 'vendors' && (
+              <VendorsTab
+                vendors={vendors}
+                onlyMyOrg={onlyMyOrg}
+                setOnlyMyOrg={setOnlyMyOrg}
+                orgId={orgId}
+                submitting={submitting}
+                deletingId={deletingId}
+                vendorsActionMsg={vendorsActionMsg}
+                assignOrgToVendors={assignOrgToVendors}
+                openModal={openModal}
+                handleDelete={handleDelete}
+              />
+            )}
+            {activeTab === 'products' && (
+              <ProductsTab
+                products={products}
+                onlyMyOrg={onlyMyOrg}
+                setOnlyMyOrg={setOnlyMyOrg}
+                orgId={orgId}
+                submitting={submitting}
+                deletingId={deletingId}
+                productsActionMsg={productsActionMsg}
+                assignOrgToProducts={assignOrgToProducts}
+                openModal={openModal}
+                handleDelete={handleDelete}
+              />
+            )}
+            {activeTab === 'smsTemplates' && (
+              <SmsTemplatesTab
+                smsTemplates={smsTemplates}
+                deletingId={deletingId}
+                openModal={openModal}
+                handleDelete={handleDelete}
+              />
+            )}
+            {activeTab === 'qrCodes' && <QRCodeTab />}
           </div>
         </div>
 
         {/* Modal for Create/Edit */}
-        {renderModal()}
+        <AdminModal
+          showModal={showModal}
+          modalType={modalType}
+          editingItem={editingItem}
+          submitting={submitting}
+          setShowModal={setShowModal}
+          handleSubmit={handleSubmit}
+          userAccountForm={userAccountForm}
+          setUserAccountForm={setUserAccountForm}
+          roleOptions={roleOptions}
+          userDepartmentOptions={userDepartmentOptions}
+          staffForm={staffForm}
+          setStaffForm={setStaffForm}
+          staffDepartmentOptions={staffDepartmentOptions}
+          vendorFormMethods={vendorFormMethods}
+          organizations={organizations}
+          productForm={productForm}
+          setProductForm={setProductForm}
+          templateForm={templateForm}
+          setTemplateForm={setTemplateForm}
+          templateTypeOptions={templateTypeOptions}
+        />
       </div>
     </AppLayout>
   )
