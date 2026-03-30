@@ -44,8 +44,6 @@ const BusinessIntelligenceReports = () => {
 
             // Simulate download
             const fileName = `${currentFilters?.reportType}_${new Date()?.toISOString()?.split('T')?.[0]}.${format}`
-            console.log(`Downloading ${fileName}`)
-
             // Show success notification (in real app, this would be a toast)
             setTimeout(() => {
               alert(`Report exported successfully as ${format?.toUpperCase()}`)
@@ -64,7 +62,6 @@ const BusinessIntelligenceReports = () => {
     (filters, reportName) => {
       setCurrentFilters({ ...currentFilters, ...filters })
       setActiveView('preview')
-      console.log(`Generating quick report: ${reportName}`)
     },
     [currentFilters]
   )

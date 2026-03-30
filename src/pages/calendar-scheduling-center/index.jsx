@@ -52,11 +52,6 @@ const CalendarSchedulingCenter = () => {
       setLoading(true)
       setError(null)
 
-      console.log('Loading calendar data...', {
-        start: dateRange?.start?.toISOString(),
-        end: dateRange?.end?.toISOString(),
-      })
-
       const vendorId = selectedVendors?.length > 0 ? selectedVendors?.[0] : null
       const res = await withTimeout(
         calendarService.getJobsByDateRangeWithFallback(dateRange?.start, dateRange?.end, {
@@ -74,7 +69,6 @@ const CalendarSchedulingCenter = () => {
       }
 
       setJobs(res?.data || [])
-      console.log('Jobs loaded successfully:', (res?.data || [])?.length)
     } catch (error) {
       console.error('Error loading calendar data:', error)
       setError(`Failed to load calendar data: ${error?.message}`)
@@ -89,7 +83,6 @@ const CalendarSchedulingCenter = () => {
     try {
       const data = await listActiveVendorsLite()
       setVendors(data || [])
-      console.log('Vendors loaded:', (data || [])?.length)
     } catch (error) {
       console.error('Error loading vendors:', error)
       setVendors([])

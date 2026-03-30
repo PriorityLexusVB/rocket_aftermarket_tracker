@@ -179,7 +179,6 @@ const VendorJobDashboard = () => {
   }
 
   const handleExportReport = () => {
-    console.log('Exporting vendor job report...')
     const csvContent = jobs
       ?.map(
         (job) =>

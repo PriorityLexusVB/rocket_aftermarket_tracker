@@ -172,32 +172,12 @@ const AdminPage = () => {
 
   // Debug function to check current user status
   const debugAuthState = async () => {
-    console.log('=== ADMIN ACCESS DEBUG ===')
-
     try {
       const res = await adminService.debugAuthState()
 
       const session = res?.session
-      console.log('Current session:', {
-        hasSession: !!session,
-        sessionError: res?.sessionError,
-        userId: session?.user?.id,
-        userEmail: session?.user?.email,
-      })
 
       if (session?.user) {
-        console.log('Auth user:', {
-          id: session?.user?.id,
-          email: session?.user?.email,
-          role: session?.user?.role,
-        })
-
-        console.log('Direct profile fetch result:', {
-          profile: res?.profile,
-          profileError: res?.profileError,
-          hasProfile: !!res?.profile,
-        })
-
         setDebugInfo({
           authUser: session?.user,
           userProfile: res?.profile,
@@ -205,7 +185,6 @@ const AdminPage = () => {
           showDebug: true,
         })
       } else {
-        console.log('No authenticated user found')
         setDebugInfo({
           authUser: null,
           userProfile: null,
@@ -213,8 +192,6 @@ const AdminPage = () => {
           showDebug: true,
         })
       }
-
-      console.log('Database access test:', res?.test)
     } catch (error) {
       console.error('Debug error:', error)
       setDebugInfo((prev) => ({
@@ -227,8 +204,6 @@ const AdminPage = () => {
 
   const loadUserAccounts = useCallback(async () => {
     try {
-      console.log('Loading user accounts...')
-
       const { data, error } = await adminService.listUserAccounts({
         orgId: effectiveOrgId,
         onlyMyOrg,
@@ -236,7 +211,6 @@ const AdminPage = () => {
 
       if (error) throw new Error(error?.message || 'Failed to load user accounts')
 
-      console.log(`User accounts: ${data?.length || 0} records`)
       setUserAccounts(data || [])
     } catch (error) {
       console.error('Error loading user accounts:', error)
@@ -245,8 +219,6 @@ const AdminPage = () => {
 
   const loadStaffRecords = useCallback(async () => {
     try {
-      console.log('Loading staff records...')
-
       const { data, error } = await adminService.listStaffRecords({
         orgId: effectiveOrgId,
         onlyMyOrg,
@@ -254,7 +226,6 @@ const AdminPage = () => {
 
       if (error) throw new Error(error?.message || 'Failed to load staff records')
 
-      console.log(`Staff records: ${data?.length || 0} staff members found`)
       setStaffRecords(data || [])
     } catch (error) {
       console.error('Error loading staff records:', error)
@@ -263,13 +234,10 @@ const AdminPage = () => {
 
   const loadVendors = useCallback(async () => {
     try {
-      console.log('Loading vendors...')
-
       const { data, error } = await adminService.listVendors({ orgId: effectiveOrgId, onlyMyOrg })
 
       if (error) throw new Error(error?.message || 'Failed to load vendors')
 
-      console.log(`Vendors query result: ${data?.length || 0} records`)
       setVendors(data || [])
     } catch (error) {
       console.error('Error loading vendors:', error)
@@ -278,13 +246,10 @@ const AdminPage = () => {
 
   const loadProducts = useCallback(async () => {
     try {
-      console.log('Loading products...')
-
       const { data, error } = await adminService.listProducts({ orgId: effectiveOrgId, onlyMyOrg })
 
       if (error) throw new Error(error?.message || 'Failed to load products')
 
-      console.log(`Products query result: ${data?.length || 0} records`)
       setProducts(data || [])
     } catch (error) {
       console.error('Error loading products:', error)
@@ -299,13 +264,10 @@ const AdminPage = () => {
         return
       }
 
-      console.log('Loading SMS templates...')
-
       const { data, error } = await adminService.listSmsTemplates()
 
       if (error) throw new Error(error?.message || 'Failed to load SMS templates')
 
-      console.log(`SMS templates query result: ${data?.length || 0} records`)
       setSmsTemplates(data || [])
     } catch (error) {
       const msg = String(error?.message || error || '').toLowerCase()
@@ -321,8 +283,6 @@ const AdminPage = () => {
 
   const loadOrganizations = useCallback(async () => {
     try {
-      console.log('Loading organizations...')
-
       const { data, error } = await adminService.listOrganizations({
         orgId: effectiveOrgId,
         onlyMyOrg,
@@ -330,7 +290,6 @@ const AdminPage = () => {
 
       if (error) throw new Error(error?.message || 'Failed to load organizations')
 
-      console.log(`Organizations: ${data?.length || 0} records`)
       setOrganizations(data || [])
     } catch (error) {
       console.error('Error loading organizations:', error)
@@ -339,8 +298,6 @@ const AdminPage = () => {
 
   // Enhanced data loading with better error handling
   const loadAllData = useCallback(async () => {
-    console.log('Loading admin data...')
-
     try {
       const tasks = [
         loadUserAccounts(),
@@ -366,8 +323,6 @@ const AdminPage = () => {
           : ['User Accounts', 'Staff Records', 'Vendors', 'Products', 'Organizations']
         if (result?.status === 'rejected') {
           console.error(`Failed to load ${sections?.[index]}:`, result?.reason)
-        } else {
-          console.log(`Successfully loaded ${sections?.[index]}`)
         }
       })
     } catch (error) {
@@ -388,12 +343,6 @@ const AdminPage = () => {
   useEffect(() => {
     const initializeAdmin = async () => {
       try {
-        console.log('Admin panel initializing...', {
-          authLoading,
-          user: !!user,
-          userProfile: !!userProfile,
-        })
-
         const conn = await adminService.checkConnection()
 
         // Hard fail only when client itself is unavailable
@@ -878,30 +827,23 @@ const AdminPage = () => {
     setSubmitting(true)
 
     try {
-      console.log(`Deleting from ${table} with id: ${id}`)
-
       if (table === 'user_profiles') {
-        console.log('Cleaning up foreign key dependencies...')
         await adminService.deleteUserProfileWithCleanup(id)
       } else {
         await adminService.deleteRow(table, id)
       }
-
-      console.log('Delete operation successful')
 
       // Immediately update state to remove the deleted item - this is the critical fix
       if (table === 'user_profiles') {
         if (itemType === 'userAccount') {
           setUserAccounts((prev) => {
             const filtered = prev?.filter((item) => item?.id !== id)
-            console.log(`User accounts updated: ${filtered?.length} remaining`)
             return filtered || []
           })
           setAccountsActionMsg('User account deleted.')
         } else {
           setStaffRecords((prev) => {
             const filtered = prev?.filter((item) => item?.id !== id)
-            console.log(`Staff records updated: ${filtered?.length} remaining`)
             return filtered || []
           })
           setStaffActionMsg('Staff profile deleted.')
@@ -911,7 +853,6 @@ const AdminPage = () => {
         setTimeout(async () => {
           try {
             await Promise.all([loadUserAccounts(), loadStaffRecords()])
-            console.log('Data reloaded successfully after deletion')
           } catch (refreshError) {
             console.error('Error refreshing data after deletion:', refreshError)
           }
@@ -919,13 +860,11 @@ const AdminPage = () => {
       } else if (table === 'vendors') {
         setVendors((prev) => {
           const filtered = prev?.filter((item) => item?.id !== id)
-          console.log(`Vendors updated: ${filtered?.length} remaining`)
           return filtered || []
         })
         setTimeout(async () => {
           try {
             await loadVendors()
-            console.log('Vendors reloaded successfully')
           } catch (refreshError) {
             console.error('Error refreshing vendors:', refreshError)
           }
@@ -936,13 +875,11 @@ const AdminPage = () => {
       } else if (table === 'products') {
         setProducts((prev) => {
           const filtered = prev?.filter((item) => item?.id !== id)
-          console.log(`Products updated: ${filtered?.length} remaining`)
           return filtered || []
         })
         setTimeout(async () => {
           try {
             await loadProducts()
-            console.log('Products reloaded successfully')
           } catch (refreshError) {
             console.error('Error refreshing products:', refreshError)
           }
@@ -953,13 +890,11 @@ const AdminPage = () => {
       } else if (table === 'sms_templates') {
         setSmsTemplates((prev) => {
           const filtered = prev?.filter((item) => item?.id !== id)
-          console.log(`SMS templates updated: ${filtered?.length} remaining`)
           return filtered || []
         })
         setTimeout(async () => {
           try {
             await loadSmsTemplates()
-            console.log('SMS templates reloaded successfully')
           } catch (refreshError) {
             console.error('Error refreshing SMS templates:', refreshError)
           }
@@ -967,7 +902,6 @@ const AdminPage = () => {
       }
 
       // Show success message
-      console.log(`Successfully deleted item from ${table}`)
       // Auto clear messages after a short while
       setTimeout(() => {
         setAccountsActionMsg('')
@@ -981,7 +915,6 @@ const AdminPage = () => {
       setTimeout(async () => {
         try {
           await loadAllData()
-          console.log('All data reloaded after error')
         } catch (refreshError) {
           console.error('Error refreshing all data after deletion error:', refreshError)
         }

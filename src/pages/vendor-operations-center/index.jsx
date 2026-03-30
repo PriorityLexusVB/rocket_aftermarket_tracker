@@ -74,7 +74,6 @@ const VendorOperationsCenter = () => {
 
   const handleVendorUpdate = (updatedVendor) => {
     // In a real app, this would update the vendor in the database
-    console.log('Updating vendor:', updatedVendor)
   }
 
   const handleBulkAction = (action, vendorIds) => {
@@ -92,7 +91,7 @@ const VendorOperationsCenter = () => {
         console.warn('Create vendor is not implemented yet')
         break
       default:
-        console.log('Unknown action:', action)
+        console.warn('Unknown action:', action)
     }
   }
 
@@ -105,7 +104,6 @@ const VendorOperationsCenter = () => {
   }
 
   const handleDrillDown = (type, id) => {
-    console.log('Drilling down into:', type, id)
     switch (type) {
       case 'completion-rate':
         console.warn('Drill-down is not implemented yet', type)

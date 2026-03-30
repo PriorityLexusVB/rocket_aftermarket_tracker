@@ -1200,7 +1200,6 @@ export default function DealsPage() {
       if (retryCount < 2 && (e?.message?.includes('fetch') || e?.message?.includes('network'))) {
         // Only schedule retries for the latest request
         if (requestId !== loadDealsRequestIdRef.current) return
-        console.log(`Retrying load deals (attempt ${retryCount + 1})`)
         setTimeout(() => loadDeals(retryCount + 1, `retry:${reason}`), 1000 * (retryCount + 1))
         return
       }
@@ -1697,10 +1696,8 @@ export default function DealsPage() {
             <ExportButton
               exportType="jobs"
               filters={{ status: filters?.status }}
-              onExportStart={() => console.log('Starting export...')}
-              onExportComplete={(recordCount) =>
-                console.log(`Export complete: ${recordCount} records`)
-              }
+              onExportStart={() => {}}
+              onExportComplete={() => {}}
               onExportError={(errorMessage) => setError(`Export failed: ${errorMessage}`)}
               variant="outline"
               size="sm"
