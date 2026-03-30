@@ -151,7 +151,7 @@
     "eslint": "^9.39.2",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "happy-dom": "^20.6.1",
+    "happy-dom": "^20.8.9",
     "jsdom": "^27.4.0",
     "pg": "^8.18.0",
     "playwright": "^1.58.2",
@@ -182,7 +182,7 @@
       "webpack": "^5.104.1",
       "rollup": ">=4.59.0",
       "minimatch": ">=10.2.3",
-      "serialize-javascript": ">=7.0.3"
+      "serialize-javascript": ">=7.0.5"
     }
   },
   "packageManager": "pnpm@10.15.0"
