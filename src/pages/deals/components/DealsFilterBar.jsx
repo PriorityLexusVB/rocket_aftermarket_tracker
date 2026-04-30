@@ -37,7 +37,7 @@ const DealsFilterBar = ({
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
             ${
               filters?.status === value
-                ? '0 text-white border border-border'
+                ? 'bg-blue-600 text-white border border-blue-600'
                 : 'bg-transparent border border-border text-muted-foreground hover:bg-card'
             }`}
         >
@@ -68,7 +68,7 @@ const DealsFilterBar = ({
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border
               ${
                 filters?.presetView === view
-                  ? '0 text-white border-border'
+                  ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-transparent text-muted-foreground border-border hover:bg-card'
               }`}
           >
@@ -184,8 +184,8 @@ const DealsFilterBar = ({
           onClick={() => setShowSheetView(false)}
           className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
             showSheetView
-              ? 'bg-card text-muted-foreground border-border 0'
-              : '0 text-white border-border'
+              ? 'bg-card text-muted-foreground border-border'
+              : 'bg-blue-600 text-white border-blue-600'
           }`}
           aria-pressed={!showSheetView}
         >
@@ -196,8 +196,8 @@ const DealsFilterBar = ({
           onClick={() => setShowSheetView(true)}
           className={`h-9 px-3 rounded-md text-xs font-medium border transition-colors ${
             showSheetView
-              ? '0 text-white border-border'
-              : 'bg-card text-muted-foreground border-border 0'
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-card text-muted-foreground border-border'
           }`}
           aria-pressed={showSheetView}
         >

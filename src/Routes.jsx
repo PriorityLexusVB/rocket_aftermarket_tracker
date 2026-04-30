@@ -420,6 +420,14 @@ const Routes = () => {
                 element={<Navigate to="/guest-claims-submission-form" replace />}
               />
               <Route
+                path="/claims"
+                element={<Navigate to="/guest-claims-submission-form" replace />}
+              />
+              <Route
+                path="/claim"
+                element={<Navigate to="/guest-claims-submission-form" replace />}
+              />
+              <Route
                 path="/claims-analytics-dashboard"
                 element={
                   <ProtectedRoute>

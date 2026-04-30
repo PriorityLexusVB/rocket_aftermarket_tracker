@@ -1829,7 +1829,7 @@ const CalendarFlowManagementCenter = ({
                       }}
                       className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
                     >
-                      Go to All-day
+                      View Time TBD
                     </button>
                   </div>
                 </div>

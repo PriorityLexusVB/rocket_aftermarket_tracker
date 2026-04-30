@@ -1083,7 +1083,7 @@ const AdminPage = () => {
 
           {/* Tab Navigation */}
           <div className="mb-8">
-            <nav className="flex space-x-8 border-b border-gray-200">
+            <nav className="flex overflow-x-auto border-b border-gray-200 gap-1 pb-px">
               {tabs?.map((tab) => {
                 const Icon = tab?.icon
                 let count = 0
@@ -1098,7 +1098,7 @@ const AdminPage = () => {
                   <button
                     key={tab?.id}
                     onClick={() => setActiveTab(tab?.id)}
-                    className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                    className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${
                       activeTab === tab?.id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'

@@ -967,6 +967,48 @@ const CalendarSchedulingCenter = ({
                 {label}
               </div>
             ))}
+          </div>
+          <div
+            className={cx(
+              'flex items-center gap-3 px-2 py-1 text-[10px]',
+              darkUi ? 'text-gray-400' : 'text-gray-500'
+            )}
+          >
+            <span className="flex items-center gap-1">
+              <span
+                className={cx(
+                  'inline-block rounded px-1 py-0.5',
+                  darkUi ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-100 text-amber-900'
+                )}
+              >
+                P
+              </span>
+              Promised
+            </span>
+            <span className="flex items-center gap-1">
+              <span
+                className={cx(
+                  'inline-block rounded px-1 py-0.5',
+                  darkUi ? 'bg-blue-500/20 text-blue-200' : 'bg-blue-100 text-blue-900'
+                )}
+              >
+                S
+              </span>
+              Scheduled
+            </span>
+            <span className="flex items-center gap-1">
+              <span
+                className={cx(
+                  'inline-block rounded px-1 py-0.5',
+                  darkUi ? 'bg-red-500/20 text-red-200' : 'bg-red-100 text-red-900'
+                )}
+              >
+                O
+              </span>
+              Overdue
+            </span>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
 
             {days.map((dayDate) => {
               const dayKey = dayDate?.toDateString?.()

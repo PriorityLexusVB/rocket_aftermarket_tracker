@@ -663,7 +663,7 @@ const GuestClaimsSubmissionForm = () => {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                 <Upload className="w-5 h-5 mr-2" />
-                Supporting Documentation (Optional)
+                Photos & Images (Optional)
               </h2>
 
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
@@ -685,8 +685,7 @@ const GuestClaimsSubmissionForm = () => {
                     Choose Files
                   </label>
                   <p className="text-xs text-gray-500 mt-2">
-                    Maximum file size: 10MB per file. Supported formats: JPG, PNG, GIF, WebP (max 5
-                    files)
+                    Upload photos of the issue (JPG, PNG, WebP — up to 5 files)
                   </p>
                 </div>
               </div>
