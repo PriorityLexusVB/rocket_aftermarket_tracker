@@ -1358,7 +1358,7 @@ const CalendarFlowManagementCenter = ({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
-                <h3 className="font-medium">On-Site Jobs</h3>
+                <h3 className="font-medium">In-House Jobs</h3>
               </div>
               <div className="text-sm text-gray-600">{onSiteCombined?.length || 0} jobs</div>
             </div>

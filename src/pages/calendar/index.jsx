@@ -24,6 +24,16 @@ import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/co
 import { getJobLocationType } from '@/utils/locationType'
 import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
+// Returns Tailwind border-left class + short label for in-house/off-site/mixed.
+// Returns empty strings when location is unknown — renders no indicator.
+function getLocationMeta(job) {
+  const type = getJobLocationType(job)
+  if (type === 'Off-Site') return { border: 'border-l-4 border-l-amber-500', dot: 'bg-amber-500', label: 'Off-Site' }
+  if (type === 'Mixed')   return { border: 'border-l-4 border-l-blue-500',  dot: 'bg-blue-500',  label: 'Mixed' }
+  if (type === 'In-House') return { border: 'border-l-4 border-l-green-500', dot: 'bg-green-500', label: 'In-House' }
+  return { border: '', dot: '', label: '' }
+}
+
 const LOAD_TIMEOUT_MS = 15000
 
 // Safe date creation utility
@@ -793,10 +803,11 @@ const CalendarSchedulingCenter = ({
                   deal: job,
                 })
 
+                const locMeta = getLocationMeta(job)
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
-                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
+                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${locMeta.border} ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
                     onKeyDown={(event) => handleCalendarCardKeyDown(event, handleGridClick)}
                     role="button"
@@ -875,11 +886,12 @@ const CalendarSchedulingCenter = ({
                             : 'Invalid Time'}
                       </span>
                     </div>
-                    <div className="mt-1 text-[10px] text-gray-700 truncate">
-                      {job?.service_type === 'vendor' || job?.service_type === 'offsite'
-                        ? 'Vendor/Offsite'
-                        : 'Onsite'}
-                    </div>
+                    {locMeta.label && (
+                      <div className="mt-1 flex items-center gap-1">
+                        <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${locMeta.dot}`} aria-hidden="true" />
+                        <span className="text-[10px] text-gray-700">{locMeta.label}</span>
+                      </div>
+                    )}
 
                     {showDetailPopovers ? (
                       <EventDetailPopover
@@ -1146,11 +1158,12 @@ const CalendarSchedulingCenter = ({
                         deal: job,
                       })
 
+                      const monthLocMeta = getLocationMeta(job)
                       return (
                         <button
                           type="button"
                           key={job?.calendar_key || job?.id}
-                          className={`group relative w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${
+                          className={`group relative w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${monthLocMeta.border} ${
                             colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'
                           }`}
                           onClick={(e) => {
@@ -1177,6 +1190,12 @@ const CalendarSchedulingCenter = ({
                           {customerName ? (
                             <div className="text-[10px] opacity-90 truncate">{customerName}</div>
                           ) : null}
+                          {monthLocMeta.label && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${monthLocMeta.dot}`} aria-hidden="true" />
+                              <span className="text-[9px] opacity-80">{monthLocMeta.label}</span>
+                            </div>
+                          )}
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
                               ? `Time TBD • Promise: ${promiseLabel || '—'}`
@@ -1266,11 +1285,13 @@ const CalendarSchedulingCenter = ({
                 .filter(Boolean)
                 .join(' • ')
 
+              const listLocMeta = getLocationMeta(job)
               return (
                 <div
                   key={job?.calendar_key || job?.id}
                   className={cx(
                     'group relative p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow',
+                    listLocMeta.border,
                     darkUi ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white'
                   )}
                   onClick={handleListClick}
@@ -1308,11 +1329,12 @@ const CalendarSchedulingCenter = ({
                         >
                           {statusLabel}
                         </span>
-                        <span className={cx('text-xs', darkUi ? 'text-gray-400' : 'text-gray-600')}>
-                          {job?.service_type === 'vendor' || job?.service_type === 'offsite'
-                            ? 'Vendor/Offsite'
-                            : 'Onsite'}
-                        </span>
+                        {listLocMeta.label && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${listLocMeta.dot}`} aria-hidden="true" />
+                            <span className={cx('text-xs', darkUi ? 'text-gray-400' : 'text-gray-600')}>{listLocMeta.label}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

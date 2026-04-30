@@ -133,10 +133,10 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
             <div className="flex items-center">
               <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
               <div>
-                <h3 className="font-medium text-green-900">On-Site Jobs</h3>
+                <h3 className="font-medium text-green-900">In-House Jobs</h3>
                 <div className="text-sm text-green-700 flex items-center mt-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  Green = On-Site
+                  Green = In-House
                 </div>
               </div>
             </div>
@@ -163,7 +163,7 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
             <div className="border-2 border-dashed border-green-300 rounded-lg p-4 flex items-center justify-center text-green-600">
               <div className="text-center">
                 <Car className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <div className="text-sm">Drop here for On-Site</div>
+                <div className="text-sm">Drop here for In-House</div>
               </div>
             </div>
           )}

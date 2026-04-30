@@ -185,7 +185,7 @@ const RoundUpModal = ({
             ) : (
               <>
                 <MapPin className="h-3 w-3 mr-1 text-green-500" />
-                On-Site
+                In-House
               </>
             )}
           </div>
@@ -249,12 +249,12 @@ const RoundUpModal = ({
           {groupName}
         </h3>
 
-        {/* On-Site Jobs */}
+        {/* In-House Jobs */}
         {groupData?.onSite?.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center mb-3">
               <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-              <h4 className="font-medium text-green-900">On-Site Jobs</h4>
+              <h4 className="font-medium text-green-900">In-House Jobs</h4>
               <span className="ml-2 text-sm text-gray-600">({groupData?.onSite?.length} jobs)</span>
             </div>
             <div className="bg-green-50 rounded-lg p-4">{groupData?.onSite?.map(renderJobRow)}</div>

@@ -3,7 +3,15 @@ import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 import { toDateInputValue } from '@/utils/dateTimeUtils'
 import { syncJobPartsForJob } from './jobPartsService'
+import { enqueueNotification } from './notificationService'
 import { z } from 'zod'
+
+/** Map job_status values to their SMS template names. */
+const STATUS_TEMPLATE_MAP = {
+  scheduled: 'Service Scheduled',
+  in_progress: 'Work In Progress',
+  completed: 'Service Complete',
+}
 function hasSchedulableLineItems(lineItems = []) {
   return (lineItems || []).some((it) => {
     if (!it?.requires_scheduling) return false
@@ -269,6 +277,18 @@ export const jobService = {
         }
       }
 
+      // Enqueue SMS when the job is created directly in 'scheduled' status
+      const createdStatus = created?.job_status
+      const templateName = STATUS_TEMPLATE_MAP[createdStatus]
+      if (templateName && created?.id) {
+        enqueueNotification(created.id, templateName).catch((e) => {
+          console.warn(
+            `[jobs] enqueueNotification failed on createJob (status="${createdStatus}"):`,
+            e?.message ?? e
+          )
+        })
+      }
+
       return created
     } catch (err) {
       console.error('[jobs] createJob failed:', err?.message || err)
@@ -322,7 +342,9 @@ export const jobService = {
   },
 
   /**
-   * Update only the job status (and optional timestamps like completed_at)
+   * Update only the job status (and optional timestamps like completed_at).
+   * Enqueues an SMS notification for status transitions that have a mapped template
+   * (scheduled, in_progress, completed).  Notification failures are non-fatal.
    */
   async updateStatus(jobId, status, extra = {}) {
     if (!jobId) throw new Error('Job ID is required')
@@ -341,6 +363,15 @@ export const jobService = {
         ?.select()
         ?.single()
       if (error) throw error
+
+      // Fire-and-forget SMS for mapped statuses; never block the status update
+      const templateName = STATUS_TEMPLATE_MAP[status]
+      if (templateName) {
+        enqueueNotification(jobId, templateName).catch((e) => {
+          console.warn(`[jobs] enqueueNotification failed for status "${status}":`, e?.message ?? e)
+        })
+      }
+
       return data
     } catch (err) {
       console.error('[jobs] updateStatus failed:', err?.message || err)

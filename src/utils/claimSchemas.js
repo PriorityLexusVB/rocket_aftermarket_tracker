@@ -5,13 +5,20 @@ import { z } from 'zod'
 
 /**
  * VIN Schema
+ * - Must not be empty
  * - Must be exactly 17 characters
  * - Alphanumeric excluding I, O, Q (to avoid confusion with 1, 0)
+ *
+ * Order matters: required check runs first via min(1). Format checks use
+ * refine() so they only execute after the required check passes, preventing
+ * the IOQ error from firing on an empty submit.
  */
 export const vinSchema = z
   .string()
-  .length(17, 'VIN must be exactly 17 characters')
-  .regex(/^[A-HJ-NPR-Z0-9]{17}$/i, 'Invalid VIN format (cannot contain I, O, or Q)')
+  .min(1, 'VIN is required')
+  .refine((v) => /^[A-Z0-9]+$/i.test(v), 'VIN must be alphanumeric')
+  .refine((v) => !/[IOQ]/i.test(v), 'VIN cannot contain I, O, or Q')
+  .refine((v) => v.length === 17, 'VIN must be exactly 17 characters')
 
 /**
  * Guest Claim Schema
@@ -33,18 +40,13 @@ export const guestClaimSchema = z
       .transform((val) => val.trim()),
     vehicle_year: z
       .string()
-      .min(1, 'Vehicle year is required')
-      .refine(
-        (val) => {
-          const year = parseInt(val)
-          const currentYear = new Date().getFullYear()
-          return !isNaN(year) && year >= 1900 && year <= currentYear + 1
-        },
-        () => {
-          const currentYear = new Date().getFullYear()
-          return { message: `Year must be between 1900 and ${currentYear + 1}` }
-        }
-      ),
+      .min(1, 'Year is required')
+      .regex(/^\d{4}$/, 'Enter a valid 4-digit year')
+      .refine((val) => {
+        const yr = parseInt(val, 10)
+        const currentYear = new Date().getFullYear()
+        return yr >= 1990 && yr <= currentYear + 1
+      }, 'Enter a valid year (e.g. 2022)'),
     vehicle_make: z
       .string()
       .min(1, 'Vehicle make is required')

@@ -95,7 +95,7 @@ const GuestClaimsSubmissionForm = () => {
       result.error?.issues?.forEach((issue) => {
         // The path array contains the key of the field that failed.
         const pathKey = issue?.path?.[0]
-        newErrors[pathKey] = issue?.message
+        if (!newErrors[pathKey]) newErrors[pathKey] = issue?.message
       })
       setErrors(newErrors)
       return false
