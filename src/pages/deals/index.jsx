@@ -88,7 +88,7 @@ export default function DealsPage() {
     loanerStatus: 'All', // All | Active | Due Today | Overdue | None
     promiseStartDate: '', // YYYY-MM-DD
     promiseEndDate: '', // YYYY-MM-DD
-    createdMonth: currentMonthKey, // YYYY-MM (ET)
+    createdMonth: '', // YYYY-MM (ET) — blank means no date restriction by default
     search: '',
   })
   const [searchDebounce, setSearchDebounce] = useState('')
@@ -873,7 +873,7 @@ export default function DealsPage() {
       loanerStatus: 'All',
       promiseStartDate: '',
       promiseEndDate: '',
-      createdMonth: currentMonthKey,
+      createdMonth: '',
       search: '',
     })
     clearSearch()
