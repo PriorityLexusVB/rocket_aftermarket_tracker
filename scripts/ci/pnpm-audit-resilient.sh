@@ -25,6 +25,21 @@ for ((i = 1; i <= MAX_ATTEMPTS; i++)); do
     continue
   fi
 
+  # pnpm audit --json exits 1 for ANY vulnerabilities regardless of --audit-level.
+  # Parse the JSON metadata to enforce the stated threshold correctly.
+  HIGH_CRIT=$(echo "$AUDIT_OUTPUT" | node -e "
+let d=''; process.stdin.on('data',c=>d+=c).on('end',()=>{
+  try{const v=JSON.parse(d).metadata?.vulnerabilities||{};
+    process.stdout.write(String((v.high||0)+(v.critical||0)));}
+  catch{process.stdout.write('1');}
+});" 2>/dev/null || echo "1")
+
+  if [ "${HIGH_CRIT:-1}" = "0" ]; then
+    echo "::notice::pnpm audit: 0 high/critical vulnerabilities (threshold: $AUDIT_LEVEL). Moderate-only findings present."
+    echo "$AUDIT_OUTPUT"
+    exit 0
+  fi
+
   echo "$AUDIT_OUTPUT"
   exit "$AUDIT_EXIT"
 done
