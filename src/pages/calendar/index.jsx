@@ -488,6 +488,15 @@ const CalendarSchedulingCenter = ({
     return map
   }, [filteredJobs])
 
+  // Change 2: overdue count used by the week view empty state banner
+  const overdueCountForEmptyState = useMemo(
+    () =>
+      (jobs || []).filter((job) =>
+        isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt)
+      ).length,
+    [jobs]
+  )
+
   // Navigation handlers with safe date operations
   const navigateDate = (direction) => {
     try {
@@ -522,6 +531,24 @@ const CalendarSchedulingCenter = ({
     setCurrentDate(today)
     setUrlState({ nextViewType: viewType, nextDate: today })
   }
+
+  // Change 1: Auto-scroll today's cell into view when month view renders
+  useEffect(() => {
+    if (viewType !== 'month') return
+    // Only scroll if today falls within the currently rendered month
+    const today = new Date()
+    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+    if (today < monthStart || today > monthEnd) return
+    // RAF ensures the DOM has painted before we attempt the scroll
+    const rafId = requestAnimationFrame(() => {
+      const todayCell = document.querySelector('[data-today="true"]')
+      if (todayCell) {
+        todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    })
+    return () => cancelAnimationFrame(rafId)
+  }, [viewType, currentDate])
 
   // Refresh data with safe date operations
   const refreshData = async () => {
@@ -1066,6 +1093,7 @@ const CalendarSchedulingCenter = ({
                       jumpToDay()
                     }
                   }}
+                  data-today={isToday ? 'true' : undefined}
                   className={cx(
                     'min-h-32 border rounded-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300',
                     darkUi ? 'border-white/10' : 'border-gray-200',
@@ -1466,6 +1494,8 @@ const CalendarSchedulingCenter = ({
           ? 'No jobs scheduled for this day'
           : 'No jobs scheduled for this period'
 
+    const overdueCount = overdueCountForEmptyState
+
     return (
       <div className="p-4">
         {unifiedShellEnabled &&
@@ -1610,6 +1640,42 @@ const CalendarSchedulingCenter = ({
                         ? 'Switch to List for a queue view, or open Board to book work.'
                         : 'Switch to Agenda for a queue view, or open Flow to book work.'}
                     </div>
+                    {viewType === 'week' && overdueCount > 0 && (
+                      <div
+                        className={cx(
+                          'mt-3 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm',
+                          darkUi
+                            ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                            : 'border-amber-300 bg-amber-50 text-amber-900'
+                        )}
+                      >
+                        <span>
+                          ⚠ {overdueCount} overdue job{overdueCount !== 1 ? 's' : ''} need attention
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const destination = getCalendarDestination({ target: 'board' })
+                            trackCalendarNavigation({
+                              source: 'CalendarSchedulingCenter.EmptyState.OverdueBanner',
+                              destination,
+                              context: {
+                                from: `${location?.pathname || ''}${location?.search || ''}`,
+                              },
+                            })
+                            navigate(destination)
+                          }}
+                          className={cx(
+                            'shrink-0 whitespace-nowrap rounded border px-2 py-1 text-xs font-medium transition-colors',
+                            darkUi
+                              ? 'border-amber-500/40 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30'
+                              : 'border-amber-400 bg-white text-amber-900 hover:bg-amber-100'
+                          )}
+                        >
+                          View in Board →
+                        </button>
+                      </div>
+                    )}
                     {!hideShellActions && (
                       <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
                         <button

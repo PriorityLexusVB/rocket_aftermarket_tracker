@@ -38,7 +38,7 @@ describe('SnapshotView copy', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Promised (All-day)')).toBeTruthy()
+      expect(screen.getByText('Promised & Overdue')).toBeTruthy()
     })
 
     expect(screen.getByText('No promised all-day items in this range.')).toBeTruthy()
@@ -48,7 +48,7 @@ describe('SnapshotView copy', () => {
       )
     ).toBeTruthy()
 
-    expect(screen.getByText('Window: Promised (All-day, last 30 days)')).toBeTruthy()
+    expect(screen.getByText('Window: Promised & Overdue (last 30 days)')).toBeTruthy()
 
     await waitFor(() => {
       expect(mockGetNeedsSchedulingPromiseItems).toHaveBeenCalled()

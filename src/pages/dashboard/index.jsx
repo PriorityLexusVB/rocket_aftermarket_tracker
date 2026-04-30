@@ -293,7 +293,7 @@ const DashboardPage = () => {
                 : `MTD: ${kpiValue.profitMtd}`
             }
           />
-          <KpiCard label="Open Opp ($)" value={kpiValue.openOpp} sublabel={openOppSublabel} />
+          <KpiCard label="Unapproved Work ($)" value={kpiValue.openOpp} sublabel={openOppSublabel} />
           <KpiCard label="Open Claims" value={kpiValue.openClaims} />
         </div>
 

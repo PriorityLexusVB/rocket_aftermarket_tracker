@@ -757,7 +757,7 @@ export default function SnapshotView() {
           <div className="text-xs text-muted-foreground">
             Window:{' '}
             {windowMode === 'all_day'
-              ? `Promised (All-day, last ${ALL_DAY_LOOKBACK_DAYS} days)`
+              ? `Promised & Overdue (last ${ALL_DAY_LOOKBACK_DAYS} days)`
               : windowMode === 'next7'
                 ? 'Next 7 Days'
                 : 'Today'}
@@ -807,7 +807,7 @@ export default function SnapshotView() {
               className={snapshotToggleClass('all_day')}
               aria-pressed={windowMode === 'all_day'}
             >
-              Promised (All-day)
+              Promised & Overdue
             </button>
           </div>
 
@@ -878,7 +878,7 @@ export default function SnapshotView() {
 
       {windowMode === 'all_day' && needsSplit.overdue.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Overdue (All-day)</div>
+          <div className="text-foreground font-medium">Overdue</div>
           <div className="text-xs text-muted-foreground">Promised day passed</div>
         </div>
       ) : null}
@@ -969,7 +969,7 @@ export default function SnapshotView() {
 
       {windowMode === 'all_day' && needsSplit.upcoming.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Upcoming (All-day)</div>
+          <div className="text-foreground font-medium">Upcoming</div>
           <div className="text-xs text-muted-foreground">Promised day in range</div>
         </div>
       ) : null}
