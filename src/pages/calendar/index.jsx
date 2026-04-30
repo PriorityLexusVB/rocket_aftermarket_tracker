@@ -24,6 +24,16 @@ import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/co
 import { getJobLocationType } from '@/utils/locationType'
 import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
+// Returns Tailwind border-left class + short label for in-house/off-site/mixed.
+// Returns empty strings when location is unknown — renders no indicator.
+function getLocationMeta(job) {
+  const type = getJobLocationType(job)
+  if (type === 'Off-Site') return { border: 'border-l-4 border-l-amber-500', dot: 'bg-amber-500', label: 'Off-Site' }
+  if (type === 'Mixed')   return { border: 'border-l-4 border-l-blue-500',  dot: 'bg-blue-500',  label: 'Mixed' }
+  if (type === 'In-House') return { border: 'border-l-4 border-l-green-500', dot: 'bg-green-500', label: 'In-House' }
+  return { border: '', dot: '', label: '' }
+}
+
 const LOAD_TIMEOUT_MS = 15000
 
 // Safe date creation utility
@@ -478,6 +488,15 @@ const CalendarSchedulingCenter = ({
     return map
   }, [filteredJobs])
 
+  // Change 2: overdue count used by the week view empty state banner
+  const overdueCountForEmptyState = useMemo(
+    () =>
+      (jobs || []).filter((job) =>
+        isOverdue(job?.next_promised_iso || job?.promised_date || job?.promisedAt)
+      ).length,
+    [jobs]
+  )
+
   // Navigation handlers with safe date operations
   const navigateDate = (direction) => {
     try {
@@ -512,6 +531,24 @@ const CalendarSchedulingCenter = ({
     setCurrentDate(today)
     setUrlState({ nextViewType: viewType, nextDate: today })
   }
+
+  // Change 1: Auto-scroll today's cell into view when month view renders
+  useEffect(() => {
+    if (viewType !== 'month') return
+    // Only scroll if today falls within the currently rendered month
+    const today = new Date()
+    const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+    const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+    if (today < monthStart || today > monthEnd) return
+    // RAF ensures the DOM has painted before we attempt the scroll
+    const rafId = requestAnimationFrame(() => {
+      const todayCell = document.querySelector('[data-today="true"]')
+      if (todayCell) {
+        todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    })
+    return () => cancelAnimationFrame(rafId)
+  }, [viewType, currentDate])
 
   // Refresh data with safe date operations
   const refreshData = async () => {
@@ -793,10 +830,11 @@ const CalendarSchedulingCenter = ({
                   deal: job,
                 })
 
+                const locMeta = getLocationMeta(job)
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
-                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
+                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${locMeta.border} ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
                     onKeyDown={(event) => handleCalendarCardKeyDown(event, handleGridClick)}
                     role="button"
@@ -875,11 +913,12 @@ const CalendarSchedulingCenter = ({
                             : 'Invalid Time'}
                       </span>
                     </div>
-                    <div className="mt-1 text-[10px] text-gray-700 truncate">
-                      {job?.service_type === 'vendor' || job?.service_type === 'offsite'
-                        ? 'Vendor/Offsite'
-                        : 'Onsite'}
-                    </div>
+                    {locMeta.label && (
+                      <div className="mt-1 flex items-center gap-1">
+                        <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${locMeta.dot}`} aria-hidden="true" />
+                        <span className="text-[10px] text-gray-700">{locMeta.label}</span>
+                      </div>
+                    )}
 
                     {showDetailPopovers ? (
                       <EventDetailPopover
@@ -955,6 +994,48 @@ const CalendarSchedulingCenter = ({
                 {label}
               </div>
             ))}
+          </div>
+          <div
+            className={cx(
+              'flex items-center gap-3 px-2 py-1 text-[10px]',
+              darkUi ? 'text-gray-400' : 'text-gray-500'
+            )}
+          >
+            <span className="flex items-center gap-1">
+              <span
+                className={cx(
+                  'inline-block rounded px-1 py-0.5',
+                  darkUi ? 'bg-amber-500/20 text-amber-200' : 'bg-amber-100 text-amber-900'
+                )}
+              >
+                P
+              </span>
+              Promised
+            </span>
+            <span className="flex items-center gap-1">
+              <span
+                className={cx(
+                  'inline-block rounded px-1 py-0.5',
+                  darkUi ? 'bg-blue-500/20 text-blue-200' : 'bg-blue-100 text-blue-900'
+                )}
+              >
+                S
+              </span>
+              Scheduled
+            </span>
+            <span className="flex items-center gap-1">
+              <span
+                className={cx(
+                  'inline-block rounded px-1 py-0.5',
+                  darkUi ? 'bg-red-500/20 text-red-200' : 'bg-red-100 text-red-900'
+                )}
+              >
+                O
+              </span>
+              Overdue
+            </span>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
 
             {days.map((dayDate) => {
               const dayKey = dayDate?.toDateString?.()
@@ -1012,6 +1093,7 @@ const CalendarSchedulingCenter = ({
                       jumpToDay()
                     }
                   }}
+                  data-today={isToday ? 'true' : undefined}
                   className={cx(
                     'min-h-32 border rounded-sm overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300',
                     darkUi ? 'border-white/10' : 'border-gray-200',
@@ -1146,11 +1228,12 @@ const CalendarSchedulingCenter = ({
                         deal: job,
                       })
 
+                      const monthLocMeta = getLocationMeta(job)
                       return (
                         <button
                           type="button"
                           key={job?.calendar_key || job?.id}
-                          className={`group relative w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${
+                          className={`group relative w-full text-left px-2 py-1 rounded text-xs border hover:shadow-sm transition-shadow ${monthLocMeta.border} ${
                             colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'
                           }`}
                           onClick={(e) => {
@@ -1177,6 +1260,12 @@ const CalendarSchedulingCenter = ({
                           {customerName ? (
                             <div className="text-[10px] opacity-90 truncate">{customerName}</div>
                           ) : null}
+                          {monthLocMeta.label && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className={`inline-block h-1.5 w-1.5 rounded-full shrink-0 ${monthLocMeta.dot}`} aria-hidden="true" />
+                              <span className="text-[9px] opacity-80">{monthLocMeta.label}</span>
+                            </div>
+                          )}
                           <div className="text-[10px] opacity-80">
                             {job?.time_tbd
                               ? `Time TBD • Promise: ${promiseLabel || '—'}`
@@ -1266,11 +1355,13 @@ const CalendarSchedulingCenter = ({
                 .filter(Boolean)
                 .join(' • ')
 
+              const listLocMeta = getLocationMeta(job)
               return (
                 <div
                   key={job?.calendar_key || job?.id}
                   className={cx(
                     'group relative p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow',
+                    listLocMeta.border,
                     darkUi ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white'
                   )}
                   onClick={handleListClick}
@@ -1308,11 +1399,12 @@ const CalendarSchedulingCenter = ({
                         >
                           {statusLabel}
                         </span>
-                        <span className={cx('text-xs', darkUi ? 'text-gray-400' : 'text-gray-600')}>
-                          {job?.service_type === 'vendor' || job?.service_type === 'offsite'
-                            ? 'Vendor/Offsite'
-                            : 'Onsite'}
-                        </span>
+                        {listLocMeta.label && (
+                          <span className="inline-flex items-center gap-1">
+                            <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${listLocMeta.dot}`} aria-hidden="true" />
+                            <span className={cx('text-xs', darkUi ? 'text-gray-400' : 'text-gray-600')}>{listLocMeta.label}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1401,6 +1493,8 @@ const CalendarSchedulingCenter = ({
         : viewType === 'day'
           ? 'No jobs scheduled for this day'
           : 'No jobs scheduled for this period'
+
+    const overdueCount = overdueCountForEmptyState
 
     return (
       <div className="p-4">
@@ -1546,6 +1640,42 @@ const CalendarSchedulingCenter = ({
                         ? 'Switch to List for a queue view, or open Board to book work.'
                         : 'Switch to Agenda for a queue view, or open Flow to book work.'}
                     </div>
+                    {viewType === 'week' && overdueCount > 0 && (
+                      <div
+                        className={cx(
+                          'mt-3 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm',
+                          darkUi
+                            ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                            : 'border-amber-300 bg-amber-50 text-amber-900'
+                        )}
+                      >
+                        <span>
+                          ⚠ {overdueCount} overdue job{overdueCount !== 1 ? 's' : ''} need attention
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const destination = getCalendarDestination({ target: 'board' })
+                            trackCalendarNavigation({
+                              source: 'CalendarSchedulingCenter.EmptyState.OverdueBanner',
+                              destination,
+                              context: {
+                                from: `${location?.pathname || ''}${location?.search || ''}`,
+                              },
+                            })
+                            navigate(destination)
+                          }}
+                          className={cx(
+                            'shrink-0 whitespace-nowrap rounded border px-2 py-1 text-xs font-medium transition-colors',
+                            darkUi
+                              ? 'border-amber-500/40 bg-amber-500/20 text-amber-100 hover:bg-amber-500/30'
+                              : 'border-amber-400 bg-white text-amber-900 hover:bg-amber-100'
+                          )}
+                        >
+                          View in Board →
+                        </button>
+                      </div>
+                    )}
                     {!hideShellActions && (
                       <div className="mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
                         <button

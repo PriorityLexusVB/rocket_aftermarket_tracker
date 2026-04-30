@@ -512,6 +512,10 @@ const ClaimsManagementCenter = () => {
                 </tbody>
               </table>
 
+              <p className="px-6 py-2 text-xs text-muted-foreground">
+                † Claims older than 7 days are flagged overdue.
+              </p>
+
               {filteredAndSortedClaims?.length === 0 && (
                 <div className="text-center py-12">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

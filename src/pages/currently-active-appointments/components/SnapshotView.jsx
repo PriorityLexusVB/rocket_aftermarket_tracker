@@ -417,9 +417,9 @@ export default function SnapshotView() {
         return
       }
 
-      const windowStart = windowMode === 'today' ? startOfDay(nowDate) : nowDate
+      const windowStart = startOfDay(nowDate)
       const windowEnd =
-        windowMode === 'today' ? addDays(startOfDay(nowDate), 1) : addDays(nowDate, 7)
+        windowMode === 'today' ? addDays(startOfDay(nowDate), 1) : addDays(startOfDay(nowDate), 8)
 
       // Default “Active” = next 7 days scheduled + in progress
       const upcomingRes = await getScheduleItems({
@@ -430,11 +430,16 @@ export default function SnapshotView() {
 
       // Overdue: last 7 days visible; older overdue collapsed.
       // Fetch a wider overdue window so we can compute the older bucket.
-      const overdueRes = await getScheduleItems({
-        rangeStart: addDays(nowDate, -365),
-        rangeEnd: nowDate,
-        orgId,
-      })
+      // Skip for "today" mode — the Today tab only shows jobs scheduled for today,
+      // not past-due jobs that were never completed.
+      const overdueRes =
+        windowMode === 'today'
+          ? { items: [] }
+          : await getScheduleItems({
+              rangeStart: addDays(nowDate, -365),
+              rangeEnd: nowDate,
+              orgId,
+            })
 
       // Controlled unscheduled bucket: in-house/on-site in_progress / quality_check with no schedule window.
       const unscheduledRes = await getUnscheduledInProgressInHouseItems({ orgId })
@@ -752,7 +757,7 @@ export default function SnapshotView() {
           <div className="text-xs text-muted-foreground">
             Window:{' '}
             {windowMode === 'all_day'
-              ? `Promised (All-day, last ${ALL_DAY_LOOKBACK_DAYS} days)`
+              ? `Promised & Overdue (last ${ALL_DAY_LOOKBACK_DAYS} days)`
               : windowMode === 'next7'
                 ? 'Next 7 Days'
                 : 'Today'}
@@ -802,7 +807,7 @@ export default function SnapshotView() {
               className={snapshotToggleClass('all_day')}
               aria-pressed={windowMode === 'all_day'}
             >
-              Promised (All-day)
+              Promised & Overdue
             </button>
           </div>
 
@@ -873,7 +878,7 @@ export default function SnapshotView() {
 
       {windowMode === 'all_day' && needsSplit.overdue.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Overdue (All-day)</div>
+          <div className="text-foreground font-medium">Overdue</div>
           <div className="text-xs text-muted-foreground">Promised day passed</div>
         </div>
       ) : null}
@@ -964,7 +969,7 @@ export default function SnapshotView() {
 
       {windowMode === 'all_day' && needsSplit.upcoming.length > 0 ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <div className="text-foreground font-medium">Upcoming (All-day)</div>
+          <div className="text-foreground font-medium">Upcoming</div>
           <div className="text-xs text-muted-foreground">Promised day in range</div>
         </div>
       ) : null}

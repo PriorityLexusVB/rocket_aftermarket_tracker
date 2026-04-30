@@ -1,6 +1,15 @@
 import React, { useMemo } from 'react'
 import { CheckCircle, Clock, RefreshCw } from 'lucide-react'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
+import { getJobLocationType } from '@/utils/locationType'
+
+function getQueueLocationMeta(job) {
+  const type = getJobLocationType(job)
+  if (type === 'Off-Site') return { border: 'border-l-4 border-l-amber-500', dot: 'bg-amber-500', label: 'Off-Site' }
+  if (type === 'Mixed')   return { border: 'border-l-4 border-l-blue-500',  dot: 'bg-blue-500',  label: 'Mixed' }
+  if (type === 'In-House') return { border: 'border-l-4 border-l-green-500', dot: 'bg-green-500', label: 'In-House' }
+  return { border: '', dot: '', label: '' }
+}
 
 export default function PromisedQueue({
   unscheduledJobs,
@@ -77,11 +86,12 @@ export default function PromisedQueue({
           const isCompleted = String(raw?.job_status || '').toLowerCase() === 'completed'
           const isBusy = Boolean(isStatusInFlight?.(raw?.id))
           const promise = raw?.next_promised_iso || raw?.promised_date || raw?.promisedAt || null
+          const locMeta = getQueueLocationMeta(raw)
 
           return (
             <div
               key={job?.calendarKey || job?.calendar_key || raw?.id}
-              className={`p-3 ${isBusy ? 'opacity-60' : ''}`}
+              className={`p-3 ${locMeta.border} ${isBusy ? 'opacity-60' : ''}`}
               onClick={() => onJobClick?.(raw)}
               draggable
               onDragStart={() => onDragStart?.(raw)}
@@ -97,8 +107,16 @@ export default function PromisedQueue({
                       UNSCHEDULED
                     </span>
                   </div>
-                  <div className="mt-1 text-xs text-gray-600">
-                    {promise ? `Promise: ${formatEtDateLabel(promise) || '—'}` : 'No promised day'}
+                  <div className="mt-1 flex items-center gap-2">
+                    {locMeta.label && (
+                      <div className="flex items-center gap-1">
+                        <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${locMeta.dot}`} aria-hidden="true" />
+                        <span className="text-[11px] text-gray-500">{locMeta.label}</span>
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-600">
+                      {promise ? `Promise: ${formatEtDateLabel(promise) || '—'}` : 'No promised day'}
+                    </div>
                   </div>
                 </div>
 

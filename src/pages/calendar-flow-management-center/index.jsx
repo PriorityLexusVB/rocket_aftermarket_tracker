@@ -1358,7 +1358,7 @@ const CalendarFlowManagementCenter = ({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-500 rounded mr-3"></div>
-                <h3 className="font-medium">On-Site Jobs</h3>
+                <h3 className="font-medium">In-House Jobs</h3>
               </div>
               <div className="text-sm text-gray-600">{onSiteCombined?.length || 0} jobs</div>
             </div>
@@ -1829,7 +1829,7 @@ const CalendarFlowManagementCenter = ({
                       }}
                       className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
                     >
-                      Go to All-day
+                      View Time TBD
                     </button>
                   </div>
                 </div>

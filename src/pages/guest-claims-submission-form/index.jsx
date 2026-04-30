@@ -95,7 +95,7 @@ const GuestClaimsSubmissionForm = () => {
       result.error?.issues?.forEach((issue) => {
         // The path array contains the key of the field that failed.
         const pathKey = issue?.path?.[0]
-        newErrors[pathKey] = issue?.message
+        if (!newErrors[pathKey]) newErrors[pathKey] = issue?.message
       })
       setErrors(newErrors)
       return false
@@ -350,7 +350,18 @@ const GuestClaimsSubmissionForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50">
+      {/* Dealer branding bar */}
+      <div className="bg-slate-800 text-white py-3 px-4">
+        <div className="max-w-3xl mx-auto">
+          <p className="text-base font-semibold leading-tight">Priority Lexus Virginia Beach</p>
+          <p className="text-sm text-slate-300 mt-0.5">
+            3909 Virginia Beach Blvd, Virginia Beach, VA 23452 &nbsp;&middot;&nbsp; (757) 486-3500
+          </p>
+        </div>
+      </div>
+
+      <div className="py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -627,21 +638,22 @@ const GuestClaimsSubmissionForm = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Preferred Resolution *
                   </label>
-                  <textarea
+                  <select
                     value={formData?.preferred_resolution}
                     onChange={(e) => handleInputChange('preferred_resolution', e?.target?.value)}
-                    rows={3}
                     className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors?.preferred_resolution ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Please describe how you would like this issue to be resolved..."
-                  />
+                  >
+                    <option value="">(Select one)</option>
+                    <option value="Repair">Repair</option>
+                    <option value="Replace">Replace</option>
+                    <option value="Refund">Refund / Reimbursement</option>
+                    <option value="Not sure">Not sure — please advise</option>
+                  </select>
                   {errors?.preferred_resolution && (
                     <p className="text-red-600 text-sm mt-1">{errors?.preferred_resolution}</p>
                   )}
-                  <p className="text-gray-500 text-sm mt-1">
-                    Please provide details about your desired outcome for this claim
-                  </p>
                 </div>
 
                 <div>
@@ -663,7 +675,7 @@ const GuestClaimsSubmissionForm = () => {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                 <Upload className="w-5 h-5 mr-2" />
-                Supporting Documentation (Optional)
+                Photos & Images (Optional)
               </h2>
 
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
@@ -685,8 +697,7 @@ const GuestClaimsSubmissionForm = () => {
                     Choose Files
                   </label>
                   <p className="text-xs text-gray-500 mt-2">
-                    Maximum file size: 10MB per file. Supported formats: JPG, PNG, GIF, WebP (max 5
-                    files)
+                    Upload photos of the issue (JPG, PNG, WebP — up to 5 files)
                   </p>
                 </div>
               </div>
@@ -765,6 +776,7 @@ const GuestClaimsSubmissionForm = () => {
             </div>
           </form>
         </div>
+      </div>
       </div>
     </div>
   )

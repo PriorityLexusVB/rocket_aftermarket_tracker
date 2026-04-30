@@ -88,7 +88,7 @@ describe('OverdueInbox', () => {
     expect(rows[0].promised_date).toBe('2026-02-19T10:00:00.000Z')
   })
 
-  it('renders overdue rows and opens DealDrawer with Set time action', async () => {
+  it('renders overdue rows and opens DealDrawer on row click', async () => {
     vi.mocked(jobService.getAllJobs).mockResolvedValue([
       {
         id: 'job-1',
@@ -113,7 +113,7 @@ describe('OverdueInbox', () => {
     await user.click(screen.getByText('JOB-1001'))
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Set time/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Deal JOB-1001/i })).toBeInTheDocument()
   })
 
   it('marks complete using existing service path and removes row', async () => {

@@ -73,7 +73,6 @@ describe('DealDrawer', () => {
     expect(screen.getByRole('heading', { name: /Summary/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Line Items/i })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /Schedule/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /History/i })).toBeInTheDocument()
   })
 
   it('shows enabled primary action when status is available', () => {

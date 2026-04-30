@@ -251,7 +251,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
             ) : (
               <>
                 <MapPin className="h-4 w-4 text-green-500 mr-2" />
-                <span className="text-sm">On-Site</span>
+                <span className="text-sm">In-House</span>
               </>
             )}
           </div>
@@ -464,7 +464,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
                 ) : (
                   <>
                     <MapPin className="h-4 w-4 mr-1" />
-                    On-Site
+                    In-House
                   </>
                 )}
               </div>

@@ -418,7 +418,7 @@ const CurrentlyActiveAppointmentsLegacy = () => {
                   className={`px-4 py-3 rounded-xl border text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center space-x-2 ${bulkOperationsMode ? 'bg-orange-50 border-orange-200 text-orange-600' : 'border-gray-200'}`}
                 >
                   <CheckCheck className="w-4 h-4" />
-                  <span>Bulk Ops</span>
+                  <span>Bulk Actions</span>
                   {selectedAppointments?.size > 0 && (
                     <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-semibold">
                       {selectedAppointments?.size}

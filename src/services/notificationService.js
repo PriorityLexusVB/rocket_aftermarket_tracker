@@ -2,8 +2,199 @@ import { supabase } from '@/lib/supabase'
 import { safeSelect } from '@/lib/supabase/safeSelect'
 import {
   NOTIFICATION_OUTBOX_TABLE_AVAILABLE,
+  SMS_TEMPLATES_TABLE_AVAILABLE,
   disableNotificationOutboxCapability,
+  disableSmsTemplatesCapability,
 } from '@/utils/capabilityTelemetry'
+
+/**
+ * Interpolate a message template string.
+ * Replaces all occurrences of {{key}} (double-brace, case-insensitive key match)
+ * with the corresponding value from vars.  Unknown placeholders are left unchanged.
+ *
+ * @param {string} template
+ * @param {Record<string, string | number>} vars
+ * @returns {string}
+ */
+function interpolateTemplate(template, vars) {
+  if (!template) return ''
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    const value = vars[key]
+    return value !== undefined && value !== null ? String(value) : match
+  })
+}
+
+/**
+ * Enqueue an SMS notification for a job.
+ *
+ * Looks up the sms_templates row by name (e.g. 'Service Scheduled'), interpolates
+ * the template body with the supplied vars, resolves the customer phone from the
+ * jobs → vehicles join, and inserts a row into notification_outbox with
+ * status='pending' for the processOutbox edge function to pick up.
+ *
+ * Fails loudly in the log but returns null (does NOT throw) so callers can
+ * safely fire-and-forget without disrupting the primary job mutation.
+ *
+ * Template name → status mapping:
+ *   'Service Scheduled'  ← job_status 'scheduled'
+ *   'Work In Progress'   ← job_status 'in_progress'
+ *   'Service Complete'   ← job_status 'completed'
+ *
+ * Available vars for substitution ({{double_brace}} syntax):
+ *   stock_number, vehicle_info, date, time, completion_time, contact_phone, etc.
+ *
+ * @param {string} jobId
+ * @param {string} templateName  - Matches sms_templates.name exactly
+ * @param {Record<string, string | number>} vars - Template interpolation values
+ * @returns {Promise<string | null>} - The inserted outbox row id, or null on failure/skip
+ */
+export async function enqueueNotification(jobId, templateName, vars = {}) {
+  // Fast-exit if either table was marked unavailable during this session
+  if (NOTIFICATION_OUTBOX_TABLE_AVAILABLE === false) {
+    console.debug('[notify:enqueue] skipped – notification_outbox table unavailable')
+    return null
+  }
+  if (SMS_TEMPLATES_TABLE_AVAILABLE === false) {
+    console.debug('[notify:enqueue] skipped – sms_templates table unavailable')
+    return null
+  }
+
+  if (!jobId) {
+    console.warn('[notify:enqueue] called without jobId – skipping')
+    return null
+  }
+  if (!templateName) {
+    console.warn('[notify:enqueue] called without templateName – skipping')
+    return null
+  }
+
+  try {
+    // 1. Resolve the customer phone number via the jobs → vehicles join
+    const { data: jobRow, error: jobErr } = await supabase
+      .from('jobs')
+      .select('id, vehicle_id, dealer_id, vehicles(stock_number, owner_phone, year, make, model)')
+      .eq('id', jobId)
+      .single()
+
+    if (jobErr) {
+      console.warn(`[notify:enqueue] job lookup failed (jobId=${jobId}):`, jobErr.message)
+      return null
+    }
+
+    const phone = jobRow?.vehicles?.owner_phone
+    if (!phone) {
+      console.info(`[notify:enqueue] no customer phone for jobId=${jobId} – skipping SMS`)
+      return null
+    }
+
+    // Check opt-out before fetching template (cheap short-circuit)
+    const { data: optOut } = await supabase
+      .from('sms_opt_outs')
+      .select('phone_e164')
+      .eq('phone_e164', phone)
+      .maybeSingle()
+
+    if (optOut) {
+      console.info(`[notify:enqueue] phone ${phone} has opted out – skipping SMS`)
+      return null
+    }
+
+    // 2. Fetch the SMS template by name
+    let templateRow = null
+    try {
+      const { data: tmpl, error: tmplErr } = await supabase
+        .from('sms_templates')
+        .select('id, name, message_template')
+        .eq('name', templateName)
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (tmplErr) {
+        const msg = String(tmplErr?.message || '').toLowerCase()
+        if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+          disableSmsTemplatesCapability()
+          return null
+        }
+        console.warn(`[notify:enqueue] sms_templates lookup failed:`, tmplErr.message)
+        return null
+      }
+      templateRow = tmpl
+    } catch (e) {
+      const msg = String(e?.message || '').toLowerCase()
+      if (msg.includes('sms_templates') && msg.includes('could not find the table')) {
+        disableSmsTemplatesCapability()
+        return null
+      }
+      throw e
+    }
+
+    if (!templateRow) {
+      console.warn(
+        `[notify:enqueue] template "${templateName}" not found or inactive – skipping SMS`
+      )
+      return null
+    }
+
+    // 3. Build default vars from the vehicle data so callers only need to supply overrides
+    const v = jobRow?.vehicles ?? {}
+    const vehicleInfo =
+      [v.year, v.make, v.model].filter(Boolean).join(' ') || 'your vehicle'
+    const mergedVars = {
+      stock_number: v.stock_number ?? '',
+      vehicle_info: vehicleInfo,
+      contact_phone: '757-486-3500',
+      ...vars,
+    }
+
+    // 4. Interpolate the template body client-side ({{key}} double-brace syntax)
+    const messageBody = interpolateTemplate(templateRow.message_template, mergedVars)
+
+    // 5. Insert into notification_outbox
+    let outboxId = null
+    try {
+      const { data: outboxRow, error: outboxErr } = await supabase
+        .from('notification_outbox')
+        .insert({
+          phone_e164: phone,
+          message_template: messageBody,
+          variables: null, // already interpolated; processOutbox sees no placeholders
+          not_before: new Date().toISOString(),
+          status: 'pending',
+          dealer_id: jobRow?.dealer_id ?? null,
+        })
+        .select('id')
+        .single()
+
+      if (outboxErr) {
+        const msg = String(outboxErr?.message || '').toLowerCase()
+        if (msg.includes('notification_outbox') && msg.includes('could not find the table')) {
+          disableNotificationOutboxCapability()
+          return null
+        }
+        console.error(`[notify:enqueue] insert into notification_outbox failed:`, outboxErr.message)
+        return null
+      }
+
+      outboxId = outboxRow?.id ?? null
+    } catch (e) {
+      const msg = String(e?.message || '').toLowerCase()
+      if (msg.includes('notification_outbox') && msg.includes('could not find the table')) {
+        disableNotificationOutboxCapability()
+        return null
+      }
+      throw e
+    }
+
+    console.info(
+      `[notify:enqueue] queued "${templateName}" for job ${jobId} → outbox ${outboxId}`
+    )
+    return outboxId
+  } catch (err) {
+    // Fail loudly in logs, softly to caller
+    console.error(`[notify:enqueue] unexpected error for jobId=${jobId}:`, err?.message ?? err)
+    return null
+  }
+}
 
 let pendingOutboxFetchPromise = null
 

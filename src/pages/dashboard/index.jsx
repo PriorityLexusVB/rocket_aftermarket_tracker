@@ -293,7 +293,7 @@ const DashboardPage = () => {
                 : `MTD: ${kpiValue.profitMtd}`
             }
           />
-          <KpiCard label="Open Opp ($)" value={kpiValue.openOpp} sublabel={openOppSublabel} />
+          <KpiCard label="Unapproved Work ($)" value={kpiValue.openOpp} sublabel={openOppSublabel} />
           <KpiCard label="Open Claims" value={kpiValue.openClaims} />
         </div>
 
@@ -510,17 +510,6 @@ const DashboardPage = () => {
               </div>
             </div>
 
-            <div className="rounded-xl border bg-white p-4 shadow-sm">
-              <div className="text-sm font-semibold text-gray-900">Notes</div>
-              <div className="mt-2 text-xs text-gray-600">
-                Rev/Profit Today are computed from today’s scheduled jobs matched against the Deals
-                dataset.
-              </div>
-              <div className="mt-1 text-xs text-gray-600">
-                Open Opp reflects open opportunities across all jobs. Pipeline is computed as the
-                sum of quantity × unit price where unit price is present.
-              </div>
-            </div>
           </div>
         </div>
       </div>
