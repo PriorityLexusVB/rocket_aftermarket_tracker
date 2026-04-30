@@ -6,6 +6,69 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * Validate the X-Twilio-Signature header using HMAC-SHA1.
+ * Per Twilio docs: HMAC-SHA1(authToken, url + sorted_params), base64-encoded.
+ * Returns true if valid, true if TWILIO_AUTH_TOKEN is unset (dev fallback), false if invalid.
+ */
+async function validateTwilioSignature(
+  req: Request,
+  formData: FormData,
+  authToken: string | undefined
+): Promise<boolean> {
+  if (!authToken) {
+    // Allow skipping validation only when explicitly opted in (local dev).
+    // In production, missing token is a misconfiguration — fail closed.
+    const skipValidation = Deno.env.get('TWILIO_SKIP_VALIDATION') === 'true'
+    if (skipValidation) {
+      console.warn('[twilioInbound] TWILIO_AUTH_TOKEN not set — skipping validation (TWILIO_SKIP_VALIDATION=true)')
+      return true
+    }
+    console.error('[twilioInbound] TWILIO_AUTH_TOKEN not set and TWILIO_SKIP_VALIDATION != true — rejecting request')
+    return false
+  }
+
+  const signature = req.headers.get('X-Twilio-Signature') ?? ''
+  if (!signature) {
+    console.warn('[twilioInbound] Missing X-Twilio-Signature header')
+    return false
+  }
+
+  // Build the signed string: URL + sorted POST params appended as key+value
+  // Use TWILIO_WEBHOOK_URL env var if set — Twilio signs the exact public URL it was
+  // configured with, which may differ from the internal Supabase edge function URL.
+  const url = Deno.env.get('TWILIO_WEBHOOK_URL') ?? req.url
+  const paramPairs: [string, string][] = []
+  for (const [key, value] of formData.entries()) {
+    paramPairs.push([key, String(value)])
+  }
+  paramPairs.sort((a, b) => a[0].localeCompare(b[0]))
+
+  let signedString = url
+  for (const [key, value] of paramPairs) {
+    signedString += key + value
+  }
+
+  // HMAC-SHA1 using SubtleCrypto
+  const encoder = new TextEncoder()
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(authToken),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  )
+  const signatureBytes = await crypto.subtle.sign('HMAC', keyMaterial, encoder.encode(signedString))
+  const computed = btoa(String.fromCharCode(...new Uint8Array(signatureBytes)))
+
+  if (computed !== signature) {
+    console.warn('[twilioInbound] Signature mismatch — rejecting request')
+    return false
+  }
+
+  return true
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -13,8 +76,18 @@ serve(async (req) => {
   }
 
   try {
-    // Parse Twilio webhook data
+    // Parse Twilio webhook data BEFORE signature validation so we can use
+    // the parsed params as part of the HMAC input (Twilio spec requires this).
+    // We clone the request body because formData() consumes the stream.
     const formData = await req.formData()
+
+    // P0-1: Validate Twilio HMAC-SHA1 signature
+    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
+    const isValid = await validateTwilioSignature(req, formData, authToken)
+    if (!isValid) {
+      return new Response('Forbidden', { status: 403 })
+    }
+
     const from = formData.get('From')?.toString()
     const body = formData.get('Body')?.toString()?.trim().toLowerCase()
     if (!from || !body) {
@@ -105,6 +178,8 @@ serve(async (req) => {
     const stockNumber = job.vehicles?.stock_number || 'N/A'
     let responseMessage = 'Thank you for your response.'
     let newStatus = job.job_status
+    // P0-2: Track whether the YES branch fired so we can write appointment_confirmed_at
+    let appointmentConfirmed = false
 
     // Handle status change responses
     switch (body) {
@@ -112,7 +187,10 @@ serve(async (req) => {
       case 'y':
       case 'confirm':
         if (job.job_status === 'scheduled') {
-          newStatus = 'confirmed'
+          // P0-2: 'confirmed' does not exist in the job_status enum.
+          // Keep the job as 'scheduled'; record confirmation via appointment_confirmed_at.
+          newStatus = 'scheduled'
+          appointmentConfirmed = true
           responseMessage = `Stock ${stockNumber} appointment confirmed. We'll see you then!`
         } else {
           responseMessage = `Stock ${stockNumber} status noted. Thank you!`
@@ -159,15 +237,20 @@ serve(async (req) => {
         }
     }
 
-    // Update job status if it changed
-    if (newStatus !== job.job_status) {
-      const updateData: any = {
+    // Update job status if it changed, or if we need to record appointment confirmation
+    if (newStatus !== job.job_status || appointmentConfirmed) {
+      const updateData: Record<string, string> = {
         job_status: newStatus,
         updated_at: new Date().toISOString(),
       }
 
       if (newStatus === 'completed') {
         updateData.completed_at = new Date().toISOString()
+      }
+
+      // P0-2: Record appointment confirmation timestamp when customer replies YES
+      if (appointmentConfirmed) {
+        updateData.appointment_confirmed_at = new Date().toISOString()
       }
 
       const { error: updateError } = await supabaseClient

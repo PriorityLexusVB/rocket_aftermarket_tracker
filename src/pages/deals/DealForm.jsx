@@ -9,7 +9,9 @@ import {
   getUserProfiles,
 } from '../../services/dropdownService'
 import { listVendorsByOrg, listProductsByOrg, listStaffByOrg } from '../../services/tenantService'
+import { checkLoanerAvailability } from '../../services/deal/dealLoaners'
 import useTenant from '../../hooks/useTenant'
+import useAutosave from '../../hooks/useAutosave'
 import { useLogger } from '../../hooks/useLogger'
 import UnsavedChangesGuard from '../../components/common/UnsavedChangesGuard'
 import { useToast } from '../../components/ui/ToastProvider'
@@ -66,6 +68,8 @@ export default function DealForm({
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [savedAt, setSavedAt] = useState(null)
+  const [autosaveStatus, setAutosaveStatus] = useState(null) // null | 'saving' | 'saved'
+  const [fieldErrors, setFieldErrors] = useState({}) // { job_number: string, vin: string }
   const [lineErrors, setLineErrors] = useState({})
   const [vendors, setVendors] = useState([])
   const [products, setProducts] = useState([])
@@ -78,7 +82,8 @@ export default function DealForm({
     updated_at: initial.updated_at || undefined,
     job_number: initial.job_number || '',
     vehicle_id: initial.vehicle_id || '',
-    stock_number: initial.stock_number || '', // display only if you don’t want editable
+    stock_number: initial.stock_number || '', // display only if you don't want editable
+    vin: initial.vin || initial.vehicle?.vin || '',
     description: initial.description || '',
     vendor_id: initial.vendor_id || '',
     assigned_to: initial.assigned_to || '',
@@ -121,6 +126,7 @@ export default function DealForm({
       job_number: initial.job_number || '',
       vehicle_id: initial.vehicle_id || '',
       stock_number: initial.stock_number || '',
+      vin: initial.vin || initial.vehicle?.vin || '',
       description: initial.description || '',
       vendor_id: initial.vendor_id || '',
       assigned_to: initial.assigned_to || '',
@@ -374,34 +380,8 @@ export default function DealForm({
     setLoanerStatus(null)
 
     try {
-      const { supabase } = await import('../../lib/supabase')
-
-      const { data: assignments, error } = await supabase
-        .from('loaner_assignments')
-        .select('id, returned_at, eta_return_date, jobs(id, title)')
-        .eq('loaner_number', loanerNumber)
-        .order('created_at', { ascending: false })
-        .limit(1)
-
-      if (error) {
-        console.warn('Error checking loaner status:', error)
-        setLoanerStatus('invalid')
-        return
-      }
-
-      if (!assignments || assignments.length === 0) {
-        setLoanerStatus('available')
-        return
-      }
-
-      const latestAssignment = assignments[0]
-
-      if (latestAssignment.returned_at) {
-        setLoanerStatus('available')
-        return
-      }
-
-      setLoanerStatus('in-use')
+      const result = await checkLoanerAvailability(loanerNumber)
+      setLoanerStatus(result.status)
     } catch (err) {
       console.warn('Failed to check loaner status:', err)
       setLoanerStatus('invalid')
@@ -409,6 +389,28 @@ export default function DealForm({
       setLoanerCheckLoading(false)
     }
   }
+
+  // FIX P2-6: Job number uniqueness check
+  const checkJobNumberUniqueness = async (jobNumber) => {
+    if (!jobNumber?.trim()) return
+    try {
+      let dealService = null
+      if (dealServicePromise) {
+        const mod = await dealServicePromise
+        dealService = mod?.default ?? mod
+      }
+      if (!dealService?.findJobIdByJobNumber) return
+      const existingId = await dealService.findJobIdByJobNumber(jobNumber.trim())
+      if (existingId && existingId !== form.id) {
+        setFieldErrors((prev) => ({ ...prev, job_number: 'Job number already exists' }))
+      } else {
+        setFieldErrors((prev) => ({ ...prev, job_number: '' }))
+      }
+    } catch {
+      // non-fatal: uniqueness check should not block the form
+    }
+  }
+
 
   const handleLineChange = (idx, key, val) =>
     setForm((prev) => {
@@ -460,6 +462,30 @@ export default function DealForm({
       return true
     }
   }, [form, initialSnapshot])
+
+  // FIX P1-1: Autosave — only fires when editing an existing job (form.id is set).
+  // Skips full validation so partial edits save silently in the background.
+  useAutosave(
+    async () => {
+      if (!form.id || saving || !isDirty) return
+      setAutosaveStatus('saving')
+      try {
+        if (dealServicePromise) {
+          const mod = await dealServicePromise
+          const dealService = mod?.default ?? mod
+          if (dealService?.updateDeal) {
+            await dealService.updateDeal(form.id, form)
+          }
+        }
+        setAutosaveStatus('saved')
+        setTimeout(() => setAutosaveStatus(null), 2000)
+      } catch {
+        setAutosaveStatus(null)
+      }
+    },
+    [form, isDirty, saving],
+    600
+  )
 
   useEffect(() => {
     const handler = (e) => {
@@ -702,10 +728,21 @@ export default function DealForm({
             data-testid="deal-number-input"
             type="text"
             value={form.job_number}
-            onChange={(e) => handleChange('job_number', e.target.value)}
+            onChange={(e) => {
+              handleChange('job_number', e.target.value)
+              setFieldErrors((prev) => ({ ...prev, job_number: '' }))
+            }}
+            onBlur={(e) => checkJobNumberUniqueness(e.target.value)}
             className="mt-1 input-mobile w-full"
             placeholder="Auto or manual"
+            aria-describedby={fieldErrors.job_number ? 'job-number-error' : undefined}
+            aria-invalid={!!fieldErrors.job_number || undefined}
           />
+          {fieldErrors.job_number && (
+            <p id="job-number-error" className="mt-1 text-sm text-red-600" role="alert">
+              {fieldErrors.job_number}
+            </p>
+          )}
         </div>
 
         <div>
@@ -733,6 +770,40 @@ export default function DealForm({
         </div>
       </section>
 
+      {/* FIX P2-5: VIN field */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">VIN</label>
+          <input
+            data-testid="vin-input"
+            type="text"
+            value={form.vin || ''}
+            onChange={(e) => {
+              const val = e.target.value.toUpperCase().slice(0, 17)
+              handleChange('vin', val)
+              if (val && val.length === 17 && /[IOQ]/i.test(val)) {
+                setFieldErrors((prev) => ({ ...prev, vin: 'VIN must not contain I, O, or Q' }))
+              } else if (val && val.length > 0 && val.length !== 17) {
+                setFieldErrors((prev) => ({ ...prev, vin: 'VIN must be exactly 17 characters' }))
+              } else {
+                setFieldErrors((prev) => ({ ...prev, vin: '' }))
+              }
+            }}
+            maxLength={17}
+            className="mt-1 input-mobile w-full font-mono"
+            placeholder="17-character VIN (optional)"
+            aria-describedby={fieldErrors.vin ? 'vin-error' : undefined}
+            aria-invalid={!!fieldErrors.vin || undefined}
+          />
+          {fieldErrors.vin && (
+            <p id="vin-error" className="mt-1 text-sm text-red-600" role="alert">
+              {fieldErrors.vin}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-slate-500">Optional. Excludes I, O, Q</p>
+        </div>
+      </section>
+
       {/* Primary Info */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -747,6 +818,8 @@ export default function DealForm({
             onChange={(e) => handleChange('description', e.target.value)}
             className="mt-1 input-mobile w-full"
             rows={3}
+            aria-describedby={!form.description?.trim() && errorMsg ? 'description-error' : undefined}
+            aria-invalid={!form.description?.trim() && !!errorMsg ? true : undefined}
           />
         </div>
         <div>
@@ -944,6 +1017,8 @@ export default function DealForm({
                         : ''
                   } ${!form.customer_needs_loaner ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   placeholder="e.g. L-1024"
+                  aria-describedby={loanerStatus === 'in-use' ? 'loaner-status-msg' : undefined}
+                  aria-invalid={loanerStatus === 'in-use' ? true : undefined}
                 />
                 {form?.loanerForm?.loaner_number && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 mt-0.5">
@@ -978,6 +1053,7 @@ export default function DealForm({
             </div>
             {form?.loanerForm?.loaner_number && loanerStatus && (
               <div
+                id="loaner-status-msg"
                 className={`mt-1 text-xs ${
                   loanerStatus === 'available'
                     ? 'text-green-700'
@@ -1058,7 +1134,7 @@ export default function DealForm({
           const itemKey = `li-${idx}`
           return (
             <div key={itemKey} className="card-mobile space-y-3" data-testid={`line-${idx}`}>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                 <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-slate-700">Product</label>
                   <select
@@ -1074,6 +1150,22 @@ export default function DealForm({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Qty</label>
+                  <input
+                    data-testid={`quantity-input-${idx}`}
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    step="1"
+                    value={item.quantity_used ?? 1}
+                    onChange={(e) =>
+                      handleLineChange(idx, 'quantity_used', Math.max(1, parseInt(e.target.value, 10) || 1))
+                    }
+                    className="mt-1 input-mobile w-full"
+                  />
                 </div>
 
                 <div>
@@ -1214,7 +1306,13 @@ export default function DealForm({
               {currencyFmt.format(dealSubtotal || 0)}
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {autosaveStatus === 'saving' && (
+              <span className="text-xs text-slate-500" data-testid="autosave-indicator">Saving…</span>
+            )}
+            {autosaveStatus === 'saved' && (
+              <span className="text-xs text-emerald-600" data-testid="autosave-indicator">Saved</span>
+            )}
             <button
               type="button"
               onClick={handleCancel}
@@ -1235,7 +1333,7 @@ export default function DealForm({
       </section>
 
       {errorMsg ? (
-        <div className="mt-3 p-3 rounded bg-red-50 text-red-700" data-testid="save-error">
+        <div id="description-error" className="mt-3 p-3 rounded bg-red-50 text-red-700" data-testid="save-error" role="alert">
           {errorMsg}
         </div>
       ) : null}

@@ -43,6 +43,12 @@ import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const LOAD_TIMEOUT_MS = 15000
 
+// FIX P1-7: next_promised_iso is a computed DB column written by dealCRUD.js
+// (see dealCRUD.js lines ~640, ~847) whenever a deal is created/updated.
+// It is the canonical "next promised date" aggregated from line items.
+// promised_date / promisedAt are legacy field names kept for back-compat with
+// older environments that may not have the column yet.
+// Fallback chain: next_promised_iso (most up-to-date) → promised_date → promisedAt
 function getPromiseValue(job) {
   return job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
 }

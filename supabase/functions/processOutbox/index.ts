@@ -7,12 +7,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const MAX_RETRIES = 3
+
 interface NotificationRecord {
   id: string
   phone_e164: string
   message_template: string
   variables: Record<string, any> | null
   not_before: string
+  retry_count: number
 }
 
 serve(async (req) => {
@@ -28,13 +31,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Fetch unsent notifications that are ready to send
+    // Fetch unsent notifications that are ready to send.
+    // P2-9: Exclude permanently-failed rows (retry_count >= MAX_RETRIES).
     const { data: notifications, error: fetchError } = await supabaseClient
       .from('notification_outbox')
       .select('*')
       .is('sent_at', null)
       .eq('status', 'pending')
       .lte('not_before', new Date().toISOString())
+      .lt('retry_count', MAX_RETRIES)
       .order('created_at', { ascending: true })
       .limit(50) // Process max 50 at a time
 
@@ -122,11 +127,15 @@ serve(async (req) => {
             message_length: finalMessage.length,
           })
         } else {
-          // Mark as failed in database
+          // P2-9: Retry with backoff up to MAX_RETRIES before permanently failing.
+          const nextRetryCount = (notification.retry_count ?? 0) + 1
+          const isPermanentlyFailed = nextRetryCount >= MAX_RETRIES
+
           const { error: updateError } = await supabaseClient
             .from('notification_outbox')
             .update({
-              status: 'failed',
+              status: isPermanentlyFailed ? 'failed' : 'pending',
+              retry_count: nextRetryCount,
               error_message: twilioData.message || 'Unknown Twilio error',
             })
             .eq('id', notification.id)
@@ -138,18 +147,23 @@ serve(async (req) => {
           processedResults.push({
             id: notification.id,
             phone: notification.phone_e164,
-            status: 'failed',
+            status: isPermanentlyFailed ? 'failed' : 'retry_pending',
+            retry_count: nextRetryCount,
             error: twilioData.message || 'Unknown error',
           })
         }
       } catch (notificationError) {
         console.error(`Error processing notification ${notification.id}:`, notificationError)
 
-        // Mark as failed
+        // P2-9: Same retry logic for caught exceptions.
+        const nextRetryCount = (notification.retry_count ?? 0) + 1
+        const isPermanentlyFailed = nextRetryCount >= MAX_RETRIES
+
         await supabaseClient
           .from('notification_outbox')
           .update({
-            status: 'failed',
+            status: isPermanentlyFailed ? 'failed' : 'pending',
+            retry_count: nextRetryCount,
             error_message: notificationError.message,
           })
           .eq('id', notification.id)
@@ -157,7 +171,8 @@ serve(async (req) => {
         processedResults.push({
           id: notification.id,
           phone: notification.phone_e164,
-          status: 'error',
+          status: isPermanentlyFailed ? 'error' : 'retry_pending',
+          retry_count: nextRetryCount,
           error: notificationError.message,
         })
       }

@@ -58,12 +58,22 @@ export const calendarService = {
             location,
             calendar_notes,
             vendors:vendor_id(id, name, specialty),
-            vehicles:vehicle_id(id, make, model, year, owner_name, stock_number)
+            vehicles:vehicle_id(id, make, model, year, owner_name, stock_number),
+            job_parts(id, scheduled_start_time, scheduled_end_time, product_name)
           `
+            // NOTE: scheduled_start_time and scheduled_end_time on jobs are
+            // retained above for the OR-overlap date-range filter below only.
+            // job_parts.scheduled_start_time / scheduled_end_time are the
+            // canonical scheduling fields per the current data model.
           )
           ?.not('scheduled_start_time', 'is', null)
-          ?.gte('scheduled_start_time', startIso)
-          ?.lte('scheduled_start_time', endIso)
+          // P0-5: Mirror RPC OR-overlap logic: job starts in range, ends in range,
+          // or spans the entire range. Previously only caught jobs starting in range.
+          ?.or(
+            `and(scheduled_start_time.gte.${startIso},scheduled_start_time.lte.${endIso}),` +
+              `and(scheduled_end_time.gte.${startIso},scheduled_end_time.lte.${endIso}),` +
+              `and(scheduled_start_time.lte.${startIso},scheduled_end_time.gte.${endIso})`
+          )
           ?.order('scheduled_start_time', { ascending: true })
 
         if (filters?.vendorId) {

@@ -880,16 +880,14 @@ function hasTimedLineItems(lineItems = []) {
   })
 }
 
-function maybeAutoUpgradeJobStatusToScheduled(currentStatus, normalizedLineItems) {
-  const s = String(currentStatus || '')
-    .trim()
-    .toLowerCase()
-  const eligible = !s || s === 'new' || s === 'pending'
-  if (!eligible) return currentStatus
-  // Only promote when a real time window exists; promised_date alone should not
-  // move a deal out of the Deals "Booked (time TBD)" lane.
-  if (!hasTimedLineItems(normalizedLineItems)) return currentStatus
-  return 'scheduled'
+/**
+ * @deprecated Coordinator must explicitly call scheduleJob(). Remove after verifying no callers need auto-upgrade.
+ *
+ * Previously auto-flipped job status to 'scheduled' when timed line items were present,
+ * bypassing coordinator review entirely. Now neutralized — always returns currentStatus unchanged.
+ */
+function maybeAutoUpgradeJobStatusToScheduled(currentStatus, _normalizedLineItems) {
+  return currentStatus
 }
 
 export async function createDeal(formState) {
@@ -907,7 +905,7 @@ export async function createDeal(formState) {
   // Default: keep new deals in the Deals "Booked (time TBD)" lane unless a real time window exists.
   if (!payload?.job_status) payload.job_status = 'pending'
 
-  // Product rule: if there's timed schedulable work, treat the job as scheduled.
+  // TODO: coordinator should approve scheduling
   payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
     payload?.job_status,
     normalizedLineItems
@@ -1265,7 +1263,7 @@ export async function updateDeal(id, formState) {
         : explicitJobStatus != null
 
     if (hasExplicitJobStatus) {
-      // Normalize and allow safe auto-promotion when an actual time window exists.
+      // TODO: coordinator should approve scheduling
       payload.job_status = maybeAutoUpgradeJobStatusToScheduled(
         String(explicitJobStatus).trim(),
         normalizedLineItems

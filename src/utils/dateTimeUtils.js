@@ -4,7 +4,7 @@
 
 import { isDateOnlyValue, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 
-const TZ = 'America/New_York'
+const TZ = import.meta.env.VITE_DEFAULT_TIMEZONE || 'America/New_York'
 
 // Internal: build Date from local date + time (YYYY-MM-DD + HH:MM) in target timezone
 function makeDateFromLocalFields(dateStr, timeStr) {

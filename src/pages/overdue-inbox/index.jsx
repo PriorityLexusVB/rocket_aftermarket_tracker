@@ -14,6 +14,9 @@ const OVERDUE_CANDIDATE_FIELDS = [
   'dueDate',
   'next_due_iso',
   'dueAt',
+  // FIX P2-4: scheduled_start_time as final fallback — if the appointment start
+  // is in the past and the job is not in a terminal status, it is overdue.
+  'scheduled_start_time',
 ]
 
 const OVERDUE_SOURCE_LABELS = {
@@ -24,6 +27,7 @@ const OVERDUE_SOURCE_LABELS = {
   dueDate: 'Due date',
   next_due_iso: 'Due date',
   dueAt: 'Due date',
+  scheduled_start_time: 'Scheduled start',
 }
 
 function toDate(input) {
@@ -40,6 +44,12 @@ function getEarliestOverdueMeta(job, now = new Date()) {
   let earliestMeta = null
 
   for (const field of OVERDUE_CANDIDATE_FIELDS) {
+    // scheduled_start_time is only a valid overdue signal for jobs that have
+    // already been started (in_progress, quality_check). For 'scheduled' status
+    // the appointment start being in the past just means it hasn't kicked off yet,
+    // not that it's overdue — the coordinator needs to see it, not the overdue inbox.
+    if (field === 'scheduled_start_time' && job?.job_status === 'scheduled') continue
+
     const ts = toDate(job?.[field])?.getTime()
     if (typeof ts !== 'number') continue
     if (ts >= nowTs) continue

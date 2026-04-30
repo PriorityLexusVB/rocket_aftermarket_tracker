@@ -26,14 +26,14 @@ function hasSchedulableLineItems(lineItems = []) {
   })
 }
 
-function maybeAutoUpgradeJobStatusToScheduled(currentStatus, lineItems) {
-  const s = String(currentStatus || '')
-    .trim()
-    .toLowerCase()
-  const eligible = !s || s === 'new' || s === 'pending'
-  if (!eligible) return currentStatus
-  if (!hasSchedulableLineItems(lineItems)) return currentStatus
-  return 'scheduled'
+/**
+ * @deprecated Coordinator must explicitly call scheduleJob(). Remove after verifying no callers need auto-upgrade.
+ *
+ * Previously auto-flipped job status to 'scheduled' when line items had a promised_date,
+ * bypassing coordinator review entirely. Now neutralized — always returns currentStatus unchanged.
+ */
+function maybeAutoUpgradeJobStatusToScheduled(currentStatus, _lineItems) {
+  return currentStatus
 }
 // Typed schemas from Drizzle + Zod (Section 20)
 import { jobInsertSchema } from '@/db/schemas'
@@ -225,6 +225,7 @@ export const jobService = {
         vendor_id: dealData?.vendor_id ?? null,
         vehicle_id: dealData?.vehicle_id ?? null,
         priority: dealData?.priority ?? null,
+        // TODO: coordinator should approve scheduling
         job_status: maybeAutoUpgradeJobStatusToScheduled(
           dealData?.job_status ?? 'new',
           dealData?.lineItems

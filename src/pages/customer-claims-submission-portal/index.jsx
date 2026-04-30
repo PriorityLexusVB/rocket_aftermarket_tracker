@@ -493,9 +493,13 @@ const CustomerClaimsSubmissionPortal = () => {
                         errors?.customer_name ? 'border-red-300' : 'border-gray-300'
                       }`}
                       placeholder="Enter customer name"
+                      aria-describedby={errors?.customer_name ? 'claims-customer-name-error' : undefined}
+                      aria-invalid={errors?.customer_name ? true : undefined}
                     />
                     {errors?.customer_name && (
-                      <p className="text-red-600 text-sm mt-1">{errors?.customer_name}</p>
+                      <p id="claims-customer-name-error" className="text-red-600 text-sm mt-1" role="alert">
+                        {errors?.customer_name}
+                      </p>
                     )}
                   </div>
 
@@ -512,9 +516,13 @@ const CustomerClaimsSubmissionPortal = () => {
                         errors?.customer_email ? 'border-red-300' : 'border-gray-300'
                       }`}
                       placeholder="Enter email address"
+                      aria-describedby={errors?.customer_email ? 'claims-customer-email-error' : undefined}
+                      aria-invalid={errors?.customer_email ? true : undefined}
                     />
                     {errors?.customer_email && (
-                      <p className="text-red-600 text-sm mt-1">{errors?.customer_email}</p>
+                      <p id="claims-customer-email-error" className="text-red-600 text-sm mt-1" role="alert">
+                        {errors?.customer_email}
+                      </p>
                     )}
                   </div>
 
@@ -531,9 +539,13 @@ const CustomerClaimsSubmissionPortal = () => {
                         errors?.customer_phone ? 'border-red-300' : 'border-gray-300'
                       }`}
                       placeholder="Enter phone number"
+                      aria-describedby={errors?.customer_phone ? 'claims-customer-phone-error' : undefined}
+                      aria-invalid={errors?.customer_phone ? true : undefined}
                     />
                     {errors?.customer_phone && (
-                      <p className="text-red-600 text-sm mt-1">{errors?.customer_phone}</p>
+                      <p id="claims-customer-phone-error" className="text-red-600 text-sm mt-1" role="alert">
+                        {errors?.customer_phone}
+                      </p>
                     )}
                   </div>
                 </div>

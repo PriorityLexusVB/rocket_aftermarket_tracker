@@ -564,6 +564,39 @@ export async function getReturnedLoanerAssignmentsForJob(jobId, { limit = 25 } =
   }
 }
 
+// P0-4: Check loaner availability without importing supabase in React components.
+// Returns { status: 'available' | 'in-use' | 'invalid', assignment: data[0] | null }
+export async function checkLoanerAvailability(loanerNumber) {
+  if (!loanerNumber) return { status: 'invalid', assignment: null }
+
+  try {
+    const { data, error } = await supabase
+      .from('loaner_assignments')
+      .select('id, returned_at, eta_return_date, jobs(id, title)')
+      .eq('loaner_number', loanerNumber)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.warn('[dealLoaners:checkLoanerAvailability] query error:', error?.message)
+      return { status: 'invalid', assignment: null }
+    }
+
+    if (!data || data.length === 0) {
+      return { status: 'available', assignment: null }
+    }
+
+    const latest = data[0]
+    return {
+      status: latest.returned_at ? 'available' : 'in-use',
+      assignment: latest,
+    }
+  } catch (err) {
+    console.warn('[dealLoaners:checkLoanerAvailability] failed:', err?.message)
+    return { status: 'invalid', assignment: null }
+  }
+}
+
 // A3: Strict helper for interactive loaner assignment saves
 // - Unlike upsertLoanerAssignment() (which degrades silently to avoid blocking deal saves),
 //   this version is intended for dedicated UI actions and MUST surface failures.

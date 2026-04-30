@@ -886,7 +886,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     required
                     data-testid="customer-name-input"
                     autoComplete="off"
+                    aria-describedby={error && !customerData?.customerName?.trim() ? 'v2-customer-name-error' : undefined}
+                    aria-invalid={error && !customerData?.customerName?.trim() ? true : undefined}
                   />
+                  {error && !customerData?.customerName?.trim() && (
+                    <p id="v2-customer-name-error" className="mt-1 text-sm text-red-600" role="alert">
+                      Customer name is required
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -903,7 +910,14 @@ export default function DealFormV2({ mode = 'create', job = null, onSave, onCanc
                     placeholder="Enter deal number"
                     required
                     data-testid="deal-number-input"
+                    aria-describedby={error && !customerData?.jobNumber?.trim() ? 'v2-job-number-error' : undefined}
+                    aria-invalid={error && !customerData?.jobNumber?.trim() ? true : undefined}
                   />
+                  {error && !customerData?.jobNumber?.trim() && (
+                    <p id="v2-job-number-error" className="mt-1 text-sm text-red-600" role="alert">
+                      Deal number is required
+                    </p>
+                  )}
                 </div>
               </div>
 
