@@ -82,3 +82,9 @@ drizzle/
 !.vscode/extensions.json
 !.vscode/tasks.json
 test-output*.log
+
+# Browser-tester screenshots + Claude session artifacts
+*.png
+.claude/
+build-result.log
+vite-build-out.log
