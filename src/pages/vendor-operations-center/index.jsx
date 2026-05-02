@@ -7,7 +7,7 @@ import PerformanceDashboard from './components/PerformanceDashboard'
 import Icon from '../../components/AppIcon'
 import Button from '../../components/ui/Button'
 import { useAuth } from '../../contexts/AuthContext'
-import { getVendorVehicles, getVendorJobs, getVendors } from '../../services/vendorService'
+import vendorService, { getVendorVehicles, getVendorJobs, getVendors } from '../../services/vendorService'
 
 const VendorOperationsCenter = () => {
   const { userProfile, isManager, isVendor, vendorId } = useAuth()
@@ -19,6 +19,10 @@ const VendorOperationsCenter = () => {
   const [, setError] = useState('')
 
   const [vendors, setVendors] = useState([])
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createForm, setCreateForm] = useState({ name: '', phone: '', email: '', specialty: '' })
+  const [createError, setCreateError] = useState('')
+  const [createLoading, setCreateLoading] = useState(false)
 
   const mapVendorRowToUi = (v) => {
     const specialty = v?.specialty ? String(v.specialty) : ''
@@ -110,7 +114,9 @@ const VendorOperationsCenter = () => {
         break
       }
       case 'create':
-        console.warn('Create vendor is not implemented yet')
+        setCreateForm({ name: '', phone: '', email: '', specialty: '' })
+        setCreateError('')
+        setShowCreateModal(true)
         break
       default:
         console.warn('Unknown action:', action)
@@ -201,6 +207,31 @@ const VendorOperationsCenter = () => {
 
     initializeVendorOperations()
   }, [userProfile, isManager, isVendor, vendorId])
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault()
+    if (!createForm.name.trim()) {
+      setCreateError('Vendor name is required.')
+      return
+    }
+    setCreateLoading(true)
+    setCreateError('')
+    try {
+      await vendorService.createVendor({
+        name: createForm.name.trim(),
+        phone: createForm.phone.trim() || undefined,
+        email: createForm.email.trim() || undefined,
+        specialty: createForm.specialty.trim() || undefined,
+      })
+      const refreshed = await getVendors()
+      setVendors((refreshed || []).map(mapVendorRowToUi))
+      setShowCreateModal(false)
+    } catch (err) {
+      setCreateError(err?.message || 'Failed to create vendor.')
+    } finally {
+      setCreateLoading(false)
+    }
+  }
 
   // Add access control check
   if (!isManager && !isVendor) {
@@ -363,6 +394,88 @@ const VendorOperationsCenter = () => {
           )}
         </div>
       </main>
+
+      {/* Create Vendor Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Add Vendor</h2>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <Icon name="X" size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vendor Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Vendor company name"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={createForm.phone}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="(555) 000-0000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="vendor@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
+                <input
+                  type="text"
+                  value={createForm.specialty}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, specialty: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="e.g. Tint, ToughGuard, Wheels"
+                />
+              </div>
+              {createError && (
+                <p className="text-sm text-red-600">{createError}</p>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createLoading}
+                  className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {createLoading ? 'Creating…' : 'Create Vendor'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
