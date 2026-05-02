@@ -543,7 +543,7 @@ const CalendarSchedulingCenter = ({
     // RAF ensures the DOM has painted before we attempt the scroll
     const rafId = requestAnimationFrame(() => {
       const todayCell = document.querySelector('[data-today="true"]')
-      if (todayCell) {
+      if (todayCell && typeof todayCell.scrollIntoView === 'function') {
         todayCell.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
     })
