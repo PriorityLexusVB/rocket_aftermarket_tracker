@@ -194,19 +194,25 @@ const VehicleManagementHub = () => {
     )
     const newPriority = !allPriority
     try {
-      await Promise.all(
+      const results = await Promise.allSettled(
         selectedVehicles.map((vehicleId) => updateVehicle(vehicleId, { is_priority: newPriority }))
       )
-      let refreshedData
-      if (isVendor && vendorId) {
-        refreshedData = await getVendorAccessibleVehicles(vendorId)
-      } else {
-        refreshedData = await getVehicles(filters)
+      const failed = results.filter((r) => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.error(`[VehicleManagementHub] ${failed.length} priority update(s) failed:`, failed)
       }
-      setVehicles(refreshedData || [])
     } catch (error) {
       console.error('Error bulk-marking priority:', error)
     } finally {
+      // Always refresh so UI reflects actual DB state, even on partial failure
+      try {
+        const refreshedData = isVendor && vendorId
+          ? await getVendorAccessibleVehicles(vendorId)
+          : await getVehicles(filters)
+        setVehicles(refreshedData || [])
+      } catch (refreshErr) {
+        console.error('[VehicleManagementHub] Failed to refresh after priority update:', refreshErr)
+      }
       setSelectedVehicles([])
     }
   }

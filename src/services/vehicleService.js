@@ -692,3 +692,7 @@ function createVehicleWithProducts(...args) {
 }
 
 export { createVehicleWithProducts }
+
+export function updateVehicle(...args) {
+  return vehicleService.updateVehicle(...args)
+}
