@@ -84,9 +84,31 @@ const VendorOperationsCenter = () => {
       case 'reassign':
         console.warn('Reassign jobs is not implemented yet:', vendorIds)
         break
-      case 'export':
-        console.warn('Export vendor report is not implemented yet:', vendorIds)
+      case 'export': {
+        const selected = vendors.filter((v) => (vendorIds || []).includes(v.id))
+        if (!selected.length) break
+        const headers = ['Name', 'Phone', 'Email', 'Status', 'Specialties', 'Active Jobs', 'Overdue Jobs']
+        const rows = selected.map((v) => [
+          v.name || '',
+          v.contact?.phone || '',
+          v.contact?.email || '',
+          v.status || '',
+          (v.specialties || []).join('; '),
+          v.activeJobs || 0,
+          v.overdueJobs || 0,
+        ])
+        const csv = [headers, ...rows]
+          .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+          .join('\n')
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `vendors-export-${new Date().toISOString().slice(0, 10)}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
         break
+      }
       case 'create':
         console.warn('Create vendor is not implemented yet')
         break

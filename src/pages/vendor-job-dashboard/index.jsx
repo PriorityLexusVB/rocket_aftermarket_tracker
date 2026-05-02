@@ -10,6 +10,7 @@ import QuickStats from './components/QuickStats'
 import Icon from '../../components/AppIcon'
 import Button from '../../components/ui/Button'
 import vendorService, { getVendorJobs } from '../../services/vendorService'
+import jobService from '../../services/jobService'
 
 const VendorJobDashboard = () => {
   const { vendorId } = useParams()
@@ -145,13 +146,49 @@ const VendorJobDashboard = () => {
     }
   }, [jobs])
 
-  const handleStatusUpdate = (jobId, newStatus) => {
-    console.warn('VendorJobDashboard: status update not implemented', { jobId, newStatus })
+  const refreshJobs = async () => {
+    try {
+      const rows = await getVendorJobs(vendorId)
+      const mapped = (rows || []).map((r) => {
+        const assignedDate = r?.scheduled_start ?? r?.created_at ?? null
+        const dueDate = r?.scheduled_end ?? null
+        return {
+          id: r?.job_id ?? r?.id,
+          jobId: r?.job_number ?? r?.job_id ?? '',
+          vehicle: { year: '', make: r?.vehicle_info ?? '', model: '', vin: '' },
+          product: r?.job_title ?? '',
+          assignedDate: assignedDate ? new Date(assignedDate).toISOString().slice(0, 10) : '',
+          dueDate: dueDate ? new Date(dueDate).toISOString().slice(0, 10) : '',
+          status: normalizeStatus(r?.job_status),
+          priority: undefined,
+        }
+      })
+      setJobs(mapped)
+    } catch (e) {
+      console.error('VendorJobDashboard: refresh failed', e)
+    }
   }
 
-  const handleBulkUpdate = (jobIds, newStatus) => {
-    setSelectedJobs([])
-    console.warn('VendorJobDashboard: bulk update not implemented', { jobIds, newStatus })
+  const handleStatusUpdate = async (jobId, newStatus) => {
+    try {
+      await jobService.updateJob(jobId, { job_status: newStatus })
+      await refreshJobs()
+    } catch (e) {
+      console.error('VendorJobDashboard: status update failed', { jobId, newStatus, e })
+    }
+  }
+
+  const handleBulkUpdate = async (jobIds, newStatus) => {
+    try {
+      await Promise.allSettled(
+        (jobIds || []).map((jobId) => jobService.updateJob(jobId, { job_status: newStatus }))
+      )
+      await refreshJobs()
+    } catch (e) {
+      console.error('VendorJobDashboard: bulk update failed', { jobIds, newStatus, e })
+    } finally {
+      setSelectedJobs([])
+    }
   }
 
   const handleSendMessage = (messageContent) => {
