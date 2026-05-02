@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Icon from '../../../components/AppIcon'
 import Button from '../../../components/ui/Button'
 import Select from '../../../components/ui/Select'
+import { getVendors } from '../../../services/dropdownService'
 
 const BulkActionsBar = ({
   selectedCount,
@@ -9,9 +10,32 @@ const BulkActionsBar = ({
   onBulkExport,
   onBulkDelete,
   onClearSelection,
+  onBulkAssignVendor,
+  onBulkMarkPriority,
 }) => {
   const [bulkAction, setBulkAction] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
+
+  // Vendor assignment modal state
+  const [showVendorModal, setShowVendorModal] = useState(false)
+  const [vendors, setVendors] = useState([])
+  const [selectedVendorId, setSelectedVendorId] = useState('')
+  const [loadingVendors, setLoadingVendors] = useState(false)
+
+  // Status selection modal state
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [selectedStatus, setSelectedStatus] = useState('')
+
+  const jobStatusOptions = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'scheduled', label: 'Scheduled' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'quality_check', label: 'Quality Check' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+  ]
 
   const statusOptions = [
     { value: 'available', label: 'Available' },
@@ -20,37 +44,108 @@ const BulkActionsBar = ({
     { value: 'sold', label: 'Sold' },
   ]
 
-  const handleBulkAction = async (action) => {
-    setIsProcessing(true)
+  // Load vendors when the vendor modal opens
+  useEffect(() => {
+    if (!showVendorModal) return
+    setLoadingVendors(true)
+    getVendors({ activeOnly: true })
+      .then((opts) => setVendors(opts || []))
+      .catch(() => setVendors([]))
+      .finally(() => setLoadingVendors(false))
+  }, [showVendorModal])
 
-    try {
-      switch (action) {
-        case 'update-status':
-          // This would open a modal or dropdown for status selection
-          // TODO: open status selection modal
-          break
-        case 'export-selected':
+  const handleBulkAction = async (action) => {
+    if (!action) return
+
+    switch (action) {
+      case 'update-status':
+        // Open the status selection modal so the user can pick a job status
+        setSelectedStatus('')
+        setShowStatusModal(true)
+        setBulkAction('')
+        return
+      case 'export-selected':
+        setIsProcessing(true)
+        try {
           await onBulkExport()
-          break
-        case 'assign-vendor':
-          // TODO: assign vendor to selected vehicles
-          break
-        case 'mark-priority':
-          // TODO: mark selected vehicles as priority
-          break
-        case 'delete':
-          if (window.confirm(`Are you sure you want to delete ${selectedCount} vehicles?`)) {
-            await onBulkDelete()
+        } catch (error) {
+          console.error('Bulk export failed:', error)
+        } finally {
+          setIsProcessing(false)
+          setBulkAction('')
+        }
+        return
+      case 'assign-vendor':
+        // Open the vendor assignment modal
+        setSelectedVendorId('')
+        setShowVendorModal(true)
+        setBulkAction('')
+        return
+      case 'mark-priority': {
+        // Immediate action — no modal needed
+        setIsProcessing(true)
+        try {
+          if (typeof onBulkMarkPriority === 'function') {
+            await onBulkMarkPriority()
+          } else {
+            console.warn('BulkActionsBar: onBulkMarkPriority prop not provided')
           }
-          break
-        default:
-          break
+        } catch (error) {
+          console.error('Mark priority failed:', error)
+        } finally {
+          setIsProcessing(false)
+          setBulkAction('')
+        }
+        return
       }
+      case 'delete':
+        if (window.confirm(`Are you sure you want to delete ${selectedCount} vehicles?`)) {
+          setIsProcessing(true)
+          try {
+            await onBulkDelete()
+          } catch (error) {
+            console.error('Bulk delete failed:', error)
+          } finally {
+            setIsProcessing(false)
+          }
+        }
+        setBulkAction('')
+        return
+      default:
+        setBulkAction('')
+        return
+    }
+  }
+
+  const handleStatusConfirm = async () => {
+    if (!selectedStatus) return
+    setShowStatusModal(false)
+    setIsProcessing(true)
+    try {
+      await onBulkStatusUpdate(selectedStatus)
     } catch (error) {
-      console.error('Bulk action failed:', error)
+      console.error('Bulk status update failed:', error)
     } finally {
       setIsProcessing(false)
-      setBulkAction('')
+      setSelectedStatus('')
+    }
+  }
+
+  const handleVendorConfirm = async () => {
+    if (!selectedVendorId) return
+    setShowVendorModal(false)
+    setIsProcessing(true)
+    try {
+      if (typeof onBulkAssignVendor === 'function') {
+        await onBulkAssignVendor(selectedVendorId)
+      } else {
+        console.warn('BulkActionsBar: onBulkAssignVendor prop not provided')
+      }
+    } catch (error) {
+      console.error('Bulk vendor assignment failed:', error)
+    } finally {
+      setIsProcessing(false)
+      setSelectedVendorId('')
     }
   }
 
@@ -124,8 +219,6 @@ const BulkActionsBar = ({
               options={[
                 { value: '', label: 'More Actions...' },
                 { value: 'mark-priority', label: 'Mark as Priority' },
-                { value: 'duplicate', label: 'Duplicate Vehicles' },
-                { value: 'archive', label: 'Archive Selected' },
                 { value: 'delete', label: 'Delete Selected' },
               ]}
               value=""
@@ -158,6 +251,83 @@ const BulkActionsBar = ({
           </div>
         )}
       </div>
+
+      {/* Status Selection Modal */}
+      {showStatusModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card border border-border rounded-lg shadow-elevation-3 p-6 w-80">
+            <h3 className="text-base font-semibold text-foreground mb-4">
+              Update Job Status for {selectedCount} {selectedCount === 1 ? 'Vehicle' : 'Vehicles'}
+            </h3>
+            <Select
+              placeholder="Select a status"
+              options={jobStatusOptions}
+              value={selectedStatus}
+              onChange={(val) => setSelectedStatus(val)}
+              className="w-full mb-4"
+            />
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setShowStatusModal(false); setSelectedStatus('') }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleStatusConfirm}
+                disabled={!selectedStatus}
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vendor Assignment Modal */}
+      {showVendorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-card border border-border rounded-lg shadow-elevation-3 p-6 w-80">
+            <h3 className="text-base font-semibold text-foreground mb-4">
+              Assign Vendor to {selectedCount} {selectedCount === 1 ? 'Vehicle' : 'Vehicles'}
+            </h3>
+            {loadingVendors ? (
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
+                <Icon name="Loader2" size={16} className="animate-spin" />
+                <span>Loading vendors...</span>
+              </div>
+            ) : (
+              <Select
+                placeholder="Select a vendor"
+                options={vendors}
+                value={selectedVendorId}
+                onChange={(val) => setSelectedVendorId(val)}
+                className="w-full mb-4"
+              />
+            )}
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setShowVendorModal(false); setSelectedVendorId('') }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleVendorConfirm}
+                disabled={!selectedVendorId || loadingVendors}
+              >
+                Assign
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

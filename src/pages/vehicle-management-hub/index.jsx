@@ -161,6 +161,16 @@ const VehicleManagementHub = () => {
     setSelectedVehicles([])
   }
 
+  const handleBulkAssignVendor = async (vendorId) => {
+    // In real app, this would assign vendorId to each selected vehicle's active job
+    setSelectedVehicles([])
+  }
+
+  const handleBulkMarkPriority = async () => {
+    // In real app, this would toggle priority flag on selected vehicles
+    setSelectedVehicles([])
+  }
+
   const handleClearFilters = () => {
     setFilters({
       make: '',
@@ -278,6 +288,8 @@ const VehicleManagementHub = () => {
             onBulkExport={handleBulkExport}
             onBulkDelete={handleBulkDelete}
             onClearSelection={() => setSelectedVehicles([])}
+            onBulkAssignVendor={handleBulkAssignVendor}
+            onBulkMarkPriority={handleBulkMarkPriority}
           />
         </div>
       </main>

@@ -2,6 +2,29 @@ import { supabase } from '@/lib/supabase'
 import { buildUserProfileSelectFragment, resolveUserProfileName } from '@/utils/userProfileName'
 import { safeSelect } from '../lib/supabase/safeSelect'
 
+/**
+ * Translates raw Postgres / Supabase errors into plain-English messages.
+ * RLS WITH CHECK violations (code 42501 or message containing "row-level security")
+ * are surfaced as a user-facing permission message instead of a raw PG error string.
+ *
+ * @param {object} error  - Supabase error object
+ * @param {string} action - Short description of the attempted action for context
+ * @returns {string}
+ */
+function translateSupabaseError(error, action = 'perform this action') {
+  const msg = String(error?.message || '')
+  const code = String(error?.code || '')
+  const isRls =
+    msg.toLowerCase().includes('row-level security') ||
+    code === '42501' ||
+    code === 'P0001' ||
+    msg.toLowerCase().includes('insufficient_privilege')
+  if (isRls) {
+    return `You don't have permission to ${action}. Make sure the vehicle is assigned to your organization.`
+  }
+  return msg || `Failed to ${action}`
+}
+
 export const vehicleService = {
   // Vehicles page helpers (guardrail: keep Supabase out of React pages)
   async listVehiclesForVehiclesPage({ statusFilter } = {}) {
@@ -112,6 +135,38 @@ export const vehicleService = {
   // Get all vehicles with optional filtering
   async getVehicles(filters = {}, orgId = null) {
     try {
+      // Resolve org_id (dealer_id) for scoping. When orgId is not supplied by the
+      // caller we derive it from the current user's profile via the auth_dealer_id
+      // RPC so that orphan vehicles (no jobs yet) are still visible.
+      let resolvedOrgId = orgId
+      if (!resolvedOrgId) {
+        try {
+          const { data: dealerId, error: dealerErr } = await supabase?.rpc?.('auth_dealer_id')
+          if (!dealerErr && dealerId) {
+            resolvedOrgId = dealerId
+          }
+        } catch {
+          // RPC unavailable — fall back to profile lookup
+        }
+        if (!resolvedOrgId) {
+          const userId = (await supabase?.auth?.getUser())?.data?.user?.id
+          if (userId) {
+            const { data: prof } = await supabase
+              ?.from('user_profiles')
+              ?.select('dealer_id')
+              ?.eq('id', userId)
+              ?.maybeSingle()
+            if (prof?.dealer_id) resolvedOrgId = prof.dealer_id
+          }
+        }
+      }
+
+      // Fail closed: never run an unscoped query that returns all orgs
+      if (!resolvedOrgId) {
+        console.error('[vehicleService] getVehicles: could not resolve orgId — refusing unscoped query')
+        return { data: [], error: null }
+      }
+
       const profileFrag = buildUserProfileSelectFragment()
       let query = supabase
         ?.from('vehicles')
@@ -122,8 +177,8 @@ export const vehicleService = {
         `
         )
         ?.order('created_at', { ascending: false })
-      // Back-compat: orgId param is treated as dealer_id.
-      if (orgId) query = query?.eq('dealer_id', orgId)
+      // Scope to org (dealer_id). Includes orphan vehicles that have no jobs yet.
+      if (resolvedOrgId) query = query?.eq('dealer_id', resolvedOrgId)
 
       // Apply filters
       if (filters?.status) {
@@ -242,7 +297,7 @@ export const vehicleService = {
         ?.single()
 
       if (error) {
-        return { data: null, error: { message: error?.message } }
+        return { data: null, error: { message: translateSupabaseError(error, 'create vehicle') } }
       }
 
       if (data?.created_by_profile) {
@@ -413,7 +468,7 @@ export const vehicleService = {
         ?.maybeSingle()
 
       if (error) {
-        return { data: null, error: { message: error?.message } }
+        return { data: null, error: { message: translateSupabaseError(error, 'update vehicle') } }
       }
 
       // Guard: UPDATE can be blocked by RLS and return 0 rows without error.
@@ -465,7 +520,7 @@ export const vehicleService = {
         ?.eq('id', id)
         ?.select('id')
 
-      if (error) return { error: { message: error?.message } }
+      if (error) return { error: { message: translateSupabaseError(error, 'delete vehicle') } }
 
       if (Array.isArray(deleted) && deleted.length === 0) {
         const { data: stillThere, error: checkErr } = await supabase

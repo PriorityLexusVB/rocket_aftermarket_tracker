@@ -15,6 +15,8 @@ export default function LoanerManagementDrawer() {
   const [loaners, setLoaners] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // Tracks whether the loaner query failed due to an access/permissions error
+  const [loanerAccessDenied, setLoanerAccessDenied] = useState(false)
   const [inventory, setInventory] = useState({
     available: 0,
     assigned: 0,
@@ -39,6 +41,7 @@ export default function LoanerManagementDrawer() {
     try {
       setLoading(true)
       setError('')
+      setLoanerAccessDenied(false)
 
       // Get all loaner assignments with job and customer data
       const assignments = await listLoanerAssignmentsForDrawer()
@@ -57,7 +60,18 @@ export default function LoanerManagementDrawer() {
         overdue,
       })
     } catch (err) {
-      setError(`Failed to load loaner data: ${err?.message}`)
+      // Distinguish permission errors (RLS / 403) from other failures
+      const msg = err?.message || ''
+      const isPermissionError =
+        err?.code === '42501' ||
+        err?.status === 403 ||
+        /permission denied|not authorized|insufficient privilege|rls/i.test(msg)
+
+      if (isPermissionError) {
+        setLoanerAccessDenied(true)
+      } else {
+        setError(`Failed to load loaner data: ${msg}`)
+      }
       console.error('Load loaners error:', err)
     } finally {
       setLoading(false)
@@ -325,8 +339,20 @@ export default function LoanerManagementDrawer() {
 
           {loaners?.length === 0 ? (
             <div className="p-8 text-center text-slate-500">
-              <Icon name="Car" size={48} className="mx-auto mb-4 text-slate-300" />
-              <p>No loaner assignments found</p>
+              {loanerAccessDenied ? (
+                <>
+                  <Icon name="Lock" size={48} className="mx-auto mb-4 text-slate-300" />
+                  <p className="font-medium text-slate-700">Permission denied</p>
+                  <p className="text-sm mt-1">
+                    You don&apos;t have permission to view loaners. Contact your administrator.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Icon name="Car" size={48} className="mx-auto mb-4 text-slate-300" />
+                  <p>No loaner vehicles available</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

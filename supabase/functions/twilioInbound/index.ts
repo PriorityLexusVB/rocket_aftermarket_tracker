@@ -85,6 +85,27 @@ serve(async (req) => {
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN')
     const isValid = await validateTwilioSignature(req, formData, authToken)
     if (!isValid) {
+      // Audit log first, then return 403. Awaiting the insert ensures Deno doesn't
+      // terminate the runtime before the row lands. A DB failure never blocks the 403.
+      try {
+        const auditClient = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+        const callerIp = req.headers.get('x-forwarded-for') ?? req.headers.get('cf-connecting-ip') ?? 'unknown-ip'
+        const ua = req.headers.get('user-agent') ?? 'unknown-ua'
+        await auditClient.from('communications').insert({
+          communication_type: 'note',
+          recipient: callerIp.slice(0, 255),
+          subject: 'Webhook rejected: HMAC validation failed',
+          message: `Rejected inbound POST to twilioInbound — HMAC signature mismatch. method=${req.method} user-agent="${ua.slice(0, 500)}" timestamp=${new Date().toISOString()}`,
+          is_successful: false,
+          error_message: 'X-Twilio-Signature did not match computed HMAC-SHA1',
+          sent_at: new Date().toISOString(),
+        })
+      } catch (logErr) {
+        console.error('[twilioInbound] Failed to log 403 rejection:', logErr)
+      }
       return new Response('Forbidden', { status: 403 })
     }
 

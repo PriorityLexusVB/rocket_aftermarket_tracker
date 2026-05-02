@@ -966,7 +966,7 @@ const CalendarFlowManagementCenter = ({
                   {/* Jobs for this day */}
                   <div className="space-y-1">
                     {day?.jobs?.slice(0, 2)?.map((job) => {
-                      const isOnSite = !job?.vendor_id || job?.location === 'on_site'
+                      const isOnSite = !job?.vendor_id
                       const serviceType = isOnSite ? 'onsite' : 'vendor'
                       const dayJobColors = useUnifiedColors
                         ? getEventColors(serviceType, job?.job_status)
@@ -1013,7 +1013,7 @@ const CalendarFlowManagementCenter = ({
     const containerClassName = options?.containerClassName || ''
     const containerStyle = options?.containerStyle || undefined
 
-    const isOnSite = !job?.vendor_id || job?.location === 'on_site'
+    const isOnSite = !job?.vendor_id
     const jobNumber = job?.job_number?.split('-')?.pop()
     const titleText = [jobNumber, job?.title].filter(Boolean).join(' • ')
     const serviceType = isOnSite ? 'onsite' : 'vendor'
@@ -1343,10 +1343,8 @@ const CalendarFlowManagementCenter = ({
 
   const renderVendorLanes = () => {
     const allDayJobs = needsSchedulingJobsForView || []
-    const allDayOnSiteJobs = allDayJobs.filter(
-      (job) => !job?.vendor_id || job?.location === 'on_site'
-    )
-    const onSiteJobs = filteredJobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
+    const allDayOnSiteJobs = allDayJobs.filter((job) => !job?.vendor_id)
+    const onSiteJobs = filteredJobs?.filter((job) => !job?.vendor_id)
     const onSiteCombined = [...(allDayOnSiteJobs || []), ...(onSiteJobs || [])]
     const vendorsToShow = showEmptyLanes
       ? vendors
