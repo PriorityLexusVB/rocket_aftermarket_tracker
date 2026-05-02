@@ -6,7 +6,7 @@ import { calendarService } from '@/services/calendarService'
 import { jobService } from '@/services/jobService'
 import { claimsService } from '@/services/claimsService'
 import { getAllDeals } from '@/services/dealService'
-import { getOpenOpportunitySummary } from '@/services/opportunitiesService'
+import { getOpenOpportunitySummary, listByJobId } from '@/services/opportunitiesService'
 import { getDealFinancials } from '@/utils/dealKpis'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -75,6 +75,7 @@ const DashboardPage = () => {
   const [todayDeals, setTodayDeals] = useState([])
   const [openClaims, setOpenClaims] = useState(null)
   const [openOppSummary, setOpenOppSummary] = useState(null)
+  const [openOppByJobId, setOpenOppByJobId] = useState({})
 
   const refresh = useCallback(async () => {
     try {
@@ -138,6 +139,35 @@ const DashboardPage = () => {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    let alive = true
+    const ids = todayJobs.map((j) => j?.id).filter(Boolean)
+    const missing = ids.filter((id) => openOppByJobId[id] == null)
+    if (!missing.length) return () => {}
+    ;(async () => {
+      const results = await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const rows = await listByJobId(id)
+            const openCount = (Array.isArray(rows) ? rows : []).filter(
+              (row) => (row?.status || 'open') === 'open'
+            ).length
+            return [id, openCount]
+          } catch {
+            return [id, 0]
+          }
+        })
+      )
+      if (!alive) return
+      setOpenOppByJobId((prev) => {
+        const next = { ...prev }
+        for (const [id, count] of results) next[id] = count
+        return next
+      })
+    })()
+    return () => { alive = false }
+  }, [todayJobs])
 
   const todayFinancials = useMemo(() => {
     let revenue = 0
@@ -403,6 +433,11 @@ const DashboardPage = () => {
                                 {loaner ? (
                                   <Pill className="border-slate-200 bg-slate-50 text-slate-800">
                                     Loaner
+                                  </Pill>
+                                ) : null}
+                                {openOppByJobId[job?.id] > 0 ? (
+                                  <Pill className="border-violet-200 bg-violet-50 text-violet-900">
+                                    Opps {openOppByJobId[job?.id]}
                                   </Pill>
                                 ) : null}
                                 {hasMissingCost ? (
