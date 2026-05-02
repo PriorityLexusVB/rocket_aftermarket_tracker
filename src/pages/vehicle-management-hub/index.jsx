@@ -13,7 +13,9 @@ import {
   getVehicles,
   getVendorAccessibleVehicles,
   createVehicleWithProducts,
+  updateVehicle,
 } from '../../services/vehicleService'
+import jobService from '../../services/jobService'
 
 const VehicleManagementHub = () => {
   const { userProfile, isManager, isVendor, vendorId } = useAuth()
@@ -161,14 +163,52 @@ const VehicleManagementHub = () => {
     setSelectedVehicles([])
   }
 
-  const handleBulkAssignVendor = async (vendorId) => {
-    // In real app, this would assign vendorId to each selected vehicle's active job
-    setSelectedVehicles([])
+  const handleBulkAssignVendor = async (newVendorId) => {
+    const activeStatuses = ['pending', 'scheduled', 'in_progress', 'quality_check']
+    try {
+      const assignments = selectedVehicles
+        .map((vehicleId) => {
+          const vehicle = vehicles.find((v) => v.id === vehicleId)
+          const activeJob = vehicle?.jobs?.find((job) => activeStatuses.includes(job.job_status))
+          return activeJob ? jobService.assignVendor(activeJob.id, newVendorId) : null
+        })
+        .filter(Boolean)
+      await Promise.all(assignments)
+      let refreshedData
+      if (isVendor && vendorId) {
+        refreshedData = await getVendorAccessibleVehicles(vendorId)
+      } else {
+        refreshedData = await getVehicles(filters)
+      }
+      setVehicles(refreshedData || [])
+    } catch (error) {
+      console.error('Error bulk-assigning vendor:', error)
+    } finally {
+      setSelectedVehicles([])
+    }
   }
 
   const handleBulkMarkPriority = async () => {
-    // In real app, this would toggle priority flag on selected vehicles
-    setSelectedVehicles([])
+    const allPriority = selectedVehicles.every(
+      (vehicleId) => vehicles.find((v) => v.id === vehicleId)?.is_priority === true
+    )
+    const newPriority = !allPriority
+    try {
+      await Promise.all(
+        selectedVehicles.map((vehicleId) => updateVehicle(vehicleId, { is_priority: newPriority }))
+      )
+      let refreshedData
+      if (isVendor && vendorId) {
+        refreshedData = await getVendorAccessibleVehicles(vendorId)
+      } else {
+        refreshedData = await getVehicles(filters)
+      }
+      setVehicles(refreshedData || [])
+    } catch (error) {
+      console.error('Error bulk-marking priority:', error)
+    } finally {
+      setSelectedVehicles([])
+    }
   }
 
   const handleClearFilters = () => {
