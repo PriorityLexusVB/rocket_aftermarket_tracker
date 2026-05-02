@@ -55,7 +55,7 @@ export function dealToFormState(deal) {
       needsLoaner: false,
       promisedDate: toYMD(p?.promised_date),
       requiresScheduling: !!p?.requires_scheduling, // ✅ Fixed: use correct column name
-      noScheduleReason: p?.no_schedule_reason || '', // ✅ Fixed: use correct column name
+      noScheduleReason: p?.no_schedule_reason === 'legacy_unspecified' ? '' : (p?.no_schedule_reason || ''), // mask backfill sentinel from migration 20260430000004
       quantity: p?.quantity_used ?? 1,
       _saved: true,
     }

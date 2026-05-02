@@ -32,7 +32,9 @@ BEGIN
   RAISE NOTICE 'Backfilled job_parts.no_schedule_reason for rows that would fail constraint';
 END $$;
 
--- 2. Validate the constraint (safe to re-run — already-valid constraints are no-ops).
+-- 2. Validate the constraint inside a guard so fresh-DB replay (without the
+--    NOT VALID source migration) doesn't error. VALIDATE CONSTRAINT is
+--    idempotent on already-valid constraints.
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -44,22 +46,7 @@ BEGIN
       AND t.relname = 'job_parts'
       AND c.conname = 'job_parts_no_schedule_reason_chk'
   ) THEN
-    RAISE NOTICE 'Constraint job_parts_no_schedule_reason_chk not found — skipping VALIDATE (table may not exist yet)';
-    RETURN;
-  END IF;
--- 2b. Run VALIDATE inside a guard so fresh-DB replay (without 20251023) doesn't error.
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint c
-    JOIN pg_class t ON t.oid = c.conrelid
-    JOIN pg_namespace n ON n.oid = t.relnamespace
-    WHERE n.nspname = 'public'
-      AND t.relname = 'job_parts'
-      AND c.conname = 'job_parts_no_schedule_reason_chk'
-  ) THEN
-    RAISE NOTICE 'Constraint job_parts_no_schedule_reason_chk not found — skipping VALIDATE';
+    RAISE NOTICE 'Constraint job_parts_no_schedule_reason_chk not found — skipping VALIDATE (table or constraint may not exist yet)';
     RETURN;
   END IF;
 
