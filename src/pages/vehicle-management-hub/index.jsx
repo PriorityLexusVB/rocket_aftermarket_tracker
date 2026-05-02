@@ -196,17 +196,22 @@ const VehicleManagementHub = () => {
           return activeJob ? jobService.assignVendor(activeJob.id, newVendorId) : null
         })
         .filter(Boolean)
-      await Promise.all(assignments)
-      let refreshedData
-      if (isVendor && vendorId) {
-        refreshedData = await getVendorAccessibleVehicles(vendorId)
-      } else {
-        refreshedData = await getVehicles(filters)
+      const results = await Promise.allSettled(assignments)
+      const failed = results.filter((r) => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.error(`[VehicleManagementHub] ${failed.length} vendor assignment(s) failed:`, failed)
       }
-      setVehicles(refreshedData || [])
     } catch (error) {
       console.error('Error bulk-assigning vendor:', error)
     } finally {
+      try {
+        const refreshedData = isVendor && vendorId
+          ? await getVendorAccessibleVehicles(vendorId)
+          : await getVehicles(filters)
+        setVehicles(refreshedData || [])
+      } catch (refreshErr) {
+        console.error('[VehicleManagementHub] Failed to refresh after vendor assignment:', refreshErr)
+      }
       setIsBulkLoading(false)
       setSelectedVehicles([])
     }
