@@ -426,15 +426,15 @@ export default function CalendarShell() {
 
               {/* Location type legend — always visible in header */}
               <div className="hidden sm:flex items-center gap-2.5 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground" aria-label="Location legend">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1" title="In-House — work stays on the lot">
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500 shrink-0" aria-hidden="true" />
                   In-House
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1" title="Off-Site — sent to an outside vendor">
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
                   Off-Site
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1" title="Mixed — some work on-site, some at a vendor">
                   <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0" aria-hidden="true" />
                   Mixed
                 </span>

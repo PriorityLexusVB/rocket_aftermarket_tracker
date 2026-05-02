@@ -15,7 +15,6 @@ const CalendarSchedulingCenter = () => {
   const [selectedVendors, setSelectedVendors] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [debugInfo, setDebugInfo] = useState('')
 
   // Date range calculation based on view type
   const dateRange = useMemo(() => {
@@ -62,8 +61,6 @@ const CalendarSchedulingCenter = () => {
         { label: 'Scheduling Center load' }
       )
 
-      setDebugInfo(res?.debugInfo || '')
-
       if (res?.error) {
         throw res.error
       }
@@ -72,7 +69,6 @@ const CalendarSchedulingCenter = () => {
     } catch (error) {
       console.error('Error loading calendar data:', error)
       setError(`Failed to load calendar data: ${error?.message}`)
-      setDebugInfo(`Error: ${error?.message}`)
       setJobs([])
     } finally {
       setLoading(false)
@@ -188,11 +184,7 @@ const CalendarSchedulingCenter = () => {
                   key={job?.id}
                   className="mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow"
                   style={{ backgroundColor: job?.color_code || '#3b82f6', color: 'white' }}
-                  onClick={() =>
-                    alert(
-                      `Job: ${job?.title}\nVendor: ${job?.vendor_name}\nTime: ${new Date(job.scheduled_start_time)?.toLocaleTimeString()}`
-                    )
-                  }
+                  onClick={() => {}}
                 >
                   <div className="font-medium truncate">{job?.title}</div>
                   <div className="text-xs opacity-90">{job?.vendor_name}</div>
@@ -221,11 +213,7 @@ const CalendarSchedulingCenter = () => {
               <div
                 key={job?.id}
                 className="bg-white p-4 rounded-lg shadow border cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() =>
-                  alert(
-                    `Job Details:\n${job?.title}\nVendor: ${job?.vendor_name}\nVehicle: ${job?.vehicle_info}\nTime: ${new Date(job.scheduled_start_time)?.toLocaleString()}`
-                  )
-                }
+                onClick={() => {}}
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -259,15 +247,6 @@ const CalendarSchedulingCenter = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Calendar Loading Error</h3>
           <p className="text-gray-600 mb-4">{error}</p>
 
-          <div className="bg-gray-100 p-3 rounded-lg text-left text-xs mb-4">
-            <p>
-              <strong>Debug Info:</strong>
-            </p>
-            <p>{debugInfo}</p>
-            <p>Jobs Count: {jobs?.length}</p>
-            <p>Vendors Count: {vendors?.length}</p>
-          </div>
-
           <div className="space-y-2">
             <button
               onClick={refreshData}
@@ -299,7 +278,6 @@ const CalendarSchedulingCenter = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="text-gray-600 mt-4">Loading calendar data...</p>
-          <p className="text-xs text-gray-500 mt-2">{debugInfo}</p>
         </div>
       </div>
     )
@@ -381,9 +359,6 @@ const CalendarSchedulingCenter = () => {
             <span>Period: {formatDisplayDate()}</span>
           </div>
 
-          {debugInfo && (
-            <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">{debugInfo}</div>
-          )}
         </div>
       </div>
       {/* Sidebar */}

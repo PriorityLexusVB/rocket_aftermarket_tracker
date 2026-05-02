@@ -7,8 +7,11 @@ const AdminModal = ({
   modalType,
   editingItem,
   submitting,
+  submittingRef,
   setShowModal,
   handleSubmit,
+  submitError,
+  onClearSubmitError,
   // User account form
   userAccountForm,
   setUserAccountForm,
@@ -54,8 +57,9 @@ const AdminModal = ({
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">{getModalTitle()}</h3>
           <button
-            onClick={() => setShowModal(false)}
-            className="text-gray-400 hover:text-gray-600"
+            onClick={() => { if (!submitting && !submittingRef?.current) { setShowModal(false); onClearSubmitError?.() } }}
+            disabled={submitting || submittingRef?.current}
+            className="text-gray-400 hover:text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ×
           </button>
@@ -385,11 +389,26 @@ const AdminModal = ({
             </>
           )}
 
+          {submitError && (
+            <div className="flex items-start justify-between gap-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 mb-2">
+              <span>{submitError}</span>
+              <button
+                type="button"
+                onClick={onClearSubmitError}
+                className="shrink-0 text-red-400 hover:text-red-600"
+                aria-label="Dismiss error"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-4">
             <UIButton
               type="button"
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200"
+              onClick={() => { setShowModal(false); onClearSubmitError?.() }}
+              disabled={submitting}
+              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
             >
               Cancel
             </UIButton>
@@ -398,7 +417,21 @@ const AdminModal = ({
               disabled={submitting}
               className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? 'Saving...' : editingItem ? 'Update' : 'Create'}
+              {submitting
+                ? 'Saving...'
+                : editingItem
+                  ? 'Update'
+                  : modalType === 'vendor'
+                    ? 'Add Vendor'
+                    : modalType === 'staff'
+                      ? 'Add Staff Member'
+                      : modalType === 'product'
+                        ? 'Add Product'
+                        : modalType === 'template'
+                          ? 'Add Template'
+                          : modalType === 'userAccount'
+                            ? 'Add User'
+                            : 'Create'}
             </UIButton>
           </div>
         </form>

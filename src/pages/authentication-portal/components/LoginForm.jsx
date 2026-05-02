@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../../../contexts/AuthContext'
 import { Button, Input, Checkbox } from '../../../components/ui'
 import SupabaseConfigNotice from '../../../components/ui/SupabaseConfigNotice'
-import { isSupabaseConfigured } from '../../../lib/supabase'
+import { isSupabaseConfigured, supabase } from '../../../lib/supabase'
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resetMessage, setResetMessage] = useState('')
 
   const supabaseConfigured = !!isSupabaseConfigured?.()
 
@@ -74,12 +75,39 @@ const LoginForm = () => {
     }
   }
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    const email = formData?.email?.trim()
+    if (!email) {
+      setError('Enter your email address above, then click Forgot password.')
+      return
+    }
+    if (!supabaseConfigured) {
+      setError('Supabase is not configured. Password reset is unavailable.')
+      return
+    }
+    setError('')
+    setResetMessage('')
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (resetError) {
+        setError(resetError.message || 'Failed to send reset email.')
+      } else {
+        setResetMessage(`Password reset email sent to ${email}. Check your inbox.`)
+      }
+    } catch {
+      setError('An error occurred. Please try again.')
+    }
+  }
+
   return (
     <div className="w-full space-y-5">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Welcome back</h2>
+        <h2 className="text-2xl font-bold text-foreground">Sign In</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Sign in to access your dealership operations workspace.
+          Enter your credentials to continue.
         </p>
       </div>
 
@@ -121,13 +149,21 @@ const LoginForm = () => {
             id="rememberMe"
             description="Keep me logged in"
           />
-          <a href="#" className="text-sm text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
             Forgot password?
-          </a>
+          </button>
         </div>
 
         {error && (
           <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        )}
+
+        {resetMessage && (
+          <p className="rounded-md border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-700">{resetMessage}</p>
         )}
 
         <Button

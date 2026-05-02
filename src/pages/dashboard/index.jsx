@@ -81,6 +81,7 @@ const DashboardPage = () => {
     try {
       setLoading(true)
       setError(null)
+      setOpenOppByJobId({})
 
       const [jobsTodayRes, jobsThroughTomorrowRes, jobsMtdRes, deals, claimsStats, oppSummary] =
         await Promise.all([
@@ -260,8 +261,8 @@ const DashboardPage = () => {
   }
 
   const openOppSublabel = openOppSummary
-    ? `${Number(openOppSummary.open_deals_count) || 0} deals • ${Number(openOppSummary.open_count) || 0} opps`
-    : 'Not available'
+    ? `${Number(openOppSummary.open_deals_count) || 0} deals • ${Number(openOppSummary.open_count) || 0} ${Number(openOppSummary.open_count) === 1 ? 'open item' : 'open items'}`
+    : '—'
 
   return (
     <AppLayout>
@@ -305,12 +306,12 @@ const DashboardPage = () => {
 
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
-            label="Scheduled (Today+Tomorrow)"
+            label="Scheduled Today & Tomorrow"
             value={kpiValue.scheduledTodayTomorrow}
             sublabel={`Today: ${scheduledToday}`}
           />
           <KpiCard
-            label="Rev Today"
+            label="Revenue Today"
             value={kpiValue.revenueToday}
             sublabel={`MTD: ${kpiValue.revenueMtd}`}
           />
@@ -319,11 +320,11 @@ const DashboardPage = () => {
             value={kpiValue.profitToday}
             sublabel={
               todayFinancials.hasUnknownProfit
-                ? 'Missing cost on at least one deal'
+                ? 'Cost missing on one or more deals'
                 : `MTD: ${kpiValue.profitMtd}`
             }
           />
-          <KpiCard label="Unapproved Work ($)" value={kpiValue.openOpp} sublabel={openOppSublabel} />
+          <KpiCard label="Pending Approvals" value={kpiValue.openOpp} sublabel={openOppSublabel} />
           <KpiCard label="Open Claims" value={kpiValue.openClaims} />
         </div>
 
@@ -334,7 +335,7 @@ const DashboardPage = () => {
                 <div>
                   <div className="text-sm font-semibold text-gray-900">Today’s Schedule</div>
                   <div className="text-xs text-gray-600">
-                    Agenda-style queue for jobs scheduled today
+                    Jobs on the board for today
                   </div>
                 </div>
                 <button
@@ -437,7 +438,7 @@ const DashboardPage = () => {
                                 ) : null}
                                 {openOppByJobId[job?.id] > 0 ? (
                                   <Pill className="border-violet-200 bg-violet-50 text-violet-900">
-                                    Opps {openOppByJobId[job?.id]}
+                                    {openOppByJobId[job?.id]} {openOppByJobId[job?.id] === 1 ? 'Pending Approval' : 'Pending Approvals'}
                                   </Pill>
                                 ) : null}
                                 {hasMissingCost ? (

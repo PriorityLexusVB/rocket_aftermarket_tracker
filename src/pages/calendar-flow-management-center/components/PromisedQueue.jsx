@@ -36,9 +36,9 @@ export default function PromisedQueue({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-gray-500" aria-hidden="true" />
-            <h3 className="text-sm font-semibold text-gray-900">Queue</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Unscheduled Jobs</h3>
           </div>
-          <span className="text-xs text-gray-500">{rows.length} unscheduled</span>
+          <span className="text-xs text-gray-500">{rows.length} jobs</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -71,7 +71,7 @@ export default function PromisedQueue({
           </button>
         </div>
         <div className="text-[11px] text-gray-500">
-          Needs Time items render all-day on the board.
+          Drag to the calendar to schedule, or click to open.
         </div>
       </div>
 
@@ -104,7 +104,7 @@ export default function PromisedQueue({
                       {raw?.title || raw?.vehicle_description || '(Untitled)'}
                     </div>
                     <span className="inline-flex items-center rounded-full bg-slate-200/60 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                      UNSCHEDULED
+                      No Time Set
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
@@ -115,7 +115,7 @@ export default function PromisedQueue({
                       </div>
                     )}
                     <div className="text-xs text-gray-600">
-                      {promise ? `Promise: ${formatEtDateLabel(promise) || '—'}` : 'No promised day'}
+                      {promise ? `Due: ${formatEtDateLabel(promise) || '—'}` : 'No due date'}
                     </div>
                   </div>
                 </div>
@@ -137,8 +137,8 @@ export default function PromisedQueue({
                           isBusy ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-100'
                         }`
                   }
-                  aria-label={isCompleted ? 'Reopen' : 'Complete'}
-                  title={isCompleted ? 'Reopen deal' : 'Mark completed'}
+                  aria-label={isCompleted ? 'Reopen deal' : 'Mark as complete'}
+                  title={isCompleted ? 'Reopen deal' : 'Mark as complete'}
                 >
                   {isCompleted ? (
                     <RefreshCw className="h-4 w-4" />

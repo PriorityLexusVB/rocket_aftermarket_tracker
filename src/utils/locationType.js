@@ -10,10 +10,10 @@ export function getJobLocationType(job) {
   if (hasOff) return 'Off-Site'
   if (hasOn) return 'In-House'
 
+  if (job?.location === 'on_site' || job?.service_type === 'onsite') return 'In-House'
   if (job?.location === 'off_site' || job?.service_type === 'vendor' || job?.vendor_id) {
     return 'Off-Site'
   }
-  if (job?.location === 'on_site' || job?.service_type === 'onsite') return 'In-House'
 
   return null
 }

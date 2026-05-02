@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
 import VendorListTable from './components/VendorListTable'
@@ -23,6 +23,7 @@ const VendorOperationsCenter = () => {
   const [createForm, setCreateForm] = useState({ name: '', phone: '', email: '', specialty: '' })
   const [createError, setCreateError] = useState('')
   const [createLoading, setCreateLoading] = useState(false)
+  const createLoadingRef = useRef(false)
 
   const mapVendorRowToUi = (v) => {
     const specialty = v?.specialty ? String(v.specialty) : ''
@@ -208,12 +209,20 @@ const VendorOperationsCenter = () => {
     initializeVendorOperations()
   }, [userProfile, isManager, isVendor, vendorId])
 
+  const handleModalClose = () => {
+    if (createLoadingRef.current) return
+    setShowCreateModal(false)
+    setCreateForm({ name: '', phone: '', email: '', specialty: '' })
+    setCreateError('')
+  }
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault()
     if (!createForm.name.trim()) {
       setCreateError('Vendor name is required.')
       return
     }
+    createLoadingRef.current = true
     setCreateLoading(true)
     setCreateError('')
     try {
@@ -229,6 +238,7 @@ const VendorOperationsCenter = () => {
     } catch (err) {
       setCreateError(err?.message || 'Failed to create vendor.')
     } finally {
+      createLoadingRef.current = false
       setCreateLoading(false)
     }
   }
@@ -260,7 +270,7 @@ const VendorOperationsCenter = () => {
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Vendor Operations Center</h1>
                 <p className="text-muted-foreground">
-                  Manage vendor relationships, track performance, and assign jobs
+                  View vendors, track job status, and assign work
                 </p>
               </div>
 
@@ -353,7 +363,7 @@ const VendorOperationsCenter = () => {
                     <Icon name="TrendingUp" size={20} className="text-success" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Avg Performance</p>
+                    <p className="text-sm text-muted-foreground">Avg Completion Rate</p>
                     <p className="text-xl font-semibold text-foreground">
                       {Math.round(performanceData?.avgCompletionRate || 0)}%
                     </p>
@@ -403,8 +413,9 @@ const VendorOperationsCenter = () => {
               <h2 className="text-lg font-semibold text-gray-900">Add Vendor</h2>
               <button
                 type="button"
-                onClick={() => setShowCreateModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                onClick={handleModalClose}
+                disabled={createLoading}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Icon name="X" size={20} />
               </button>
@@ -459,8 +470,9 @@ const VendorOperationsCenter = () => {
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  onClick={handleModalClose}
+                  disabled={createLoading}
+                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -469,7 +481,7 @@ const VendorOperationsCenter = () => {
                   disabled={createLoading}
                   className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {createLoading ? 'Creating…' : 'Create Vendor'}
+                  {createLoading ? 'Saving…' : 'Add Vendor'}
                 </button>
               </div>
             </form>

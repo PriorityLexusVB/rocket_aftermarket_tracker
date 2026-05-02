@@ -19,7 +19,7 @@ import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
-    const vendorName = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')
+    const vendorName = job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'In-House')
     if (!acc?.[vendorName]) {
       acc[vendorName] = []
     }
@@ -166,7 +166,7 @@ const RoundUpModal = ({
           {/* Stock & Product */}
           <div className="flex items-center text-gray-900">
             <Car className="h-3 w-3 mr-1 text-gray-400" />
-            {job?.job_number?.split('-')?.pop()} | {job?.title}
+            {job?.job_number?.split('-')?.pop()} — {job?.title}
           </div>
 
           {/* Promise Date */}
@@ -212,8 +212,8 @@ const RoundUpModal = ({
               }
               disabled={isStatusInFlight?.(job?.id) || false}
               aria-disabled={isStatusInFlight?.(job?.id) || false}
-              aria-label={isCompleted ? 'Reopen' : 'Complete'}
-              title={isCompleted ? 'Reopen deal' : 'Mark completed'}
+              aria-label={isCompleted ? 'Reopen deal' : 'Mark as complete'}
+              title={isCompleted ? 'Reopen deal' : 'Mark as complete'}
             >
               {isCompleted ? (
                 <RefreshCw className="h-3 w-3" />
@@ -222,16 +222,16 @@ const RoundUpModal = ({
               )}
             </button>
             <button
-              onClick={() => {}}
-              className="p-1 hover:bg-gray-100 rounded text-gray-600"
-              title="No-Show"
+              disabled
+              className="p-1 rounded text-gray-300 cursor-not-allowed"
+              title="No-Show — coming soon"
             >
               <XCircle className="h-3 w-3" />
             </button>
             <button
-              onClick={() => {}}
-              className="p-1 hover:bg-orange-100 rounded text-orange-600"
-              title="Reschedule"
+              disabled
+              className="p-1 rounded text-orange-200 cursor-not-allowed"
+              title="Reschedule — coming soon"
             >
               <RotateCcw className="h-3 w-3" />
             </button>
@@ -289,8 +289,8 @@ const RoundUpModal = ({
               <div className="flex items-center">
                 <Download className="h-5 w-5 text-gray-600 mr-3" />
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Round-Up View</h2>
-                  <p className="text-sm text-gray-600">Export and manage scheduled jobs</p>
+                  <h2 className="text-xl font-semibold text-gray-900">Daily Round-Up</h2>
+                  <p className="text-sm text-gray-600">Review and export today's scheduled work</p>
                 </div>
               </div>
 
@@ -360,8 +360,9 @@ const RoundUpModal = ({
             ) : (
               <div className="text-center py-12 text-gray-500">
                 <Calendar className="h-8 w-8 mx-auto mb-3 text-gray-400" />
-                <div className="text-lg">No jobs scheduled</div>
-                <div className="text-sm">for the selected {type} period</div>
+                <div className="text-lg">
+                  {`No jobs scheduled for this ${type === 'daily' ? 'day' : type === 'weekly' ? 'week' : 'month'}.`}
+                </div>
               </div>
             )}
           </div>

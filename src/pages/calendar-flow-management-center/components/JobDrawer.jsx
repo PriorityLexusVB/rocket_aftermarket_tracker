@@ -143,7 +143,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
     () => [
       { id: 'details', label: 'Details', icon: Package },
       { id: 'customer', label: 'Customer', icon: User },
-      { id: 'timeline', label: 'Timeline/Notes', icon: MessageSquare },
+      { id: 'timeline', label: 'Notes', icon: MessageSquare },
       { id: 'photos', label: 'Photos', icon: Camera },
     ],
     []
@@ -224,14 +224,14 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 Estimated Hours
               </label>
-              <div className="mt-1 text-sm text-gray-900">{job?.estimated_hours || 'N/A'}</div>
+              <div className="mt-1 text-sm text-gray-900">{job?.estimated_hours ?? '—'}</div>
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 Estimated Cost
               </label>
               <div className="mt-1 text-sm text-gray-900">
-                ${job?.estimated_cost ? Number(job?.estimated_cost)?.toFixed(2) : 'N/A'}
+                {job?.estimated_cost != null ? '$' + Number(job.estimated_cost).toLocaleString() : '—'}
               </div>
             </div>
           </div>
@@ -267,7 +267,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
 
           <div className={`flex items-center ${overdue ? 'text-red-600' : ''}`}>
             <Calendar className="h-4 w-4 mr-2" />
-            <span className="text-sm">Promise Date: {formatEtDateLabel(promise) || '—'}</span>
+            <span className="text-sm">Due Date: {formatEtDateLabel(promise) || '—'}</span>
             {overdue && <AlertTriangle className="h-4 w-4 ml-2 text-red-500" />}
           </div>
         </div>
@@ -294,17 +294,15 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <User className="h-4 w-4 text-gray-400 mr-2" />
-              <span className="text-sm">Customer Name</span>
+              <span className="text-sm text-gray-600">{job?.owner_name || job?.customer_name || '—'}</span>
             </div>
-            <span className="text-sm text-gray-600">Available in vehicle record</span>
           </div>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Phone className="h-4 w-4 text-gray-400 mr-2" />
-              <span className="text-sm">Phone</span>
+              <span className="text-sm text-gray-600">{job?.owner_phone || job?.customer_phone || '—'}</span>
             </div>
-            <span className="text-sm text-gray-600">Available in vehicle record</span>
           </div>
         </div>
       </div>
@@ -342,9 +340,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
           placeholder="Add a note about this job..."
           className="w-full h-24 border border-gray-300 rounded-lg p-3 text-sm"
         />
-        <button className="mt-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-          Add Note
-        </button>
+        <span className="text-xs text-gray-400 italic">Note saving not yet available</span>
       </div>
     </div>
   )
@@ -354,9 +350,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
       <div className="text-center py-8 text-gray-500">
         <Camera className="h-8 w-8 mx-auto mb-3 text-gray-400" />
         <div className="text-sm">No photos uploaded yet</div>
-        <button className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-          Upload Photos
-        </button>
+        <span className="text-xs text-gray-400 italic">Photo uploads not yet available</span>
       </div>
     </div>
   )
@@ -470,7 +464,7 @@ const JobDrawer = ({ job, isOpen, onClose, onStatusUpdate }) => {
               </div>
               <div className="flex items-center">
                 <Calendar className="h-4 w-4 mr-1" />
-                Promise: {formatEtDateLabel(promise) || '—'}
+                Due: {formatEtDateLabel(promise) || '—'}
               </div>
             </div>
           </div>

@@ -856,7 +856,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
               id="agenda-search"
               name="agenda-search"
               aria-label="Search appointments"
-              placeholder="Search"
+              placeholder="Search stock / customer / phone"
               className="h-9 w-64 max-w-full rounded-md border border-slate-200 bg-white px-3 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -877,18 +877,6 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
               <option value="next3days">Next 3 Days</option>
               <option value="next7days">Next 7 Days</option>
             </select>
-
-            <button
-              type="button"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-              aria-label="Show next 3 days"
-              onClick={() => {
-                setDateRange('next3days')
-              }}
-              title="Filter to the next 3 days"
-            >
-              Next 3 Days
-            </button>
 
             {/* Filter toggle button */}
             <button
@@ -916,8 +904,8 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                 onChange={(e) => setStatus(e.target.value)}
               >
                 <option value="">All Statuses</option>
-                <option value="pending">Needs Work (time TBD)</option>
-                <option value="scheduled">Booked (time set)</option>
+                <option value="pending">Pending — no time set</option>
+                <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
               </select>
@@ -929,7 +917,7 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
 
         {groups.length === 0 && (
           <div role="status" aria-live="polite">
-            No scheduled or promised items in this range.
+            Nothing scheduled in this date range.
           </div>
         )}
         {groups.map(([dateKey, rows]) => (

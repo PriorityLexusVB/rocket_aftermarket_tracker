@@ -43,6 +43,15 @@ import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const LOAD_TIMEOUT_MS = 15000
 
+// Location is the source of truth. A job is on-site when location='on_site';
+// off-site when location='off_site' — regardless of whether a vendor is assigned.
+// Fall back to vendor_id only when location is not set.
+const isJobOnSite = (job) => {
+  if (job?.location === 'on_site') return true
+  if (job?.location === 'off_site') return false
+  return !job?.vendor_id
+}
+
 // FIX P1-7: next_promised_iso is a computed DB column written by dealCRUD.js
 // (see dealCRUD.js lines ~640, ~847) whenever a deal is created/updated.
 // It is the canonical "next promised date" aggregated from line items.
@@ -397,8 +406,8 @@ const CalendarFlowManagementCenter = ({
 
       const jobsData = scheduledRes?.jobs || []
 
-      const vendorJobs = jobsData?.filter((job) => job?.vendor_id)
-      const onSiteJobs = jobsData?.filter((job) => !job?.vendor_id)
+      const vendorJobs = jobsData?.filter((job) => !isJobOnSite(job))
+      const onSiteJobs = jobsData?.filter((job) => isJobOnSite(job))
 
       // Store original data separately
       setOriginalJobs(vendorJobs)
@@ -966,7 +975,7 @@ const CalendarFlowManagementCenter = ({
                   {/* Jobs for this day */}
                   <div className="space-y-1">
                     {day?.jobs?.slice(0, 2)?.map((job) => {
-                      const isOnSite = !job?.vendor_id
+                      const isOnSite = isJobOnSite(job)
                       const serviceType = isOnSite ? 'onsite' : 'vendor'
                       const dayJobColors = useUnifiedColors
                         ? getEventColors(serviceType, job?.job_status)
@@ -1013,7 +1022,7 @@ const CalendarFlowManagementCenter = ({
     const containerClassName = options?.containerClassName || ''
     const containerStyle = options?.containerStyle || undefined
 
-    const isOnSite = !job?.vendor_id
+    const isOnSite = isJobOnSite(job)
     const isMixedJob = !isOnSite && getJobLocationType(job) === 'Mixed'
     const jobNumber = job?.job_number?.split('-')?.pop()
     const titleText = [jobNumber, job?.title].filter(Boolean).join(' • ')
@@ -1045,7 +1054,7 @@ const CalendarFlowManagementCenter = ({
     const hasTimeWindow = !!job?.scheduled_start_time
     const promise = getPromiseValue(job)
     const isPromiseOnly = !hasTimeWindow && !!promise
-    const allDayLabel = promise ? `Time TBD • Promise: ${formatEtDateLabel(promise)}` : 'Time TBD'
+    const allDayLabel = promise ? `Time TBD • Due: ${formatEtDateLabel(promise)}` : 'Time TBD'
 
     // In scheduling UIs, a promised day without a time window is treated as scheduled (all-day).
     // Avoid confusing "Pending" badges for these rows.
@@ -1122,7 +1131,7 @@ const CalendarFlowManagementCenter = ({
               )}
               {isMixedJob && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 whitespace-nowrap">
-                  Also In-House
+                  Split Work
                 </span>
               )}
             </div>
@@ -1178,7 +1187,7 @@ const CalendarFlowManagementCenter = ({
                 isPromiseOnly ? 'bg-amber-100 text-amber-900' : statusBadge?.bg || 'bg-gray-100'
               } ${isPromiseOnly ? '' : statusBadge?.textColor || 'text-gray-800'}`}
             >
-              {isPromiseOnly ? 'PROMISE' : statusBadge?.label || statusForBadge || job?.job_status}
+              {isPromiseOnly ? 'Time TBD' : statusBadge?.label || statusForBadge || job?.job_status}
             </div>
           </div>
 
@@ -1349,8 +1358,8 @@ const CalendarFlowManagementCenter = ({
 
   const renderVendorLanes = () => {
     const allDayJobs = needsSchedulingJobsForView || []
-    const allDayOnSiteJobs = allDayJobs.filter((job) => !job?.vendor_id)
-    const onSiteJobs = filteredJobs?.filter((job) => !job?.vendor_id)
+    const allDayOnSiteJobs = allDayJobs.filter((job) => isJobOnSite(job))
+    const onSiteJobs = filteredJobs?.filter((job) => isJobOnSite(job))
     const onSiteCombined = [...(allDayOnSiteJobs || []), ...(onSiteJobs || [])]
     const vendorsToShow = showEmptyLanes
       ? vendors
@@ -1425,7 +1434,7 @@ const CalendarFlowManagementCenter = ({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {unifiedShellEnabled ? 'Calendar' : 'Calendar Flow Management Center'}
+                {unifiedShellEnabled ? 'Calendar' : 'Work Calendar'}
               </h1>
               {!isEmbedded && (
                 <p className="text-gray-600">Visual scheduling and workflow management</p>
@@ -1505,7 +1514,7 @@ const CalendarFlowManagementCenter = ({
                 <div className="mt-2 grid gap-1 text-xs text-gray-600">
                   <div className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 rounded bg-green-500" />
-                    <span>On-site (PLV) (no vendor or on-site)</span>
+                    <span>In-House — work stays on the lot</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-block h-2.5 w-2.5 rounded bg-orange-500" />
@@ -1589,7 +1598,7 @@ const CalendarFlowManagementCenter = ({
                   className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg disabled:opacity-50"
                   title="Jump to the next scheduled job"
                 >
-                  {jumpLoading ? 'Finding…' : 'Jump to Next Scheduled'}
+                  {jumpLoading ? 'Finding…' : 'Next Scheduled Job'}
                 </button>
               )}
             </div>
@@ -1633,8 +1642,7 @@ const CalendarFlowManagementCenter = ({
                         Calendar items found, but Deals are empty.
                       </div>
                       <div className="text-amber-800">
-                        This usually means a tenant or filter mismatch. Try refreshing or review
-                        your Deals list filters.
+                        This may be a filter mismatch. Refresh or check your Deals list.
                       </div>
                     </div>
                   </div>
@@ -1663,7 +1671,7 @@ const CalendarFlowManagementCenter = ({
                   <div className="flex items-start gap-2 text-sm">
                     <AlertTriangle className="mt-0.5 h-4 w-4" />
                     <div>
-                      <div className="font-semibold">Unlinked appointments detected.</div>
+                      <div className="font-semibold">Some appointments couldn't be matched to a deal.</div>
                       <div className="text-amber-800">
                         {consistency.missingCount} scheduled item
                         {consistency.missingCount === 1 ? '' : 's'} could not be linked to a deal.
@@ -1833,7 +1841,7 @@ const CalendarFlowManagementCenter = ({
                         }
 
                         toast?.info(
-                          'All-day view requires VITE_ACTIVE_SNAPSHOT=true — opening Active Appointments.'
+                          'Full all-day view is not enabled for this account. Opening Active Appointments instead.'
                         )
                         navigate('/currently-active-appointments')
                       }}

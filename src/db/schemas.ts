@@ -36,9 +36,9 @@ export const vendorInsertSchema = baseVendorInsertSchema
       .optional()
       .transform((val) => (val === '' ? null : val)),
 
-    // Rating: allow string/number/empty -> normalize to number|null, 0–5
+    // Rating: allow string/number/null/empty -> normalize to number|null, 0–5
     rating: z
-      .union([z.string(), z.number()])
+      .union([z.string(), z.number(), z.null()])
       .optional()
       .transform((val) => {
         if (val === undefined || val === null || val === '') return null

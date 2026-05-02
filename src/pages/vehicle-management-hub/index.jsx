@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
@@ -46,8 +46,10 @@ const VehicleManagementHub = () => {
     { id: 3, name: 'In Work Items', filters: { status: 'in-work', hasAftermarket: 'yes' } },
   ])
   const [lastUpdated, setLastUpdated] = useState(new Date())
+  const [refreshKey, setRefreshKey] = useState(0)
   const [vehicles, setVehicles] = useState([])
   const [isBulkLoading, setIsBulkLoading] = useState(false)
+  const fetchGenRef = useRef(0)
 
   // Stats derived from loaded vehicles
   const stats = {
@@ -123,6 +125,8 @@ const VehicleManagementHub = () => {
 
   useEffect(() => {
     const initializeVehicleManagement = async () => {
+      fetchGenRef.current += 1
+      const myGen = fetchGenRef.current
       try {
         // Load vehicles based on user role
         let vehicleData
@@ -137,14 +141,16 @@ const VehicleManagementHub = () => {
           vehicleData = await getVehicles(filters)
         }
 
-        setVehicles(vehicleData || [])
+        if (fetchGenRef.current === myGen) {
+          setVehicles(vehicleData || [])
+        }
       } catch (error) {
         console.error('Error loading vehicles:', error)
       }
     }
 
     initializeVehicleManagement()
-  }, [filters, userProfile, isManager, isVendor, vendorId])
+  }, [filters, userProfile, isManager, isVendor, vendorId, refreshKey])
 
   const handleVehicleUpdate = async (vehicleId, updates) => {
     try {
@@ -164,7 +170,7 @@ const VehicleManagementHub = () => {
       const results = await Promise.allSettled(
         selectedVehicles.map((vehicleId) => updateVehicle(vehicleId, { vehicle_status: status }))
       )
-      const failed = results.filter((r) => r.status === 'rejected')
+      const failed = results.filter((r) => r.status === 'rejected' || r.value?.error)
       if (failed.length > 0) {
         console.error(`[VehicleManagementHub] ${failed.length} status update(s) failed:`, failed)
       }
@@ -286,7 +292,7 @@ const VehicleManagementHub = () => {
       const results = await Promise.allSettled(
         selectedVehicles.map((vehicleId) => updateVehicle(vehicleId, { is_priority: newPriority }))
       )
-      const failed = results.filter((r) => r.status === 'rejected')
+      const failed = results.filter((r) => r.status === 'rejected' || r.value?.error)
       if (failed.length > 0) {
         console.error(`[VehicleManagementHub] ${failed.length} priority update(s) failed:`, failed)
       }
@@ -337,6 +343,7 @@ const VehicleManagementHub = () => {
 
   const handleRefresh = () => {
     setLastUpdated(new Date())
+    setRefreshKey((k) => k + 1)
   }
 
   const handleAddVehicle = async (vehicleData) => {
@@ -378,9 +385,9 @@ const VehicleManagementHub = () => {
         <div className="p-6 max-w-full">
           {/* Page Header */}
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-100 mb-2">Vehicle Management Hub</h1>
+            <h1 className="text-3xl font-bold text-gray-100 mb-2">Vehicles</h1>
             <p className="text-gray-400">
-              Centralized vehicle inventory with integrated aftermarket work tracking
+              Vehicles in your inventory with active aftermarket work
             </p>
           </div>
 

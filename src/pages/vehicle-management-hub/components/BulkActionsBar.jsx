@@ -100,15 +100,13 @@ const BulkActionsBar = ({
         return
       }
       case 'delete':
-        if (window.confirm(`Are you sure you want to delete ${selectedCount} vehicles?`)) {
-          setIsProcessing(true)
-          try {
-            await onBulkDelete()
-          } catch (error) {
-            console.error('Bulk delete failed:', error)
-          } finally {
-            setIsProcessing(false)
-          }
+        setIsProcessing(true)
+        try {
+          await onBulkDelete()
+        } catch (error) {
+          console.error('Bulk delete failed:', error)
+        } finally {
+          setIsProcessing(false)
         }
         setBulkAction('')
         return

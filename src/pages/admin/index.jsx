@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../../contexts/AuthContext'
@@ -73,10 +73,12 @@ const AdminPage = () => {
 
   // Loading states
   const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
   const [deletingId, setDeletingId] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [modalType, setModalType] = useState('')
   const [editingItem, setEditingItem] = useState(null)
+  const [submitError, setSubmitError] = useState('')
 
   // Form states
   const [userAccountForm, setUserAccountForm] = useState({
@@ -532,6 +534,7 @@ const AdminPage = () => {
   const openModal = (type, item = null) => {
     setModalType(type)
     setEditingItem(item)
+    setSubmitError('')
     setShowModal(true)
 
     // Reset forms
@@ -607,6 +610,8 @@ const AdminPage = () => {
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
+    if (submitting || submittingRef.current) return
+    submittingRef.current = true
     setSubmitting(true)
 
     try {
@@ -632,8 +637,12 @@ const AdminPage = () => {
       setEditingItem(null)
     } catch (error) {
       console.error('Error submitting form:', error)
-      alert('Error: ' + error?.message)
+      const msg = error?.issues
+        ? error.issues.map((i) => i.message).join(', ')
+        : error?.message || 'An unexpected error occurred.'
+      setSubmitError(msg)
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
@@ -1209,8 +1218,11 @@ const AdminPage = () => {
           modalType={modalType}
           editingItem={editingItem}
           submitting={submitting}
+          submittingRef={submittingRef}
           setShowModal={setShowModal}
           handleSubmit={handleSubmit}
+          submitError={submitError}
+          onClearSubmitError={() => setSubmitError('')}
           userAccountForm={userAccountForm}
           setUserAccountForm={setUserAccountForm}
           roleOptions={roleOptions}
