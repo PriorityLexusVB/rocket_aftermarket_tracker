@@ -696,3 +696,7 @@ export { createVehicleWithProducts }
 export function updateVehicle(...args) {
   return vehicleService.updateVehicle(...args)
 }
+
+export function deleteVehicle(...args) {
+  return vehicleService.deleteVehicle(...args)
+}

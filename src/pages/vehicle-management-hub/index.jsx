@@ -14,6 +14,7 @@ import {
   getVendorAccessibleVehicles,
   createVehicleWithProducts,
   updateVehicle,
+  deleteVehicle,
 } from '../../services/vehicleService'
 import jobService from '../../services/jobService'
 
@@ -175,14 +176,64 @@ const VehicleManagementHub = () => {
     }
   }
 
-  const handleBulkExport = async () => {
-    // In real app, this would export selected vehicles
+  const handleBulkExport = () => {
+    const selected = vehicles.filter((v) => selectedVehicles.includes(v.id))
+    if (!selected.length) return
+    const headers = ['Stock #', 'VIN', 'Year', 'Make', 'Model', 'Status', 'Owner', 'Profit']
+    const rows = selected.map((v) => [
+      v.stockNumber || '',
+      v.vin || '',
+      v.year || '',
+      v.make || '',
+      v.model || '',
+      v.vehicle_status || v.status || '',
+      v.owner_name || '',
+      v.totalProfit != null ? v.totalProfit.toFixed(2) : '',
+    ])
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `vehicles-export-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
     setSelectedVehicles([])
   }
 
   const handleBulkDelete = async () => {
-    // In real app, this would delete selected vehicles
-    setSelectedVehicles([])
+    if (!selectedVehicles.length) return
+    const confirmed = window.confirm(
+      `Delete ${selectedVehicles.length} vehicle(s)? This cannot be undone.`
+    )
+    if (!confirmed) return
+    setIsBulkLoading(true)
+    try {
+      const results = await Promise.allSettled(
+        selectedVehicles.map((vehicleId) => deleteVehicle(vehicleId))
+      )
+      const failed = results.filter(
+        (r) => r.status === 'rejected' || r.value?.error
+      )
+      if (failed.length > 0) {
+        console.error(`[VehicleManagementHub] ${failed.length} delete(s) failed:`, failed)
+      }
+    } catch (error) {
+      console.error('Error bulk-deleting vehicles:', error)
+    } finally {
+      try {
+        const refreshedData = isVendor && vendorId
+          ? await getVendorAccessibleVehicles(vendorId)
+          : await getVehicles(filters)
+        setVehicles(refreshedData || [])
+      } catch (refreshErr) {
+        console.error('[VehicleManagementHub] Failed to refresh after delete:', refreshErr)
+      }
+      setIsBulkLoading(false)
+      setSelectedVehicles([])
+    }
   }
 
   const handleBulkAssignVendor = async (newVendorId) => {
