@@ -1014,6 +1014,7 @@ const CalendarFlowManagementCenter = ({
     const containerStyle = options?.containerStyle || undefined
 
     const isOnSite = !job?.vendor_id
+    const isMixedJob = !isOnSite && getJobLocationType(job) === 'Mixed'
     const jobNumber = job?.job_number?.split('-')?.pop()
     const titleText = [jobNumber, job?.title].filter(Boolean).join(' • ')
     const serviceType = isOnSite ? 'onsite' : 'vendor'
@@ -1117,6 +1118,11 @@ const CalendarFlowManagementCenter = ({
               {(job?.has_active_loaner || job?.loaner_id || job?.customer_needs_loaner) && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-violet-100 text-violet-800 whitespace-nowrap">
                   Loaner
+                </span>
+              )}
+              {isMixedJob && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 whitespace-nowrap">
+                  Also In-House
                 </span>
               )}
             </div>

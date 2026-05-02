@@ -12,6 +12,7 @@ const BulkActionsBar = ({
   onClearSelection,
   onBulkAssignVendor,
   onBulkMarkPriority,
+  disabled = false,
 }) => {
   const [bulkAction, setBulkAction] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -184,8 +185,8 @@ const BulkActionsBar = ({
               options={statusOptions}
               value=""
               onChange={handleStatusUpdate}
-              disabled={isProcessing}
-              className="w-40"
+              disabled={isProcessing || disabled}
+              className="w-40 disabled:opacity-50 disabled:cursor-not-allowed"
             />
 
             {/* Export Button */}
@@ -193,10 +194,11 @@ const BulkActionsBar = ({
               variant="outline"
               size="sm"
               onClick={() => handleBulkAction('export-selected')}
-              disabled={isProcessing}
+              disabled={isProcessing || disabled}
               loading={isProcessing && bulkAction === 'export-selected'}
               iconName="Download"
               iconPosition="left"
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Export
             </Button>
@@ -206,9 +208,10 @@ const BulkActionsBar = ({
               variant="outline"
               size="sm"
               onClick={() => handleBulkAction('assign-vendor')}
-              disabled={isProcessing}
+              disabled={isProcessing || disabled}
               iconName="Users"
               iconPosition="left"
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Assign Vendor
             </Button>
@@ -223,8 +226,8 @@ const BulkActionsBar = ({
               ]}
               value=""
               onChange={handleBulkAction}
-              disabled={isProcessing}
-              className="w-40"
+              disabled={isProcessing || disabled}
+              className="w-40 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -233,9 +236,10 @@ const BulkActionsBar = ({
             variant="ghost"
             size="sm"
             onClick={onClearSelection}
-            disabled={isProcessing}
+            disabled={isProcessing || disabled}
             iconName="X"
             iconPosition="left"
+            className="disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Clear
           </Button>

@@ -46,6 +46,7 @@ const VehicleManagementHub = () => {
   ])
   const [lastUpdated, setLastUpdated] = useState(new Date())
   const [vehicles, setVehicles] = useState([])
+  const [isBulkLoading, setIsBulkLoading] = useState(false)
 
   // Stats derived from loaded vehicles
   const stats = {
@@ -149,8 +150,29 @@ const VehicleManagementHub = () => {
   }
 
   const handleBulkStatusUpdate = async (status) => {
-    // In real app, this would update multiple vehicles
-    setSelectedVehicles([])
+    setIsBulkLoading(true)
+    try {
+      const results = await Promise.allSettled(
+        selectedVehicles.map((vehicleId) => updateVehicle(vehicleId, { vehicle_status: status }))
+      )
+      const failed = results.filter((r) => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.error(`[VehicleManagementHub] ${failed.length} status update(s) failed:`, failed)
+      }
+    } catch (error) {
+      console.error('Error bulk-updating status:', error)
+    } finally {
+      try {
+        const refreshedData = isVendor && vendorId
+          ? await getVendorAccessibleVehicles(vendorId)
+          : await getVehicles(filters)
+        setVehicles(refreshedData || [])
+      } catch (refreshErr) {
+        console.error('[VehicleManagementHub] Failed to refresh after status update:', refreshErr)
+      }
+      setIsBulkLoading(false)
+      setSelectedVehicles([])
+    }
   }
 
   const handleBulkExport = async () => {
@@ -164,6 +186,7 @@ const VehicleManagementHub = () => {
   }
 
   const handleBulkAssignVendor = async (newVendorId) => {
+    setIsBulkLoading(true)
     const activeStatuses = ['pending', 'scheduled', 'in_progress', 'quality_check']
     try {
       const assignments = selectedVehicles
@@ -184,11 +207,13 @@ const VehicleManagementHub = () => {
     } catch (error) {
       console.error('Error bulk-assigning vendor:', error)
     } finally {
+      setIsBulkLoading(false)
       setSelectedVehicles([])
     }
   }
 
   const handleBulkMarkPriority = async () => {
+    setIsBulkLoading(true)
     const allPriority = selectedVehicles.every(
       (vehicleId) => vehicles.find((v) => v.id === vehicleId)?.is_priority === true
     )
@@ -213,6 +238,7 @@ const VehicleManagementHub = () => {
       } catch (refreshErr) {
         console.error('[VehicleManagementHub] Failed to refresh after priority update:', refreshErr)
       }
+      setIsBulkLoading(false)
       setSelectedVehicles([])
     }
   }
@@ -336,6 +362,7 @@ const VehicleManagementHub = () => {
             onClearSelection={() => setSelectedVehicles([])}
             onBulkAssignVendor={handleBulkAssignVendor}
             onBulkMarkPriority={handleBulkMarkPriority}
+            disabled={isBulkLoading}
           />
         </div>
       </main>
