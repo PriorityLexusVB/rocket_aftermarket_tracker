@@ -115,9 +115,28 @@ const VehicleDetailWorkstation = () => {
     setWorkItems((prev) => prev?.filter((w) => w?.id !== itemId))
   }
 
-  const handleExport = async (exportData) => {
-    console.warn('Export not implemented:', exportData)
-    alert('Export is not implemented yet.')
+  const handleExport = () => {
+    if (!vehicleData) return
+    const headers = ['Stock #', 'VIN', 'Year', 'Make', 'Model', 'Status', 'Work Items']
+    const row = [
+      vehicleData.stockNumber || '',
+      vehicleData.vin || '',
+      vehicleData.year || '',
+      vehicleData.make || '',
+      vehicleData.model || '',
+      vehicleData.vehicle_status || vehicleData.status || '',
+      workItems.length,
+    ]
+    const csv = [headers, row]
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `vehicle-${vehicleData.stockNumber || vehicleData.id}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   if (isLoading) {

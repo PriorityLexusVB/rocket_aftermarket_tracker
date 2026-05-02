@@ -92,7 +92,30 @@ const RecentTransactions = ({ transactions = [], onEditTransaction, onViewTransa
           size="sm"
           iconName="Download"
           iconPosition="left"
-          onClick={() => alert('Export is not implemented yet.')}
+          onClick={() => {
+            const toExport = filteredTransactions
+            if (!toExport?.length) return
+            const headers = ['ID', 'Vehicle', 'Customer', 'Status', 'Total Sale', 'Profit', 'Margin']
+            const rows = toExport.map((t) => [
+              t?.id || '',
+              t?.vehicle || '',
+              t?.customer || '',
+              t?.status || '',
+              t?.totalSale != null ? t.totalSale.toFixed(2) : '',
+              t?.profit != null ? t.profit.toFixed(2) : '',
+              t?.margin != null ? (t.margin * 100).toFixed(1) + '%' : '',
+            ])
+            const csv = [headers, ...rows]
+              .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+              .join('\n')
+            const blob = new Blob([csv], { type: 'text/csv' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `transactions-export-${new Date().toISOString().slice(0, 10)}.csv`
+            a.click()
+            URL.revokeObjectURL(url)
+          }}
         >
           Export
         </Button>

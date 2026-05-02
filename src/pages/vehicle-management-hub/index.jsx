@@ -146,8 +146,16 @@ const VehicleManagementHub = () => {
     initializeVehicleManagement()
   }, [filters, userProfile, isManager, isVendor, vendorId])
 
-  const handleVehicleUpdate = (vehicleId, updates) => {
-    // In real app, this would update the vehicle in the database
+  const handleVehicleUpdate = async (vehicleId, updates) => {
+    try {
+      await updateVehicle(vehicleId, updates)
+      const refreshedData = isVendor && vendorId
+        ? await getVendorAccessibleVehicles(vendorId)
+        : await getVehicles(filters)
+      setVehicles(refreshedData || [])
+    } catch (error) {
+      console.error('[VehicleManagementHub] handleVehicleUpdate failed:', error)
+    }
   }
 
   const handleBulkStatusUpdate = async (status) => {

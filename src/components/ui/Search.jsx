@@ -1,10 +1,7 @@
-import { useEffect } from 'react'
+import { Search as SearchIcon } from 'lucide-react'
 
-const Search = () => {
-  useEffect(() => {
-    console.warn('Placeholder: Search is not implemented yet.')
-  }, [])
-  return <>{/*Search */}</>
-}
+const Search = ({ className = '', size = 16, ...props }) => (
+  <SearchIcon className={className} size={size} {...props} />
+)
 
 export default Search

@@ -1,10 +1,8 @@
-import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 
-const Portal = () => {
-  useEffect(() => {
-    console.warn('Placeholder: Portal is not implemented yet.')
-  }, [])
-  return <>{/*Portal */}</>
+const Portal = ({ children, container }) => {
+  const target = container ?? document.body
+  return createPortal(children, target)
 }
 
 export { Portal }
