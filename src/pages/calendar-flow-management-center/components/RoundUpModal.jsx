@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { formatTime, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
+import { isJobOnSite } from '@/utils/locationType'
 
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
@@ -39,8 +40,8 @@ const groupJobsByDay = (jobList) => {
 
   return {
     Today: {
-      onSite: todayJobs?.filter((job) => !job?.vendor_id),
-      vendors: groupByVendor(todayJobs?.filter((job) => job?.vendor_id)),
+      onSite: todayJobs?.filter((job) => isJobOnSite(job)),
+      vendors: groupByVendor(todayJobs?.filter((job) => !isJobOnSite(job))),
     },
   }
 }
@@ -59,8 +60,8 @@ const groupJobsByWeek = (jobList) => {
 
     if (dayJobs?.length > 0) {
       result[day] = {
-        onSite: dayJobs?.filter((job) => !job?.vendor_id),
-        vendors: groupByVendor(dayJobs?.filter((job) => job?.vendor_id)),
+        onSite: dayJobs?.filter((job) => isJobOnSite(job)),
+        vendors: groupByVendor(dayJobs?.filter((job) => !isJobOnSite(job))),
       }
     }
   })
@@ -82,13 +83,13 @@ const groupJobsByMonth = (jobList) => {
       }
     }
 
-    if (job?.vendor_id) {
+    if (isJobOnSite(job)) {
+      weeks?.[weekKey]?.onSite?.push(job)
+    } else {
       if (!weeks?.[weekKey]?.vendors?.[job?.vendor_name]) {
         weeks[weekKey].vendors[job?.vendor_name] = []
       }
       weeks?.[weekKey]?.vendors?.[job?.vendor_name]?.push(job)
-    } else {
-      weeks?.[weekKey]?.onSite?.push(job)
     }
   })
 

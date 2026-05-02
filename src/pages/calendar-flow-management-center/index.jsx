@@ -37,20 +37,11 @@ import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
 import { getEventColors } from '@/utils/calendarColors'
 import { isCalendarDealDrawerEnabled, isCalendarUnifiedShellEnabled } from '@/config/featureFlags'
-import { getJobLocationType } from '@/utils/locationType'
+import { getJobLocationType, isJobOnSite } from '@/utils/locationType'
 import { getMicroFlashClass } from '@/utils/microInteractions'
 import { calendarQueryMatches } from '@/utils/calendarQueryMatch'
 
 const LOAD_TIMEOUT_MS = 15000
-
-// Location is the source of truth. A job is on-site when location='on_site';
-// off-site when location='off_site' — regardless of whether a vendor is assigned.
-// Fall back to vendor_id only when location is not set.
-const isJobOnSite = (job) => {
-  if (job?.location === 'on_site') return true
-  if (job?.location === 'off_site') return false
-  return !job?.vendor_id
-}
 
 // FIX P1-7: next_promised_iso is a computed DB column written by dealCRUD.js
 // (see dealCRUD.js lines ~640, ~847) whenever a deal is created/updated.
