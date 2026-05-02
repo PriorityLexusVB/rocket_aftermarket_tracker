@@ -8,10 +8,6 @@ import Header from './Header'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 
-export { Button, Input, Checkbox, Select, Search, Header, Sidebar, Navbar }
-function Icon(...args) {
-  console.warn('Placeholder: Icon is not implemented yet.', args)
-  return null
-}
+import Icon from '../AppIcon'
 
-export { Icon }
+export { Button, Input, Checkbox, Select, Search, Header, Sidebar, Navbar, Icon }
