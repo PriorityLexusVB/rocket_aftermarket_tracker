@@ -68,6 +68,12 @@ const groupJobsByWeek = (jobList) => {
   return result
 }
 
+const ROUND_UP_LABEL = {
+  daily: { title: 'Daily', subtitle: "Review and export today's scheduled work", noun: 'day' },
+  weekly: { title: 'Weekly', subtitle: "Review and export this week's scheduled work", noun: 'week' },
+  monthly: { title: 'Monthly', subtitle: "Review and export this month's scheduled work", noun: 'month' },
+}
+
 const groupJobsByMonth = (jobList) => {
   const weeks = {}
   jobList?.forEach((job) => {
@@ -109,25 +115,25 @@ const RoundUpModal = ({
 }) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set())
 
-  // Reset selection state each time the modal opens so stale checkmarks don't carry over
+  // Reset selection state when the modal transitions to open so stale checkmarks
+  // don't carry over from a prior open. Guard prevents a no-op re-render on first mount.
   useEffect(() => {
-    if (isOpen) setSelectedJobs(new Set())
+    if (isOpen) {
+      setSelectedJobs((prev) => (prev.size === 0 ? prev : new Set()))
+    }
   }, [isOpen])
+
+  // baseDate is a Date object — its reference can churn across parent re-renders
+  // even when the value hasn't changed. Memoize on the timestamp value.
+  const baseDateMs = baseDate?.getTime?.() ?? null
 
   const groupedJobs = useMemo(() => {
     if (!jobs?.length) return {}
-
-    switch (type) {
-      case 'daily':
-        return groupJobsByDay(jobs, baseDate)
-      case 'weekly':
-        return groupJobsByWeek(jobs)
-      case 'monthly':
-        return groupJobsByMonth(jobs)
-      default:
-        return groupJobsByDay(jobs, baseDate)
-    }
-  }, [jobs, type, baseDate])
+    if (type === 'weekly') return groupJobsByWeek(jobs)
+    if (type === 'monthly') return groupJobsByMonth(jobs)
+    return groupJobsByDay(jobs, baseDate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobs, type, baseDateMs])
 
   const handleSelectJob = (jobId) => {
     const newSelected = new Set(selectedJobs)
@@ -137,10 +143,6 @@ const RoundUpModal = ({
       newSelected?.add(jobId)
     }
     setSelectedJobs(newSelected)
-  }
-
-  const handleExport = (format) => {
-    // Implement export functionality
   }
 
   const renderJobRow = (job) => {
@@ -324,15 +326,9 @@ const RoundUpModal = ({
                 <Download className="h-5 w-5 text-gray-600 mr-3" />
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">
-                    {type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : 'Daily'} Round-Up
+                    {ROUND_UP_LABEL[type].title} Round-Up
                   </h2>
-                  <p className="text-sm text-gray-600">
-                    {type === 'weekly'
-                      ? "Review and export this week's scheduled work"
-                      : type === 'monthly'
-                        ? "Review and export this month's scheduled work"
-                        : "Review and export today's scheduled work"}
-                  </p>
+                  <p className="text-sm text-gray-600">{ROUND_UP_LABEL[type].subtitle}</p>
                 </div>
               </div>
 
@@ -414,7 +410,7 @@ const RoundUpModal = ({
               <div className="text-center py-12 text-gray-500">
                 <Calendar className="h-8 w-8 mx-auto mb-3 text-gray-400" />
                 <div className="text-lg">
-                  {`No jobs scheduled for this ${type === 'daily' ? 'day' : type === 'weekly' ? 'week' : 'month'}.`}
+                  {`No jobs scheduled for this ${ROUND_UP_LABEL[type].noun}.`}
                 </div>
               </div>
             )}

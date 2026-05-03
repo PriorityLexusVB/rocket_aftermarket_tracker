@@ -1,7 +1,6 @@
 import React from 'react'
-// Delegate to the canonical AppIcon static map (Wave XVIII-D) so we don't
-// duplicate the lucide-react per-icon import set. AppIcon falls back to
-// HelpCircle if a name isn't in the map.
+// Delegates to AppIcon to share the static lucide-import map and avoid
+// duplicating the per-icon import set. Adds aria-hidden default for decorative use.
 import AppIcon from '../AppIcon'
 
 /**

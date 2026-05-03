@@ -6,7 +6,6 @@ import Select from './Select'
 import Search from './Search'
 import Header from './Header'
 import Navbar from './Navbar'
-
-import Icon from '../AppIcon'
+import Icon from './Icon'
 
 export { Button, Input, Checkbox, Select, Search, Header, Navbar, Icon }

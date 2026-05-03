@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { setAuthRedirectReason } from './authErrorHandler'
 
 // Detect vitest
 const isTest = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITEST
@@ -250,14 +251,7 @@ if (isTest) {
               sessionMalformed
             if (isAuthFailure) {
               console.warn('[Supabase] Stale or malformed session detected; resetting local session', { msg, sessionMalformed })
-              try {
-                sessionStorage.setItem(
-                  'authRedirectReason',
-                  'Your session expired. Please sign in again.'
-                )
-              } catch {
-                // ignore — private mode / quota
-              }
+              setAuthRedirectReason()
               clearPersistedAuthStorage()
               return supabaseInstance?.auth?.signOut?.({ scope: 'local' })
             }

@@ -9,7 +9,7 @@ import { getAllDeals } from '@/services/dealService'
 import { getOpenOpportunitySummary, listByJobId } from '@/services/opportunitiesService'
 import { getDealFinancials } from '@/utils/dealKpis'
 import { useAuth } from '@/contexts/AuthContext'
-import { handleAuthError } from '@/lib/authErrorHandler'
+import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -128,11 +128,10 @@ const DashboardPage = () => {
       console.error('[dashboard] load failed', e)
       // If this is a real auth failure (stale JWT, etc.), redirect to /auth.
       // RLS/permission denials are NOT redirected — they keep their friendly message.
-      if (handleAuthError(e, 'dashboard')) return
+      if (handleAuthError(e)) return
       const raw = String(e?.message || '')
-      const isTechNoise = /JWT|jwt|PostgrestError|infinite recursion|permission denied|RLS|relation .* does not exist/i.test(raw)
       setError(
-        isTechNoise
+        isTechNoiseMessage(raw)
           ? "Couldn't load dashboard. Please refresh the page. If the problem continues, contact support."
           : raw || 'Failed to load dashboard'
       )

@@ -1,16 +1,15 @@
-// Shared auth-error detection + redirect-to-/auth handler.
-// Promoted from dropdownService.js so dashboard, deals, analytics, claims-management,
-// calendar, overdue-inbox, etc. can all use the same logic.
+// Shared auth-error detection + redirect-to-/auth handler. Used by dashboard,
+// deals, analytics, claims-management, calendar, overdue-inbox, dropdown
+// services, and the supabase.js boot session check.
 //
 // Discriminates between:
 //   - REAL auth failures (401/403 with JWT/token/auth signal) → redirect to /auth
 //   - RLS / permission denials (PostgreSQL 42501, PostgREST PGRST*) → leave alone
 
-// Stricter RLS classifier — code-based ONLY. Used by isAuthFailure for early-out.
-// A real Supabase Auth 403 (no PG code) with a message containing "permission" should
-// NOT be caught by the loose keyword fallback, or auth errors get classified as RLS
-// and the user never gets redirected to re-authenticate.
-function isStrictRlsError(error) {
+// Strict RLS classifier — code-based ONLY. A real Supabase Auth 403 (no PG code)
+// with a message containing "permission" must NOT be caught by the loose keyword
+// fallback, or auth errors get classified as RLS and the user never gets redirected.
+export function isStrictRlsError(error) {
   if (!error) return false
   const code = error?.code
   return (
@@ -35,8 +34,6 @@ export function isRlsError(error) {
 
 export function isAuthFailure(error) {
   if (!error) return false
-  // Use STRICT RLS check — only PG/PostgREST codes can override an HTTP 401/403.
-  // Avoids the "codeless 403 with 'permission' in message" false negative.
   if (isStrictRlsError(error)) return false
   const code = Number(error?.status ?? error?.statusCode)
   const msg = String(error?.message || '').toLowerCase()
@@ -50,31 +47,30 @@ export function isAuthFailure(error) {
   )
 }
 
-// Map internal labels → user-facing reasons. Pages that catch auth failures pass
-// a label like 'dashboard' or 'deals'; never expose those raw to the user.
-const REASON_MAP = {
-  dashboard: 'Your session expired. Please sign in again.',
-  deals: 'Your session expired. Please sign in again.',
-  dropdown: 'Your session expired. Please sign in again.',
-  analytics: 'Your session expired. Please sign in again.',
-  claims: 'Your session expired. Please sign in again.',
-  calendar: 'Your session expired. Please sign in again.',
-  overdue: 'Your session expired. Please sign in again.',
-  boot: 'Your session expired. Please sign in again.',
-  session: 'Your session expired. Please sign in again.',
+// Regex matching technical/internal error messages that should never reach the
+// user (JWT internals, Postgres infinite-recursion, RLS messages, missing-relation
+// errors). Page-level load-failure catches use this to swap a friendly fallback
+// for the raw e.message.
+export const TECH_NOISE_RE = /JWT|jwt|PostgrestError|infinite recursion|permission denied|RLS|relation .* does not exist/i
+
+export function isTechNoiseMessage(message) {
+  return TECH_NOISE_RE.test(String(message || ''))
 }
+
+// Single user-facing reason — same string for every label today. If we ever want
+// per-context messages, swap this constant for a label→message map.
+const SESSION_EXPIRED_MSG = 'Your session expired. Please sign in again.'
 
 // Module-level guard: if a redirect is already in flight (e.g., boot signOut
 // triggered + a service catch block fires the same redirect), the second call
 // is a no-op. Prevents double-navigation flash.
 let _redirectInFlight = false
 
-export function setAuthRedirectReason(label = 'session') {
+export function setAuthRedirectReason() {
   try {
-    const reason = REASON_MAP[label] ?? REASON_MAP.session
-    sessionStorage.setItem('authRedirectReason', reason)
+    sessionStorage.setItem('authRedirectReason', SESSION_EXPIRED_MSG)
   } catch {
-    // ignore storage errors (private mode, quota, etc.)
+    // private mode / quota — ignore
   }
 }
 
@@ -85,11 +81,11 @@ export function setAuthRedirectReason(label = 'session') {
  * Use in service-layer catch blocks where a 401 means the session is dead.
  * DO NOT use on routine RLS denials — those are handled by the calling code.
  */
-export function handleAuthError(error, label = 'session') {
+export function handleAuthError(error, _label) {
   if (!isAuthFailure(error)) return false
   if (_redirectInFlight) return true
 
-  setAuthRedirectReason(label)
+  setAuthRedirectReason()
 
   if (typeof window !== 'undefined') {
     if (window.location?.pathname?.startsWith('/auth')) {

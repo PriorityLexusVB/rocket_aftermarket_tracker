@@ -71,20 +71,8 @@ let _orgIdCache = null
 let _orgIdPending = null
 let _orgIdCacheValid = false // Track whether cache is valid (vs. error state)
 
-/**
- * Helper: Check if an error is an RLS/permission error
- * (kept for backwards-compat with this file's existing callers; delegates to shared lib)
- */
-import { isRlsError as _sharedIsRlsError } from '../lib/authErrorHandler'
-function _isRlsError(error) {
-  return _sharedIsRlsError(error)
-}
+import { isRlsError as _isRlsError, handleAuthError } from '../lib/authErrorHandler'
 
-// handleAuthError logic is now in src/lib/authErrorHandler.js — re-exported here for callers.
-import { handleAuthError as _sharedHandleAuthError } from '../lib/authErrorHandler'
-function handleAuthError(error, label = 'session') {
-  return _sharedHandleAuthError(error, label)
-}
 
 async function requireAuthenticatedUser(label = 'dropdown') {
   try {
