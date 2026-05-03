@@ -175,9 +175,21 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
           onDragOver={(e) => e?.preventDefault()}
           onDrop={() => onDrop?.(null, 'on_site')}
         >
-          {jobs
-            ?.filter((job) => !job?.vendor_id || job?.location === 'on_site')
-            ?.map(renderEventChip)}
+          {(() => {
+            const onSiteJobs = jobs?.filter((job) => !job?.vendor_id || job?.location === 'on_site') || []
+            return (
+              <>
+                {onSiteJobs.map(renderEventChip)}
+                {!draggedJob && onSiteJobs.length === 0 && (
+                  <div className="col-span-full border-2 border-dashed border-green-200 rounded-lg p-4 text-center text-green-700">
+                    <Car className="h-6 w-6 mx-auto mb-2 opacity-60" />
+                    <div className="text-sm">No In-House jobs scheduled</div>
+                    <div className="text-[11px] text-green-600/80 mt-0.5">Drag a job here or use + New Deal</div>
+                  </div>
+                )}
+              </>
+            )
+          })()}
 
           {/* Drop zone indicator */}
           {draggedJob && (
@@ -239,6 +251,14 @@ const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
               onDrop={() => onDrop?.(vendor?.id, 'off_site')}
             >
               {vendorJobs?.map(renderEventChip)}
+
+              {!draggedJob && (vendorJobs?.length || 0) === 0 && (
+                <div className="col-span-full border-2 border-dashed border-orange-200 rounded-lg p-4 text-center text-orange-700">
+                  <Building2 className="h-6 w-6 mx-auto mb-2 opacity-60" />
+                  <div className="text-sm">No jobs assigned to {vendor?.name}</div>
+                  <div className="text-[11px] text-orange-600/80 mt-0.5">Drag a job here to send off-site</div>
+                </div>
+              )}
 
               {/* Drop zone indicator */}
               {draggedJob && (
