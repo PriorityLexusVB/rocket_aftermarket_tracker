@@ -551,11 +551,19 @@ const GuestClaimsSubmissionForm = () => {
                   <select
                     value={formData?.product_selection}
                     onChange={(e) => handleInputChange('product_selection', e?.target?.value)}
-                    className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    disabled={loading}
+                    className={`w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 ${
                       errors?.product_selection ? 'border-red-300' : 'border-gray-300'
                     }`}
                   >
-                    <option value="">Select a product/service</option>
+                    <option value="">
+                      {loading ? 'Loading products…' : 'Select a product/service'}
+                    </option>
+                    {!loading && products?.length === 0 && !errors?.products && (
+                      <option value="" disabled>
+                        No products available — choose "Other" below to describe your item
+                      </option>
+                    )}
                     {products?.map((product) => (
                       <option key={product?.id} value={product?.id}>
                         {product?.name} - {product?.brand} ({product?.category})
@@ -563,6 +571,9 @@ const GuestClaimsSubmissionForm = () => {
                     ))}
                     <option value="other">Other (please specify)</option>
                   </select>
+                  {errors?.products && (
+                    <p className="text-red-600 text-sm mt-1">{errors?.products}</p>
+                  )}
                   {errors?.product_selection && (
                     <p className="text-red-600 text-sm mt-1">{errors?.product_selection}</p>
                   )}
