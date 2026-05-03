@@ -364,15 +364,16 @@ export default function CalendarShell() {
               <h1 className="text-xl font-semibold text-foreground">Calendar</h1>
               <div className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1">
                 {[
-                  { key: 'board', label: 'Board' },
-                  { key: 'calendar', label: 'Calendar' },
-                  { key: 'list', label: 'List', disabled: !agendaEnabled },
+                  { key: 'board', label: 'Board', tip: 'Vendor lanes — drag to reassign work' },
+                  { key: 'calendar', label: 'Calendar', tip: 'Day / Week / Month grid' },
+                  { key: 'list', label: 'List', disabled: !agendaEnabled, tip: 'Agenda rows' },
                 ].map((item) => (
                   <button
                     key={item.key}
                     type="button"
                     onClick={() => handleViewChange(item.key)}
                     disabled={item.disabled}
+                    title={item.tip}
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                       resolvedView === item.key
                         ? 'border border-primary bg-primary text-primary-foreground'
@@ -411,14 +412,16 @@ export default function CalendarShell() {
                   <ChevronRight className="h-4 w-4" />
                 </button>
                 <span className="text-sm font-medium text-foreground">{dateLabel}</span>
-                <input
-                  type="date"
-                  value={dateInputValue}
-                  onChange={handleDateInput}
-                  className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                  aria-label="Pick a date"
-                />
               </div>
+
+              <input
+                type="date"
+                value={dateInputValue}
+                onChange={handleDateInput}
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                aria-label="Jump to date"
+                title="Jump to a specific date"
+              />
 
               <select
                 value={clampedRange}
@@ -501,8 +504,12 @@ export default function CalendarShell() {
               </div>
 
               <details className="group relative">
-                <summary className="flex cursor-pointer list-none items-center rounded-md border border-border bg-background p-2 text-muted-foreground">
+                <summary
+                  className="flex cursor-pointer list-none items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
+                  title="Status & location color legend"
+                >
                   <Info className="h-4 w-4" />
+                  <span className="hidden sm:inline">Legend</span>
                 </summary>
                 <div className="absolute right-0 z-30 mt-2 w-52 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
                   <CalendarLegend compact showStatuses />
@@ -559,20 +566,6 @@ export default function CalendarShell() {
                   >
                     <Download className="h-3.5 w-3.5 shrink-0" />
                     Export
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-muted"
-                    aria-label="Open daily round-up"
-                    title="End-of-day deal summary — Daily/Weekly/Monthly export to Excel/CSV"
-                    onClick={(e) => {
-                      e.currentTarget.closest('details')?.removeAttribute('open')
-                      setRoundUpType('daily')
-                      setShowRoundUp(true)
-                    }}
-                  >
-                    <ClipboardList className="h-3.5 w-3.5 shrink-0" />
-                    Round-Up
                   </button>
                   <button
                     type="button"
