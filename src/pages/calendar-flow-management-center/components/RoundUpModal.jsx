@@ -16,6 +16,8 @@ import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw.js'
 import { formatTime, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
+import { useToast } from '@/components/ui/ToastProvider'
+import { buildBdcRows, rowsToCsv, rowsToTsv, downloadAsFile, suggestedFilename } from '@/utils/roundUpExport'
 
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
@@ -114,6 +116,8 @@ const RoundUpModal = ({
   baseDate,
 }) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set())
+  const [exportBusy, setExportBusy] = useState(null) // 'copy' | 'csv' | null
+  const toast = useToast()
 
   // Reset selection state when the modal transitions to open so stale checkmarks
   // don't carry over from a prior open. Guard prevents a no-op re-render on first mount.
@@ -134,6 +138,67 @@ const RoundUpModal = ({
     return groupJobsByDay(jobs, baseDate)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs, type, baseDateMs])
+
+  // Compute the [start, end] window matching the active type + baseDate.
+  // Mirrors the date-fns range CalendarShell.jsx uses to fetch `jobs`.
+  const exportRange = useMemo(() => {
+    const target = baseDate instanceof Date && !Number.isNaN(baseDate.getTime()) ? new Date(baseDate) : new Date()
+    if (type === 'weekly') {
+      const day = target.getDay() // 0=Sun..6=Sat
+      const offsetToMon = (day + 6) % 7
+      const start = new Date(target)
+      start.setHours(0, 0, 0, 0)
+      start.setDate(start.getDate() - offsetToMon)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 7)
+      end.setMilliseconds(-1)
+      return { start, end }
+    }
+    if (type === 'monthly') {
+      const start = new Date(target.getFullYear(), target.getMonth(), 1, 0, 0, 0, 0)
+      const end = new Date(target.getFullYear(), target.getMonth() + 1, 1, 0, 0, 0, -1)
+      return { start, end }
+    }
+    const start = new Date(target)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(target)
+    end.setHours(23, 59, 59, 999)
+    return { start, end }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, baseDate?.getTime?.()])
+
+  const handleExport = async (format) => {
+    if (exportBusy) return
+    setExportBusy(format)
+    try {
+      const rows = await buildBdcRows(exportRange.start, exportRange.end)
+      if (!rows.length) {
+        toast?.info?.('No deals to export for this period.')
+        return
+      }
+      if (format === 'copy') {
+        const tsv = rowsToTsv(rows)
+        if (!navigator?.clipboard?.writeText) {
+          toast?.error?.("Couldn't access clipboard. Use CSV instead.")
+          return
+        }
+        await navigator.clipboard.writeText(tsv)
+        toast?.success?.(`Copied ${rows.length} deal${rows.length === 1 ? '' : 's'} (paste into Excel).`)
+        return
+      }
+      if (format === 'csv') {
+        const csv = rowsToCsv(rows)
+        downloadAsFile(csv, suggestedFilename(type, baseDate))
+        toast?.success?.(`Exported ${rows.length} deal${rows.length === 1 ? '' : 's'} to CSV.`)
+        return
+      }
+    } catch (err) {
+      console.error('[RoundUpModal] export failed', err)
+      toast?.error?.("Couldn't export Round-Up. Try refreshing the page.")
+    } finally {
+      setExportBusy(null)
+    }
+  }
 
   const handleSelectJob = (jobId) => {
     const newSelected = new Set(selectedJobs)
@@ -361,31 +426,32 @@ const RoundUpModal = ({
                 </button>
               </div>
 
-              {/* Export Actions — disabled until export is implemented (Wave XVIII) */}
+              {/* Export Actions — Copy/CSV live (BDC tracking format), PDF deferred */}
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">{selectedJobs?.size} selected</span>
                 <button
                   type="button"
-                  disabled
-                  title="Export — coming soon"
-                  className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed"
+                  onClick={() => handleExport('copy')}
+                  disabled={exportBusy !== null || isLoading}
+                  title="Copy as TSV (paste directly into Excel)"
+                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Copy className="h-4 w-4 mr-2" />
-                  Copy
+                  {exportBusy === 'copy' ? 'Copying…' : 'Copy'}
                 </button>
                 <button
                   type="button"
-                  disabled
-                  title="Export — coming soon"
-                  className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed"
+                  onClick={() => handleExport('csv')}
+                  disabled={exportBusy !== null || isLoading}
+                  title="Download as CSV (BDC tracking format)"
+                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  CSV
+                  {exportBusy === 'csv' ? 'Exporting…' : 'CSV'}
                 </button>
                 <button
                   type="button"
                   disabled
-                  title="Export — coming soon"
+                  title="PDF export — coming soon"
                   className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed"
                 >
                   <Download className="h-4 w-4 mr-2" />
