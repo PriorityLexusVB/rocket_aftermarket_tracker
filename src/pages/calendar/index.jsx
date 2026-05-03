@@ -7,6 +7,7 @@ import {
   getScheduledJobsByDateRange,
 } from '@/services/scheduleItemsService'
 import { jobService } from '@/services/jobService'
+import { handleAuthError } from '@/lib/authErrorHandler'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import CalendarViewTabs from '@/components/calendar/CalendarViewTabs'
 import EventDetailPopover from '@/components/calendar/EventDetailPopover'
@@ -455,11 +456,16 @@ const CalendarSchedulingCenter = ({
       )
     } catch (error) {
       console.error('Error loading calendar data:', error)
+      if (handleAuthError(error, 'calendar')) return
       setConsistency({ rpcCount: 0, jobCount: 0, missingCount: 0 })
+      const raw = String(error?.message || '')
+      const isTechNoise = /JWT|jwt|PostgrestError|infinite recursion|permission denied|RLS/i.test(raw)
       setError(
-        error?.message
-          ? `Failed to load calendar data: ${error.message}`
-          : 'Failed to load calendar data'
+        isTechNoise
+          ? "Couldn't load calendar data. Please refresh the page."
+          : raw
+            ? `Failed to load calendar data: ${raw}`
+            : 'Failed to load calendar data'
       )
     } finally {
       setLoading(false)

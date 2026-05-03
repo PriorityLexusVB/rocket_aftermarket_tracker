@@ -4,6 +4,7 @@ import DealDrawer from '@/components/calendar/DealDrawer'
 import useTenant from '@/hooks/useTenant'
 import { jobService } from '@/services/jobService'
 import { useToast } from '@/components/ui/ToastProvider'
+import { handleAuthError } from '@/lib/authErrorHandler'
 
 const EXCLUDED_STATUSES = new Set(['completed', 'cancelled', 'canceled', 'draft'])
 const OVERDUE_CANDIDATE_FIELDS = [
@@ -167,7 +168,10 @@ export default function OverdueInbox() {
         setRows(normalizeOverdueRows(jobs))
       } catch (e) {
         if (!active) return
-        setError(e?.message || 'Failed to load overdue items')
+        if (handleAuthError(e, 'overdue')) return
+        const raw = String(e?.message || '')
+        const isTechNoise = /JWT|jwt|PostgrestError|infinite recursion|permission denied|RLS/i.test(raw)
+        setError(isTechNoise ? "Couldn't load overdue items. Please refresh the page." : raw || 'Failed to load overdue items')
       } finally {
         if (active && !silent) setLoading(false)
       }

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuthContext } from '../../../contexts/AuthContext'
 import { Button, Input, Checkbox } from '../../../components/ui'
@@ -10,6 +10,20 @@ const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [resetMessage, setResetMessage] = useState('')
+  const [redirectReason, setRedirectReason] = useState('')
+
+  // Read & consume the redirect reason set by handleAuthError / supabase.js boot
+  useEffect(() => {
+    try {
+      const reason = sessionStorage.getItem('authRedirectReason')
+      if (reason) {
+        setRedirectReason(reason)
+        sessionStorage.removeItem('authRedirectReason')
+      }
+    } catch {
+      // ignore — private mode / quota
+    }
+  }, [])
 
   const supabaseConfigured = !!isSupabaseConfigured?.()
 
@@ -112,6 +126,15 @@ const LoginForm = () => {
       </div>
 
       <SupabaseConfigNotice />
+
+      {redirectReason && (
+        <div
+          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          role="status"
+        >
+          {redirectReason}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input

@@ -230,14 +230,34 @@ if (isTest) {
           console.warn('[Supabase] Failed to attach auth state listener:', e?.message)
         }
 
-        // One-time boot check: if the persisted session is corrupt, clear it.
-        // Avoid throwing — this is purely for UX hygiene.
+        // One-time boot check: if the persisted session is corrupt or malformed,
+        // clear it. Catches three failure modes:
+        //   1. Invalid Refresh Token (revoked/expired)
+        //   2. "Expected 3 parts in JWT" — truncated/malformed access token in storage
+        //   3. Generic "JWT" parse failures from gotrue-js
+        // Without this, the app sits in a zombie state (isAuthed=true but every fetch 401s)
+        // until the user manually signs out. Avoid throwing — purely UX hygiene.
         supabaseInstance?.auth
           ?.getSession?.()
-          ?.then(({ error }) => {
+          ?.then(({ data, error }) => {
             const msg = String(error?.message || '')
-            if (error && (msg.includes('Invalid Refresh Token') || msg.includes('refresh_token'))) {
-              console.warn('[Supabase] Invalid refresh token detected; resetting local session')
+            const sessionRaw = String(data?.session?.access_token || '')
+            const sessionMalformed =
+              sessionRaw && sessionRaw.split('.').length !== 3
+            const isAuthFailure =
+              (error && (msg.includes('Invalid Refresh Token') || msg.includes('refresh_token') ||
+                msg.includes('Expected 3 parts in JWT') || msg.includes('JWT'))) ||
+              sessionMalformed
+            if (isAuthFailure) {
+              console.warn('[Supabase] Stale or malformed session detected; resetting local session', { msg, sessionMalformed })
+              try {
+                sessionStorage.setItem(
+                  'authRedirectReason',
+                  'Your session expired. Please sign in again.'
+                )
+              } catch {
+                // ignore — private mode / quota
+              }
               clearPersistedAuthStorage()
               return supabaseInstance?.auth?.signOut?.({ scope: 'local' })
             }

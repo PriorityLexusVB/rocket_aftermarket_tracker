@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import AppLayout from '../../components/layouts/AppLayout'
 import analyticsService from '../../services/analyticsService'
+import { handleAuthError } from '@/lib/authErrorHandler'
 import VehicleTypeChart from './components/VehicleTypeChart'
 import ProductPerformanceMatrix from './components/ProductPerformanceMatrix'
 import VendorPerformanceTable from './components/VendorPerformanceTable'
@@ -54,6 +55,7 @@ const AdvancedBusinessIntelligenceAnalytics = () => {
       setDashboardData(data)
     } catch (err) {
       console.error('Error loading dashboard data:', err)
+      if (handleAuthError(err, 'analytics')) return
       setError('Failed to load analytics data. Please try again.')
     } finally {
       setLoading(false)

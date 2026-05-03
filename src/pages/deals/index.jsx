@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deleteDeal, getAllDeals, markLoanerReturned } from '../../services/dealService'
 import { listByJobId } from '@/services/opportunitiesService'
+import { handleAuthError } from '@/lib/authErrorHandler'
 import { jobService } from '@/services/jobService'
 import ExportButton from '../../components/common/ExportButton'
 import NewDealModal from './NewDealModal'
@@ -466,10 +467,12 @@ export default function DealsPage() {
         return
       }
 
+      // If this is a real auth failure (stale JWT, etc.), redirect to /auth.
+      if (handleAuthError(e, 'deals')) return
       const rawMsg = String(e?.message || '')
       const isTechNoise = /JWT|jwt|PostgrestError|infinite recursion|permission denied|RLS/i.test(rawMsg)
       const errorMessage = isTechNoise
-        ? "Couldn't load deals. Please refresh, or sign out and back in if the problem continues."
+        ? "Couldn't load deals. Please refresh the page. If the problem continues, contact support."
         : rawMsg.startsWith('Failed to load deals')
           ? rawMsg
           : `Failed to load deals: ${rawMsg}`

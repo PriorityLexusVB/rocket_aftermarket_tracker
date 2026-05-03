@@ -73,50 +73,17 @@ let _orgIdCacheValid = false // Track whether cache is valid (vs. error state)
 
 /**
  * Helper: Check if an error is an RLS/permission error
+ * (kept for backwards-compat with this file's existing callers; delegates to shared lib)
  */
+import { isRlsError as _sharedIsRlsError } from '../lib/authErrorHandler'
 function _isRlsError(error) {
-  if (!error) return false
-  const msg = String(error?.message || '').toLowerCase()
-  const code = error?.code
-  return (
-    code === '42501' ||
-    (code && String(code).toUpperCase().startsWith('PGRST')) ||
-    msg.includes('policy') ||
-    msg.includes('permission') ||
-    msg.includes('rls') ||
-    msg.includes('row-level security')
-  )
+  return _sharedIsRlsError(error)
 }
 
+// handleAuthError logic is now in src/lib/authErrorHandler.js — re-exported here for callers.
+import { handleAuthError as _sharedHandleAuthError } from '../lib/authErrorHandler'
 function handleAuthError(error, label = 'dropdown') {
-  // Important: PostgREST/RLS "permission denied" is NOT an auth/session failure.
-  // Redirecting to /auth on RLS errors causes cascading test failures and a poor UX.
-  if (_isRlsError(error)) return false
-
-  const code = Number(error?.status ?? error?.statusCode)
-  const msg = String(error?.message || '').toLowerCase()
-  const looksAuthRelated =
-    [401, 403].includes(code) ||
-    msg.includes('jwt') ||
-    msg.includes('token') ||
-    msg.includes('not authenticated') ||
-    msg.includes('invalid login')
-
-  if (looksAuthRelated) {
-    try {
-      sessionStorage.setItem('authRedirectReason', `Please sign in again (${label})`)
-    } catch {
-      // ignore storage errors
-    }
-    if (typeof window !== 'undefined') {
-      if (window.location?.pathname?.startsWith('/auth')) {
-        return true
-      }
-      window.location.assign('/auth')
-    }
-    return true
-  }
-  return false
+  return _sharedHandleAuthError(error, label)
 }
 
 async function requireAuthenticatedUser(label = 'dropdown') {

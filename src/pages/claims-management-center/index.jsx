@@ -14,6 +14,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react'
 import { claimsService } from '../../services/claimsService'
+import { handleAuthError } from '@/lib/authErrorHandler'
 import ClaimProcessingModal from './components/ClaimProcessingModal'
 import ClaimStatsWidget from './components/ClaimStatsWidget'
 import ClaimAssignmentModal from './components/ClaimAssignmentModal'
@@ -56,7 +57,9 @@ const ClaimsManagementCenter = () => {
       setStaff(staffData || [])
       setStats(statsData)
     } catch (err) {
-      setError(err?.message)
+      console.error('Error loading claims data:', err)
+      if (handleAuthError(err, 'claims')) return
+      setError("Couldn't load claims. Please refresh the page.")
     } finally {
       setLoading(false)
     }
@@ -68,7 +71,9 @@ const ClaimsManagementCenter = () => {
       setClaims((prev) => prev?.map((claim) => (claim?.id === claimId ? updatedClaim : claim)))
       setSelectedClaim(updatedClaim)
     } catch (err) {
-      setError(`Failed to update claim: ${err?.message}`)
+      console.error('Error updating claim:', err)
+      if (handleAuthError(err, 'claims')) return
+      setError("Couldn't update claim. Try again.")
     }
   }
 
