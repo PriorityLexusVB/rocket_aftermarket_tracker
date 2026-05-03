@@ -17,7 +17,7 @@ import { formatTime, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
 import { useToast } from '@/components/ui/ToastProvider'
-import { buildBdcRows, rowsToCsv, rowsToTsv, downloadAsFile, suggestedFilename } from '@/utils/roundUpExport'
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 
 const groupByVendor = (jobList) => {
   return jobList?.reduce((acc, job) => {
@@ -139,31 +139,14 @@ const RoundUpModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobs, type, baseDateMs])
 
-  // Compute the [start, end] window matching the active type + baseDate.
-  // Mirrors the date-fns range CalendarShell.jsx uses to fetch `jobs`.
+  // Mirrors CalendarShell's date-fns range so export and modal display agree on
+  // boundaries. Memoized on baseDate's timestamp (Date refs churn across parent
+  // re-renders even when the value is identical).
   const exportRange = useMemo(() => {
-    const target = baseDate instanceof Date && !Number.isNaN(baseDate.getTime()) ? new Date(baseDate) : new Date()
-    if (type === 'weekly') {
-      const day = target.getDay() // 0=Sun..6=Sat
-      const offsetToMon = (day + 6) % 7
-      const start = new Date(target)
-      start.setHours(0, 0, 0, 0)
-      start.setDate(start.getDate() - offsetToMon)
-      const end = new Date(start)
-      end.setDate(start.getDate() + 7)
-      end.setMilliseconds(-1)
-      return { start, end }
-    }
-    if (type === 'monthly') {
-      const start = new Date(target.getFullYear(), target.getMonth(), 1, 0, 0, 0, 0)
-      const end = new Date(target.getFullYear(), target.getMonth() + 1, 1, 0, 0, 0, -1)
-      return { start, end }
-    }
-    const start = new Date(target)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(target)
-    end.setHours(23, 59, 59, 999)
-    return { start, end }
+    const target = baseDate instanceof Date && !Number.isNaN(baseDate.getTime()) ? baseDate : new Date()
+    if (type === 'weekly') return { start: startOfWeek(target, { weekStartsOn: 1 }), end: endOfWeek(target, { weekStartsOn: 1 }) }
+    if (type === 'monthly') return { start: startOfMonth(target), end: endOfMonth(target) }
+    return { start: startOfDay(target), end: endOfDay(target) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, baseDate?.getTime?.()])
 
@@ -171,24 +154,25 @@ const RoundUpModal = ({
     if (exportBusy) return
     setExportBusy(format)
     try {
-      const rows = await buildBdcRows(exportRange.start, exportRange.end)
+      // Lazy-import keeps ~213 LOC + supabase reference off the calendar route's
+      // eager bundle when the user never opens Round-Up export.
+      const mod = await import('@/utils/roundUpExport')
+      const rows = await mod.buildBdcRows(exportRange.start, exportRange.end)
       if (!rows.length) {
         toast?.info?.('No deals to export for this period.')
         return
       }
       if (format === 'copy') {
-        const tsv = rowsToTsv(rows)
         if (!navigator?.clipboard?.writeText) {
           toast?.error?.("Couldn't access clipboard. Use CSV instead.")
           return
         }
-        await navigator.clipboard.writeText(tsv)
+        await navigator.clipboard.writeText(mod.rowsToTsv(rows))
         toast?.success?.(`Copied ${rows.length} deal${rows.length === 1 ? '' : 's'} (paste into Excel).`)
         return
       }
       if (format === 'csv') {
-        const csv = rowsToCsv(rows)
-        downloadAsFile(csv, suggestedFilename(type, baseDate))
+        mod.downloadAsFile(mod.rowsToCsv(rows), mod.suggestedFilename(type, baseDate))
         toast?.success?.(`Exported ${rows.length} deal${rows.length === 1 ? '' : 's'} to CSV.`)
         return
       }

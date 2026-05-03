@@ -28,11 +28,11 @@ describe('roundUpExport — internal helpers', () => {
   })
 
   it('vehicleCode strips to model letters or year+model fallback', () => {
-    expect(__test__.vehicleCode('Lexus', 'GX 470', 2024)).toBe('GX')
-    expect(__test__.vehicleCode('Lexus', 'RX 350h', 2025)).toBe('RX')
-    expect(__test__.vehicleCode('Lexus', 'NXh', 2026)).toBe('NXH')
-    expect(__test__.vehicleCode('Chevrolet', '20 Impala', 2020)).toBe('20 IMPALA')
-    expect(__test__.vehicleCode('Lexus', '', 2024)).toBe('LEXUS')
+    expect(__test__.vehicleCode('Lexus', 'GX 470')).toBe('GX')
+    expect(__test__.vehicleCode('Lexus', 'RX 350h')).toBe('RX')
+    expect(__test__.vehicleCode('Lexus', 'NXh')).toBe('NXH')
+    expect(__test__.vehicleCode('Chevrolet', '20 Impala')).toBe('20 IMPALA')
+    expect(__test__.vehicleCode('Lexus', '')).toBe('LEXUS')
   })
 
   it('fmtDate produces M/D/YYYY for Excel parity', () => {

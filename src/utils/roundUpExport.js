@@ -1,18 +1,9 @@
-// Wave XXI: Round-Up export that mirrors the BDC tracking workbook format Rob
-// has been maintaining manually (`01_JANUARY 2026 Aftermarket_BDC.xlsx`).
-//
-// Per-row schema matches the per-rep tracking sheets (ASHLEY/SAM):
-//   DATE | CUSTOMER | VEHICLE | EXTERIOR | INTERIOR | WINDSHIELD | RG |
-//   ADDITIONAL PACKAGE | PRICE | COST | GROSS | SALES | TRACKING
-//
-// EXTERIOR/INTERIOR/WINDSHIELD/RG are booleans derived from the products in
-// each job_parts join. ADDITIONAL PACKAGE is the brand of any job_part that
-// isn't one of the 4 core booleans (e.g., "EVERNEW", "FILM"). PRICE / COST /
-// GROSS aggregate across all parts on the job. SALES is the assigned-to user's
-// first name uppercase. TRACKING is left blank — Rob hand-writes follow-up
-// notes in the source workbook today.
+// Round-Up export — produces the 13-column row shape that matches the
+// `01_JANUARY 2026 Aftermarket_BDC.xlsx` workbook Rob has been maintaining
+// manually. Pure shaping helpers (no I/O) plus a thin fetch wrapper.
 
 import { supabase } from '@/lib/supabase'
+import { buildUserProfileSelectFragment, resolveUserProfileName } from './userProfileName'
 
 const BDC_HEADERS = [
   'DATE',
@@ -30,12 +21,8 @@ const BDC_HEADERS = [
   'TRACKING',
 ]
 
-// Match a product to the 4 BDC boolean buckets. Maps to current rocket catalog:
-//   EXTERIOR  ← brand=Premium AND name contains 'Exterior'
-//   INTERIOR  ← brand=Premium AND name contains 'Interior'
-//   WINDSHIELD ← brand=SafeGuard (Windshield Protection)
-//   RG        ← brand=RustShield (Rust Guard)
-// Anything else → ADDITIONAL PACKAGE bucket (EverNew → "EVERNEW", etc.)
+// Maps a product to one of the 4 BDC boolean buckets, or 'PACKAGE' for any
+// brand that's not one of the core categories (EverNew, FILM, etc.).
 function classifyProduct(product) {
   if (!product) return null
   const name = String(product.name || '').toLowerCase()
@@ -57,12 +44,12 @@ function firstNameUpper(fullName) {
   return parts.length && parts[0] ? parts[0].toUpperCase() : ''
 }
 
-function vehicleCode(make, model, _year) {
+function vehicleCode(make, model) {
   const m = String(model || '').trim().toUpperCase()
   if (!m) return String(make || '').toUpperCase()
-  // Workbook style "20 IMPALA" — pass through year-prefixed model strings as-is.
+  // Workbook style "20 IMPALA" — pass through year-prefixed strings as-is.
   if (/^\d/.test(m)) return m
-  // Lexus model codes: extract leading letter run (GX, TX, RX, NX, RXH, NXH).
+  // Lexus codes: extract leading letter run (GX, TX, RX, NX, RXH, NXH).
   const match = m.match(/^([A-Z]+)/)
   return match ? match[1] : m
 }
@@ -71,7 +58,6 @@ function fmtDate(input) {
   if (!input) return ''
   const d = input instanceof Date ? input : new Date(input)
   if (Number.isNaN(d.getTime())) return ''
-  // M/D/YYYY — matches Excel default for the Date column
   return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
 }
 
@@ -106,8 +92,9 @@ export function jobToBdcRow(job) {
 
   const v = job?.vehicle || job?.vehicles || {}
   const customer = lastName(v.owner_name)
-  const vehicle = vehicleCode(v.make, v.model, v.year)
-  const sales = firstNameUpper(job?.assigned_profile?.full_name || job?.assigned_to_name)
+  const vehicle = vehicleCode(v.make, v.model)
+  const repName = resolveUserProfileName(job?.assigned_profile) || ''
+  const sales = firstNameUpper(repName)
 
   return {
     DATE: fmtDate(job?.scheduled_start_time || job?.created_at),
@@ -126,12 +113,13 @@ export function jobToBdcRow(job) {
   }
 }
 
-// Re-fetch jobs in [start, end] with job_parts + product + vehicle + assigned
-// profile joined. Uses Supabase REST since the existing get_jobs_by_date_range
-// RPC doesn't return parts. Read-only, safe to call from any auth'd context.
+// Re-fetch jobs in [start, end] with vehicle + assigned profile + job_parts joined.
+// Vehicle is a left join (uses `!left`) so jobs missing a vehicle FK still appear
+// — keeps export count consistent with what RoundUpModal renders.
 async function fetchExportableJobs(start, end) {
   const startIso = start instanceof Date ? start.toISOString() : start
   const endIso = end instanceof Date ? end.toISOString() : end
+  const profileFrag = buildUserProfileSelectFragment()
   const { data, error } = await supabase
     .from('jobs')
     .select(`
@@ -141,8 +129,8 @@ async function fetchExportableJobs(start, end) {
       scheduled_start_time,
       created_at,
       assigned_to,
-      vehicle:vehicles!inner ( owner_name, make, model, year, stock_number ),
-      assigned_profile:user_profiles!jobs_assigned_to_fkey ( full_name ),
+      vehicle:vehicles!left ( owner_name, make, model, year, stock_number ),
+      assigned_profile:user_profiles!jobs_assigned_to_fkey ${profileFrag},
       job_parts ( quantity_used, unit_price, cost, product:products ( name, brand, category, unit_price, cost ) )
     `)
     .gte('scheduled_start_time', startIso)
@@ -157,7 +145,6 @@ export async function buildBdcRows(start, end) {
   return jobs.map(jobToBdcRow)
 }
 
-// CSV escape per RFC 4180: wrap in quotes if value contains comma, quote, or newline.
 function csvCell(value) {
   if (value === null || value === undefined) return ''
   if (value === true) return 'TRUE'
@@ -166,30 +153,25 @@ function csvCell(value) {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-export function rowsToCsv(rows) {
-  const header = BDC_HEADERS.join(',')
-  const body = rows.map((r) => BDC_HEADERS.map((h) => csvCell(r[h])).join(','))
+function tsvCell(value) {
+  if (value === null || value === undefined) return ''
+  if (value === true) return 'TRUE'
+  if (value === false) return 'FALSE'
+  return String(value).replace(/[\t\r\n]/g, ' ')
+}
+
+function joinRows(rows, delimiter, escape) {
+  const header = BDC_HEADERS.join(delimiter)
+  const body = rows.map((r) => BDC_HEADERS.map((h) => escape(r[h])).join(delimiter))
   return [header, ...body].join('\r\n')
 }
 
-export function rowsToTsv(rows) {
-  const header = BDC_HEADERS.join('\t')
-  const body = rows.map((r) =>
-    BDC_HEADERS.map((h) => {
-      const v = r[h]
-      if (v === true) return 'TRUE'
-      if (v === false) return 'FALSE'
-      return v === null || v === undefined ? '' : String(v).replace(/[\t\r\n]/g, ' ')
-    }).join('\t')
-  )
-  return [header, ...body].join('\r\n')
-}
+export const rowsToCsv = (rows) => joinRows(rows, ',', csvCell)
+export const rowsToTsv = (rows) => joinRows(rows, '\t', tsvCell)
 
-// Trigger a browser download of `text` as `filename`. Works in jsdom-free
-// environments only (real browser); guard at call sites.
-export function downloadAsFile(text, filename, mime = 'text/csv;charset=utf-8') {
+export function downloadAsFile(text, filename) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
-  const blob = new Blob([text], { type: mime })
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -209,4 +191,4 @@ export function suggestedFilename(type, baseDate) {
   return `roundup-${label}-${yyyy}${mm}${dd}.csv`
 }
 
-export const __test__ = { classifyProduct, lastName, firstNameUpper, vehicleCode, fmtDate, csvCell }
+export const __test__ = { classifyProduct, lastName, firstNameUpper, vehicleCode, fmtDate, csvCell, tsvCell }
