@@ -33,7 +33,7 @@ export default function PromisedQueue({
   const overdueTotal = Number.isFinite(overdueCount) ? overdueCount : 0
 
   return (
-    <div className="w-80 shrink-0 rounded-lg border border-gray-200 bg-white">
+    <div className="hidden md:block w-80 shrink-0 rounded-lg border border-gray-200 bg-white">
       <div className="border-b border-gray-200 p-3 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

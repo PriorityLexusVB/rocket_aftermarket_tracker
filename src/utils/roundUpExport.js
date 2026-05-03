@@ -86,8 +86,13 @@ export function jobToBdcRow(job) {
       packageBrands.add(String(product.brand).toUpperCase())
     }
     const qty = Number(part?.quantity_used ?? 1) || 1
-    priceTotal += Number(part?.unit_price ?? product?.unit_price ?? 0) * qty
-    costTotal += Number(part?.cost ?? product?.cost ?? 0) * qty
+    // job_parts.total_price is pre-computed (unit_price × qty); fall back to compute.
+    const lineTotal = Number(
+      part?.total_price ?? (Number(part?.unit_price ?? product?.unit_price ?? 0) * qty)
+    ) || 0
+    priceTotal += lineTotal
+    // Cost lives only on products (no `cost` column on job_parts).
+    costTotal += Number(product?.cost ?? 0) * qty
   }
 
   const v = job?.vehicle || job?.vehicles || {}
@@ -131,7 +136,7 @@ async function fetchExportableJobs(start, end) {
       assigned_to,
       vehicle:vehicles!left ( owner_name, make, model, year, stock_number ),
       assigned_profile:user_profiles!jobs_assigned_to_fkey ${profileFrag},
-      job_parts ( quantity_used, unit_price, cost, product:products ( name, brand, category, unit_price, cost ) )
+      job_parts ( quantity_used, unit_price, total_price, product:products ( name, brand, category, unit_price, cost ) )
     `)
     .gte('scheduled_start_time', startIso)
     .lte('scheduled_start_time', endIso)

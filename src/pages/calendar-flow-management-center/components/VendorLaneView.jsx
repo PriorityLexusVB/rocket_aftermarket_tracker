@@ -6,13 +6,19 @@ import Calendar from 'lucide-react/dist/esm/icons/calendar.js'
 import AlertTriangle from 'lucide-react/dist/esm/icons/alert-triangle.js'
 import { formatTime, isOverdue, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
+import { getJobLocationType } from '@/utils/locationType'
 
 const VendorLaneView = ({ vendors, jobs, onJobClick, onDrop, draggedJob }) => {
   const renderEventChip = (job) => {
-    const isOnSite = !job?.vendor_id || job?.location === 'on_site'
-    const chipBg = isOnSite ? 'bg-green-50' : 'bg-orange-50'
-    const chipBorder = isOnSite ? 'border-green-200' : 'border-orange-200'
-    const chipHoverBorder = isOnSite ? 'hover:border-green-300' : 'hover:border-orange-300'
+    // Tri-state: In-House (green) / Off-Site (amber) / Mixed (blue, "Split Work").
+    // Matches the legend in CalendarShell, the location badge in RoundUpModal, and
+    // the dot in PromisedQueue.jsx.
+    const locType = getJobLocationType(job) // 'In-House' | 'Off-Site' | 'Mixed' | null
+    const isMixed = locType === 'Mixed'
+    const isOnSite = locType === 'In-House' || (locType == null && !job?.vendor_id)
+    const chipBg = isMixed ? 'bg-blue-50' : isOnSite ? 'bg-green-50' : 'bg-amber-50'
+    const chipBorder = isMixed ? 'border-blue-200' : isOnSite ? 'border-green-200' : 'border-amber-200'
+    const chipHoverBorder = isMixed ? 'hover:border-blue-300' : isOnSite ? 'hover:border-green-300' : 'hover:border-amber-300'
 
     const promise = job?.next_promised_iso || job?.promised_date || job?.promisedAt || null
     const overdue = isOverdue(promise)

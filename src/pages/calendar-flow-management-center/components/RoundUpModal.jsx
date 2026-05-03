@@ -11,8 +11,6 @@ import MapPin from 'lucide-react/dist/esm/icons/map-pin.js'
 import GitBranch from 'lucide-react/dist/esm/icons/git-branch.js'
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js'
 import RefreshCw from 'lucide-react/dist/esm/icons/refresh-cw.js'
-import XCircle from 'lucide-react/dist/esm/icons/x-circle.js'
-import RotateCcw from 'lucide-react/dist/esm/icons/rotate-ccw.js'
 import { formatTime, getStatusBadge } from '../../../lib/time'
 import { formatEtDateLabel } from '@/utils/scheduleDisplay'
 import { isJobOnSite, getJobLocationType } from '@/utils/locationType'
@@ -258,7 +256,7 @@ const RoundUpModal = ({
                   className="flex items-center text-gray-600"
                   aria-label={`Location: Off-Site${job?.vendor_name ? ` — ${job.vendor_name}` : ''}`}
                 >
-                  <Building2 className="h-3 w-3 mr-1 text-orange-500" />
+                  <Building2 className="h-3 w-3 mr-1 text-amber-600" />
                   {job?.vendor_name || 'Off-Site'}
                 </div>
               )
@@ -306,20 +304,8 @@ const RoundUpModal = ({
                 <CheckCircle className="h-3 w-3" />
               )}
             </button>
-            <button
-              disabled
-              className="p-1 rounded text-gray-300 cursor-not-allowed"
-              title="No-Show — coming soon"
-            >
-              <XCircle className="h-3 w-3" />
-            </button>
-            <button
-              disabled
-              className="p-1 rounded text-orange-200 cursor-not-allowed"
-              title="Reschedule — coming soon"
-            >
-              <RotateCcw className="h-3 w-3" />
-            </button>
+            {/* No-Show + Reschedule actions hidden until implemented; visible-but-disabled
+                buttons trained users that the action area was broken. */}
           </div>
         </div>
       </div>
@@ -350,11 +336,11 @@ const RoundUpModal = ({
         {Object.entries(groupData?.vendors || {})?.map(([vendorName, vendorJobs]) => (
           <div key={vendorName} className="mb-6">
             <div className="flex items-center mb-3">
-              <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-              <h4 className="font-medium text-orange-900">{vendorName}</h4>
+              <div className="w-3 h-3 bg-amber-500 rounded-full mr-2"></div>
+              <h4 className="font-medium text-amber-900">{vendorName}</h4>
               <span className="ml-2 text-sm text-gray-600">({vendorJobs?.length} jobs)</span>
             </div>
-            <div className="bg-orange-50 rounded-lg p-4">{vendorJobs?.map(renderJobRow)}</div>
+            <div className="bg-amber-50 rounded-lg p-4">{vendorJobs?.map(renderJobRow)}</div>
           </div>
         ))}
       </div>

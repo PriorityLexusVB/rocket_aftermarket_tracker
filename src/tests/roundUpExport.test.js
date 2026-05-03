@@ -63,10 +63,10 @@ describe('jobToBdcRow', () => {
       vehicle: { owner_name: 'Aaron Dow', make: 'Lexus', model: 'TX 350', year: 2025 },
       assigned_profile: { full_name: 'Reid Carter' },
       job_parts: [
-        { quantity_used: 1, unit_price: 1500, cost: 600, product: { name: 'Exterior Protection', brand: 'Premium' } },
-        { quantity_used: 1, unit_price: 1200, cost: 500, product: { name: 'Interior Protection', brand: 'Premium' } },
-        { quantity_used: 1, unit_price: 800, cost: 400, product: { name: 'Rust Guard', brand: 'RustShield' } },
-        { quantity_used: 1, unit_price: 894, cost: 323, product: { name: 'Window Tint Film', brand: 'FILM' } },
+        { quantity_used: 1, unit_price: 1500, total_price: 1500, product: { name: 'Exterior Protection', brand: 'Premium', cost: 600 } },
+        { quantity_used: 1, unit_price: 1200, total_price: 1200, product: { name: 'Interior Protection', brand: 'Premium', cost: 500 } },
+        { quantity_used: 1, unit_price: 800, total_price: 800, product: { name: 'Rust Guard', brand: 'RustShield', cost: 400 } },
+        { quantity_used: 1, unit_price: 894, total_price: 894, product: { name: 'Window Tint Film', brand: 'FILM', cost: 323 } },
       ],
     }
     const row = jobToBdcRow(job)
@@ -107,8 +107,8 @@ describe('jobToBdcRow', () => {
       vehicle: { owner_name: 'Pat Thompson', make: 'Chevrolet', model: 'Impala', year: 2020 },
       assigned_profile: { full_name: 'Ron Hill' },
       job_parts: [
-        { quantity_used: 1, unit_price: 999, cost: 300, product: { name: 'EverNew 3yr', brand: 'EverNew' } },
-        { quantity_used: 1, unit_price: 496, cost: 249, product: { name: 'Window Tint Film', brand: 'FILM' } },
+        { quantity_used: 1, unit_price: 999, total_price: 999, product: { name: 'EverNew 3yr', brand: 'EverNew', cost: 300 } },
+        { quantity_used: 1, unit_price: 496, total_price: 496, product: { name: 'Window Tint Film', brand: 'FILM', cost: 249 } },
       ],
     })
     const pkg = row['ADDITIONAL PACKAGE'].split(', ').sort().join(', ')

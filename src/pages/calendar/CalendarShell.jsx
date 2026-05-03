@@ -552,6 +552,7 @@ export default function CalendarShell() {
                     type="button"
                     className="flex w-full items-center gap-2 rounded px-2 py-1 text-left hover:bg-muted"
                     aria-label="Open daily round-up"
+                    title="End-of-day deal summary — Daily/Weekly/Monthly export to Excel/CSV"
                     onClick={(e) => {
                       e.currentTarget.closest('details')?.removeAttribute('open')
                       setRoundUpType('daily')
