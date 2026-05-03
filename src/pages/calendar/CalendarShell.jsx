@@ -6,6 +6,17 @@ import CalendarSchedulingCenter from '@/pages/calendar'
 import CalendarFlowManagementCenter from '@/pages/calendar-flow-management-center'
 import CalendarAgenda from '@/pages/calendar-agenda'
 import DealDrawer from '@/components/calendar/DealDrawer'
+import RoundUpModal from '@/pages/calendar-flow-management-center/components/RoundUpModal'
+import { useToast } from '@/components/ui/ToastProvider'
+import { calendarService } from '@/services/calendarService'
+import {
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+} from 'date-fns'
 import CalendarLegend from '@/components/calendar/CalendarLegend'
 import {
   buildCalendarSearchParams,
@@ -77,6 +88,11 @@ export default function CalendarShell() {
   const [debouncedSearch, setDebouncedSearch] = useState(searchValue)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerDeal, setDrawerDeal] = useState(null)
+  const [showRoundUp, setShowRoundUp] = useState(false)
+  const [roundUpType, setRoundUpType] = useState('daily')
+  const [roundUpJobs, setRoundUpJobs] = useState([])
+  const [roundUpLoading, setRoundUpLoading] = useState(false)
+  const toast = useToast()
 
   const {
     view,
@@ -189,6 +205,40 @@ export default function CalendarShell() {
       lastCalendarRangeRef.current = clampedRange
     }
   }, [resolvedView, clampedRange])
+
+  useEffect(() => {
+    if (!showRoundUp) return
+    let cancelled = false
+    const baseDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date()
+    const roundUpRange =
+      roundUpType === 'weekly'
+        ? { start: startOfWeek(baseDate, { weekStartsOn: 1 }), end: endOfWeek(baseDate, { weekStartsOn: 1 }) }
+        : roundUpType === 'monthly'
+          ? { start: startOfMonth(baseDate), end: endOfMonth(baseDate) }
+          : { start: startOfDay(baseDate), end: endOfDay(baseDate) }
+
+    setRoundUpLoading(true)
+    calendarService
+      .getJobsByDateRange(roundUpRange.start, roundUpRange.end)
+      .then((res) => {
+        if (cancelled) return
+        const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
+        setRoundUpJobs(data)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        console.error('[CalendarShell] roundUp fetch failed', err)
+        setRoundUpJobs([])
+        toast?.error?.("Couldn't load Round-Up data. Please try again.")
+      })
+      .finally(() => {
+        if (!cancelled) setRoundUpLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [showRoundUp, roundUpType, date])
 
   const handleViewChange = (nextView) => {
     const nextAllowedRanges = getAllowedRangesForView(nextView)
@@ -485,6 +535,12 @@ export default function CalendarShell() {
                   <button
                     type="button"
                     className="w-full rounded px-2 py-1 text-left hover:bg-muted"
+                    aria-label="Open daily round-up"
+                    onClick={(e) => {
+                      e.currentTarget.closest('details')?.removeAttribute('open')
+                      setRoundUpType('daily')
+                      setShowRoundUp(true)
+                    }}
                   >
                     Round-Up
                   </button>
@@ -506,6 +562,15 @@ export default function CalendarShell() {
         {dealDrawerEnabled && (
           <DealDrawer open={drawerOpen} deal={drawerDeal} onClose={handleCloseDealDrawer} />
         )}
+        <RoundUpModal
+          isOpen={showRoundUp}
+          onClose={() => setShowRoundUp(false)}
+          jobs={roundUpJobs}
+          type={roundUpType}
+          onTypeChange={setRoundUpType}
+          isLoading={roundUpLoading}
+          baseDate={date}
+        />
       </div>
     </AppLayout>
   )

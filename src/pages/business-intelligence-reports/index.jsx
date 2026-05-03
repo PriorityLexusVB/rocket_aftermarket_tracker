@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '@/components/ui/ToastProvider'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
 import Icon from '../../components/AppIcon'
@@ -9,6 +10,7 @@ import ReportPreview from './components/ReportPreview'
 import QuickActions from './components/QuickActions'
 
 const BusinessIntelligenceReports = () => {
+  const toast = useToast()
   const navigate = useNavigate()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [currentFilters, setCurrentFilters] = useState({
@@ -44,9 +46,8 @@ const BusinessIntelligenceReports = () => {
 
             // Simulate download
             const fileName = `${currentFilters?.reportType}_${new Date()?.toISOString()?.split('T')?.[0]}.${format}`
-            // Show success notification (in real app, this would be a toast)
             setTimeout(() => {
-              alert(`Report exported successfully as ${format?.toUpperCase()}`)
+              toast?.success?.(`Report exported as ${format?.toUpperCase()}`)
             }, 500)
 
             return 100

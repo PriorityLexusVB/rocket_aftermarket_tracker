@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '@/components/ui/ToastProvider'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
 import VehicleTable from './components/VehicleTable'
@@ -19,6 +20,7 @@ import {
 import jobService from '../../services/jobService'
 
 const VehicleManagementHub = () => {
+  const toast = useToast()
   const { userProfile, isManager, isVendor, vendorId } = useAuth()
   const navigate = useNavigate()
 
@@ -357,10 +359,8 @@ const VehicleManagementHub = () => {
       const loanerText = vehicleData?.needs_loaner ? ' (Loaner required)' : ''
       const vendorText = vehicleData?.primary_vendor_id ? ' with vendor assignment' : ''
 
-      alert(
-        `Vehicle added successfully!${loanerText}${vendorText}\n` +
-          `Products: ${productsCount} items ($${totalValue?.toFixed(2)} value)\n` +
-          `This vehicle is now set up for complete aftermarket tracking.`
+      toast?.success?.(
+        `Vehicle added${loanerText}${vendorText} — ${productsCount} product${productsCount !== 1 ? 's' : ''} ($${totalValue?.toFixed(2)}) ready to track.`
       )
 
       // Refresh the page data

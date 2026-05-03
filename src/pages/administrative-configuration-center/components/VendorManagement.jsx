@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useLogger } from '../../../hooks/useLogger'
+import { useToast } from '../../../components/ui/ToastProvider'
 import UIButton from '../../../components/ui/Button'
 import Input from '../../../components/ui/Input'
 import Select from '../../../components/ui/Select'
@@ -13,6 +14,7 @@ import { vendorInsertSchema } from '../../../db/schemas'
 const VendorManagement = () => {
   const { userProfile } = useAuth()
   const logger = useLogger()
+  const toast = useToast()
   const [vendors, setVendors] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedVendor, setSelectedVendor] = useState(null)
@@ -101,7 +103,7 @@ const VendorManagement = () => {
         )
 
         // Show success feedback
-        alert('Vendor added successfully!')
+        toast?.success?.('Vendor added.')
       } else {
         const updatedVendor = await vendorService?.updateVendor(selectedVendor?.id, formData)
         setVendors((prev) => prev?.map((v) => (v?.id === updatedVendor?.id ? updatedVendor : v)))
@@ -115,13 +117,13 @@ const VendorManagement = () => {
         )
 
         // Show success feedback
-        alert('Vendor updated successfully!')
+        toast?.success?.('Vendor updated.')
       }
 
       resetForm()
     } catch (error) {
       console.error('Error saving vendor:', error)
-      alert(`Error ${formMode === 'add' ? 'adding' : 'updating'} vendor: ${error?.message}`)
+      toast?.error?.(`Couldn't ${formMode === 'add' ? 'add' : 'update'} vendor. Try again.`)
 
       await logger?.logError(error, {
         action: `vendor_${formMode}_error`,
@@ -151,7 +153,7 @@ const VendorManagement = () => {
       setShowForm(true)
     } catch (error) {
       console.error('Error in handleEditVendor:', error)
-      alert('Error opening vendor for editing')
+      toast?.error?.("Couldn't open vendor editor. Refresh and try again.")
     }
   }
 
@@ -163,7 +165,7 @@ const VendorManagement = () => {
       await vendorService?.deleteVendor(vendorId)
       setVendors((prev) => prev?.filter((v) => v?.id !== vendorId))
 
-      alert('Vendor deleted successfully!')
+      toast?.success?.('Vendor deleted.')
 
       await logger?.logSuccess(
         'vendor_deleted',
@@ -174,7 +176,7 @@ const VendorManagement = () => {
       )
     } catch (error) {
       console.error('Error deleting vendor:', error)
-      alert(`Error deleting vendor: ${error?.message}`)
+      toast?.error?.("Couldn't delete vendor. Try again.")
 
       await logger?.logError(error, {
         action: 'vendor_delete_error',
@@ -205,7 +207,7 @@ const VendorManagement = () => {
       setShowForm(true)
     } catch (error) {
       console.error('Error in handleAddNewVendor:', error)
-      alert('Error opening add vendor form')
+      toast?.error?.("Couldn't open the form. Try again.")
     }
   }
 
@@ -232,6 +234,7 @@ const VendorManagement = () => {
       )
     } catch (error) {
       console.error('Error bulk updating vendors:', error)
+      toast?.error?.("Couldn't update vendors. Try again.")
       await logger?.logError(error, {
         action: 'vendor_bulk_update_error',
         context: { active, selectedCount: selectedVendors?.length },

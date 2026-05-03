@@ -3,9 +3,11 @@ import { X, Clock, User, Plus } from 'lucide-react'
 import { useAuth } from '../../../contexts/AuthContext'
 import { vehicleService } from '../../../services/vehicleService'
 import { calendarService } from '../../../services/calendarService'
+import { useToast } from '@/components/ui/ToastProvider'
 
 const QuickAddModal = ({ vendors = [], onClose, onSuccess }) => {
   const { user } = useAuth()
+  const toast = useToast()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -162,7 +164,7 @@ const QuickAddModal = ({ vendors = [], onClose, onSuccess }) => {
       onClose?.()
     } catch (error) {
       console.error('Error creating job:', error)
-      alert('Failed to create job. Please try again.')
+      toast?.error?.("Couldn't schedule this job. Please try again.")
     } finally {
       setLoading(false)
     }

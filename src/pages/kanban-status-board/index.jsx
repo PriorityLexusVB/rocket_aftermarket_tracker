@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Activity, Filter, Search, ChevronDown } from 'lucide-react'
+import { useToast } from '@/components/ui/ToastProvider'
 import { kanbanService } from '../../services/kanbanService'
 import vendorService from '../../services/vendorService'
 
@@ -10,6 +11,7 @@ import StatusUpdateModal from './components/StatusUpdateModal'
 import FilterPanel from './components/FilterPanel'
 
 const KanbanStatusBoard = () => {
+  const toast = useToast()
   // State management
   const [jobs, setJobs] = useState([])
   const [vendors, setVendors] = useState([])
@@ -204,11 +206,12 @@ const KanbanStatusBoard = () => {
 
       if (error) {
         const message = error?.message || String(error)
+        console.error('Error updating job status:', error)
         if (message?.includes('Invalid status progression')) {
-          alert(message)
+          toast?.error?.("Couldn't update this status. The transition isn't allowed from the current step.")
           return false
         }
-        console.error('Error updating job status:', error)
+        toast?.error?.("Couldn't update this status. Try again.")
         return false
       }
 

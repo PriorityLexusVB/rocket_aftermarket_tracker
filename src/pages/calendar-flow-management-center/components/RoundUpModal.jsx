@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   X,
   Download,
@@ -30,33 +30,33 @@ const groupByVendor = (jobList) => {
   }, {})
 }
 
-const groupJobsByDay = (jobList) => {
-  const today = new Date()
-  today?.setHours(0, 0, 0, 0)
+const groupJobsByDay = (jobList, baseDate = new Date()) => {
+  const target = baseDate instanceof Date && !Number.isNaN(baseDate.getTime()) ? new Date(baseDate) : new Date()
+  target.setHours(0, 0, 0, 0)
 
-  const todayJobs = jobList?.filter((job) => {
+  const targetJobs = jobList?.filter((job) => {
     const jobDate = new Date(job?.scheduled_start_time)
-    return jobDate?.toDateString() === today?.toDateString()
+    return jobDate?.toDateString() === target?.toDateString()
   })
 
   return {
-    Today: {
-      onSite: todayJobs?.filter((job) => isJobOnSite(job)),
-      vendors: groupByVendor(todayJobs?.filter((job) => !isJobOnSite(job))),
+    [target.toDateString() === new Date().toDateString() ? 'Today' : target.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })]: {
+      onSite: targetJobs?.filter((job) => isJobOnSite(job)),
+      vendors: groupByVendor(targetJobs?.filter((job) => !isJobOnSite(job))),
     },
   }
 }
 
 const groupJobsByWeek = (jobList) => {
-  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  // Monday-first week: index 0=Mon, 1=Tue ... 6=Sun. JS Date.getDay(): 0=Sun, 1=Mon ... 6=Sat.
+  const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   const result = {}
 
-  weekDays?.forEach((day) => {
+  weekDays?.forEach((day, idx) => {
+    const targetDayOfWeek = idx === 6 ? 0 : idx + 1 // Sunday wraps to JS getDay()=0
     const dayJobs = jobList?.filter((job) => {
       const jobDate = new Date(job?.scheduled_start_time)
-      const dayOfWeek = jobDate?.getDay()
-      const dayIndex = weekDays?.indexOf(day)
-      return dayOfWeek === (dayIndex + 1) % 7 // Adjust for Monday start
+      return jobDate?.getDay() === targetDayOfWeek
     })
 
     if (dayJobs?.length > 0) {
@@ -106,23 +106,30 @@ const RoundUpModal = ({
   onComplete,
   onReopen,
   isStatusInFlight,
+  isLoading = false,
+  baseDate,
 }) => {
   const [selectedJobs, setSelectedJobs] = useState(new Set())
+
+  // Reset selection state each time the modal opens so stale checkmarks don't carry over
+  useEffect(() => {
+    if (isOpen) setSelectedJobs(new Set())
+  }, [isOpen])
 
   const groupedJobs = useMemo(() => {
     if (!jobs?.length) return {}
 
     switch (type) {
       case 'daily':
-        return groupJobsByDay(jobs)
+        return groupJobsByDay(jobs, baseDate)
       case 'weekly':
         return groupJobsByWeek(jobs)
       case 'monthly':
         return groupJobsByMonth(jobs)
       default:
-        return groupJobsByDay(jobs)
+        return groupJobsByDay(jobs, baseDate)
     }
-  }, [jobs, type])
+  }, [jobs, type, baseDate])
 
   const handleSelectJob = (jobId) => {
     const newSelected = new Set(selectedJobs)
@@ -318,8 +325,16 @@ const RoundUpModal = ({
               <div className="flex items-center">
                 <Download className="h-5 w-5 text-gray-600 mr-3" />
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Daily Round-Up</h2>
-                  <p className="text-sm text-gray-600">Review and export today's scheduled work</p>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {type === 'weekly' ? 'Weekly' : type === 'monthly' ? 'Monthly' : 'Daily'} Round-Up
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    {type === 'weekly'
+                      ? "Review and export this week's scheduled work"
+                      : type === 'monthly'
+                        ? "Review and export this month's scheduled work"
+                        : "Review and export today's scheduled work"}
+                  </p>
                 </div>
               </div>
 
@@ -352,26 +367,32 @@ const RoundUpModal = ({
                 </button>
               </div>
 
-              {/* Export Actions */}
+              {/* Export Actions — disabled until export is implemented (Wave XVIII) */}
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">{selectedJobs?.size} selected</span>
                 <button
-                  onClick={() => handleExport('copy')}
-                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                  type="button"
+                  disabled
+                  title="Export — coming soon"
+                  className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed"
                 >
                   <Copy className="h-4 w-4 mr-2" />
                   Copy
                 </button>
                 <button
-                  onClick={() => handleExport('csv')}
-                  className="flex items-center px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                  type="button"
+                  disabled
+                  title="Export — coming soon"
+                  className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed"
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   CSV
                 </button>
                 <button
-                  onClick={() => handleExport('pdf')}
-                  className="flex items-center px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700"
+                  type="button"
+                  disabled
+                  title="Export — coming soon"
+                  className="flex items-center px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   PDF
@@ -382,7 +403,12 @@ const RoundUpModal = ({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-6">
-            {Object.keys(groupedJobs)?.length > 0 ? (
+            {isLoading ? (
+              <div className="text-center py-12 text-gray-500">
+                <RefreshCw className="h-8 w-8 mx-auto mb-3 text-gray-400 animate-spin" />
+                <div className="text-lg">Loading jobs…</div>
+              </div>
+            ) : Object.keys(groupedJobs)?.length > 0 ? (
               Object.entries(groupedJobs)?.map(([groupName, groupData]) =>
                 renderJobGroup(groupName, groupData)
               )

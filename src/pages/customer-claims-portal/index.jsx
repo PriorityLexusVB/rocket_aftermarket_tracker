@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useToast } from '@/components/ui/ToastProvider'
 import {
   Upload,
   AlertCircle,
@@ -20,6 +21,7 @@ import ClaimDetailsModal from './components/ClaimDetailsModal'
 import { useAuth } from '../../contexts/AuthContext'
 
 const CustomerClaimsPortal = () => {
+  const toast = useToast()
   const [claims, setClaims] = useState([])
   const [vehicles, setVehicles] = useState([])
   const [products, setProducts] = useState([])
@@ -79,8 +81,7 @@ const CustomerClaimsPortal = () => {
       setClaims((prev) => [newClaim, ...prev])
       setShowNewClaimForm(false)
 
-      // Show success message
-      alert('Claim submitted successfully! You will receive email updates on the progress.')
+      toast?.success?.('Claim submitted. You will receive email updates.')
     } catch (err) {
       setError(`Failed to submit claim: ${err?.message}`)
     }

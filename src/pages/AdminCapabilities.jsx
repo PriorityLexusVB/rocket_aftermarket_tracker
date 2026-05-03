@@ -1,6 +1,7 @@
 // src/pages/AdminCapabilities.jsx
 // Admin page for viewing and resetting capability flags
 import { useState, useEffect } from 'react'
+import { useToast } from '@/components/ui/ToastProvider'
 import {
   getAllTelemetry,
   resetAllTelemetry,
@@ -11,6 +12,7 @@ import {
 import { getLogs, getLogStats, clearLogs, exportLogs } from '@/utils/structuredLogger'
 
 export default function AdminCapabilities() {
+  const toast = useToast()
   const [telemetry, setTelemetry] = useState({})
   const [telemetrySummary, setTelemetrySummary] = useState(null)
   const [capabilities, setCapabilities] = useState({})
@@ -100,13 +102,14 @@ export default function AdminCapabilities() {
       try {
         const success = importTelemetry(event.target.result)
         if (success) {
-          alert('Telemetry imported successfully')
+          toast?.success?.('Telemetry imported successfully')
           loadData()
         } else {
-          alert('Failed to import telemetry')
+          toast?.error?.("Couldn't import telemetry — file may be invalid")
         }
       } catch (error) {
-        alert(`Import error: ${error.message}`)
+        console.error('Telemetry import error:', error)
+        toast?.error?.("Import failed — check the file format and try again")
       }
     }
     reader.readAsText(file)

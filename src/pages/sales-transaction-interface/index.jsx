@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '@/components/ui/ToastProvider'
 import Header from '../../components/ui/Header'
 import Sidebar from '../../components/ui/Sidebar'
 import Icon from '../../components/AppIcon'
@@ -11,6 +12,7 @@ import TransactionSummary from './components/TransactionSummary'
 import { jobService } from '../../services/jobService'
 
 const SalesTransactionInterface = () => {
+  const toast = useToast()
   const navigate = useNavigate()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -147,16 +149,9 @@ const SalesTransactionInterface = () => {
       const result = await jobService?.createDealWithLineItems(dealData)
 
       if (result) {
-        // Show success message
-        const successMessage = `Deal saved successfully!
-Deal ID: ${result?.job_number || 'Generated'}
-Customer: ${customerData?.name}
-Vehicle: ${selectedVehicle?.year} ${selectedVehicle?.make} ${selectedVehicle?.model}
-Services: ${selectedServices?.length} items
-Total: $${totalPrice?.toFixed(2)}
-Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${primaryScheduledService?.startDate}` : ''}`
-
-        alert(successMessage)
+        toast?.success?.(
+          `Deal saved — ${customerData?.name}, ${selectedVehicle?.year} ${selectedVehicle?.make} ${selectedVehicle?.model}, $${totalPrice?.toFixed(2)} total`
+        )
 
         // Reset form
         handleResetForm()
@@ -166,7 +161,7 @@ Profit: $${totalProfit?.toFixed(2)}${hasScheduledServices ? `\nScheduled: ${prim
       }
     } catch (error) {
       console.error('Error saving deal:', error)
-      alert(`Error saving deal: ${error?.message || 'Please try again.'}`)
+      toast?.error?.("Couldn't save this deal. Please try again.")
     } finally {
       setIsSaving(false)
     }

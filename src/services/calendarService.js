@@ -205,9 +205,17 @@ export const calendarService = {
    */
   async getJobsByDateRange(startDate, endDate, filters = {}) {
     try {
+      // Accept either Date objects or ISO strings — service contract is permissive.
+      const toIso = (d) => {
+        if (!d) return null
+        if (typeof d === 'string') return d
+        if (d instanceof Date) return Number.isNaN(d.getTime()) ? null : d.toISOString()
+        if (typeof d?.toISOString === 'function') return d.toISOString()
+        return null
+      }
       const baseArgs = {
-        start_date: startDate?.toISOString(),
-        end_date: endDate?.toISOString(),
+        start_date: toIso(startDate),
+        end_date: toIso(endDate),
         vendor_filter: filters?.vendorId || null,
         status_filter: filters?.status || null,
       }

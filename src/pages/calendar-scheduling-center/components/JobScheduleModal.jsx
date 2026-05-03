@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { X, Clock, User, MapPin, AlertTriangle, Save, Trash2 } from 'lucide-react'
 import { calendarService } from '../../../services/calendarService'
 import { jobService } from '../../../services/jobService'
+import { useToast } from '@/components/ui/ToastProvider'
 
 const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
+  const toast = useToast()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -242,7 +244,7 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
       }
     } catch (error) {
       console.error('Error updating job:', error)
-      alert('Failed to update job. Please try again.')
+      toast?.error?.("Couldn't save changes. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -262,7 +264,7 @@ const JobScheduleModal = ({ job, vendors = [], onClose, onUpdate }) => {
       onClose?.()
     } catch (error) {
       console.error('Error deleting job:', error)
-      alert('Failed to delete job. Please try again.')
+      toast?.error?.("Couldn't delete this job. Please try again.")
     } finally {
       setLoading(false)
     }
