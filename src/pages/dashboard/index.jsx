@@ -10,6 +10,7 @@ import { getOpenOpportunitySummary, listByJobId } from '@/services/opportunities
 import { getDealFinancials } from '@/utils/dealKpis'
 import { useAuth } from '@/contexts/AuthContext'
 import { handleAuthError, isTechNoiseMessage } from '@/lib/authErrorHandler'
+import { isOverdue } from '@/lib/time'
 
 const SIMPLE_AGENDA_ENABLED =
   String(import.meta.env.VITE_SIMPLE_CALENDAR || '').toLowerCase() === 'true'
@@ -435,11 +436,20 @@ const DashboardPage = () => {
                                 </div>
                                 <div className="mt-0.5 text-xs text-gray-600 truncate">
                                   {timeLabel} •{' '}
-                                  {job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')} •{' '}
+                                  {job?.customer_name || job?.vehicle?.owner_name || '—'} •{' '}
                                   {job?.vehicle_info || ''}
+                                  {job?.vehicle?.stock_number ? ` · #${job.vehicle.stock_number}` : ''}
+                                </div>
+                                <div className="mt-0.5 text-[11px] text-gray-500 truncate">
+                                  {job?.vendor_name || (job?.vendor_id ? 'Vendor' : 'On-site')}
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-1 justify-end">
+                                {isOverdue(job?.next_promised_iso || job?.promised_date) ? (
+                                  <Pill className="border-rose-300 bg-rose-50 text-rose-900">
+                                    Overdue
+                                  </Pill>
+                                ) : null}
                                 {loaner ? (
                                   <Pill className="border-slate-200 bg-slate-50 text-slate-800">
                                     Loaner
@@ -462,7 +472,7 @@ const DashboardPage = () => {
                                         : 'border-rose-200 bg-rose-50 text-rose-900'
                                     }
                                   >
-                                    {profit >= 0 ? 'Profit' : 'Loss'}
+                                    {money0OrDash(profit)}
                                   </Pill>
                                 ) : null}
                               </div>

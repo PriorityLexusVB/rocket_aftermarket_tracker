@@ -1011,9 +1011,15 @@ export default function CalendarAgenda({ embedded = false, shellState, onOpenDea
                         )}
                       </div>
                       <div className="text-xs text-slate-500 truncate">
-                        {[customerName, vehicleLabel, stock ? `Stock ${stock}` : null]
-                          .filter(Boolean)
-                          .join(' • ')}
+                        {(() => {
+                          const locType = getJobLocationType(raw)
+                          return [
+                            customerName,
+                            vehicleLabel,
+                            stock ? `Stock ${stock}` : null,
+                            locType ? `· ${locType}` : null,
+                          ].filter(Boolean).join(' • ')
+                        })()}
                       </div>
                       {ops.tokens.length ? (
                         <div

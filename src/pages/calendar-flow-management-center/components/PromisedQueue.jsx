@@ -109,6 +109,10 @@ export default function PromisedQueue({
                       No Time Set
                     </span>
                   </div>
+                  <div className="mt-0.5 truncate text-[11px] text-gray-600">
+                    {raw?.customer_name || raw?.vehicle?.owner_name || '—'}
+                    {raw?.vehicle?.stock_number ? ` · #${raw.vehicle.stock_number}` : ''}
+                  </div>
                   <div className="mt-1 flex items-center gap-2">
                     {locMeta.label && (
                       <div className="flex items-center gap-1">

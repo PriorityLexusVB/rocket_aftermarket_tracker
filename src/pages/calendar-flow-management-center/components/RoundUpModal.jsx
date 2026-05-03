@@ -219,10 +219,16 @@ const RoundUpModal = ({
               : 'Unscheduled'}
           </div>
 
-          {/* Stock & Product */}
-          <div className="flex items-center text-gray-900">
-            <Car className="h-3 w-3 mr-1 text-gray-400" />
-            {job?.job_number?.split('-')?.pop()} — {job?.title}
+          {/* Stock & Product (line 1) + customer · stock# (line 2) */}
+          <div className="min-w-0">
+            <div className="flex items-center text-gray-900 truncate">
+              <Car className="h-3 w-3 mr-1 text-gray-400 shrink-0" />
+              {job?.job_number?.split('-')?.pop()} — {job?.title}
+            </div>
+            <div className="text-[10px] text-gray-500 truncate">
+              {job?.customer_name || job?.vehicle?.owner_name || '—'}
+              {job?.vehicle?.stock_number ? ` · #${job.vehicle.stock_number}` : ''}
+            </div>
           </div>
 
           {/* Promise Date */}

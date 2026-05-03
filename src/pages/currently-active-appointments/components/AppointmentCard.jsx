@@ -10,6 +10,7 @@ import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right.js'
 import Check from 'lucide-react/dist/esm/icons/check.js'
 import { getAppointmentScheduleDisplay, toSafeDateForTimeZone } from '@/utils/scheduleDisplay'
 import { getReopenTargetStatus } from '@/utils/jobStatusTimeRules.js'
+import { getJobLocationType } from '@/utils/locationType'
 
 const AppointmentCard = ({
   appointment,
@@ -222,17 +223,53 @@ const AppointmentCard = ({
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm text-gray-600 font-medium">
               <Building2 className="w-4 h-4" />
-              <span>Vendor</span>
+              <span>Location</span>
             </div>
             <div>
-              {appointment?.vendors ? (
-                <>
-                  <div className="font-semibold text-gray-900">{appointment?.vendors?.name}</div>
-                  <div className="text-sm text-gray-600">{appointment?.vendors?.specialty}</div>
-                </>
-              ) : (
-                <div className="text-sm text-gray-500 italic">On-site</div>
-              )}
+              {(() => {
+                const locType = getJobLocationType(appointment)
+                const isMixed = locType === 'Mixed'
+                const isInHouse = locType === 'In-House' || (!locType && !appointment?.vendors)
+                const pillBg = isMixed
+                  ? 'bg-blue-100 text-blue-800'
+                  : isInHouse
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-amber-100 text-amber-800'
+                const label = isMixed ? 'Split Work' : isInHouse ? 'In-House' : 'Off-Site'
+                return (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${pillBg}`}
+                      >
+                        {label}
+                      </span>
+                      {!isInHouse && appointment?.vendors?.name && (
+                        <span className="text-sm font-semibold text-gray-900 truncate">
+                          {appointment.vendors.name}
+                        </span>
+                      )}
+                    </div>
+                    {!isInHouse && appointment?.vendors?.specialty && (
+                      <div className="text-xs text-gray-600 mt-0.5 truncate">
+                        {appointment.vendors.specialty}
+                      </div>
+                    )}
+                    {Array.isArray(appointment?.work_tags) && appointment.work_tags.length ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {appointment.work_tags.slice(0, 4).map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                )
+              })()}
             </div>
           </div>
 

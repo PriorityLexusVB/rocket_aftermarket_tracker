@@ -840,18 +840,26 @@ const CalendarSchedulingCenter = ({
                 })
 
                 const locMeta = getLocationMeta(job)
+                const promiseIso = job?.next_promised_iso || job?.promised_date || job?.promisedAt
+                const overdue = isOverdue(promiseIso)
                 return (
                   <div
                     key={job?.calendar_key || job?.id}
-                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${locMeta.border} ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
+                    className={`group relative mb-2 p-2 rounded text-xs cursor-pointer hover:shadow-md transition-shadow border ${locMeta.border} ${overdue ? 'ring-1 ring-red-400 ring-offset-1' : ''} ${colors?.className || 'bg-blue-100 border-blue-300 text-blue-900'}`}
                     onClick={handleGridClick}
                     onKeyDown={(event) => handleCalendarCardKeyDown(event, handleGridClick)}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Open deal ${titleWithNumber}`}
+                    aria-label={`Open deal ${titleWithNumber}${overdue ? ' (overdue)' : ''}`}
                     title={titleText}
                     aria-describedby={popoverId}
                   >
+                    {overdue && (
+                      <div className="mb-1 inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-800">
+                        <span aria-hidden="true">!</span>
+                        Overdue
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-2">
                       <div className="font-semibold truncate min-w-0">
                         {jobNumber ? `${jobNumber} • ` : ''}
@@ -928,6 +936,18 @@ const CalendarSchedulingCenter = ({
                         <span className="text-[10px] text-gray-700">{locMeta.label}</span>
                       </div>
                     )}
+                    {Array.isArray(job?.work_tags) && job.work_tags.length ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {job.work_tags.slice(0, 4).map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-gray-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
 
                     {showDetailPopovers ? (
                       <EventDetailPopover
